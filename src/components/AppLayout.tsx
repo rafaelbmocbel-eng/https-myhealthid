@@ -11,7 +11,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  // useLayoutEffect runs synchronously before paint — avoids flash
   useLayoutEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < 768;
@@ -23,25 +22,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const sidebarW = (collapsed || isMobile) ? 72 : 224;
+  // On mobile sidebar is always collapsed (icon-only 72px), on desktop user toggles
+  const sidebarCollapsed = isMobile ? true : collapsed;
+  const sidebarW = sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="flex min-h-screen bg-background">
-      {/* Sidebar — always visible, collapsed (icon-only) on mobile */}
-      <div className={cn('relative shrink-0', isMobile ? 'w-[72px]' : '')}>
-        <AppSidebar
-          collapsed={collapsed}
-          onToggle={() => setCollapsed(c => !c)}
-          onNavClick={undefined}
-        />
-      </div>
+    <div className="min-h-screen bg-background">
+      {/* Fixed sidebar — always visible */}
+      <AppSidebar
+        collapsed={sidebarCollapsed}
+        onToggle={() => !isMobile && setCollapsed(c => !c)}
+        onNavClick={undefined}
+      />
 
-      {/* Main content */}
+      {/* Main content offset by sidebar width */}
       <div
-        className="flex-1 flex flex-col min-w-0 transition-all duration-300"
-        style={{ marginLeft: isMobile ? 0 : sidebarW - (isMobile ? 72 : sidebarW) }}
+        className="flex flex-col min-h-screen transition-all duration-300"
+        style={{ marginLeft: sidebarW }}
       >
-        {/* Top bar — desktop only collapse toggle */}
+        {/* Desktop collapse toggle */}
         {!isMobile && (
           <header className="sticky top-0 z-20 flex h-16 items-center bg-background px-6 gap-4">
             <button
@@ -64,4 +63,3 @@ export default function AppLayout({ children }: AppLayoutProps) {
     </div>
   );
 }
-

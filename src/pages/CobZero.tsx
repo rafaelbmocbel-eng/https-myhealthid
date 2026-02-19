@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input';
 import { usePacientes } from '@/hooks/usePacientes';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 
 const etapas = [
   { id: 1, label: 'Dados Básicos', sublabel: 'Queixa & História', icon: ClipboardList, time: '5 min' },
@@ -72,6 +73,7 @@ const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoCobZero => ({
 export default function CobZero() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
+  const { salvar: salvarAvaliacao } = useAvaliacoesCobZero();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
   const [searchPac, setSearchPac] = useState('');
@@ -92,8 +94,13 @@ export default function CobZero() {
     if (etapaAtual < 5) {
       setAvaliacao(prev => ({ ...prev, etapaAtual: etapaAtual + 1 }));
     } else {
-      setAvaliacao(prev => ({ ...prev, concluido: true }));
+      const finalAv = { ...avaliacao, concluido: true };
+      setAvaliacao(finalAv);
       setShowRelatorio(true);
+      // Auto-save to patient record
+      if (selectedPacienteId) {
+        salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
+      }
     }
   };
 

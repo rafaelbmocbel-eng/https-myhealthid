@@ -25,6 +25,7 @@ import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { cn } from '@/lib/utils';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
 const blocos = [
   { id: 1, label: 'Anamnese & Contexto', sublabel: 'Score F', icon: ClipboardList, time: '8 min' },
@@ -69,6 +70,7 @@ export default function MetodoIdentidade() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('metodo_identidade');
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { salvar: salvarAvaliacao } = useAvaliacoesIdentidade();
 
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [showDashboard, setShowDashboard] = useState(false);
@@ -117,10 +119,15 @@ export default function MetodoIdentidade() {
         avaliacao.bloco5.scoreC, avaliacao.bloco1.scoreF,
         avaliacao.bloco2.scoreD, avaliacao.bloco5.scoreR,
       );
-      setAvaliacao(prev => ({ ...prev, idFinal, classificacao, concluido: true }));
+      const finalAv = { ...avaliacao, idFinal, classificacao, concluido: true };
+      setAvaliacao(finalAv);
       setShowRelatorio(true);
+      // Auto-save to patient record
+      if (selectedPacienteId) {
+        salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
+      }
     }
-  }, [avaliacao]);
+  }, [avaliacao, selectedPacienteId, salvarAvaliacao]);
 
   const voltarBloco = useCallback(() => {
     setAvaliacao(prev => ({ ...prev, blocoAtual: Math.max(1, prev.blocoAtual - 1) }));
