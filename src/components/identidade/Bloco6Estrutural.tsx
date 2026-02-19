@@ -318,12 +318,9 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                               checked={(unidade.checklist[item] as boolean) || false}
                               onCheckedChange={checked => {
                                 const newChecklist = { ...unidade.checklist, [item]: !!checked };
-                                // Auto-update score based on marked items
-                                const auto = autoScoreFromChecklist(
-                                  Object.fromEntries(Object.entries(newChecklist).filter(([k]) => !k.startsWith('_tipo_'))),
-                                  config.checklist.length
-                                );
-                                updateUnidade(unidade.id, u => ({ ...u, checklist: newChecklist, score: auto }));
+                                // Achados clínicos NÃO alteram o score de comprometimento da unidade
+                                // Eles servem apenas para direcionar o tratamento
+                                updateUnidade(unidade.id, u => ({ ...u, checklist: newChecklist }));
                               }}
                             />
                             <Label htmlFor={`${unidade.id}-${item}`} className="text-sm cursor-pointer">{item}</Label>

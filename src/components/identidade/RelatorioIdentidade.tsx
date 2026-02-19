@@ -607,6 +607,98 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         </div>
       )}
 
+      {/* ── Diretrizes de Tratamento (Desde o 1º dia) ── */}
+      <div className="clinical-card border-2 border-primary/20">
+        <h3 className="font-bold text-sm mb-4 flex items-center gap-2">
+          <Target className="h-4 w-4 text-primary" />
+          Diretrizes de Tratamento — Desde o 1º Dia
+        </h3>
+
+        {/* Técnicas manuais e terapêuticas */}
+        <div className="space-y-4">
+          {/* Sessão tipo */}
+          <div className="rounded-xl bg-primary/5 border border-primary/10 p-4">
+            <div className="text-xs font-bold text-primary mb-2">SESSÃO MODELO (1ª semana)</div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-sm">
+              <div>
+                <div className="font-semibold text-xs text-muted-foreground mb-1">Terapias Manuais</div>
+                <ul className="space-y-1 text-xs">
+                  {e > 4 && <li>• Mobilização articular (UCs afetadas)</li>}
+                  {e > 3 && <li>• Liberação miofascial</li>}
+                  {e > 5 && <li>• Manipulação articular</li>}
+                  {d > 5 && <li>• Tração manual</li>}
+                  <li>• Técnica de tecidos moles</li>
+                </ul>
+              </div>
+              <div>
+                <div className="font-semibold text-xs text-muted-foreground mb-1">Eletroterapia / Recursos</div>
+                <ul className="space-y-1 text-xs">
+                  {d > 6 && <li>• TENS (modulação da dor)</li>}
+                  {e > 5 && <li>• Ultrassom terapêutico</li>}
+                  {r < 5 && <li>• Termoterapia</li>}
+                  {p > 6 && <li>• Corrente interferencial</li>}
+                  <li>• Crioterapia pós-sessão</li>
+                </ul>
+              </div>
+              <div>
+                <div className="font-semibold text-xs text-muted-foreground mb-1">Exercícios Terapêuticos</div>
+                <ul className="space-y-1 text-xs">
+                  {r < 5 && <li>• Respiração diafragmática</li>}
+                  {p > 5 && <li>• Educação em neurociência da dor</li>}
+                  <li>• Mobilidade articular ativa</li>
+                  <li>• Ativação de core (baixa carga)</li>
+                  {efi < 6 && <li>• Exercício funcional básico</li>}
+                </ul>
+              </div>
+            </div>
+          </div>
+
+          {/* UCs com diretrizes tecidual */}
+          <div>
+            <div className="text-xs font-bold text-muted-foreground mb-3">DIRETRIZES POR UNIDADE CORPORAL</div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {avaliacao.bloco6.unidades
+                .filter(u => u.score > 2)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 4)
+                .map(u => {
+                  const tecidos = [
+                    { nome: 'Muscular', score: u.scoreMuscular, tecnicas: ['Liberação miofascial', 'Dry needling', 'Alongamento PNF'] },
+                    { nome: 'Articular', score: u.scoreArticular, tecnicas: ['Mobilização grau III-IV', 'Tração articular', 'Mulligan MWM'] },
+                    { nome: 'Ligamentar', score: u.scoreLigamentar, tecnicas: ['Fortalecimento estabilizador', 'Bandagem funcional', 'Propriocepção'] },
+                    { nome: 'Nervosa', score: u.scoreNervosa, tecnicas: ['Neurodinâmica', 'Dessensibilização neural', 'TENS'] },
+                    { nome: 'Visceral', score: u.scoreVisceral, tecnicas: ['Manipulação visceral', 'Técnica diafragmática', 'Mobilização fascial'] },
+                  ].filter(t => t.score > 0).sort((a, b) => b.score - a.score);
+                  
+                  if (tecidos.length === 0) return null;
+                  const nomeSimples = u.nome.replace(/^(UC\d|UA-[DE]|[ID]D)\s*–\s*/, '');
+
+                  return (
+                    <div key={u.id} className="rounded-xl border border-border p-3">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="font-semibold text-xs">{u.id} – {nomeSimples}</span>
+                        <span className="text-xs font-bold" style={{ color: getSeverityColorHex(u.score) }}>
+                          {u.score.toFixed(1)}/10
+                        </span>
+                      </div>
+                      <div className="space-y-1.5">
+                        {tecidos.slice(0, 3).map(t => (
+                          <div key={t.nome} className="flex items-start gap-2">
+                            <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0 mt-0.5">
+                              {t.nome} {t.score.toFixed(0)}
+                            </Badge>
+                            <span className="text-[11px] text-muted-foreground">{t.tecnicas[0]}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* ── Gerar Protocolo CTA ── */}
       <div className="clinical-card bg-gradient-hero text-white">
         <div className="flex items-center justify-between">
