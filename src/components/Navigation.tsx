@@ -1,12 +1,13 @@
 import { useState } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Activity, AlignCenter, LayoutDashboard, Menu, X, Bell, User, ChevronDown } from 'lucide-react';
+import { AlignCenter, LayoutDashboard, Menu, X, Bell, User, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: Activity },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: null },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
 ];
 
@@ -21,10 +22,12 @@ export default function Navigation() {
     <header className="sticky top-0 z-50 w-full border-b bg-card/95 backdrop-blur supports-[backdrop-filter]:bg-card/80">
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
-        <Link to="/" className="flex items-center gap-3 group">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-primary shadow-primary">
-            <Activity className="h-5 w-5 text-white" />
-          </div>
+        <Link to="/" className="flex items-center gap-2 group">
+          <img
+            src={logoMetodo}
+            alt="Método Identidade Logo"
+            className="h-10 w-10 rounded-xl object-cover"
+          />
           <div>
             <div className="text-sm font-bold leading-none text-foreground">
               MÉTODO <span className="text-gradient-primary">IDENTIDADE</span>
@@ -48,7 +51,7 @@ export default function Navigation() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                {Icon && <Icon className="h-4 w-4" />}
                 {item.label}
               </Link>
             );
@@ -99,7 +102,7 @@ export default function Navigation() {
                     : 'text-muted-foreground hover:text-foreground hover:bg-secondary'
                 }`}
               >
-                <Icon className="h-4 w-4" />
+                {Icon && <Icon className="h-4 w-4" />}
                 {item.label}
               </Link>
             );

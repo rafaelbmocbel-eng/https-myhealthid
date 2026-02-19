@@ -90,6 +90,12 @@ export interface UnidadeCorporal {
   score: number;
   checklist: Record<string, boolean>;
   observacoes: string;
+  // Tissue-level scores (modulate pain equation)
+  scoreMuscular: number;
+  scoreArticular: number;
+  scoreLigamentar: number;
+  scoreNervosa: number;
+  scoreVisceral: number;
 }
 
 export interface Bloco6Data {

@@ -11,12 +11,12 @@ import { getSeverityColorHex } from '@/utils/calculations';
 import { BodyAvatarSVG, UC_TO_REGIONS } from './BodyAvatarSVG';
 
 // Structural tissue types that modulate the pain equation
-const TIPOS_ESTRUTURAIS = [
-  { id: 'muscular', label: 'Muscular', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { id: 'articular', label: 'Articular', color: 'bg-amber-100 text-amber-700 border-amber-200' },
-  { id: 'ligamentar', label: 'Ligamentar', color: 'bg-green-100 text-green-700 border-green-200' },
-  { id: 'nervosa', label: 'Nervosa', color: 'bg-red-100 text-red-700 border-red-200' },
-  { id: 'visceral', label: 'Visceral', color: 'bg-purple-100 text-purple-700 border-purple-200' },
+const TIPOS_ESTRUTURAIS: { id: keyof Pick<UnidadeCorporal, 'scoreMuscular'|'scoreArticular'|'scoreLigamentar'|'scoreNervosa'|'scoreVisceral'>; label: string; color: string }[] = [
+  { id: 'scoreMuscular', label: 'Muscular', color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  { id: 'scoreArticular', label: 'Articular', color: 'bg-amber-100 text-amber-700 border-amber-200' },
+  { id: 'scoreLigamentar', label: 'Ligamentar', color: 'bg-green-100 text-green-700 border-green-200' },
+  { id: 'scoreNervosa', label: 'Nervosa', color: 'bg-red-100 text-red-700 border-red-200' },
+  { id: 'scoreVisceral', label: 'Visceral', color: 'bg-purple-100 text-purple-700 border-purple-200' },
 ];
 
 const UNIDADES_CONFIG = [
@@ -97,6 +97,11 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
         id: uc.id, nome: uc.nome, score: 0,
         checklist: Object.fromEntries(uc.checklist.map(k => [k, false])),
         observacoes: '',
+        scoreMuscular: 0,
+        scoreArticular: 0,
+        scoreLigamentar: 0,
+        scoreNervosa: 0,
+        scoreVisceral: 0,
       };
     })
   );
@@ -187,6 +192,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                 </span>
               ))}
             </div>
+            <p className="text-xs text-muted-foreground mt-2">Avalie cada estrutura (0-10) na unidade expandida</p>
           </div>
         </div>
 
@@ -244,25 +250,27 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
 
                 {isExpanded && (
                   <div className="mt-5 space-y-5 border-t pt-5">
-                    {/* Structural tissue types */}
+                    {/* Structural tissue type sliders */}
                     <div>
-                      <Label className="mb-2 block text-sm font-semibold">Estruturas comprometidas</Label>
-                      <div className="flex flex-wrap gap-2">
+                      <Label className="mb-3 block text-sm font-semibold">Estruturas comprometidas (0-10)</Label>
+                      <div className="space-y-3">
                         {TIPOS_ESTRUTURAIS.map(tipo => {
-                          const checked = (unidade.checklist[`_tipo_${tipo.id}`] ?? false) as boolean;
+                          const val = unidade[tipo.id] ?? 0;
                           return (
-                            <button
-                              key={tipo.id}
-                              type="button"
-                              onClick={() => updateUnidade(unidade.id, u => ({
-                                ...u, checklist: { ...u.checklist, [`_tipo_${tipo.id}`]: !checked }
-                              }))}
-                              className={`text-xs px-3 py-1 rounded-full border font-medium transition-all ${
-                                checked ? tipo.color : 'bg-muted text-muted-foreground border-border'
-                              }`}
-                            >
-                              {tipo.label}
-                            </button>
+                            <div key={tipo.id} className="flex items-center gap-3">
+                              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium w-24 text-center flex-shrink-0 ${tipo.color}`}>
+                                {tipo.label}
+                              </span>
+                              <Slider
+                                value={[val]}
+                                min={0} max={10} step={0.5}
+                                className="flex-1"
+                                onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, [tipo.id]: v }))}
+                              />
+                              <span className="text-sm font-bold w-10 text-right" style={{ color: getSeverityColorHex(val) }}>
+                                {val.toFixed(1)}
+                              </span>
+                            </div>
                           );
                         })}
                       </div>
