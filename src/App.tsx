@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import MetodoIdentidade from "./pages/MetodoIdentidade";
 import CobZero from "./pages/CobZero";
 import NotFound from "./pages/NotFound";
+import Auth from "./pages/Auth";
+import Agenda from "./pages/Agenda";
+import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
 
@@ -16,12 +19,16 @@ const App = () => (
       <Toaster />
       <Sonner />
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Index />} />
-          <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
-          <Route path="/cob-zero" element={<CobZero />} />
-          <Route path="*" element={<NotFound />} />
-        </Routes>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
+            <Route path="/cob-zero" element={<CobZero />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/agenda" element={<Agenda />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
       </BrowserRouter>
     </TooltipProvider>
   </QueryClientProvider>

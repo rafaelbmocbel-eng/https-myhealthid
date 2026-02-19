@@ -1,19 +1,27 @@
 import { useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
-import { AlignCenter, LayoutDashboard, Menu, X, Bell, User, ChevronDown } from 'lucide-react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { AlignCenter, LayoutDashboard, Menu, X, User, ChevronDown, CalendarDays, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
+import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: null },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays },
 ];
 
 export default function Navigation() {
   const [mobileOpen, setMobileOpen] = useState(false);
   const location = useLocation();
+  const navigate = useNavigate();
+  const { user, profile, signOut } = useAuth();
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
@@ -60,19 +68,26 @@ export default function Navigation() {
 
         {/* Right actions */}
         <div className="flex items-center gap-2">
-          <Button variant="ghost" size="icon" className="relative">
-            <Bell className="h-5 w-5" />
-            <Badge className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs bg-destructive">
-              3
-            </Badge>
-          </Button>
-          <Button variant="ghost" className="hidden md:flex items-center gap-2 text-sm">
-            <div className="h-7 w-7 rounded-full bg-gradient-primary flex items-center justify-center">
-              <User className="h-4 w-4 text-white" />
-            </div>
-            Dr. Silva
-            <ChevronDown className="h-3 w-3" />
-          </Button>
+          {user ? (
+            <>
+              <Button variant="ghost" className="hidden md:flex items-center gap-2 text-sm" asChild>
+                <Link to="/agenda">
+                  <div className="h-7 w-7 rounded-full bg-gradient-primary flex items-center justify-center">
+                    <User className="h-4 w-4 text-white" />
+                  </div>
+                  {profile?.nome || user.email?.split('@')[0] || 'Terapeuta'}
+                  <ChevronDown className="h-3 w-3" />
+                </Link>
+              </Button>
+              <Button variant="ghost" size="icon" onClick={handleSignOut} title="Sair">
+                <LogOut className="h-4 w-4" />
+              </Button>
+            </>
+          ) : (
+            <Button asChild size="sm" className="hidden md:flex bg-gradient-primary text-white">
+              <Link to="/auth">Entrar</Link>
+            </Button>
+          )}
           {/* Mobile toggle */}
           <Button
             variant="ghost"
@@ -82,6 +97,7 @@ export default function Navigation() {
           >
             {mobileOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
+
         </div>
       </div>
 
