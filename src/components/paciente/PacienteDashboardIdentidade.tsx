@@ -16,6 +16,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
 } from 'recharts';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import EvolucaoDashboard from './EvolucaoDashboard';
 
@@ -75,7 +76,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
   });
 
   const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-  const getAgendaUrl = (token: string) => `${window.location.origin}/agenda/${token}`;
+  
 
   const gerarLinkAgenda = async () => {
     if (!user) return;

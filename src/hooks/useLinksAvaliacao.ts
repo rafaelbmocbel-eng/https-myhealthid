@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { getAvaliacaoUrl } from '@/utils/linkUrls';
 
 export interface LinkAvaliacao {
   id: string;
@@ -79,8 +80,7 @@ export function useLinksAvaliacao() {
     toast({ title: 'Link cancelado' });
   };
 
-  const getLinkUrl = (token: string) =>
-    `${window.location.origin}/avaliacao/${token}`;
+  const getLinkUrl = (token: string) => getAvaliacaoUrl(token);
 
   const copiarLink = (token: string) => {
     navigator.clipboard.writeText(getLinkUrl(token));

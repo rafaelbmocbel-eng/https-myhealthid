@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { getAgendaUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -349,7 +350,7 @@ export default function PacientePerfil() {
                         <Button size="sm" variant="outline" className="h-7 text-xs gap-1 shrink-0" onClick={() => {
                           const url = link.tipo === 'Avaliação'
                             ? getLinkUrl(link.token)
-                            : `${window.location.origin}/agenda/${link.token}`;
+                            : getAgendaUrl(link.token);
                           navigator.clipboard.writeText(url);
                           toast({ title: 'Link copiado!' });
                         }}>
