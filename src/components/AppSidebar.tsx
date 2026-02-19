@@ -15,7 +15,7 @@ const NAV_ITEMS = [
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
   { label: 'Protocolos', href: '/protocolos', icon: Dumbbell },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
-  { label: 'Relatórios', href: '/relatorios', icon: FileText },
+  { label: 'Relatórios e Links', href: '/relatorios', icon: FileText },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
