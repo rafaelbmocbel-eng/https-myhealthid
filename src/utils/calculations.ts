@@ -66,34 +66,41 @@ export function calcularScoreEFI(bloco3: Bloco3Data): number {
 }
 
 // CÁLCULO SCORE P – Kinesiophobia TSK-11 (Bloco 4)
+// Itens invertidos: P4, P5, P6, P7, P10 → índices 0-based: 3, 4, 5, 6, 9
 export function calcularScoreP(bloco4: Bloco4Data): number {
-  const itensInvertidos = [0, 3, 5, 9]; // índices 0-based
+  const itensInvertidos = [3, 4, 5, 6, 9]; // 0-indexed: P4=3, P5=4, P6=5, P7=6, P10=9
   let soma = 0;
   bloco4.respostas.forEach((resp, idx) => {
     if (itensInvertidos.includes(idx)) {
-      soma += (5 - resp); // inverter escala 1-4
+      soma += (5 - resp); // inverter escala 1-4 → 4-1
     } else {
       soma += resp;
     }
   });
   // Normalizar 11-44 para 0-10
-  return ((soma - 11) / 33) * 10;
+  const score = ((soma - 11) / 33) * 10;
+  return Math.max(0, Math.min(10, Math.round(score * 10) / 10));
 }
 
 // CÁLCULO SCORES R e C (Bloco 5)
+// R1, R2, R3 → 0-10 onde 10 = bom (sem inversão dupla)
+// As perguntas já têm a lógica embutida: onde maior = melhor não precisam inversão
 export function calcularScoresRC(bloco5: Bloco5Data): { r1: number; r2: number; r3: number; r: number; c: number } {
-  const r1Media = (bloco5.qualidadeSono + bloco5.horasSono + (10 - bloco5.acordaNaNoite) + (10 - bloco5.dorAfetaSono) + bloco5.descansadoAoAcordar) / 5;
-  const r1 = 10 - r1Media; // invertido
-  
-  const r2Media = (bloco5.energiaAoAcordar + (10 - bloco5.fadigaDia) + (10 - bloco5.precisaCochiblar) + bloco5.motivacao + bloco5.resistenciaFisica) / 5;
-  const r2 = 10 - r2Media;
-  
-  const r3Media = ((10 - bloco5.nivelStress) + bloco5.humorGeral + bloco5.concentracao + (10 - bloco5.preocupacaoSaude) + bloco5.sensacaoControle) / 5;
-  const r3 = 10 - r3Media;
-  
+  // R1 – Sono (0=horrível, 10=ótimo)
+  // qualidadeSono 0-10 (direto), horasSono já normalizado, acordaNaNoite 0=muito/10=nunca (direto), dorAfetaSono 0=sempre/10=nunca (direto), descansadoAoAcordar 0-10 (direto)
+  const r1 = (bloco5.qualidadeSono + bloco5.horasSono + (10 - bloco5.acordaNaNoite) + (10 - bloco5.dorAfetaSono) + bloco5.descansadoAoAcordar) / 5;
+
+  // R2 – Energia (0=esgotado, 10=pleno)
+  // energiaAoAcordar 0-10 (direto), fadigaDia 0=esgotado/10=sem fadiga (inverter), precisaCochiblar inverter, motivacao direto, resistenciaFisica direto
+  const r2 = (bloco5.energiaAoAcordar + (10 - bloco5.fadigaDia) + (10 - bloco5.precisaCochiblar) + bloco5.motivacao + bloco5.resistenciaFisica) / 5;
+
+  // R3 – Psicológico (0=comprometido, 10=ótimo)
+  // nivelStress: inverter (0=sem stress bom), humorGeral direto, concentracao direto, preocupacaoSaude inverter, sensacaoControle direto
+  const r3 = ((10 - bloco5.nivelStress) + bloco5.humorGeral + bloco5.concentracao + (10 - bloco5.preocupacaoSaude) + bloco5.sensacaoControle) / 5;
+
   const r = (r1 + r2 + r3) / 3;
   const c = (bloco5.cargaLaboral + bloco5.relacionamentos + bloco5.situacaoFinanceira + bloco5.eventosEstressantes) / 4;
-  
+
   return { r1, r2, r3, r, c };
 }
 
