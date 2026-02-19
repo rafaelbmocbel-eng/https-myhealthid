@@ -1,7 +1,6 @@
-import { useState, useEffect, useLayoutEffect } from 'react';
+import { useState, useLayoutEffect } from 'react';
 import AppSidebar from './AppSidebar';
-import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
@@ -10,7 +9,6 @@ interface AppLayoutProps {
 
 export default function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
   // useLayoutEffect runs synchronously before paint — avoids flash
@@ -25,41 +23,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const closeMobile = () => setMobileOpen(false);
   const sidebarW = (collapsed || isMobile) ? 72 : 224;
 
   return (
     <div className="flex min-h-screen bg-background">
-      {/* Mobile overlay */}
-      {isMobile && mobileOpen && (
-        <div
-          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
-          onClick={closeMobile}
-        />
-      )}
-
-      {/* Sidebar */}
-      <div className={cn(
-        'transition-transform duration-300',
-        isMobile ? 'fixed z-40 h-screen' : 'relative',
-        isMobile && !mobileOpen ? '-translate-x-full' : 'translate-x-0',
-      )}>
+      {/* Sidebar — always visible, collapsed (icon-only) on mobile */}
+      <div className={cn('relative shrink-0', isMobile ? 'w-[72px]' : '')}>
         <AppSidebar
-          collapsed={isMobile ? false : collapsed}
-          onToggle={closeMobile}
-          onNavClick={closeMobile}
+          collapsed={collapsed}
+          onToggle={() => setCollapsed(c => !c)}
+          onNavClick={undefined}
         />
       </div>
 
-      {/* Main content — no margin on mobile */}
+      {/* Main content */}
       <div
         className="flex-1 flex flex-col min-w-0 transition-all duration-300"
-        style={{ marginLeft: isMobile ? 0 : sidebarW }}
+        style={{ marginLeft: isMobile ? 0 : sidebarW - (isMobile ? 72 : sidebarW) }}
       >
-        {/* Top bar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center bg-background px-6 gap-4">
-          {/* Collapse toggle (desktop) */}
-          {!isMobile && (
+        {/* Top bar — desktop only collapse toggle */}
+        {!isMobile && (
+          <header className="sticky top-0 z-20 flex h-16 items-center bg-background px-6 gap-4">
             <button
               onClick={() => setCollapsed(c => !c)}
               className="h-9 w-9 rounded-xl bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
@@ -70,24 +54,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
                 : <ChevronLeft className="h-4 w-4" />
               }
             </button>
-          )}
-          {/* Mobile hamburger */}
-          {isMobile && (
-            <Button variant="ghost" size="icon" onClick={() => setMobileOpen(true)}>
-              <Menu className="h-5 w-5" />
-            </Button>
-          )}
-          {isMobile && (
-            <span className="text-sm font-black text-foreground tracking-wide">
-              MÉTODO <span style={{ color: 'hsl(262 83% 58%)' }}>IDENTIDADE</span>
-            </span>
-          )}
-        </header>
+          </header>
+        )}
 
-        <main className="flex-1 px-6 pb-8">
+        <main className={cn('flex-1 px-4 pb-8', !isMobile && 'px-6')}>
           {children}
         </main>
       </div>
     </div>
   );
 }
+
