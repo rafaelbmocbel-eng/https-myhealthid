@@ -148,6 +148,14 @@ export default function MetodoIdentidade() {
 
   // Dashboard do paciente selecionado
   if (selectedPacienteId && showDashboard && selectedPaciente) {
+    const handleEditarAvaliacao = (av: AvaliacaoIdentidade) => {
+      // Load saved assessment back into form for editing
+      setAvaliacao({ ...av, blocoAtual: 1, concluido: false });
+      setBlocosConcluidos(new Set());
+      setShowDashboard(false);
+      setShowRelatorio(false);
+    };
+
     return (
       <AppLayout>
         <div className="container py-8 max-w-3xl">
@@ -156,6 +164,7 @@ export default function MetodoIdentidade() {
             onBack={() => { setSelectedPacienteId(null); setShowDashboard(false); }}
             onIniciarAvaliacao={handleIniciarAvaliacao}
             onVerRelatorio={(av) => { setAvaliacao(av); setShowRelatorio(true); }}
+            onEditarAvaliacao={handleEditarAvaliacao}
           />
         </div>
       </AppLayout>

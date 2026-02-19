@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -31,6 +31,7 @@ interface Props {
   onBack: () => void;
   onIniciarAvaliacao: () => void;
   onVerRelatorio: (avaliacao: AvaliacaoIdentidade) => void;
+  onEditarAvaliacao?: (avaliacao: AvaliacaoIdentidade) => void;
 }
 
 const SCORE_LABELS: Record<string, string> = {
@@ -45,7 +46,7 @@ const SCORE_LABELS: Record<string, string> = {
 
 const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi'];
 
-export default function PacienteDashboardIdentidade({ paciente, onBack, onIniciarAvaliacao, onVerRelatorio }: Props) {
+export default function PacienteDashboardIdentidade({ paciente, onBack, onIniciarAvaliacao, onVerRelatorio, onEditarAvaliacao }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const { avaliacoes, isLoading, deletar } = useAvaliacoesIdentidade(paciente.id);
@@ -285,6 +286,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
                         onClick={() => onVerRelatorio(av.dados_avaliacao as AvaliacaoIdentidade)}>
                         <FileText className="h-3 w-3" /> Ver
                       </Button>
+                      {onEditarAvaliacao && (
+                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                          onClick={() => onEditarAvaliacao(av.dados_avaliacao as AvaliacaoIdentidade)}>
+                          <Edit className="h-3 w-3" /> Editar
+                        </Button>
+                      )}
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                         onClick={() => deletar(av.id)}>
                         <Trash2 className="h-3 w-3" />

@@ -911,6 +911,39 @@ export type Database = {
           },
         ]
       }
+      tecnicas_tratamento: {
+        Row: {
+          categoria: string
+          contraindicacoes: string | null
+          created_at: string
+          descricao: string | null
+          id: string
+          indicacoes: string | null
+          nome: string
+          parametros: Json | null
+        }
+        Insert: {
+          categoria: string
+          contraindicacoes?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          indicacoes?: string | null
+          nome: string
+          parametros?: Json | null
+        }
+        Update: {
+          categoria?: string
+          contraindicacoes?: string | null
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          indicacoes?: string | null
+          nome?: string
+          parametros?: Json | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never

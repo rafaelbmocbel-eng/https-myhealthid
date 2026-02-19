@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   ArrowLeft, Download, Activity, Target, CheckCircle2,
-  Dumbbell, Clock, RotateCcw, ChevronDown, ChevronUp, Loader2
+  Dumbbell, Clock, RotateCcw, ChevronDown, ChevronUp, Loader2, Brain, Zap
 } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
@@ -57,6 +57,19 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
         .from('prescricoes_exercicios' as any)
         .select('*, exercicio:exercicio_id(*)')
         .eq('protocolo_id', protocoloId);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  // Fetch treatment techniques from DB
+  const { data: tecnicasDB = [] } = useQuery({
+    queryKey: ['tecnicas-tratamento'],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('tecnicas_tratamento')
+        .select('*')
+        .order('categoria, nome');
       if (error) throw error;
       return (data || []) as any[];
     },
@@ -321,6 +334,50 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
           );
         })}
       </div>
+
+      {/* Técnicas de Tratamento Disponíveis */}
+      {tecnicasDB.length > 0 && (
+        <div className="clinical-card mb-6">
+          <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
+            <Brain className="h-5 w-5 text-primary" />
+            Técnicas de Tratamento Disponíveis
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {(['terapia_manual', 'eletroterapia', 'tracao', 'outros'] as const).map(cat => {
+              const tecsCat = tecnicasDB.filter((t: any) => t.categoria === cat);
+              if (tecsCat.length === 0) return null;
+              const catLabels: Record<string, string> = {
+                terapia_manual: '🖐️ Terapia Manual',
+                eletroterapia: '⚡ Eletrotermofototerapia',
+                tracao: '🔗 Tração',
+                outros: '🧊 Outras Técnicas',
+              };
+              return (
+                <div key={cat} className="border rounded-lg p-3">
+                  <h4 className="font-semibold text-sm mb-2">{catLabels[cat]}</h4>
+                  <div className="space-y-1.5">
+                    {tecsCat.map((tec: any) => (
+                      <div key={tec.id} className="p-2 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors">
+                        <div className="flex items-center gap-2">
+                          <Zap className="h-3 w-3 text-primary shrink-0" />
+                          <span className="text-sm font-medium">{tec.nome}</span>
+                        </div>
+                        <p className="text-xs text-muted-foreground mt-0.5 ml-5">{tec.descricao}</p>
+                        {tec.indicacoes && (
+                          <p className="text-[10px] text-emerald-600 mt-0.5 ml-5">✓ {tec.indicacoes}</p>
+                        )}
+                        {tec.contraindicacoes && (
+                          <p className="text-[10px] text-destructive mt-0.5 ml-5">⚠ {tec.contraindicacoes}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Instruções de segurança */}
       <div className="clinical-card border-l-4 border-destructive">
