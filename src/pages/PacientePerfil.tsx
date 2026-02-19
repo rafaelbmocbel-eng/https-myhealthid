@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, MapPin, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle, RefreshCw,
-  TrendingUp, AlignCenter, ExternalLink,
+  TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +20,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useAvaliacoesIdentidade, useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { useToast } from '@/hooks/use-toast';
 import QuestionariosComparacao from '@/components/paciente/QuestionariosComparacao';
+import EvolucaoDashboard from '@/components/paciente/EvolucaoDashboard';
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
@@ -35,8 +36,6 @@ export default function PacientePerfil() {
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
-
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
@@ -113,6 +112,23 @@ export default function PacientePerfil() {
     },
     enabled: !!user && !!id,
   });
+
+  const { data: protocolos = [], isLoading: loadingProto } = useQuery({
+    queryKey: ['protocolos-perfil', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolos')
+        .select('*')
+        .eq('paciente_id', id!)
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   if (loadingPac) {
     return (
@@ -221,16 +237,25 @@ export default function PacientePerfil() {
         )}
 
         {/* Tabs */}
-        <Tabs defaultValue="agenda">
-          <TabsList className="bg-secondary p-1 rounded-xl">
-            <TabsTrigger value="agenda" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <CalendarDays className="h-4 w-4" /> Agenda {agendamentos.length > 0 && `(${agendamentos.length})`}
+        <Tabs defaultValue="avaliacoes">
+          <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto gap-1">
+            <TabsTrigger value="avaliacoes" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <Activity className="h-3.5 w-3.5" /> Avaliações
             </TabsTrigger>
-            <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Activity className="h-4 w-4" /> Avaliações {(avaliacoesId.length + avaliacoesCob.length) > 0 && `(${avaliacoesId.length + avaliacoesCob.length})`}
+            <TabsTrigger value="questionarios" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <FileText className="h-3.5 w-3.5" /> Questionários
             </TabsTrigger>
-            <TabsTrigger value="links" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-              <Link2 className="h-4 w-4" /> Links Enviados {allLinks.length > 0 && `(${allLinks.length})`}
+            <TabsTrigger value="evolucao" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <BarChart3 className="h-3.5 w-3.5" /> Evolução
+            </TabsTrigger>
+            <TabsTrigger value="protocolos" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <ClipboardList className="h-3.5 w-3.5" /> Protocolos
+            </TabsTrigger>
+            <TabsTrigger value="agenda" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <CalendarDays className="h-3.5 w-3.5" /> Agenda
+            </TabsTrigger>
+            <TabsTrigger value="links" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
+              <Link2 className="h-3.5 w-3.5" /> Links
             </TabsTrigger>
           </TabsList>
 
@@ -272,8 +297,7 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* Aba Avaliações */}
-          <TabsContent value="avaliacoes" className="mt-4 space-y-6">
-            {/* Avaliações Realizadas pelo Terapeuta */}
+          <TabsContent value="avaliacoes" className="mt-4">
             {(loadingId || loadingCob) ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : (avaliacoesId.length + avaliacoesCob.length) === 0 ? (
@@ -335,18 +359,57 @@ export default function PacientePerfil() {
                 )}
               </div>
             )}
+          </TabsContent>
 
-            {/* Questionários Recebidos do Paciente */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="h-4 w-4 text-primary" />
-                <h3 className="text-sm font-semibold">Questionários Recebidos</h3>
-                {respostasPaciente.length > 0 && (
-                  <Badge variant="outline" className="text-[10px] h-4">{respostasPaciente.length} respostas</Badge>
-                )}
+          {/* Aba Questionários Recebidos */}
+          <TabsContent value="questionarios" className="mt-4">
+            <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+          </TabsContent>
+
+          {/* Aba Evolução Comparativa */}
+          <TabsContent value="evolucao" className="mt-4">
+            {avaliacoesId.length < 2 ? (
+              <EmptyState icon={<BarChart3 />} title="Dados insuficientes" subtitle="São necessárias pelo menos 2 avaliações Identidade para gerar o comparativo evolutivo." />
+            ) : (
+              <EvolucaoDashboard avaliacoes={avaliacoesId} />
+            )}
+          </TabsContent>
+
+          {/* Aba Protocolos de Tratamento */}
+          <TabsContent value="protocolos" className="mt-4">
+            {loadingProto ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : protocolos.length === 0 ? (
+              <EmptyState icon={<ClipboardList />} title="Nenhum protocolo" subtitle="Nenhum protocolo de tratamento foi gerado para este paciente." />
+            ) : (
+              <div className="space-y-4">
+                {protocolos.map((proto: any) => (
+                  <div key={proto.id} className="clinical-card !p-4">
+                    <div className="flex items-center gap-3 mb-2">
+                      <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                        <ClipboardList className="h-4 w-4 text-primary" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-sm font-semibold">{proto.titulo}</span>
+                          <Badge variant="outline" className={cn('text-[10px] h-4', proto.status === 'ativo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground')}>{proto.status}</Badge>
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5">
+                          {proto.duracao_total} · {proto.frequencia}
+                          {proto.created_at && ` · Criado em ${format(parseISO(proto.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
+                        </div>
+                      </div>
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
+                        <ExternalLink className="h-3 w-3" /> Ver Completo
+                      </Button>
+                    </div>
+                    {proto.objetivo_geral && (
+                      <p className="text-xs text-muted-foreground mt-2 border-t pt-2">{proto.objetivo_geral}</p>
+                    )}
+                  </div>
+                ))}
               </div>
-              <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
-            </div>
+            )}
           </TabsContent>
 
           {/* Aba Links Enviados */}
