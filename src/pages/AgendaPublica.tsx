@@ -21,11 +21,19 @@ interface Slot {
   paciente_id?: string;
 }
 
+interface TerapeutaInfo {
+  nome: string;
+  sobrenome: string;
+  telefone?: string;
+  especialidade?: string;
+}
+
 export default function AgendaPublica() {
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null);
+  const [terapeuta, setTerapeuta] = useState<TerapeutaInfo | null>(null);
   const [config, setConfig] = useState<any>(null);
   const [agendamentos, setAgendamentos] = useState<Slot[]>([]);
   const [semanaOffset, setSemanaOffset] = useState(0);
@@ -47,6 +55,14 @@ export default function AgendaPublica() {
         if (new Date(linkData.data_expiracao!) < new Date()) { setErro('Este link expirou.'); setLoading(false); return; }
 
         setLinkInfo(linkData as LinkInfo);
+
+        // Busca perfil do terapeuta (nome + telefone para WhatsApp)
+        const { data: profileData } = await supabase
+          .from('profiles')
+          .select('nome, sobrenome, telefone, especialidade')
+          .eq('user_id', linkData.terapeuta_id)
+          .maybeSingle();
+        if (profileData) setTerapeuta(profileData as TerapeutaInfo);
 
         // Busca configuração da agenda (pública: horários de atendimento)
         const { data: cfg } = await supabase
@@ -141,7 +157,9 @@ export default function AgendaPublica() {
       <CheckCircle2 className="h-16 w-16 text-emerald-500" />
       <div className="text-center max-w-sm">
         <h2 className="text-2xl font-bold text-foreground mb-2">Solicitação Enviada!</h2>
-        <p className="text-muted-foreground">Seu terapeuta irá confirmar o horário em breve. Fique atento ao WhatsApp!</p>
+        <p className="text-muted-foreground">
+          {terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'Seu terapeuta'} irá confirmar o horário em breve. Fique atento ao WhatsApp!
+        </p>
       </div>
     </div>
   );
@@ -156,8 +174,12 @@ export default function AgendaPublica() {
         <div className="max-w-2xl mx-auto flex items-center gap-4">
           <img src={logoMetodo} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
           <div>
-            <h1 className="font-bold text-sm text-foreground">Agenda — Método Identidade</h1>
-            <p className="text-xs text-muted-foreground">Verifique horários disponíveis para sua sessão</p>
+            <h1 className="font-bold text-sm text-foreground">
+              Agenda{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ' — Método Identidade'}
+            </h1>
+            <p className="text-xs text-muted-foreground">
+              {terapeuta?.especialidade || 'Fisioterapeuta'} · Verifique horários disponíveis
+            </p>
           </div>
         </div>
       </div>
@@ -209,8 +231,9 @@ export default function AgendaPublica() {
                         }`}
                         onClick={() => {
                           if (!slot.disponivel) return;
-                          const msg = `Olá! Gostaria de solicitar um horário para o dia ${format(data, "dd/MM/yyyy", { locale: ptBR })} às ${slot.hora}. Poderia confirmar a disponibilidade?`;
-                          window.open(`https://wa.me/?text=${encodeURIComponent(msg)}`, '_blank');
+                          const msg = `Olá${terapeuta ? `, ${terapeuta.nome}` : ''}! Gostaria de solicitar um horário para o dia ${format(data, "dd/MM/yyyy", { locale: ptBR })} às ${slot.hora}. Poderia confirmar a disponibilidade?`;
+                          const phone = terapeuta?.telefone?.replace(/\D/g, '') || '';
+                          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
                           setSolicitado(true);
                         }}
                       >
