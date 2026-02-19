@@ -13,7 +13,7 @@ import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { usePacientes } from '@/hooks/usePacientes';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 
@@ -74,8 +74,9 @@ export default function CobZero() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
   const { salvar: salvarAvaliacao } = useAvaliacoesCobZero();
-  const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
+  const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoCobZero>(defaultAvaliacao);
   const [showRelatorio, setShowRelatorio] = useState(false);
