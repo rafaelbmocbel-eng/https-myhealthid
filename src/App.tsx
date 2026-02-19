@@ -12,6 +12,7 @@ import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import Protocolos from "./pages/Protocolos";
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
+import Relatorios from "./pages/Relatorios";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/protocolos" element={<Protocolos />} />
             <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
+            <Route path="/relatorios" element={<Relatorios />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
