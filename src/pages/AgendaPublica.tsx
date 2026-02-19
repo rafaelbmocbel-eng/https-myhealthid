@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone } from 'lucide-react';
+import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO } from 'date-fns';
@@ -232,8 +233,8 @@ export default function AgendaPublica() {
                         onClick={() => {
                           if (!slot.disponivel) return;
                           const msg = `Olá${terapeuta ? `, ${terapeuta.nome}` : ''}! Gostaria de solicitar um horário para o dia ${format(data, "dd/MM/yyyy", { locale: ptBR })} às ${slot.hora}. Poderia confirmar a disponibilidade?`;
-                          const phone = terapeuta?.telefone?.replace(/\D/g, '') || '';
-                          window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+                          const phone = terapeuta?.telefone || '';
+                          shareViaWhatsApp(phone, msg);
                           setSolicitado(true);
                         }}
                       >
