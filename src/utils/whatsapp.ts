@@ -1,5 +1,15 @@
 export function shareViaWhatsApp(phoneNumber: string, message: string, url?: string) {
+  if (!phoneNumber || phoneNumber.trim() === '') {
+    console.warn('WhatsApp: telefone não informado');
+    return;
+  }
+  
   const formattedPhone = phoneNumber.replace(/\D/g, '');
+  if (formattedPhone.length < 10) {
+    console.warn('WhatsApp: telefone inválido', formattedPhone);
+    return;
+  }
+  
   const phone = formattedPhone.startsWith('55') ? formattedPhone : `55${formattedPhone}`;
 
   let fullMessage = message;
@@ -9,7 +19,14 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
 
   const encodedMessage = encodeURIComponent(fullMessage);
   const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
-  window.open(whatsappUrl, '_blank');
+  
+  // Use window.location.href as primary method to avoid popup blockers
+  // window.open can be blocked on many mobile browsers
+  const newWindow = window.open(whatsappUrl, '_blank');
+  if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
+    // Fallback: navigate directly if popup was blocked
+    window.location.href = whatsappUrl;
+  }
 }
 
 export function shareAgendaLink(patientName: string, patientPhone: string, agendaUrl: string) {

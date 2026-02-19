@@ -1,12 +1,12 @@
 import { useState } from 'react';
-import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit } from 'lucide-react';
+import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit, CalendarDays } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format, parseISO } from 'date-fns';
@@ -15,7 +15,7 @@ import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
 } from 'recharts';
-import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import EvolucaoDashboard from './EvolucaoDashboard';
 
@@ -50,11 +50,66 @@ const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'scor
 export default function PacienteDashboardIdentidade({ paciente, onBack, onIniciarAvaliacao, onVerRelatorio, onEditarAvaliacao }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const qc = useQueryClient();
   const { avaliacoes, isLoading, deletar } = useAvaliacoesIdentidade(paciente.id);
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const [enviandoEmail, setEnviandoEmail] = useState(false);
+  const [gerandoAgenda, setGerandoAgenda] = useState(false);
 
   const linkAtivo = links.find(l => l.paciente_id === paciente.id && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+
+  // Links de agenda para este paciente
+  const { data: linksAgenda = [] } = useQuery({
+    queryKey: ['links-agenda-dashboard', user?.id, paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('links_agenda_paciente')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+  const getAgendaUrl = (token: string) => `${window.location.origin}/agenda/${token}`;
+
+  const gerarLinkAgenda = async () => {
+    if (!user) return;
+    setGerandoAgenda(true);
+    try {
+      // Cancela links ativos anteriores
+      await supabase
+        .from('links_agenda_paciente')
+        .update({ status: 'cancelado' })
+        .eq('paciente_id', paciente.id)
+        .eq('terapeuta_id', user.id)
+        .eq('status', 'ativo');
+
+      const dataExpiracao = new Date();
+      dataExpiracao.setDate(dataExpiracao.getDate() + 90);
+      const { error } = await supabase.from('links_agenda_paciente').insert({
+        paciente_id: paciente.id,
+        terapeuta_id: user.id,
+        data_expiracao: dataExpiracao.toISOString(),
+      });
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['links-agenda-dashboard'] });
+      toast({ title: 'Link de agenda gerado! ✅', description: 'Válido por 90 dias.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoAgenda(false);
+    }
+  };
+
+  const copiarAgendaLink = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link de agenda copiado! 📋' });
+  };
 
   // Respostas remotas para este paciente
   const { data: linksAvPaciente = [] } = useQuery({
@@ -179,6 +234,45 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
               onClick={async () => { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }}>
               {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
               Gerar Link (30 dias)
+            </Button>
+          </div>
+        )}
+      </div>
+
+      {/* Card de Link de Agenda */}
+      <div className="clinical-card">
+        <div className="flex items-center gap-2 mb-3">
+          <CalendarDays className="h-4 w-4 text-amber-600" />
+          <h3 className="font-semibold text-sm">Link de Automarcação (Agenda)</h3>
+        </div>
+        {linkAgendaAtivo ? (
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Link ativo — expira em {differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())} dias</span>
+            </div>
+            <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
+              {getAgendaUrl(linkAgendaAtivo.token)}
+            </div>
+            <div className="flex gap-2 flex-wrap">
+              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
+                <Copy className="h-3 w-3" /> Copiar
+              </Button>
+              {paciente.telefone && (
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
+                  onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
+                  <MessageCircle className="h-3 w-3" /> WhatsApp
+                </Button>
+              )}
+            </div>
+          </div>
+        ) : (
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-muted-foreground flex-1">Nenhum link de agenda ativo.</p>
+            <Button size="sm" variant="outline" className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-50" disabled={gerandoAgenda}
+              onClick={gerarLinkAgenda}>
+              {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />}
+              Gerar Link (90 dias)
             </Button>
           </div>
         )}
