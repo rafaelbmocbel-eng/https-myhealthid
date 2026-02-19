@@ -65,18 +65,11 @@ export function calcularScoreEFI(bloco3: Bloco3Data): number {
   return (bloco3.trabalho + bloco3.domesticas + bloco3.exercicio + bloco3.independencia + bloco3.vidaSocial) / 5;
 }
 
-// CÁLCULO SCORE P – Kinesiophobia TSK-11 (Bloco 4)
-// Itens invertidos: P4, P5, P6, P7, P10 → índices 0-based: 3, 4, 5, 6, 9
+// CÁLCULO SCORE P – Cinesiofobia TSK-11 (Bloco 4)
+// Todos os itens são diretos: "Concordo Fortemente" (4) = máxima cinesiofobia.
+// Soma bruta varia de 11 (mínimo) a 44 (máximo), normalizada para 0-10.
 export function calcularScoreP(bloco4: Bloco4Data): number {
-  const itensInvertidos = [3, 4, 5, 6, 9]; // 0-indexed: P4=3, P5=4, P6=5, P7=6, P10=9
-  let soma = 0;
-  bloco4.respostas.forEach((resp, idx) => {
-    if (itensInvertidos.includes(idx)) {
-      soma += (5 - resp); // inverter escala 1-4 → 4-1
-    } else {
-      soma += resp;
-    }
-  });
+  const soma = bloco4.respostas.reduce((acc, resp) => acc + (resp || 0), 0);
   // Normalizar 11-44 para 0-10
   const score = ((soma - 11) / 33) * 10;
   return Math.max(0, Math.min(10, Math.round(score * 10) / 10));

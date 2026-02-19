@@ -5,22 +5,20 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ChevronRight, ChevronLeft, AlertTriangle } from 'lucide-react';
 
-// Itens 0-indexed invertidos: P4=3, P5=4, P6=5, P7=6, P10=9
-// Nesses itens "Concordo Fortemente" REDUZ o score de medo (comportamento adaptativo)
-const ITENS_INVERTIDOS = new Set([3, 4, 5, 6, 9]);
-
+// TSK-11 adaptada: todos os itens estão redigidos na direção do medo ao movimento.
+// "Concordo Fortemente" = máxima cinesiofobia em TODOS os itens (sem inversão).
 const TSK_ITEMS = [
-  { texto: 'Eu tenho medo de que meu problema de saúde possa piorar se eu for fisicamente ativo', invertido: false },
-  { texto: 'Tenho medo de me machucar acidentalmente durante a fisioterapia', invertido: false },
-  { texto: 'Meu corpo me diz para evitar certos movimentos por medo de lesão', invertido: false },
-  { texto: 'Eu não deveria fazer atividades que causem dor', invertido: true },
-  { texto: 'Se eu experimentar dor, significa que meu corpo está sendo prejudicado', invertido: true },
-  { texto: 'Para estar seguro, é melhor ser inativo quando se tem dor', invertido: true },
-  { texto: 'Dor significa que há algo errado no meu corpo', invertido: true },
-  { texto: 'Meu problema de saúde pode levar a uma lesão grave', invertido: false },
-  { texto: 'Eu tenho medo de não poder controlar meu problema de saúde', invertido: false },
-  { texto: 'Não é seguro praticar nenhum tipo de movimento quando em dor', invertido: true },
-  { texto: 'Eu gosto de deixar outras pessoas saberem que estou em dor', invertido: false },
+  'Eu tenho medo de que meu problema de saúde possa piorar se eu for fisicamente ativo',
+  'Tenho medo de me machucar acidentalmente durante a fisioterapia',
+  'Meu corpo me diz para evitar certos movimentos por medo de lesão',
+  'Eu não deveria fazer atividades que causem dor',
+  'Se eu experimentar dor, significa que meu corpo está sendo prejudicado',
+  'Para estar seguro, é melhor ser inativo quando se tem dor',
+  'Dor significa que há algo errado no meu corpo',
+  'Meu problema de saúde pode levar a uma lesão grave',
+  'Eu tenho medo de não poder controlar meu problema de saúde',
+  'Não é seguro praticar nenhum tipo de movimento quando em dor',
+  'Eu gosto de deixar outras pessoas saberem que estou em dor',
 ];
 
 const OPCOES = [
@@ -29,12 +27,6 @@ const OPCOES = [
   { value: 3, label: 'Concordo', emoji: '😟' },
   { value: 4, label: 'Concordo Fortemente', emoji: '😨' },
 ];
-
-// Retorna se a resposta indica comportamento de medo (para colorir o card)
-function indicaMedo(invertido: boolean, resposta: number): boolean {
-  if (!invertido) return resposta >= 3; // itens diretos: concordar = medo
-  return resposta <= 2;                  // itens invertidos: discordar = medo
-}
 
 interface Props {
   data: Bloco4Data;
@@ -102,10 +94,11 @@ export default function Bloco4Kinesiophobia({ data, onChange, onNext, onBack }: 
 
         <div className="space-y-4">
           {TSK_ITEMS.map((item, idx) => {
-            const respondido = respostas[idx] >= 1 && respostas[idx] <= 4;
-            const temMedo = respondido && indicaMedo(item.invertido, respostas[idx]);
+            const resp = respostas[idx];
+            const respondido = resp >= 1 && resp <= 4;
+            // Concordar (≥3) = mais medo = âmbar; discordar (≤2) = menos medo = verde
             const cardClass = respondido
-              ? temMedo
+              ? resp >= 3
                 ? 'border-amber-200 bg-amber-50/50'
                 : 'border-green-200 bg-green-50/50'
               : 'border-border bg-card';
@@ -113,33 +106,24 @@ export default function Bloco4Kinesiophobia({ data, onChange, onNext, onBack }: 
             return (
               <div key={idx} className={`p-4 rounded-xl border-2 transition-all ${cardClass}`}>
                 <div className="flex gap-3">
-                  <div className="flex flex-col items-center gap-1 mt-1 w-6 shrink-0">
-                    <span className="text-xs font-bold text-muted-foreground">{idx + 1}.</span>
-                    {item.invertido && (
-                      <span title="Item de pontuação invertida" className="text-[9px] leading-none text-primary font-bold opacity-70">↩</span>
-                    )}
-                  </div>
+                  <span className="text-xs font-bold text-muted-foreground mt-1 w-6 shrink-0">{idx + 1}.</span>
                   <div className="flex-1">
-                    <p className="text-sm mb-3 font-medium">{item.texto}</p>
+                    <p className="text-sm mb-3 font-medium">{item}</p>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                      {OPCOES.map(op => {
-                        // Para itens invertidos, inverter o emoji do botão selecionado
-                        const isSelected = respostas[idx] === op.value;
-                        return (
-                          <button
-                            key={op.value}
-                            onClick={() => update(idx, op.value)}
-                            className={`flex items-center gap-2 p-2 rounded-lg border-2 text-sm transition-all ${
-                              isSelected
-                                ? 'border-primary bg-primary text-primary-foreground'
-                                : 'border-border hover:border-primary/50 hover:bg-secondary'
-                            }`}
-                          >
-                            <span>{op.emoji}</span>
-                            <span className="text-xs truncate">{op.label}</span>
-                          </button>
-                        );
-                      })}
+                      {OPCOES.map(op => (
+                        <button
+                          key={op.value}
+                          onClick={() => update(idx, op.value)}
+                          className={`flex items-center gap-2 p-2 rounded-lg border-2 text-sm transition-all ${
+                            resp === op.value
+                              ? 'border-primary bg-primary text-primary-foreground'
+                              : 'border-border hover:border-primary/50 hover:bg-secondary'
+                          }`}
+                        >
+                          <span>{op.emoji}</span>
+                          <span className="text-xs truncate">{op.label}</span>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 </div>
