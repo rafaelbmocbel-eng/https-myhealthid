@@ -14,10 +14,10 @@ import { ptBR } from 'date-fns/locale';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
-  LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import QuestionariosComparacao from './QuestionariosComparacao';
+import EvolucaoDashboard from './EvolucaoDashboard';
 
 interface Paciente {
   id: string;
@@ -117,19 +117,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     valor: Number(((ultimaAvaliacao as any)[key] || 0).toFixed(1)),
   })) : [];
 
-  // Dados para gráfico de linha (evolução)
-  const evolucaoData = [...avaliacoes].reverse().map((av: any, i) => ({
-    avaliacao: `Av. ${i + 1}`,
-    data: av.data_avaliacao,
-    E: Number((av.score_e || 0).toFixed(1)),
-    P: Number((av.score_p || 0).toFixed(1)),
-    C: Number((av.score_c || 0).toFixed(1)),
-    F: Number((av.score_f || 0).toFixed(1)),
-    D: Number((av.score_d || 0).toFixed(1)),
-    R: Number((av.score_r || 0).toFixed(1)),
-    ID: Number((av.id_final || 0).toFixed(1)),
-  }));
-
   // Respostas agrupadas moved to QuestionariosComparacao component
 
   return (
@@ -206,7 +193,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
           <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
             <FileText className="h-4 w-4" /> Questionários Remotos {respostas.length > 0 && `(${respostas.length})`}
           </TabsTrigger>
-          {evolucaoData.length >= 2 && (
+          {avaliacoes.length >= 2 && (
             <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <TrendingUp className="h-4 w-4" /> Evolução
             </TabsTrigger>
@@ -309,54 +296,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         </TabsContent>
 
         {/* Aba: Evolução */}
-        {evolucaoData.length >= 2 && (
+        {avaliacoes.length >= 2 && (
           <TabsContent value="evolucao" className="mt-4">
-            <div className="clinical-card">
-              <div className="flex items-center gap-2 mb-4">
-                <TrendingUp className="h-4 w-4 text-primary" />
-                <h4 className="font-semibold text-sm">Evolução dos Scores ao Longo do Tempo</h4>
-              </div>
-              <div className="h-64">
-                <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={evolucaoData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                    <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                    <XAxis dataKey="avaliacao" tick={{ fontSize: 11 }} />
-                    <YAxis tick={{ fontSize: 11 }} />
-                    <Tooltip
-                      formatter={(value, name) => [value, name]}
-                      labelFormatter={(label, payload) => {
-                        const d = payload?.[0]?.payload?.data;
-                        return d ? `${label} — ${d}` : label;
-                      }}
-                    />
-                    <Legend />
-                    <Line type="monotone" dataKey="ID" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name="ID Final" />
-                    <Line type="monotone" dataKey="E" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 3 }} name="Estrutural" />
-                    <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={1.5} dot={{ r: 3 }} name="Dor" />
-                    <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 3 }} name="Kinesiophobia" />
-                    <Line type="monotone" dataKey="F" stroke="#10b981" strokeWidth={1.5} dot={{ r: 3 }} name="Funcional" />
-                    <Line type="monotone" dataKey="R" stroke="#8b5cf6" strokeWidth={1.5} dot={{ r: 3 }} name="Regulação" />
-                  </LineChart>
-                </ResponsiveContainer>
-              </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mt-4">
-                {['E', 'D', 'P', 'F', 'R', 'C', 'EFI'].map(score => {
-                  const first = evolucaoData[0]?.[score as keyof typeof evolucaoData[0]] as number;
-                  const last = evolucaoData[evolucaoData.length - 1]?.[score as keyof typeof evolucaoData[0]] as number;
-                  if (first === undefined || last === undefined) return null;
-                  const delta = Number((last - first).toFixed(1));
-                  return (
-                    <div key={score} className="bg-muted/50 rounded-lg p-2 text-center">
-                      <div className="text-xs text-muted-foreground font-medium">{score}</div>
-                      <div className="font-bold text-sm">{last}</div>
-                      <div className={`text-xs font-medium ${delta > 0 ? 'text-emerald-600' : delta < 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
-                        {delta > 0 ? '↑' : delta < 0 ? '↓' : '='} {Math.abs(delta)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
+            <EvolucaoDashboard avaliacoes={avaliacoes} />
           </TabsContent>
         )}
       </Tabs>
