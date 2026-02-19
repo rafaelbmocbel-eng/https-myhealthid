@@ -16,7 +16,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { usePacientes } from '@/hooks/usePacientes';
-import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getLinkUrl(token: string) {
@@ -105,7 +105,7 @@ function LinksAvaliacao() {
     }
     setEnviandoEmail(linkId);
     try {
-      const { error } = await supabase.functions.invoke('enviar-link-email', {
+      const { data, error } = await supabase.functions.invoke('enviar-link-email', {
         body: {
           patientName: `${paciente.nome} ${paciente.sobrenome}`,
           patientEmail: paciente.email,
@@ -114,7 +114,11 @@ function LinksAvaliacao() {
         },
       });
       if (error) throw error;
-      toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+      if (data?.error) {
+        toast({ title: 'Email não enviado', description: data.error, variant: 'destructive' });
+      } else {
+        toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+      }
     } catch (e: any) {
       toast({ title: 'Erro ao enviar email', description: e.message, variant: 'destructive' });
     } finally {
@@ -128,7 +132,13 @@ function LinksAvaliacao() {
       toast({ title: 'Paciente sem telefone', description: 'Cadastre o telefone do paciente primeiro.', variant: 'destructive' });
       return;
     }
-    shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getLinkUrl(token));
+    // Abre diretamente para evitar bloqueio de popup do browser
+    const nome = `${paciente.nome} ${paciente.sobrenome}`;
+    const link = getLinkUrl(token);
+    const msg = `Olá ${nome}! 👋\n\n📋 Seu terapeuta enviou um questionário de avaliação para você preencher antes da próxima sessão.\n\nLeva cerca de 30-40 minutos e pode ser feito de onde estiver.\n\n🔗 Link: ${link}`;
+    const phone = paciente.telefone.replace(/\D/g, '');
+    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const getNomePaciente = (pid: string) => {
@@ -354,7 +364,12 @@ function LinksAgenda() {
       toast({ title: 'Paciente sem telefone', description: 'Cadastre o telefone do paciente primeiro.', variant: 'destructive' });
       return;
     }
-    shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getAgendaUrl(token));
+    const nome = `${paciente.nome} ${paciente.sobrenome}`;
+    const link = getAgendaUrl(token);
+    const msg = `Olá ${nome}! 👋\n\n📅 Aqui está seu link personalizado para agendar suas sessões de fisioterapia.\n\n🔗 Link: ${link}`;
+    const phone = paciente.telefone.replace(/\D/g, '');
+    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
+    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const handleEnviarEmail = async (linkId: string, pacienteId: string, token: string) => {
@@ -365,7 +380,7 @@ function LinksAgenda() {
     }
     setEnviandoEmail(linkId);
     try {
-      const { error } = await supabase.functions.invoke('enviar-link-email', {
+      const { data, error } = await supabase.functions.invoke('enviar-link-email', {
         body: {
           patientName: `${paciente.nome} ${paciente.sobrenome}`,
           patientEmail: paciente.email,
@@ -374,7 +389,11 @@ function LinksAgenda() {
         },
       });
       if (error) throw error;
-      toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+      if (data?.error) {
+        toast({ title: 'Email não enviado', description: data.error, variant: 'destructive' });
+      } else {
+        toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+      }
     } catch (e: any) {
       toast({ title: 'Erro ao enviar email', description: e.message, variant: 'destructive' });
     } finally {
