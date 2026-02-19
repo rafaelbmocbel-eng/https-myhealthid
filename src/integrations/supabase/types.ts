@@ -67,6 +67,68 @@ export type Database = {
           },
         ]
       }
+      avaliacoes: {
+        Row: {
+          created_at: string
+          dados_bloco: Json | null
+          dor_identidade: number | null
+          id: string
+          paciente_id: string
+          score_c: number | null
+          score_d: number | null
+          score_e: number | null
+          score_efi: number | null
+          score_f: number | null
+          score_p: number | null
+          score_r: number | null
+          status: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dados_bloco?: Json | null
+          dor_identidade?: number | null
+          id?: string
+          paciente_id: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dados_bloco?: Json | null
+          dor_identidade?: number | null
+          id?: string
+          paciente_id?: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_agenda: {
         Row: {
           created_at: string
@@ -106,12 +168,53 @@ export type Database = {
         }
         Relationships: []
       }
-      pacientes: {
+      paciente_servicos: {
         Row: {
           ativo: boolean
           created_at: string
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          paciente_id: string
+          servico: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          paciente_id: string
+          servico: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          paciente_id?: string
+          servico?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "paciente_servicos_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pacientes: {
+        Row: {
+          ativo: boolean
+          cpf: string | null
+          created_at: string
           data_nascimento: string | null
           email: string | null
+          endereco: string | null
+          genero: string | null
           id: string
           nome: string
           observacoes: string | null
@@ -123,9 +226,12 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
+          genero?: string | null
           id?: string
           nome: string
           observacoes?: string | null
@@ -137,9 +243,12 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
+          endereco?: string | null
+          genero?: string | null
           id?: string
           nome?: string
           observacoes?: string | null
@@ -195,6 +304,53 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      protocolos_cob_zero: {
+        Row: {
+          classificacao_lenke: string | null
+          cobb_angle: number | null
+          created_at: string
+          dados_protocolo: Json | null
+          id: string
+          paciente_id: string
+          risco_progressao: number | null
+          status: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          classificacao_lenke?: string | null
+          cobb_angle?: number | null
+          created_at?: string
+          dados_protocolo?: Json | null
+          id?: string
+          paciente_id: string
+          risco_progressao?: number | null
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          classificacao_lenke?: string | null
+          cobb_angle?: number | null
+          created_at?: string
+          dados_protocolo?: Json | null
+          id?: string
+          paciente_id?: string
+          risco_progressao?: number | null
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolos_cob_zero_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
