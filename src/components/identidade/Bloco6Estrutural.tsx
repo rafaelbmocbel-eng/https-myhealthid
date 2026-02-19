@@ -156,6 +156,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
             mode="structural"
             ucScoreMap={ucScoreMap}
             highlightedUC={expandedUnit}
+            showBack
             onRegionClick={(regionId) => {
               for (const [ucId, regions] of Object.entries(UC_TO_REGIONS)) {
                 if (regions.includes(regionId)) {
@@ -164,7 +165,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                 }
               }
             }}
-            className="w-44"
+            className="w-full max-w-xs"
           />
 
           {/* Legend */}

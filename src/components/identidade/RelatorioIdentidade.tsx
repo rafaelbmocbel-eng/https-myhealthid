@@ -1,22 +1,27 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   calcularIDFinal,
   getSeverityColor,
+  getSeverityColorHex,
   calcularEquacaoDor,
   duracaoParaCronicidade,
 } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
-  PieChart, Pie, Cell, Tooltip, Legend,
 } from 'recharts';
-import { ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle, Target, CheckSquare, Dumbbell, Loader2, Save } from 'lucide-react';
+import {
+  ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle,
+  Target, CheckSquare, Dumbbell, Loader2, Save, Moon, Zap, Brain,
+  Activity, Heart, Shield,
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { gerarProtocolo, EXERCICIOS_SEED } from '@/utils/protocolGenerator';
+import { gerarProtocolo } from '@/utils/protocolGenerator';
 import { toast } from '@/hooks/use-toast';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
@@ -26,32 +31,121 @@ interface Props {
   onBack: () => void;
 }
 
-function BarraScore({ value, color, label }: { value: number; color: string; label: string }) {
-  const pct = Math.min(100, (value / 10) * 100);
+/* ── Gauge SVG Component ─────────────────────────────────────── */
+function GaugeChart({ value, max, classificacao }: { value: number; max: number; classificacao: string }) {
+  const clampedValue = Math.min(value, max);
+  const percentage = clampedValue / max;
+  
+  // Arc from -135° to 135° (270° total)
+  const startAngle = -225;
+  const endAngle = 45;
+  const totalAngle = 270;
+  const currentAngle = startAngle + (percentage * totalAngle);
+  
+  const cx = 120, cy = 120, r = 90;
+  
+  const polarToCartesian = (angle: number) => {
+    const rad = (angle * Math.PI) / 180;
+    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
+  };
+  
+  const start = polarToCartesian(startAngle);
+  const end = polarToCartesian(endAngle);
+  const current = polarToCartesian(currentAngle);
+  
+  const largeArcBg = totalAngle > 180 ? 1 : 0;
+  const actualArc = percentage * totalAngle;
+  const largeArcFg = actualArc > 180 ? 1 : 0;
+  
+  const bgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcBg} 1 ${end.x} ${end.y}`;
+  const fgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFg} 1 ${current.x} ${current.y}`;
+  
+  const getGaugeColor = () => {
+    if (value <= 10) return 'hsl(var(--success))';
+    if (value <= 20) return 'hsl(var(--warning))';
+    if (value <= 30) return 'hsl(var(--severity-severo))';
+    return 'hsl(var(--destructive))';
+  };
+
+  const getBadgeStyle = () => {
+    switch (classificacao) {
+      case 'LEVE': return 'bg-green-100 text-green-800 border-green-300';
+      case 'MODERADO': return 'bg-amber-100 text-amber-800 border-amber-300';
+      case 'SEVERO': return 'bg-orange-100 text-orange-800 border-orange-300';
+      case 'CRÍTICO': return 'bg-red-100 text-red-800 border-red-300';
+      case 'EXTREMO': return 'bg-red-600 text-white border-red-700';
+      default: return 'bg-muted text-muted-foreground border-border';
+    }
+  };
+
   return (
-    <div className="flex items-center gap-3">
-      <div className="w-28 text-xs text-muted-foreground shrink-0">{label}</div>
-      <div className="flex-1 h-3 rounded-full bg-secondary overflow-hidden">
-        <div className="h-3 rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: color }} />
+    <div className="flex flex-col items-center">
+      <svg viewBox="0 0 240 160" className="w-56 h-auto">
+        {/* Background arc */}
+        <path d={bgPath} fill="none" stroke="hsl(var(--border))" strokeWidth="18" strokeLinecap="round" />
+        {/* Foreground arc */}
+        <path d={fgPath} fill="none" stroke={getGaugeColor()} strokeWidth="18" strokeLinecap="round" />
+        {/* Value text */}
+        <text x={cx} y={cy - 5} textAnchor="middle" className="fill-foreground" fontSize="36" fontWeight="900" fontFamily="monospace">
+          {value.toFixed(1)}
+        </text>
+      </svg>
+      <div className={`-mt-2 px-4 py-1.5 rounded-full border-2 font-bold text-sm flex items-center gap-1.5 ${getBadgeStyle()}`}>
+        <AlertTriangle className="h-3.5 w-3.5" />
+        {classificacao}
       </div>
-      <div className="w-12 text-right text-xs font-bold" style={{ color }}>{value.toFixed(1)}/10</div>
     </div>
   );
 }
 
-function DimensaoDor({ label, value, descricao }: { label: string; value: number; descricao: string }) {
-  const pct = Math.min(100, (value / 10) * 100);
-  const color = value <= 3 ? '#22c55e' : value <= 6 ? '#f97316' : '#ef4444';
+/* ── Score Mini Card ─────────────────────────────────────────── */
+function ScoreCard({ icon: Icon, label, value, suffix, color, barValue, barMax }: {
+  icon?: any; label: string; value: string; suffix?: string; color?: string;
+  barValue?: number; barMax?: number;
+}) {
   return (
-    <div className="space-y-1">
-      <div className="flex items-center justify-between text-xs">
+    <div className="rounded-xl border border-border bg-card p-3 space-y-1">
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        {Icon && <Icon className="h-3.5 w-3.5" />}
         <span className="font-medium">{label}</span>
-        <span className="font-bold" style={{ color }}>{value.toFixed(1)}/10</span>
       </div>
-      <div className="h-2 rounded-full bg-secondary overflow-hidden">
-        <div className="h-2 rounded-full" style={{ width: `${pct}%`, backgroundColor: color }} />
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-black" style={{ color }}>{value}</span>
+        {suffix && <span className="text-sm text-muted-foreground font-medium">{suffix}</span>}
       </div>
-      <div className="text-xs text-muted-foreground">{descricao}</div>
+      {barValue !== undefined && barMax !== undefined && (
+        <div className="h-1.5 rounded-full bg-secondary overflow-hidden">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{
+              width: `${Math.min(100, (barValue / barMax) * 100)}%`,
+              backgroundColor: color || 'hsl(var(--primary))',
+            }}
+          />
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Unidade Crítica Card ────────────────────────────────────── */
+function UnidadeCriticaCard({ nome, id, score, topTecido, topTecidoScore, rank }: {
+  nome: string; id: string; score: number; topTecido: string; topTecidoScore: number; rank: number;
+}) {
+  const isFirst = rank === 1;
+  const borderColor = isFirst ? 'border-red-300 bg-red-50/50' : 'border-border';
+  const tecidoColor = topTecidoScore > 7 ? 'bg-red-100 text-red-700' : topTecidoScore > 4 ? 'bg-amber-100 text-amber-700' : 'bg-green-100 text-green-700';
+
+  return (
+    <div className={`rounded-xl border-2 p-4 ${borderColor}`}>
+      <div className="font-bold text-sm">{id}</div>
+      <div className="text-xs text-muted-foreground">{nome}</div>
+      <div className="mt-2 text-lg font-black">ID {score.toFixed(1)}</div>
+      {topTecidoScore > 0 && (
+        <span className={`mt-2 inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${tecidoColor}`}>
+          {topTecido} {topTecidoScore.toFixed(1)}
+        </span>
+      )}
     </div>
   );
 }
@@ -75,20 +169,25 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   const f = avaliacao.bloco1.scoreF;
   const d = avaliacao.bloco2.scoreD;
   const r = avaliacao.bloco5.scoreR;
+  const r1 = avaliacao.bloco5.scoreR1 ?? 5;
+  const r2 = avaliacao.bloco5.scoreR2 ?? 5;
   const r3 = avaliacao.bloco5.scoreR3 ?? 5;
   const efi = avaliacao.bloco3.scoreEFI;
 
   const { idFinal, fatoresRisco, classificacao } = calcularIDFinal(e, p, c, f, d, r);
 
-  // Calcular amplificadores com total
+  // Amplificadores
   const amplificadores: Array<{ desc: string; pontos: number }> = [];
   if (p > 7.5) amplificadores.push({ desc: 'Kinesiophobia severa (P > 7.5)', pontos: 2 });
   if (c > 8) amplificadores.push({ desc: 'Carga contextual extrema (C > 8)', pontos: 2 });
   if (r < 2) amplificadores.push({ desc: 'Regulação neurovegetativa crítica (R < 2)', pontos: 3 });
   else if (r < 3) amplificadores.push({ desc: 'Regulação neurovegetativa crítica (R < 3)', pontos: 3 });
-  if (d > 8) amplificadores.push({ desc: 'Dor radicular/neuropática (D > 8 + irradiação)', pontos: 1 });
+  if (d > 8) amplificadores.push({ desc: 'Dor radicular/neuropática (D > 8)', pontos: 1 });
   const totalAmplif = amplificadores.reduce((s, a) => s + a.pontos, 0);
   const idAjustado = Math.round((idFinal + totalAmplif) * 10) / 10;
+
+  // Numerador ponderado
+  const numerador = (e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10);
 
   // Equação da dor
   const fCrono = duracaoParaCronicidade(avaliacao.bloco1.duracao);
@@ -102,8 +201,23 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         })
       ), 0.5)
     : 0.5;
-
   const equacaoDor = calcularEquacaoDor(d, temIrradiacao, tipoPeso, p, r3, c, fCrono, r);
+
+  // Unidades Críticas Top 3
+  const unidadesSorted = [...avaliacao.bloco6.unidades]
+    .sort((a, b) => b.score - a.score)
+    .slice(0, 3);
+
+  const getTopTecido = (u: typeof avaliacao.bloco6.unidades[0]) => {
+    const tecidos = [
+      { nome: 'Muscular', score: u.scoreMuscular },
+      { nome: 'Articulação', score: u.scoreArticular },
+      { nome: 'Ligamento', score: u.scoreLigamentar },
+      { nome: 'Nervo', score: u.scoreNervosa },
+      { nome: 'Víscera', score: u.scoreVisceral },
+    ];
+    return tecidos.reduce((max, t) => t.score > max.score ? t : max, tecidos[0]);
+  };
 
   // Radar data
   const radarData = [
@@ -115,76 +229,36 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
     { subject: 'Regulação', value: r * 10, fullMark: 100 },
   ];
 
-  // Numerador para contribuição %
-  const numerador = (e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10);
+  // Recomendações dinâmicas
+  const recomendacoes: string[] = [];
+  if (r < 4) recomendacoes.push('Higiene do sono', 'Técnicas de relaxamento');
+  if (p > 6) recomendacoes.push('Psicoeducação em dor', 'Graded exposure');
+  if (e > 5) recomendacoes.push('Intervenção estrutural manual');
+  if (c > 6) recomendacoes.push('Suporte psicológico');
+  if (r < 2) recomendacoes.push('Avaliação médica urgente');
+  if (recomendacoes.length === 0) recomendacoes.push('Manutenção com exercícios');
 
-  const pieData = [
-    { name: 'Estrutural (E)', peso: 0.30, score: e, color: '#3b82f6' },
-    { name: 'Comportamental (P)', peso: 0.20, score: p, color: '#ef4444' },
-    { name: 'Contextual (C)', peso: 0.20, score: c, color: '#f97316' },
-    { name: 'Anamnese (F)', peso: 0.15, score: f, color: '#22c55e' },
-    { name: 'Dor (D)', peso: 0.10, score: d, color: '#a855f7' },
-  ].map(item => ({
-    ...item,
-    contribuicao: numerador > 0
-      ? Math.round((item.score * item.peso / numerador) * 1000) / 10
-      : item.peso * 100,
-  }));
+  // Frequência e duração recomendadas
+  const freqRecomendada = idAjustado > 30 ? '3x/semana' : idAjustado > 20 ? '2x/semana' : '1-2x/semana';
+  const duracaoRecomendada = idAjustado > 30 ? '12 semanas' : idAjustado > 20 ? '8 semanas' : '6 semanas';
+  const probSucesso = idAjustado > 40 ? '62%' : idAjustado > 30 ? '74%' : idAjustado > 20 ? '82%' : '91%';
 
-  const blocos = [
-    { label: 'E (Estrutural)', value: e, color: '#3b82f6', tag: e <= 3 ? 'Normal' : e <= 6 ? 'Moderado' : 'Severo ⚠️' },
-    { label: 'P (Kinesiophobia)', value: p, color: '#ef4444', tag: p <= 3 ? 'Baixa' : p <= 6 ? 'Moderada' : 'Severa ⚠️' },
-    { label: 'C (Carga Contextual)', value: c, color: '#f97316', tag: c <= 3 ? 'Baixa' : c <= 6 ? 'Moderada' : 'Alta' },
-    { label: 'F (Anamnese)', value: f, color: '#22c55e', tag: f <= 3 ? 'Leve' : f <= 6 ? 'Moderado' : 'Crônico' },
-    { label: 'D (Dor Multidim.)', value: d, color: '#a855f7', tag: d <= 3 ? 'Leve' : d <= 6 ? 'Moderada' : 'Severa' },
-    { label: 'R (Regulação Neurov.)', value: r, color: '#64748b', tag: r >= 7 ? 'Boa' : r >= 4 ? 'Moderada' : 'Crítica 🚨' },
-  ];
+  // Diagnóstico clínico dinâmico
+  const diagnosticoParts: string[] = [];
+  if (d > 5) diagnosticoParts.push(`Dor ${avaliacao.bloco2.regioes.length > 0 ? avaliacao.bloco2.regioes[0].nome : 'multirregional'}`);
+  if (temIrradiacao) diagnosticoParts.push('com irradiação');
+  if (e > 5) {
+    const afetadas = avaliacao.bloco6.unidades.filter(u => u.score > 5).map(u => u.id);
+    if (afetadas.length > 0) diagnosticoParts.push(`disfunção ${afetadas.join(', ')}`);
+  }
+  if (p > 6) diagnosticoParts.push('déficit comportamental');
+  if (r < 4) diagnosticoParts.push('desregulação neurovegetativa');
+  const diagnostico = diagnosticoParts.length > 0 ? diagnosticoParts.join(', ') : 'Quadro funcional preservado';
 
-  const prioridades = [
-    {
-      ordem: 1, emoji: '🥇', titulo: 'Regulação Neurovegetativa',
-      urgencia: r < 4,
-      items: ['Higiene do sono (protocolo 4 semanas)', 'Técnicas de relaxamento (respiração, meditação)', 'Avaliação psiquiátrica (depressão? medicação?)'],
-    },
-    {
-      ordem: 2, emoji: '🥈', titulo: 'Redução de Kinesiophobia',
-      urgencia: p > 6,
-      items: ['Psicoeducação em dor (neurofisiologia)', 'Graded exposure exercises (movimentos seguros, progressivos)', 'Terapia cognitivo-comportamental'],
-    },
-    {
-      ordem: 3, emoji: '🥉', titulo: 'Intervenção Estrutural',
-      urgencia: e > 6,
-      items: ['Avaliação clínica (UC2, UC3, UC4 prioritárias)', 'Liberações manuais (fáscia, articulação, nervo)', 'Fortalecimento progressivo (estabilização)'],
-    },
-    {
-      ordem: 4, emoji: '4️⃣', titulo: 'Gestão Contextual',
-      urgencia: c > 7,
-      items: ['Suporte psicológico (stress, relacionamentos)', 'Orientação ocupacional/lifestyle', 'Suporte social (grupos, comunidade)'],
-    },
-  ];
+  // Alertas críticos
+  const alertaCritico = classificacao === 'CRÍTICO' || classificacao === 'EXTREMO';
 
-  const metas = [
-    { label: 'Reduzir ID_final', atual: idAjustado.toFixed(1), meta: '<20 (SEVERO)', ganho: `-${Math.round(((idAjustado - 20) / idAjustado) * 100)}%` },
-    { label: 'Kinesiophobia (P)', atual: p.toFixed(1), meta: '<5 (leve)', ganho: '' },
-    { label: 'Regulação (R)', atual: r.toFixed(1), meta: '>6 (boa)', ganho: '' },
-    { label: 'Dor_ID', atual: equacaoDor.total.toFixed(1), meta: '<6/10', ganho: '' },
-    { label: 'Funcionalidade EFI', atual: avaliacao.bloco3.scoreEFI.toFixed(1), meta: `↑30%`, ganho: '' },
-  ];
-
-  const proximosPassos = [
-    'Agendamento sessão 1 (anamnese + palpação estrutural)',
-    'Prescrição protocolo higiene do sono (enviar via app)',
-    'Encaminhamento psicólogo (avaliação depressão/ansiedade)',
-    'Prescrição home exercises iniciais (5 exercícios simples)',
-    'Videoconferência semanal (telehealth) primeiras 4 semanas',
-    'Reavaliação completa semana 4 (check progresso)',
-  ];
-
-  const sevColor = getSeverityColor(classificacao);
-
-  const dorSeveridade = (v: number) => v <= 3 ? 'leve' : v <= 6 ? 'moderada' : 'severa';
-
-  // ── Gerar Protocolo Automático ─────────────────────────────────────────────
+  // ── Gerar Protocolo ─────────────────────────────────────────
   const handleGerarProtocolo = async () => {
     if (!user) { navigate('/auth'); return; }
     setGerando(true);
@@ -192,12 +266,11 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
       const scores = { E: e, P: p, C: c, F: f, D: d, R: r, EFI: efi, idFinal, classificacao };
       const protocolo = gerarProtocolo(scores, avaliacao.pacienteNome);
 
-      // 1. Criar protocolo no banco
       const { data: prot, error: protErr } = await supabase
         .from('protocolos' as any)
         .insert({
           terapeuta_id: user.id,
-          paciente_id: user.id, // sem vínculo real – usamos terapeuta_id como placeholder
+          paciente_id: user.id,
           titulo: protocolo.titulo,
           objetivo_geral: protocolo.objetivo_geral,
           perfil_dominante: protocolo.perfil_dominante,
@@ -213,13 +286,9 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
 
       if (protErr || !prot) throw protErr || new Error('Erro ao criar protocolo');
 
-      // 2. Buscar exercícios do banco
-      const { data: exerciciosDB } = await supabase
-        .from('exercicios_biblioteca' as any)
-        .select('*');
+      const { data: exerciciosDB } = await supabase.from('exercicios_biblioteca' as any).select('*');
       const exercDB = (exerciciosDB || []) as any[];
 
-      // 3. Criar fases e prescrições
       for (const fase of protocolo.fases) {
         const { data: faseDB, error: faseErr } = await supabase
           .from('protocolo_fases' as any)
@@ -237,12 +306,11 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
 
         if (faseErr || !faseDB) continue;
 
-        // Selecionar exercícios para esta fase
         const exerciciosDaFase = exercDB.filter((ex: any) => {
           const perfis = ex.perfis_indicados || [];
           const categorias = fase.categorias_exercicios;
-          return categorias.some((c: string) => ex.categoria === c) ||
-            perfis.some((p: string) => protocolo.perfil_dominante.includes(p));
+          return categorias.some((cat: string) => ex.categoria === cat) ||
+            perfis.some((perf: string) => protocolo.perfil_dominante.includes(perf));
         }).slice(0, 4);
 
         for (const ex of exerciciosDaFase) {
@@ -254,12 +322,11 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             repeticoes: ex.categoria === 'Relaxamento' ? 1 : 12,
             tempo_descanso: '60 segundos',
             frequencia: `${fase.sessoes_por_semana}x por semana`,
-            observacoes: fase.fase === 1 ? 'Iniciar com baixa intensidade. Observar resposta à dor.' : undefined,
           });
         }
       }
 
-      toast({ title: '✅ Protocolo gerado com sucesso!', description: 'Acesse em Protocolos para visualizar e exportar o PDF.' });
+      toast({ title: '✅ Protocolo gerado com sucesso!', description: 'Acesse em Protocolos para visualizar.' });
       navigate('/protocolos');
     } catch (err) {
       console.error(err);
@@ -269,330 +336,304 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
     }
   };
 
+  const getRColor = (val: number) => val >= 7 ? 'hsl(var(--success))' : val >= 4 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+
   return (
-    <div className="container py-8 max-w-4xl space-y-6">
-      {/* Header ações */}
+    <div className="container py-8 max-w-5xl space-y-6">
+      {/* ── Header / Breadcrumb ── */}
       <div className="flex items-center justify-between">
-        <Button variant="outline" onClick={onBack} className="gap-2">
-          <ArrowLeft className="h-4 w-4" />
-          Voltar à avaliação
-        </Button>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 -ml-2">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <span>Avaliação Completa</span>
+          <span>›</span>
+          <span className="font-semibold text-foreground">Resultado</span>
+        </div>
         <div className="flex gap-2">
           {pacienteId && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-2"
-              onClick={handleSalvar}
-              disabled={salvando || salvo}
-            >
-              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              {salvo ? 'Salvo ✓' : 'Salvar avaliação'}
+            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSalvar} disabled={salvando || salvo}>
+              {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {salvo ? 'Salvo ✓' : 'Salvar'}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-2">
-            <Share2 className="h-4 w-4" />Compartilhar
-          </Button>
-          <Button variant="outline" size="sm" className="gap-2">
-            <Plus className="h-4 w-4" />Nova reavaliação
-          </Button>
+          <Button variant="outline" size="sm" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /></Button>
+        </div>
+      </div>
+
+      {/* ── Main Grid: Gauge + Unidades Críticas ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        {/* LEFT: Gauge + Score Cards */}
+        <div className="lg:col-span-3 space-y-4">
+          <div className="clinical-card">
+            <div className="flex flex-col items-center py-4">
+              <GaugeChart value={idAjustado} max={60} classificacao={classificacao} />
+              
+              {alertaCritico && (
+                <div className="mt-4 w-full px-3 py-2 rounded-lg bg-red-100 border border-red-300 text-red-800 text-sm font-medium text-center">
+                  <AlertTriangle className="h-4 w-4 inline mr-1.5" />
+                  Atenção: Índice {classificacao.toLowerCase()} detectado — encaminhar para avaliação médica
+                </div>
+              )}
+
+              <div className="text-center mt-3 space-y-0.5">
+                <p className="text-sm text-muted-foreground">Tempo Estimado: <strong>{duracaoRecomendada}</strong></p>
+                <p className="text-sm text-muted-foreground">Taxa de Sucesso: <strong>{probSucesso}</strong></p>
+              </div>
+            </div>
+
+            {/* Score cards grid */}
+            <div className="grid grid-cols-2 gap-3 mt-2">
+              <ScoreCard
+                icon={Activity}
+                label="∑ ID_modulado"
+                value={numerador.toFixed(1)}
+                color="hsl(var(--foreground))"
+              />
+              <ScoreCard
+                icon={AlertTriangle}
+                label="Fatores de Risco"
+                value={totalAmplif > 0 ? `+${totalAmplif}` : '0'}
+                color={totalAmplif > 0 ? 'hsl(var(--destructive))' : 'hsl(var(--success))'}
+              />
+              <ScoreCard
+                icon={Heart}
+                label="Demanda"
+                value={equacaoDor.total.toFixed(1)}
+                color={getSeverityColorHex(equacaoDor.total)}
+              />
+              <ScoreCard
+                icon={Shield}
+                label="Regulação"
+                value={r.toFixed(1)}
+                suffix="/10"
+                color={getRColor(r)}
+                barValue={r}
+                barMax={10}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* RIGHT: Unidades Críticas + Diagnóstico */}
+        <div className="lg:col-span-2 space-y-4">
+          {/* Top 3 Unidades */}
+          <div className="clinical-card">
+            <h3 className="font-bold text-sm mb-3">Unidades Críticas – Top 3</h3>
+            <div className="grid grid-cols-3 gap-2">
+              {unidadesSorted.map((u, i) => {
+                const top = getTopTecido(u);
+                const nomeSimples = u.nome.replace(/^(UC\d|UA-[DE]|[ID]D)\s*–\s*/, '');
+                return (
+                  <UnidadeCriticaCard
+                    key={u.id}
+                    id={u.id}
+                    nome={nomeSimples}
+                    score={u.score}
+                    topTecido={top.nome}
+                    topTecidoScore={top.score}
+                    rank={i + 1}
+                  />
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Diagnóstico Clínico */}
+          <div className="clinical-card">
+            <h3 className="font-bold text-sm mb-2">Diagnóstico Clínico</h3>
+            <p className="text-sm text-muted-foreground leading-relaxed capitalize">{diagnostico}</p>
+          </div>
+
+          {/* Recomendação */}
+          <div className="clinical-card">
+            <h3 className="font-bold text-sm mb-2">Recomendação</h3>
+            <div className="space-y-1 text-sm">
+              <p><strong>Frequência:</strong> {freqRecomendada}</p>
+              <p><strong>Duração:</strong> {duracaoRecomendada}</p>
+              <p><strong>Probabilidade de Sucesso:</strong> {probSucesso}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* ── Estado Neurovegetativo ── */}
+      <div className="clinical-card border-2 border-border">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-sm">Estado Neurovegetativo</h3>
+          <div className="flex items-baseline gap-1">
+            <span className="text-2xl font-black" style={{ color: getRColor(r) }}>{r.toFixed(1)}</span>
+            <span className="text-sm text-muted-foreground font-medium">/10</span>
+          </div>
+        </div>
+        <div className="h-2 rounded-full bg-secondary overflow-hidden mb-4">
+          <div
+            className="h-full rounded-full transition-all"
+            style={{
+              width: `${(r / 10) * 100}%`,
+              backgroundColor: getRColor(r),
+            }}
+          />
+        </div>
+        
+        <div className="grid grid-cols-3 gap-4 mb-4">
+          <div className="text-center">
+            <Moon className="h-5 w-5 mx-auto mb-1 text-blue-500" />
+            <div className="text-lg font-bold" style={{ color: getRColor(r1) }}>{r1.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">Sono (R1)</div>
+          </div>
+          <div className="text-center">
+            <Zap className="h-5 w-5 mx-auto mb-1 text-amber-500" />
+            <div className="text-lg font-bold" style={{ color: getRColor(r2) }}>{r2.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">Energia (R2)</div>
+          </div>
+          <div className="text-center">
+            <Brain className="h-5 w-5 mx-auto mb-1 text-purple-500" />
+            <div className="text-lg font-bold" style={{ color: getRColor(r3) }}>{r3.toFixed(1)}</div>
+            <div className="text-xs text-muted-foreground">Psicológico (R3)</div>
+          </div>
+        </div>
+
+        {recomendacoes.length > 0 && (
+          <div className="border-t pt-3">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Recomendações:</p>
+            <div className="space-y-1">
+              {recomendacoes.map((rec, i) => (
+                <div key={i} className="flex items-center gap-2 text-sm">
+                  <span className={rec.includes('urgente') ? 'text-red-600 font-bold' : 'text-muted-foreground'}>
+                    {rec.includes('urgente') ? '⊕' : '•'}
+                  </span>
+                  <span className={rec.includes('urgente') ? 'text-red-600 font-semibold' : ''}>{rec}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* ── Perfil Multidimensional Radar ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="clinical-card">
+          <h3 className="font-bold text-sm mb-3">Perfil Multidimensional</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <RadarChart data={radarData}>
+              <PolarGrid stroke="hsl(var(--border))" />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+              <Radar name="Score" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+            </RadarChart>
+          </ResponsiveContainer>
+        </div>
+
+        {/* Breakdown dos 6 blocos */}
+        <div className="clinical-card">
+          <h3 className="font-bold text-sm mb-3">Breakdown dos Scores</h3>
+          <div className="space-y-3">
+            {[
+              { label: 'E (Estrutural)', value: e, color: 'hsl(var(--score-e))' },
+              { label: 'P (Comportamental)', value: p, color: 'hsl(var(--score-p))' },
+              { label: 'C (Contextual)', value: c, color: 'hsl(var(--score-c))' },
+              { label: 'F (Anamnese)', value: f, color: 'hsl(var(--score-f))' },
+              { label: 'D (Dor)', value: d, color: 'hsl(var(--score-d))' },
+              { label: 'R (Regulação)', value: r, color: 'hsl(var(--score-r))' },
+            ].map(b => (
+              <div key={b.label} className="flex items-center gap-3">
+                <span className="text-xs font-medium w-32 shrink-0">{b.label}</span>
+                <div className="flex-1 h-2.5 rounded-full bg-secondary overflow-hidden">
+                  <div
+                    className="h-full rounded-full transition-all"
+                    style={{ width: `${(b.value / 10) * 100}%`, backgroundColor: b.color }}
+                  />
+                </div>
+                <span className="text-xs font-bold w-8 text-right" style={{ color: b.color }}>{b.value.toFixed(1)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* ── Equação da Dor Identidade ── */}
+      <div className="clinical-card border border-destructive/20">
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="font-bold text-sm">Equação da Dor Identidade</h3>
+          <Badge style={{
+            backgroundColor: equacaoDor.total > 7 ? '#ef4444' : equacaoDor.total > 5 ? '#f97316' : '#22c55e',
+            color: 'white'
+          }}>
+            {equacaoDor.total.toFixed(1)}/10
+          </Badge>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+          {[
+            { label: 'Sensório', value: equacaoDor.sensorio },
+            { label: 'Afetiva', value: equacaoDor.afetiva },
+            { label: 'Cognitiva', value: equacaoDor.cognitiva },
+            { label: 'Neurovegetativa', value: equacaoDor.neurovegetativa },
+          ].map(dim => (
+            <div key={dim.label} className="text-center p-3 rounded-xl bg-secondary/40">
+              <div className="text-xs text-muted-foreground mb-1">{dim.label}</div>
+              <div className="text-xl font-bold" style={{ color: getSeverityColorHex(dim.value) }}>
+                {dim.value.toFixed(1)}
+              </div>
+              <div className="h-1.5 rounded-full bg-secondary overflow-hidden mt-2">
+                <div className="h-full rounded-full" style={{
+                  width: `${Math.min(100, (dim.value / 10) * 100)}%`,
+                  backgroundColor: getSeverityColorHex(dim.value),
+                }} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Fatores de Risco ── */}
+      {amplificadores.length > 0 && (
+        <div className="clinical-card border border-amber-200 bg-amber-50/50">
+          <h3 className="font-bold text-sm mb-3 flex items-center gap-2 text-amber-800">
+            <AlertTriangle className="h-4 w-4" />
+            Fatores de Risco Amplificadores
+          </h3>
+          <div className="space-y-2">
+            {amplificadores.map((a, i) => (
+              <div key={i} className="flex items-center justify-between text-sm text-amber-800">
+                <span>✓ {a.desc}</span>
+                <Badge variant="outline" className="border-amber-400 text-amber-800 font-bold">+{a.pontos}</Badge>
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between pt-3 mt-3 border-t border-amber-200 text-sm font-bold text-amber-900">
+            <span>ID base {idFinal.toFixed(1)} + amplificadores {totalAmplif}</span>
+            <span className="text-lg">{idAjustado.toFixed(1)}</span>
+          </div>
+        </div>
+      )}
+
+      {/* ── Gerar Protocolo CTA ── */}
+      <div className="clinical-card bg-gradient-hero text-white">
+        <div className="flex items-center justify-between">
+          <div>
+            <h3 className="font-bold text-lg">Gerar Plano Terapêutico</h3>
+            <p className="text-sm opacity-80 mt-1">Protocolo automático baseado nos scores · {freqRecomendada} · {duracaoRecomendada}</p>
+          </div>
           <Button
-            size="sm"
-            className="gap-2 bg-gradient-primary text-white"
+            size="lg"
+            className="bg-white/20 hover:bg-white/30 text-white border border-white/30 gap-2"
             onClick={handleGerarProtocolo}
             disabled={gerando}
           >
-            {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dumbbell className="h-4 w-4" />}
+            {gerando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Dumbbell className="h-5 w-5" />}
             {gerando ? 'Gerando...' : 'Gerar Protocolo'}
           </Button>
         </div>
       </div>
 
-      {/* Cabeçalho relatório */}
-      <div className="clinical-card bg-gradient-hero text-white">
-        <div className="flex items-start justify-between">
-          <div>
-            <div className="text-xs opacity-70 uppercase tracking-widest mb-1">Relatório Clínico · Método Identidade v8.0</div>
-            <h1 className="text-2xl font-bold">{avaliacao.pacienteNome}</h1>
-            <div className="text-sm opacity-80 mt-1">{avaliacao.dataAvaliacao} · Terapeuta: {avaliacao.terapeutaNome}</div>
-          </div>
-          <div className="text-right">
-            <div className="text-xs opacity-70 mb-1">IDENTIDADE DA DISFUNÇÃO</div>
-            <div className="text-5xl font-black">{idFinal.toFixed(1)}</div>
-            <div className="text-sm opacity-80">/50</div>
-          </div>
-        </div>
-      </div>
-
-      {/* ID Score + Classificação */}
-      <div className={`clinical-card border-2 ${sevColor}`}>
-        <div className="flex items-center justify-between">
-          <div className="flex-1">
-            <div className="text-xs font-medium opacity-60 uppercase tracking-wider">Classificação Final</div>
-            <div className="text-4xl font-black mt-1">{classificacao}</div>
-            <div className="text-sm mt-2 font-medium">
-              {classificacao === 'LEVE' && 'Bom prognóstico – potencial autolimitado.'}
-              {classificacao === 'MODERADO' && 'Requer intervenção regular e acompanhamento.'}
-              {classificacao === 'SEVERO' && 'Necessário acompanhamento intensivo multidisciplinar.'}
-              {classificacao === 'CRÍTICO' && 'Alto risco de cronicidade – equipe multidisciplinar recomendada.'}
-              {classificacao === 'EXTREMO' && '⚠️ Estado crítico – urgência terapêutica imediata.'}
-            </div>
-            {totalAmplif > 0 && (
-              <div className="text-xs mt-2 opacity-70">
-                ID base: {idFinal.toFixed(1)} → ID ajustado: <strong>{idAjustado.toFixed(1)}</strong> (amplificadores: +{totalAmplif})
-              </div>
-            )}
-          </div>
-          <div className="text-7xl font-black opacity-10 ml-4">{idAjustado.toFixed(0)}</div>
-        </div>
-      </div>
-
-      {/* Breakdown 6 blocos */}
-      <div className="clinical-card">
-        <h3 className="font-semibold mb-4">📈 Breakdown dos 6 Blocos</h3>
-        <div className="space-y-3">
-          {blocos.map(b => (
-            <div key={b.label} className="space-y-1">
-              <div className="flex items-center justify-between text-xs">
-                <span className="font-medium text-foreground w-44 shrink-0">{b.label}</span>
-                <div className="flex-1 h-3 rounded-full bg-secondary overflow-hidden mx-3">
-                  <div
-                    className="h-3 rounded-full transition-all"
-                    style={{ width: `${Math.min(100, (b.value / 10) * 100)}%`, backgroundColor: b.color }}
-                  />
-                </div>
-                <span className="font-bold w-12 text-right" style={{ color: b.color }}>{b.value.toFixed(1)}</span>
-                <span className="w-20 text-right text-muted-foreground">{b.tag}</span>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Gráfico Radar + Pie */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="clinical-card">
-          <h3 className="font-semibold mb-3">📊 Perfil Multidimensional (Radar)</h3>
-          <ResponsiveContainer width="100%" height={280}>
-            <RadarChart data={radarData}>
-              <PolarGrid stroke="hsl(var(--border))" />
-              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-              <Radar name="Score" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.25} />
-            </RadarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="clinical-card">
-          <h3 className="font-semibold mb-3">🥧 Contribuição por Componente</h3>
-          <ResponsiveContainer width="100%" height={180}>
-            <PieChart>
-              <Pie
-                data={pieData}
-                cx="50%" cy="50%"
-                outerRadius={75}
-                dataKey="contribuicao"
-                label={({ name, contribuicao }) => `${contribuicao.toFixed(0)}%`}
-                labelLine={false}
-              >
-                {pieData.map((entry, i) => <Cell key={i} fill={entry.color} />)}
-              </Pie>
-              <Tooltip formatter={(v: number) => [`${v.toFixed(1)}%`, '']} />
-            </PieChart>
-          </ResponsiveContainer>
-          <div className="space-y-1.5 mt-1">
-            {pieData.map(item => (
-              <div key={item.name} className="flex items-center gap-2 text-xs">
-                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }} />
-                <span className="text-muted-foreground flex-1">{item.name}</span>
-                <span className="font-bold" style={{ color: item.color }}>{item.contribuicao.toFixed(1)}%</span>
-                <span className="text-muted-foreground">({item.score.toFixed(1)}/10)</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Equação da Dor Identidade */}
-      <div className="clinical-card border border-destructive/30 bg-destructive/5">
-        <h3 className="font-semibold mb-1 flex items-center gap-2">
-          <span>❤️‍🔥 Equação da Dor Identidade</span>
-          <Badge className="ml-auto text-sm px-3 py-1" style={{
-            backgroundColor: equacaoDor.total > 7 ? '#ef4444' : equacaoDor.total > 5 ? '#f97316' : '#22c55e',
-            color: 'white'
-          }}>
-            {equacaoDor.total.toFixed(1)}/10 – {equacaoDor.total > 7 ? 'SEVERA' : equacaoDor.total > 5 ? 'MODERADA' : 'LEVE'}
-          </Badge>
-        </h3>
-        <p className="text-xs text-muted-foreground mb-4">
-          Dor<sub>Identidade</sub> = D<sub>sensório</sub> + D<sub>afetiva</sub> + D<sub>cognitiva</sub> + D<sub>neurovegetativa</sub>
+      {/* ── Footer ── */}
+      <div className="text-center space-y-1 py-4">
+        <p className="text-xs text-muted-foreground">
+          {avaliacao.dataAvaliacao} · {avaliacao.pacienteNome}
         </p>
-        <div className="space-y-4">
-          <DimensaoDor
-            label="Sensório-Discriminativa"
-            value={equacaoDor.sensorio}
-            descricao={`Intensidade ${d.toFixed(1)}/10${temIrradiacao ? ', com irradiação (+2)' : ''} · tipo ${dorSeveridade(tipoPeso * 10)}`}
-          />
-          <DimensaoDor
-            label="Afetiva-Motivacional"
-            value={equacaoDor.afetiva}
-            descricao={`Kinesiophobia ${p.toFixed(1)}/10 · Psicológico ${r3.toFixed(1)}/10 (invertido)`}
-          />
-          <DimensaoDor
-            label="Cognitiva-Avaliativa"
-            value={equacaoDor.cognitiva}
-            descricao={`Carga contextual ${c.toFixed(1)}/10 · Cronicidade fator ${fCrono}/10`}
-          />
-          <DimensaoDor
-            label="Neurovegetativa"
-            value={equacaoDor.neurovegetativa}
-            descricao={`Regulação ${r.toFixed(1)}/10 → (10-R)×0.8 = ${equacaoDor.neurovegetativa.toFixed(1)}`}
-          />
-        </div>
-        <div className="mt-4 p-3 rounded-xl bg-muted/60 text-xs text-muted-foreground">
-          <strong>Fórmula:</strong> Dor<sub>ID</sub>(raw) = {equacaoDor.sensorio.toFixed(1)} + {equacaoDor.afetiva.toFixed(1)} + {equacaoDor.cognitiva.toFixed(1)} + {equacaoDor.neurovegetativa.toFixed(1)} = {(equacaoDor.sensorio + equacaoDor.afetiva + equacaoDor.cognitiva + equacaoDor.neurovegetativa).toFixed(1)} → normalizado: <strong>{equacaoDor.total.toFixed(1)}/10</strong>
-        </div>
-      </div>
-
-      {/* Fatores de risco amplificadores */}
-      {amplificadores.length > 0 && (
-        <div className="clinical-card border-warning bg-amber-50">
-          <h3 className="font-semibold text-amber-800 mb-3 flex items-center gap-2">
-            <AlertTriangle className="h-4 w-4" />
-            ⚠️ Fatores de Risco Amplificadores
-          </h3>
-          <div className="space-y-2 mb-3">
-            {amplificadores.map((a, i) => (
-              <div key={i} className="flex items-center justify-between text-sm text-amber-800">
-                <span>✓ {a.desc}</span>
-                <Badge variant="outline" className="border-amber-400 text-amber-800 font-bold">+{a.pontos} pts</Badge>
-              </div>
-            ))}
-          </div>
-          <div className="flex items-center justify-between pt-3 border-t border-amber-200 text-sm font-bold text-amber-900">
-            <span>Total amplificadores</span>
-            <span>+{totalAmplif} pontos</span>
-          </div>
-          <div className="flex items-center justify-between text-sm font-black text-amber-900 mt-1">
-            <span>ID_ajustado = {idFinal.toFixed(1)} + {totalAmplif}</span>
-            <span className="text-lg">{idAjustado.toFixed(1)} → <Badge className="bg-amber-600 text-white">{idAjustado > 30 ? 'CRÍTICO' : classificacao}</Badge></span>
-          </div>
-        </div>
-      )}
-
-      {/* Classificação Geral */}
-      <div className={`clinical-card border-2 ${sevColor}`}>
-        <h3 className="font-semibold mb-2">🏥 Classificação Geral</h3>
-        <div className="text-2xl font-black mb-2">{idAjustado > 30 ? 'CRÍTICO' : classificacao}</div>
-        <p className="text-sm text-muted-foreground mb-3">
-          {idAjustado > 30
-            ? 'Alto risco de cronicidade. Paciente apresenta disfunção complexa com múltiplos fatores amplificadores.'
-            : 'Paciente apresenta disfunção estabelecida. Intervenção integrada recomendada.'}
+        <p className="text-xs text-muted-foreground">
+          MÉTODO IDENTIDADE © 2026 – Avaliação Multidimensional · Protocolo v8.0
         </p>
-        <div className="space-y-1 text-sm">
-          {e > 5 && <div>• Estrutura comprometida ({avaliacao.bloco6.unidades.filter(u => u.score > 5).length} de 8 unidades afetadas)</div>}
-          {p > 6 && <div>• Medo de movimento elevado (evitação ativa)</div>}
-          {c > 5 && <div>• Carga emocional/social excessiva</div>}
-          {r < 4 && <div>• Regulação neurovegetativa comprometida (sono e energia)</div>}
-          {fCrono >= 5 && <div>• Sintomas cronificados ({'>'} 3 meses)</div>}
-        </div>
-        <div className="mt-3 text-sm font-medium text-muted-foreground">
-          Prognóstico: <strong>{idAjustado > 30 ? 'RESERVADO sem intervenção multidisciplinar' : idAjustado > 20 ? 'MODERADO com intervenção integrada' : 'BOM com tratamento regular'}</strong>
-        </div>
-      </div>
-
-      {/* Hierarquia Terapêutica */}
-      <div className="clinical-card">
-        <h3 className="font-semibold mb-4">📋 Recomendações Hierarquizadas</h3>
-        <div className="space-y-4">
-          {prioridades.map(pri => (
-            <div key={pri.ordem} className={`rounded-xl border p-4 ${pri.urgencia ? 'border-amber-200 bg-amber-50' : 'border-border bg-secondary/20'}`}>
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-lg">{pri.emoji}</span>
-                <span className="font-semibold text-sm">{pri.titulo}</span>
-                {pri.urgencia && <Badge variant="outline" className="ml-auto text-amber-600 border-amber-300 text-xs">Urgente</Badge>}
-              </div>
-              <ul className="space-y-1">
-                {pri.items.map((item, i) => (
-                  <li key={i} className="text-xs text-muted-foreground flex items-start gap-1.5">
-                    <span className="text-primary mt-0.5">└─</span>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Programa Recomendado + Metas */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="clinical-card">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Target className="h-4 w-4" />Programa Recomendado</h3>
-          <div className="grid grid-cols-2 gap-2">
-            {[
-              { label: 'Duração', value: '12 semanas' },
-              { label: 'Presencial', value: '2×/semana' },
-              { label: 'Home Exercise', value: '5×/semana' },
-              { label: 'Reavaliação', value: 'Sem 4, 8, 12' },
-            ].map(item => (
-              <div key={item.label} className="text-center p-3 rounded-xl bg-secondary">
-                <div className="text-xs text-muted-foreground">{item.label}</div>
-                <div className="font-bold text-primary mt-1 text-sm">{item.value}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="clinical-card">
-          <h3 className="font-semibold mb-3 flex items-center gap-2"><Target className="h-4 w-4" />🎯 Metas Terapêuticas (12 sem)</h3>
-          <div className="space-y-2">
-            {metas.map((m, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="text-muted-foreground w-36 shrink-0">{m.label}</span>
-                <span className="font-bold text-foreground">{m.atual}</span>
-                <span className="text-muted-foreground">→</span>
-                <span className="font-bold text-primary text-right">{m.meta}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Próximos Passos */}
-      <div className="clinical-card">
-        <h3 className="font-semibold mb-3 flex items-center gap-2">
-          <CheckSquare className="h-4 w-4" />✅ Próximos Passos
-        </h3>
-        <div className="space-y-2">
-          {proximosPassos.map((passo, i) => (
-            <div key={i} className="flex items-start gap-3 text-sm">
-              <div className="h-5 w-5 rounded border border-border shrink-0 mt-0.5" />
-              <span className="text-muted-foreground">{passo}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Footer legal */}
-      <div className="clinical-card bg-muted/40 text-center space-y-2">
-        <p className="text-xs text-muted-foreground font-medium">
-          Data: {avaliacao.dataAvaliacao} · Terapeuta: {avaliacao.terapeutaNome} | CREFITO [nº]
-        </p>
-        <p className="text-xs text-muted-foreground leading-relaxed max-w-xl mx-auto">
-          "Este relatório é confidencial e baseado em avaliação clínica estruturada. Não substitui diagnóstico médico.
-          Recomenda-se avaliação complementar (ressonância, eletromiongrafia) conforme necessário."
-        </p>
-        <div className="text-xs text-muted-foreground font-bold pt-1">
-          MÉTODO IDENTIDADE © 2026 – Avaliação Multidimensional · Protocolo v8.0 – Baseado em Evidências
-        </div>
-        <div className="flex justify-center gap-2 pt-2">
-          <Button variant="ghost" size="sm" className="gap-2 text-xs">
-            <MessageCircle className="h-3 w-3" />Chat com IA
-          </Button>
-          <Button variant="ghost" size="sm" className="gap-2 text-xs">
-            <Share2 className="h-3 w-3" />Compartilhar com paciente
-          </Button>
-        </div>
       </div>
     </div>
   );
