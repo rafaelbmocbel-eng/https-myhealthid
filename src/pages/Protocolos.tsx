@@ -103,6 +103,55 @@ function AnaliseAutomatica({
   const [fasesAbertas, setFasesAbertas] = useState<Set<number>>(new Set([0]));
   const [modoAceitar, setModoAceitar] = useState(false);
 
+  // Selection state: track which exercises and techniques are selected per phase
+  const [selectedExercicios, setSelectedExercicios] = useState<Record<number, Set<number>>>(() => {
+    const initial: Record<number, Set<number>> = {};
+    analise.fases.forEach((fase, idx) => {
+      initial[idx] = new Set(fase.exercicios.map((_, i) => i));
+    });
+    return initial;
+  });
+  const [selectedTecnicas, setSelectedTecnicas] = useState<Record<number, Set<number>>>(() => {
+    const initial: Record<number, Set<number>> = {};
+    analise.fases.forEach((fase, idx) => {
+      initial[idx] = new Set(fase.tecnicas.map((_, i) => i));
+    });
+    return initial;
+  });
+
+  const toggleExercicio = (faseIdx: number, exIdx: number) => {
+    setSelectedExercicios(prev => {
+      const s = new Set(prev[faseIdx] || []);
+      if (s.has(exIdx)) s.delete(exIdx); else s.add(exIdx);
+      return { ...prev, [faseIdx]: s };
+    });
+  };
+
+  const toggleTecnica = (faseIdx: number, tecIdx: number) => {
+    setSelectedTecnicas(prev => {
+      const s = new Set(prev[faseIdx] || []);
+      if (s.has(tecIdx)) s.delete(tecIdx); else s.add(tecIdx);
+      return { ...prev, [faseIdx]: s };
+    });
+  };
+
+  const handleSalvarPersonalizado = () => {
+    const analisePersonalizada: ProtocoloAnalise = {
+      ...analise,
+      fases: analise.fases.map((fase, idx) => ({
+        ...fase,
+        exercicios: fase.exercicios.filter((_, i) => selectedExercicios[idx]?.has(i)),
+        tecnicas: fase.tecnicas.filter((_, i) => selectedTecnicas[idx]?.has(i)),
+      })),
+    };
+    onSalvar(analisePersonalizada);
+  };
+
+  const totalExSelecionados = Object.values(selectedExercicios).reduce((sum, s) => sum + s.size, 0);
+  const totalTecSelecionados = Object.values(selectedTecnicas).reduce((sum, s) => sum + s.size, 0);
+  const totalEx = analise.fases.reduce((sum, f) => sum + f.exercicios.length, 0);
+  const totalTec = analise.fases.reduce((sum, f) => sum + f.tecnicas.length, 0);
+
   const toggleFase = (i: number) => {
     setFasesAbertas(prev => {
       const s = new Set(prev);
@@ -261,14 +310,16 @@ function AnaliseAutomatica({
                       <div>
                         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                           <Dumbbell className="h-3.5 w-3.5 text-muted-foreground" />
-                          Exercícios Sugeridos ({fase.exercicios.length})
+                          Exercícios Sugeridos ({selectedExercicios[idx]?.size || 0}/{fase.exercicios.length})
                         </h4>
                         <div className="space-y-2">
-                          {fase.exercicios.map((ex, i) => (
-                            <div key={i} className="p-3 rounded-lg border bg-card">
+                          {fase.exercicios.map((ex, i) => {
+                            const isSelected = selectedExercicios[idx]?.has(i);
+                            return (
+                            <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleExercicio(idx, i)}>
                               <div className="flex items-start gap-2">
-                                <div className={`w-5 h-5 rounded-full ${FASE_CORES[idx]} flex items-center justify-center text-white text-xs font-bold shrink-0 mt-0.5`}>
-                                  {i + 1}
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                                 </div>
                                 <div className="flex-1 min-w-0">
                                   <div className="font-medium text-sm">{ex.nome}</div>
@@ -293,7 +344,8 @@ function AnaliseAutomatica({
                                 </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
 
@@ -301,27 +353,37 @@ function AnaliseAutomatica({
                       <div>
                         <h4 className="font-medium text-sm mb-3 flex items-center gap-2">
                           <Brain className="h-3.5 w-3.5 text-muted-foreground" />
-                          Técnicas Sugeridas ({fase.tecnicas.length})
+                          Técnicas Sugeridas ({selectedTecnicas[idx]?.size || 0}/{fase.tecnicas.length})
                         </h4>
                         <div className="space-y-2">
-                          {fase.tecnicas.map((tec, i) => (
-                            <div key={i} className="p-3 rounded-lg border bg-card">
-                              <div className="font-medium text-sm">{tec.nome}</div>
-                              <p className="text-xs text-muted-foreground mt-1">{tec.descricao}</p>
-                              <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                <span className="flex items-center gap-1">
-                                  <Clock className="h-2.5 w-2.5" /> {tec.duracao}
-                                </span>
-                                <span>{tec.frequencia}</span>
-                              </div>
-                              <div className="mt-1.5 p-1.5 rounded bg-blue-50 border border-blue-100">
-                                <p className="text-[10px] text-blue-700">
-                                  <Info className="h-2.5 w-2.5 inline mr-1" />
-                                  {tec.motivo}
-                                </p>
+                          {fase.tecnicas.map((tec, i) => {
+                            const isSelected = selectedTecnicas[idx]?.has(i);
+                            return (
+                            <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleTecnica(idx, i)}>
+                              <div className="flex items-start gap-2">
+                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="font-medium text-sm">{tec.nome}</div>
+                                  <p className="text-xs text-muted-foreground mt-1">{tec.descricao}</p>
+                                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                    <span className="flex items-center gap-1">
+                                      <Clock className="h-2.5 w-2.5" /> {tec.duracao}
+                                    </span>
+                                    <span>{tec.frequencia}</span>
+                                  </div>
+                                  <div className="mt-1.5 p-1.5 rounded bg-blue-50 border border-blue-100">
+                                    <p className="text-[10px] text-blue-700">
+                                      <Info className="h-2.5 w-2.5 inline mr-1" />
+                                      {tec.motivo}
+                                    </p>
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                          ))}
+                            );
+                          })}
                         </div>
                       </div>
                     </div>
@@ -335,24 +397,34 @@ function AnaliseAutomatica({
 
       {/* Ações */}
       <div className="clinical-card">
-        <h3 className="font-semibold text-sm mb-3">Ações do Protocolo</h3>
+        <h3 className="font-semibold text-sm mb-3">Personalização e Ações</h3>
+        <div className="flex items-center gap-4 mb-3 text-sm text-muted-foreground">
+          <span className="flex items-center gap-1.5">
+            <Dumbbell className="h-3.5 w-3.5" />
+            <strong className="text-foreground">{totalExSelecionados}</strong>/{totalEx} exercícios
+          </span>
+          <span className="flex items-center gap-1.5">
+            <Brain className="h-3.5 w-3.5" />
+            <strong className="text-foreground">{totalTecSelecionados}</strong>/{totalTec} técnicas
+          </span>
+        </div>
+        <p className="text-xs text-muted-foreground mb-3">
+          Clique nos exercícios e técnicas acima para selecionar ou remover os tratamentos mais adequados para este paciente. Apenas os itens selecionados serão incluídos no protocolo final.
+        </p>
         <div className="flex flex-wrap gap-3">
           <Button
             className="bg-gradient-primary text-white gap-2"
-            onClick={() => onSalvar(analise)}
-            disabled={salvando}
+            onClick={handleSalvarPersonalizado}
+            disabled={salvando || (totalExSelecionados === 0 && totalTecSelecionados === 0)}
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Aceitar e Salvar Protocolo
+            Aceitar e Salvar Protocolo ({totalExSelecionados + totalTecSelecionados} itens)
           </Button>
           <Button variant="outline" onClick={onDescartar} className="gap-2">
             <X className="h-4 w-4" />
             Descartar
           </Button>
         </div>
-        <p className="text-xs text-muted-foreground mt-2">
-          Ao aceitar, o protocolo será salvo e você poderá exportar o PDF ou enviá-lo ao paciente.
-        </p>
       </div>
     </div>
   );
