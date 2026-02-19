@@ -545,6 +545,151 @@ function LinksAgenda() {
   );
 }
 
+// ── Seção: Respostas Recebidas ────────────────────────────────────────────────
+function RespostasRecebidas() {
+  const { user } = useAuth();
+  const { allPacientes } = usePacientes();
+  const [expandido, setExpandido] = useState<string | null>(null);
+
+  const { data: links = [], isLoading } = useQuery({
+    queryKey: ['links-com-respostas', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('links_avaliacao')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .gt('acessos_totais', 0)
+        .order('data_ultimo_acesso', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: respostas = [] } = useQuery({
+    queryKey: ['respostas-pacientes', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('respostas_avaliacao_paciente')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const getNome = (pid: string) => {
+    const p = allPacientes.find(p => p.id === pid);
+    return p ? `${p.nome} ${p.sobrenome}` : 'Paciente';
+  };
+
+  const BLOCOS = ['Anamnese', 'Dor', 'Funcionalidade', 'Cinesiofobia', 'Regulação'];
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  if (links.length === 0) return (
+    <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
+      <Activity className="h-10 w-10 mx-auto mb-3 opacity-30" />
+      <p className="font-medium">Nenhuma resposta recebida ainda</p>
+      <p className="text-sm mt-1">Quando um paciente preencher o questionário, as respostas aparecerão aqui.</p>
+    </div>
+  );
+
+  return (
+    <div className="space-y-3">
+      {links.map(link => {
+        const respostasLink = respostas.filter(r => r.link_id === link.id);
+        const blocosRecebidos = [...new Set(respostasLink.map(r => r.bloco_numero))].sort();
+        const isOpen = expandido === link.id;
+
+        return (
+          <div key={link.id} className="border rounded-xl overflow-hidden">
+            <button
+              className="w-full flex items-center gap-3 p-4 hover:bg-accent/5 transition-colors text-left"
+              onClick={() => setExpandido(isOpen ? null : link.id)}
+            >
+              <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                {getNome(link.paciente_id)[0]}
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm">{getNome(link.paciente_id)}</div>
+                <div className="text-xs text-muted-foreground">
+                  {blocosRecebidos.length}/5 blocos respondidos
+                  {link.data_ultimo_acesso && ` · Último acesso: ${format(parseISO(link.data_ultimo_acesso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}`}
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="flex gap-1">
+                  {[1, 2, 3, 4, 5].map(n => (
+                    <div
+                      key={n}
+                      className={`h-2 w-2 rounded-full ${blocosRecebidos.includes(n) ? 'bg-emerald-500' : 'bg-muted'}`}
+                      title={BLOCOS[n - 1]}
+                    />
+                  ))}
+                </div>
+                <span className="text-xs text-muted-foreground">{isOpen ? '▲' : '▼'}</span>
+              </div>
+            </button>
+
+            {isOpen && (
+              <div className="border-t bg-muted/20 p-4 space-y-3">
+                {blocosRecebidos.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-4">Link acessado mas nenhum bloco foi salvo ainda.</p>
+                ) : (
+                  blocosRecebidos.map(blocoNum => {
+                    const resp = respostasLink
+                      .filter(r => r.bloco_numero === blocoNum)
+                      .sort((a, b) => (b.numero_tentativa || 1) - (a.numero_tentativa || 1))[0];
+                    if (!resp) return null;
+                    const dados = resp.dados_respostas as Record<string, any>;
+                    return (
+                      <div key={blocoNum} className="bg-background rounded-lg p-3 border">
+                        <div className="flex items-center gap-2 mb-2">
+                          <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                          <span className="font-semibold text-sm">Bloco {blocoNum} — {BLOCOS[blocoNum - 1]}</span>
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {resp.data_preenchimento ? format(parseISO(resp.data_preenchimento), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : ''}
+                          </span>
+                        </div>
+                        <div className="text-xs text-muted-foreground space-y-1 max-h-40 overflow-y-auto">
+                          {dados && Object.entries(dados)
+                            .filter(([k]) => !k.startsWith('score'))
+                            .slice(0, 8)
+                            .map(([key, val]) => (
+                              <div key={key} className="flex gap-2">
+                                <span className="font-medium capitalize min-w-[120px]">{key.replace(/([A-Z])/g, ' $1').trim()}:</span>
+                                <span className="truncate">{Array.isArray(val) ? val.join(', ') : String(val)}</span>
+                              </div>
+                            ))
+                          }
+                          {dados && Object.keys(dados).filter(k => k.startsWith('score')).length > 0 && (
+                            <div className="flex gap-2 flex-wrap mt-2 pt-2 border-t">
+                              {Object.entries(dados)
+                                .filter(([k]) => k.startsWith('score'))
+                                .map(([k, v]) => (
+                                  <span key={k} className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-semibold">
+                                    {k.toUpperCase()}: {typeof v === 'number' ? v.toFixed(1) : v}
+                                  </span>
+                                ))
+                              }
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 // ── Página Principal ──────────────────────────────────────────────────────────
 export default function Relatorios() {
   const { user, loading } = useAuth();
@@ -581,6 +726,10 @@ export default function Relatorios() {
               <Activity className="h-4 w-4" />
               Links de Avaliação
             </TabsTrigger>
+            <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              Respostas Recebidas
+            </TabsTrigger>
             <TabsTrigger value="links-agenda" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
               <CalendarDays className="h-4 w-4" />
               Links de Agenda
@@ -593,6 +742,13 @@ export default function Relatorios() {
               <span className="ml-2 text-xs">Use os ícones <MessageCircle className="h-3 w-3 inline text-[#25D366]" /> e <Mail className="h-3 w-3 inline text-blue-500" /> para compartilhar diretamente.</span>
             </div>
             <LinksAvaliacao />
+          </TabsContent>
+
+          <TabsContent value="respostas">
+            <div className="mb-4 p-4 rounded-xl bg-emerald-500/10 border border-emerald-300/30 text-sm text-muted-foreground">
+              <strong className="text-foreground">Respostas Recebidas</strong> — Visualize os questionários preenchidos pelos pacientes. Clique em cada card para expandir as respostas.
+            </div>
+            <RespostasRecebidas />
           </TabsContent>
 
           <TabsContent value="links-agenda">

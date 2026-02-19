@@ -79,7 +79,8 @@ export default function AvaliacaoPublica() {
     if (!linkInfo) return;
     setSalvando(true);
     try {
-      // Verifica se já existe resposta para este bloco neste link
+      // Tenta verificar tentativas anteriores (requer RLS SELECT público ativo)
+      let tentativa = 1;
       const { data: existente } = await supabase
         .from('respostas_avaliacao_paciente')
         .select('id, numero_tentativa')
@@ -89,13 +90,19 @@ export default function AvaliacaoPublica() {
         .limit(1)
         .maybeSingle();
 
-      await supabase.from('respostas_avaliacao_paciente').insert({
+      if (existente) tentativa = (existente.numero_tentativa || 1) + 1;
+
+      const { error } = await supabase.from('respostas_avaliacao_paciente').insert({
         link_id: linkInfo.id,
         paciente_id: linkInfo.paciente_id,
         bloco_numero: blocoNum,
         dados_respostas: dados,
-        numero_tentativa: existente ? (existente.numero_tentativa + 1) : 1,
+        numero_tentativa: tentativa,
       });
+
+      if (error) {
+        console.error('Erro ao inserir bloco:', error);
+      }
     } catch (e) {
       console.error('Erro ao salvar bloco:', e);
     } finally {
@@ -106,8 +113,12 @@ export default function AvaliacaoPublica() {
   const avancarBloco = async (blocoNum: number, dados: any) => {
     await salvarBloco(blocoNum, dados);
     setBlocosConcluidos(prev => new Set([...prev, blocoNum]));
-    if (blocoNum < 5) setBlocoAtual(blocoNum + 1);
-    else setConcluido(true);
+    // Avança para o próximo bloco ou encerra se for o último (bloco 5)
+    if (blocoNum < 5) {
+      setBlocoAtual(blocoNum + 1);
+    } else {
+      setConcluido(true);
+    }
   };
 
   const voltarBloco = () => setBlocoAtual(prev => Math.max(1, prev - 1));
