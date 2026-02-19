@@ -36,25 +36,19 @@ interface Paciente {
   ativo: boolean;
   created_at: string;
   terapeuta_id: string;
-}
-
-interface PacienteServico {
-  id: string;
-  paciente_id: string;
-  servico: string;
-  ativo: boolean;
+  _servicos?: string[];
 }
 
 const SERVICOS = [
-  { key: 'metodo_identidade', label: 'Método Identidade', icon: Activity, color: 'bg-primary/10 text-primary border-primary/20' },
+  { key: 'metodo_identidade', label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20' },
   { key: 'cob_zero', label: 'COB° ZERO', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { key: 'agenda_premium', label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 ];
 
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
-  data_nascimento: string; genero: string; cpf: string; endereco: string; observacoes: string;
-  servicos: string[];
+  data_nascimento: string; genero: string; cpf: string; endereco: string;
+  observacoes: string; servicos: string[];
 }
 
 const emptyForm: FormData = {
@@ -63,6 +57,68 @@ const emptyForm: FormData = {
   servicos: [],
 };
 
+// ── Sub-componente para modal de link ───────────────────────────────────────
+function LinkModalContent({ pac, links, gerando, gerarLink, copiarLink, cancelarLink, getLinkUrl }: {
+  pac: Paciente;
+  links: any[];
+  gerando: boolean;
+  gerarLink: (id: string) => Promise<any>;
+  copiarLink: (token: string) => void;
+  cancelarLink: (id: string) => void;
+  getLinkUrl: (token: string) => string;
+}) {
+  const pacLinks = links.filter(l => l.paciente_id === pac.id);
+  const linkAtivo = pacLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+
+  if (linkAtivo) {
+    return (
+      <div className="space-y-3">
+        <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+            <span className="text-xs font-semibold text-emerald-700">Link ativo</span>
+            <span className="text-xs text-emerald-600 ml-auto">
+              {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias restantes
+            </span>
+          </div>
+          <div className="text-xs font-mono text-muted-foreground break-all bg-card rounded p-2">
+            {getLinkUrl(linkAtivo.token)}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button className="flex-1 gap-2" onClick={() => copiarLink(linkAtivo.token)}>
+            <Copy className="h-3.5 w-3.5" /> Copiar Link
+          </Button>
+          <Button variant="outline" className="gap-2" onClick={async () => {
+            await cancelarLink(linkAtivo.id);
+            await gerarLink(pac.id);
+          }} disabled={gerando}>
+            {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Renovar
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">{linkAtivo.acessos_totais} acesso(s) registrado(s)</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-3">
+      <div className="p-3 rounded-lg bg-muted/50 border border-dashed text-center text-sm text-muted-foreground">
+        Nenhum link ativo para este paciente
+      </div>
+      <Button className="w-full bg-gradient-primary text-white gap-2" onClick={async () => {
+        const novo = await gerarLink(pac.id);
+        if (novo) copiarLink(novo.token);
+      }} disabled={gerando}>
+        {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+        Gerar Link de Avaliação
+      </Button>
+    </div>
+  );
+}
+
+// ── Página Principal ────────────────────────────────────────────────────────
 export default function Pacientes() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
@@ -79,29 +135,27 @@ export default function Pacientes() {
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const { data: pacientes = [], isLoading } = useQuery({
-    queryKey: ['pacientes', user?.id],
+    queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pacientes').select('*')
-        .eq('terapeuta_id', user!.id).eq('ativo', true).order('nome');
+        .from('pacientes')
+        .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
+        .eq('terapeuta_id', user!.id)
+        .eq('ativo', true)
+        .order('nome');
       if (error) throw error;
-      return data as Paciente[];
+      return (data || []).map((p: any) => ({
+        ...p,
+        _servicos: (p.paciente_servicos || []).filter((s: any) => s.ativo).map((s: any) => s.servico),
+      })) as Paciente[];
     },
     enabled: !!user,
   });
 
-  const { data: servicos = [] } = useQuery({
-    queryKey: ['paciente_servicos', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('paciente_servicos').select('*').eq('ativo', true);
-      if (error) throw error;
-      return data as PacienteServico[];
-    },
-    enabled: !!user,
-  });
-
-  const getServicosForPaciente = (pid: string) =>
-    servicos.filter(s => s.paciente_id === pid).map(s => s.servico);
+  const getServicosForPaciente = (pid: string): string[] => {
+    const p = pacientes.find(x => x.id === pid);
+    return p?._servicos || [];
+  };
 
   const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
   const openEdit = (p: Paciente) => {
@@ -109,7 +163,7 @@ export default function Pacientes() {
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
       genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
-      observacoes: p.observacoes || '', servicos: getServicosForPaciente(p.id),
+      observacoes: p.observacoes || '', servicos: p._servicos || [],
     });
     setModal({ open: true, paciente: p });
   };
@@ -136,11 +190,13 @@ export default function Pacientes() {
       await supabase.from('paciente_servicos').delete().eq('paciente_id', pacienteId!);
       if (form.servicos.length > 0) {
         await supabase.from('paciente_servicos').insert(
-          form.servicos.map(s => ({ paciente_id: pacienteId!, servico: s, ativo: true, data_inicio: new Date().toISOString().split('T')[0] }))
+          form.servicos.map(s => ({
+            paciente_id: pacienteId!, servico: s, ativo: true,
+            data_inicio: new Date().toISOString().split('T')[0],
+          }))
         );
       }
-      qc.invalidateQueries({ queryKey: ['pacientes'] });
-      qc.invalidateQueries({ queryKey: ['paciente_servicos'] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
       setModal({ open: false });
     } catch (e: any) {
@@ -153,7 +209,7 @@ export default function Pacientes() {
   const handleDelete = async (p: Paciente) => {
     if (!confirm(`Desativar ${p.nome} ${p.sobrenome}?`)) return;
     await supabase.from('pacientes').update({ ativo: false }).eq('id', p.id);
-    qc.invalidateQueries({ queryKey: ['pacientes'] });
+    qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
     toast({ title: 'Paciente removido' });
   };
 
@@ -173,13 +229,15 @@ export default function Pacientes() {
 
   const getLinksForPaciente = (pid: string) => links.filter(l => l.paciente_id === pid);
 
-  if (isLoading) return (
-    <AppLayout>
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    </AppLayout>
-  );
+  if (isLoading) {
+    return (
+      <AppLayout>
+        <div className="flex items-center justify-center h-96">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   return (
     <AppLayout>
@@ -264,12 +322,7 @@ export default function Pacientes() {
                     </div>
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="h-8 text-xs gap-1"
-                      onClick={() => setLinkModal({ open: true, paciente: p })}
-                    >
+                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setLinkModal({ open: true, paciente: p })}>
                       <Link2 className="h-3 w-3" /> Link
                     </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
@@ -339,7 +392,7 @@ export default function Pacientes() {
               <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Serviços</Label>
+              <Label>Serviços Ativos</Label>
               <div className="space-y-2">
                 {SERVICOS.map(s => (
                   <label key={s.key} className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/20 transition-colors">
@@ -372,87 +425,17 @@ export default function Pacientes() {
             <p className="text-sm text-muted-foreground">
               Gere um link para que o paciente preencha os 5 primeiros blocos da avaliação. Válido por <strong>30 dias</strong>.
             </p>
-
-            {linkModal.paciente && (() => {
-              const pac = linkModal.paciente!;
-              const pacLinks = getLinksForPaciente(pac.id);
-              const linkAtivo = pacLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-              return (
-                <>
-                  {linkAtivo ? (
-                    <div className="space-y-3">
-                      <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
-                        <div className="flex items-center gap-2 mb-2">
-                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                          <span className="text-xs font-semibold text-emerald-700">Link ativo</span>
-                          <span className="text-xs text-emerald-600 ml-auto">
-                            {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias restantes
-                          </span>
-                        </div>
-                        <div className="text-xs font-mono text-muted-foreground break-all bg-card rounded p-2">
-                          {getLinkUrl(linkAtivo.token)}
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          className="flex-1 gap-2"
-                          onClick={() => copiarLink(linkAtivo.token)}
-                        >
-                          <Copy className="h-3.5 w-3.5" /> Copiar Link
-                        </Button>
-                        <Button
-                          variant="outline"
-                          className="gap-2"
-                          onClick={async () => {
-                            await cancelarLink(linkAtivo.id);
-                            const novo = await gerarLink(pac.id);
-                          }}
-                          disabled={gerando}
-                        >
-                          {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
-                          Renovar
-                        </Button>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        {linkAtivo.acessos_totais} acesso(s) registrado(s)
-                        {linkAtivo.data_ultimo_acesso && ` · Último: ${format(parseISO(linkAtivo.data_ultimo_acesso), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`}
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="space-y-3">
-                      <div className="p-3 rounded-lg bg-muted/50 border border-dashed text-center text-sm text-muted-foreground">
-                        Nenhum link ativo para este paciente
-                      </div>
-                      <Button
-                        className="w-full bg-gradient-primary text-white gap-2"
-                        onClick={async () => {
-                          const novo = await gerarLink(pac.id);
-                          if (novo) copiarLink(novo.token);
-                        }}
-                        disabled={gerando}
-                      >
-                        {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
-                        Gerar Link de Avaliação
-                      </Button>
-                    </div>
-                  )}
-
-                  {pacLinks.filter(l => l.status !== 'ativo').length > 0 && (
-                    <div className="pt-2 border-t">
-                      <p className="text-xs font-semibold text-muted-foreground mb-2">Histórico de links</p>
-                      <div className="space-y-1">
-                        {pacLinks.filter(l => l.status !== 'ativo').slice(0, 3).map(l => (
-                          <div key={l.id} className="flex items-center justify-between text-xs text-muted-foreground">
-                            <span>{format(parseISO(l.data_criacao), 'dd/MM/yyyy', { locale: ptBR })}</span>
-                            <Badge variant="outline" className="text-[10px] h-4">{l.status}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              );
-            })()}
+            {linkModal.paciente && (
+              <LinkModalContent
+                pac={linkModal.paciente}
+                links={links}
+                gerando={gerando}
+                gerarLink={gerarLink}
+                copiarLink={copiarLink}
+                cancelarLink={cancelarLink}
+                getLinkUrl={getLinkUrl}
+              />
+            )}
           </div>
         </DialogContent>
       </Dialog>
