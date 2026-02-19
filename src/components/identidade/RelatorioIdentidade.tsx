@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
@@ -13,14 +13,16 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip, Legend,
 } from 'recharts';
-import { ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle, Target, CheckSquare, Dumbbell, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle, Target, CheckSquare, Dumbbell, Loader2, Save } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { gerarProtocolo, EXERCICIOS_SEED } from '@/utils/protocolGenerator';
 import { toast } from '@/hooks/use-toast';
+import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
 interface Props {
   avaliacao: AvaliacaoIdentidade;
+  pacienteId?: string;
   onBack: () => void;
 }
 
@@ -54,10 +56,18 @@ function DimensaoDor({ label, value, descricao }: { label: string; value: number
   );
 }
 
-export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
+export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: Props) {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [gerando, setGerando] = useState(false);
+  const { salvar, salvando } = useAvaliacoesIdentidade();
+  const [salvo, setSalvo] = useState(false);
+
+  const handleSalvar = async () => {
+    if (!pacienteId) return;
+    await salvar({ avaliacao, pacienteId });
+    setSalvo(true);
+  };
 
   const e = avaliacao.bloco6.scoreE;
   const p = avaliacao.bloco4.scoreP;
@@ -268,6 +278,18 @@ export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
           Voltar à avaliação
         </Button>
         <div className="flex gap-2">
+          {pacienteId && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={handleSalvar}
+              disabled={salvando || salvo}
+            >
+              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {salvo ? 'Salvo ✓' : 'Salvar avaliação'}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2">
             <Share2 className="h-4 w-4" />Compartilhar
           </Button>

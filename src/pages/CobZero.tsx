@@ -7,11 +7,13 @@ import CobEtapaLenke from '@/components/cobzero/CobEtapaLenke';
 import CobEtapaUnidades from '@/components/cobzero/CobEtapaUnidades';
 import CobEtapaPrograma from '@/components/cobzero/CobEtapaPrograma';
 import RelatorioCobZero from '@/components/cobzero/RelatorioCobZero';
-import { CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3, Users, Search, ChevronRight, Loader2 } from 'lucide-react';
+import { CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3, Users, Search, ChevronRight, Loader2, History, ChevronDown, ChevronUp, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { usePacientes } from '@/hooks/usePacientes';
+import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -71,11 +73,13 @@ const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoCobZero => ({
 export default function CobZero() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
+  const { avaliacoes: avaliacoesSalvas, deletar: deletarAvaliacao } = useAvaliacoesCobZero();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoCobZero>(defaultAvaliacao);
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [etapasConcluidas, setEtapasConcluidas] = useState<Set<number>>(new Set());
+  const [expandedAvaliacaoId, setExpandedAvaliacaoId] = useState<string | null>(null);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -111,7 +115,7 @@ export default function CobZero() {
   if (showRelatorio) {
     return (
       <AppLayout>
-        <RelatorioCobZero avaliacao={avaliacao} onBack={() => setShowRelatorio(false)} />
+        <RelatorioCobZero avaliacao={avaliacao} pacienteId={selectedPacienteId || undefined} onBack={() => setShowRelatorio(false)} />
       </AppLayout>
     );
   }
@@ -165,6 +169,82 @@ export default function CobZero() {
               </div>
             )}
           </div>
+
+          {/* Histórico COB° ZERO */}
+          {avaliacoesSalvas.length > 0 && (
+            <div className="clinical-card mt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <History className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Histórico de Avaliações</h3>
+              </div>
+              <div className="space-y-2">
+                {avaliacoesSalvas.map((av: any) => (
+                  <div key={av.id} className="border rounded-xl overflow-hidden">
+                    <div
+                      className="flex items-center gap-3 p-3 hover:bg-accent/20 transition-all cursor-pointer"
+                      onClick={() => setExpandedAvaliacaoId(expandedAvaliacaoId === av.id ? null : av.id)}
+                    >
+                      <div className="h-9 w-9 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                        {av.paciente_nome?.[0] || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground">{av.paciente_nome}</span>
+                          {av.risco_level && (
+                            <Badge variant="outline" className="text-[10px] h-4">{av.risco_level}</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {av.data_avaliacao} · Cobb: {av.cobb_angle}° · Lenke {av.lenke_type}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); deletarAvaliacao(av.id); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        {expandedAvaliacaoId === av.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </div>
+                    </div>
+                    {expandedAvaliacaoId === av.id && (
+                      <div className="px-4 pb-3 border-t bg-muted/30">
+                        <div className="grid grid-cols-3 gap-3 pt-3 text-center">
+                          {[
+                            { label: 'Cobb', value: av.cobb_angle ? `${av.cobb_angle}°` : '–' },
+                            { label: 'Risco', value: av.risco_percentage ? `${av.risco_percentage}%` : '–' },
+                            { label: 'Score E', value: av.score_e ? av.score_e.toFixed(1) : '–' },
+                          ].map(s => (
+                            <div key={s.label} className="bg-background rounded-lg p-2">
+                              <div className="text-xs text-muted-foreground">{s.label}</div>
+                              <div className="font-bold text-sm text-foreground">{s.value}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full mt-3 bg-blue-600 hover:bg-blue-700 text-white text-xs"
+                          onClick={() => {
+                            const pac = pacientes.find(p => p.id === av.paciente_id);
+                            if (pac) {
+                              setSelectedPacienteId(pac.id);
+                              setAvaliacao(av.dados_avaliacao as AvaliacaoCobZero);
+                              setShowRelatorio(true);
+                            }
+                          }}
+                        >
+                          Ver relatório completo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </AppLayout>
     );

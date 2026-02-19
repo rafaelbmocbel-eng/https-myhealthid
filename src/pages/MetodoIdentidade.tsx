@@ -12,6 +12,7 @@ import { calcularIDFinal } from '@/utils/calculations';
 import {
   CheckCircle2, Circle, ClipboardList, HeartPulse, Activity, Brain,
   Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
+  History, ChevronDown, ChevronUp, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -19,7 +20,9 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { differenceInDays } from 'date-fns';
+import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
+import { differenceInDays, format, parseISO } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { cn } from '@/lib/utils';
 import { Navigate } from 'react-router-dom';
@@ -68,6 +71,7 @@ export default function MetodoIdentidade() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('metodo_identidade');
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { avaliacoes: avaliacoesSalvas, isLoading: loadingAvaliacoes, deletar: deletarAvaliacao } = useAvaliacoesIdentidade();
 
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
   const [searchPac, setSearchPac] = useState('');
@@ -75,6 +79,7 @@ export default function MetodoIdentidade() {
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
   const [showLinkPanel, setShowLinkPanel] = useState(false);
+  const [expandedAvaliacaoId, setExpandedAvaliacaoId] = useState<string | null>(null);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -122,7 +127,7 @@ export default function MetodoIdentidade() {
   if (showRelatorio) {
     return (
       <AppLayout>
-        <RelatorioIdentidade avaliacao={avaliacao} onBack={() => setShowRelatorio(false)} />
+        <RelatorioIdentidade avaliacao={avaliacao} pacienteId={selectedPacienteId || undefined} onBack={() => setShowRelatorio(false)} />
       </AppLayout>
     );
   }
@@ -236,6 +241,86 @@ export default function MetodoIdentidade() {
               </div>
             )}
           </div>
+
+          {/* Histórico de avaliações salvas */}
+          {avaliacoesSalvas.length > 0 && (
+            <div className="clinical-card mt-4">
+              <div className="flex items-center gap-3 mb-4">
+                <History className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Histórico de Avaliações</h3>
+              </div>
+              <div className="space-y-2">
+                {avaliacoesSalvas.map((av: any) => (
+                  <div key={av.id} className="border rounded-xl overflow-hidden">
+                    <div
+                      className="flex items-center gap-3 p-3 hover:bg-accent/20 transition-all cursor-pointer"
+                      onClick={() => setExpandedAvaliacaoId(expandedAvaliacaoId === av.id ? null : av.id)}
+                    >
+                      <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
+                        {av.paciente_nome?.[0] || '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="font-semibold text-sm text-foreground">{av.paciente_nome}</span>
+                          {av.classificacao && (
+                            <Badge variant="outline" className="text-[10px] h-4">{av.classificacao}</Badge>
+                          )}
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          {av.data_avaliacao} · ID: {av.id_final?.toFixed(1)}/50
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                          onClick={(e) => { e.stopPropagation(); deletarAvaliacao(av.id); }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                        {expandedAvaliacaoId === av.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                      </div>
+                    </div>
+                    {expandedAvaliacaoId === av.id && (
+                      <div className="px-4 pb-3 border-t bg-muted/30">
+                        <div className="grid grid-cols-4 gap-3 pt-3 text-center">
+                          {[
+                            { label: 'E', value: av.score_e },
+                            { label: 'P', value: av.score_p },
+                            { label: 'C', value: av.score_c },
+                            { label: 'D', value: av.score_d },
+                            { label: 'F', value: av.score_f },
+                            { label: 'R', value: av.score_r },
+                            { label: 'EFI', value: av.score_efi },
+                          ].map(s => (
+                            <div key={s.label} className="bg-background rounded-lg p-2">
+                              <div className="text-xs text-muted-foreground">{s.label}</div>
+                              <div className="font-bold text-sm text-foreground">{s.value?.toFixed(1) ?? '–'}</div>
+                            </div>
+                          ))}
+                        </div>
+                        <Button
+                          size="sm"
+                          className="w-full mt-3 bg-gradient-primary text-primary-foreground text-xs"
+                          onClick={() => {
+                            const pac = pacientes.find(p => p.id === av.paciente_id);
+                            if (pac) {
+                              setSelectedPacienteId(pac.id);
+                              setAvaliacao(av.dados_avaliacao as AvaliacaoIdentidade);
+                              setShowRelatorio(true);
+                            }
+                          }}
+                        >
+                          Ver relatório completo
+                        </Button>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </AppLayout>
     );

@@ -1,18 +1,29 @@
+import { useState } from 'react';
 import { AvaliacaoCobZero } from '@/types/cobzero';
 import { getCobbClassification } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Share2, Plus } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Plus, Save, Loader2 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 
 interface Props {
   avaliacao: AvaliacaoCobZero;
+  pacienteId?: string;
   onBack: () => void;
 }
 
-export default function RelatorioCobZero({ avaliacao, onBack }: Props) {
+export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Props) {
   const { etapaLenke, etapaRisco, unidades, scoreE } = avaliacao;
   const cobbClass = getCobbClassification(etapaLenke.cobbAngle);
+  const { salvar, salvando } = useAvaliacoesCobZero();
+  const [salvo, setSalvo] = useState(false);
+
+  const handleSalvar = async () => {
+    if (!pacienteId) return;
+    await salvar({ avaliacao, pacienteId });
+    setSalvo(true);
+  };
 
   const unidadeData = unidades.map(u => ({ name: u.id, score: Number(u.score.toFixed(1)) }));
 
@@ -29,6 +40,12 @@ export default function RelatorioCobZero({ avaliacao, onBack }: Props) {
           <ArrowLeft className="h-4 w-4" />Voltar
         </Button>
         <div className="flex gap-2">
+          {pacienteId && (
+            <Button variant="outline" size="sm" className="gap-2" onClick={handleSalvar} disabled={salvando || salvo}>
+              {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              {salvo ? 'Salvo ✓' : 'Salvar avaliação'}
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-2"><Share2 className="h-4 w-4" />Compartilhar</Button>
           <Button variant="outline" size="sm" className="gap-2"><Plus className="h-4 w-4" />Reavaliação</Button>
           <Button size="sm" className="gap-2 bg-gradient-primary text-white"><Download className="h-4 w-4" />Download PDF</Button>

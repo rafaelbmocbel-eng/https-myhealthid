@@ -129,6 +129,130 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_cob_zero: {
+        Row: {
+          cobb_angle: number | null
+          created_at: string
+          dados_avaliacao: Json
+          data_avaliacao: string
+          id: string
+          lenke_type: string | null
+          paciente_id: string
+          paciente_nome: string
+          risco_level: string | null
+          risco_percentage: number | null
+          score_e: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          cobb_angle?: number | null
+          created_at?: string
+          dados_avaliacao: Json
+          data_avaliacao: string
+          id?: string
+          lenke_type?: string | null
+          paciente_id: string
+          paciente_nome: string
+          risco_level?: string | null
+          risco_percentage?: number | null
+          score_e?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          cobb_angle?: number | null
+          created_at?: string
+          dados_avaliacao?: Json
+          data_avaliacao?: string
+          id?: string
+          lenke_type?: string | null
+          paciente_id?: string
+          paciente_nome?: string
+          risco_level?: string | null
+          risco_percentage?: number | null
+          score_e?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_cob_zero_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      avaliacoes_identidade: {
+        Row: {
+          classificacao: string | null
+          created_at: string
+          dados_avaliacao: Json
+          data_avaliacao: string
+          id: string
+          id_final: number | null
+          paciente_id: string
+          paciente_nome: string
+          score_c: number | null
+          score_d: number | null
+          score_e: number | null
+          score_efi: number | null
+          score_f: number | null
+          score_p: number | null
+          score_r: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          classificacao?: string | null
+          created_at?: string
+          dados_avaliacao: Json
+          data_avaliacao: string
+          id?: string
+          id_final?: number | null
+          paciente_id: string
+          paciente_nome: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          classificacao?: string | null
+          created_at?: string
+          dados_avaliacao?: Json
+          data_avaliacao?: string
+          id?: string
+          id_final?: number | null
+          paciente_id?: string
+          paciente_nome?: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_identidade_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_agenda: {
         Row: {
           created_at: string
