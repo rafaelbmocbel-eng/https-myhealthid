@@ -750,6 +750,102 @@ export type Database = {
           },
         ]
       }
+      protocolo_progressao: {
+        Row: {
+          created_at: string | null
+          criterios_atingidos: Json | null
+          fase_atual: number | null
+          id: string
+          observacoes: string | null
+          paciente_id: string
+          protocolo_id: string
+          proxima_avaliacao: string | null
+          semana_atual: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          criterios_atingidos?: Json | null
+          fase_atual?: number | null
+          id?: string
+          observacoes?: string | null
+          paciente_id: string
+          protocolo_id: string
+          proxima_avaliacao?: string | null
+          semana_atual?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          criterios_atingidos?: Json | null
+          fase_atual?: number | null
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string
+          protocolo_id?: string
+          proxima_avaliacao?: string | null
+          semana_atual?: number | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_progressao_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocolo_progressao_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolo_templates: {
+        Row: {
+          classificacao_severidade: string | null
+          created_at: string | null
+          criterios_progressao: Json | null
+          diagnostico_principal: string | null
+          duracao_estimada_semanas: number | null
+          evidencia_cientifica: string | null
+          fases: Json | null
+          frequencia_semanal: number | null
+          id: string
+          nome: string
+          regiao_anatomica: string | null
+        }
+        Insert: {
+          classificacao_severidade?: string | null
+          created_at?: string | null
+          criterios_progressao?: Json | null
+          diagnostico_principal?: string | null
+          duracao_estimada_semanas?: number | null
+          evidencia_cientifica?: string | null
+          fases?: Json | null
+          frequencia_semanal?: number | null
+          id?: string
+          nome: string
+          regiao_anatomica?: string | null
+        }
+        Update: {
+          classificacao_severidade?: string | null
+          created_at?: string | null
+          criterios_progressao?: Json | null
+          diagnostico_principal?: string | null
+          duracao_estimada_semanas?: number | null
+          evidencia_cientifica?: string | null
+          fases?: Json | null
+          frequencia_semanal?: number | null
+          id?: string
+          nome?: string
+          regiao_anatomica?: string | null
+        }
+        Relationships: []
+      }
       protocolos: {
         Row: {
           avaliacao_id: string | null
@@ -914,33 +1010,45 @@ export type Database = {
       tecnicas_tratamento: {
         Row: {
           categoria: string
+          complexidade: string | null
           contraindicacoes: string | null
           created_at: string
           descricao: string | null
+          fase_ideal: number | null
           id: string
           indicacoes: string | null
+          nivel_evidencia: string | null
           nome: string
           parametros: Json | null
+          prerequisitos: string[] | null
         }
         Insert: {
           categoria: string
+          complexidade?: string | null
           contraindicacoes?: string | null
           created_at?: string
           descricao?: string | null
+          fase_ideal?: number | null
           id?: string
           indicacoes?: string | null
+          nivel_evidencia?: string | null
           nome: string
           parametros?: Json | null
+          prerequisitos?: string[] | null
         }
         Update: {
           categoria?: string
+          complexidade?: string | null
           contraindicacoes?: string | null
           created_at?: string
           descricao?: string | null
+          fase_ideal?: number | null
           id?: string
           indicacoes?: string | null
+          nivel_evidencia?: string | null
           nome?: string
           parametros?: Json | null
+          prerequisitos?: string[] | null
         }
         Relationships: []
       }
