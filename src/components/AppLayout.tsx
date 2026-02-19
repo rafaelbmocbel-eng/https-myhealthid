@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useLayoutEffect } from 'react';
 import AppSidebar from './AppSidebar';
 import { Menu, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,7 +13,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
 
-  useEffect(() => {
+  // useLayoutEffect runs synchronously before paint — avoids flash
+  useLayoutEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < 768;
       setIsMobile(mobile);
@@ -24,6 +25,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
+  const closeMobile = () => setMobileOpen(false);
   const sidebarW = (collapsed || isMobile) ? 72 : 224;
 
   return (
@@ -31,25 +33,25 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile overlay */}
       {isMobile && mobileOpen && (
         <div
-          className="fixed inset-0 z-30 bg-black/30 backdrop-blur-sm"
-          onClick={() => setMobileOpen(false)}
+          className="fixed inset-0 z-30 bg-black/40 backdrop-blur-sm"
+          onClick={closeMobile}
         />
       )}
 
       {/* Sidebar */}
       <div className={cn(
+        'transition-transform duration-300',
         isMobile ? 'fixed z-40 h-screen' : 'relative',
         isMobile && !mobileOpen ? '-translate-x-full' : 'translate-x-0',
-        'transition-transform duration-300',
       )}>
         <AppSidebar
           collapsed={isMobile ? false : collapsed}
-          onToggle={() => isMobile ? setMobileOpen(false) : setCollapsed(c => !c)}
-          onNavClick={() => isMobile ? setMobileOpen(false) : undefined}
+          onToggle={closeMobile}
+          onNavClick={closeMobile}
         />
       </div>
 
-      {/* Main content */}
+      {/* Main content — no margin on mobile */}
       <div
         className="flex-1 flex flex-col min-w-0 transition-all duration-300"
         style={{ marginLeft: isMobile ? 0 : sidebarW }}
