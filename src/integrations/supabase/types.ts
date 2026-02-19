@@ -14,7 +14,188 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      agendamentos: {
+        Row: {
+          cor: string | null
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          id: string
+          observacoes: string | null
+          paciente_id: string | null
+          status: string
+          terapeuta_id: string
+          tipo_atendimento: string | null
+          titulo: string | null
+          updated_at: string
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string | null
+          status?: string
+          terapeuta_id: string
+          tipo_atendimento?: string | null
+          titulo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string | null
+          status?: string
+          terapeuta_id?: string
+          tipo_atendimento?: string | null
+          titulo?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agendamentos_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      config_agenda: {
+        Row: {
+          created_at: string
+          dias_semana: Json
+          duracao_padrao: number
+          horario_fim: string
+          horario_inicio: string
+          id: string
+          intervalo_entre_sessoes: number
+          slug: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          dias_semana?: Json
+          duracao_padrao?: number
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          intervalo_entre_sessoes?: number
+          slug?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          dias_semana?: Json
+          duracao_padrao?: number
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          intervalo_entre_sessoes?: number
+          slug?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pacientes: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          data_nascimento: string | null
+          email: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          sexo: string | null
+          sobrenome: string
+          telefone: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome: string
+          observacoes?: string | null
+          sexo?: string | null
+          sobrenome?: string
+          telefone?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          data_nascimento?: string | null
+          email?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          sexo?: string | null
+          sobrenome?: string
+          telefone?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          bio: string | null
+          created_at: string
+          crefito: string | null
+          email: string
+          especialidade: string | null
+          id: string
+          nome: string
+          sobrenome: string
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          crefito?: string | null
+          email?: string
+          especialidade?: string | null
+          id?: string
+          nome?: string
+          sobrenome?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          bio?: string | null
+          created_at?: string
+          crefito?: string | null
+          email?: string
+          especialidade?: string | null
+          id?: string
+          nome?: string
+          sobrenome?: string
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
