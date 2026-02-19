@@ -168,6 +168,60 @@ export type Database = {
         }
         Relationships: []
       }
+      exercicios_biblioteca: {
+        Row: {
+          categoria: string
+          created_at: string
+          descricao: string | null
+          id: string
+          imagem_url: string | null
+          instrucoes: Json | null
+          modificacoes: Json | null
+          nivel_dificuldade: string
+          nome: string
+          perfis_indicados: Json | null
+          precaucoes: Json | null
+          regiao_corporal: Json | null
+          tempo_duracao: string | null
+          tipo: string | null
+          video_url: string | null
+        }
+        Insert: {
+          categoria: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          instrucoes?: Json | null
+          modificacoes?: Json | null
+          nivel_dificuldade?: string
+          nome: string
+          perfis_indicados?: Json | null
+          precaucoes?: Json | null
+          regiao_corporal?: Json | null
+          tempo_duracao?: string | null
+          tipo?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          categoria?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          imagem_url?: string | null
+          instrucoes?: Json | null
+          modificacoes?: Json | null
+          nivel_dificuldade?: string
+          nome?: string
+          perfis_indicados?: Json | null
+          precaucoes?: Json | null
+          regiao_corporal?: Json | null
+          tempo_duracao?: string | null
+          tipo?: string | null
+          video_url?: string | null
+        }
+        Relationships: []
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
@@ -260,6 +314,70 @@ export type Database = {
         }
         Relationships: []
       }
+      prescricoes_exercicios: {
+        Row: {
+          created_at: string
+          exercicio_id: string
+          fase_id: string
+          frequencia: string | null
+          id: string
+          observacoes: string | null
+          progressao: Json | null
+          protocolo_id: string
+          repeticoes: number | null
+          series: number | null
+          tempo_descanso: string | null
+        }
+        Insert: {
+          created_at?: string
+          exercicio_id: string
+          fase_id: string
+          frequencia?: string | null
+          id?: string
+          observacoes?: string | null
+          progressao?: Json | null
+          protocolo_id: string
+          repeticoes?: number | null
+          series?: number | null
+          tempo_descanso?: string | null
+        }
+        Update: {
+          created_at?: string
+          exercicio_id?: string
+          fase_id?: string
+          frequencia?: string | null
+          id?: string
+          observacoes?: string | null
+          progressao?: Json | null
+          protocolo_id?: string
+          repeticoes?: number | null
+          series?: number | null
+          tempo_descanso?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prescricoes_exercicios_exercicio_id_fkey"
+            columns: ["exercicio_id"]
+            isOneToOne: false
+            referencedRelation: "exercicios_biblioteca"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescricoes_exercicios_fase_id_fkey"
+            columns: ["fase_id"]
+            isOneToOne: false
+            referencedRelation: "protocolo_fases"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prescricoes_exercicios_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -302,6 +420,166 @@ export type Database = {
           telefone?: string | null
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      progresso_exercicios: {
+        Row: {
+          concluido: boolean | null
+          created_at: string
+          data_execucao: string | null
+          dor_reportada: number | null
+          id: string
+          nivel_dificuldade_reportado: number | null
+          observacoes: string | null
+          paciente_id: string
+          prescricao_id: string
+          repeticoes_realizadas: number | null
+          series_realizadas: number | null
+        }
+        Insert: {
+          concluido?: boolean | null
+          created_at?: string
+          data_execucao?: string | null
+          dor_reportada?: number | null
+          id?: string
+          nivel_dificuldade_reportado?: number | null
+          observacoes?: string | null
+          paciente_id: string
+          prescricao_id: string
+          repeticoes_realizadas?: number | null
+          series_realizadas?: number | null
+        }
+        Update: {
+          concluido?: boolean | null
+          created_at?: string
+          data_execucao?: string | null
+          dor_reportada?: number | null
+          id?: string
+          nivel_dificuldade_reportado?: number | null
+          observacoes?: string | null
+          paciente_id?: string
+          prescricao_id?: string
+          repeticoes_realizadas?: number | null
+          series_realizadas?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "progresso_exercicios_prescricao_id_fkey"
+            columns: ["prescricao_id"]
+            isOneToOne: false
+            referencedRelation: "prescricoes_exercicios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolo_fases: {
+        Row: {
+          created_at: string
+          id: string
+          numero_fase: number
+          objetivos: Json | null
+          protocolo_id: string
+          semanas_fim: number | null
+          semanas_inicio: number | null
+          sessoes_por_semana: number | null
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          numero_fase: number
+          objetivos?: Json | null
+          protocolo_id: string
+          semanas_fim?: number | null
+          semanas_inicio?: number | null
+          sessoes_por_semana?: number | null
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          numero_fase?: number
+          objetivos?: Json | null
+          protocolo_id?: string
+          semanas_fim?: number | null
+          semanas_inicio?: number | null
+          sessoes_por_semana?: number | null
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_fases_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      protocolos: {
+        Row: {
+          avaliacao_id: string | null
+          created_at: string
+          data_envio: string | null
+          data_fim_prevista: string | null
+          data_inicio: string | null
+          descricao: string | null
+          duracao_total: string | null
+          enviado_para_paciente: boolean | null
+          frequencia: string | null
+          hierarquia_terapeutica: Json | null
+          id: string
+          objetivo_geral: string | null
+          paciente_id: string
+          perfil_dominante: Json | null
+          scores_avaliacao: Json | null
+          status: string
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_id?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          duracao_total?: string | null
+          enviado_para_paciente?: boolean | null
+          frequencia?: string | null
+          hierarquia_terapeutica?: Json | null
+          id?: string
+          objetivo_geral?: string | null
+          paciente_id: string
+          perfil_dominante?: Json | null
+          scores_avaliacao?: Json | null
+          status?: string
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_id?: string | null
+          created_at?: string
+          data_envio?: string | null
+          data_fim_prevista?: string | null
+          data_inicio?: string | null
+          descricao?: string | null
+          duracao_total?: string | null
+          enviado_para_paciente?: boolean | null
+          frequencia?: string | null
+          hierarquia_terapeutica?: Json | null
+          id?: string
+          objetivo_geral?: string | null
+          paciente_id?: string
+          perfil_dominante?: Json | null
+          scores_avaliacao?: Json | null
+          status?: string
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
         }
         Relationships: []
       }
