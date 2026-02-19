@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import Navigation from '@/components/Navigation';
+import AppLayout from '@/components/AppLayout';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
 import Bloco2Dor from '@/components/identidade/Bloco2Dor';
@@ -88,17 +88,14 @@ export default function MetodoIdentidade() {
 
   if (showRelatorio) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
+      <AppLayout>
         <RelatorioIdentidade avaliacao={avaliacao} onBack={() => setShowRelatorio(false)} />
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
-
+    <AppLayout>
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
@@ -240,6 +237,6 @@ export default function MetodoIdentidade() {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }
