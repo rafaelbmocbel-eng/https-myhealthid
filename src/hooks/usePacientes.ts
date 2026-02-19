@@ -63,8 +63,14 @@ export function usePacientes(filtroServico?: string) {
     return p?.servicos || [];
   };
 
+  // Se o filtro for 'metodo_identidade' ou 'cob_zero' mas nenhum paciente tem esses serviços,
+  // mostramos todos os pacientes ativos (fluxo simplificado — terapeuta vê todos)
   const pacientes = filtroServico && filtroServico !== 'todos'
-    ? allPacientes.filter(p => (p.servicos || []).includes(filtroServico))
+    ? (() => {
+        const comServico = allPacientes.filter(p => (p.servicos || []).includes(filtroServico));
+        // Se não houver nenhum com o serviço específico, mostra todos (evita tela vazia)
+        return comServico.length > 0 ? comServico : allPacientes;
+      })()
     : allPacientes;
 
   return { pacientes, allPacientes, servicos, getServicosForPaciente, isLoading };

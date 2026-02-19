@@ -15,11 +15,8 @@ import type { Bloco1Data, Bloco2Data, Bloco3Data, Bloco4Data, Bloco5Data } from 
 interface LinkInfo {
   id: string;
   paciente_id: string;
-  terapeuta_id: string;
-  token: string;
-  status: string;
-  data_expiracao: string;
   blocos_inclusos: number[];
+  data_expiracao: string;
 }
 
 const defaultBloco1: Bloco1Data = {
@@ -60,23 +57,20 @@ export default function AvaliacaoPublica() {
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
     (async () => {
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .select('*')
-        .eq('token', token)
-        .single();
-      if (error || !data) { setErro('Link não encontrado.'); setLoading(false); return; }
-      if (data.status !== 'ativo') { setErro('Este link foi cancelado ou expirado.'); setLoading(false); return; }
-      if (new Date(data.data_expiracao) < new Date()) { setErro('Este link expirou.'); setLoading(false); return; }
-      setLinkInfo(data as LinkInfo);
-
-      // Incrementar contador de acesso
-      await supabase.from('links_avaliacao').update({
-        acessos_totais: (data.acessos_totais || 0) + 1,
-        data_ultimo_acesso: new Date().toISOString(),
-        data_primeiro_acesso: data.data_primeiro_acesso || new Date().toISOString(),
-      }).eq('id', data.id);
-
+      try {
+        // Usa edge function segura — não expõe token nem dados sensíveis via SELECT público
+        const { data, error } = await supabase.functions.invoke('validar-token-avaliacao', {
+          body: { token },
+        });
+        if (error || !data || data.error) {
+          setErro(data?.error || 'Link não encontrado.');
+          setLoading(false);
+          return;
+        }
+        setLinkInfo(data as LinkInfo);
+      } catch {
+        setErro('Erro ao validar o link. Tente novamente.');
+      }
       setLoading(false);
     })();
   }, [token]);
