@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -123,6 +123,7 @@ export default function Pacientes() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
 
   const [search, setSearch] = useState('');
@@ -287,7 +288,7 @@ export default function Pacientes() {
               const linkAtivo = pLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
               const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
               return (
-                <div key={p.id} className="clinical-card flex items-center gap-4 p-4 hover:shadow-md transition-all">
+                <div key={p.id} className="clinical-card flex items-center gap-4 p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
                   <div className="h-11 w-11 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                     {p.nome[0]}{p.sobrenome?.[0] || ''}
                   </div>
@@ -321,7 +322,7 @@ export default function Pacientes() {
                       </span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-1 shrink-0">
+                   <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                     <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setLinkModal({ open: true, paciente: p })}>
                       <Link2 className="h-3 w-3" /> Link
                     </Button>
