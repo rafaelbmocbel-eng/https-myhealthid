@@ -16,6 +16,7 @@ export interface Paciente {
   ativo: boolean;
   created_at: string;
   terapeuta_id: string;
+  servicos?: string[];
 }
 
 export interface PacienteServico {
@@ -28,48 +29,43 @@ export interface PacienteServico {
 export function usePacientes(filtroServico?: string) {
   const { user } = useAuth();
 
-  // Busca todos os pacientes ativos do terapeuta
-  const { data: allPacientes = [], isLoading } = useQuery({
-    queryKey: ['pacientes', user?.id],
+  // Busca pacientes com seus serviços em uma única query JOIN
+  const { data: pacientesRaw = [], isLoading } = useQuery({
+    queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('pacientes')
-        .select('*')
+        .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         .order('nome');
       if (error) throw error;
-      return data as Paciente[];
+      return data || [];
     },
     enabled: !!user,
   });
 
-  // Busca serviços — RLS garante apenas pacientes do terapeuta logado
-  const { data: servicos = [] } = useQuery({
-    queryKey: ['paciente_servicos', user?.id],
-    queryFn: async () => {
-      if (!user) return [];
-      // Busca apenas serviços dos pacientes do terapeuta via subquery nos IDs
-      const pacienteIds = allPacientes.map(p => p.id);
-      if (pacienteIds.length === 0) return [];
-      const { data, error } = await supabase
-        .from('paciente_servicos')
-        .select('*')
-        .in('paciente_id', pacienteIds)
-        .eq('ativo', true);
-      if (error) throw error;
-      return (data || []) as PacienteServico[];
-    },
-    enabled: !!user && allPacientes.length > 0,
-  });
+  // Normaliza os dados: extrai a lista de serviços ativos para cada paciente
+  const allPacientes: Paciente[] = pacientesRaw.map((p: any) => ({
+    ...p,
+    servicos: (p.paciente_servicos || [])
+      .filter((s: any) => s.ativo)
+      .map((s: any) => s.servico),
+  }));
 
-  const getServicosForPaciente = (pid: string) =>
-    servicos.filter(s => s.paciente_id === pid).map(s => s.servico);
+  // Monta lista de serviços para compatibilidade
+  const servicos: PacienteServico[] = pacientesRaw.flatMap((p: any) =>
+    (p.paciente_servicos || []).map((s: any) => s)
+  );
+
+  const getServicosForPaciente = (pid: string): string[] => {
+    const p = allPacientes.find(x => x.id === pid);
+    return p?.servicos || [];
+  };
 
   const pacientes = filtroServico && filtroServico !== 'todos'
-    ? allPacientes.filter(p => getServicosForPaciente(p.id).includes(filtroServico))
+    ? allPacientes.filter(p => (p.servicos || []).includes(filtroServico))
     : allPacientes;
 
   return { pacientes, allPacientes, servicos, getServicosForPaciente, isLoading };
 }
-
