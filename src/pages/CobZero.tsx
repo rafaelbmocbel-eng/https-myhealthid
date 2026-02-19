@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import Navigation from '@/components/Navigation';
+import AppLayout from '@/components/AppLayout';
 import { AvaliacaoCobZero } from '@/types/cobzero';
 import CobEtapaBasica from '@/components/cobzero/CobEtapaBasica';
 import CobEtapaAntropometrica from '@/components/cobzero/CobEtapaAntropometrica';
@@ -86,16 +86,14 @@ export default function CobZero() {
 
   if (showRelatorio) {
     return (
-      <div className="min-h-screen bg-background">
-        <Navigation />
+      <AppLayout>
         <RelatorioCobZero avaliacao={avaliacao} onBack={() => setShowRelatorio(false)} />
-      </div>
+      </AppLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <AppLayout>
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
@@ -218,6 +216,6 @@ export default function CobZero() {
           </div>
         </div>
       </div>
-    </div>
+    </AppLayout>
   );
 }

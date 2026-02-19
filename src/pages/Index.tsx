@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom';
-import Navigation from '@/components/Navigation';
+import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
 import { Activity, AlignCenter, ArrowRight, Users, FileText, Award, TrendingUp, Star } from 'lucide-react';
 import heroBg from '@/assets/hero-bg.jpg';
@@ -22,8 +22,7 @@ const features = [
 
 export default function Index() {
   return (
-    <div className="min-h-screen bg-background">
-      <Navigation />
+    <AppLayout>
 
       {/* Hero */}
       <section className="relative overflow-hidden">
@@ -194,6 +193,6 @@ export default function Index() {
           </p>
         </div>
       </footer>
-    </div>
+    </AppLayout>
   );
 }

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { Bloco2Data, RegiaoDor } from '@/types/identidade';
 import { calcularScoreD, getSeverityColorHex } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
@@ -8,14 +8,33 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronRight, ChevronLeft, X, MapPin, Info } from 'lucide-react';
+import { ChevronRight, ChevronLeft, X, MapPin, Info, Eraser } from 'lucide-react';
 import { BodyAvatarSVG, REGIOES_CORPO } from './BodyAvatarSVG';
+import { cn } from '@/lib/utils';
 
 const TIPOS_DOR = ['Ardor', 'Queimação', 'Dormência', 'Rigidez', 'Peso/Pressão', 'Pontada', 'Dor profunda'];
 const FREQUENCIAS = ['Contínua (24h)', 'Intermitente', 'Noturna (afeta sono)', 'Ao movimento específico'];
 const FATORES_PIORA = ['Movimento específico', 'Posição prolongada', 'Clima/umidade', 'Stress/emocional', 'Menstruação', 'Atividade ocupacional', 'Fadiga', 'Sono inadequado'];
 const FATORES_MELHORA = ['Repouso', 'Movimento', 'Calor/frio', 'Medicação', 'Fisioterapia', 'Alongamento', 'Outro'];
 
+// ─── Symptom Palette ────────────────────────────────────────────────
+type SintomaTipo = 'dor' | 'irradiacao' | 'rigidez' | 'formigamento' | 'inchaco' | 'queimacao';
+
+const SINTOMA_CONFIG: Record<SintomaTipo, {
+  label: string; emoji: string; cor: string; descricao: string;
+}> = {
+  dor:         { label: 'Dor',               emoji: '🔴', cor: '#C41E3A', descricao: 'Dor localizada' },
+  irradiacao:  { label: 'Irradiação',         emoji: '➡️', cor: '#F97316', descricao: 'Dor que se irradia' },
+  rigidez:     { label: 'Rigidez/Tensão',     emoji: '🔷', cor: '#3B82F6', descricao: 'Tensão muscular' },
+  formigamento:{ label: 'Formigamento',        emoji: '✨', cor: '#FBBF24', descricao: 'Parestesia' },
+  inchaco:     { label: 'Inchaço',            emoji: '🌊', cor: '#10B981', descricao: 'Edema local' },
+  queimacao:   { label: 'Queimação',          emoji: '🔥', cor: '#DC2626', descricao: 'Sensação de queima' },
+};
+
+// Extended region data including sintomas beyond just pain
+interface RegiaoExtendida extends RegiaoDor {
+  sintomas: SintomaTipo[];
+}
 
 interface Props {
   data: Bloco2Data;
@@ -25,48 +44,93 @@ interface Props {
 }
 
 export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
-  const [regioes, setRegioes] = useState<RegiaoDor[]>(data.regioes);
+  const [regioes, setRegioes] = useState<RegiaoExtendida[]>(
+    data.regioes.map(r => ({ ...r, sintomas: (r as RegiaoExtendida).sintomas || ['dor'] }))
+  );
   const [modalRegiao, setModalRegiao] = useState<string | null>(null);
+  const [sintomaAtivo, setSintomaAtivo] = useState<SintomaTipo>('dor');
 
-  const getRegiaoDor = (id: string): RegiaoDor => {
+  const getRegiaoDor = (id: string): RegiaoExtendida => {
     return regioes.find(r => r.id === id) || {
       id, nome: REGIOES_CORPO.find(r => r.id === id)?.nome || id,
       intensidade: 5, tipos: [], irradiacao: false, irradiacaoPara: [],
       frequencia: 'Intermitente', fatoresPiora: [], fatoresMelhora: [],
+      sintomas: [sintomaAtivo],
     };
   };
 
-  const updateRegiao = (id: string, updater: (r: RegiaoDor) => RegiaoDor) => {
-    const existing = regioes.find(r => r.id === id);
-    const base = existing || getRegiaoDor(id);
-    const updated = updater(base);
+  const updateRegiao = useCallback((id: string, updater: (r: RegiaoExtendida) => RegiaoExtendida) => {
+    setRegioes(prev => {
+      const existing = prev.find(r => r.id === id);
+      const base = existing || getRegiaoDor(id);
+      const updated = updater(base);
+      const newRegioes = existing ? prev.map(r => r.id === id ? updated : r) : [...prev, updated];
+      const scoreD = calcularScoreD({ regioes: newRegioes, scoreD: 0 });
+      onChange({ regioes: newRegioes, scoreD });
+      return newRegioes;
+    });
+  }, [sintomaAtivo]);
 
-    let newRegioes: RegiaoDor[];
+  const handleRegionClick = (regionId: string) => {
+    const existing = regioes.find(r => r.id === regionId);
     if (existing) {
-      newRegioes = regioes.map(r => r.id === id ? updated : r);
+      // If already has this sintoma type, open detail modal
+      if (existing.sintomas?.includes(sintomaAtivo)) {
+        setModalRegiao(regionId);
+        return;
+      }
+      // Add sintoma to existing region
+      updateRegiao(regionId, r => ({
+        ...r,
+        sintomas: [...(r.sintomas || []), sintomaAtivo],
+      }));
     } else {
-      newRegioes = [...regioes, updated];
+      // New region with current sintoma
+      updateRegiao(regionId, r => ({ ...r, sintomas: [sintomaAtivo] }));
+      // Auto-open modal for pain areas
+      if (sintomaAtivo === 'dor') {
+        setTimeout(() => setModalRegiao(regionId), 50);
+      }
     }
-
-    setRegioes(newRegioes);
-    const scoreD = calcularScoreD({ regioes: newRegioes, scoreD: 0 });
-    onChange({ regioes: newRegioes, scoreD });
   };
 
   const removeRegiao = (id: string) => {
-    const newRegioes = regioes.filter(r => r.id !== id);
-    setRegioes(newRegioes);
-    const scoreD = calcularScoreD({ regioes: newRegioes, scoreD: 0 });
-    onChange({ regioes: newRegioes, scoreD });
+    setRegioes(prev => {
+      const newRegioes = prev.filter(r => r.id !== id);
+      const scoreD = calcularScoreD({ regioes: newRegioes, scoreD: 0 });
+      onChange({ regioes: newRegioes, scoreD });
+      return newRegioes;
+    });
   };
 
-
+  const removeSintoma = (regionId: string, sintoma: SintomaTipo) => {
+    updateRegiao(regionId, r => {
+      const novos = r.sintomas.filter(s => s !== sintoma);
+      if (novos.length === 0) {
+        // Remove region entirely
+        setTimeout(() => removeRegiao(regionId), 0);
+        return r;
+      }
+      return { ...r, sintomas: novos };
+    });
+  };
 
   const scoreD = calcularScoreD({ regioes, scoreD: 0 });
   const modalRegiaoDor = modalRegiao ? getRegiaoDor(modalRegiao) : null;
 
+  // Build pain map: use highest pain-related sintoma intensity
+  const painMap: Record<string, number> = {};
+  regioes.forEach(r => {
+    if (r.sintomas?.includes('dor') || r.sintomas?.includes('queimacao')) {
+      painMap[r.id] = r.intensidade;
+    } else if (r.sintomas?.length > 0) {
+      painMap[r.id] = Math.min(r.intensidade * 0.5, 4); // softer color for non-pain
+    }
+  });
+
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div className="clinical-card">
         <div className="flex items-start justify-between">
           <div>
@@ -74,8 +138,10 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               <Badge variant="outline" className="text-xs">Bloco 2</Badge>
               <span className="text-xs text-muted-foreground">~12 min</span>
             </div>
-            <h2 className="text-xl font-bold">Avaliação da Dor</h2>
-            <p className="text-muted-foreground text-sm mt-1">Clique nas regiões do avatar para mapear a dor</p>
+            <h2 className="text-xl font-bold">Mapeamento Corporal</h2>
+            <p className="text-muted-foreground text-sm mt-1">
+              Selecione um sintoma na paleta e clique nas regiões do corpo
+            </p>
           </div>
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Score D</div>
@@ -85,84 +151,133 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
         </div>
       </div>
 
+      {/* Symptom Palette */}
+      <div className="clinical-card">
+        <div className="flex items-center gap-2 mb-3">
+          <MapPin className="h-4 w-4 text-primary" />
+          <h3 className="font-semibold text-sm">Paleta de Sintomas</h3>
+          <span className="text-xs text-muted-foreground ml-1">— selecione um sintoma e clique no avatar</span>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {(Object.entries(SINTOMA_CONFIG) as [SintomaTipo, typeof SINTOMA_CONFIG[SintomaTipo]][]).map(([key, cfg]) => (
+            <button
+              key={key}
+              onClick={() => setSintomaAtivo(key)}
+              className={cn(
+                'flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
+                sintomaAtivo === key
+                  ? 'border-foreground shadow-md scale-105 ring-2 ring-offset-1'
+                  : 'border-border hover:border-foreground/40 hover:scale-102 opacity-70 hover:opacity-100'
+              )}
+              style={{
+                borderColor: sintomaAtivo === key ? cfg.cor : undefined,
+                backgroundColor: sintomaAtivo === key ? cfg.cor + '15' : undefined,
+              }}
+            >
+              <div className="h-3.5 w-3.5 rounded-full shrink-0" style={{ backgroundColor: cfg.cor }} />
+              <span className="hidden sm:inline">{cfg.label}</span>
+              <span className="text-base sm:hidden">{cfg.emoji}</span>
+            </button>
+          ))}
+          {regioes.length > 0 && (
+            <button
+              onClick={() => { setRegioes([]); onChange({ regioes: [], scoreD: 0 }); }}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed border-destructive/40 text-sm text-destructive/70 hover:text-destructive hover:border-destructive hover:bg-destructive/5 transition-all"
+            >
+              <Eraser className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Limpar tudo</span>
+            </button>
+          )}
+        </div>
+
+        {/* Active symptom indicator */}
+        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+          <div className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: SINTOMA_CONFIG[sintomaAtivo].cor }} />
+          <span>Ativo: <strong style={{ color: SINTOMA_CONFIG[sintomaAtivo].cor }}>{SINTOMA_CONFIG[sintomaAtivo].label}</strong> — {SINTOMA_CONFIG[sintomaAtivo].descricao}</span>
+        </div>
+      </div>
+
+      {/* Avatar + Region list */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Avatar SVG */}
-        <div className="clinical-card">
-          <h3 className="font-semibold text-sm mb-3">Avatar Corporal Interativo</h3>
-          <div className="flex flex-col items-center">
-            <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
-              <MapPin className="h-3 w-3" />
-              Clique nas regiões para mapear dor
-            </div>
+        <div className="clinical-card flex flex-col items-center">
+          <h3 className="font-semibold text-sm mb-3 self-start">Avatar Corporal Interativo</h3>
 
-            <BodyAvatarSVG
-              mode="pain"
-              painMap={Object.fromEntries(regioes.map(r => [r.id, r.intensidade]))}
-              onRegionClick={(regionId) => setModalRegiao(regionId)}
-              className="w-44"
-            />
+          <BodyAvatarSVG
+            mode="pain"
+            painMap={painMap}
+            onRegionClick={handleRegionClick}
+            className="w-44"
+          />
 
-            {/* Legenda */}
-            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#e8f4f8] border border-gray-300"></div>
-                <span>Normal</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#fef3c7] border border-amber-200"></div>
-                <span>1-3</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
-                <span>4-7</span>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
-                <span>8-10</span>
-              </div>
+          {/* Multi-symptom color legend */}
+          <div className="mt-4 w-full">
+            <div className="text-xs font-semibold text-muted-foreground mb-2">Cores dos Sintomas</div>
+            <div className="grid grid-cols-2 gap-1.5">
+              {(Object.entries(SINTOMA_CONFIG) as [SintomaTipo, typeof SINTOMA_CONFIG[SintomaTipo]][]).map(([key, cfg]) => (
+                <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                  <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: cfg.cor }} />
+                  {cfg.label}
+                </div>
+              ))}
             </div>
           </div>
         </div>
 
-        {/* Lista de regiões afetadas */}
+        {/* Affected regions list */}
         <div className="clinical-card">
           <h3 className="font-semibold text-sm mb-4">Regiões Afetadas ({regioes.length})</h3>
           {regioes.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
               <MapPin className="h-8 w-8 mb-2 opacity-30" />
               <p className="text-sm">Nenhuma região marcada</p>
-              <p className="text-xs mt-1">Clique no avatar para adicionar</p>
+              <p className="text-xs mt-1">Selecione um sintoma e clique no avatar</p>
             </div>
           ) : (
             <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
               {regioes.map(r => (
-                <div key={r.id} className="p-3 rounded-lg border bg-card hover:bg-secondary/50 transition-colors">
+                <div key={r.id} className="p-3 rounded-lg border bg-card hover:bg-secondary/20 transition-colors">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
-                      <div
-                        className="w-3 h-3 rounded-full"
-                        style={{ backgroundColor: r.intensidade >= 6 ? '#e74c3c' : '#f39c12' }}
-                      />
                       <span className="font-medium text-sm">{r.nome}</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-lg font-bold" style={{ color: getSeverityColorHex(r.intensidade) }}>
+                      <span className="text-base font-bold" style={{ color: getSeverityColorHex(r.intensidade) }}>
                         {r.intensidade}/10
                       </span>
-                      <button onClick={() => removeRegiao(r.id)} className="text-muted-foreground hover:text-destructive">
+                      <button onClick={() => removeRegiao(r.id)} className="text-muted-foreground hover:text-destructive transition-colors">
                         <X className="h-4 w-4" />
                       </button>
                     </div>
                   </div>
-                  <div className="flex flex-wrap gap-1">
-                    {r.tipos.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                  {/* Symptom badges */}
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {r.sintomas?.map(s => (
+                      <button
+                        key={s}
+                        onClick={() => removeSintoma(r.id, s)}
+                        className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border hover:opacity-80 transition-opacity"
+                        style={{
+                          backgroundColor: SINTOMA_CONFIG[s]?.cor + '20',
+                          borderColor: SINTOMA_CONFIG[s]?.cor + '60',
+                          color: SINTOMA_CONFIG[s]?.cor,
+                        }}
+                        title="Remover sintoma"
+                      >
+                        {SINTOMA_CONFIG[s]?.label}
+                        <X className="h-2.5 w-2.5" />
+                      </button>
+                    ))}
                     {r.irradiacao && <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Irradia</Badge>}
                   </div>
-                  <button
-                    onClick={() => setModalRegiao(r.id)}
-                    className="text-xs text-primary mt-2 hover:underline"
-                  >
-                    Editar detalhes
+                  {/* Types */}
+                  {r.tipos.length > 0 && (
+                    <div className="flex flex-wrap gap-1">
+                      {r.tipos.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
+                    </div>
+                  )}
+                  <button onClick={() => setModalRegiao(r.id)} className="text-xs text-primary mt-2 hover:underline block">
+                    Editar detalhes →
                   </button>
                 </div>
               ))}
@@ -172,7 +287,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
           {regioes.length > 0 && (
             <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
               <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-primary flex-shrink-0" />
+                <Info className="h-4 w-4 text-primary shrink-0" />
                 <div className="text-xs">
                   <strong>Score D: {scoreD.toFixed(1)}/10</strong> · {regioes.length} regiões ·
                   Intensidade média: {(regioes.reduce((s, r) => s + r.intensidade, 0) / regioes.length).toFixed(1)}
@@ -183,7 +298,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
         </div>
       </div>
 
-      {/* Modal de região */}
+      {/* Detail Modal */}
       <Dialog open={!!modalRegiao} onOpenChange={() => setModalRegiao(null)}>
         <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
           <DialogHeader>
@@ -193,6 +308,39 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
           </DialogHeader>
           {modalRegiao && modalRegiaoDor && (
             <div className="space-y-5">
+              {/* Symptom tags */}
+              <div>
+                <Label className="mb-2 block">Sintomas nesta região</Label>
+                <div className="flex flex-wrap gap-2">
+                  {(Object.entries(SINTOMA_CONFIG) as [SintomaTipo, typeof SINTOMA_CONFIG[SintomaTipo]][]).map(([key, cfg]) => {
+                    const active = modalRegiaoDor.sintomas?.includes(key);
+                    return (
+                      <button
+                        key={key}
+                        onClick={() => updateRegiao(modalRegiao, r => ({
+                          ...r,
+                          sintomas: active
+                            ? (r.sintomas || []).filter(s => s !== key)
+                            : [...(r.sintomas || []), key],
+                        }))}
+                        className={cn(
+                          'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs font-medium transition-all',
+                          active ? 'ring-2' : 'opacity-50 hover:opacity-80'
+                        )}
+                        style={{
+                          borderColor: cfg.cor,
+                          backgroundColor: active ? cfg.cor + '20' : undefined,
+                          color: cfg.cor,
+                        }}
+                      >
+                        <div className="h-2 w-2 rounded-full" style={{ backgroundColor: cfg.cor }} />
+                        {cfg.label}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
               {/* Intensidade */}
               <div>
                 <div className="flex justify-between items-center mb-2">
@@ -217,13 +365,10 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
                 <div className="grid grid-cols-2 gap-2">
                   {TIPOS_DOR.map(tipo => (
                     <div key={tipo} className="flex items-center gap-2">
-                      <Checkbox
-                        id={tipo}
-                        checked={modalRegiaoDor.tipos.includes(tipo)}
+                      <Checkbox id={tipo} checked={modalRegiaoDor.tipos.includes(tipo)}
                         onCheckedChange={c => updateRegiao(modalRegiao, r => ({
                           ...r, tipos: c ? [...r.tipos, tipo] : r.tipos.filter(t => t !== tipo)
-                        }))}
-                      />
+                        }))} />
                       <Label htmlFor={tipo} className="text-sm cursor-pointer">{tipo}</Label>
                     </div>
                   ))}
@@ -233,13 +378,8 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               {/* Frequência */}
               <div>
                 <Label>Frequência</Label>
-                <Select
-                  value={modalRegiaoDor.frequencia}
-                  onValueChange={v => updateRegiao(modalRegiao, r => ({ ...r, frequencia: v }))}
-                >
-                  <SelectTrigger className="mt-1.5">
-                    <SelectValue />
-                  </SelectTrigger>
+                <Select value={modalRegiaoDor.frequencia} onValueChange={v => updateRegiao(modalRegiao, r => ({ ...r, frequencia: v }))}>
+                  <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
                   <SelectContent>
                     {FREQUENCIAS.map(f => <SelectItem key={f} value={f}>{f}</SelectItem>)}
                   </SelectContent>
@@ -249,24 +389,19 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               {/* Irradiação */}
               <div>
                 <div className="flex items-center gap-3 mb-2">
-                  <Checkbox
-                    id="irradiacao"
-                    checked={modalRegiaoDor.irradiacao}
-                    onCheckedChange={c => updateRegiao(modalRegiao, r => ({ ...r, irradiacao: !!c }))}
-                  />
+                  <Checkbox id="irradiacao" checked={modalRegiaoDor.irradiacao}
+                    onCheckedChange={c => updateRegiao(modalRegiao, r => ({ ...r, irradiacao: !!c }))} />
                   <Label htmlFor="irradiacao" className="cursor-pointer">Apresenta irradiação?</Label>
                 </div>
                 {modalRegiaoDor.irradiacao && (
                   <div className="grid grid-cols-2 gap-2 ml-6">
                     {REGIOES_CORPO.filter(r => r.id !== modalRegiao).map(r => (
                       <div key={r.id} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`irr-${r.id}`}
+                        <Checkbox id={`irr-${r.id}`}
                           checked={modalRegiaoDor.irradiacaoPara.includes(r.nome)}
                           onCheckedChange={c => updateRegiao(modalRegiao, reg => ({
                             ...reg, irradiacaoPara: c ? [...reg.irradiacaoPara, r.nome] : reg.irradiacaoPara.filter(i => i !== r.nome)
-                          }))}
-                        />
+                          }))} />
                         <Label htmlFor={`irr-${r.id}`} className="text-xs cursor-pointer">{r.nome}</Label>
                       </div>
                     ))}
@@ -281,13 +416,10 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
                   <div className="space-y-1.5">
                     {FATORES_PIORA.map(f => (
                       <div key={f} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`piora-${f}`}
-                          checked={modalRegiaoDor.fatoresPiora.includes(f)}
+                        <Checkbox id={`piora-${f}`} checked={modalRegiaoDor.fatoresPiora.includes(f)}
                           onCheckedChange={c => updateRegiao(modalRegiao, r => ({
                             ...r, fatoresPiora: c ? [...r.fatoresPiora, f] : r.fatoresPiora.filter(i => i !== f)
-                          }))}
-                        />
+                          }))} />
                         <Label htmlFor={`piora-${f}`} className="text-xs cursor-pointer">{f}</Label>
                       </div>
                     ))}
@@ -298,13 +430,10 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
                   <div className="space-y-1.5">
                     {FATORES_MELHORA.map(f => (
                       <div key={f} className="flex items-center gap-2">
-                        <Checkbox
-                          id={`melhora-${f}`}
-                          checked={modalRegiaoDor.fatoresMelhora.includes(f)}
+                        <Checkbox id={`melhora-${f}`} checked={modalRegiaoDor.fatoresMelhora.includes(f)}
                           onCheckedChange={c => updateRegiao(modalRegiao, r => ({
                             ...r, fatoresMelhora: c ? [...r.fatoresMelhora, f] : r.fatoresMelhora.filter(i => i !== f)
-                          }))}
-                        />
+                          }))} />
                         <Label htmlFor={`melhora-${f}`} className="text-xs cursor-pointer">{f}</Label>
                       </div>
                     ))}
@@ -313,7 +442,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               </div>
 
               <Button className="w-full bg-gradient-primary text-white" onClick={() => setModalRegiao(null)}>
-                Salvar região
+                Salvar região ✓
               </Button>
             </div>
           )}
