@@ -19,6 +19,7 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useAvaliacoesIdentidade, useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { useToast } from '@/hooks/use-toast';
+import QuestionariosComparacao from '@/components/paciente/QuestionariosComparacao';
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
@@ -78,6 +79,20 @@ export default function PacientePerfil() {
         .eq('paciente_id', id!)
         .eq('terapeuta_id', user!.id)
         .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+
+  const { data: respostasPaciente = [] } = useQuery({
+    queryKey: ['respostas-av-perfil', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('respostas_avaliacao_paciente')
+        .select('*')
+        .eq('paciente_id', id!)
+        .order('data_preenchimento', { ascending: false });
       if (error) throw error;
       return data || [];
     },
@@ -257,7 +272,8 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* Aba Avaliações */}
-          <TabsContent value="avaliacoes" className="mt-4">
+          <TabsContent value="avaliacoes" className="mt-4 space-y-6">
+            {/* Avaliações Realizadas pelo Terapeuta */}
             {(loadingId || loadingCob) ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : (avaliacoesId.length + avaliacoesCob.length) === 0 ? (
@@ -319,6 +335,18 @@ export default function PacientePerfil() {
                 )}
               </div>
             )}
+
+            {/* Questionários Recebidos do Paciente */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <FileText className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Questionários Recebidos</h3>
+                {respostasPaciente.length > 0 && (
+                  <Badge variant="outline" className="text-[10px] h-4">{respostasPaciente.length} respostas</Badge>
+                )}
+              </div>
+              <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+            </div>
           </TabsContent>
 
           {/* Aba Links Enviados */}
