@@ -18,13 +18,9 @@ import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { usePacientes } from '@/hooks/usePacientes';
 
+import { getAvaliacaoUrl as getLinkUrl, getAgendaUrl } from '@/utils/linkUrls';
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
-function getLinkUrl(token: string) {
-  return `${window.location.origin}/avaliacao/${token}`;
-}
-function getAgendaUrl(token: string) {
-  return `${window.location.origin}/agenda/${token}`;
-}
 
 function StatusBadge({ status, expiracao }: { status: string; expiracao: string }) {
   const expirado = new Date(expiracao) < new Date();

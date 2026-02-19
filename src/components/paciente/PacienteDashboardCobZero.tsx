@@ -3,6 +3,7 @@ import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, File
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { getAvaliacaoUrl } from '@/utils/linkUrls';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -62,7 +63,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
   });
 
   const linkAtivo = linksAv.find(l => l.status === 'ativo' && new Date(l.data_expiracao!) > new Date());
-  const getLinkUrl = (token: string) => `${window.location.origin}/avaliacao/${token}`;
+  const getLinkUrl = (token: string) => getAvaliacaoUrl(token);
 
   const gerarLink = async () => {
     if (!user) return;
