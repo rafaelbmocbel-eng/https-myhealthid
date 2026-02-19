@@ -10,17 +10,21 @@ import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Link2, Copy, Trash2, Plus, Search, Clock, CheckCircle2,
-  XCircle, Activity, AlignCenter, CalendarDays, Loader2, ExternalLink,
-  RefreshCw, Users, ClipboardList,
+  Activity, CalendarDays, Loader2, ExternalLink, Users, Mail, MessageCircle,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { usePacientes } from '@/hooks/usePacientes';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 function getLinkUrl(token: string) {
   return `${window.location.origin}/avaliacao/${token}`;
+}
+
+function getAgendaUrl(token: string) {
+  return `${window.location.origin}/agenda/${token}`;
 }
 
 function StatusBadge({ status, expiracao }: { status: string; expiracao: string }) {
@@ -39,6 +43,7 @@ function LinksAvaliacao() {
   const { allPacientes } = usePacientes();
   const [search, setSearch] = useState('');
   const [gerando, setGerando] = useState<string | null>(null);
+  const [enviandoEmail, setEnviandoEmail] = useState<string | null>(null);
 
   const { data: links = [], isLoading } = useQuery({
     queryKey: ['links-avaliacao-relatorio', user?.id],
@@ -71,12 +76,12 @@ function LinksAvaliacao() {
     try {
       const dataExpiracao = new Date();
       dataExpiracao.setDate(dataExpiracao.getDate() + 30);
-      const { data, error } = await supabase.from('links_avaliacao').insert({
+      const { error } = await supabase.from('links_avaliacao').insert({
         paciente_id: pacienteId,
         terapeuta_id: user.id,
         data_expiracao: dataExpiracao.toISOString(),
         blocos_inclusos: [1, 2, 3, 4, 5],
-      }).select().single();
+      });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links-avaliacao-relatorio'] });
       toast({ title: 'Link gerado!', description: 'Copie e envie ao paciente.' });
@@ -90,6 +95,40 @@ function LinksAvaliacao() {
   const copiarLink = (token: string) => {
     navigator.clipboard.writeText(getLinkUrl(token));
     toast({ title: 'Link copiado!' });
+  };
+
+  const handleEnviarEmail = async (linkId: string, pacienteId: string, token: string) => {
+    const paciente = allPacientes.find(p => p.id === pacienteId);
+    if (!paciente?.email) {
+      toast({ title: 'Paciente sem email', description: 'Cadastre o email do paciente primeiro.', variant: 'destructive' });
+      return;
+    }
+    setEnviandoEmail(linkId);
+    try {
+      const { error } = await supabase.functions.invoke('enviar-link-email', {
+        body: {
+          patientName: `${paciente.nome} ${paciente.sobrenome}`,
+          patientEmail: paciente.email,
+          linkUrl: getLinkUrl(token),
+          linkType: 'avaliacao',
+        },
+      });
+      if (error) throw error;
+      toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar email', description: e.message, variant: 'destructive' });
+    } finally {
+      setEnviandoEmail(null);
+    }
+  };
+
+  const handleWhatsApp = (pacienteId: string, token: string) => {
+    const paciente = allPacientes.find(p => p.id === pacienteId);
+    if (!paciente?.telefone) {
+      toast({ title: 'Paciente sem telefone', description: 'Cadastre o telefone do paciente primeiro.', variant: 'destructive' });
+      return;
+    }
+    shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getLinkUrl(token));
   };
 
   const getNomePaciente = (pid: string) => {
@@ -182,11 +221,30 @@ function LinksAvaliacao() {
                       <div className="text-xs text-emerald-700 font-mono truncate mt-0.5">{getLinkUrl(l.token)}</div>
                     </div>
                     <div className="flex items-center gap-1 shrink-0">
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => copiarLink(l.token)}>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Copiar link" onClick={() => copiarLink(l.token)}>
                         <Copy className="h-3 w-3" />
                       </Button>
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => window.open(getLinkUrl(l.token), '_blank')}>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Abrir link" onClick={() => window.open(getLinkUrl(l.token), '_blank')}>
                         <ExternalLink className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-[#25D366] hover:border-[#25D366] hover:bg-[#25D366]/10"
+                        title="Enviar via WhatsApp"
+                        onClick={() => handleWhatsApp(l.paciente_id, l.token)}
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-blue-500 hover:border-blue-400 hover:bg-blue-50"
+                        title="Enviar por Email"
+                        disabled={enviandoEmail === l.id}
+                        onClick={() => handleEnviarEmail(l.id, l.paciente_id, l.token)}
+                      >
+                        {enviandoEmail === l.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
                       </Button>
                       <Button
                         size="sm"
@@ -240,6 +298,7 @@ function LinksAgenda() {
   const { allPacientes } = usePacientes();
   const [search, setSearch] = useState('');
   const [gerando, setGerando] = useState<string | null>(null);
+  const [enviandoEmail, setEnviandoEmail] = useState<string | null>(null);
 
   const { data: links = [], isLoading } = useQuery({
     queryKey: ['links-agenda-relatorio', user?.id],
@@ -285,8 +344,42 @@ function LinksAgenda() {
   });
 
   const copiarLink = (token: string) => {
-    navigator.clipboard.writeText(`${window.location.origin}/agenda/${token}`);
+    navigator.clipboard.writeText(getAgendaUrl(token));
     toast({ title: 'Link copiado!' });
+  };
+
+  const handleWhatsApp = (pacienteId: string, token: string) => {
+    const paciente = allPacientes.find(p => p.id === pacienteId);
+    if (!paciente?.telefone) {
+      toast({ title: 'Paciente sem telefone', description: 'Cadastre o telefone do paciente primeiro.', variant: 'destructive' });
+      return;
+    }
+    shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getAgendaUrl(token));
+  };
+
+  const handleEnviarEmail = async (linkId: string, pacienteId: string, token: string) => {
+    const paciente = allPacientes.find(p => p.id === pacienteId);
+    if (!paciente?.email) {
+      toast({ title: 'Paciente sem email', description: 'Cadastre o email do paciente primeiro.', variant: 'destructive' });
+      return;
+    }
+    setEnviandoEmail(linkId);
+    try {
+      const { error } = await supabase.functions.invoke('enviar-link-email', {
+        body: {
+          patientName: `${paciente.nome} ${paciente.sobrenome}`,
+          patientEmail: paciente.email,
+          linkUrl: getAgendaUrl(token),
+          linkType: 'agenda',
+        },
+      });
+      if (error) throw error;
+      toast({ title: '✉️ Email enviado!', description: `Para ${paciente.email}` });
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar email', description: e.message, variant: 'destructive' });
+    } finally {
+      setEnviandoEmail(null);
+    }
   };
 
   const getNome = (pid: string) => {
@@ -372,8 +465,27 @@ function LinksAgenda() {
                       </div>
                     </div>
                     <div className="flex gap-1 shrink-0">
-                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" onClick={() => copiarLink(l.token)}>
+                      <Button size="sm" variant="outline" className="h-7 w-7 p-0" title="Copiar link" onClick={() => copiarLink(l.token)}>
                         <Copy className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-[#25D366] hover:border-[#25D366] hover:bg-[#25D366]/10"
+                        title="Enviar via WhatsApp"
+                        onClick={() => handleWhatsApp(l.paciente_id, l.token)}
+                      >
+                        <MessageCircle className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="h-7 w-7 p-0 text-blue-500 hover:border-blue-400 hover:bg-blue-50"
+                        title="Enviar por Email"
+                        disabled={enviandoEmail === l.id}
+                        onClick={() => handleEnviarEmail(l.id, l.paciente_id, l.token)}
+                      >
+                        {enviandoEmail === l.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
                       </Button>
                       <Button
                         size="sm"
@@ -434,6 +546,16 @@ export default function Relatorios() {
           </div>
         </div>
 
+        {/* Info badges */}
+        <div className="flex flex-wrap gap-2 mb-6">
+          <div className="flex items-center gap-1.5 text-xs bg-[#25D366]/10 text-[#25D366] border border-[#25D366]/20 rounded-full px-3 py-1 font-medium">
+            <MessageCircle className="h-3 w-3" /> WhatsApp disponível
+          </div>
+          <div className="flex items-center gap-1.5 text-xs bg-blue-50 text-blue-600 border border-blue-200 rounded-full px-3 py-1 font-medium">
+            <Mail className="h-3 w-3" /> Email disponível
+          </div>
+        </div>
+
         <Tabs defaultValue="links-avaliacao">
           <TabsList className="mb-6 h-auto flex flex-wrap gap-1 bg-secondary p-1 rounded-xl">
             <TabsTrigger value="links-avaliacao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -449,6 +571,7 @@ export default function Relatorios() {
           <TabsContent value="links-avaliacao">
             <div className="mb-4 p-4 rounded-xl bg-primary/5 border border-primary/20 text-sm text-muted-foreground">
               <strong className="text-foreground">Links de Avaliação</strong> — Envie ao paciente para preencher os 5 blocos do Método Identidade remotamente. Válidos por <strong>30 dias</strong>.
+              <span className="ml-2 text-xs">Use os ícones <MessageCircle className="h-3 w-3 inline text-[#25D366]" /> e <Mail className="h-3 w-3 inline text-blue-500" /> para compartilhar diretamente.</span>
             </div>
             <LinksAvaliacao />
           </TabsContent>
@@ -456,6 +579,7 @@ export default function Relatorios() {
           <TabsContent value="links-agenda">
             <div className="mb-4 p-4 rounded-xl bg-amber-500/10 border border-amber-300/30 text-sm text-muted-foreground">
               <strong className="text-foreground">Links de Agenda</strong> — Permita que o paciente visualize e solicite horários diretamente. Válidos por <strong>90 dias</strong>.
+              <span className="ml-2 text-xs">Use os ícones <MessageCircle className="h-3 w-3 inline text-[#25D366]" /> e <Mail className="h-3 w-3 inline text-blue-500" /> para compartilhar diretamente.</span>
             </div>
             <LinksAgenda />
           </TabsContent>
