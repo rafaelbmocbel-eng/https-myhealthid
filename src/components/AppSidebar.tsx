@@ -11,10 +11,10 @@ import { cn } from '@/lib/utils';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
-  { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Relatórios', href: '/relatorios', icon: FileText },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
