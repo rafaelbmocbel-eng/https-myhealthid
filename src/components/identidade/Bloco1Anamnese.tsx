@@ -154,6 +154,49 @@ export default function Bloco1Anamnese({ data, onChange, onNext }: Props) {
             <span>0h (ativo)</span><span>16h (muito sedentário)</span>
           </div>
         </div>
+
+        {/* Hábitos: cigarro, álcool, água */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t">
+          <div>
+            <Label className="mb-2 block">Tabagismo</Label>
+            <div className="flex items-center gap-3">
+              <Checkbox
+                id="tabagismo"
+                checked={localData.tabagismo}
+                onCheckedChange={v => update('tabagismo', !!v)}
+              />
+              <Label htmlFor="tabagismo" className="cursor-pointer text-sm">Fumante ativo</Label>
+            </div>
+          </div>
+
+          <div>
+            <Label>Consumo de álcool</Label>
+            <Select value={localData.alcool} onValueChange={v => update('alcool', v)}>
+              <SelectTrigger className="mt-1.5">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhum">Nenhum</SelectItem>
+                <SelectItem value="ocasional">Ocasional (&lt;1×/sem)</SelectItem>
+                <SelectItem value="moderado">Moderado (1-3×/sem)</SelectItem>
+                <SelectItem value="frequente">Frequente (&gt;3×/sem)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div>
+            <Label>Ingestão de água/dia: <strong>{localData.litrosAgua ?? 2}L</strong></Label>
+            <Slider
+              value={[localData.litrosAgua ?? 2]}
+              min={0} max={5} step={0.5}
+              onValueChange={([v]) => update('litrosAgua', v)}
+              className="mt-2"
+            />
+            <div className="flex justify-between text-xs text-muted-foreground mt-1">
+              <span>0L</span><span>5L+</span>
+            </div>
+          </div>
+        </div>
       </div>
 
       {/* Histórico médico */}

@@ -26,6 +26,7 @@ export interface Bloco1Data {
   qualidadeSono: number;
   tabagismo: boolean;
   alcool: string;
+  litrosAgua: number;
   impactoQualidadeVida: number;
   interferenciaTrbalho: number;
   quantidadeComorbidades: number;

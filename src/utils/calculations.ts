@@ -16,36 +16,48 @@ export function calcularScoreF(bloco1: Bloco1Data): number {
 }
 
 // CÁLCULO SCORE D – Dor Multidimensional (Bloco 2)
+// Implementado conforme Apostila Método Identidade v8.0
 export function calcularScoreD(bloco2: Bloco2Data): number {
   if (bloco2.regioes.length === 0) return 0;
 
+  const PESO_TIPO: Record<string, number> = {
+    'Ardor': 1.3,
+    'Queimação': 1.3,
+    'Dormência': 1.2,
+    'Pontada': 1.1,
+    'Rigidez': 0.9,
+    'Peso/Pressão': 1.0,
+    'Dor profunda': 1.0,
+  };
+
   let somaRegiao = 0;
+
   bloco2.regioes.forEach(regiao => {
-    let peso = regiao.intensidade;
-    if (regiao.irradiacao) peso *= 1.2;
-    if (regiao.frequencia === 'Contínua (24h)') peso *= 1.1;
-    if (regiao.frequencia === 'Noturna (afeta sono)') peso *= 1.05;
-    if (regiao.fatoresMelhora.length >= 3) peso /= 1.1;
-    somaRegiao += peso;
+    // Base: intensidade normalizada (0-1)
+    let dBase = regiao.intensidade / 10;
+
+    // Peso do tipo de dor: pegar o maior peso entre os tipos selecionados
+    let pesotTipo = 1.0;
+    if (regiao.tipos.length > 0) {
+      pesotTipo = Math.max(...regiao.tipos.map(t => PESO_TIPO[t] ?? 1.0));
+    }
+    let dRegiao = dBase * pesotTipo;
+
+    // Modificadores dinâmicos
+    if (regiao.irradiacao) dRegiao *= 1.2;
+    if (regiao.frequencia === 'Contínua (24h)') dRegiao *= 1.15;
+    else if (regiao.frequencia === 'Noturna (afeta sono)') dRegiao *= 1.1;
+    else if (regiao.frequencia === 'Ao movimento específico') dRegiao *= 0.95;
+
+    if (regiao.fatoresPiora && regiao.fatoresPiora.length >= 4) dRegiao *= 1.05;
+    if (regiao.fatoresMelhora && regiao.fatoresMelhora.length >= 3) dRegiao /= 1.1;
+
+    somaRegiao += dRegiao;
   });
 
-  const dRegioes = somaRegiao / bloco2.regioes.length;
-
-  // Tipos de dor
-  let dTipos = 0;
-  bloco2.regioes.forEach(regiao => {
-    const tiposGraves = ['Ardor', 'Queimação', 'Dormência'];
-    tiposGraves.forEach(t => {
-      if (regiao.tipos.includes(t)) dTipos += 0.3;
-    });
-    const tiposModerad = ['Pontada', 'Rigidez', 'Peso/Pressão', 'Dor profunda'];
-    tiposModerad.forEach(t => {
-      if (regiao.tipos.includes(t)) dTipos += 0.1;
-    });
-  });
-
-  const dFinal = (dRegioes + Math.min(dTipos, 10)) / 2;
-  return Math.min(10, dFinal);
+  // Média entre regiões (já normalizada 0-1 domain, × 10 para 0-10)
+  const dFinal = (somaRegiao / bloco2.regioes.length) * 10;
+  return Math.min(10, Math.max(0, Math.round(dFinal * 10) / 10));
 }
 
 // CÁLCULO SCORE EFI – Funcionalidade (Bloco 3)

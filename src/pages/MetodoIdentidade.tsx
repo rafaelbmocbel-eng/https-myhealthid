@@ -31,7 +31,7 @@ const defaultAvaliacao: AvaliacaoIdentidade = {
     queixaPrincipal: '', duracao: '', eventoPrecipitante: false, eventoPrecipitanteDescricao: '',
     historicoMedico: [], historicoFamiliar: false, historicoFamiliarDescricao: '',
     metasTerapeuticas: ['', '', ''], profissao: '', horasSedentario: 8, atividadeFisica: 'leve',
-    qualidadeSono: 5, tabagismo: false, alcool: 'nenhum',
+    qualidadeSono: 5, tabagismo: false, alcool: 'nenhum', litrosAgua: 2,
     impactoQualidadeVida: 5, interferenciaTrbalho: 5, quantidadeComorbidades: 2, historicoFamiliarPeso: 3,
     scoreF: 0,
   },
