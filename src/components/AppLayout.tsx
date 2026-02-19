@@ -38,8 +38,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Sidebar */}
       <div className={cn(
-        isMobile && !mobileOpen && '-translate-x-full',
-        isMobile && 'transition-transform duration-300'
+        isMobile ? 'fixed z-40 h-screen' : 'relative',
+        isMobile && !mobileOpen ? '-translate-x-full' : 'translate-x-0',
+        'transition-transform duration-300',
       )}>
         <AppSidebar
           collapsed={isMobile ? false : collapsed}
