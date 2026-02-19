@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -15,11 +15,12 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
-  Loader2, User, Activity, AlignCenter, CalendarDays,
+  Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
+import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 
 interface Paciente {
   id: string;
@@ -66,39 +67,33 @@ export default function Pacientes() {
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
+  const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
-  // Query pacientes
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('pacientes')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .eq('ativo', true)
-        .order('nome');
+        .from('pacientes').select('*')
+        .eq('terapeuta_id', user!.id).eq('ativo', true).order('nome');
       if (error) throw error;
       return data as Paciente[];
     },
     enabled: !!user,
   });
 
-  // Query serviços
   const { data: servicos = [] } = useQuery({
     queryKey: ['paciente_servicos', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('paciente_servicos')
-        .select('*')
-        .eq('ativo', true);
+      const { data, error } = await supabase.from('paciente_servicos').select('*').eq('ativo', true);
       if (error) throw error;
       return data as PacienteServico[];
     },
@@ -108,11 +103,7 @@ export default function Pacientes() {
   const getServicosForPaciente = (pid: string) =>
     servicos.filter(s => s.paciente_id === pid).map(s => s.servico);
 
-  const openNew = () => {
-    setForm(emptyForm);
-    setModal({ open: true });
-  };
-
+  const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
   const openEdit = (p: Paciente) => {
     setForm({
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
@@ -129,18 +120,12 @@ export default function Pacientes() {
     try {
       let pacienteId = modal.paciente?.id;
       const payload = {
-        nome: form.nome.trim(),
-        sobrenome: form.sobrenome.trim(),
-        email: form.email || null,
-        telefone: form.telefone || null,
-        data_nascimento: form.data_nascimento || null,
-        genero: form.genero || null,
-        cpf: form.cpf || null,
-        endereco: form.endereco || null,
-        observacoes: form.observacoes || null,
-        terapeuta_id: user!.id,
+        nome: form.nome.trim(), sobrenome: form.sobrenome.trim(),
+        email: form.email || null, telefone: form.telefone || null,
+        data_nascimento: form.data_nascimento || null, genero: form.genero || null,
+        cpf: form.cpf || null, endereco: form.endereco || null,
+        observacoes: form.observacoes || null, terapeuta_id: user!.id,
       };
-
       if (pacienteId) {
         await supabase.from('pacientes').update(payload).eq('id', pacienteId);
       } else {
@@ -148,15 +133,12 @@ export default function Pacientes() {
         if (error) throw error;
         pacienteId = data.id;
       }
-
-      // Update services: delete old ones for this paciente and insert new
       await supabase.from('paciente_servicos').delete().eq('paciente_id', pacienteId!);
       if (form.servicos.length > 0) {
         await supabase.from('paciente_servicos').insert(
           form.servicos.map(s => ({ paciente_id: pacienteId!, servico: s, ativo: true, data_inicio: new Date().toISOString().split('T')[0] }))
         );
       }
-
       qc.invalidateQueries({ queryKey: ['pacientes'] });
       qc.invalidateQueries({ queryKey: ['paciente_servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
@@ -182,13 +164,14 @@ export default function Pacientes() {
     }));
   };
 
-  // Filter
   const filtered = pacientes.filter(p => {
     const matchSearch = `${p.nome} ${p.sobrenome} ${p.email || ''} ${p.telefone || ''}`.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
     if (filterServico === 'todos') return true;
     return getServicosForPaciente(p.id).includes(filterServico);
   });
+
+  const getLinksForPaciente = (pid: string) => links.filter(l => l.paciente_id === pid);
 
   if (isLoading) return (
     <AppLayout>
@@ -221,17 +204,10 @@ export default function Pacientes() {
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar paciente..."
-              className="pl-9"
-              value={search}
-              onChange={e => setSearch(e.target.value)}
-            />
+            <Input placeholder="Buscar paciente..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
           <Select value={filterServico} onValueChange={setFilterServico}>
-            <SelectTrigger className="w-44">
-              <SelectValue />
-            </SelectTrigger>
+            <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
             <SelectContent>
               <SelectItem value="todos">Todos os serviços</SelectItem>
               {SERVICOS.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
@@ -239,7 +215,6 @@ export default function Pacientes() {
           </Select>
         </div>
 
-        {/* Patient list */}
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
@@ -250,25 +225,28 @@ export default function Pacientes() {
           <div className="grid gap-3">
             {filtered.map(p => {
               const pServicos = getServicosForPaciente(p.id);
+              const pLinks = getLinksForPaciente(p.id);
+              const linkAtivo = pLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+              const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
               return (
                 <div key={p.id} className="clinical-card flex items-center gap-4 p-4 hover:shadow-md transition-all">
-                  {/* Avatar */}
                   <div className="h-11 w-11 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                     {p.nome[0]}{p.sobrenome?.[0] || ''}
                   </div>
-
-                  {/* Info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-foreground">{p.nome} {p.sobrenome}</span>
                       {pServicos.map(s => {
                         const cfg = SERVICOS.find(x => x.key === s);
                         return cfg ? (
-                          <Badge key={s} variant="outline" className={cn('text-[10px] h-5', cfg.color)}>
-                            {cfg.label}
-                          </Badge>
+                          <Badge key={s} variant="outline" className={cn('text-[10px] h-5', cfg.color)}>{cfg.label}</Badge>
                         ) : null;
                       })}
+                      {linkAtivo && (
+                        <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                          <Link2 className="h-2.5 w-2.5" /> Link ativo · {diasRestantes}d
+                        </Badge>
+                      )}
                     </div>
                     <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
                       {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
@@ -285,9 +263,15 @@ export default function Pacientes() {
                       </span>
                     </div>
                   </div>
-
-                  {/* Actions */}
                   <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 text-xs gap-1"
+                      onClick={() => setLinkModal({ open: true, paciente: p })}
+                    >
+                      <Link2 className="h-3 w-3" /> Link
+                    </Button>
                     <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
                       <Edit2 className="h-3.5 w-3.5" />
                     </Button>
@@ -302,7 +286,7 @@ export default function Pacientes() {
         )}
       </div>
 
-      {/* Modal */}
+      {/* Modal Paciente */}
       <Dialog open={modal.open} onOpenChange={o => setModal({ open: o })}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
@@ -319,12 +303,10 @@ export default function Pacientes() {
                 <Input placeholder="Silva" value={form.sobrenome} onChange={e => setForm(f => ({ ...f, sobrenome: e.target.value }))} />
               </div>
             </div>
-
             <div className="space-y-1">
               <Label>E-mail</Label>
               <Input type="email" placeholder="maria@email.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} />
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Telefone</Label>
@@ -335,7 +317,6 @@ export default function Pacientes() {
                 <Input type="date" value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
               </div>
             </div>
-
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Gênero</Label>
@@ -353,34 +334,125 @@ export default function Pacientes() {
                 <Input placeholder="123.456.789-00" value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} />
               </div>
             </div>
-
             <div className="space-y-1">
               <Label>Observações</Label>
               <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
             </div>
-
-            {/* Serviços */}
             <div className="space-y-2">
               <Label>Serviços</Label>
               <div className="space-y-2">
                 {SERVICOS.map(s => (
                   <label key={s.key} className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/20 transition-colors">
-                    <Checkbox
-                      checked={form.servicos.includes(s.key)}
-                      onCheckedChange={() => toggleServico(s.key)}
-                    />
+                    <Checkbox checked={form.servicos.includes(s.key)} onCheckedChange={() => toggleServico(s.key)} />
                     <span className="text-sm font-medium">{s.label}</span>
                   </label>
                 ))}
               </div>
             </div>
-
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
               <Button className="flex-1 bg-gradient-primary text-white" onClick={handleSave} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
             </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Link de Avaliação */}
+      <Dialog open={linkModal.open} onOpenChange={o => setLinkModal({ open: o })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Link2 className="h-4 w-4 text-primary" />
+              Link de Avaliação — {linkModal.paciente?.nome} {linkModal.paciente?.sobrenome}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <p className="text-sm text-muted-foreground">
+              Gere um link para que o paciente preencha os 5 primeiros blocos da avaliação. Válido por <strong>30 dias</strong>.
+            </p>
+
+            {linkModal.paciente && (() => {
+              const pac = linkModal.paciente!;
+              const pacLinks = getLinksForPaciente(pac.id);
+              const linkAtivo = pacLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+              return (
+                <>
+                  {linkAtivo ? (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg bg-emerald-50 border border-emerald-200">
+                        <div className="flex items-center gap-2 mb-2">
+                          <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                          <span className="text-xs font-semibold text-emerald-700">Link ativo</span>
+                          <span className="text-xs text-emerald-600 ml-auto">
+                            {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias restantes
+                          </span>
+                        </div>
+                        <div className="text-xs font-mono text-muted-foreground break-all bg-card rounded p-2">
+                          {getLinkUrl(linkAtivo.token)}
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <Button
+                          className="flex-1 gap-2"
+                          onClick={() => copiarLink(linkAtivo.token)}
+                        >
+                          <Copy className="h-3.5 w-3.5" /> Copiar Link
+                        </Button>
+                        <Button
+                          variant="outline"
+                          className="gap-2"
+                          onClick={async () => {
+                            await cancelarLink(linkAtivo.id);
+                            const novo = await gerarLink(pac.id);
+                          }}
+                          disabled={gerando}
+                        >
+                          {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+                          Renovar
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        {linkAtivo.acessos_totais} acesso(s) registrado(s)
+                        {linkAtivo.data_ultimo_acesso && ` · Último: ${format(parseISO(linkAtivo.data_ultimo_acesso), 'dd/MM/yyyy HH:mm', { locale: ptBR })}`}
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className="p-3 rounded-lg bg-muted/50 border border-dashed text-center text-sm text-muted-foreground">
+                        Nenhum link ativo para este paciente
+                      </div>
+                      <Button
+                        className="w-full bg-gradient-primary text-white gap-2"
+                        onClick={async () => {
+                          const novo = await gerarLink(pac.id);
+                          if (novo) copiarLink(novo.token);
+                        }}
+                        disabled={gerando}
+                      >
+                        {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
+                        Gerar Link de Avaliação
+                      </Button>
+                    </div>
+                  )}
+
+                  {pacLinks.filter(l => l.status !== 'ativo').length > 0 && (
+                    <div className="pt-2 border-t">
+                      <p className="text-xs font-semibold text-muted-foreground mb-2">Histórico de links</p>
+                      <div className="space-y-1">
+                        {pacLinks.filter(l => l.status !== 'ativo').slice(0, 3).map(l => (
+                          <div key={l.id} className="flex items-center justify-between text-xs text-muted-foreground">
+                            <span>{format(parseISO(l.data_criacao), 'dd/MM/yyyy', { locale: ptBR })}</span>
+                            <Badge variant="outline" className="text-[10px] h-4">{l.status}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
           </div>
         </DialogContent>
       </Dialog>

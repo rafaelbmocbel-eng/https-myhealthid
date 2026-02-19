@@ -7,9 +7,13 @@ import CobEtapaLenke from '@/components/cobzero/CobEtapaLenke';
 import CobEtapaUnidades from '@/components/cobzero/CobEtapaUnidades';
 import CobEtapaPrograma from '@/components/cobzero/CobEtapaPrograma';
 import RelatorioCobZero from '@/components/cobzero/RelatorioCobZero';
-import { CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3 } from 'lucide-react';
+import { CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3, Users, Search, ChevronRight, Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
+import { Input } from '@/components/ui/input';
+import { usePacientes } from '@/hooks/usePacientes';
+import { Navigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const etapas = [
   { id: 1, label: 'Dados Básicos', sublabel: 'Queixa & História', icon: ClipboardList, time: '5 min' },
@@ -59,10 +63,21 @@ const defaultAvaliacao: AvaliacaoCobZero = {
   concluido: false,
 };
 
+const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoCobZero => ({
+  ...defaultAvaliacao,
+  pacienteNome,
+});
+
 export default function CobZero() {
+  const { user, loading: authLoading } = useAuth();
+  const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
+  const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
+  const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoCobZero>(defaultAvaliacao);
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [etapasConcluidas, setEtapasConcluidas] = useState<Set<number>>(new Set());
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const updateEtapa = (key: keyof AvaliacaoCobZero, data: any) => {
     setAvaliacao(prev => ({ ...prev, [key]: data }));
@@ -83,11 +98,74 @@ export default function CobZero() {
   };
 
   const progresso = (etapasConcluidas.size / 5) * 100;
+  const filteredPac = pacientes.filter(p =>
+    `${p.nome} ${p.sobrenome}`.toLowerCase().includes(searchPac.toLowerCase())
+  );
+  const handleSelectPaciente = (pac: typeof pacientes[0]) => {
+    setSelectedPacienteId(pac.id);
+    setAvaliacao({ ...defaultAvaliacao, pacienteNome: `${pac.nome} ${pac.sobrenome}` });
+    setEtapasConcluidas(new Set());
+    setShowRelatorio(false);
+  };
 
   if (showRelatorio) {
     return (
       <AppLayout>
         <RelatorioCobZero avaliacao={avaliacao} onBack={() => setShowRelatorio(false)} />
+      </AppLayout>
+    );
+  }
+
+  if (!selectedPacienteId) {
+    return (
+      <AppLayout>
+        <div className="container py-8 max-w-3xl">
+          <div className="flex items-center gap-3 mb-6">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg">
+              <AlignCenter className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">COB° ZERO</h1>
+              <p className="text-muted-foreground text-sm">Selecione o paciente para iniciar o protocolo</p>
+            </div>
+          </div>
+          <div className="clinical-card">
+            <div className="flex items-center gap-3 mb-4">
+              <Users className="h-4 w-4 text-muted-foreground" />
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pacientes — COB° ZERO</h3>
+            </div>
+            <div className="relative mb-4">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar paciente..." className="pl-9" value={searchPac} onChange={e => setSearchPac(e.target.value)} />
+            </div>
+            {loadingPacientes ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : filteredPac.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground">
+                <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="font-medium">Nenhum paciente com COB° ZERO ativo</p>
+                <p className="text-sm mt-1">Cadastre pacientes em <strong>Pacientes</strong> e ative o serviço.</p>
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {filteredPac.map(p => (
+                  <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border hover:border-blue-300 hover:bg-blue-50/50 transition-all group">
+                    <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                      {p.nome[0]}{p.sobrenome?.[0] || ''}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
+                      <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
+                    </div>
+                    <Button size="sm" className="h-8 text-xs bg-blue-600 hover:bg-blue-700 text-white gap-1" onClick={() => handleSelectPaciente(p)}>
+                      Iniciar <ChevronRight className="h-3 w-3" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </AppLayout>
     );
   }
@@ -105,6 +183,9 @@ export default function CobZero() {
               <h1 className="text-2xl font-bold text-foreground">COB° ZERO</h1>
               <p className="text-muted-foreground text-sm">Protocolo Integrado de Escoliose | {avaliacao.dataAvaliacao}</p>
             </div>
+            <Button variant="outline" size="sm" className="ml-auto text-xs" onClick={() => setSelectedPacienteId(null)}>
+              <Users className="h-3.5 w-3.5 mr-1" /> Trocar paciente
+            </Button>
           </div>
           <div className="flex items-center gap-4 mt-4">
             <div className="flex-1">
