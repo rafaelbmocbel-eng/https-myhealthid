@@ -17,6 +17,7 @@ import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import { usePacientes } from '@/hooks/usePacientes';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 
 import { getAvaliacaoUrl as getLinkUrl, getAgendaUrl } from '@/utils/linkUrls';
 
@@ -156,16 +157,14 @@ function TodosOsLinks() {
   const whatsApp = (pacienteId: string, url: string, tipo: 'avaliacao' | 'agenda') => {
     const paciente = allPacientes.find(p => p.id === pacienteId);
     if (!paciente?.telefone) {
-      toast({ title: 'Paciente sem telefone', description: 'Cadastre o telefone primeiro.', variant: 'destructive' });
+      toast({ title: 'Paciente sem telefone cadastrado', variant: 'destructive' });
       return;
     }
-    const nome = `${paciente.nome} ${paciente.sobrenome}`;
-    const msg = tipo === 'avaliacao'
-      ? `Olá ${nome}! 👋\n\n📋 Seu terapeuta enviou um questionário de avaliação para você preencher antes da próxima sessão.\n\nLeva cerca de 30-40 minutos e pode ser feito de onde estiver.\n\n🔗 Link: ${url}`
-      : `Olá ${nome}! 👋\n\n📅 Aqui está seu link personalizado para agendar suas sessões de fisioterapia.\n\n🔗 Link: ${url}`;
-    const phone = paciente.telefone.replace(/\D/g, '');
-    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
-    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    if (tipo === 'avaliacao') {
+      shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, url);
+    } else {
+      shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, url);
+    }
   };
 
   const enviarEmail = async (linkId: string, pacienteId: string, url: string, tipo: 'avaliacao' | 'agenda') => {

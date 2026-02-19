@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { getAvaliacaoUrl } from '@/utils/linkUrls';
+import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -97,10 +98,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
       toast({ title: 'Sem telefone cadastrado', variant: 'destructive' });
       return;
     }
-    const phone = paciente.telefone.replace(/\D/g, '');
-    const fullPhone = phone.startsWith('55') ? phone : `55${phone}`;
-    const msg = `Olá ${paciente.nome}! 👋\n\n📋 Seu terapeuta enviou um questionário de avaliação. Leva cerca de 30-40 min.\n\n🔗 ${getLinkUrl(token)}`;
-    window.open(`https://wa.me/${fullPhone}?text=${encodeURIComponent(msg)}`, '_blank');
+    shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getLinkUrl(token));
   };
 
   // Dados para gráfico de linha (evolução Cobb + Risco)

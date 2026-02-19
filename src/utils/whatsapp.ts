@@ -18,15 +18,20 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
   }
 
   const encodedMessage = encodeURIComponent(fullMessage);
+  // Use wa.me which works on both mobile and desktop
   const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
   
-  // Use window.location.href as primary method to avoid popup blockers
-  // window.open can be blocked on many mobile browsers
-  const newWindow = window.open(whatsappUrl, '_blank');
-  if (!newWindow || newWindow.closed || typeof newWindow.closed === 'undefined') {
-    // Fallback: navigate directly if popup was blocked
-    window.location.href = whatsappUrl;
-  }
+  // Open in a new tab/window - use _blank with noopener for security
+  // On desktop, wa.me redirects to web.whatsapp.com or api.whatsapp.com
+  // Some browsers/iframes block api.whatsapp.com, so we use a link element click
+  // as a more reliable method than window.open
+  const link = document.createElement('a');
+  link.href = whatsappUrl;
+  link.target = '_blank';
+  link.rel = 'noopener noreferrer';
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
 }
 
 export function shareAgendaLink(patientName: string, patientPhone: string, agendaUrl: string) {
