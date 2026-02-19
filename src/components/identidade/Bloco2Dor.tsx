@@ -9,25 +9,13 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ChevronRight, ChevronLeft, X, MapPin, Info } from 'lucide-react';
-
-const REGIOES_CORPO = [
-  { id: 'cabeca', nome: 'Cabeça', cx: 150, cy: 45, r: 30 },
-  { id: 'pescoco', nome: 'Pescoço', cx: 150, cy: 90, r: 14 },
-  { id: 'ombroDireito', nome: 'Ombro Direito', cx: 100, cy: 120, r: 20 },
-  { id: 'ombroEsquerdo', nome: 'Ombro Esquerdo', cx: 200, cy: 120, r: 20 },
-  { id: 'colunaToracica', nome: 'Coluna Torácica', cx: 150, cy: 165, r: 22 },
-  { id: 'colunaLombar', nome: 'Coluna Lombar', cx: 150, cy: 225, r: 22 },
-  { id: 'sacroPelvica', nome: 'Sacro-Pélvica', cx: 150, cy: 270, r: 22 },
-  { id: 'coxaDireita', nome: 'Coxa Direita', cx: 120, cy: 340, r: 22 },
-  { id: 'coxaEsquerda', nome: 'Coxa Esquerda', cx: 180, cy: 340, r: 22 },
-  { id: 'pernaDireita', nome: 'Perna/Pé Direito', cx: 115, cy: 430, r: 20 },
-  { id: 'pernaEsquerda', nome: 'Perna/Pé Esquerdo', cx: 185, cy: 430, r: 20 },
-];
+import { BodyAvatarSVG, REGIOES_CORPO } from './BodyAvatarSVG';
 
 const TIPOS_DOR = ['Ardor', 'Queimação', 'Dormência', 'Rigidez', 'Peso/Pressão', 'Pontada', 'Dor profunda'];
 const FREQUENCIAS = ['Contínua (24h)', 'Intermitente', 'Noturna (afeta sono)', 'Ao movimento específico'];
-const FATORES_PIORA = ['Movimento específico', 'Posição prolongada', 'Clima/umidade', 'Stress/emocional', 'Menstruação', 'Outro'];
-const FATORES_MELHORA = ['Repouso', 'Movimento', 'Calor/frio', 'Medicação', 'Fisioterapia', 'Outro'];
+const FATORES_PIORA = ['Movimento específico', 'Posição prolongada', 'Clima/umidade', 'Stress/emocional', 'Menstruação', 'Atividade ocupacional', 'Fadiga', 'Sono inadequado'];
+const FATORES_MELHORA = ['Repouso', 'Movimento', 'Calor/frio', 'Medicação', 'Fisioterapia', 'Alongamento', 'Outro'];
+
 
 interface Props {
   data: Bloco2Data;
@@ -72,13 +60,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
     onChange({ regioes: newRegioes, scoreD });
   };
 
-  const getRegiaoCor = (id: string) => {
-    const r = regioes.find(r => r.id === id);
-    if (!r) return '#e8f4f8';
-    if (r.intensidade >= 6) return '#e74c3c';
-    if (r.intensidade >= 1) return '#f39c12';
-    return '#e8f4f8';
-  };
+
 
   const scoreD = calcularScoreD({ regioes, scoreD: 0 });
   const modalRegiaoDor = modalRegiao ? getRegiaoDor(modalRegiao) : null;
@@ -106,63 +88,37 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Avatar SVG */}
         <div className="clinical-card">
-          <h3 className="font-semibold text-sm mb-4">Avatar Corporal Interativo</h3>
+          <h3 className="font-semibold text-sm mb-3">Avatar Corporal Interativo</h3>
           <div className="flex flex-col items-center">
             <div className="text-xs text-muted-foreground mb-2 flex items-center gap-1">
               <MapPin className="h-3 w-3" />
-              Clique nas regiões para adicionar/editar dor
+              Clique nas regiões para mapear dor
             </div>
-            <svg viewBox="0 0 300 490" className="w-48 h-auto" style={{ maxHeight: 420 }}>
-              {/* Corpo base */}
-              <ellipse cx="150" cy="45" rx="28" ry="28" fill="#f0f0f0" stroke="#ddd" strokeWidth="1.5" />
-              <rect x="120" y="85" width="60" height="10" rx="5" fill="#f0f0f0" stroke="#ddd" strokeWidth="1" />
-              <ellipse cx="150" cy="175" rx="55" ry="90" fill="#f0f0f0" stroke="#ddd" strokeWidth="1.5" />
-              <ellipse cx="150" cy="285" rx="50" ry="50" fill="#f0f0f0" stroke="#ddd" strokeWidth="1.5" />
-              <ellipse cx="118" cy="370" rx="22" ry="60" fill="#f0f0f0" stroke="#ddd" strokeWidth="1.5" />
-              <ellipse cx="182" cy="370" rx="22" ry="60" fill="#f0f0f0" stroke="#ddd" strokeWidth="1.5" />
 
-              {/* Regiões clicáveis */}
-              {REGIOES_CORPO.map(regiao => (
-                <circle
-                  key={regiao.id}
-                  cx={regiao.cx} cy={regiao.cy} r={regiao.r}
-                  fill={getRegiaoCor(regiao.id)}
-                  stroke={regioes.find(r => r.id === regiao.id) ? '#666' : '#ccc'}
-                  strokeWidth={regioes.find(r => r.id === regiao.id) ? 2 : 1}
-                  className="body-region cursor-pointer transition-all hover:opacity-80"
-                  onClick={() => setModalRegiao(regiao.id)}
-                  opacity={0.85}
-                />
-              ))}
-
-              {/* Labels */}
-              {REGIOES_CORPO.map(regiao => (
-                <text
-                  key={`label-${regiao.id}`}
-                  x={regiao.cx} y={regiao.cy + 1}
-                  textAnchor="middle" dominantBaseline="middle"
-                  fontSize="6" fill="#333" fontWeight="500"
-                  className="pointer-events-none select-none"
-                  style={{ fontSize: '6px' }}
-                >
-                  {regioes.find(r => r.id === regiao.id) ? regioes.find(r => r.id === regiao.id)?.intensidade : ''}
-                </text>
-              ))}
-            </svg>
+            <BodyAvatarSVG
+              mode="pain"
+              painMap={Object.fromEntries(regioes.map(r => [r.id, r.intensidade]))}
+              onRegionClick={(regionId) => setModalRegiao(regionId)}
+              className="w-44"
+            />
 
             {/* Legenda */}
-            <div className="flex items-center gap-4 mt-3 text-xs">
+            <div className="flex flex-wrap items-center gap-3 mt-3 text-xs">
               <div className="flex items-center gap-1.5">
                 <div className="w-3 h-3 rounded-full bg-[#e8f4f8] border border-gray-300"></div>
                 <span>Normal</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#f39c12]"></div>
-                <span>1-5</span>
+                <div className="w-3 h-3 rounded-full bg-[#fef3c7] border border-amber-200"></div>
+                <span>1-3</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <div className="w-3 h-3 rounded-full bg-[#e74c3c]"></div>
-                <span>6-10</span>
+                <div className="w-3 h-3 rounded-full bg-[#f97316]"></div>
+                <span>4-7</span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <div className="w-3 h-3 rounded-full bg-[#ef4444]"></div>
+                <span>8-10</span>
               </div>
             </div>
           </div>
