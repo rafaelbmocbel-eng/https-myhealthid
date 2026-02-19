@@ -11,7 +11,7 @@ import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
 import { calcularIDFinal } from '@/utils/calculations';
 import {
   CheckCircle2, Circle, ClipboardList, HeartPulse, Activity, Brain,
-  Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, RefreshCw,
+  Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -19,8 +19,8 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { differenceInDays, parseISO, format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
+import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { cn } from '@/lib/utils';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -205,8 +205,23 @@ export default function MetodoIdentidade() {
                           disabled={gerando}
                         >
                           {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                          {linkAtivo ? 'Copiar link' : 'Gerar link'}
+                          {linkAtivo ? 'Copiar' : 'Gerar link'}
                         </Button>
+                        {(linkAtivo && p.telefone) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-8 text-xs gap-1 border-green-500 text-green-600 hover:bg-green-50"
+                            onClick={async (e) => {
+                              e.stopPropagation();
+                              const url = getLinkUrl(linkAtivo.token);
+                              shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, url);
+                            }}
+                            title="Enviar link por WhatsApp"
+                          >
+                            <MessageCircle className="h-3 w-3" />
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           className="h-8 text-xs bg-gradient-primary text-white gap-1"
