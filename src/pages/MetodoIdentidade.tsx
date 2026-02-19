@@ -8,11 +8,11 @@ import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
 import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
 import Bloco6Estrutural from '@/components/identidade/Bloco6Estrutural';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
+import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import { calcularIDFinal } from '@/utils/calculations';
 import {
   CheckCircle2, Circle, ClipboardList, HeartPulse, Activity, Brain,
   Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
-  History, ChevronDown, ChevronUp, Trash2,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -20,9 +20,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
-import { differenceInDays, format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { cn } from '@/lib/utils';
 import { Navigate } from 'react-router-dom';
@@ -70,16 +68,14 @@ const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoIdentidade =>
 export default function MetodoIdentidade() {
   const { user, loading: authLoading } = useAuth();
   const { pacientes, isLoading: loadingPacientes } = usePacientes('metodo_identidade');
-  const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
-  const { avaliacoes: avaliacoesSalvas, isLoading: loadingAvaliacoes, deletar: deletarAvaliacao } = useAvaliacoesIdentidade();
+  const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
 
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
+  const [showDashboard, setShowDashboard] = useState(false);
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoIdentidade>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
-  const [showLinkPanel, setShowLinkPanel] = useState(false);
-  const [expandedAvaliacaoId, setExpandedAvaliacaoId] = useState<string | null>(null);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -91,12 +87,20 @@ export default function MetodoIdentidade() {
   const getLinkAtivo = (pid: string) =>
     links.find(l => l.paciente_id === pid && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
 
+  // Abre o dashboard do paciente
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
     setSelectedPacienteId(pac.id);
-    setAvaliacao(makeDefaultAvaliacao(`${pac.nome} ${pac.sobrenome}`));
-    setBlocosConcluidos(new Set());
+    setShowDashboard(true);
     setShowRelatorio(false);
-    setShowLinkPanel(false);
+  };
+
+  // Inicia avaliação a partir do dashboard
+  const handleIniciarAvaliacao = () => {
+    if (!selectedPaciente) return;
+    setAvaliacao(makeDefaultAvaliacao(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`));
+    setBlocosConcluidos(new Set());
+    setShowDashboard(false);
+    setShowRelatorio(false);
   };
 
   const updateBloco = useCallback((blocoKey: keyof AvaliacaoIdentidade, data: any) => {
@@ -127,12 +131,31 @@ export default function MetodoIdentidade() {
   if (showRelatorio) {
     return (
       <AppLayout>
-        <RelatorioIdentidade avaliacao={avaliacao} pacienteId={selectedPacienteId || undefined} onBack={() => setShowRelatorio(false)} />
+        <RelatorioIdentidade avaliacao={avaliacao} pacienteId={selectedPacienteId || undefined} onBack={() => {
+          setShowRelatorio(false);
+          if (showDashboard || selectedPacienteId) setShowDashboard(true);
+        }} />
       </AppLayout>
     );
   }
 
-  // Patient selection screen
+  // Dashboard do paciente selecionado
+  if (selectedPacienteId && showDashboard && selectedPaciente) {
+    return (
+      <AppLayout>
+        <div className="container py-8 max-w-3xl">
+          <PacienteDashboardIdentidade
+            paciente={selectedPaciente}
+            onBack={() => { setSelectedPacienteId(null); setShowDashboard(false); }}
+            onIniciarAvaliacao={handleIniciarAvaliacao}
+            onVerRelatorio={(av) => { setAvaliacao(av); setShowRelatorio(true); }}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
+  // Tela de seleção de paciente
   if (!selectedPacienteId) {
     return (
       <AppLayout>
@@ -143,7 +166,7 @@ export default function MetodoIdentidade() {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground">Método Identidade</h1>
-              <p className="text-muted-foreground text-sm">Selecione o paciente para iniciar a avaliação</p>
+              <p className="text-muted-foreground text-sm">Selecione o paciente para ver o dashboard ou iniciar avaliação</p>
             </div>
           </div>
 
@@ -178,7 +201,11 @@ export default function MetodoIdentidade() {
                   const linkAtivo = getLinkAtivo(p.id);
                   const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
                   return (
-                    <div key={p.id} className="flex items-center gap-3 p-3 rounded-xl border hover:border-primary/30 hover:bg-accent/20 transition-all group">
+                    <div
+                      key={p.id}
+                      className="flex items-center gap-3 p-3 rounded-xl border hover:border-primary/30 hover:bg-accent/20 transition-all cursor-pointer"
+                      onClick={() => handleSelectPaciente(p)}
+                    >
                       <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                         {p.nome[0]}{p.sobrenome?.[0] || ''}
                       </div>
@@ -193,36 +220,26 @@ export default function MetodoIdentidade() {
                         </div>
                         <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
                         <Button
                           variant="outline"
                           size="sm"
                           className="h-8 text-xs gap-1"
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            if (linkAtivo) {
-                              copiarLink(linkAtivo.token);
-                            } else {
-                              const novo = await gerarLink(p.id);
-                              if (novo) copiarLink(novo.token);
-                            }
+                          onClick={async () => {
+                            if (linkAtivo) copiarLink(linkAtivo.token);
+                            else { const novo = await gerarLink(p.id); if (novo) copiarLink(novo.token); }
                           }}
                           disabled={gerando}
                         >
                           {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
                           {linkAtivo ? 'Copiar' : 'Gerar link'}
                         </Button>
-                        {(linkAtivo && p.telefone) && (
+                        {linkAtivo && p.telefone && (
                           <Button
                             variant="outline"
                             size="sm"
                             className="h-8 text-xs gap-1 border-green-500 text-green-600 hover:bg-green-50"
-                            onClick={async (e) => {
-                              e.stopPropagation();
-                              const url = getLinkUrl(linkAtivo.token);
-                              shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, url);
-                            }}
-                            title="Enviar link por WhatsApp"
+                            onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))}
                           >
                             <MessageCircle className="h-3 w-3" />
                           </Button>
@@ -232,7 +249,7 @@ export default function MetodoIdentidade() {
                           className="h-8 text-xs bg-gradient-primary text-white gap-1"
                           onClick={() => handleSelectPaciente(p)}
                         >
-                          Avaliar <ChevronRight className="h-3 w-3" />
+                          Abrir <ChevronRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -241,86 +258,6 @@ export default function MetodoIdentidade() {
               </div>
             )}
           </div>
-
-          {/* Histórico de avaliações salvas */}
-          {avaliacoesSalvas.length > 0 && (
-            <div className="clinical-card mt-4">
-              <div className="flex items-center gap-3 mb-4">
-                <History className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Histórico de Avaliações</h3>
-              </div>
-              <div className="space-y-2">
-                {avaliacoesSalvas.map((av: any) => (
-                  <div key={av.id} className="border rounded-xl overflow-hidden">
-                    <div
-                      className="flex items-center gap-3 p-3 hover:bg-accent/20 transition-all cursor-pointer"
-                      onClick={() => setExpandedAvaliacaoId(expandedAvaliacaoId === av.id ? null : av.id)}
-                    >
-                      <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-primary-foreground font-bold text-sm">
-                        {av.paciente_nome?.[0] || '?'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="font-semibold text-sm text-foreground">{av.paciente_nome}</span>
-                          {av.classificacao && (
-                            <Badge variant="outline" className="text-[10px] h-4">{av.classificacao}</Badge>
-                          )}
-                        </div>
-                        <p className="text-xs text-muted-foreground">
-                          {av.data_avaliacao} · ID: {av.id_final?.toFixed(1)}/50
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                          onClick={(e) => { e.stopPropagation(); deletarAvaliacao(av.id); }}
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                        {expandedAvaliacaoId === av.id ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                      </div>
-                    </div>
-                    {expandedAvaliacaoId === av.id && (
-                      <div className="px-4 pb-3 border-t bg-muted/30">
-                        <div className="grid grid-cols-4 gap-3 pt-3 text-center">
-                          {[
-                            { label: 'E', value: av.score_e },
-                            { label: 'P', value: av.score_p },
-                            { label: 'C', value: av.score_c },
-                            { label: 'D', value: av.score_d },
-                            { label: 'F', value: av.score_f },
-                            { label: 'R', value: av.score_r },
-                            { label: 'EFI', value: av.score_efi },
-                          ].map(s => (
-                            <div key={s.label} className="bg-background rounded-lg p-2">
-                              <div className="text-xs text-muted-foreground">{s.label}</div>
-                              <div className="font-bold text-sm text-foreground">{s.value?.toFixed(1) ?? '–'}</div>
-                            </div>
-                          ))}
-                        </div>
-                        <Button
-                          size="sm"
-                          className="w-full mt-3 bg-gradient-primary text-primary-foreground text-xs"
-                          onClick={() => {
-                            const pac = pacientes.find(p => p.id === av.paciente_id);
-                            if (pac) {
-                              setSelectedPacienteId(pac.id);
-                              setAvaliacao(av.dados_avaliacao as AvaliacaoIdentidade);
-                              setShowRelatorio(true);
-                            }
-                          }}
-                        >
-                          Ver relatório completo
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </div>
       </AppLayout>
     );
