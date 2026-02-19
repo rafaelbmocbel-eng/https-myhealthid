@@ -792,7 +792,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
     }
     Enums: {
       [_ in never]: never
