@@ -24,7 +24,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     return () => window.removeEventListener('resize', check);
   }, []);
 
-  const sidebarW = collapsed ? 72 : 256;
+  const sidebarW = (collapsed || isMobile) ? 72 : 256;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -43,7 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         'transition-transform duration-300',
       )}>
         <AppSidebar
-          collapsed={isMobile ? false : collapsed}
+          collapsed={isMobile ? true : collapsed}
           onToggle={() => isMobile ? setMobileOpen(false) : setCollapsed(c => !c)}
         />
       </div>
