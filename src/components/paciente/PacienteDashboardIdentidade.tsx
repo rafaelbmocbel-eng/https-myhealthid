@@ -17,6 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
 } from 'recharts';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import QuestionariosComparacao from './QuestionariosComparacao';
 
 interface Paciente {
   id: string;
@@ -129,9 +130,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     ID: Number((av.id_final || 0).toFixed(1)),
   }));
 
-  // Respostas agrupadas por link
-  const respostasAgrupadas = linksAvPaciente.filter(l => respostas.some(r => r.link_id === l.id));
-  const BLOCOS = ['Anamnese', 'Dor', 'Funcionalidade', 'Cinesiofobia', 'Regulação'];
+  // Respostas agrupadas moved to QuestionariosComparacao component
 
   return (
     <div className="space-y-6">
@@ -205,7 +204,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
             <BarChart3 className="h-4 w-4" /> Avaliações Salvas {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="h-4 w-4" /> Questionários Remotos {respostasAgrupadas.length > 0 && `(${respostasAgrupadas.length})`}
+            <FileText className="h-4 w-4" /> Questionários Remotos {respostas.length > 0 && `(${respostas.length})`}
           </TabsTrigger>
           {evolucaoData.length >= 2 && (
             <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -306,59 +305,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
 
         {/* Aba: Questionários Remotos */}
         <TabsContent value="respostas" className="mt-4">
-          {respostasAgrupadas.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
-              <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Nenhum questionário recebido</p>
-              <p className="text-sm mt-1">Gere e envie um link de avaliação para este paciente.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {respostasAgrupadas.map(link => {
-                const respostasLink = respostas.filter(r => r.link_id === link.id);
-                const blocosRecebidos = [...new Set(respostasLink.map(r => r.bloco_numero))].sort();
-                const completo = blocosRecebidos.length === 5;
-                const todosScores: Record<string, number> = {};
-                blocosRecebidos.forEach(bn => {
-                  const resp = respostasLink.filter(r => r.bloco_numero === bn).sort((a, b) => (b.numero_tentativa || 1) - (a.numero_tentativa || 1))[0];
-                  if (resp?.dados_respostas) {
-                    const d = resp.dados_respostas as Record<string, any>;
-                    Object.entries(d).filter(([k]) => k.startsWith('score')).forEach(([k, v]) => { if (typeof v === 'number') todosScores[k] = v; });
-                  }
-                });
-                return (
-                  <div key={link.id} className="border rounded-xl overflow-hidden">
-                    <div className="p-3 flex items-center gap-3">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-sm font-semibold">
-                            {link.data_ultimo_acesso ? format(parseISO(link.data_ultimo_acesso), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR }) : format(parseISO(link.created_at!), 'dd/MM/yyyy', { locale: ptBR })}
-                          </span>
-                          {completo && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px]">Completo</Badge>}
-                        </div>
-                        <div className="flex gap-1 mt-1.5">
-                          {[1, 2, 3, 4, 5].map(n => (
-                            <div key={n} className={`h-1.5 flex-1 rounded-sm ${blocosRecebidos.includes(n) ? 'bg-emerald-500' : 'bg-muted'}`} title={BLOCOS[n - 1]} />
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                    {Object.keys(todosScores).length > 0 && (
-                      <div className="border-t px-3 pb-3">
-                        <div className="flex gap-2 flex-wrap mt-2">
-                          {Object.entries(todosScores).map(([k, v]) => (
-                            <span key={k} className="bg-primary/10 text-primary px-2 py-0.5 rounded-full text-xs font-bold">
-                              {k.replace('score', '').toUpperCase()}: {v.toFixed(1)}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
+          <QuestionariosComparacao linksAvPaciente={linksAvPaciente} respostas={respostas} />
         </TabsContent>
 
         {/* Aba: Evolução */}
