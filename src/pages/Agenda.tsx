@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -23,7 +23,7 @@ import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
-type ViewMode = 'dia' | 'semana';
+type ViewMode = 'dia' | 'semana' | 'mes';
 
 // Slot duration in minutes
 const SLOT_MINUTES = 45;
@@ -149,6 +149,23 @@ export default function Agenda() {
   const [newPacNome, setNewPacNome] = useState('');
   const [newPacEmail, setNewPacEmail] = useState('');
   const [newPacTel, setNewPacTel] = useState('');
+  const [nowMinutes, setNowMinutes] = useState(() => getHours(new Date()) * 60 + getMinutes(new Date()));
+  const gridRef = useRef<HTMLDivElement>(null);
+
+  // Current time indicator update
+  useEffect(() => {
+    const tick = () => setNowMinutes(getHours(new Date()) * 60 + getMinutes(new Date()));
+    const id = setInterval(tick, 60000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Auto-scroll to current time on day/week view
+  useEffect(() => {
+    if (viewMode !== 'mes' && gridRef.current) {
+      const top = ((nowMinutes - startHour * 60) / SLOT_MINUTES) * SLOT_HEIGHT - 100;
+      gridRef.current.scrollTop = Math.max(0, top);
+    }
+  }, [viewMode]);
 
   const [form, setForm] = useState<FormData>({
     paciente_id: '', titulo: '',
@@ -166,13 +183,26 @@ export default function Agenda() {
   // Days in view
   const getDays = (): Date[] => {
     if (viewMode === 'dia') return [currentDate];
+    if (viewMode === 'mes') {
+      const start = startOfWeek(startOfMonth(currentDate), { weekStartsOn: 1 });
+      const end = endOfWeek(endOfMonth(currentDate), { weekStartsOn: 1 });
+      return eachDayOfInterval({ start, end });
+    }
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   };
   const days = getDays();
 
-  const navPrev = () => viewMode === 'dia' ? setCurrentDate(d => subDays(d, 1)) : setCurrentDate(d => subWeeks(d, 1));
-  const navNext = () => viewMode === 'dia' ? setCurrentDate(d => addDays(d, 1)) : setCurrentDate(d => addWeeks(d, 1));
+  const navPrev = () => {
+    if (viewMode === 'dia') setCurrentDate(d => subDays(d, 1));
+    else if (viewMode === 'mes') setCurrentDate(d => subMonths(d, 1));
+    else setCurrentDate(d => subWeeks(d, 1));
+  };
+  const navNext = () => {
+    if (viewMode === 'dia') setCurrentDate(d => addDays(d, 1));
+    else if (viewMode === 'mes') setCurrentDate(d => addMonths(d, 1));
+    else setCurrentDate(d => addWeeks(d, 1));
+  };
 
   const getAgForDay = (day: Date) => agendamentos.filter(ag => isSameDay(parseISO(ag.data_inicio), day));
 
@@ -247,6 +277,7 @@ export default function Agenda() {
 
   const headerLabel = () => {
     if (viewMode === 'dia') return format(currentDate, "EEEE, d 'de' MMMM yyyy", { locale: ptBR });
+    if (viewMode === 'mes') return format(currentDate, "MMMM 'de' yyyy", { locale: ptBR });
     const start = startOfWeek(currentDate, { weekStartsOn: 1 });
     const end = endOfWeek(currentDate, { weekStartsOn: 1 });
     return `${format(start, 'd MMM', { locale: ptBR })} – ${format(end, 'd MMM yyyy', { locale: ptBR })}`;
@@ -275,10 +306,10 @@ export default function Agenda() {
           </div>
           <div className="flex items-center gap-2">
             <div className="flex rounded-lg border overflow-hidden text-xs">
-              {(['dia', 'semana'] as ViewMode[]).map(v => (
+              {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('px-3 py-1.5 font-medium transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30')}>
-                  {v === 'dia' ? 'Dia' : 'Semana'}
+                  {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : 'Mês'}
                 </button>
               ))}
             </div>
@@ -291,7 +322,7 @@ export default function Agenda() {
         {/* Main layout: mini-cal + grid */}
         <div className="flex flex-1 overflow-hidden">
           {/* Left: mini calendar + stats */}
-          <div className="hidden lg:flex flex-col w-64 shrink-0 border-r bg-background overflow-y-auto p-3 gap-3">
+          <div className="hidden lg:flex flex-col w-56 shrink-0 border-r bg-background overflow-y-auto p-3 gap-3">
             <MiniCalendar
               current={currentDate}
               selected={currentDate}
@@ -308,7 +339,7 @@ export default function Agenda() {
                   <div className="text-[10px] text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-black text-emerald-600">{statsToday.filter(a => a.status === 'confirmado').length}</div>
+                  <div className="text-xl font-black text-success">{statsToday.filter(a => a.status === 'confirmado').length}</div>
                   <div className="text-[10px] text-muted-foreground">Confirmados</div>
                 </div>
               </div>
@@ -329,104 +360,186 @@ export default function Agenda() {
           </div>
 
           {/* Right: calendar grid */}
-          <div className="flex-1 overflow-auto">
-            <div className={cn('min-w-[400px]')} style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
-              {/* Day headers */}
-              <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
-              {days.map(day => (
-                <div
-                  key={day.toISOString()}
-                  onClick={() => { if (viewMode === 'semana') { setCurrentDate(day); setViewMode('dia'); } }}
-                  className={cn(
-                    'border-b border-r text-center py-2 sticky top-0 z-10 bg-card/95 backdrop-blur',
-                    viewMode === 'semana' && 'cursor-pointer hover:bg-accent/20 transition-colors',
-                    isToday(day) ? 'bg-primary/5' : ''
-                  )}
-                >
-                  <div className={cn('text-[10px] font-semibold uppercase text-muted-foreground', isToday(day) && 'text-primary')}>
-                    {format(day, 'EEE', { locale: ptBR })}
+          <div className="flex-1 overflow-auto" ref={gridRef}>
+
+            {/* ===== MONTH VIEW ===== */}
+            {viewMode === 'mes' && (() => {
+              const monthDays = days;
+              const weekRows: Date[][] = [];
+              for (let i = 0; i < monthDays.length; i += 7) weekRows.push(monthDays.slice(i, i + 7));
+              return (
+                <div className="min-w-[400px]">
+                  {/* Day-of-week header */}
+                  <div className="grid grid-cols-7 border-b sticky top-0 bg-card/95 backdrop-blur z-10">
+                    {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'].map(d => (
+                      <div key={d} className="text-[11px] font-semibold text-muted-foreground text-center py-2 border-r last:border-r-0">{d}</div>
+                    ))}
                   </div>
-                  <div className={cn(
-                    'text-base font-black mx-auto mt-0.5 w-8 h-8 flex items-center justify-center rounded-full',
-                    isToday(day) ? 'bg-primary text-primary-foreground' : 'text-foreground'
-                  )}>
-                    {format(day, 'd')}
-                  </div>
-                </div>
-              ))}
-
-              {/* Slot rows */}
-              {slots.map((slot, si) => (
-                <>
-                  {/* Time label */}
-                  <div
-                    key={`label-${si}`}
-                    className="border-b border-r text-right pr-2 text-[10px] text-muted-foreground bg-background sticky left-0"
-                    style={{ height: SLOT_HEIGHT, paddingTop: 6 }}
-                  >
-                    {slot.label}
-                  </div>
-
-                  {/* Day cells */}
-                  {days.map((day, di) => {
-                    // Find agendamentos that start in this slot
-                    const slotStart = setMinutes(setHours(new Date(day), slot.hour), slot.minute);
-                    const slotEnd = new Date(slotStart.getTime() + SLOT_MINUTES * 60000);
-
-                    const dayAgs = getAgForDay(day).filter(ag => {
-                      const s = parseISO(ag.data_inicio);
-                      return getHours(s) === slot.hour && getMinutes(s) === slot.minute;
-                    });
-
-                    return (
-                      <div
-                        key={`cell-${si}-${di}`}
-                        className="border-b border-r relative cursor-pointer hover:bg-accent/10 transition-colors group"
-                        style={{ height: SLOT_HEIGHT }}
-                        onClick={() => openNew(slotStart)}
-                      >
-                        {/* Click hint */}
-                        <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Plus className="h-3 w-3 text-muted-foreground/50" />
-                        </div>
-
-                        {/* Agendamentos starting in this slot */}
-                        {dayAgs.map(ag => {
-                          const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
-                          const dur = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
-                          const h = Math.max((dur / SLOT_MINUTES) * SLOT_HEIGHT - 4, 24);
-                          const pac = ag.pacientes;
-                          return (
-                            <div
-                              key={ag.id}
-                              onClick={e => { e.stopPropagation(); openEdit(ag); }}
-                              className={cn(
-                                'absolute left-0.5 right-0.5 top-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-pointer',
-                                'hover:brightness-95 transition-all z-10',
-                                sc.bg, sc.border, sc.text
-                              )}
-                              style={{ height: h }}
-                            >
-                              <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
-                                {sc.icon}
-                                <span className="truncate">
-                                  {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
-                                </span>
-                              </div>
-                              {h > 36 && (
-                                <div className="text-[9px] opacity-70 truncate mt-0.5">
-                                  {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
-                                </div>
+                  {weekRows.map((week, wi) => (
+                    <div key={wi} className="grid grid-cols-7 border-b" style={{ minHeight: 110 }}>
+                      {week.map((day, di) => {
+                        const dayAgs = getAgForDay(day);
+                        const inMonth = isSameMonth(day, currentDate);
+                        const active = isToday(day);
+                        return (
+                          <div
+                            key={di}
+                            className={cn(
+                              'border-r last:border-r-0 p-1.5 cursor-pointer hover:bg-accent/10 transition-colors',
+                              !inMonth && 'opacity-40',
+                              active && 'bg-primary/5',
+                            )}
+                            onClick={() => { setCurrentDate(day); setViewMode('dia'); }}
+                          >
+                            <div className={cn(
+                              'text-xs font-bold w-6 h-6 flex items-center justify-center rounded-full mb-1',
+                              active ? 'bg-primary text-primary-foreground' : 'text-foreground',
+                            )}>
+                              {format(day, 'd')}
+                            </div>
+                            <div className="space-y-0.5">
+                              {dayAgs.slice(0, 3).map(ag => {
+                                const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
+                                const pac = ag.pacientes;
+                                return (
+                                  <div
+                                    key={ag.id}
+                                    onClick={e => { e.stopPropagation(); openEdit(ag); }}
+                                    className={cn('text-[9px] font-semibold px-1 py-0.5 rounded truncate border-l-2', sc.bg, sc.border, sc.text)}
+                                  >
+                                    {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
+                                  </div>
+                                );
+                              })}
+                              {dayAgs.length > 3 && (
+                                <div className="text-[9px] text-muted-foreground pl-1">+{dayAgs.length - 3} mais</div>
                               )}
                             </div>
-                          );
-                        })}
-                      </div>
-                    );
-                  })}
-                </>
-              ))}
-            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
+
+            {/* ===== DAY / WEEK VIEW ===== */}
+            {viewMode !== 'mes' && (
+              <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
+                {/* Day headers */}
+                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
+                {days.map(day => (
+                  <div
+                    key={day.toISOString()}
+                    onClick={() => { if (viewMode === 'semana') { setCurrentDate(day); setViewMode('dia'); } }}
+                    className={cn(
+                      'border-b border-r text-center py-2 sticky top-0 z-10 bg-card/95 backdrop-blur',
+                      viewMode === 'semana' && 'cursor-pointer hover:bg-accent/20 transition-colors',
+                      isToday(day) ? 'bg-primary/5' : ''
+                    )}
+                  >
+                    <div className={cn('text-[10px] font-semibold uppercase text-muted-foreground', isToday(day) && 'text-primary')}>
+                      {format(day, 'EEE', { locale: ptBR })}
+                    </div>
+                    <div className={cn(
+                      'text-base font-black mx-auto mt-0.5 w-8 h-8 flex items-center justify-center rounded-full',
+                      isToday(day) ? 'bg-primary text-primary-foreground' : 'text-foreground'
+                    )}>
+                      {format(day, 'd')}
+                    </div>
+                  </div>
+                ))}
+
+                {/* Slot rows */}
+                {slots.map((slot, si) => (
+                  <>
+                    {/* Time label */}
+                    <div
+                      key={`label-${si}`}
+                      className="border-b border-r text-right pr-2 text-[10px] text-muted-foreground bg-background sticky left-0"
+                      style={{ height: SLOT_HEIGHT, paddingTop: 6 }}
+                    >
+                      {slot.label}
+                    </div>
+
+                    {/* Day cells */}
+                    {days.map((day, di) => {
+                      const slotStart = setMinutes(setHours(new Date(day), slot.hour), slot.minute);
+                      const dayAgs = getAgForDay(day).filter(ag => {
+                        const s = parseISO(ag.data_inicio);
+                        return getHours(s) === slot.hour && getMinutes(s) === slot.minute;
+                      });
+
+                      // Current time indicator
+                      const slotMinStart = slot.hour * 60 + slot.minute;
+                      const slotMinEnd = slotMinStart + SLOT_MINUTES;
+                      const showNowLine = isToday(day) && nowMinutes >= slotMinStart && nowMinutes < slotMinEnd;
+                      const nowLineTop = ((nowMinutes - slotMinStart) / SLOT_MINUTES) * SLOT_HEIGHT;
+
+                      return (
+                        <div
+                          key={`cell-${si}-${di}`}
+                          className="border-b border-r relative cursor-pointer hover:bg-accent/10 transition-colors group"
+                          style={{ height: SLOT_HEIGHT }}
+                          onClick={() => openNew(slotStart)}
+                        >
+                          {/* Current time line */}
+                          {showNowLine && (
+                            <div
+                              className="absolute left-0 right-0 z-20 pointer-events-none"
+                              style={{ top: nowLineTop }}
+                            >
+                              <div className="flex items-center">
+                                <div className="h-2.5 w-2.5 rounded-full bg-destructive shrink-0 -ml-1.5" />
+                                <div className="flex-1 h-px bg-destructive" />
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Click hint */}
+                          <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Plus className="h-3 w-3 text-muted-foreground/50" />
+                          </div>
+
+                          {/* Agendamentos starting in this slot */}
+                          {dayAgs.map(ag => {
+                            const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
+                            const dur = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
+                            const h = Math.max((dur / SLOT_MINUTES) * SLOT_HEIGHT - 4, 24);
+                            const pac = ag.pacientes;
+                            return (
+                              <div
+                                key={ag.id}
+                                onClick={e => { e.stopPropagation(); openEdit(ag); }}
+                                className={cn(
+                                  'absolute left-0.5 right-0.5 top-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-pointer',
+                                  'hover:brightness-95 transition-all z-10',
+                                  sc.bg, sc.border, sc.text
+                                )}
+                                style={{ height: h }}
+                              >
+                                <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
+                                  {sc.icon}
+                                  <span className="truncate">
+                                    {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
+                                  </span>
+                                </div>
+                                {h > 36 && (
+                                  <div className="text-[9px] opacity-70 truncate mt-0.5">
+                                    {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
