@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   calcularIDFinal,
@@ -11,7 +13,11 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   PieChart, Pie, Cell, Tooltip, Legend,
 } from 'recharts';
-import { ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle, Target, CheckSquare } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle, Target, CheckSquare, Dumbbell, Loader2 } from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { gerarProtocolo, EXERCICIOS_SEED } from '@/utils/protocolGenerator';
+import { toast } from '@/hooks/use-toast';
 
 interface Props {
   avaliacao: AvaliacaoIdentidade;
@@ -49,6 +55,10 @@ function DimensaoDor({ label, value, descricao }: { label: string; value: number
 }
 
 export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+  const [gerando, setGerando] = useState(false);
+
   const e = avaliacao.bloco6.scoreE;
   const p = avaliacao.bloco4.scoreP;
   const c = avaliacao.bloco5.scoreC;
@@ -56,6 +66,7 @@ export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
   const d = avaliacao.bloco2.scoreD;
   const r = avaliacao.bloco5.scoreR;
   const r3 = avaliacao.bloco5.scoreR3 ?? 5;
+  const efi = avaliacao.bloco3.scoreEFI;
 
   const { idFinal, fatoresRisco, classificacao } = calcularIDFinal(e, p, c, f, d, r);
 
@@ -163,6 +174,91 @@ export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
 
   const dorSeveridade = (v: number) => v <= 3 ? 'leve' : v <= 6 ? 'moderada' : 'severa';
 
+  // ── Gerar Protocolo Automático ─────────────────────────────────────────────
+  const handleGerarProtocolo = async () => {
+    if (!user) { navigate('/auth'); return; }
+    setGerando(true);
+    try {
+      const scores = { E: e, P: p, C: c, F: f, D: d, R: r, EFI: efi, idFinal, classificacao };
+      const protocolo = gerarProtocolo(scores, avaliacao.pacienteNome);
+
+      // 1. Criar protocolo no banco
+      const { data: prot, error: protErr } = await supabase
+        .from('protocolos' as any)
+        .insert({
+          terapeuta_id: user.id,
+          paciente_id: user.id, // sem vínculo real – usamos terapeuta_id como placeholder
+          titulo: protocolo.titulo,
+          objetivo_geral: protocolo.objetivo_geral,
+          perfil_dominante: protocolo.perfil_dominante,
+          duracao_total: protocolo.duracao_total,
+          frequencia: protocolo.frequencia,
+          hierarquia_terapeutica: protocolo.hierarquia,
+          status: 'ativo',
+          data_inicio: new Date().toISOString().split('T')[0],
+          scores_avaliacao: { E: e, P: p, C: c, F: f, D: d, R: r, EFI: efi, idFinal, classificacao, prognose: protocolo.prognose },
+        })
+        .select()
+        .single();
+
+      if (protErr || !prot) throw protErr || new Error('Erro ao criar protocolo');
+
+      // 2. Buscar exercícios do banco
+      const { data: exerciciosDB } = await supabase
+        .from('exercicios_biblioteca' as any)
+        .select('*');
+      const exercDB = (exerciciosDB || []) as any[];
+
+      // 3. Criar fases e prescrições
+      for (const fase of protocolo.fases) {
+        const { data: faseDB, error: faseErr } = await supabase
+          .from('protocolo_fases' as any)
+          .insert({
+            protocolo_id: (prot as any).id,
+            numero_fase: fase.fase,
+            titulo: fase.titulo,
+            semanas_inicio: fase.semanas_inicio,
+            semanas_fim: fase.semanas_fim,
+            objetivos: fase.objetivos,
+            sessoes_por_semana: fase.sessoes_por_semana,
+          })
+          .select()
+          .single();
+
+        if (faseErr || !faseDB) continue;
+
+        // Selecionar exercícios para esta fase
+        const exerciciosDaFase = exercDB.filter((ex: any) => {
+          const perfis = ex.perfis_indicados || [];
+          const categorias = fase.categorias_exercicios;
+          return categorias.some((c: string) => ex.categoria === c) ||
+            perfis.some((p: string) => protocolo.perfil_dominante.includes(p));
+        }).slice(0, 4);
+
+        for (const ex of exerciciosDaFase) {
+          await supabase.from('prescricoes_exercicios' as any).insert({
+            protocolo_id: (prot as any).id,
+            fase_id: (faseDB as any).id,
+            exercicio_id: ex.id,
+            series: 3,
+            repeticoes: ex.categoria === 'Relaxamento' ? 1 : 12,
+            tempo_descanso: '60 segundos',
+            frequencia: `${fase.sessoes_por_semana}x por semana`,
+            observacoes: fase.fase === 1 ? 'Iniciar com baixa intensidade. Observar resposta à dor.' : undefined,
+          });
+        }
+      }
+
+      toast({ title: '✅ Protocolo gerado com sucesso!', description: 'Acesse em Protocolos para visualizar e exportar o PDF.' });
+      navigate('/protocolos');
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar protocolo', variant: 'destructive' });
+    } finally {
+      setGerando(false);
+    }
+  };
+
   return (
     <div className="container py-8 max-w-4xl space-y-6">
       {/* Header ações */}
@@ -178,8 +274,14 @@ export default function RelatorioIdentidade({ avaliacao, onBack }: Props) {
           <Button variant="outline" size="sm" className="gap-2">
             <Plus className="h-4 w-4" />Nova reavaliação
           </Button>
-          <Button size="sm" className="gap-2 bg-gradient-primary text-white">
-            <Download className="h-4 w-4" />Download PDF
+          <Button
+            size="sm"
+            className="gap-2 bg-gradient-primary text-white"
+            onClick={handleGerarProtocolo}
+            disabled={gerando}
+          >
+            {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Dumbbell className="h-4 w-4" />}
+            {gerando ? 'Gerando...' : 'Gerar Protocolo'}
           </Button>
         </div>
       </div>
