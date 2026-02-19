@@ -158,8 +158,9 @@ export default function Agenda() {
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
-  const startHour = parseInt(config.horario_inicio.split(':')[0]);
-  const endHour = parseInt(config.horario_fim.split(':')[0]);
+  // Force 6h-20h range as specified
+  const startHour = 6;
+  const endHour = 20;
   const slots = generateSlots(startHour, endHour);
 
   // Days in view

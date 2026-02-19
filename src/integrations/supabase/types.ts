@@ -222,6 +222,115 @@ export type Database = {
         }
         Relationships: []
       }
+      links_agenda_paciente: {
+        Row: {
+          acessos_totais: number | null
+          created_at: string | null
+          data_criacao: string | null
+          data_expiracao: string | null
+          data_primeiro_acesso: string | null
+          data_ultimo_acesso: string | null
+          id: string
+          paciente_id: string
+          status: string | null
+          terapeuta_id: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          acessos_totais?: number | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_expiracao?: string | null
+          data_primeiro_acesso?: string | null
+          data_ultimo_acesso?: string | null
+          id?: string
+          paciente_id: string
+          status?: string | null
+          terapeuta_id: string
+          token?: string
+          updated_at?: string | null
+        }
+        Update: {
+          acessos_totais?: number | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_expiracao?: string | null
+          data_primeiro_acesso?: string | null
+          data_ultimo_acesso?: string | null
+          id?: string
+          paciente_id?: string
+          status?: string | null
+          terapeuta_id?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_agenda_paciente_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      links_avaliacao: {
+        Row: {
+          acessos_totais: number | null
+          blocos_inclusos: Json | null
+          created_at: string | null
+          data_criacao: string | null
+          data_expiracao: string | null
+          data_primeiro_acesso: string | null
+          data_ultimo_acesso: string | null
+          id: string
+          paciente_id: string
+          status: string | null
+          terapeuta_id: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          acessos_totais?: number | null
+          blocos_inclusos?: Json | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_expiracao?: string | null
+          data_primeiro_acesso?: string | null
+          data_ultimo_acesso?: string | null
+          id?: string
+          paciente_id: string
+          status?: string | null
+          terapeuta_id: string
+          token?: string
+          updated_at?: string | null
+        }
+        Update: {
+          acessos_totais?: number | null
+          blocos_inclusos?: Json | null
+          created_at?: string | null
+          data_criacao?: string | null
+          data_expiracao?: string | null
+          data_primeiro_acesso?: string | null
+          data_ultimo_acesso?: string | null
+          id?: string
+          paciente_id?: string
+          status?: string | null
+          terapeuta_id?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "links_avaliacao_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
@@ -623,6 +732,54 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "protocolos_cob_zero_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      respostas_avaliacao_paciente: {
+        Row: {
+          bloco_numero: number
+          created_at: string | null
+          dados_respostas: Json | null
+          data_preenchimento: string | null
+          id: string
+          link_id: string
+          numero_tentativa: number | null
+          paciente_id: string
+        }
+        Insert: {
+          bloco_numero: number
+          created_at?: string | null
+          dados_respostas?: Json | null
+          data_preenchimento?: string | null
+          id?: string
+          link_id: string
+          numero_tentativa?: number | null
+          paciente_id: string
+        }
+        Update: {
+          bloco_numero?: number
+          created_at?: string | null
+          dados_respostas?: Json | null
+          data_preenchimento?: string | null
+          id?: string
+          link_id?: string
+          numero_tentativa?: number | null
+          paciente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "respostas_avaliacao_paciente_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "links_avaliacao"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "respostas_avaliacao_paciente_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
