@@ -22,9 +22,10 @@ const NAV_ITEMS = [
 interface AppSidebarProps {
   collapsed: boolean;
   onToggle: () => void;
+  onNavClick?: () => void;
 }
 
-export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
+export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSidebarProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -42,7 +43,7 @@ export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
       className={cn(
         'fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300',
         'bg-card border-r border-border',
-        collapsed ? 'w-[72px]' : 'w-64',
+        collapsed ? 'w-[72px]' : 'w-56',
       )}
       style={{ boxShadow: '4px 0 24px hsl(240 10% 75% / 0.35)' }}
     >
@@ -78,6 +79,7 @@ export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
             <Link
               key={item.href}
               to={item.href}
+              onClick={onNavClick}
               className={cn(
                 'flex items-center gap-3 rounded-2xl text-sm font-semibold transition-all duration-200 group',
                 collapsed ? 'justify-center h-12 w-12 mx-auto' : 'px-4 py-3 w-full',
