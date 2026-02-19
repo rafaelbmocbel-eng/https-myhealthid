@@ -30,7 +30,7 @@ const blocos = [
   { id: 1, label: 'Anamnese & Contexto', sublabel: 'Score F', icon: ClipboardList, time: '8 min' },
   { id: 2, label: 'Avaliação da Dor', sublabel: 'Score D', icon: HeartPulse, time: '12 min' },
   { id: 3, label: 'Funcionalidade', sublabel: 'Score EFI', icon: Activity, time: '4 min' },
-  { id: 4, label: 'Kinesiophobia', sublabel: 'Score P (TSK-11)', icon: Brain, time: '6 min' },
+  { id: 4, label: 'Comportamento', sublabel: 'Score P (TSK-11)', icon: Brain, time: '6 min' },
   { id: 5, label: 'Regulação Neurovegetativa', sublabel: 'Scores R e C', icon: Bed, time: '10 min' },
   { id: 6, label: 'Avaliação Estrutural', sublabel: 'Score E (8 UCs)', icon: Dumbbell, time: '15 min' },
 ];
