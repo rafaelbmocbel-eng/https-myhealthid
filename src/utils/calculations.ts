@@ -128,6 +128,56 @@ export function calcularIDFinal(
   return { idFinal, fatoresRisco, classificacao };
 }
 
+// EQUAÇÃO DA DOR IDENTIDADE (4 dimensões – Apostila v8.0)
+export function calcularEquacaoDor(
+  d: number,
+  temIrradiacao: boolean,
+  tipoDorPeso: number, // max peso do tipo (0.5-1.0)
+  p: number,
+  r3: number,
+  c: number,
+  fCronicidade: number, // 0-10 baseado na duração
+  r: number
+): { total: number; sensorio: number; afetiva: number; cognitiva: number; neurovegetativa: number } {
+  // D_sensório = (D×0.5) + (irradiação×2) + (tipoPeso×1)
+  const sensorio = (d * 0.5) + (temIrradiacao ? 2 : 0) + (tipoDorPeso * 1);
+
+  // D_afetiva = (P×0.6) + ((10-R3)×0.4)
+  const afetiva = (p * 0.6) + ((10 - r3) * 0.4);
+
+  // D_cognitiva = (C×0.5) + (Fcronicidade×0.5)
+  const cognitiva = (c * 0.5) + (fCronicidade * 0.5);
+
+  // D_neurovegetativa = (10-R)×0.8
+  const neurovegetativa = (10 - r) * 0.8;
+
+  // Total raw (0-30), normalizar para 0-10
+  const raw = sensorio + afetiva + cognitiva + neurovegetativa;
+  const total = Math.min(10, Math.max(0, Math.round((raw / 3) * 10) / 10));
+
+  return {
+    total,
+    sensorio: Math.min(10, Math.round(sensorio * 10) / 10),
+    afetiva: Math.min(10, Math.round(afetiva * 10) / 10),
+    cognitiva: Math.min(10, Math.round(cognitiva * 10) / 10),
+    neurovegetativa: Math.min(10, Math.round(neurovegetativa * 10) / 10),
+  };
+}
+
+// Helper: converter duração para fator de cronicidade (0-10)
+export function duracaoParaCronicidade(duracao: string): number {
+  const map: Record<string, number> = {
+    '<2 semanas': 0,
+    '2-4 semanas': 1,
+    '1-3 meses': 3,
+    '3-6 meses': 5,
+    '6-12 meses': 7,
+    '>1 ano': 8,
+    '>2 anos': 10,
+  };
+  return map[duracao] ?? 3;
+}
+
 // CÁLCULO RISCO PROGRESSÃO COB° ZERO (Lonstein & Carlson)
 export function calcularRiscoProgressao(cobbAngle: number, sexo: 'M' | 'F', risser: number): { percentage: number; level: string } {
   const sexoNum = sexo === 'F' ? 1 : 0;
