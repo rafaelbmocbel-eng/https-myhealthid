@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, MapPin, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle, RefreshCw,
-  TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3,
+  TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -312,7 +312,7 @@ export default function PacientePerfil() {
                     </div>
                     <div className="space-y-2">
                       {avaliacoesId.map((av: any) => (
-                        <div key={av.id} className="clinical-card !p-3 flex items-center gap-3">
+                        <div key={av.id} className="clinical-card !p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
                           <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                             <TrendingUp className="h-4 w-4 text-primary" />
                           </div>
@@ -325,6 +325,7 @@ export default function PacientePerfil() {
                               ID: {av.id_final?.toFixed(1)}/50 · E:{av.score_e?.toFixed(1)} P:{av.score_p?.toFixed(1)} D:{av.score_d?.toFixed(1)} F:{av.score_f?.toFixed(1)} R:{av.score_r?.toFixed(1)}
                             </div>
                           </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                         </div>
                       ))}
                     </div>
@@ -338,7 +339,7 @@ export default function PacientePerfil() {
                     </div>
                     <div className="space-y-2">
                       {avaliacoesCob.map((av: any) => (
-                        <div key={av.id} className="clinical-card !p-3 flex items-center gap-3">
+                        <div key={av.id} className="clinical-card !p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
                           <div className="h-9 w-9 rounded-lg bg-blue-100 flex items-center justify-center shrink-0">
                             <AlignCenter className="h-4 w-4 text-blue-600" />
                           </div>
@@ -352,6 +353,7 @@ export default function PacientePerfil() {
                               Cobb: {av.cobb_angle}° · Risco: {av.risco_percentage}% · E:{av.score_e?.toFixed(1)}
                             </div>
                           </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                         </div>
                       ))}
                     </div>

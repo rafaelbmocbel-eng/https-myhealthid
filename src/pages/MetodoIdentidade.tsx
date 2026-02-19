@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
@@ -23,7 +23,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { differenceInDays } from 'date-fns';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { cn } from '@/lib/utils';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
@@ -72,8 +72,9 @@ export default function MetodoIdentidade() {
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { salvar: salvarAvaliacao } = useAvaliacoesIdentidade();
 
-  const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(null);
-  const [showDashboard, setShowDashboard] = useState(false);
+  const [searchParams] = useSearchParams();
+  const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
+  const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoIdentidade>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
