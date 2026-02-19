@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, ChevronLeft, ChevronRight, LogOut, User, ClipboardList,
+  Settings, ChevronLeft, ChevronRight, LogOut, User, ClipboardList, Dumbbell,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
@@ -14,6 +14,7 @@ const NAV_ITEMS = [
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
+  { label: 'Protocolos', href: '/protocolos', icon: Dumbbell },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
   { label: 'Relatórios', href: '/relatorios', icon: FileText },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
@@ -56,7 +57,7 @@ export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
               <div className="text-xs font-bold leading-none text-foreground truncate">
                 MÉTODO <span className="text-gradient-primary">IDENTIDADE</span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">+ COB° ZERO v8.2</div>
+              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">+ COB° ZERO v9.0</div>
             </div>
           </Link>
         )}
@@ -105,7 +106,6 @@ export default function AppSidebar({ collapsed, onToggle }: AppSidebarProps) {
             >
               <Icon className="h-4 w-4 shrink-0" />
               {!collapsed && <span className="truncate">{item.label}</span>}
-              {/* Active indicator bar */}
               {active && !collapsed && (
                 <div className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 bg-primary-foreground/60 rounded-r-full" />
               )}
