@@ -1108,6 +1108,13 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      link_agenda_valido_por_token: {
+        Args: { p_token: string }
+        Returns: {
+          paciente_id: string
+          terapeuta_id: string
+        }[]
+      }
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
     }
     Enums: {
