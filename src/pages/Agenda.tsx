@@ -22,6 +22,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
 import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
@@ -140,6 +143,8 @@ function MiniCalendar({
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
   const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente } = useAgenda();
+  const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
+  const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>('semana');
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -283,6 +288,20 @@ export default function Agenda() {
     return `${format(start, 'd MMM', { locale: ptBR })} – ${format(end, 'd MMM yyyy', { locale: ptBR })}`;
   };
 
+  const pendentes = agendamentos.filter(ag => ag.status === 'pendente');
+
+  const handleConfirmar = async (id: string) => {
+    await updateAgendamento(id, { status: 'confirmado' });
+    refetchNotifications();
+    toast({ title: '✅ Agendamento confirmado!' });
+  };
+
+  const handleRecusar = async (id: string) => {
+    await updateAgendamento(id, { status: 'cancelado' });
+    refetchNotifications();
+    toast({ title: '❌ Agendamento recusado.' });
+  };
+
   const statsToday = agendamentos.filter(ag => isToday(parseISO(ag.data_inicio)));
 
   if (loading) return (
@@ -319,7 +338,45 @@ export default function Agenda() {
           </div>
         </div>
 
-        {/* Main layout: mini-cal + grid */}
+        {/* Painel de agendamentos pendentes */}
+        {pendentes.length > 0 && (
+          <div className="border-b bg-amber-50 dark:bg-amber-950/30 px-4 py-3 shrink-0">
+            <div className="flex items-center gap-2 mb-2">
+              <AlertCircle className="h-4 w-4 text-amber-600" />
+              <span className="text-sm font-bold text-amber-800 dark:text-amber-200">
+                {pendentes.length} agendamento{pendentes.length > 1 ? 's' : ''} pendente{pendentes.length > 1 ? 's' : ''}
+              </span>
+            </div>
+            <div className="space-y-2 max-h-48 overflow-y-auto">
+              {pendentes.map(ag => {
+                const pac = pacientes.find(p => p.id === ag.paciente_id);
+                const dataInicio = parseISO(ag.data_inicio);
+                return (
+                  <div key={ag.id} className="flex items-center justify-between gap-3 bg-white dark:bg-card rounded-lg border border-amber-200 dark:border-amber-800 px-3 py-2">
+                    <div className="min-w-0 flex-1">
+                      <div className="text-sm font-semibold text-foreground truncate">
+                        {pac ? `${pac.nome} ${pac.sobrenome}` : ag.titulo || 'Auto-agendamento'}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {format(dataInicio, "EEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleRecusar(ag.id)}>
+                        <X className="h-3 w-3 mr-1" /> Recusar
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmar(ag.id)}>
+                        <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
+                      </Button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+
         <div className="flex flex-1 overflow-hidden">
           {/* Left: mini calendar + stats */}
           <div className="hidden lg:flex flex-col w-56 shrink-0 border-r bg-background overflow-y-auto p-3 gap-3">
