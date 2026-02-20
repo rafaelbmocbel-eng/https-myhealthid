@@ -8,9 +8,11 @@ import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
   ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
   CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
-  Zap, Shield, Gauge,
+  Zap, Shield, Gauge, MapPin, Stethoscope, Dumbbell, BedDouble,
+  Battery, Briefcase,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -121,31 +123,126 @@ export default function Index() {
         F: avg('score_f'), D: avg('score_d'), R: avg('score_r'),
         EFI: avg('score_efi'), ID: avg('id_final'),
       };
-      const locaisDor: Record<string, number> = {};
+
+      const regioesDor: Record<string, { count: number; intensidadeTotal: number }> = {};
+      const unidadesCorporais: Record<string, { count: number; scoreTotal: number }> = {};
+      const comorbidades: Record<string, number> = {};
       const classificacoes: Record<string, number> = {};
+      const atividadeFisica: Record<string, number> = {};
+      const tecidosTotal = { muscular: 0, articular: 0, ligamentar: 0, nervosa: 0, visceral: 0, count: 0 };
+      const regulacaoSubs = { R1_sono: 0, R2_energia: 0, R3_psico: 0, cargaLaboral: 0, countR: 0 };
+      const funcionalidade = { trabalho: 0, exercicio: 0, domesticas: 0, vidaSocial: 0, independencia: 0, countF: 0 };
+
       avaliacoes.forEach(a => {
         if (a.classificacao) classificacoes[a.classificacao] = (classificacoes[a.classificacao] || 0) + 1;
         try {
-          const dados = a.dados_avaliacao as any;
-          if (dados?.bloco2?.local_dor) {
-            const loc = Array.isArray(dados.bloco2.local_dor) ? dados.bloco2.local_dor : [dados.bloco2.local_dor];
-            loc.forEach((l: string) => { if (l) locaisDor[l] = (locaisDor[l] || 0) + 1; });
+          const d = a.dados_avaliacao as any;
+          // Bloco 1 - Comorbidades e atividade
+          if (d?.bloco1?.historicoMedico) {
+            (d.bloco1.historicoMedico as string[]).forEach(c => {
+              if (c) comorbidades[c] = (comorbidades[c] || 0) + 1;
+            });
           }
-          if (dados?.bloco2?.regioes_dor) {
-            const regs = Array.isArray(dados.bloco2.regioes_dor) ? dados.bloco2.regioes_dor : [dados.bloco2.regioes_dor];
-            regs.forEach((r: string) => { if (r) locaisDor[r] = (locaisDor[r] || 0) + 1; });
+          if (d?.bloco1?.atividadeFisica) {
+            const af = d.bloco1.atividadeFisica;
+            atividadeFisica[af] = (atividadeFisica[af] || 0) + 1;
           }
-          if (dados?.bloco6?.unidades_afetadas) {
-            const ucs = Array.isArray(dados.bloco6.unidades_afetadas) ? dados.bloco6.unidades_afetadas : [];
-            ucs.forEach((uc: string) => { if (uc) locaisDor[uc] = (locaisDor[uc] || 0) + 1; });
+          // Bloco 2 - Regiões de dor
+          if (d?.bloco2?.regioes && Array.isArray(d.bloco2.regioes)) {
+            d.bloco2.regioes.forEach((r: any) => {
+              const nome = r.nome || r.id;
+              if (!nome) return;
+              if (!regioesDor[nome]) regioesDor[nome] = { count: 0, intensidadeTotal: 0 };
+              regioesDor[nome].count++;
+              regioesDor[nome].intensidadeTotal += Number(r.intensidade || 0);
+            });
+          }
+          // Bloco 3 - Funcionalidade
+          if (d?.bloco3) {
+            funcionalidade.trabalho += Number(d.bloco3.trabalho || 0);
+            funcionalidade.exercicio += Number(d.bloco3.exercicio || 0);
+            funcionalidade.domesticas += Number(d.bloco3.domesticas || 0);
+            funcionalidade.vidaSocial += Number(d.bloco3.vidaSocial || 0);
+            funcionalidade.independencia += Number(d.bloco3.independencia || 0);
+            funcionalidade.countF++;
+          }
+          // Bloco 5 - Regulação sub-scores
+          if (d?.bloco5) {
+            regulacaoSubs.R1_sono += Number(d.bloco5.scoreR1 || 0);
+            regulacaoSubs.R2_energia += Number(d.bloco5.scoreR2 || 0);
+            regulacaoSubs.R3_psico += Number(d.bloco5.scoreR3 || 0);
+            regulacaoSubs.cargaLaboral += Number(d.bloco5.cargaLaboral || 0);
+            regulacaoSubs.countR++;
+          }
+          // Bloco 6 - Unidades corporais e tecidos
+          if (d?.bloco6?.unidades && Array.isArray(d.bloco6.unidades)) {
+            d.bloco6.unidades.forEach((u: any) => {
+              const nome = u.nome || u.id;
+              if (!nome) return;
+              const score = Number(u.score || 0);
+              if (!unidadesCorporais[nome]) unidadesCorporais[nome] = { count: 0, scoreTotal: 0 };
+              if (score > 0) {
+                unidadesCorporais[nome].count++;
+                unidadesCorporais[nome].scoreTotal += score;
+              }
+              tecidosTotal.muscular += Number(u.scoreMuscular || 0);
+              tecidosTotal.articular += Number(u.scoreArticular || 0);
+              tecidosTotal.ligamentar += Number(u.scoreLigamentar || 0);
+              tecidosTotal.nervosa += Number(u.scoreNervosa || 0);
+              tecidosTotal.visceral += Number(u.scoreVisceral || 0);
+              tecidosTotal.count++;
+            });
           }
         } catch {}
       });
-      const topLocais = Object.entries(locaisDor).sort((a, b) => b[1] - a[1]).slice(0, 6)
-        .map(([nome, count]) => ({ nome, count, pct: Math.round((count / n) * 100) }));
-      const topClassificacoes = Object.entries(classificacoes).sort((a, b) => b[1] - a[1]).slice(0, 5)
-        .map(([nome, count]) => ({ nome, count, pct: Math.round((count / n) * 100) }));
-      return { scores, n, topLocais, topClassificacoes };
+
+      const toRanked = (rec: Record<string, number>, max = 8) =>
+        Object.entries(rec).sort((a, b) => b[1] - a[1]).slice(0, max)
+          .map(([nome, count]) => ({ nome, count, pct: Math.round((count / n) * 100) }));
+
+      const topRegioes = Object.entries(regioesDor)
+        .sort((a, b) => b[1].count - a[1].count).slice(0, 8)
+        .map(([nome, v]) => ({ nome, count: v.count, pct: Math.round((v.count / n) * 100), mediaIntensidade: v.count > 0 ? v.intensidadeTotal / v.count : 0 }));
+
+      const topUnidades = Object.entries(unidadesCorporais)
+        .filter(([, v]) => v.count > 0)
+        .sort((a, b) => b[1].count - a[1].count).slice(0, 8)
+        .map(([nome, v]) => ({ nome: nome.replace(/^UC\d+ – /, '').replace(/^[A-Z]+-[A-Z]+ – /, '').replace(/^[A-Z]+ – /, ''), nomeCompleto: nome, count: v.count, pct: Math.round((v.count / n) * 100), mediaScore: v.count > 0 ? v.scoreTotal / v.count : 0 }));
+
+      const tc = tecidosTotal.count || 1;
+      const tecidosMedia = {
+        Muscular: tecidosTotal.muscular / tc,
+        Articular: tecidosTotal.articular / tc,
+        Ligamentar: tecidosTotal.ligamentar / tc,
+        Nervoso: tecidosTotal.nervosa / tc,
+        Visceral: tecidosTotal.visceral / tc,
+      };
+
+      const rc = regulacaoSubs.countR || 1;
+      const regMedia = {
+        'Sono (R1)': regulacaoSubs.R1_sono / rc,
+        'Energia (R2)': regulacaoSubs.R2_energia / rc,
+        'Psicológico (R3)': regulacaoSubs.R3_psico / rc,
+        'Carga Laboral': regulacaoSubs.cargaLaboral / rc,
+      };
+
+      const fc = funcionalidade.countF || 1;
+      const funcMedia = {
+        Trabalho: funcionalidade.trabalho / fc,
+        Exercício: funcionalidade.exercicio / fc,
+        Domésticas: funcionalidade.domesticas / fc,
+        'Vida Social': funcionalidade.vidaSocial / fc,
+        Independência: funcionalidade.independencia / fc,
+      };
+
+      return {
+        scores, n,
+        topRegioes, topUnidades,
+        topComorbidades: toRanked(comorbidades),
+        topClassificacoes: toRanked(classificacoes, 5),
+        topAtividade: toRanked(atividadeFisica, 5),
+        tecidosMedia, regMedia, funcMedia,
+      };
     },
     enabled: !!user,
   });
@@ -417,78 +514,202 @@ export default function Index() {
               </div>
             </div>
 
-            {/* Scores médios biopsicossociais */}
-            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Brain className="h-3.5 w-3.5" /> Índices Biopsicossociais (Média Geral)
-            </h3>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-              {[
-                { label: 'Estrutural (E)', value: amostraClinica.scores.E, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-                { label: 'Psicológico (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
-                { label: 'Cinesiofobia (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-                { label: 'Funcional (F)', value: amostraClinica.scores.F, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-                { label: 'Dor (D)', value: amostraClinica.scores.D, icon: Heart, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30' },
-                { label: 'Regulação (R)', value: amostraClinica.scores.R, icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
-                { label: 'EFI Global', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-                { label: 'Dor Identidade', value: amostraClinica.scores.ID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30' },
-              ].map(s => {
-                const Icon = s.icon;
-                return (
-                  <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
-                    <div className="flex items-center gap-1.5 mb-1">
-                      <Icon className={`h-3.5 w-3.5 ${s.color}`} />
-                      <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
+            <Tabs defaultValue="scores" className="w-full">
+              <TabsList className="grid grid-cols-5 mb-4">
+                <TabsTrigger value="scores" className="text-[10px] sm:text-xs">Scores</TabsTrigger>
+                <TabsTrigger value="dor" className="text-[10px] sm:text-xs">Dor & Corpo</TabsTrigger>
+                <TabsTrigger value="regulacao" className="text-[10px] sm:text-xs">Regulação</TabsTrigger>
+                <TabsTrigger value="comorbidades" className="text-[10px] sm:text-xs">Comorbidades</TabsTrigger>
+                <TabsTrigger value="tecidos" className="text-[10px] sm:text-xs">Tecidos</TabsTrigger>
+              </TabsList>
+
+              {/* TAB: Scores biopsicossociais */}
+              <TabsContent value="scores">
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                  {[
+                    { label: 'Estrutural (E)', value: amostraClinica.scores.E, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+                    { label: 'Psicológico (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+                    { label: 'Cinesiofobia (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+                    { label: 'Funcional (F)', value: amostraClinica.scores.F, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+                    { label: 'Dor (D)', value: amostraClinica.scores.D, icon: Heart, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30' },
+                    { label: 'Regulação (R)', value: amostraClinica.scores.R, icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
+                    { label: 'EFI Global', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
+                    { label: 'Dor Identidade', value: amostraClinica.scores.ID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30' },
+                  ].map(s => {
+                    const Icon = s.icon;
+                    return (
+                      <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
+                        <div className="flex items-center gap-1.5 mb-1">
+                          <Icon className={`h-3.5 w-3.5 ${s.color}`} />
+                          <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
+                        </div>
+                        <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
+                        <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Classificações + Funcionalidade */}
+                <div className="grid md:grid-cols-2 gap-5">
+                  {amostraClinica.topClassificacoes.length > 0 && (
+                    <div>
+                      <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                        <ClipboardList className="h-3.5 w-3.5" /> Classificações
+                      </h3>
+                      <div className="space-y-2">
+                        {amostraClinica.topClassificacoes.map(cl => (
+                          <div key={cl.nome} className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-foreground w-24 truncate">{cl.nome}</span>
+                            <div className="flex-1"><Progress value={cl.pct} className="h-2" /></div>
+                            <span className="text-xs font-bold text-muted-foreground w-14 text-right">{cl.count} ({cl.pct}%)</span>
+                          </div>
+                        ))}
+                      </div>
                     </div>
-                    <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
-                    <Progress value={s.value * 10} className="h-1.5 mt-1" />
-                  </div>
-                );
-              })}
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-5">
-              {/* Locais de dor mais frequentes */}
-              {amostraClinica.topLocais.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <Heart className="h-3.5 w-3.5" /> Locais de Dor Mais Frequentes
-                  </h3>
-                  <div className="space-y-2">
-                    {amostraClinica.topLocais.map(loc => (
-                      <div key={loc.nome} className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-foreground w-28 truncate">{loc.nome}</span>
-                        <div className="flex-1">
-                          <Progress value={loc.pct} className="h-2" />
+                  )}
+                  <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Zap className="h-3.5 w-3.5" /> Funcionalidade Média (EFI)
+                    </h3>
+                    <div className="space-y-2">
+                      {Object.entries(amostraClinica.funcMedia).map(([k, v]) => (
+                        <div key={k} className="flex items-center gap-3">
+                          <span className="text-xs font-medium text-foreground w-24">{k}</span>
+                          <div className="flex-1"><Progress value={Number(v) * 10} className="h-2" /></div>
+                          <span className="text-xs font-bold text-emerald-600 w-10 text-right">{Number(v).toFixed(1)}</span>
                         </div>
-                        <span className="text-xs font-bold text-muted-foreground w-12 text-right">{loc.pct}%</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* TAB: Dor & Corpo */}
+              <TabsContent value="dor">
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <MapPin className="h-3.5 w-3.5" /> Regiões de Dor Mais Frequentes
+                    </h3>
+                    {amostraClinica.topRegioes.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {amostraClinica.topRegioes.map(r => (
+                          <div key={r.nome}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs font-medium text-foreground truncate max-w-[60%]">{r.nome}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {r.count}x · Intensidade média: <span className="font-bold text-red-600">{r.mediaIntensidade.toFixed(1)}</span>
+                              </span>
+                            </div>
+                            <Progress value={r.pct} className="h-2" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sem dados de regiões de dor ainda.</p>
+                    )}
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Bone className="h-3.5 w-3.5" /> Unidades Corporais Comprometidas
+                    </h3>
+                    {amostraClinica.topUnidades.length > 0 ? (
+                      <div className="space-y-2.5">
+                        {amostraClinica.topUnidades.map(u => (
+                          <div key={u.nomeCompleto}>
+                            <div className="flex items-center justify-between mb-0.5">
+                              <span className="text-xs font-medium text-foreground truncate max-w-[60%]">{u.nome}</span>
+                              <span className="text-[10px] text-muted-foreground">
+                                {u.count}x · Score médio: <span className="font-bold text-blue-600">{u.mediaScore.toFixed(1)}</span>
+                              </span>
+                            </div>
+                            <Progress value={u.pct} className="h-2" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sem dados de unidades corporais ainda.</p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* TAB: Regulação */}
+              <TabsContent value="regulacao">
+                <div className="grid md:grid-cols-2 gap-5">
+                  <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <BedDouble className="h-3.5 w-3.5" /> Sub-Scores de Regulação (Média)
+                    </h3>
+                    <div className="space-y-3">
+                      {Object.entries(amostraClinica.regMedia).map(([k, v]) => (
+                        <div key={k} className="rounded-xl border bg-card p-3">
+                          <div className="flex items-center justify-between mb-1.5">
+                            <span className="text-xs font-medium text-foreground">{k}</span>
+                            <span className="text-lg font-black text-teal-600">{Number(v).toFixed(1)}</span>
+                          </div>
+                          <Progress value={Number(v) * 10} className="h-2" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                      <Dumbbell className="h-3.5 w-3.5" /> Nível de Atividade Física
+                    </h3>
+                    {amostraClinica.topAtividade.length > 0 ? (
+                      <div className="space-y-2">
+                        {amostraClinica.topAtividade.map(a => (
+                          <div key={a.nome} className="flex items-center gap-3">
+                            <span className="text-xs font-medium text-foreground w-24 capitalize">{a.nome}</span>
+                            <div className="flex-1"><Progress value={a.pct} className="h-2" /></div>
+                            <span className="text-xs font-bold text-muted-foreground w-14 text-right">{a.count} ({a.pct}%)</span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">Sem dados de atividade física.</p>
+                    )}
+                  </div>
+                </div>
+              </TabsContent>
+
+              {/* TAB: Comorbidades */}
+              <TabsContent value="comorbidades">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Stethoscope className="h-3.5 w-3.5" /> Comorbidades Mais Prevalentes
+                </h3>
+                {amostraClinica.topComorbidades.length > 0 ? (
+                  <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
+                    {amostraClinica.topComorbidades.map(c => (
+                      <div key={c.nome} className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-foreground w-36 truncate">{c.nome}</span>
+                        <div className="flex-1"><Progress value={c.pct} className="h-2" /></div>
+                        <span className="text-xs font-bold text-muted-foreground w-14 text-right">{c.count} ({c.pct}%)</span>
                       </div>
                     ))}
                   </div>
-                </div>
-              )}
+                ) : (
+                  <p className="text-xs text-muted-foreground">Nenhuma comorbidade registrada ainda.</p>
+                )}
+              </TabsContent>
 
-              {/* Classificações */}
-              {amostraClinica.topClassificacoes.length > 0 && (
-                <div>
-                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                    <ClipboardList className="h-3.5 w-3.5" /> Classificações Predominantes
-                  </h3>
-                  <div className="space-y-2">
-                    {amostraClinica.topClassificacoes.map(cl => (
-                      <div key={cl.nome} className="flex items-center gap-3">
-                        <span className="text-xs font-medium text-foreground w-28 truncate">{cl.nome}</span>
-                        <div className="flex-1">
-                          <Progress value={cl.pct} className="h-2" />
-                        </div>
-                        <span className="text-xs font-bold text-muted-foreground w-12 text-right">
-                          {cl.count} <span className="text-[10px] font-normal">({cl.pct}%)</span>
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+              {/* TAB: Tecidos */}
+              <TabsContent value="tecidos">
+                <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                  <Activity className="h-3.5 w-3.5" /> Moduladores Teciduais (Média por UC)
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                  {Object.entries(amostraClinica.tecidosMedia).map(([nome, valor]) => (
+                    <div key={nome} className="rounded-xl border bg-card p-3 text-center">
+                      <div className="text-[10px] font-medium text-muted-foreground mb-1">{nome}</div>
+                      <div className="text-xl font-black text-foreground">{Number(valor).toFixed(1)}</div>
+                      <Progress value={Number(valor) * 10} className="h-1.5 mt-1.5" />
+                    </div>
+                  ))}
                 </div>
-              )}
-            </div>
+              </TabsContent>
+            </Tabs>
           </div>
         )}
 
