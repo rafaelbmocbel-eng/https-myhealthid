@@ -2,7 +2,7 @@ import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
-import Bloco2Dor from '@/components/identidade/Bloco2Dor';
+// Bloco2Dor is now merged into Bloco1Anamnese
 import Bloco3Funcionalidade from '@/components/identidade/Bloco3Funcionalidade';
 import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
 import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
@@ -11,7 +11,7 @@ import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import { calcularIDFinal } from '@/utils/calculations';
 import {
-  CheckCircle2, Circle, ClipboardList, HeartPulse, Activity, Brain,
+  CheckCircle2, Circle, ClipboardList, Activity, Brain,
   Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,8 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
 const blocos = [
-  { id: 1, label: 'Anamnese & Contexto', sublabel: 'Score F', icon: ClipboardList, time: '8 min' },
-  { id: 2, label: 'Avaliação da Dor', sublabel: 'Score D', icon: HeartPulse, time: '12 min' },
+  { id: 1, label: 'Anamnese & Mapeamento', sublabel: 'Score F + D', icon: ClipboardList, time: '15 min' },
   { id: 3, label: 'Funcionalidade', sublabel: 'Score EFI', icon: Activity, time: '4 min' },
   { id: 4, label: 'Comportamento', sublabel: 'Score P (TSK-11)', icon: Brain, time: '6 min' },
   { id: 5, label: 'Regulação Neurovegetativa', sublabel: 'Scores R e C', icon: Bed, time: '10 min' },
@@ -110,10 +109,17 @@ export default function MetodoIdentidade() {
     setAvaliacao(prev => ({ ...prev, [blocoKey]: data }));
   }, []);
 
+  // Block flow: 1 → 3 → 4 → 5 → 6 (Bloco2 merged into Bloco1)
+  const BLOCK_ORDER = [1, 3, 4, 5, 6];
+
   const avancarBloco = useCallback((blocoAtual: number) => {
     setBlocosConcluidos(prev => new Set([...prev, blocoAtual]));
-    if (blocoAtual < 6) {
-      setAvaliacao(prev => ({ ...prev, blocoAtual: blocoAtual + 1 }));
+    // Also mark bloco2 as concluded when bloco1 finishes (merged)
+    if (blocoAtual === 1) setBlocosConcluidos(prev => new Set([...prev, 1, 2]));
+    const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
+    const nextBlock = BLOCK_ORDER[currentIdx + 1];
+    if (nextBlock) {
+      setAvaliacao(prev => ({ ...prev, blocoAtual: nextBlock }));
     } else {
       const { idFinal, classificacao } = calcularIDFinal(
         avaliacao.bloco6.scoreE, avaliacao.bloco4.scoreP,
@@ -131,10 +137,14 @@ export default function MetodoIdentidade() {
   }, [avaliacao, selectedPacienteId, salvarAvaliacao]);
 
   const voltarBloco = useCallback(() => {
-    setAvaliacao(prev => ({ ...prev, blocoAtual: Math.max(1, prev.blocoAtual - 1) }));
+    setAvaliacao(prev => {
+      const currentIdx = BLOCK_ORDER.indexOf(prev.blocoAtual);
+      const prevBlock = BLOCK_ORDER[Math.max(0, currentIdx - 1)];
+      return { ...prev, blocoAtual: prevBlock };
+    });
   }, []);
 
-  const progresso = (blocosConcluidos.size / 6) * 100;
+  const progresso = (blocosConcluidos.size / 6) * 100; // still 6 total blocks conceptually
 
   if (showRelatorio) {
     return (
@@ -407,10 +417,9 @@ export default function MetodoIdentidade() {
           <div className="lg:col-span-3">
             <div className="animate-slide-in">
               {avaliacao.blocoAtual === 1 && (
-                <Bloco1Anamnese data={avaliacao.bloco1} onChange={(d) => updateBloco('bloco1', d)} onNext={() => avancarBloco(1)} />
-              )}
-              {avaliacao.blocoAtual === 2 && (
-                <Bloco2Dor data={avaliacao.bloco2} onChange={(d) => updateBloco('bloco2', d)} onNext={() => avancarBloco(2)} onBack={voltarBloco} />
+                <Bloco1Anamnese data={avaliacao.bloco1} bloco2Data={avaliacao.bloco2}
+                  onChange={(d) => updateBloco('bloco1', d)} onBloco2Change={(d) => updateBloco('bloco2', d)}
+                  onNext={() => avancarBloco(1)} />
               )}
               {avaliacao.blocoAtual === 3 && (
                 <Bloco3Funcionalidade data={avaliacao.bloco3} onChange={(d) => updateBloco('bloco3', d)} onNext={() => avancarBloco(3)} onBack={voltarBloco} />

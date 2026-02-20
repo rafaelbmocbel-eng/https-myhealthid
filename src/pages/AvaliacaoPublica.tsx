@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
-import Bloco2Dor from '@/components/identidade/Bloco2Dor';
+// Bloco2Dor is now merged into Bloco1Anamnese
 import Bloco3Funcionalidade from '@/components/identidade/Bloco3Funcionalidade';
 import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
 import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
@@ -176,16 +176,10 @@ export default function AvaliacaoPublica() {
         {blocoAtual === 1 && (
           <Bloco1Anamnese
             data={bloco1}
+            bloco2Data={bloco2}
             onChange={setBloco1}
+            onBloco2Change={setBloco2}
             onNext={() => avancarBloco(1, bloco1)}
-          />
-        )}
-        {blocoAtual === 2 && (
-          <Bloco2Dor
-            data={bloco2}
-            onChange={setBloco2}
-            onNext={() => avancarBloco(2, bloco2)}
-            onBack={voltarBloco}
           />
         )}
         {blocoAtual === 3 && (
