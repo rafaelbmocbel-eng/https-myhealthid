@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -42,6 +42,7 @@ export default function PacientePerfil() {
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
+  const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
@@ -141,9 +142,10 @@ export default function PacientePerfil() {
       if (protIds.length === 0) return {};
       const { data, error } = await (supabase as any)
         .from('protocolo_tratamentos')
-        .select('*, tecnica:tecnica_id(nome, categoria, nivel_evidencia)')
+        .select('*, tecnica:tecnica_id(nome, categoria, nivel_evidencia, descricao, indicacoes, contraindicacoes, complexidade, parametros)')
         .in('protocolo_id', protIds)
-        .eq('ativo', true);
+        .eq('ativo', true)
+        .order('fase_numero');
       if (error) throw error;
       const map: Record<string, any[]> = {};
       (data || []).forEach((t: any) => {
@@ -525,7 +527,38 @@ export default function PacientePerfil() {
                 {protocolos.map((proto: any) => {
                   const tratamentos = (tratamentosMap as Record<string, any[]>)[proto.id] || [];
 
-                  return (
+                    const isExpanded = tratamentoAberto === proto.id;
+                    const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
+                    const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
+                    const FASE_CORES_TEXT = ['text-indigo-700', 'text-amber-700', 'text-emerald-700', 'text-red-700'];
+                    const FASE_CORES_BADGE = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500'];
+                    const CAT_LABELS: Record<string, { icon: string; label: string }> = {
+                      terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
+                      eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
+                      exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
+                      tracao: { icon: '🔗', label: 'Tração' },
+                      outros: { icon: '🧊', label: 'Outras Técnicas' },
+                    };
+                    const EVIDENCIA_BADGE: Record<string, { label: string; cls: string }> = {
+                      A: { label: 'Evidência A', cls: 'bg-emerald-100 text-emerald-700' },
+                      B: { label: 'Evidência B', cls: 'bg-blue-100 text-blue-700' },
+                      C: { label: 'Evidência C', cls: 'bg-amber-100 text-amber-700' },
+                    };
+                    const COMPLEXIDADE_BADGE: Record<string, { label: string; cls: string }> = {
+                      basica: { label: 'Básica', cls: 'bg-emerald-100 text-emerald-700' },
+                      intermediaria: { label: 'Intermediária', cls: 'bg-amber-100 text-amber-700' },
+                      avancada: { label: 'Avançada', cls: 'bg-red-100 text-red-700' },
+                    };
+
+                    // Group by fase
+                    const porFase: Record<number, any[]> = {};
+                    tratamentos.forEach((t: any) => {
+                      const f = t.fase_numero || 1;
+                      if (!porFase[f]) porFase[f] = [];
+                      porFase[f].push(t);
+                    });
+
+                    return (
                     <div key={proto.id} className="clinical-card !p-4">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -543,7 +576,12 @@ export default function PacientePerfil() {
                         </div>
                         <div className="flex gap-1.5 shrink-0">
                           {tratamentos.length > 0 && (
-                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
+                            <Button
+                              size="sm"
+                              variant={isExpanded ? 'default' : 'outline'}
+                              className={cn('h-7 text-xs gap-1', isExpanded && 'bg-gradient-primary text-white')}
+                              onClick={() => setTratamentoAberto(isExpanded ? null : proto.id)}
+                            >
                               <Dumbbell className="h-3 w-3" /> Tratamento ({tratamentos.length})
                             </Button>
                           )}
@@ -554,6 +592,83 @@ export default function PacientePerfil() {
                       </div>
                       {proto.objetivo_geral && (
                         <p className="text-xs text-muted-foreground mt-2 border-t pt-2">{proto.objetivo_geral}</p>
+                      )}
+
+                      {/* Tratamento expandido inline */}
+                      {isExpanded && tratamentos.length > 0 && (
+                        <div className="mt-3 border-t pt-3 space-y-3">
+                          {[1, 2, 3, 4].map(faseNum => {
+                            const tecsFase = porFase[faseNum] || [];
+                            if (tecsFase.length === 0) return null;
+                            const idx = faseNum - 1;
+
+                            // Group by category
+                            const porCategoria: Record<string, any[]> = {};
+                            tecsFase.forEach((t: any) => {
+                              const cat = t.tecnica?.categoria || 'outros';
+                              if (!porCategoria[cat]) porCategoria[cat] = [];
+                              porCategoria[cat].push(t);
+                            });
+
+                            return (
+                              <div key={faseNum} className="rounded-xl border overflow-hidden">
+                                <div className={`flex items-center gap-2 px-3 py-2 ${FASE_CORES_BG[idx]}`}>
+                                  <div className={`w-6 h-6 rounded-full ${FASE_CORES_BADGE[idx]} flex items-center justify-center text-white text-[10px] font-bold`}>
+                                    {faseNum}
+                                  </div>
+                                  <span className={`text-xs font-semibold ${FASE_CORES_TEXT[idx]}`}>
+                                    Fase {faseNum}: {FASE_NOMES[idx]}
+                                  </span>
+                                  <span className="text-[10px] text-muted-foreground ml-auto">{tecsFase.length} técnica{tecsFase.length !== 1 ? 's' : ''}</span>
+                                </div>
+                                <div className="p-3">
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    {Object.entries(porCategoria).map(([cat, items]) => {
+                                      const catInfo = CAT_LABELS[cat] || { icon: '🔧', label: cat };
+                                      return (
+                                        <div key={cat} className="border rounded-lg p-2.5">
+                                          <h4 className="font-semibold text-xs mb-1.5">{catInfo.icon} {catInfo.label}</h4>
+                                          <div className="space-y-1.5">
+                                            {items.map((item: any) => {
+                                              const tec = item.tecnica;
+                                              if (!tec) return null;
+                                              const evBadge = EVIDENCIA_BADGE[tec.nivel_evidencia] || EVIDENCIA_BADGE.B;
+                                              const compBadge = COMPLEXIDADE_BADGE[tec.complexidade] || COMPLEXIDADE_BADGE.basica;
+                                              return (
+                                                <div key={item.id} className="p-2 rounded-md bg-primary/5 border border-primary/20">
+                                                  <div className="flex items-start justify-between gap-1">
+                                                    <span className="text-xs font-medium">{tec.nome}</span>
+                                                    <div className="flex gap-0.5 shrink-0">
+                                                      <Badge className={`${evBadge.cls} border-0 text-[8px] h-3.5 px-1`}>{evBadge.label}</Badge>
+                                                      <Badge className={`${compBadge.cls} border-0 text-[8px] h-3.5 px-1`}>{compBadge.label}</Badge>
+                                                    </div>
+                                                  </div>
+                                                  {tec.descricao && <p className="text-[10px] text-muted-foreground mt-0.5">{tec.descricao}</p>}
+                                                  {tec.indicacoes && <p className="text-[10px] text-emerald-600 mt-0.5">✓ {tec.indicacoes}</p>}
+                                                  {tec.contraindicacoes && <p className="text-[10px] text-destructive mt-0.5">⚠ {tec.contraindicacoes}</p>}
+                                                  {tec.parametros && typeof tec.parametros === 'object' && Object.keys(tec.parametros).length > 0 && (
+                                                    <div className="flex flex-wrap gap-0.5 mt-1">
+                                                      {Object.entries(tec.parametros).slice(0, 4).map(([k, v]) => (
+                                                        <Badge key={k} variant="outline" className="text-[8px] py-0 h-3.5">{k}: {String(v)}</Badge>
+                                                      ))}
+                                                    </div>
+                                                  )}
+                                                  {item.observacoes && (
+                                                    <p className="text-[10px] text-amber-600 mt-1 italic">💡 {item.observacoes}</p>
+                                                  )}
+                                                </div>
+                                              );
+                                            })}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
                       )}
                     </div>
                   );
