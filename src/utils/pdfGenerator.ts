@@ -1,5 +1,12 @@
 import jsPDF from 'jspdf';
 
+export interface PDFTecnica {
+  nome: string;
+  categoria: string;
+  fase_numero: number;
+  observacoes?: string;
+}
+
 export interface PDFProtocolo {
   pacienteNome: string;
   terapeutaNome: string;
@@ -28,6 +35,7 @@ export interface PDFProtocolo {
       observacoes?: string;
     }>;
   }>;
+  tecnicas?: PDFTecnica[];
 }
 
 const VERMELHO = [196, 30, 58] as [number, number, number];
@@ -255,6 +263,74 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
     }
 
     y += 6;
+  }
+
+  // ── TÉCNICAS DE TRATAMENTO ────────────────────────────────────────────────
+  if (data.tecnicas && data.tecnicas.length > 0) {
+    y = addPageIfNeeded(doc, y + 5, margin);
+
+    doc.setTextColor(...CINZA_ESCURO);
+    doc.setFontSize(11);
+    doc.setFont('helvetica', 'bold');
+    doc.text('TÉCNICAS DE TRATAMENTO SELECIONADAS', margin, y);
+    y += 8;
+
+    const CATEGORIA_ICONS: Record<string, string> = {
+      'Terapia Manual': '🖐️',
+      'Eletroterapia': '⚡',
+      'Exercício Terapêutico': '🏋️',
+      'Terapia Respiratória': '🫁',
+      'Regulação Neurovegetativa': '🧠',
+      'Neurodinâmica': '🔗',
+      'Tração': '↕️',
+      'Educação em Dor': '📚',
+    };
+
+    // Group by phase
+    const tecnicasPorFase: Record<number, typeof data.tecnicas> = {};
+    data.tecnicas.forEach(t => {
+      if (!tecnicasPorFase[t.fase_numero]) tecnicasPorFase[t.fase_numero] = [];
+      tecnicasPorFase[t.fase_numero].push(t);
+    });
+
+    const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
+
+    Object.entries(tecnicasPorFase).sort((a, b) => Number(a[0]) - Number(b[0])).forEach(([faseNum, tecnicas]) => {
+      y = addPageIfNeeded(doc, y, margin);
+      const fIdx = Number(faseNum) - 1;
+      const cor = faseCores[fIdx % faseCores.length];
+
+      // Phase sub-header
+      doc.setFillColor(cor[0], cor[1], cor[2]);
+      doc.rect(margin, y - 2, 3, 7, 'F');
+      doc.setTextColor(...CINZA_ESCURO);
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`Fase ${faseNum} – ${FASE_NOMES[fIdx] || ''}`, margin + 6, y + 3);
+      y += 10;
+
+      tecnicas.forEach(tec => {
+        y = addPageIfNeeded(doc, y, margin);
+        const icon = CATEGORIA_ICONS[tec.categoria] || '•';
+        doc.setFontSize(8);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...CINZA_ESCURO);
+        doc.text(`${icon} ${tec.nome}`, margin + 4, y);
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(7);
+        doc.setTextColor(...CINZA_MEDIO);
+        doc.text(tec.categoria, margin + contentW - 5, y, { align: 'right' });
+        y += 4;
+        if (tec.observacoes) {
+          const obsLines = doc.splitTextToSize(tec.observacoes, contentW - 10);
+          doc.text(obsLines, margin + 6, y);
+          y += obsLines.length * 4;
+        }
+        y += 3;
+      });
+
+      y += 4;
+    });
   }
 
   // ── SEGURANÇA ─────────────────────────────────────────────────────────────
