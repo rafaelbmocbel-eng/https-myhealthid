@@ -846,6 +846,57 @@ export type Database = {
         }
         Relationships: []
       }
+      protocolo_tratamentos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          fase_numero: number
+          id: string
+          observacoes: string | null
+          parametros_customizados: Json | null
+          protocolo_id: string
+          tecnica_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          fase_numero?: number
+          id?: string
+          observacoes?: string | null
+          parametros_customizados?: Json | null
+          protocolo_id: string
+          tecnica_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          fase_numero?: number
+          id?: string
+          observacoes?: string | null
+          parametros_customizados?: Json | null
+          protocolo_id?: string
+          tecnica_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "protocolo_tratamentos_protocolo_id_fkey"
+            columns: ["protocolo_id"]
+            isOneToOne: false
+            referencedRelation: "protocolos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "protocolo_tratamentos_tecnica_id_fkey"
+            columns: ["tecnica_id"]
+            isOneToOne: false
+            referencedRelation: "tecnicas_tratamento"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       protocolos: {
         Row: {
           avaliacao_id: string | null

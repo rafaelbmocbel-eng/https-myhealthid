@@ -14,6 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import ProtocoloFaseCard from './ProtocoloFaseCard';
 import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTecnicas from './ProtocoloTecnicas';
+import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 
 interface Props {
@@ -24,7 +25,7 @@ interface Props {
 
 export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Props) {
   const [fasesAbertas, setFasesAbertas] = useState<Set<number>>(new Set([0]));
-  const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'progressao'>('fases');
+  const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'tratamento' | 'progressao'>('fases');
 
   const { data: protocolo, isLoading: loadingProt } = useQuery({
     queryKey: ['protocolo', protocoloId],
@@ -222,7 +223,8 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
       <div className="flex gap-1 mb-6 bg-muted rounded-xl p-1">
         {[
           { key: 'fases' as const, label: 'Fases do Protocolo', icon: Layers },
-          { key: 'tecnicas' as const, label: 'Técnicas de Tratamento', icon: Brain },
+          { key: 'tecnicas' as const, label: 'Cardápio de Técnicas', icon: Brain },
+          { key: 'tratamento' as const, label: 'Tratamento', icon: CheckCircle2 },
           { key: 'progressao' as const, label: 'Progressão', icon: TrendingUp },
         ].map(tab => {
           const Icon = tab.icon;
@@ -263,7 +265,11 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
       )}
 
       {tabAtiva === 'tecnicas' && (
-        <ProtocoloTecnicas tecnicas={tecnicasDB} faseAtual={faseAtual} />
+        <ProtocoloTecnicas tecnicas={tecnicasDB} faseAtual={faseAtual} protocoloId={protocoloId} />
+      )}
+
+      {tabAtiva === 'tratamento' && (
+        <ProtocoloTratamento protocoloId={protocoloId} faseAtual={faseAtual} />
       )}
 
       {tabAtiva === 'progressao' && (
