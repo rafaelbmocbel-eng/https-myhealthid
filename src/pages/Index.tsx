@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import AmostraEpidemiologica from '@/components/dashboard/AmostraEpidemiologica';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -105,13 +106,22 @@ export default function Index() {
     enabled: !!user,
   });
 
-  const { data: amostraClinica } = useQuery({
-    queryKey: ['amostra-clinica', user?.id],
+  const { data: avaliacoesRaw = [] } = useQuery({
+    queryKey: ['avaliacoes-raw-epidemio', user?.id],
     queryFn: async () => {
-      const { data: avaliacoes } = await supabase
+      const { data } = await supabase
         .from('avaliacoes_identidade')
         .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao')
         .eq('terapeuta_id', user!.id);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: amostraClinica } = useQuery({
+    queryKey: ['amostra-clinica', user?.id, avaliacoesRaw.length],
+    queryFn: async () => {
+      const avaliacoes = avaliacoesRaw;
       if (!avaliacoes || avaliacoes.length === 0) return null;
       const n = avaliacoes.length;
       const avg = (key: string) => {
@@ -710,6 +720,24 @@ export default function Index() {
                 </div>
               </TabsContent>
             </Tabs>
+          </div>
+        )}
+
+        {/* Análise Epidemiológica */}
+        {avaliacoesRaw.length >= 2 && (
+          <div className="clinical-card mb-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
+                <TrendingUp className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-foreground">Análise Epidemiológica</h2>
+                <p className="text-xs text-muted-foreground">
+                  Correlações e relações cruzadas · {avaliacoesRaw.length} avaliações · Base para estudos científicos
+                </p>
+              </div>
+            </div>
+            <AmostraEpidemiologica avaliacoes={avaliacoesRaw as any} />
           </div>
         )}
 
