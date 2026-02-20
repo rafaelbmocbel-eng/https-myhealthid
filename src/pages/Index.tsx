@@ -6,7 +6,8 @@ import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
-  ClipboardList, Clock, Plus, Loader2,
+  ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
+  CheckCircle2, XCircle, UserX, FileText,
 } from 'lucide-react';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -52,6 +53,50 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase.from('paciente_servicos').select('paciente_id, servico').eq('ativo', true);
       return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: statsData } = useQuery({
+    queryKey: ['dashboard-stats', user?.id],
+    queryFn: async () => {
+      const [
+        { count: totalAvalIdentidade },
+        { count: totalAvalCob },
+        { count: totalProtocolos },
+        { count: protocolosAtivos },
+        { data: agSemana },
+        { count: totalConcluidos },
+        { count: totalFaltas },
+        { count: totalCancelados },
+      ] = await Promise.all([
+        supabase.from('avaliacoes_identidade').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_cob_zero').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
+        supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
+        supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'ativo'),
+        supabase.from('agendamentos').select('status').eq('terapeuta_id', user!.id)
+          .gte('data_inicio', new Date(Date.now() - 30 * 86400000).toISOString()),
+        supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'concluido'),
+        supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'faltou'),
+        supabase.from('agendamentos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'cancelado'),
+      ]);
+      const totalSessoes30d = agSemana?.length || 0;
+      const concluidos30d = agSemana?.filter(a => a.status === 'concluido').length || 0;
+      const faltas30d = agSemana?.filter(a => a.status === 'faltou').length || 0;
+      const taxaPresenca = totalSessoes30d > 0 ? Math.round(((totalSessoes30d - faltas30d) / totalSessoes30d) * 100) : 0;
+      return {
+        totalAvalIdentidade: totalAvalIdentidade || 0,
+        totalAvalCob: totalAvalCob || 0,
+        totalProtocolos: totalProtocolos || 0,
+        protocolosAtivos: protocolosAtivos || 0,
+        totalConcluidos: totalConcluidos || 0,
+        totalFaltas: totalFaltas || 0,
+        totalCancelados: totalCancelados || 0,
+        sessoes30d: totalSessoes30d,
+        concluidos30d,
+        faltas30d,
+        taxaPresenca,
+      };
     },
     enabled: !!user,
   });
@@ -245,6 +290,65 @@ export default function Index() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Estatísticas Gerais */}
+        {statsData && (
+          <div className="clinical-card mb-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg">
+                <BarChart3 className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-foreground">Estatísticas Gerais</h2>
+                <p className="text-xs text-muted-foreground">Visão consolidada dos últimos 30 dias</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+              {[
+                { label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' },
+                { label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' },
+                { label: 'Protocolos Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
+                { label: 'Protocolos Ativos', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
+                { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
+                { label: 'Taxa Presença', value: `${statsData.taxaPresenca}%`, icon: CheckCircle2, color: 'text-teal-600' },
+              ].map(s => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.label} className="rounded-xl border bg-card p-3 text-center">
+                    <Icon className={`h-5 w-5 mx-auto mb-1.5 ${s.color}`} />
+                    <div className="text-xl font-black text-foreground">{s.value}</div>
+                    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{s.label}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid grid-cols-3 gap-3">
+              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-2.5">
+                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{statsData.totalConcluidos}</div>
+                  <div className="text-[10px] text-emerald-600/80">Concluídos</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/30 p-2.5">
+                <UserX className="h-4 w-4 text-red-600 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-red-700 dark:text-red-400">{statsData.totalFaltas}</div>
+                  <div className="text-[10px] text-red-600/80">Faltas</div>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 rounded-lg bg-slate-50 dark:bg-slate-950/30 p-2.5">
+                <XCircle className="h-4 w-4 text-slate-500 shrink-0" />
+                <div>
+                  <div className="text-sm font-bold text-slate-700 dark:text-slate-400">{statsData.totalCancelados}</div>
+                  <div className="text-[10px] text-slate-500/80">Cancelados</div>
+                </div>
+              </div>
             </div>
           </div>
         )}
