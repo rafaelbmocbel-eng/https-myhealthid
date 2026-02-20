@@ -517,6 +517,12 @@ export default function Protocolos() {
         .select('*, exercicio:exercicio_id(*)')
         .eq('protocolo_id', protocolo.id);
 
+      const { data: tratamentos } = await (supabase as any)
+        .from('protocolo_tratamentos')
+        .select('*, tecnica:tecnica_id(nome, categoria)')
+        .eq('protocolo_id', protocolo.id)
+        .eq('ativo', true);
+
       const fasesComExercicios = (fases || []).map((f: any) => ({
         fase: f.numero_fase,
         titulo: f.titulo,
@@ -548,6 +554,12 @@ export default function Protocolos() {
         frequencia: protocolo.frequencia || '2-3x por semana',
         prognose: scores['prognose'] as any || 'Moderado – melhora esperada com aderência ao tratamento.',
         fases: fasesComExercicios,
+        tecnicas: (tratamentos || []).map((t: any) => ({
+          nome: t.tecnica?.nome || 'Técnica',
+          categoria: t.tecnica?.categoria || '',
+          fase_numero: t.fase_numero || 1,
+          observacoes: t.observacoes,
+        })),
       };
 
       await gerarPDFProtocolo(pdfData);
