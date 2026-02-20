@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3 } from 'lucide-react';
+import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -17,6 +17,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   BarChart, Bar,
 } from 'recharts';
+import PacienteProtocolosTab from './PacienteProtocolosTab';
 
 interface Paciente {
   id: string;
@@ -175,6 +176,9 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <TrendingUp className="h-4 w-4" /> Evolução
             </TabsTrigger>
           )}
+          <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <Dumbbell className="h-4 w-4" /> Protocolos
+          </TabsTrigger>
         </TabsList>
 
         {/* Aba: Avaliações Salvas */}
@@ -293,6 +297,15 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
             </div>
           </TabsContent>
         )}
+
+        {/* Aba: Protocolos */}
+        <TabsContent value="protocolos" className="mt-4">
+          <PacienteProtocolosTab
+            pacienteId={paciente.id}
+            pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+            tipo="cob_zero"
+          />
+        </TabsContent>
       </Tabs>
     </div>
   );
