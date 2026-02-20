@@ -111,8 +111,9 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao')
-        .eq('terapeuta_id', user!.id);
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao, paciente_id, created_at')
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: true });
       return data || [];
     },
     enabled: !!user,
