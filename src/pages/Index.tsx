@@ -7,8 +7,10 @@ import { Button } from '@/components/ui/button';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
   ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
-  CheckCircle2, XCircle, UserX, FileText,
+  CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
+  Zap, Shield, Gauge,
 } from 'lucide-react';
+import { Progress } from '@/components/ui/progress';
 import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -97,6 +99,53 @@ export default function Index() {
         faltas30d,
         taxaPresenca,
       };
+    },
+    enabled: !!user,
+  });
+
+  const { data: amostraClinica } = useQuery({
+    queryKey: ['amostra-clinica', user?.id],
+    queryFn: async () => {
+      const { data: avaliacoes } = await supabase
+        .from('avaliacoes_identidade')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao')
+        .eq('terapeuta_id', user!.id);
+      if (!avaliacoes || avaliacoes.length === 0) return null;
+      const n = avaliacoes.length;
+      const avg = (key: string) => {
+        const vals = avaliacoes.map(a => (a as any)[key]).filter((v: any) => v != null && !isNaN(v));
+        return vals.length > 0 ? vals.reduce((s: number, v: number) => s + Number(v), 0) / vals.length : 0;
+      };
+      const scores = {
+        E: avg('score_e'), P: avg('score_p'), C: avg('score_c'),
+        F: avg('score_f'), D: avg('score_d'), R: avg('score_r'),
+        EFI: avg('score_efi'), ID: avg('id_final'),
+      };
+      const locaisDor: Record<string, number> = {};
+      const classificacoes: Record<string, number> = {};
+      avaliacoes.forEach(a => {
+        if (a.classificacao) classificacoes[a.classificacao] = (classificacoes[a.classificacao] || 0) + 1;
+        try {
+          const dados = a.dados_avaliacao as any;
+          if (dados?.bloco2?.local_dor) {
+            const loc = Array.isArray(dados.bloco2.local_dor) ? dados.bloco2.local_dor : [dados.bloco2.local_dor];
+            loc.forEach((l: string) => { if (l) locaisDor[l] = (locaisDor[l] || 0) + 1; });
+          }
+          if (dados?.bloco2?.regioes_dor) {
+            const regs = Array.isArray(dados.bloco2.regioes_dor) ? dados.bloco2.regioes_dor : [dados.bloco2.regioes_dor];
+            regs.forEach((r: string) => { if (r) locaisDor[r] = (locaisDor[r] || 0) + 1; });
+          }
+          if (dados?.bloco6?.unidades_afetadas) {
+            const ucs = Array.isArray(dados.bloco6.unidades_afetadas) ? dados.bloco6.unidades_afetadas : [];
+            ucs.forEach((uc: string) => { if (uc) locaisDor[uc] = (locaisDor[uc] || 0) + 1; });
+          }
+        } catch {}
+      });
+      const topLocais = Object.entries(locaisDor).sort((a, b) => b[1] - a[1]).slice(0, 6)
+        .map(([nome, count]) => ({ nome, count, pct: Math.round((count / n) * 100) }));
+      const topClassificacoes = Object.entries(classificacoes).sort((a, b) => b[1] - a[1]).slice(0, 5)
+        .map(([nome, count]) => ({ nome, count, pct: Math.round((count / n) * 100) }));
+      return { scores, n, topLocais, topClassificacoes };
     },
     enabled: !!user,
   });
@@ -349,6 +398,96 @@ export default function Index() {
                   <div className="text-[10px] text-slate-500/80">Cancelados</div>
                 </div>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Amostra Clínica Populacional */}
+        {amostraClinica && (
+          <div className="clinical-card mb-6">
+            <div className="flex items-center gap-3 mb-5">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-600 to-pink-500 flex items-center justify-center shadow-lg">
+                <Gauge className="h-5 w-5 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-foreground">Amostra Clínica Populacional</h2>
+                <p className="text-xs text-muted-foreground">
+                  Média geral de {amostraClinica.n} avaliações · Todos os pacientes
+                </p>
+              </div>
+            </div>
+
+            {/* Scores médios biopsicossociais */}
+            <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <Brain className="h-3.5 w-3.5" /> Índices Biopsicossociais (Média Geral)
+            </h3>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+              {[
+                { label: 'Estrutural (E)', value: amostraClinica.scores.E, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+                { label: 'Psicológico (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+                { label: 'Cinesiofobia (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+                { label: 'Funcional (F)', value: amostraClinica.scores.F, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+                { label: 'Dor (D)', value: amostraClinica.scores.D, icon: Heart, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30' },
+                { label: 'Regulação (R)', value: amostraClinica.scores.R, icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
+                { label: 'EFI Global', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
+                { label: 'Dor Identidade', value: amostraClinica.scores.ID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30' },
+              ].map(s => {
+                const Icon = s.icon;
+                return (
+                  <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
+                    <div className="flex items-center gap-1.5 mb-1">
+                      <Icon className={`h-3.5 w-3.5 ${s.color}`} />
+                      <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
+                    </div>
+                    <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
+                    <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="grid md:grid-cols-2 gap-5">
+              {/* Locais de dor mais frequentes */}
+              {amostraClinica.topLocais.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <Heart className="h-3.5 w-3.5" /> Locais de Dor Mais Frequentes
+                  </h3>
+                  <div className="space-y-2">
+                    {amostraClinica.topLocais.map(loc => (
+                      <div key={loc.nome} className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-foreground w-28 truncate">{loc.nome}</span>
+                        <div className="flex-1">
+                          <Progress value={loc.pct} className="h-2" />
+                        </div>
+                        <span className="text-xs font-bold text-muted-foreground w-12 text-right">{loc.pct}%</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Classificações */}
+              {amostraClinica.topClassificacoes.length > 0 && (
+                <div>
+                  <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+                    <ClipboardList className="h-3.5 w-3.5" /> Classificações Predominantes
+                  </h3>
+                  <div className="space-y-2">
+                    {amostraClinica.topClassificacoes.map(cl => (
+                      <div key={cl.nome} className="flex items-center gap-3">
+                        <span className="text-xs font-medium text-foreground w-28 truncate">{cl.nome}</span>
+                        <div className="flex-1">
+                          <Progress value={cl.pct} className="h-2" />
+                        </div>
+                        <span className="text-xs font-bold text-muted-foreground w-12 text-right">
+                          {cl.count} <span className="text-[10px] font-normal">({cl.pct}%)</span>
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         )}
