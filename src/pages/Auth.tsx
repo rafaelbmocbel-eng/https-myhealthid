@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import logoMyHealth from '@/assets/logo-my-health-id.jpg';
+import LogoIcon from '@/components/LogoIcon';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -44,7 +44,7 @@ export default function Auth() {
         style={{ background: 'linear-gradient(160deg, hsl(213 55% 16%) 0%, hsl(213 55% 8%) 100%)' }}
       >
         <div className="flex items-center gap-3">
-          <img src={logoMyHealth} alt="My Health ID" className="h-12 w-12 rounded-xl object-cover" style={{ boxShadow: '0 2px 10px hsl(0 0% 0% / 0.3)' }} />
+          <LogoIcon size={44} />
           <div>
             <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></div>
             <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
@@ -79,7 +79,7 @@ export default function Auth() {
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
           <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <img src={logoMyHealth} alt="My Health ID" className="h-9 w-9 rounded-lg object-cover" />
+            <LogoIcon size={34} />
             <span className="font-black text-sm text-foreground">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></span>
           </div>
 

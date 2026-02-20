@@ -3,7 +3,7 @@ import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
   Settings, LogOut, User, ClipboardList, Dumbbell,
 } from 'lucide-react';
-import logoMyHealth from '@/assets/logo-my-health-id.jpg';
+import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -52,12 +52,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
       {/* Logo */}
       <div className="flex items-center justify-center h-20 shrink-0 px-3">
         <Link to="/" className="flex items-center gap-3 min-w-0">
-          <img
-            src={logoMyHealth}
-            alt="My Health ID"
-            className="h-10 w-10 rounded-xl object-cover shrink-0"
-            style={{ boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3)' }}
-          />
+          <LogoIcon size={38} />
           {!collapsed && (
             <div className="min-w-0">
               <div className="text-xs font-black leading-none text-white tracking-wide">
