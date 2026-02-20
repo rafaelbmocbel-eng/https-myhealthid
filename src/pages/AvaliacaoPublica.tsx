@@ -3,10 +3,9 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { Loader2, CheckCircle2, XCircle, AlertCircle, ClipboardList, Activity, Brain, Bed } from 'lucide-react';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
-// Bloco2Dor is now merged into Bloco1Anamnese
 import Bloco3Funcionalidade from '@/components/identidade/Bloco3Funcionalidade';
 import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
 import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
@@ -18,6 +17,13 @@ interface LinkInfo {
   blocos_inclusos: number[];
   data_expiracao: string;
 }
+
+const STEPS = [
+  { blocoNum: 1, label: 'Anamnese e Mapeamento da Dor', icon: ClipboardList },
+  { blocoNum: 3, label: 'Funcionalidade', icon: Activity },
+  { blocoNum: 4, label: 'Comportamento', icon: Brain },
+  { blocoNum: 5, label: 'Regulação Neurovegetativa', icon: Bed },
+];
 
 const defaultBloco1: Bloco1Data = {
   queixaPrincipal: '', duracao: '', eventoPrecipitante: false, eventoPrecipitanteDescricao: '',
@@ -54,11 +60,14 @@ export default function AvaliacaoPublica() {
   const [bloco4, setBloco4] = useState<Bloco4Data>(defaultBloco4);
   const [bloco5, setBloco5] = useState<Bloco5Data>(defaultBloco5);
 
+  const currentStepIdx = STEPS.findIndex(s => s.blocoNum === blocoAtual);
+  const completedSteps = STEPS.filter(s => blocosConcluidos.has(s.blocoNum)).length;
+  const progresso = (completedSteps / STEPS.length) * 100;
+
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
     (async () => {
       try {
-        // Usa edge function segura — não expõe token nem dados sensíveis via SELECT público
         const { data, error } = await supabase.functions.invoke('validar-token-avaliacao', {
           body: { token },
         });
@@ -79,7 +88,6 @@ export default function AvaliacaoPublica() {
     if (!linkInfo) return;
     setSalvando(true);
     try {
-      // Tenta verificar tentativas anteriores (requer RLS SELECT público ativo)
       let tentativa = 1;
       const { data: existente } = await supabase
         .from('respostas_avaliacao_paciente')
@@ -110,20 +118,24 @@ export default function AvaliacaoPublica() {
     }
   };
 
+  const BLOCK_ORDER = [1, 3, 4, 5];
+
   const avancarBloco = async (blocoNum: number, dados: any) => {
     await salvarBloco(blocoNum, dados);
     setBlocosConcluidos(prev => new Set([...prev, blocoNum]));
-    // Avança para o próximo bloco ou encerra se for o último (bloco 5)
-    if (blocoNum < 5) {
-      setBlocoAtual(blocoNum + 1);
+    const currentIdx = BLOCK_ORDER.indexOf(blocoNum);
+    const nextBlock = BLOCK_ORDER[currentIdx + 1];
+    if (nextBlock) {
+      setBlocoAtual(nextBlock);
     } else {
       setConcluido(true);
     }
   };
 
-  const voltarBloco = () => setBlocoAtual(prev => Math.max(1, prev - 1));
-
-  const progresso = (blocosConcluidos.size / 5) * 100;
+  const voltarBloco = () => {
+    const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
+    if (currentIdx > 0) setBlocoAtual(BLOCK_ORDER[currentIdx - 1]);
+  };
 
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
@@ -154,16 +166,45 @@ export default function AvaliacaoPublica() {
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="border-b bg-card px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <img src={logoMetodo} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-          <div className="flex-1">
-            <h1 className="font-bold text-sm text-foreground">Avaliação Método Identidade</h1>
-            <div className="flex items-center gap-3 mt-1">
-              <Progress value={progresso} className="h-1.5 flex-1" />
-              <span className="text-xs text-muted-foreground whitespace-nowrap">{blocosConcluidos.size}/5 blocos</span>
+        <div className="max-w-2xl mx-auto">
+          <div className="flex items-center gap-4 mb-3">
+            <img src={logoMetodo} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
+            <div className="flex-1">
+              <h1 className="font-bold text-sm text-foreground">Questionário My Health ID</h1>
+              <div className="flex items-center gap-3 mt-1">
+                <Progress value={progresso} className="h-1.5 flex-1" />
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{completedSteps}/{STEPS.length} etapas</span>
+              </div>
             </div>
+            {salvando && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
           </div>
-          {salvando && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
+
+          {/* Step indicator */}
+          <div className="flex gap-1">
+            {STEPS.map((step, idx) => {
+              const Icon = step.icon;
+              const isActive = idx === currentStepIdx;
+              const isDone = blocosConcluidos.has(step.blocoNum);
+              return (
+                <div
+                  key={step.blocoNum}
+                  className={`flex-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all ${
+                    isActive ? 'bg-primary/10 text-primary border border-primary/20' :
+                    isDone ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30' :
+                    'text-muted-foreground'
+                  }`}
+                >
+                  {isDone ? (
+                    <CheckCircle2 className="h-3 w-3 shrink-0" />
+                  ) : (
+                    <Icon className="h-3 w-3 shrink-0" />
+                  )}
+                  <span className="hidden sm:inline truncate">{step.label}</span>
+                  <span className="sm:hidden">{idx + 1}</span>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
 

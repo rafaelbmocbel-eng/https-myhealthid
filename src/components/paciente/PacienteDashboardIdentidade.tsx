@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit, CalendarDays, Dumbbell } from 'lucide-react';
+import { useState, useMemo } from 'react';
+import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit, CalendarDays, Dumbbell, AlertCircle, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -20,6 +20,7 @@ import QuestionariosComparacao from './QuestionariosComparacao';
 import EvolucaoDashboard from './EvolucaoDashboard';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IdFinalGauge from '@/components/identidade/IdFinalGauge';
+import DashboardParcial from './DashboardParcial';
 
 interface Paciente {
   id: string;
@@ -175,6 +176,43 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     }
   };
 
+  // Extrair scores parciais do último questionário respondido
+  const scoresParciais = useMemo(() => {
+    if (respostas.length === 0) return null;
+    // Pegar respostas do link mais recente que tenha dados
+    const linkMaisRecente = linksAvPaciente.find(l =>
+      respostas.some(r => r.link_id === l.id)
+    );
+    if (!linkMaisRecente) return null;
+
+    const respostasLink = respostas.filter(r => r.link_id === linkMaisRecente.id);
+    const scores: Record<string, number> = {};
+    const blocosRecebidos: number[] = [];
+
+    respostasLink.forEach(r => {
+      if (!blocosRecebidos.includes(r.bloco_numero)) blocosRecebidos.push(r.bloco_numero);
+      const dados = r.dados_respostas as any;
+      if (!dados) return;
+      // Extract scores from response data
+      Object.entries(dados).forEach(([k, v]) => {
+        if (k.startsWith('score') && typeof v === 'number') {
+          scores[k] = v;
+        }
+      });
+    });
+
+    if (Object.keys(scores).length === 0) return null;
+
+    return {
+      scores,
+      blocosRecebidos: blocosRecebidos.sort(),
+      totalBlocos: blocosRecebidos.length,
+      completo: blocosRecebidos.length >= 4,
+      linkId: linkMaisRecente.id,
+      data: linkMaisRecente.data_ultimo_acesso || linkMaisRecente.created_at,
+    };
+  }, [respostas, linksAvPaciente]);
+
   // Dados para gráfico radar (última avaliação)
   const ultimaAvaliacao = avaliacoes[0];
   const radarData = ultimaAvaliacao ? SCORE_KEYS.slice(0, 6).map(key => ({
@@ -183,6 +221,11 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
   })) : [];
 
   const idFinal = (ultimaAvaliacao as any)?.id_final || 0;
+
+  // Determinar se devemos mostrar o dashboard parcial
+  const temAvaliacaoCompleta = avaliacoes.length > 0;
+  const temQuestionario = scoresParciais !== null;
+  const mostrarDashboardParcial = !temAvaliacaoCompleta && temQuestionario;
 
   return (
     <div className="space-y-6">
@@ -269,6 +312,14 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         </div>
       </div>
 
+      {/* Dashboard Parcial — quando há questionário mas sem avaliação completa */}
+      {mostrarDashboardParcial && scoresParciais && (
+        <DashboardParcial
+          scoresParciais={scoresParciais}
+          onIniciarAvaliacao={onIniciarAvaliacao}
+        />
+      )}
+
       {/* Tabs */}
       <Tabs defaultValue="avaliacoes">
         <TabsList className="bg-secondary p-1 rounded-xl">
@@ -296,8 +347,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
             <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
               <Activity className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="font-medium">Nenhuma avaliação salva</p>
-              <p className="text-sm mt-1">Realize e salve uma avaliação para visualizar o histórico.</p>
-              <Button className="mt-4 bg-identidade text-identidade-foreground" onClick={onIniciarAvaliacao}>Iniciar Avaliação</Button>
+              <p className="text-sm mt-1">
+                {temQuestionario
+                  ? 'O paciente já respondeu o questionário. Complete a avaliação estrutural para gerar o ID Final.'
+                  : 'Realize e salve uma avaliação para visualizar o histórico.'
+                }
+              </p>
+              <Button className="mt-4 bg-identidade text-identidade-foreground" onClick={onIniciarAvaliacao}>
+                {temQuestionario ? 'Completar Avaliação Estrutural' : 'Iniciar Avaliação'}
+              </Button>
             </div>
           ) : (
             <div className="space-y-6">
@@ -352,7 +410,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
                   <div className="space-y-3">
                     {SCORE_KEYS.map(key => {
                       const val = Number(((ultimaAvaliacao as any)[key] || 0).toFixed(1));
-                      const maxVal = key === 'score_efi' ? 10 : 10;
+                      const maxVal = 10;
                       const pct = Math.min((val / maxVal) * 100, 100);
                       return (
                         <div key={key} className="flex items-center gap-3">
