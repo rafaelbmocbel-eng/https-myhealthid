@@ -524,21 +524,10 @@ export default function PacientePerfil() {
               <div className="space-y-3">
                 {protocolos.map((proto: any) => {
                   const tratamentos = (tratamentosMap as Record<string, any[]>)[proto.id] || [];
-                  const CAT_ICONS: Record<string, string> = {
-                    terapia_manual: '🖐️', eletroterapia: '⚡', exercicio_respiratorio: '🫁',
-                    tracao: '🔗', outros: '🧊',
-                  };
-                  const porFase: Record<number, any[]> = {};
-                  tratamentos.forEach((t: any) => {
-                    const f = t.fase_numero || 1;
-                    if (!porFase[f]) porFase[f] = [];
-                    porFase[f].push(t);
-                  });
-                  const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
 
                   return (
                     <div key={proto.id} className="clinical-card !p-4">
-                      <div className="flex items-center gap-3 mb-2">
+                      <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                           <ClipboardList className="h-4 w-4 text-primary" />
                         </div>
@@ -552,41 +541,19 @@ export default function PacientePerfil() {
                             {proto.created_at && ` · Criado em ${format(parseISO(proto.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
-                          <ExternalLink className="h-3 w-3" /> Ver Completo
-                        </Button>
+                        <div className="flex gap-1.5 shrink-0">
+                          {tratamentos.length > 0 && (
+                            <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
+                              <Dumbbell className="h-3 w-3" /> Tratamento ({tratamentos.length})
+                            </Button>
+                          )}
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
+                            <ExternalLink className="h-3 w-3" /> Ver Completo
+                          </Button>
+                        </div>
                       </div>
                       {proto.objetivo_geral && (
                         <p className="text-xs text-muted-foreground mt-2 border-t pt-2">{proto.objetivo_geral}</p>
-                      )}
-
-                      {tratamentos.length > 0 && (
-                        <div className="mt-3 border-t pt-3">
-                          <div className="flex items-center gap-1.5 mb-2">
-                            <Dumbbell className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-xs font-semibold text-foreground">Tratamento ({tratamentos.length} técnica{tratamentos.length !== 1 ? 's' : ''})</span>
-                          </div>
-                          <div className="space-y-2">
-                            {[1, 2, 3, 4].map(faseNum => {
-                              const tecs = porFase[faseNum];
-                              if (!tecs || tecs.length === 0) return null;
-                              return (
-                                <div key={faseNum}>
-                                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                                    Fase {faseNum}: {FASE_NOMES[faseNum - 1]}
-                                  </p>
-                                  <div className="flex flex-wrap gap-1">
-                                    {tecs.map((t: any) => (
-                                      <Badge key={t.id} variant="outline" className="text-[10px] h-5 gap-1 bg-primary/5 border-primary/20">
-                                        {CAT_ICONS[t.tecnica?.categoria] || '🔧'} {t.tecnica?.nome || 'Técnica'}
-                                      </Badge>
-                                    ))}
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
                       )}
                     </div>
                   );
