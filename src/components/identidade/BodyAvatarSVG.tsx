@@ -4,89 +4,88 @@
 interface Region {
   id: string;
   nome: string;
-  cx?: number;
-  cy?: number;
-  r?: number;
-  type?: 'circle' | 'path';
+  cx: number;
+  cy: number;
+  r: number;
 }
 
 // Front-only regions
 export const REGIOES_FRENTE: Region[] = [
-  { id: 'cabeca_f', nome: 'Cabeça (Ant)', type: 'circle', cx: 100, cy: 30, r: 18 },
-  { id: 'pescoco_f', nome: 'Pescoço (Ant)', type: 'circle', cx: 100, cy: 58, r: 7 },
-  { id: 'ombroDireito_f', nome: 'Ombro Dir (Ant)', type: 'circle', cx: 68, cy: 82, r: 10 },
-  { id: 'ombroEsquerdo_f', nome: 'Ombro Esq (Ant)', type: 'circle', cx: 132, cy: 82, r: 10 },
-  { id: 'colunaToracica_f', nome: 'Tórax Ant', type: 'circle', cx: 100, cy: 110, r: 14 },
-  { id: 'abdomen_f', nome: 'Abdômen', type: 'circle', cx: 100, cy: 150, r: 14 },
-  { id: 'colunaLombar_f', nome: 'Lombar (Ant)', type: 'circle', cx: 100, cy: 182, r: 12 },
-  { id: 'sacroPelvica_f', nome: 'Pélvica (Ant)', type: 'circle', cx: 100, cy: 210, r: 12 },
-  { id: 'bracoDireito_f', nome: 'Braço Dir (Ant)', type: 'circle', cx: 52, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoDireito_f', nome: 'Cotovelo/Ant.braço D (Ant)', type: 'circle', cx: 42, cy: 155, r: 9 },
-  { id: 'maoDireita_f', nome: 'Mão Dir (Ant)', type: 'circle', cx: 34, cy: 195, r: 7 },
-  { id: 'bracoEsquerdo_f', nome: 'Braço Esq (Ant)', type: 'circle', cx: 148, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoEsquerdo_f', nome: 'Cotovelo/Ant.braço E (Ant)', type: 'circle', cx: 158, cy: 155, r: 9 },
-  { id: 'maoEsquerda_f', nome: 'Mão Esq (Ant)', type: 'circle', cx: 166, cy: 195, r: 7 },
-  { id: 'coxaDireita_f', nome: 'Coxa Dir (Ant)', type: 'circle', cx: 86, cy: 260, r: 12 },
-  { id: 'coxaEsquerda_f', nome: 'Coxa Esq (Ant)', type: 'circle', cx: 114, cy: 260, r: 12 },
-  { id: 'joelhoDireito_f', nome: 'Joelho Dir (Ant)', type: 'circle', cx: 84, cy: 305, r: 9 },
-  { id: 'joelhoEsquerdo_f', nome: 'Joelho Esq (Ant)', type: 'circle', cx: 116, cy: 305, r: 9 },
-  { id: 'pernaDireita_f', nome: 'Perna Dir (Ant)', type: 'circle', cx: 82, cy: 345, r: 9 },
-  { id: 'pernaEsquerda_f', nome: 'Perna Esq (Ant)', type: 'circle', cx: 118, cy: 345, r: 9 },
-  { id: 'peDireito_f', nome: 'Pé Dir (Ant)', type: 'circle', cx: 80, cy: 382, r: 7 },
-  { id: 'peEsquerdo_f', nome: 'Pé Esq (Ant)', type: 'circle', cx: 120, cy: 382, r: 7 },
+  { id: 'cabeca_f', nome: 'Cabeça (Ant)', cx: 150, cy: 42, r: 22 },
+  { id: 'pescoco_f', nome: 'Pescoço (Ant)', cx: 150, cy: 78, r: 10 },
+  { id: 'ombroDireito_f', nome: 'Ombro Dir (Ant)', cx: 108, cy: 112, r: 14 },
+  { id: 'ombroEsquerdo_f', nome: 'Ombro Esq (Ant)', cx: 192, cy: 112, r: 14 },
+  { id: 'colunaToracica_f', nome: 'Tórax Ant', cx: 150, cy: 155, r: 20 },
+  { id: 'abdomen_f', nome: 'Abdômen', cx: 150, cy: 210, r: 18 },
+  { id: 'colunaLombar_f', nome: 'Lombar (Ant)', cx: 150, cy: 255, r: 16 },
+  { id: 'sacroPelvica_f', nome: 'Pélvica (Ant)', cx: 150, cy: 295, r: 16 },
+  { id: 'bracoDireito_f', nome: 'Braço Dir (Ant)', cx: 82, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoDireito_f', nome: 'Cotovelo/Ant.braço D', cx: 70, cy: 220, r: 11 },
+  { id: 'maoDireita_f', nome: 'Mão Dir (Ant)', cx: 58, cy: 280, r: 9 },
+  { id: 'bracoEsquerdo_f', nome: 'Braço Esq (Ant)', cx: 218, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoEsquerdo_f', nome: 'Cotovelo/Ant.braço E', cx: 230, cy: 220, r: 11 },
+  { id: 'maoEsquerda_f', nome: 'Mão Esq (Ant)', cx: 242, cy: 280, r: 9 },
+  { id: 'coxaDireita_f', nome: 'Coxa Dir (Ant)', cx: 130, cy: 365, r: 16 },
+  { id: 'coxaEsquerda_f', nome: 'Coxa Esq (Ant)', cx: 170, cy: 365, r: 16 },
+  { id: 'joelhoDireito_f', nome: 'Joelho Dir (Ant)', cx: 128, cy: 430, r: 12 },
+  { id: 'joelhoEsquerdo_f', nome: 'Joelho Esq (Ant)', cx: 172, cy: 430, r: 12 },
+  { id: 'pernaDireita_f', nome: 'Perna Dir (Ant)', cx: 126, cy: 495, r: 12 },
+  { id: 'pernaEsquerda_f', nome: 'Perna Esq (Ant)', cx: 174, cy: 495, r: 12 },
+  { id: 'peDireito_f', nome: 'Pé Dir (Ant)', cx: 122, cy: 555, r: 10 },
+  { id: 'peEsquerdo_f', nome: 'Pé Esq (Ant)', cx: 178, cy: 555, r: 10 },
 ];
 
 // Back-only regions
 export const REGIOES_COSTAS: Region[] = [
-  { id: 'cabeca_b', nome: 'Cabeça (Post)', type: 'circle', cx: 100, cy: 30, r: 18 },
-  { id: 'pescoco_b', nome: 'Pescoço (Post)', type: 'circle', cx: 100, cy: 58, r: 7 },
-  { id: 'ombroDireito_b', nome: 'Ombro Dir (Post)', type: 'circle', cx: 68, cy: 82, r: 10 },
-  { id: 'ombroEsquerdo_b', nome: 'Ombro Esq (Post)', type: 'circle', cx: 132, cy: 82, r: 10 },
-  { id: 'colunaToracica_b', nome: 'Torácica (Post)', type: 'circle', cx: 100, cy: 110, r: 14 },
-  { id: 'escapulaDireita_b', nome: 'Escápula Dir', type: 'circle', cx: 80, cy: 98, r: 9 },
-  { id: 'escapulaEsquerda_b', nome: 'Escápula Esq', type: 'circle', cx: 120, cy: 98, r: 9 },
-  { id: 'colunaLombar_b', nome: 'Lombar (Post)', type: 'circle', cx: 100, cy: 158, r: 14 },
-  { id: 'sacroPelvica_b', nome: 'Sacro-Pélvica (Post)', type: 'circle', cx: 100, cy: 198, r: 12 },
-  { id: 'gluteoDireito_b', nome: 'Glúteo Dir', type: 'circle', cx: 84, cy: 225, r: 11 },
-  { id: 'gluteoEsquerdo_b', nome: 'Glúteo Esq', type: 'circle', cx: 116, cy: 225, r: 11 },
-  { id: 'bracoDireito_b', nome: 'Braço Dir (Post)', type: 'circle', cx: 52, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoDireito_b', nome: 'Cotovelo D (Post)', type: 'circle', cx: 42, cy: 155, r: 9 },
-  { id: 'bracoEsquerdo_b', nome: 'Braço Esq (Post)', type: 'circle', cx: 148, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoEsquerdo_b', nome: 'Cotovelo E (Post)', type: 'circle', cx: 158, cy: 155, r: 9 },
-  { id: 'coxaDireita_b', nome: 'Coxa Dir (Post)', type: 'circle', cx: 86, cy: 260, r: 12 },
-  { id: 'coxaEsquerda_b', nome: 'Coxa Esq (Post)', type: 'circle', cx: 114, cy: 260, r: 12 },
-  { id: 'joelhoDireito_b', nome: 'Joelho Dir (Post)', type: 'circle', cx: 84, cy: 305, r: 9 },
-  { id: 'joelhoEsquerdo_b', nome: 'Joelho Esq (Post)', type: 'circle', cx: 116, cy: 305, r: 9 },
-  { id: 'panturrilhaDireita_b', nome: 'Panturrilha Dir', type: 'circle', cx: 82, cy: 345, r: 9 },
-  { id: 'panturrilhaEsquerda_b', nome: 'Panturrilha Esq', type: 'circle', cx: 118, cy: 345, r: 9 },
-  { id: 'calcanharDireito_b', nome: 'Calcanhar Dir', type: 'circle', cx: 80, cy: 382, r: 7 },
-  { id: 'calcanharEsquerdo_b', nome: 'Calcanhar Esq', type: 'circle', cx: 120, cy: 382, r: 7 },
+  { id: 'cabeca_b', nome: 'Cabeça (Post)', cx: 150, cy: 42, r: 22 },
+  { id: 'pescoco_b', nome: 'Pescoço (Post)', cx: 150, cy: 78, r: 10 },
+  { id: 'ombroDireito_b', nome: 'Ombro Dir (Post)', cx: 108, cy: 112, r: 14 },
+  { id: 'ombroEsquerdo_b', nome: 'Ombro Esq (Post)', cx: 192, cy: 112, r: 14 },
+  { id: 'colunaToracica_b', nome: 'Torácica (Post)', cx: 150, cy: 155, r: 20 },
+  { id: 'escapulaDireita_b', nome: 'Escápula Dir', cx: 122, cy: 138, r: 12 },
+  { id: 'escapulaEsquerda_b', nome: 'Escápula Esq', cx: 178, cy: 138, r: 12 },
+  { id: 'colunaLombar_b', nome: 'Lombar (Post)', cx: 150, cy: 225, r: 16 },
+  { id: 'sacroPelvica_b', nome: 'Sacro-Pélvica (Post)', cx: 150, cy: 278, r: 14 },
+  { id: 'gluteoDireito_b', nome: 'Glúteo Dir', cx: 130, cy: 310, r: 14 },
+  { id: 'gluteoEsquerdo_b', nome: 'Glúteo Esq', cx: 170, cy: 310, r: 14 },
+  { id: 'bracoDireito_b', nome: 'Braço Dir (Post)', cx: 82, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoDireito_b', nome: 'Cotovelo D (Post)', cx: 70, cy: 220, r: 11 },
+  { id: 'bracoEsquerdo_b', nome: 'Braço Esq (Post)', cx: 218, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoEsquerdo_b', nome: 'Cotovelo E (Post)', cx: 230, cy: 220, r: 11 },
+  { id: 'coxaDireita_b', nome: 'Coxa Dir (Post)', cx: 130, cy: 365, r: 16 },
+  { id: 'coxaEsquerda_b', nome: 'Coxa Esq (Post)', cx: 170, cy: 365, r: 16 },
+  { id: 'joelhoDireito_b', nome: 'Joelho Dir (Post)', cx: 128, cy: 430, r: 12 },
+  { id: 'joelhoEsquerdo_b', nome: 'Joelho Esq (Post)', cx: 172, cy: 430, r: 12 },
+  { id: 'panturrilhaDireita_b', nome: 'Panturrilha Dir', cx: 126, cy: 495, r: 12 },
+  { id: 'panturrilhaEsquerda_b', nome: 'Panturrilha Esq', cx: 174, cy: 495, r: 12 },
+  { id: 'calcanharDireito_b', nome: 'Calcanhar Dir', cx: 122, cy: 555, r: 10 },
+  { id: 'calcanharEsquerdo_b', nome: 'Calcanhar Esq', cx: 178, cy: 555, r: 10 },
 ];
 
 // Backward-compatible unified list
 export const REGIOES_CORPO: Region[] = [
-  { id: 'cabeca', nome: 'Cabeça', type: 'circle', cx: 100, cy: 30, r: 18 },
-  { id: 'pescoco', nome: 'Pescoço', type: 'circle', cx: 100, cy: 58, r: 7 },
-  { id: 'ombroDireito', nome: 'Ombro Direito', type: 'circle', cx: 68, cy: 82, r: 10 },
-  { id: 'ombroEsquerdo', nome: 'Ombro Esquerdo', type: 'circle', cx: 132, cy: 82, r: 10 },
-  { id: 'colunaToracica', nome: 'Coluna Torácica', type: 'circle', cx: 100, cy: 110, r: 14 },
-  { id: 'abdomen', nome: 'Abdômen', type: 'circle', cx: 100, cy: 150, r: 14 },
-  { id: 'colunaLombar', nome: 'Coluna Lombar', type: 'circle', cx: 100, cy: 182, r: 12 },
-  { id: 'sacroPelvica', nome: 'Sacro-Pélvica', type: 'circle', cx: 100, cy: 210, r: 12 },
-  { id: 'bracoDireito', nome: 'Braço Direito', type: 'circle', cx: 52, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoDireito', nome: 'Cotovelo/Antebraço D', type: 'circle', cx: 42, cy: 155, r: 9 },
-  { id: 'maoDireita', nome: 'Mão Direita', type: 'circle', cx: 34, cy: 195, r: 7 },
-  { id: 'bracoEsquerdo', nome: 'Braço Esquerdo', type: 'circle', cx: 148, cy: 118, r: 9 },
-  { id: 'cotoveloAntebracoEsquerdo', nome: 'Cotovelo/Antebraço E', type: 'circle', cx: 158, cy: 155, r: 9 },
-  { id: 'maoEsquerda', nome: 'Mão Esquerda', type: 'circle', cx: 166, cy: 195, r: 7 },
-  { id: 'coxaDireita', nome: 'Coxa Direita', type: 'circle', cx: 86, cy: 260, r: 12 },
-  { id: 'coxaEsquerda', nome: 'Coxa Esquerda', type: 'circle', cx: 114, cy: 260, r: 12 },
-  { id: 'joelhoDireito', nome: 'Joelho Direito', type: 'circle', cx: 84, cy: 305, r: 9 },
-  { id: 'joelhoEsquerdo', nome: 'Joelho Esquerdo', type: 'circle', cx: 116, cy: 305, r: 9 },
-  { id: 'pernaDireita', nome: 'Perna Direita', type: 'circle', cx: 82, cy: 345, r: 9 },
-  { id: 'pernaEsquerda', nome: 'Perna Esquerda', type: 'circle', cx: 118, cy: 345, r: 9 },
-  { id: 'peDireito', nome: 'Pé Direito', type: 'circle', cx: 80, cy: 382, r: 7 },
-  { id: 'peEsquerdo', nome: 'Pé Esquerdo', type: 'circle', cx: 120, cy: 382, r: 7 },
+  { id: 'cabeca', nome: 'Cabeça', cx: 150, cy: 42, r: 22 },
+  { id: 'pescoco', nome: 'Pescoço', cx: 150, cy: 78, r: 10 },
+  { id: 'ombroDireito', nome: 'Ombro Direito', cx: 108, cy: 112, r: 14 },
+  { id: 'ombroEsquerdo', nome: 'Ombro Esquerdo', cx: 192, cy: 112, r: 14 },
+  { id: 'colunaToracica', nome: 'Coluna Torácica', cx: 150, cy: 155, r: 20 },
+  { id: 'abdomen', nome: 'Abdômen', cx: 150, cy: 210, r: 18 },
+  { id: 'colunaLombar', nome: 'Coluna Lombar', cx: 150, cy: 255, r: 16 },
+  { id: 'sacroPelvica', nome: 'Sacro-Pélvica', cx: 150, cy: 295, r: 16 },
+  { id: 'bracoDireito', nome: 'Braço Direito', cx: 82, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoDireito', nome: 'Cotovelo/Antebraço D', cx: 70, cy: 220, r: 11 },
+  { id: 'maoDireita', nome: 'Mão Direita', cx: 58, cy: 280, r: 9 },
+  { id: 'bracoEsquerdo', nome: 'Braço Esquerdo', cx: 218, cy: 165, r: 12 },
+  { id: 'cotoveloAntebracoEsquerdo', nome: 'Cotovelo/Antebraço E', cx: 230, cy: 220, r: 11 },
+  { id: 'maoEsquerda', nome: 'Mão Esquerda', cx: 242, cy: 280, r: 9 },
+  { id: 'coxaDireita', nome: 'Coxa Direita', cx: 130, cy: 365, r: 16 },
+  { id: 'coxaEsquerda', nome: 'Coxa Esquerda', cx: 170, cy: 365, r: 16 },
+  { id: 'joelhoDireito', nome: 'Joelho Direito', cx: 128, cy: 430, r: 12 },
+  { id: 'joelhoEsquerdo', nome: 'Joelho Esquerdo', cx: 172, cy: 430, r: 12 },
+  { id: 'pernaDireita', nome: 'Perna Direita', cx: 126, cy: 495, r: 12 },
+  { id: 'pernaEsquerda', nome: 'Perna Esquerda', cx: 174, cy: 495, r: 12 },
+  { id: 'peDireito', nome: 'Pé Direito', cx: 122, cy: 555, r: 10 },
+  { id: 'peEsquerdo', nome: 'Pé Esquerdo', cx: 178, cy: 555, r: 10 },
 ];
 
 // Map UC unit IDs to region IDs for Bloco6
@@ -105,9 +104,19 @@ function getBaseRegionId(regionId: string): string {
   return regionId.replace(/_[fb]$/, '');
 }
 
+// Sintoma-specific colors
+const SINTOMA_CORES: Record<string, string> = {
+  dor: '#C41E3A',
+  irradiacao: '#F97316',
+  rigidez: '#3B82F6',
+  formigamento: '#FBBF24',
+  inchaco: '#10B981',
+  queimacao: '#DC2626',
+};
+
 interface BodyAvatarProps {
   painMap?: Record<string, number>;
-  sintomaMap?: Record<string, string[]>; // regionId -> array of sintoma types
+  sintomaMap?: Record<string, string[]>;
   ucScoreMap?: Record<string, number>;
   highlightedUC?: string | null;
   onRegionClick?: (regionId: string) => void;
@@ -124,90 +133,280 @@ function getRegionColor(intensity: number): string {
   return '#ef4444';
 }
 
-// Sintoma-specific colors for gradient overlay
-const SINTOMA_CORES: Record<string, string> = {
-  dor: '#C41E3A',
-  irradiacao: '#F97316',
-  rigidez: '#3B82F6',
-  formigamento: '#FBBF24',
-  inchaco: '#10B981',
-  queimacao: '#DC2626',
-};
-
-/* ── Improved anatomical body silhouette ──────────────────────── */
+/* ── Realistic anatomical body silhouette ─────────────────────── */
 function BodyOutline({ side }: { side: 'front' | 'back' }) {
+  const bodyColor = 'hsl(var(--muted-foreground))';
+
   return (
     <g>
-      {/* Head */}
-      <ellipse cx="100" cy="28" rx="16" ry="19" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1.2" opacity="0.35" />
-      {/* Ear hints */}
-      <ellipse cx="83" cy="28" rx="3" ry="6" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.6" opacity="0.2" />
-      <ellipse cx="117" cy="28" rx="3" ry="6" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.6" opacity="0.2" />
-      {/* Neck */}
-      <path d="M92 46 Q92 42 94 40 L100 38 L106 40 Q108 42 108 46 L108 62 Q108 66 106 68 L94 68 Q92 66 92 62 Z"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.3" />
-      {/* Shoulders + Torso */}
-      <path d="M94 68 Q80 70 68 76 Q58 82 56 90 L50 108
-               Q46 120 42 140 L38 160 Q36 170 34 182 Q32 192 32 198
-               M106 68 Q120 70 132 76 Q142 82 144 90 L150 108
-               Q154 120 158 140 L162 160 Q164 170 166 182 Q168 192 168 198"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1" opacity="0.3" />
-      {/* Torso outline */}
-      <path d="M68 76 Q66 80 66 90 L64 140 Q64 160 66 178 Q68 195 72 208
-               Q78 225 84 235 L100 240 L116 235
-               Q122 225 128 208 Q132 195 134 178 Q136 160 136 140 L134 90 Q134 80 132 76"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1.2" opacity="0.3" />
-      {/* Legs */}
-      <path d="M84 235 Q80 248 80 258 L78 290 Q78 300 80 310 L80 340 Q80 360 80 375 Q80 385 80 390"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1.2" opacity="0.3" />
-      <path d="M116 235 Q120 248 120 258 L122 290 Q122 300 120 310 L120 340 Q120 360 120 375 Q120 385 120 390"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="1.2" opacity="0.3" />
-      {/* Leg inner lines */}
-      <path d="M92 235 Q90 248 90 258 L90 290 Q90 300 88 310 L88 340 Q88 360 88 375 Q88 385 88 390"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.2" />
-      <path d="M108 235 Q110 248 110 258 L110 290 Q110 300 112 310 L112 340 Q112 360 112 375 Q112 385 112 390"
-        fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.2" />
-      {/* Feet */}
-      <ellipse cx="80" cy="392" rx="10" ry="5" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.25" />
-      <ellipse cx="120" cy="392" rx="10" ry="5" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.25" />
-      {/* Hands */}
-      <ellipse cx="34" cy="197" rx="6" ry="8" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.25" />
-      <ellipse cx="166" cy="197" rx="6" ry="8" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.8" opacity="0.25" />
+      {/* Gradient fills for body */}
+      <defs>
+        <radialGradient id={`skin-${side}`} cx="50%" cy="30%" r="70%">
+          <stop offset="0%" stopColor={bodyColor} stopOpacity="0.06" />
+          <stop offset="100%" stopColor={bodyColor} stopOpacity="0.12" />
+        </radialGradient>
+        <filter id={`body-shadow-${side}`}>
+          <feGaussianBlur in="SourceAlpha" stdDeviation="2" />
+          <feOffset dx="1" dy="2" />
+          <feComponentTransfer>
+            <feFuncA type="linear" slope="0.1" />
+          </feComponentTransfer>
+          <feMerge>
+            <feMergeNode />
+            <feMergeNode in="SourceGraphic" />
+          </feMerge>
+        </filter>
+      </defs>
 
-      {/* Anatomical guidelines */}
+      {/* Full body silhouette as a single filled path */}
+      <path
+        d={side === 'front' ? `
+          M 150 18
+          C 170 18 178 30 178 45
+          C 178 58 170 68 162 72
+          L 165 75
+          C 168 78 170 82 170 85
+          L 170 92
+          C 180 95 195 100 205 108
+          C 215 116 220 122 222 128
+          L 235 168
+          C 238 178 240 190 242 200
+          L 248 260
+          C 250 272 248 282 244 288
+          L 240 285
+          C 238 278 235 268 232 258
+          L 222 200
+          C 220 192 218 185 215 180
+          L 205 150
+          C 200 140 198 135 196 130
+          L 192 120
+          C 188 118 185 120 183 125
+          L 180 140
+          C 178 148 176 155 175 162
+          L 173 180
+          C 172 195 172 210 172 225
+          L 172 250
+          C 172 265 174 280 178 295
+          C 182 310 185 320 186 330
+          L 186 340
+          C 185 348 182 355 180 365
+          L 178 395
+          C 176 410 175 425 175 435
+          L 176 460
+          C 176 475 177 490 178 500
+          L 180 530
+          C 181 540 182 548 184 555
+          C 186 562 190 566 192 570
+          L 192 572
+          C 190 576 185 578 178 578
+          C 172 578 170 575 168 570
+          L 168 555
+          C 167 548 166 540 166 530
+          L 164 500
+          C 163 490 162 475 162 460
+          L 162 435
+          C 162 425 161 410 160 400
+          L 157 370
+          C 155 358 153 348 152 340
+          L 150 330
+          L 148 340
+          C 147 348 145 358 143 370
+          L 140 400
+          C 139 410 138 425 138 435
+          L 138 460
+          C 138 475 137 490 136 500
+          L 134 530
+          C 134 540 133 548 132 555
+          L 132 570
+          C 130 575 128 578 122 578
+          C 115 578 110 576 108 572
+          L 108 570
+          C 110 566 114 562 116 555
+          C 118 548 119 540 120 530
+          L 122 500
+          C 123 490 124 475 124 460
+          L 124 435
+          C 125 425 124 410 122 395
+          L 120 365
+          C 118 355 115 348 114 340
+          L 114 330
+          C 115 320 118 310 122 295
+          C 126 280 128 265 128 250
+          L 128 225
+          C 128 210 128 195 127 180
+          L 125 162
+          C 124 155 122 148 120 140
+          L 117 125
+          C 115 120 112 118 108 120
+          L 104 130
+          C 102 135 100 140 95 150
+          L 85 180
+          C 82 185 80 192 78 200
+          L 68 258
+          C 65 268 62 278 60 285
+          L 56 288
+          C 52 282 50 272 52 260
+          L 58 200
+          C 60 190 62 178 65 168
+          L 78 128
+          C 80 122 85 116 95 108
+          C 105 100 120 95 130 92
+          L 130 85
+          C 130 82 132 78 135 75
+          L 138 72
+          C 130 68 122 58 122 45
+          C 122 30 130 18 150 18 Z
+        ` : `
+          M 150 18
+          C 170 18 178 30 178 45
+          C 178 58 170 68 162 72
+          L 165 75
+          C 168 78 170 82 170 85
+          L 170 92
+          C 180 95 195 100 205 108
+          C 215 116 220 122 222 128
+          L 235 168
+          C 238 178 240 190 242 200
+          L 248 260
+          C 250 272 248 282 244 288
+          L 240 285
+          C 238 278 235 268 232 258
+          L 222 200
+          C 220 192 218 185 215 180
+          L 205 150
+          C 200 140 198 135 196 130
+          L 192 120
+          C 188 118 185 120 183 125
+          L 180 140
+          C 178 148 176 155 175 162
+          L 173 180
+          C 172 195 172 210 172 225
+          L 172 250
+          C 172 265 174 280 178 295
+          C 182 310 185 320 186 330
+          L 186 340
+          C 185 348 182 355 180 365
+          L 178 395
+          C 176 410 175 425 175 435
+          L 176 460
+          C 176 475 177 490 178 500
+          L 180 530
+          C 181 540 182 548 184 555
+          C 186 562 190 566 192 570
+          L 192 572
+          C 190 576 185 578 178 578
+          C 172 578 170 575 168 570
+          L 168 555
+          C 167 548 166 540 166 530
+          L 164 500
+          C 163 490 162 475 162 460
+          L 162 435
+          C 162 425 161 410 160 400
+          L 157 370
+          C 155 358 153 348 152 340
+          L 150 330
+          L 148 340
+          C 147 348 145 358 143 370
+          L 140 400
+          C 139 410 138 425 138 435
+          L 138 460
+          C 138 475 137 490 136 500
+          L 134 530
+          C 134 540 133 548 132 555
+          L 132 570
+          C 130 575 128 578 122 578
+          C 115 578 110 576 108 572
+          L 108 570
+          C 110 566 114 562 116 555
+          C 118 548 119 540 120 530
+          L 122 500
+          C 123 490 124 475 124 460
+          L 124 435
+          C 125 425 124 410 122 395
+          L 120 365
+          C 118 355 115 348 114 340
+          L 114 330
+          C 115 320 118 310 122 295
+          C 126 280 128 265 128 250
+          L 128 225
+          C 128 210 128 195 127 180
+          L 125 162
+          C 124 155 122 148 120 140
+          L 117 125
+          C 115 120 112 118 108 120
+          L 104 130
+          C 102 135 100 140 95 150
+          L 85 180
+          C 82 185 80 192 78 200
+          L 68 258
+          C 65 268 62 278 60 285
+          L 56 288
+          C 52 282 50 272 52 260
+          L 58 200
+          C 60 190 62 178 65 168
+          L 78 128
+          C 80 122 85 116 95 108
+          C 105 100 120 95 130 92
+          L 130 85
+          C 130 82 132 78 135 75
+          L 138 72
+          C 130 68 122 58 122 45
+          C 122 30 130 18 150 18 Z
+        `}
+        fill={`url(#skin-${side})`}
+        stroke={bodyColor}
+        strokeWidth="1.5"
+        opacity="0.4"
+        filter={`url(#body-shadow-${side})`}
+      />
+
+      {/* Anatomical detail lines */}
       {side === 'front' && (
-        <g opacity="0.12">
-          {/* Chest line */}
-          <line x1="75" y1="90" x2="125" y2="90" stroke="hsl(var(--muted-foreground))" strokeWidth="0.4" strokeDasharray="2,3" />
-          {/* Waist */}
-          <line x1="72" y1="170" x2="128" y2="170" stroke="hsl(var(--muted-foreground))" strokeWidth="0.4" strokeDasharray="2,3" />
-          {/* Hip */}
-          <line x1="74" y1="205" x2="126" y2="205" stroke="hsl(var(--muted-foreground))" strokeWidth="0.4" strokeDasharray="2,3" />
+        <g opacity="0.15" stroke={bodyColor} fill="none">
+          {/* Clavicle lines */}
+          <path d="M 115 100 Q 135 95 150 98 Q 165 95 185 100" strokeWidth="0.8" />
+          {/* Pectoral division */}
+          <path d="M 150 105 L 150 115" strokeWidth="0.5" strokeDasharray="2,3" />
           {/* Midline */}
-          <line x1="100" y1="46" x2="100" y2="240" stroke="hsl(var(--muted-foreground))" strokeWidth="0.3" strokeDasharray="1,4" />
+          <line x1="150" y1="98" x2="150" y2="320" strokeWidth="0.4" strokeDasharray="2,5" />
           {/* Navel */}
-          <circle cx="100" cy="152" r="2" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.4" />
+          <circle cx="150" cy="215" r="3" strokeWidth="0.6" />
+          {/* Waist line */}
+          <path d="M 120 240 Q 150 235 180 240" strokeWidth="0.5" strokeDasharray="3,4" />
+          {/* Hip line */}
+          <path d="M 118 290 Q 150 285 182 290" strokeWidth="0.5" strokeDasharray="3,4" />
+          {/* Knee caps */}
+          <ellipse cx="128" cy="430" rx="8" ry="10" strokeWidth="0.5" />
+          <ellipse cx="172" cy="430" rx="8" ry="10" strokeWidth="0.5" />
         </g>
       )}
 
       {side === 'back' && (
-        <g opacity="0.12">
+        <g opacity="0.15" stroke={bodyColor} fill="none">
           {/* Spine */}
-          <line x1="100" y1="48" x2="100" y2="210" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" strokeDasharray="2,3" />
-          {/* Scapulae outlines */}
-          <path d="M78 88 Q74 94 76 104 Q80 110 86 108 Q90 104 88 94 Q86 88 78 88" 
-            fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" />
-          <path d="M122 88 Q126 94 124 104 Q120 110 114 108 Q110 104 112 94 Q114 88 122 88" 
-            fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.5" />
+          <line x1="150" y1="72" x2="150" y2="295" strokeWidth="0.8" strokeDasharray="3,3" />
+          {/* Vertebrae markers */}
+          {[90, 110, 130, 150, 170, 190, 210, 230, 250, 270].map(y => (
+            <line key={y} x1="148" y1={y} x2="152" y2={y} strokeWidth="1" />
+          ))}
+          {/* Scapulae */}
+          <path d="M 118 120 Q 112 130 115 148 Q 122 155 130 150 Q 135 142 132 128 Q 128 120 118 120" strokeWidth="0.8" />
+          <path d="M 182 120 Q 188 130 185 148 Q 178 155 170 150 Q 165 142 168 128 Q 172 120 182 120" strokeWidth="0.8" />
           {/* Gluteal crease */}
-          <path d="M88 218 Q100 225 112 218" fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth="0.4" />
+          <path d="M 132 300 Q 150 312 168 300" strokeWidth="0.6" />
+          {/* Sacral dimples */}
+          <circle cx="142" cy="275" r="2" strokeWidth="0.5" />
+          <circle cx="158" cy="275" r="2" strokeWidth="0.5" />
+          {/* Achilles tendon hints */}
+          <line x1="126" y1="520" x2="124" y2="550" strokeWidth="0.5" />
+          <line x1="174" y1="520" x2="176" y2="550" strokeWidth="0.5" />
         </g>
       )}
     </g>
   );
 }
 
-/* ── Single body figure ────────────────────────────────────── */
+/* ── Single body figure ──────────────────────────────────────── */
 function BodyFigure({
   side,
   offsetX,
@@ -232,10 +431,8 @@ function BodyFigure({
   const getColor = (regionId: string): string => {
     if (mode === 'pain') {
       const intensity = painMap[regionId] ?? painMap[getBaseRegionId(regionId)] ?? 0;
-      // If has specific sintomas, use sintoma color blending
       const sintomas = sintomaMap[regionId] || sintomaMap[getBaseRegionId(regionId)] || [];
       if (sintomas.length > 0 && intensity > 0) {
-        // Use the primary sintoma color with opacity based on intensity
         const primarySintoma = sintomas[0];
         return SINTOMA_CORES[primarySintoma] || getRegionColor(intensity);
       }
@@ -254,8 +451,8 @@ function BodyFigure({
   const getOpacity = (regionId: string): number => {
     if (mode === 'pain') {
       const intensity = painMap[regionId] ?? painMap[getBaseRegionId(regionId)] ?? 0;
-      if (intensity <= 0) return 0.15;
-      return 0.3 + (intensity / 10) * 0.5;
+      if (intensity <= 0) return 0.08;
+      return 0.25 + (intensity / 10) * 0.55;
     }
     return 0.6;
   };
@@ -274,16 +471,12 @@ function BodyFigure({
 
         return (
           <g key={regiao.id} onClick={() => onRegionClick?.(regiao.id)} style={{ cursor: onRegionClick ? 'pointer' : 'default' }}>
-            {/* Glow effect for active regions */}
+            {/* Soft glow for active regions */}
             {hasData && (
-              <circle
-                cx={regiao.cx}
-                cy={regiao.cy}
-                r={(regiao.r || 10) + 3}
-                fill={color}
-                opacity={0.15}
-                className="animate-pulse"
-              />
+              <>
+                <circle cx={regiao.cx} cy={regiao.cy} r={regiao.r + 6} fill={color} opacity={0.08} />
+                <circle cx={regiao.cx} cy={regiao.cy} r={regiao.r + 3} fill={color} opacity={0.12} className="animate-pulse" />
+              </>
             )}
             {/* Main circle */}
             <circle
@@ -292,19 +485,21 @@ function BodyFigure({
               r={regiao.r}
               fill={color}
               stroke={hasData ? color : 'hsl(var(--border))'}
-              strokeWidth={hasData ? 1.5 : 0.6}
+              strokeWidth={hasData ? 1.8 : 0.4}
               opacity={opacity}
-              className="transition-all duration-200 hover:opacity-90"
+              className="transition-all duration-300 hover:opacity-80"
             />
-            {/* Multi-sintoma indicator dots */}
-            {sintomas.length > 1 && sintomas.slice(0, 3).map((s, i) => (
+            {/* Multi-sintoma dots below region */}
+            {sintomas.length > 1 && sintomas.slice(0, 4).map((s, i) => (
               <circle
                 key={s}
-                cx={(regiao.cx || 0) + (i - 1) * 5}
-                cy={(regiao.cy || 0) + (regiao.r || 10) + 5}
-                r={2}
+                cx={regiao.cx + (i - (sintomas.length - 1) / 2) * 6}
+                cy={regiao.cy + regiao.r + 6}
+                r={2.5}
                 fill={SINTOMA_CORES[s] || '#888'}
-                opacity={0.9}
+                opacity={0.85}
+                stroke="#fff"
+                strokeWidth="0.5"
               />
             ))}
           </g>
@@ -312,7 +507,7 @@ function BodyFigure({
       })}
 
       {/* Label */}
-      <text x="100" y="408" textAnchor="middle" fontSize="10" fill="hsl(var(--muted-foreground))" fontWeight="600" letterSpacing="0.5">
+      <text x="150" y="595" textAnchor="middle" fontSize="12" fill="hsl(var(--muted-foreground))" fontWeight="700" letterSpacing="1.5" opacity="0.5">
         {side === 'front' ? 'ANTERIOR' : 'POSTERIOR'}
       </text>
     </g>
@@ -329,13 +524,13 @@ export function BodyAvatarSVG({
   className = '',
   showBack = false,
 }: BodyAvatarProps) {
-  const width = showBack ? 420 : 200;
+  const width = showBack ? 620 : 300;
 
   return (
     <svg
-      viewBox={`0 0 ${width} 420`}
+      viewBox={`0 0 ${width} 610`}
       className={`w-full h-auto ${className}`}
-      style={{ maxHeight: showBack ? 480 : 400 }}
+      style={{ maxHeight: showBack ? 560 : 480 }}
     >
       <BodyFigure
         side="front"
@@ -350,7 +545,7 @@ export function BodyAvatarSVG({
       {showBack && (
         <BodyFigure
           side="back"
-          offsetX={220}
+          offsetX={320}
           painMap={painMap}
           sintomaMap={sintomaMap}
           ucScoreMap={ucScoreMap}
