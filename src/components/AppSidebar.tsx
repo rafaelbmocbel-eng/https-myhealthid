@@ -3,7 +3,7 @@ import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
   Settings, LogOut, User, ClipboardList, Dumbbell,
 } from 'lucide-react';
-import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
+import logoMyHealth from '@/assets/logo-my-health-id.jpg';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
@@ -42,28 +42,30 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
     <aside
       className={cn(
         'fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300',
-        'bg-card border-r border-border',
         collapsed ? 'w-[72px]' : 'w-56',
       )}
-      style={{ boxShadow: '4px 0 24px hsl(240 10% 75% / 0.35)' }}
+      style={{
+        background: 'linear-gradient(180deg, hsl(213 55% 18%) 0%, hsl(213 55% 12%) 100%)',
+        boxShadow: '4px 0 30px hsl(213 55% 10% / 0.4)',
+      }}
     >
       {/* Logo */}
       <div className="flex items-center justify-center h-20 shrink-0 px-3">
         <Link to="/" className="flex items-center gap-3 min-w-0">
           <img
-            src={logoMetodo}
-            alt="Logo"
-            className="h-10 w-10 rounded-2xl object-cover shrink-0 shadow-sm"
+            src={logoMyHealth}
+            alt="My Health ID"
+            className="h-10 w-10 rounded-xl object-cover shrink-0"
+            style={{ boxShadow: '0 2px 8px hsl(0 0% 0% / 0.3)' }}
           />
           {!collapsed && (
             <div className="min-w-0">
-              <div className="text-xs font-black leading-none text-foreground truncate tracking-wide">
-                MÉTODO
+              <div className="text-xs font-black leading-none text-white tracking-wide">
+                My Health
               </div>
-              <div className="text-xs font-black leading-none truncate" style={{ color: 'hsl(262 83% 58%)' }}>
-                IDENTIDADE
+              <div className="text-xs font-black leading-none tracking-wide" style={{ color: 'hsl(40 95% 52%)' }}>
+                ID
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5 truncate">COB° ZERO v9.0</div>
             </div>
           )}
         </Link>
@@ -81,15 +83,17 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
               to={item.href}
               onClick={onNavClick}
               className={cn(
-                'flex items-center gap-3 rounded-2xl text-sm font-semibold transition-all duration-200 group',
+                'flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 group',
                 collapsed ? 'justify-center h-12 w-12 mx-auto' : 'px-4 py-3 w-full',
                 active
-                  ? 'text-primary-foreground shadow-primary'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-secondary',
+                  ? 'text-primary-foreground'
+                  : 'text-white/60 hover:text-white hover:bg-white/10',
               )}
               style={active ? {
-                background: 'linear-gradient(135deg, hsl(262 83% 58%), hsl(280 70% 65%))',
-                boxShadow: '0 6px 20px hsl(262 83% 58% / 0.4)',
+                background: 'linear-gradient(135deg, hsl(40 95% 52%), hsl(35 90% 45%))',
+                color: 'hsl(213 55% 14%)',
+                fontWeight: 700,
+                boxShadow: '0 4px 16px hsl(40 95% 52% / 0.4)',
               } : {}}
             >
               <Icon className={cn('shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
@@ -114,16 +118,16 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
         {user && (
           <>
             {!collapsed && (
-              <div className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-secondary mb-1">
+              <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 mb-1">
                 <div
-                  className="h-8 w-8 rounded-xl flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, hsl(262 83% 58%), hsl(280 70% 65%))' }}
+                  className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
+                  style={{ background: 'linear-gradient(135deg, hsl(40 95% 52%), hsl(35 90% 45%))' }}
                 >
-                  <User className="h-4 w-4 text-white" />
+                  <User className="h-4 w-4" style={{ color: 'hsl(213 55% 14%)' }} />
                 </div>
                 <div className="min-w-0">
-                  <div className="text-xs font-bold truncate text-foreground">{profile?.nome || 'Terapeuta'}</div>
-                  <div className="text-[10px] text-muted-foreground truncate">{user.email}</div>
+                  <div className="text-xs font-bold truncate text-white">{profile?.nome || 'Terapeuta'}</div>
+                  <div className="text-[10px] text-white/50 truncate">{user.email}</div>
                 </div>
               </div>
             )}
@@ -132,7 +136,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
                 <button
                   onClick={handleSignOut}
                   className={cn(
-                    'flex items-center gap-2 w-full rounded-2xl text-sm font-semibold text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200',
+                    'flex items-center gap-2 w-full rounded-xl text-sm font-medium text-white/50 hover:text-red-400 hover:bg-red-500/10 transition-all duration-200',
                     collapsed ? 'justify-center h-12 w-12 mx-auto' : 'px-4 py-3',
                   )}
                 >
@@ -147,7 +151,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
         {!user && !collapsed && (
           <Link
             to="/auth"
-            className="flex items-center gap-2 px-4 py-3 rounded-2xl text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-secondary transition-all"
+            className="flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium text-white/60 hover:text-white hover:bg-white/10 transition-all"
           >
             <User className="h-4 w-4" />
             <span>Entrar</span>

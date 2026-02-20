@@ -42,11 +42,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
       >
         {/* Desktop collapse toggle */}
         {!isMobile && (
-          <header className="sticky top-0 z-20 flex h-16 items-center bg-background px-6 gap-4">
+          <header className="sticky top-0 z-20 flex h-14 items-center bg-background/80 backdrop-blur-sm px-6 gap-4 border-b border-border">
             <button
               onClick={() => setCollapsed(c => !c)}
-              className="h-9 w-9 rounded-xl bg-card flex items-center justify-center text-muted-foreground hover:text-foreground transition-all"
-              style={{ boxShadow: '3px 3px 8px hsl(240 10% 75% / 0.5), -2px -2px 6px hsl(0 0% 100% / 0.9)' }}
+              className="h-9 w-9 rounded-xl bg-card flex items-center justify-center text-muted-foreground hover:text-foreground border border-border transition-all hover:shadow-sm"
             >
               {collapsed
                 ? <ChevronRight className="h-4 w-4" />
