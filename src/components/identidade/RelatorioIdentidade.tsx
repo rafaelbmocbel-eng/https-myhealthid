@@ -25,6 +25,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gerarProtocolo } from '@/utils/protocolGenerator';
 import { toast } from '@/hooks/use-toast';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
+import { gerarPDFAvaliacao, PDFAvaliacaoData } from '@/utils/pdfAvaliacaoGenerator';
 
 interface Props {
   avaliacao: AvaliacaoIdentidade;
@@ -358,6 +359,59 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               {salvo ? 'Salvo ✓' : 'Salvar'}
             </Button>
           )}
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+            const getTopTecidoFn = (u: typeof avaliacao.bloco6.unidades[0]) => {
+              const tecidos = [
+                { nome: 'Muscular', score: u.scoreMuscular },
+                { nome: 'Articulação', score: u.scoreArticular },
+                { nome: 'Ligamento', score: u.scoreLigamentar },
+                { nome: 'Nervo', score: u.scoreNervosa },
+                { nome: 'Víscera', score: u.scoreVisceral },
+              ];
+              return tecidos.reduce((max, t) => t.score > max.score ? t : max, tecidos[0]);
+            };
+            const pdfData: PDFAvaliacaoData = {
+              pacienteNome: avaliacao.pacienteNome,
+              terapeutaNome: avaliacao.terapeutaNome || 'Terapeuta',
+              dataAvaliacao: avaliacao.dataAvaliacao,
+              idFinal: idAjustado,
+              classificacao,
+              scores: { E: e, P: p, C: c, F: f, D: d, R: r, EFI: efi },
+              regulacao: { R1: r1, R2: r2, R3: r3 },
+              equacaoDor,
+              amplificadores,
+              unidadesCriticas: unidadesSorted.map(u => {
+                const top = getTopTecidoFn(u);
+                return { id: u.id, nome: u.nome.replace(/^(UC\d|UA-[DE]|[ID]D)\s*–\s*/, ''), score: u.score, topTecido: top.nome, topTecidoScore: top.score };
+              }),
+              diagnostico,
+              recomendacoes,
+              frequencia: freqRecomendada,
+              duracao: duracaoRecomendada,
+              probSucesso,
+              diretrizesTecnicas: avaliacao.bloco6.unidades
+                .filter(u => u.score > 2)
+                .sort((a, b) => b.score - a.score)
+                .slice(0, 4)
+                .map(u => ({
+                  ucId: u.id,
+                  ucNome: u.nome.replace(/^(UC\d|UA-[DE]|[ID]D)\s*–\s*/, ''),
+                  score: u.score,
+                  tecidos: [
+                    { nome: 'Muscular', score: u.scoreMuscular, tecnica: 'Liberação miofascial / Dry needling' },
+                    { nome: 'Articular', score: u.scoreArticular, tecnica: 'Mobilização grau III-IV / Mulligan' },
+                    { nome: 'Ligamentar', score: u.scoreLigamentar, tecnica: 'Fortalecimento estabilizador' },
+                    { nome: 'Nervosa', score: u.scoreNervosa, tecnica: 'Neurodinâmica / Dessensibilização' },
+                    { nome: 'Visceral', score: u.scoreVisceral, tecnica: 'Manipulação visceral / Diafragmática' },
+                  ].filter(t => t.score > 0).sort((a, b) => b.score - a.score),
+                })),
+            };
+            gerarPDFAvaliacao(pdfData);
+            toast({ title: '📄 PDF gerado!', description: 'O download do relatório iniciou.' });
+          }}>
+            <Download className="h-3.5 w-3.5" />
+            PDF Paciente
+          </Button>
           <Button variant="outline" size="sm" className="gap-1.5"><Share2 className="h-3.5 w-3.5" /></Button>
         </div>
       </div>
