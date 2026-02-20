@@ -339,7 +339,11 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
     }
   };
 
+  // R scores are INVERTED: high = bad (10 = worst sleep/energy/psych)
+  // R (composite) is already inverted in calcularIDFinal: low R = bad regulation
+  // But R1, R2, R3 sub-scores: HIGH = WORSE
   const getRColor = (val: number) => val >= 7 ? 'hsl(var(--success))' : val >= 4 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+  const getRSubColor = (val: number) => val <= 3 ? 'hsl(var(--success))' : val <= 6 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
 
   return (
     <div className="container py-8 max-w-5xl space-y-6">
@@ -565,16 +569,17 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         }
 
         // Sono
-        if (r1 < 4) {
+        // R1/R2/R3 are INVERTED: high = bad (10 = worst)
+        if (r1 > 7) {
           alertas.push({
             icon: BedDouble, label: 'Qualidade do Sono', status: 'critico',
-            mensagem: 'Sono gravemente comprometido',
+            mensagem: `Sono gravemente comprometido (${r1.toFixed(1)}/10)`,
             recomendacao: 'Higiene do sono: horário fixo, sem telas 1h antes',
           });
-        } else if (r1 < 6) {
+        } else if (r1 > 4) {
           alertas.push({
             icon: BedDouble, label: 'Qualidade do Sono', status: 'alerta',
-            mensagem: 'Sono abaixo do ideal',
+            mensagem: `Sono abaixo do ideal (${r1.toFixed(1)}/10)`,
             recomendacao: 'Regularizar horário e ambiente escuro/silencioso',
           });
         } else {
@@ -712,17 +717,17 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <Moon className="h-5 w-5 mx-auto mb-1 text-blue-500" />
-            <div className="text-lg font-bold" style={{ color: getRColor(r1) }}>{r1.toFixed(1)}</div>
+            <div className="text-lg font-bold" style={{ color: getRSubColor(r1) }}>{r1.toFixed(1)}</div>
             <div className="text-xs text-muted-foreground">Sono (R1)</div>
           </div>
           <div className="text-center">
             <Zap className="h-5 w-5 mx-auto mb-1 text-amber-500" />
-            <div className="text-lg font-bold" style={{ color: getRColor(r2) }}>{r2.toFixed(1)}</div>
+            <div className="text-lg font-bold" style={{ color: getRSubColor(r2) }}>{r2.toFixed(1)}</div>
             <div className="text-xs text-muted-foreground">Energia (R2)</div>
           </div>
           <div className="text-center">
             <Brain className="h-5 w-5 mx-auto mb-1 text-purple-500" />
-            <div className="text-lg font-bold" style={{ color: getRColor(r3) }}>{r3.toFixed(1)}</div>
+            <div className="text-lg font-bold" style={{ color: getRSubColor(r3) }}>{r3.toFixed(1)}</div>
             <div className="text-xs text-muted-foreground">Psicológico (R3)</div>
           </div>
         </div>
