@@ -18,7 +18,8 @@ import {
 import {
   ArrowLeft, Download, Share2, Plus, MessageCircle, AlertTriangle,
   Target, CheckSquare, Dumbbell, Loader2, Save, Moon, Zap, Brain,
-  Activity, Heart, Shield,
+  Activity, Heart, Shield, Droplets, Cigarette, BedDouble, PersonStanding,
+  Wine, Armchair, CircleAlert, TrendingUp, Footprints,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -512,7 +513,184 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         </div>
       </div>
 
-      {/* ── Estado Neurovegetativo ── */}
+      {/* ── Alertas de Estilo de Vida (ícones visuais) ── */}
+      {(() => {
+        const bloco1 = avaliacao.bloco1;
+        const alertas: Array<{
+          icon: any; label: string; status: 'critico' | 'alerta' | 'ok';
+          mensagem: string; recomendacao: string;
+        }> = [];
+
+        // Atividade física
+        if (bloco1.atividadeFisica === 'nenhuma') {
+          alertas.push({
+            icon: Footprints, label: 'Atividade Física', status: 'critico',
+            mensagem: 'Sedentário — sem atividade física',
+            recomendacao: 'Iniciar caminhadas de 20min, 3×/semana',
+          });
+        } else if (bloco1.atividadeFisica === 'leve') {
+          alertas.push({
+            icon: Footprints, label: 'Atividade Física', status: 'alerta',
+            mensagem: 'Atividade física insuficiente',
+            recomendacao: 'Aumentar para ≥3×/semana com intensidade moderada',
+          });
+        } else {
+          alertas.push({
+            icon: Footprints, label: 'Atividade Física', status: 'ok',
+            mensagem: 'Nível de atividade adequado',
+            recomendacao: 'Manter rotina atual',
+          });
+        }
+
+        // Água
+        const agua = bloco1.litrosAgua ?? 2;
+        if (agua < 1) {
+          alertas.push({
+            icon: Droplets, label: 'Hidratação', status: 'critico',
+            mensagem: `Apenas ${agua}L/dia — desidratação`,
+            recomendacao: 'Meta: ≥2L/dia. Usar garrafa com marcações',
+          });
+        } else if (agua < 2) {
+          alertas.push({
+            icon: Droplets, label: 'Hidratação', status: 'alerta',
+            mensagem: `${agua}L/dia — abaixo do ideal`,
+            recomendacao: 'Aumentar para 2-3L/dia gradativamente',
+          });
+        } else {
+          alertas.push({
+            icon: Droplets, label: 'Hidratação', status: 'ok',
+            mensagem: `${agua}L/dia — boa hidratação`,
+            recomendacao: 'Manter ingestão hídrica',
+          });
+        }
+
+        // Sono
+        if (r1 < 4) {
+          alertas.push({
+            icon: BedDouble, label: 'Qualidade do Sono', status: 'critico',
+            mensagem: 'Sono gravemente comprometido',
+            recomendacao: 'Higiene do sono: horário fixo, sem telas 1h antes',
+          });
+        } else if (r1 < 6) {
+          alertas.push({
+            icon: BedDouble, label: 'Qualidade do Sono', status: 'alerta',
+            mensagem: 'Sono abaixo do ideal',
+            recomendacao: 'Regularizar horário e ambiente escuro/silencioso',
+          });
+        } else {
+          alertas.push({
+            icon: BedDouble, label: 'Qualidade do Sono', status: 'ok',
+            mensagem: 'Sono adequado',
+            recomendacao: 'Manter rotina de sono',
+          });
+        }
+
+        // Tabagismo
+        if (bloco1.tabagismo) {
+          alertas.push({
+            icon: Cigarette, label: 'Tabagismo', status: 'critico',
+            mensagem: 'Fumante ativo — retarda cicatrização',
+            recomendacao: 'Reduzir/cessar. Encaminhar para programa de cessação',
+          });
+        }
+
+        // Álcool
+        if (bloco1.alcool === 'frequente') {
+          alertas.push({
+            icon: Wine, label: 'Álcool', status: 'critico',
+            mensagem: 'Consumo frequente — interfere na recuperação',
+            recomendacao: 'Reduzir para ≤1×/semana',
+          });
+        } else if (bloco1.alcool === 'moderado') {
+          alertas.push({
+            icon: Wine, label: 'Álcool', status: 'alerta',
+            mensagem: 'Consumo moderado — atenção',
+            recomendacao: 'Reduzir para ocasional quando possível',
+          });
+        }
+
+        // Sedentarismo (horas sentado)
+        if (bloco1.horasSedentario >= 10) {
+          alertas.push({
+            icon: Armchair, label: 'Sedentarismo', status: 'critico',
+            mensagem: `${bloco1.horasSedentario}h sentado/dia — risco alto`,
+            recomendacao: 'Pausas ativas a cada 45min. Alongar 5min a cada hora',
+          });
+        } else if (bloco1.horasSedentario >= 6) {
+          alertas.push({
+            icon: Armchair, label: 'Sedentarismo', status: 'alerta',
+            mensagem: `${bloco1.horasSedentario}h sentado/dia — atenção`,
+            recomendacao: 'Incluir pausas de movimento a cada 1h',
+          });
+        }
+
+        const criticos = alertas.filter(a => a.status === 'critico');
+        const alertasList = alertas.filter(a => a.status === 'alerta');
+        const oks = alertas.filter(a => a.status === 'ok');
+
+        const getCardStyle = (status: 'critico' | 'alerta' | 'ok') => {
+          switch (status) {
+            case 'critico': return 'border-red-300 bg-red-50/80';
+            case 'alerta': return 'border-amber-300 bg-amber-50/80';
+            case 'ok': return 'border-green-300 bg-green-50/80';
+          }
+        };
+        const getIconBg = (status: 'critico' | 'alerta' | 'ok') => {
+          switch (status) {
+            case 'critico': return 'bg-red-100 text-red-600';
+            case 'alerta': return 'bg-amber-100 text-amber-600';
+            case 'ok': return 'bg-green-100 text-green-600';
+          }
+        };
+        const getStatusLabel = (status: 'critico' | 'alerta' | 'ok') => {
+          switch (status) {
+            case 'critico': return '⚠️ Necessita ação';
+            case 'alerta': return '⚡ Melhorar';
+            case 'ok': return '✅ Adequado';
+          }
+        };
+
+        return (
+          <div className="clinical-card border-2 border-primary/20">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="font-bold text-sm flex items-center gap-2">
+                <TrendingUp className="h-4 w-4 text-primary" />
+                Marcadores de Estilo de Vida
+              </h3>
+              {criticos.length > 0 && (
+                <Badge className="bg-red-100 text-red-700 border border-red-300">
+                  {criticos.length} ponto{criticos.length > 1 ? 's' : ''} crítico{criticos.length > 1 ? 's' : ''}
+                </Badge>
+              )}
+            </div>
+
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+              {[...criticos, ...alertasList, ...oks].map((alerta, i) => {
+                const Icon = alerta.icon;
+                return (
+                  <div key={i} className={`rounded-xl border-2 p-3 transition-all ${getCardStyle(alerta.status)}`}>
+                    <div className="flex items-start gap-3">
+                      <div className={`h-10 w-10 rounded-xl flex items-center justify-center shrink-0 ${getIconBg(alerta.status)}`}>
+                        <Icon className="h-5 w-5" />
+                      </div>
+                      <div className="min-w-0">
+                        <div className="text-xs font-bold">{alerta.label}</div>
+                        <div className="text-[10px] text-muted-foreground mt-0.5">{getStatusLabel(alerta.status)}</div>
+                      </div>
+                    </div>
+                    <div className="mt-2 text-xs font-medium">{alerta.mensagem}</div>
+                    <div className="mt-1.5 text-[10px] text-muted-foreground italic leading-relaxed">
+                      💡 {alerta.recomendacao}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })()}
+
+
       <div className="clinical-card border-2 border-border">
         <div className="flex items-center justify-between mb-3">
           <h3 className="font-bold text-sm">Estado Neurovegetativo</h3>
