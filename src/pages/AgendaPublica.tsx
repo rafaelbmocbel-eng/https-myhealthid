@@ -1,11 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone } from 'lucide-react';
+import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone, ArrowLeft } from 'lucide-react';
 import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
-import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
-import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO } from 'date-fns';
+import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
+import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 interface LinkInfo {
@@ -19,7 +19,6 @@ interface Slot {
   data_inicio: string;
   data_fim: string;
   status: string;
-  paciente_id?: string;
 }
 
 interface TerapeutaInfo {
@@ -27,6 +26,13 @@ interface TerapeutaInfo {
   sobrenome: string;
   telefone?: string;
   especialidade?: string;
+}
+
+interface SelectedSlot {
+  data: Date;
+  hora: string;
+  dataInicio: Date;
+  dataFim: Date;
 }
 
 export default function AgendaPublica() {
@@ -38,16 +44,20 @@ export default function AgendaPublica() {
   const [config, setConfig] = useState<any>(null);
   const [agendamentos, setAgendamentos] = useState<Slot[]>([]);
   const [semanaOffset, setSemanaOffset] = useState(0);
-  const [solicitado, setSolicitado] = useState(false);
+
+  // Self-booking states
+  const [selectedSlot, setSelectedSlot] = useState<SelectedSlot | null>(null);
+  const [confirmando, setConfirmando] = useState(false);
+  const [sucesso, setSucesso] = useState(false);
+  const [erroBooking, setErroBooking] = useState<string | null>(null);
 
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
     (async () => {
       try {
-        // Valida o link
         const { data: linkData, error: linkError } = await supabase
           .from('links_agenda_paciente')
-          .select('id, paciente_id, terapeuta_id, data_expiracao, status')
+          .select('*')
           .eq('token', token)
           .maybeSingle();
 
@@ -57,32 +67,38 @@ export default function AgendaPublica() {
 
         setLinkInfo(linkData as LinkInfo);
 
-        // Busca perfil do terapeuta (nome + telefone para WhatsApp)
-        const { data: profileData } = await supabase
-          .from('profiles')
-          .select('nome, sobrenome, telefone, especialidade')
-          .eq('user_id', linkData.terapeuta_id)
-          .maybeSingle();
+        // Update access tracking
+        await supabase
+          .from('links_agenda_paciente')
+          .update({
+            acessos_totais: (linkData.acessos_totais || 0) + 1,
+            data_ultimo_acesso: new Date().toISOString(),
+            ...(!linkData.data_primeiro_acesso ? { data_primeiro_acesso: new Date().toISOString() } : {}),
+          })
+          .eq('id', linkData.id);
+
+        const [{ data: profileData }, { data: cfg }, { data: ags }] = await Promise.all([
+          supabase
+            .from('profiles')
+            .select('nome, sobrenome, telefone, especialidade')
+            .eq('user_id', linkData.terapeuta_id)
+            .maybeSingle(),
+          supabase
+            .from('config_agenda')
+            .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, intervalo_entre_sessoes')
+            .eq('terapeuta_id', linkData.terapeuta_id)
+            .maybeSingle(),
+          supabase
+            .from('agendamentos')
+            .select('data_inicio, data_fim, status')
+            .eq('terapeuta_id', linkData.terapeuta_id)
+            .gte('data_inicio', new Date().toISOString())
+            .lte('data_inicio', addDays(new Date(), 42).toISOString())
+            .order('data_inicio'),
+        ]);
+
         if (profileData) setTerapeuta(profileData as TerapeutaInfo);
-
-        // Busca configuração da agenda (pública: horários de atendimento)
-        const { data: cfg } = await supabase
-          .from('config_agenda')
-          .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, intervalo_entre_sessoes')
-          .eq('terapeuta_id', linkData.terapeuta_id)
-          .maybeSingle();
         if (cfg) setConfig(cfg);
-
-        // Busca agendamentos do terapeuta nas próximas semanas (apenas datas/status, sem dados de paciente)
-        const inicio = new Date();
-        const fim = addDays(inicio, 42); // 6 semanas
-        const { data: ags } = await supabase
-          .from('agendamentos')
-          .select('data_inicio, data_fim, status, paciente_id')
-          .eq('terapeuta_id', linkData.terapeuta_id)
-          .gte('data_inicio', inicio.toISOString())
-          .lte('data_inicio', fim.toISOString())
-          .order('data_inicio');
         setAgendamentos((ags || []) as Slot[]);
       } catch {
         setErro('Erro ao carregar. Tente novamente.');
@@ -91,12 +107,11 @@ export default function AgendaPublica() {
     })();
   }, [token]);
 
-  // Gera slots disponíveis para a semana atual
   const getSlotsDisponiveisDaSemana = () => {
     if (!config) return [];
     const hoje = new Date();
     const inicioSemana = startOfWeek(addDays(hoje, semanaOffset * 7), { weekStartsOn: 1 });
-    const dias: { data: Date; slots: { hora: string; disponivel: boolean }[] }[] = [];
+    const dias: { data: Date; slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date }[] }[] = [];
     const diasSemanaMap: Record<string, number> = { seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6, dom: 0 };
     const diasAtivos = Object.entries(config.dias_semana as Record<string, boolean>)
       .filter(([, ativo]) => ativo)
@@ -111,25 +126,33 @@ export default function AgendaPublica() {
       const [hFim] = (config.horario_fim || '18:00:00').split(':').map(Number);
       const duracao = config.duracao_padrao || 45;
       const intervalo = config.intervalo_entre_sessoes || 0;
-      const slots: { hora: string; disponivel: boolean }[] = [];
+      const slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date }[] = [];
       let minutoAtual = hIni * 60;
 
       while (minutoAtual + duracao <= hFim * 60) {
-        const h = Math.floor(minutoAtual / 60).toString().padStart(2, '0');
-        const m = (minutoAtual % 60).toString().padStart(2, '0');
-        const horaStr = `${h}:${m}`;
+        const h = Math.floor(minutoAtual / 60);
+        const m = minutoAtual % 60;
+        const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
+        
         const slotInicio = new Date(dia);
-        slotInicio.setHours(Number(h), Number(m), 0, 0);
+        slotInicio.setHours(h, m, 0, 0);
+        const slotFim = addMinutes(slotInicio, duracao);
+
+        // Don't show past slots for today
+        if (isSameDay(dia, hoje) && slotInicio < hoje) {
+          minutoAtual += duracao + intervalo;
+          continue;
+        }
 
         const ocupado = agendamentos.some(ag => {
           const agStart = parseISO(ag.data_inicio);
           return isSameDay(agStart, dia) &&
-            agStart.getHours() === Number(h) &&
-            agStart.getMinutes() === Number(m) &&
+            agStart.getHours() === h &&
+            agStart.getMinutes() === m &&
             ag.status !== 'cancelado';
         });
 
-        slots.push({ hora: horaStr, disponivel: !ocupado });
+        slots.push({ hora: horaStr, disponivel: !ocupado, dataInicio: slotInicio, dataFim: slotFim });
         minutoAtual += duracao + intervalo;
       }
 
@@ -138,12 +161,51 @@ export default function AgendaPublica() {
     return dias;
   };
 
+  const handleConfirmarAgendamento = async () => {
+    if (!selectedSlot || !linkInfo) return;
+    setConfirmando(true);
+    setErroBooking(null);
+
+    try {
+      const { error } = await supabase.from('agendamentos').insert({
+        terapeuta_id: linkInfo.terapeuta_id,
+        paciente_id: linkInfo.paciente_id,
+        data_inicio: selectedSlot.dataInicio.toISOString(),
+        data_fim: selectedSlot.dataFim.toISOString(),
+        status: 'pendente',
+        tipo_atendimento: 'retorno',
+        titulo: 'Auto-agendamento',
+      });
+
+      if (error) {
+        console.error('Booking error:', error);
+        setErroBooking('Não foi possível confirmar o horário. Tente outro ou entre em contato.');
+        setConfirmando(false);
+        return;
+      }
+
+      // Add to local state so slot appears occupied
+      setAgendamentos(prev => [...prev, {
+        data_inicio: selectedSlot.dataInicio.toISOString(),
+        data_fim: selectedSlot.dataFim.toISOString(),
+        status: 'pendente',
+      }]);
+
+      setSucesso(true);
+    } catch {
+      setErroBooking('Erro de conexão. Tente novamente.');
+    }
+    setConfirmando(false);
+  };
+
+  // Loading
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
     </div>
   );
 
+  // Error
   if (erro) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-4 p-6">
       <XCircle className="h-16 w-16 text-destructive" />
@@ -152,19 +214,110 @@ export default function AgendaPublica() {
     </div>
   );
 
-  if (solicitado) return (
+  // Success screen
+  if (sucesso && selectedSlot) return (
     <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 p-6">
-      <img src={logoMetodo} alt="Logo" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
-      <CheckCircle2 className="h-16 w-16 text-emerald-500" />
-      <div className="text-center max-w-sm">
-        <h2 className="text-2xl font-bold text-foreground mb-2">Solicitação Enviada!</h2>
-        <p className="text-muted-foreground">
-          {terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'Seu terapeuta'} irá confirmar o horário em breve. Fique atento ao WhatsApp!
+      <img src={logoMyHealthId} alt="Logo" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
+      <div className="relative">
+        <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
+          <CheckCircle2 className="h-12 w-12 text-primary" />
+        </div>
+      </div>
+      <div className="text-center max-w-sm space-y-2">
+        <h2 className="text-2xl font-bold text-foreground">Horário Reservado!</h2>
+        <div className="bg-card border rounded-xl p-4 space-y-1">
+          <p className="text-sm font-semibold text-foreground capitalize">
+            {format(selectedSlot.data, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+          </p>
+          <p className="text-lg font-bold text-primary">{selectedSlot.hora}</p>
+          <p className="text-xs text-muted-foreground">
+            com {terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'seu terapeuta'}
+          </p>
+        </div>
+        <p className="text-sm text-muted-foreground mt-3">
+          Seu terapeuta será notificado e confirmará em breve. O status atual é <strong>pendente</strong>.
+        </p>
+      </div>
+      {terapeuta?.telefone && (
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={() => {
+            const msg = `Olá, ${terapeuta.nome}! Acabei de reservar um horário para ${format(selectedSlot.data, "dd/MM/yyyy")} às ${selectedSlot.hora} pela agenda online.`;
+            shareViaWhatsApp(terapeuta.telefone || '', msg);
+          }}
+        >
+          <Phone className="h-4 w-4" />
+          Enviar mensagem no WhatsApp
+        </Button>
+      )}
+    </div>
+  );
+
+  // Confirmation screen
+  if (selectedSlot) return (
+    <div className="min-h-screen bg-background">
+      <div className="border-b bg-card px-4 py-4 sticky top-0 z-10">
+        <div className="max-w-2xl mx-auto flex items-center gap-3">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => { setSelectedSlot(null); setErroBooking(null); }}>
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div>
+            <h1 className="font-bold text-sm text-foreground">Confirmar Horário</h1>
+            <p className="text-xs text-muted-foreground">Revise e confirme seu agendamento</p>
+          </div>
+        </div>
+      </div>
+
+      <div className="max-w-md mx-auto px-4 py-10 space-y-6">
+        <div className="border rounded-2xl overflow-hidden">
+          <div className="bg-primary/5 border-b px-5 py-4 text-center">
+            <CalendarDays className="h-8 w-8 mx-auto text-primary mb-2" />
+            <p className="text-lg font-bold text-foreground capitalize">
+              {format(selectedSlot.data, "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </p>
+          </div>
+          <div className="p-5 text-center space-y-4">
+            <div>
+              <p className="text-3xl font-black text-primary">{selectedSlot.hora}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Duração: {config?.duracao_padrao || 45} minutos
+              </p>
+            </div>
+            <div className="text-sm text-muted-foreground">
+              <p>Profissional: <strong className="text-foreground">{terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'Terapeuta'}</strong></p>
+              {terapeuta?.especialidade && <p className="text-xs">{terapeuta.especialidade}</p>}
+            </div>
+          </div>
+        </div>
+
+        {erroBooking && (
+          <div className="bg-destructive/10 border border-destructive/30 rounded-xl p-3 text-sm text-destructive text-center">
+            {erroBooking}
+          </div>
+        )}
+
+        <Button
+          className="w-full h-12 text-base font-bold bg-gradient-to-r from-primary to-primary/80"
+          onClick={handleConfirmarAgendamento}
+          disabled={confirmando}
+        >
+          {confirmando ? (
+            <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Reservando...</>
+          ) : (
+            <><CheckCircle2 className="h-5 w-5 mr-2" /> Confirmar Agendamento</>
+          )}
+        </Button>
+
+        <p className="text-xs text-muted-foreground text-center">
+          Ao confirmar, o horário ficará reservado como <strong>pendente</strong> até a confirmação do profissional.
         </p>
       </div>
     </div>
   );
 
+  // Main slot grid
   const semanasDias = getSlotsDisponiveisDaSemana();
   const temSlotsLivres = semanasDias.some(d => d.slots.some(s => s.disponivel));
 
@@ -173,38 +326,45 @@ export default function AgendaPublica() {
       {/* Header */}
       <div className="border-b bg-card px-4 py-4 sticky top-0 z-10">
         <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <img src={logoMetodo} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
+          <img src={logoMyHealthId} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
           <div>
             <h1 className="font-bold text-sm text-foreground">
-              Agenda{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ' — Método Identidade'}
+              Agenda Online{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ''}
             </h1>
             <p className="text-xs text-muted-foreground">
-              {terapeuta?.especialidade || 'Fisioterapeuta'} · Verifique horários disponíveis
+              {terapeuta?.especialidade || 'Fisioterapeuta'} · Selecione um horário disponível
             </p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8 space-y-6">
-        {/* Navegação de semana */}
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+        {/* Info banner */}
+        <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
+          <p className="text-xs text-primary font-medium">
+            📅 Clique em um horário disponível para reservar diretamente
+          </p>
+        </div>
+
+        {/* Week navigation */}
         <div className="flex items-center justify-between">
           <Button variant="outline" size="sm" onClick={() => setSemanaOffset(prev => Math.max(0, prev - 1))} disabled={semanaOffset === 0}>
-            ← Semana anterior
+            ← Anterior
           </Button>
           <span className="text-sm font-medium text-foreground">
             {semanaOffset === 0 ? 'Esta semana' : `+${semanaOffset} semana${semanaOffset > 1 ? 's' : ''}`}
           </span>
-          <Button variant="outline" size="sm" onClick={() => setSemanaOffset(prev => prev + 1)}>
-            Próxima semana →
+          <Button variant="outline" size="sm" onClick={() => setSemanaOffset(prev => Math.min(5, prev + 1))}>
+            Próxima →
           </Button>
         </div>
 
-        {/* Slots por dia */}
+        {/* Slots */}
         {semanasDias.length === 0 || !temSlotsLivres ? (
           <div className="text-center py-10 border rounded-xl border-dashed text-muted-foreground">
             <CalendarDays className="h-10 w-10 mx-auto mb-3 opacity-30" />
             <p className="font-medium">Nenhum horário disponível nesta semana</p>
-            <p className="text-sm mt-1">Navegue para a próxima semana ou entre em contato com seu terapeuta.</p>
+            <p className="text-sm mt-1">Navegue para a próxima semana.</p>
           </div>
         ) : (
           <div className="space-y-4">
@@ -218,24 +378,28 @@ export default function AgendaPublica() {
                     <span className="font-semibold text-sm capitalize">
                       {format(data, "EEEE, dd 'de' MMMM", { locale: ptBR })}
                     </span>
-                    <span className="text-xs text-muted-foreground ml-auto">{livres.length} horário{livres.length > 1 ? 's' : ''} livre{livres.length > 1 ? 's' : ''}</span>
+                    <span className="text-xs text-muted-foreground ml-auto">
+                      {livres.length} horário{livres.length > 1 ? 's' : ''}
+                    </span>
                   </div>
                   <div className="p-3 grid grid-cols-4 gap-2 sm:grid-cols-6">
                     {slots.map(slot => (
                       <button
                         key={slot.hora}
                         disabled={!slot.disponivel}
-                        className={`flex items-center justify-center gap-1 px-2 py-2 rounded-lg text-xs font-medium transition-all border ${
+                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${
                           slot.disponivel
-                            ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer'
-                            : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through'
+                            ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
+                            : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
                         }`}
                         onClick={() => {
                           if (!slot.disponivel) return;
-                          const msg = `Olá${terapeuta ? `, ${terapeuta.nome}` : ''}! Gostaria de solicitar um horário para o dia ${format(data, "dd/MM/yyyy", { locale: ptBR })} às ${slot.hora}. Poderia confirmar a disponibilidade?`;
-                          const phone = terapeuta?.telefone || '';
-                          shareViaWhatsApp(phone, msg);
-                          setSolicitado(true);
+                          setSelectedSlot({
+                            data,
+                            hora: slot.hora,
+                            dataInicio: slot.dataInicio,
+                            dataFim: slot.dataFim,
+                          });
                         }}
                       >
                         <Clock className="h-2.5 w-2.5 shrink-0" />
@@ -249,16 +413,26 @@ export default function AgendaPublica() {
           </div>
         )}
 
-        {/* Contato direto */}
-        <div className="border rounded-xl p-4 bg-muted/20 text-center space-y-2">
-          <Phone className="h-6 w-6 mx-auto text-muted-foreground" />
-          <p className="text-sm text-muted-foreground">
-            Prefere marcar diretamente? Entre em contato com seu terapeuta pelo WhatsApp.
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Ao clicar em um horário disponível, abriremos o WhatsApp com uma mensagem pronta.
-          </p>
-        </div>
+        {/* WhatsApp fallback */}
+        {terapeuta?.telefone && (
+          <div className="border rounded-xl p-4 bg-muted/20 text-center space-y-2">
+            <Phone className="h-5 w-5 mx-auto text-muted-foreground" />
+            <p className="text-xs text-muted-foreground">
+              Prefere outro horário? Entre em contato pelo WhatsApp.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="text-xs"
+              onClick={() => {
+                const msg = `Olá${terapeuta ? `, ${terapeuta.nome}` : ''}! Gostaria de agendar um horário. Poderia verificar a disponibilidade?`;
+                shareViaWhatsApp(terapeuta?.telefone || '', msg);
+              }}
+            >
+              <Phone className="h-3 w-3 mr-1" /> Contatar via WhatsApp
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
