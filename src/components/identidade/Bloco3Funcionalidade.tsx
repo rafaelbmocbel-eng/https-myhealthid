@@ -184,7 +184,7 @@ export default function Bloco3Funcionalidade({ data, onChange, onNext, onBack }:
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
           <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
-            Próximo: Kinesiophobia
+            Próximo: Comportamento
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>

@@ -167,7 +167,7 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
               <Badge variant="outline" className="text-xs">Bloco 1</Badge>
               <span className="text-xs text-muted-foreground">~15 min</span>
             </div>
-            <h2 className="text-xl font-bold">Anamnese & Mapeamento Corporal</h2>
+            <h2 className="text-xl font-bold">Anamnese e Mapeamento da Dor</h2>
             <p className="text-muted-foreground text-sm mt-1">Contexto clínico + marcação dos sintomas pelo paciente</p>
           </div>
           <div className="flex gap-4 text-right">
