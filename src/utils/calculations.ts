@@ -128,31 +128,66 @@ export function calcularIDFinal(
   return { idFinal, fatoresRisco, classificacao };
 }
 
-// EQUAÇÃO DA DOR IDENTIDADE (4 dimensões – Apostila v8.0)
+// Cálculo do modulador de estilo de vida (0–2 pontos extras)
+export function calcularModuladorEstiloVida(bloco1: Bloco1Data): { modulador: number; fatores: string[] } {
+  let mod = 0;
+  const fatores: string[] = [];
+
+  // Sedentarismo: >8h/dia = risco
+  if (bloco1.horasSedentario >= 10) { mod += 0.5; fatores.push('Sedentarismo severo (≥10h)'); }
+  else if (bloco1.horasSedentario >= 8) { mod += 0.3; fatores.push('Sedentarismo moderado (≥8h)'); }
+
+  // Álcool: >2x/semana
+  if (bloco1.alcool === 'frequente') { mod += 0.4; fatores.push('Álcool frequente (>3×/sem)'); }
+  else if (bloco1.alcool === 'moderado') { mod += 0.2; fatores.push('Álcool moderado (1-3×/sem)'); }
+
+  // Tabagismo
+  if (bloco1.tabagismo) { mod += 0.4; fatores.push('Tabagismo ativo'); }
+
+  // Pouca água: <1.5L/dia
+  if ((bloco1.litrosAgua ?? 2) < 1) { mod += 0.3; fatores.push('Ingestão hídrica insuficiente (<1L)'); }
+  else if ((bloco1.litrosAgua ?? 2) < 1.5) { mod += 0.15; fatores.push('Ingestão hídrica baixa (<1.5L)'); }
+
+  // Comorbidades (histórico médico)
+  if (bloco1.historicoMedico.length >= 4) { mod += 0.4; fatores.push(`${bloco1.historicoMedico.length} comorbidades`); }
+  else if (bloco1.historicoMedico.length >= 2) { mod += 0.2; fatores.push(`${bloco1.historicoMedico.length} comorbidades`); }
+
+  // Histórico familiar
+  if (bloco1.historicoFamiliar) { mod += 0.2; fatores.push('Histórico familiar relevante'); }
+
+  return { modulador: Math.min(2, mod), fatores };
+}
+
+// EQUAÇÃO DA DOR IDENTIDADE (4 dimensões – Apostila v8.0 + Moduladores Estilo de Vida)
 export function calcularEquacaoDor(
   d: number,
   temIrradiacao: boolean,
-  tipoDorPeso: number, // max peso do tipo (0.5-1.0)
+  tipoDorPeso: number,
   p: number,
   r3: number,
   c: number,
-  fCronicidade: number, // 0-10 baseado na duração
-  r: number
-): { total: number; sensorio: number; afetiva: number; cognitiva: number; neurovegetativa: number } {
+  fCronicidade: number,
+  r: number,
+  moduladorEstiloVida: number = 0
+): { total: number; sensorio: number; afetiva: number; cognitiva: number; neurovegetativa: number; estiloVida: number } {
   // D_sensório = (D×0.5) + (irradiação×2) + (tipoPeso×1)
   const sensorio = (d * 0.5) + (temIrradiacao ? 2 : 0) + (tipoDorPeso * 1);
 
   // D_afetiva = (P×0.6) + ((10-R3)×0.4)
   const afetiva = (p * 0.6) + ((10 - r3) * 0.4);
 
-  // D_cognitiva = (C×0.5) + (Fcronicidade×0.5)
-  const cognitiva = (c * 0.5) + (fCronicidade * 0.5);
+  // D_cognitiva = (C×0.5) + (Fcronicidade×0.5) — cronicidade >2 meses amplifica
+  const cronificacaoBonus = fCronicidade >= 3 ? fCronicidade * 0.1 : 0;
+  const cognitiva = (c * 0.5) + (fCronicidade * 0.5) + cronificacaoBonus;
 
   // D_neurovegetativa = (10-R)×0.8
   const neurovegetativa = (10 - r) * 0.8;
 
-  // Total raw (0-30), normalizar para 0-10
-  const raw = sensorio + afetiva + cognitiva + neurovegetativa;
+  // Estilo de vida como 5ª dimensão moduladora
+  const estiloVida = moduladorEstiloVida;
+
+  // Total raw, normalizar para 0-10
+  const raw = sensorio + afetiva + cognitiva + neurovegetativa + estiloVida;
   const total = Math.min(10, Math.max(0, Math.round((raw / 3) * 10) / 10));
 
   return {
@@ -161,6 +196,7 @@ export function calcularEquacaoDor(
     afetiva: Math.min(10, Math.round(afetiva * 10) / 10),
     cognitiva: Math.min(10, Math.round(cognitiva * 10) / 10),
     neurovegetativa: Math.min(10, Math.round(neurovegetativa * 10) / 10),
+    estiloVida: Math.round(estiloVida * 10) / 10,
   };
 }
 

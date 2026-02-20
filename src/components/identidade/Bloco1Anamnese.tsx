@@ -9,7 +9,9 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
-import { ChevronRight, AlertCircle, Info } from 'lucide-react';
+import { ChevronRight, AlertCircle, Info, Mic, MicOff } from 'lucide-react';
+import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { cn } from '@/lib/utils';
 
 const COMORBIDADES = [
   'Diabetes', 'Hipertensão', 'Artrite', 'Fibromialgia', 'Cirurgias prévias',
@@ -24,7 +26,7 @@ interface Props {
 
 export default function Bloco1Anamnese({ data, onChange, onNext }: Props) {
   const [localData, setLocalData] = useState<Bloco1Data>(data);
-
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
   const update = (field: keyof Bloco1Data, value: any) => {
     const updated = { ...localData, [field]: value };
     updated.scoreF = calcularScoreF(updated);
@@ -70,12 +72,28 @@ export default function Bloco1Anamnese({ data, onChange, onNext }: Props) {
         </h3>
 
         <div>
-          <Label>Queixa principal <span className="text-destructive">*</span></Label>
+          <div className="flex items-center justify-between mb-1">
+            <Label>Queixa principal <span className="text-destructive">*</span></Label>
+            {isSupported && (
+              <Button
+                variant="ghost"
+                size="sm"
+                className={cn('h-7 gap-1 text-xs', isListening && 'text-destructive')}
+                onClick={() => {
+                  if (isListening) { stopListening(); return; }
+                  startListening((text) => update('queixaPrincipal', localData.queixaPrincipal + (localData.queixaPrincipal ? ' ' : '') + text));
+                }}
+              >
+                {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                {isListening ? 'Parar' : 'Ditar'}
+              </Button>
+            )}
+          </div>
           <Textarea
             placeholder="Descreva a queixa principal do paciente..."
             value={localData.queixaPrincipal}
             onChange={e => update('queixaPrincipal', e.target.value)}
-            className="mt-1.5 resize-none"
+            className="resize-none"
             rows={3}
             maxLength={500}
           />

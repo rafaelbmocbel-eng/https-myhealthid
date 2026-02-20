@@ -7,9 +7,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { ChevronRight, ChevronLeft, X, MapPin, Info, Eraser } from 'lucide-react';
+import { ChevronRight, ChevronLeft, X, MapPin, Info, Eraser, Mic, MicOff } from 'lucide-react';
 import { BodyAvatarSVG, REGIOES_CORPO } from './BodyAvatarSVG';
+import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { cn } from '@/lib/utils';
 
 const TIPOS_DOR = ['Ardor', 'Queimação', 'Dormência', 'Rigidez', 'Peso/Pressão', 'Pontada', 'Dor profunda'];
@@ -17,7 +19,7 @@ const FREQUENCIAS = ['Contínua (24h)', 'Intermitente', 'Noturna (afeta sono)', 
 const FATORES_PIORA = ['Movimento específico', 'Posição prolongada', 'Clima/umidade', 'Stress/emocional', 'Menstruação', 'Atividade ocupacional', 'Fadiga', 'Sono inadequado'];
 const FATORES_MELHORA = ['Repouso', 'Movimento', 'Calor/frio', 'Medicação', 'Fisioterapia', 'Alongamento', 'Outro'];
 
-// ─── Symptom Palette ────────────────────────────────────────────────
+// ─── Symptom types ────────────────────────────────────────────────
 type SintomaTipo = 'dor' | 'irradiacao' | 'rigidez' | 'formigamento' | 'inchaco' | 'queimacao';
 
 const SINTOMA_CONFIG: Record<SintomaTipo, {
@@ -31,9 +33,9 @@ const SINTOMA_CONFIG: Record<SintomaTipo, {
   queimacao:   { label: 'Queimação',          emoji: '🔥', cor: '#DC2626', descricao: 'Sensação de queima' },
 };
 
-// Extended region data including sintomas beyond just pain
 interface RegiaoExtendida extends RegiaoDor {
   sintomas: SintomaTipo[];
+  observacaoPaciente?: string;
 }
 
 interface Props {
@@ -45,17 +47,19 @@ interface Props {
 
 export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
   const [regioes, setRegioes] = useState<RegiaoExtendida[]>(
-    data.regioes.map(r => ({ ...r, sintomas: (r as RegiaoExtendida).sintomas || ['dor'] }))
+    data.regioes.map(r => ({ ...r, sintomas: (r as RegiaoExtendida).sintomas || ['dor'], observacaoPaciente: (r as any).observacaoPaciente || '' }))
   );
   const [modalRegiao, setModalRegiao] = useState<string | null>(null);
   const [sintomaAtivo, setSintomaAtivo] = useState<SintomaTipo>('dor');
+  const [observacaoGeral, setObservacaoGeral] = useState((data as any).observacaoGeral || '');
+  const { isListening, startListening, stopListening, isSupported } = useSpeechToText();
 
   const getRegiaoDor = (id: string): RegiaoExtendida => {
     return regioes.find(r => r.id === id) || {
       id, nome: REGIOES_CORPO.find(r => r.id === id)?.nome || id,
       intensidade: 5, tipos: [], irradiacao: false, irradiacaoPara: [],
       frequencia: 'Intermitente', fatoresPiora: [], fatoresMelhora: [],
-      sintomas: [sintomaAtivo],
+      sintomas: [sintomaAtivo], observacaoPaciente: '',
     };
   };
 
@@ -74,20 +78,16 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
   const handleRegionClick = (regionId: string) => {
     const existing = regioes.find(r => r.id === regionId);
     if (existing) {
-      // If already has this sintoma type, open detail modal
       if (existing.sintomas?.includes(sintomaAtivo)) {
         setModalRegiao(regionId);
         return;
       }
-      // Add sintoma to existing region
       updateRegiao(regionId, r => ({
         ...r,
         sintomas: [...(r.sintomas || []), sintomaAtivo],
       }));
     } else {
-      // New region with current sintoma
       updateRegiao(regionId, r => ({ ...r, sintomas: [sintomaAtivo] }));
-      // Auto-open modal for pain areas
       if (sintomaAtivo === 'dor') {
         setTimeout(() => setModalRegiao(regionId), 50);
       }
@@ -107,7 +107,6 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
     updateRegiao(regionId, r => {
       const novos = r.sintomas.filter(s => s !== sintoma);
       if (novos.length === 0) {
-        // Remove region entirely
         setTimeout(() => removeRegiao(regionId), 0);
         return r;
       }
@@ -118,15 +117,34 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
   const scoreD = calcularScoreD({ regioes, scoreD: 0 });
   const modalRegiaoDor = modalRegiao ? getRegiaoDor(modalRegiao) : null;
 
-  // Build pain map: use highest pain-related sintoma intensity
+  // Build maps for avatar
   const painMap: Record<string, number> = {};
+  const sintomaMap: Record<string, string[]> = {};
   regioes.forEach(r => {
+    sintomaMap[r.id] = r.sintomas || [];
     if (r.sintomas?.includes('dor') || r.sintomas?.includes('queimacao')) {
       painMap[r.id] = r.intensidade;
     } else if (r.sintomas?.length > 0) {
-      painMap[r.id] = Math.min(r.intensidade * 0.5, 4); // softer color for non-pain
+      painMap[r.id] = Math.min(r.intensidade * 0.5, 4);
     }
   });
+
+  const handleVoice = (field: 'observacaoGeral' | 'observacaoPaciente', regionId?: string) => {
+    if (isListening) {
+      stopListening();
+      return;
+    }
+    startListening((text) => {
+      if (field === 'observacaoGeral') {
+        setObservacaoGeral(prev => prev + (prev ? ' ' : '') + text);
+      } else if (field === 'observacaoPaciente' && regionId) {
+        updateRegiao(regionId, r => ({
+          ...r,
+          observacaoPaciente: (r.observacaoPaciente || '') + (r.observacaoPaciente ? ' ' : '') + text,
+        }));
+      }
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -140,7 +158,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
             </div>
             <h2 className="text-xl font-bold">Mapeamento Corporal</h2>
             <p className="text-muted-foreground text-sm mt-1">
-              Selecione um sintoma na paleta e clique nas regiões do corpo
+              Selecione um sintoma e clique nas regiões do corpo (frente e costas)
             </p>
           </div>
           <div className="text-right">
@@ -151,12 +169,11 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
         </div>
       </div>
 
-      {/* Symptom Palette */}
+      {/* Symptom Palette — single place to select active tool */}
       <div className="clinical-card">
         <div className="flex items-center gap-2 mb-3">
           <MapPin className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-sm">Paleta de Sintomas</h3>
-          <span className="text-xs text-muted-foreground ml-1">— selecione um sintoma e clique no avatar</span>
+          <h3 className="font-semibold text-sm">Selecione o Sintoma</h3>
         </div>
         <div className="flex flex-wrap gap-2">
           {(Object.entries(SINTOMA_CONFIG) as [SintomaTipo, typeof SINTOMA_CONFIG[SintomaTipo]][]).map(([key, cfg]) => (
@@ -166,17 +183,16 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               className={cn(
                 'flex items-center gap-2 px-3 py-2 rounded-lg border-2 text-sm font-medium transition-all',
                 sintomaAtivo === key
-                  ? 'border-foreground shadow-md scale-105 ring-2 ring-offset-1'
-                  : 'border-border hover:border-foreground/40 hover:scale-102 opacity-70 hover:opacity-100'
+                  ? 'shadow-md scale-105 ring-2 ring-offset-1'
+                  : 'border-border hover:border-foreground/40 hover:scale-102 opacity-60 hover:opacity-100'
               )}
               style={{
                 borderColor: sintomaAtivo === key ? cfg.cor : undefined,
                 backgroundColor: sintomaAtivo === key ? cfg.cor + '15' : undefined,
               }}
             >
-              <div className="h-3.5 w-3.5 rounded-full shrink-0" style={{ backgroundColor: cfg.cor }} />
-              <span className="hidden sm:inline">{cfg.label}</span>
-              <span className="text-base sm:hidden">{cfg.emoji}</span>
+              <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: cfg.cor }} />
+              <span>{cfg.label}</span>
             </button>
           ))}
           {regioes.length > 0 && (
@@ -185,117 +201,126 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed border-destructive/40 text-sm text-destructive/70 hover:text-destructive hover:border-destructive hover:bg-destructive/5 transition-all"
             >
               <Eraser className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Limpar tudo</span>
+              Limpar
             </button>
           )}
         </div>
-
-        {/* Active symptom indicator */}
-        <div className="mt-3 flex items-center gap-2 text-xs text-muted-foreground">
+        <div className="mt-2 flex items-center gap-2 text-xs text-muted-foreground">
           <div className="h-2.5 w-2.5 rounded-full animate-pulse" style={{ backgroundColor: SINTOMA_CONFIG[sintomaAtivo].cor }} />
-          <span>Ativo: <strong style={{ color: SINTOMA_CONFIG[sintomaAtivo].cor }}>{SINTOMA_CONFIG[sintomaAtivo].label}</strong> — {SINTOMA_CONFIG[sintomaAtivo].descricao}</span>
+          <span>Ativo: <strong style={{ color: SINTOMA_CONFIG[sintomaAtivo].cor }}>{SINTOMA_CONFIG[sintomaAtivo].label}</strong> — clique no avatar para marcar</span>
         </div>
       </div>
 
-      {/* Avatar + Region list */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        {/* Avatar SVG */}
-        <div className="clinical-card flex flex-col items-center">
-          <h3 className="font-semibold text-sm mb-3 self-start">Avatar Corporal Interativo</h3>
+      {/* Avatar FRONT + BACK side by side */}
+      <div className="clinical-card">
+        <h3 className="font-semibold text-sm mb-3">Avatar Corporal — Frente e Costas</h3>
+        <BodyAvatarSVG
+          mode="pain"
+          painMap={painMap}
+          sintomaMap={sintomaMap}
+          onRegionClick={handleRegionClick}
+          showBack={true}
+          className="max-w-lg mx-auto"
+        />
+      </div>
 
-          <BodyAvatarSVG
-            mode="pain"
-            painMap={painMap}
-            onRegionClick={handleRegionClick}
-            className="w-44"
-          />
-
-          {/* Multi-symptom color legend */}
-          <div className="mt-4 w-full">
-            <div className="text-xs font-semibold text-muted-foreground mb-2">Cores dos Sintomas</div>
-            <div className="grid grid-cols-2 gap-1.5">
-              {(Object.entries(SINTOMA_CONFIG) as [SintomaTipo, typeof SINTOMA_CONFIG[SintomaTipo]][]).map(([key, cfg]) => (
-                <div key={key} className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                  <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: cfg.cor }} />
-                  {cfg.label}
-                </div>
-              ))}
-            </div>
+      {/* Affected regions list */}
+      <div className="clinical-card">
+        <h3 className="font-semibold text-sm mb-4">Regiões Afetadas ({regioes.length})</h3>
+        {regioes.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+            <MapPin className="h-8 w-8 mb-2 opacity-30" />
+            <p className="text-sm">Nenhuma região marcada</p>
+            <p className="text-xs mt-1">Selecione um sintoma acima e clique no avatar</p>
           </div>
-        </div>
-
-        {/* Affected regions list */}
-        <div className="clinical-card">
-          <h3 className="font-semibold text-sm mb-4">Regiões Afetadas ({regioes.length})</h3>
-          {regioes.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
-              <MapPin className="h-8 w-8 mb-2 opacity-30" />
-              <p className="text-sm">Nenhuma região marcada</p>
-              <p className="text-xs mt-1">Selecione um sintoma e clique no avatar</p>
-            </div>
-          ) : (
-            <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
-              {regioes.map(r => (
-                <div key={r.id} className="p-3 rounded-lg border bg-card hover:bg-secondary/20 transition-colors">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium text-sm">{r.nome}</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-base font-bold" style={{ color: getSeverityColorHex(r.intensidade) }}>
-                        {r.intensidade}/10
-                      </span>
-                      <button onClick={() => removeRegiao(r.id)} className="text-muted-foreground hover:text-destructive transition-colors">
-                        <X className="h-4 w-4" />
-                      </button>
-                    </div>
+        ) : (
+          <div className="space-y-3 max-h-80 overflow-y-auto pr-1">
+            {regioes.map(r => (
+              <div key={r.id} className="p-3 rounded-lg border bg-card hover:bg-secondary/20 transition-colors">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="font-medium text-sm">{r.nome}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-base font-bold" style={{ color: getSeverityColorHex(r.intensidade) }}>
+                      {r.intensidade}/10
+                    </span>
+                    <button onClick={() => removeRegiao(r.id)} className="text-muted-foreground hover:text-destructive transition-colors">
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
-                  {/* Symptom badges */}
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {r.sintomas?.map(s => (
-                      <button
-                        key={s}
-                        onClick={() => removeSintoma(r.id, s)}
-                        className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border hover:opacity-80 transition-opacity"
-                        style={{
-                          backgroundColor: SINTOMA_CONFIG[s]?.cor + '20',
-                          borderColor: SINTOMA_CONFIG[s]?.cor + '60',
-                          color: SINTOMA_CONFIG[s]?.cor,
-                        }}
-                        title="Remover sintoma"
-                      >
-                        {SINTOMA_CONFIG[s]?.label}
-                        <X className="h-2.5 w-2.5" />
-                      </button>
-                    ))}
-                    {r.irradiacao && <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Irradia</Badge>}
+                </div>
+                {/* Symptom badges with colors */}
+                <div className="flex flex-wrap gap-1 mb-2">
+                  {r.sintomas?.map(s => (
+                    <button
+                      key={s}
+                      onClick={() => removeSintoma(r.id, s)}
+                      className="flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border hover:opacity-80 transition-opacity"
+                      style={{
+                        backgroundColor: SINTOMA_CONFIG[s]?.cor + '20',
+                        borderColor: SINTOMA_CONFIG[s]?.cor + '60',
+                        color: SINTOMA_CONFIG[s]?.cor,
+                      }}
+                      title="Remover sintoma"
+                    >
+                      <div className="h-2 w-2 rounded-full" style={{ backgroundColor: SINTOMA_CONFIG[s]?.cor }} />
+                      {SINTOMA_CONFIG[s]?.label}
+                      <X className="h-2.5 w-2.5" />
+                    </button>
+                  ))}
+                  {r.irradiacao && <Badge variant="outline" className="text-xs text-orange-600 border-orange-200">Irradia</Badge>}
+                </div>
+                {r.tipos.length > 0 && (
+                  <div className="flex flex-wrap gap-1">
+                    {r.tipos.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
                   </div>
-                  {/* Types */}
-                  {r.tipos.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {r.tipos.map(t => <Badge key={t} variant="secondary" className="text-xs">{t}</Badge>)}
-                    </div>
-                  )}
-                  <button onClick={() => setModalRegiao(r.id)} className="text-xs text-primary mt-2 hover:underline block">
-                    Editar detalhes →
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
+                )}
+                <button onClick={() => setModalRegiao(r.id)} className="text-xs text-primary mt-2 hover:underline block">
+                  Editar detalhes →
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-          {regioes.length > 0 && (
-            <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
-              <div className="flex items-center gap-2">
-                <Info className="h-4 w-4 text-primary shrink-0" />
-                <div className="text-xs">
-                  <strong>Score D: {scoreD.toFixed(1)}/10</strong> · {regioes.length} regiões ·
-                  Intensidade média: {(regioes.reduce((s, r) => s + r.intensidade, 0) / regioes.length).toFixed(1)}
-                </div>
+        {regioes.length > 0 && (
+          <div className="mt-4 p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <div className="flex items-center gap-2">
+              <Info className="h-4 w-4 text-primary shrink-0" />
+              <div className="text-xs">
+                <strong>Score D: {scoreD.toFixed(1)}/10</strong> · {regioes.length} regiões ·
+                Intensidade média: {(regioes.reduce((s, r) => s + r.intensidade, 0) / regioes.length).toFixed(1)}
               </div>
             </div>
+          </div>
+        )}
+      </div>
+
+      {/* Patient observation text box with voice */}
+      <div className="clinical-card">
+        <div className="flex items-center justify-between mb-2">
+          <Label className="font-semibold text-sm">Observações do Paciente</Label>
+          {isSupported && (
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn('h-8 gap-1 text-xs', isListening && 'border-destructive text-destructive')}
+              onClick={() => handleVoice('observacaoGeral')}
+            >
+              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isListening ? 'Parar' : 'Ditar'}
+            </Button>
           )}
         </div>
+        <Textarea
+          placeholder="O paciente pode descrever aqui, com suas palavras, o que sente..."
+          value={observacaoGeral}
+          onChange={e => setObservacaoGeral(e.target.value)}
+          rows={3}
+          className="resize-none"
+        />
+        <p className="text-xs text-muted-foreground mt-1">
+          {isSupported ? 'Use o botão Ditar para transcrever por voz' : 'Seu navegador não suporta reconhecimento de voz'}
+        </p>
       </div>
 
       {/* Detail Modal */}
@@ -308,7 +333,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
           </DialogHeader>
           {modalRegiao && modalRegiaoDor && (
             <div className="space-y-5">
-              {/* Symptom tags */}
+              {/* Symptom selection IN the modal */}
               <div>
                 <Label className="mb-2 block">Sintomas nesta região</Label>
                 <div className="flex flex-wrap gap-2">
@@ -344,7 +369,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               {/* Intensidade */}
               <div>
                 <div className="flex justify-between items-center mb-2">
-                  <Label>Intensidade da dor</Label>
+                  <Label>Intensidade da dor (paciente escolhe)</Label>
                   <span className="text-2xl font-bold" style={{ color: getSeverityColorHex(modalRegiaoDor.intensidade) }}>
                     {modalRegiaoDor.intensidade}/10
                   </span>
@@ -439,6 +464,31 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
                     ))}
                   </div>
                 </div>
+              </div>
+
+              {/* Observation per region with voice */}
+              <div>
+                <div className="flex items-center justify-between mb-1">
+                  <Label className="text-sm">Observação do paciente</Label>
+                  {isSupported && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className={cn('h-7 gap-1 text-xs', isListening && 'text-destructive')}
+                      onClick={() => handleVoice('observacaoPaciente', modalRegiao)}
+                    >
+                      {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
+                      {isListening ? 'Parar' : 'Ditar'}
+                    </Button>
+                  )}
+                </div>
+                <Textarea
+                  placeholder="Descreva o que sente nesta região..."
+                  value={modalRegiaoDor.observacaoPaciente || ''}
+                  onChange={e => updateRegiao(modalRegiao, r => ({ ...r, observacaoPaciente: e.target.value }))}
+                  rows={2}
+                  className="resize-none text-sm"
+                />
               </div>
 
               <Button className="w-full bg-gradient-primary text-white" onClick={() => setModalRegiao(null)}>

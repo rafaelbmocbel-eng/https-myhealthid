@@ -7,6 +7,7 @@ import {
   getSeverityColorHex,
   calcularEquacaoDor,
   duracaoParaCronicidade,
+  calcularModuladorEstiloVida,
 } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -200,7 +201,8 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         })
       ), 0.5)
     : 0.5;
-  const equacaoDor = calcularEquacaoDor(d, temIrradiacao, tipoPeso, p, r3, c, fCrono, r);
+  const { modulador: modEstiloVida } = calcularModuladorEstiloVida(avaliacao.bloco1);
+  const equacaoDor = calcularEquacaoDor(d, temIrradiacao, tipoPeso, p, r3, c, fCrono, r, modEstiloVida);
 
   // Unidades Críticas Top 3
   const unidadesSorted = [...avaliacao.bloco6.unidades]
@@ -561,12 +563,13 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             {equacaoDor.total.toFixed(1)}/10
           </Badge>
         </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
           {[
             { label: 'Sensório', value: equacaoDor.sensorio },
             { label: 'Afetiva', value: equacaoDor.afetiva },
             { label: 'Cognitiva', value: equacaoDor.cognitiva },
             { label: 'Neurovegetativa', value: equacaoDor.neurovegetativa },
+            { label: 'Estilo de Vida', value: equacaoDor.estiloVida },
           ].map(dim => (
             <div key={dim.label} className="text-center p-3 rounded-xl bg-secondary/40">
               <div className="text-xs text-muted-foreground mb-1">{dim.label}</div>
