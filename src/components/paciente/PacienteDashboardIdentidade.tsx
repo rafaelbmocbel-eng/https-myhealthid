@@ -9,8 +9,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { differenceInDays, format, parseISO } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
+import { differenceInDays } from 'date-fns';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
@@ -20,6 +19,7 @@ import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import EvolucaoDashboard from './EvolucaoDashboard';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import IdFinalGauge from '@/components/identidade/IdFinalGauge';
 
 interface Paciente {
   id: string;
@@ -45,6 +45,16 @@ const SCORE_LABELS: Record<string, string> = {
   score_d: 'Dor (D)',
   score_r: 'Regulação (R)',
   score_efi: 'EFI',
+};
+
+const SCORE_COLORS: Record<string, string> = {
+  score_e: 'hsl(var(--score-e))',
+  score_p: 'hsl(var(--score-p))',
+  score_c: 'hsl(var(--score-c))',
+  score_f: 'hsl(var(--score-f))',
+  score_d: 'hsl(var(--score-d))',
+  score_r: 'hsl(var(--score-r))',
+  score_efi: 'hsl(var(--score-p))',
 };
 
 const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi'];
@@ -77,13 +87,11 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
   });
 
   const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-  
 
   const gerarLinkAgenda = async () => {
     if (!user) return;
     setGerandoAgenda(true);
     try {
-      // Cancela links ativos anteriores
       await supabase
         .from('links_agenda_paciente')
         .update({ status: 'cancelado' })
@@ -174,55 +182,55 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     valor: Number(((ultimaAvaliacao as any)[key] || 0).toFixed(1)),
   })) : [];
 
-  // Respostas agrupadas moved to QuestionariosComparacao component
+  const idFinal = (ultimaAvaliacao as any)?.id_final || 0;
 
   return (
     <div className="space-y-6">
-      {/* Header */}
+      {/* Header com cor bordô Identidade */}
       <div className="flex items-center gap-3">
         <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold">
+        <div className="h-10 w-10 rounded-full bg-identidade flex items-center justify-center shrink-0 text-identidade-foreground font-bold">
           {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
         </div>
         <div className="flex-1">
           <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
           <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
         </div>
-        <Button onClick={onIniciarAvaliacao} className="bg-gradient-primary text-white gap-2">
+        <Button onClick={onIniciarAvaliacao} className="bg-identidade hover:bg-identidade/90 text-identidade-foreground gap-2">
           <Activity className="h-4 w-4" /> Nova Avaliação
         </Button>
       </div>
 
-      {/* Links Compactos (barra inline) */}
+      {/* Links Compactos */}
       <div className="clinical-card !p-3">
         <div className="flex items-center gap-3 flex-wrap">
           {/* Link Avaliação */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Link2 className="h-4 w-4 text-primary shrink-0" />
+            <Link2 className="h-4 w-4 text-identidade shrink-0" />
             <span className="text-xs font-semibold shrink-0">Questionário</span>
             {linkAtivo ? (
               <>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</span>
+                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
+                <span className="text-[10px] text-success shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</span>
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
                   <Copy className="h-3 w-3" />
                 </Button>
                 {paciente.telefone && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
                     onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAtivo.token))}>
                     <MessageCircle className="h-3 w-3" />
                   </Button>
                 )}
                 {paciente.email && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600" onClick={enviarEmail} disabled={enviandoEmail}>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-identidade" onClick={enviarEmail} disabled={enviandoEmail}>
                     {enviandoEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
                   </Button>
                 )}
               </>
             ) : (
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-primary" disabled={gerando}
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-identidade" disabled={gerando}
                 onClick={async () => { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }}>
                 {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                 Gerar
@@ -234,24 +242,24 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
 
           {/* Link Agenda */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
-            <CalendarDays className="h-4 w-4 text-amber-600 shrink-0" />
+            <CalendarDays className="h-4 w-4 text-accent shrink-0" />
             <span className="text-xs font-semibold shrink-0">Agenda</span>
             {linkAgendaAtivo ? (
               <>
-                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</span>
+                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
+                <span className="text-[10px] text-success shrink-0">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</span>
                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
                   <Copy className="h-3 w-3" />
                 </Button>
                 {paciente.telefone && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
                     onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
                     <MessageCircle className="h-3 w-3" />
                   </Button>
                 )}
               </>
             ) : (
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" disabled={gerandoAgenda}
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-accent" disabled={gerandoAgenda}
                 onClick={gerarLinkAgenda}>
                 {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
                 Gerar
@@ -265,10 +273,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
       <Tabs defaultValue="avaliacoes">
         <TabsList className="bg-secondary p-1 rounded-xl">
           <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <BarChart3 className="h-4 w-4" /> Avaliações Salvas {avaliacoes.length > 0 && `(${avaliacoes.length})`}
+            <BarChart3 className="h-4 w-4" /> Avaliações {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="h-4 w-4" /> Questionários Remotos {respostas.length > 0 && `(${respostas.length})`}
+            <FileText className="h-4 w-4" /> Questionários {respostas.length > 0 && `(${respostas.length})`}
           </TabsTrigger>
           {avaliacoes.length >= 2 && (
             <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
@@ -283,52 +291,85 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         {/* Aba: Avaliações Salvas */}
         <TabsContent value="avaliacoes" className="mt-4">
           {isLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-identidade" /></div>
           ) : avaliacoes.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
               <Activity className="h-10 w-10 mx-auto mb-3 opacity-30" />
               <p className="font-medium">Nenhuma avaliação salva</p>
               <p className="text-sm mt-1">Realize e salve uma avaliação para visualizar o histórico.</p>
-              <Button className="mt-4 bg-gradient-primary text-white" onClick={onIniciarAvaliacao}>Iniciar Avaliação</Button>
+              <Button className="mt-4 bg-identidade text-identidade-foreground" onClick={onIniciarAvaliacao}>Iniciar Avaliação</Button>
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Radar da última avaliação */}
+            <div className="space-y-6">
+              {/* Gauge + Radar lado a lado */}
               {radarData.length > 0 && (
-                <div className="clinical-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="h-4 w-4 text-primary" />
-                    <h4 className="font-semibold text-sm">Perfil da Última Avaliação — {ultimaAvaliacao?.data_avaliacao}</h4>
-                    {(ultimaAvaliacao as any)?.classificacao && (
-                      <Badge variant="outline" className="ml-auto text-xs">{(ultimaAvaliacao as any).classificacao}</Badge>
-                    )}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                  {/* Gauge do ID Final com explicação */}
+                  <div className="clinical-card flex flex-col items-center">
+                    <div className="flex items-center gap-2 mb-4 w-full">
+                      <div className="h-6 w-6 rounded-md bg-identidade/10 flex items-center justify-center">
+                        <Activity className="h-3.5 w-3.5 text-identidade" />
+                      </div>
+                      <h4 className="font-semibold text-sm">Equação da Dor — ID Final</h4>
+                      <Badge variant="outline" className="ml-auto text-[10px] border-identidade/30 text-identidade">{ultimaAvaliacao?.data_avaliacao}</Badge>
+                    </div>
+                    <IdFinalGauge value={idFinal} />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+
+                  {/* Radar + Score cards */}
+                  <div className="clinical-card">
+                    <div className="flex items-center gap-2 mb-4">
+                      <div className="h-6 w-6 rounded-md bg-identidade/10 flex items-center justify-center">
+                        <BarChart3 className="h-3.5 w-3.5 text-identidade" />
+                      </div>
+                      <h4 className="font-semibold text-sm">Perfil Multidimensional</h4>
+                      {(ultimaAvaliacao as any)?.classificacao && (
+                        <Badge variant="outline" className="ml-auto text-xs">{(ultimaAvaliacao as any).classificacao}</Badge>
+                      )}
+                    </div>
                     <div className="h-56">
                       <ResponsiveContainer width="100%" height="100%">
                         <RadarChart data={radarData}>
-                          <PolarGrid />
-                          <PolarAngleAxis dataKey="score" tick={{ fontSize: 11 }} />
-                          <Radar name="Score" dataKey="valor" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                          <PolarGrid className="stroke-border" />
+                          <PolarAngleAxis dataKey="score" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                          <Radar name="Score" dataKey="valor" stroke="hsl(var(--identidade))" fill="hsl(var(--identidade))" fillOpacity={0.2} strokeWidth={2} />
                         </RadarChart>
                       </ResponsiveContainer>
                     </div>
-                    <div className="grid grid-cols-2 gap-2">
-                      {SCORE_KEYS.map(key => (
-                        <div key={key} className="bg-muted/50 rounded-lg p-2 text-center">
-                          <div className="text-xs text-muted-foreground">{SCORE_LABELS[key]}</div>
-                          <div className="font-bold text-sm text-foreground">
-                            {((ultimaAvaliacao as any)[key] || 0).toFixed(1)}
-                          </div>
-                        </div>
-                      ))}
-                      <div className="bg-primary/10 rounded-lg p-2 text-center col-span-2">
-                        <div className="text-xs text-primary font-medium">ID Final</div>
-                        <div className="font-bold text-base text-primary">
-                          {((ultimaAvaliacao as any)?.id_final || 0).toFixed(1)}/50
-                        </div>
-                      </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Barras comparativas por dimensão */}
+              {ultimaAvaliacao && (
+                <div className="clinical-card">
+                  <div className="flex items-center gap-2 mb-4">
+                    <div className="h-6 w-6 rounded-md bg-identidade/10 flex items-center justify-center">
+                      <BarChart3 className="h-3.5 w-3.5 text-identidade" />
                     </div>
+                    <h4 className="font-semibold text-sm">Scores por Dimensão</h4>
+                  </div>
+                  <div className="space-y-3">
+                    {SCORE_KEYS.map(key => {
+                      const val = Number(((ultimaAvaliacao as any)[key] || 0).toFixed(1));
+                      const maxVal = key === 'score_efi' ? 10 : 10;
+                      const pct = Math.min((val / maxVal) * 100, 100);
+                      return (
+                        <div key={key} className="flex items-center gap-3">
+                          <div className="w-28 text-xs font-medium text-muted-foreground shrink-0 flex items-center gap-2">
+                            <div className="h-2.5 w-2.5 rounded-sm shrink-0" style={{ backgroundColor: SCORE_COLORS[key] }} />
+                            {SCORE_LABELS[key]}
+                          </div>
+                          <div className="flex-1 h-4 rounded-full bg-muted overflow-hidden">
+                            <div
+                              className="h-full rounded-full transition-all duration-500"
+                              style={{ width: `${pct}%`, backgroundColor: SCORE_COLORS[key] }}
+                            />
+                          </div>
+                          <span className="text-sm font-bold w-10 text-right text-foreground">{val}</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}
@@ -336,8 +377,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
               {/* Lista de avaliações */}
               <div className="space-y-2">
                 {avaliacoes.map((av: any) => (
-                  <div key={av.id} className="border rounded-xl p-3 flex items-center gap-3 hover:bg-accent/10 transition-all">
-                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div key={av.id} className="border rounded-xl p-3 flex items-center gap-3 hover:bg-identidade-light/50 transition-all">
+                    <Calendar className="h-4 w-4 text-identidade-muted shrink-0" />
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="text-sm font-semibold">{av.data_avaliacao}</span>
