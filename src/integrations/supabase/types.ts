@@ -292,6 +292,121 @@ export type Database = {
         }
         Relationships: []
       }
+      evolucao_paciente: {
+        Row: {
+          avaliacao_anterior_id: string | null
+          avaliacao_atual_id: string
+          classificacao: string | null
+          created_at: string
+          data_registro: string
+          delta_c: number | null
+          delta_d: number | null
+          delta_e: number | null
+          delta_efi: number | null
+          delta_f: number | null
+          delta_id_final: number | null
+          delta_p: number | null
+          delta_r: number | null
+          dias_desde_anterior: number | null
+          id: string
+          id_final: number | null
+          numero_avaliacao: number
+          observacoes: string | null
+          paciente_id: string
+          score_c: number | null
+          score_d: number | null
+          score_e: number | null
+          score_efi: number | null
+          score_f: number | null
+          score_p: number | null
+          score_r: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          avaliacao_anterior_id?: string | null
+          avaliacao_atual_id: string
+          classificacao?: string | null
+          created_at?: string
+          data_registro?: string
+          delta_c?: number | null
+          delta_d?: number | null
+          delta_e?: number | null
+          delta_efi?: number | null
+          delta_f?: number | null
+          delta_id_final?: number | null
+          delta_p?: number | null
+          delta_r?: number | null
+          dias_desde_anterior?: number | null
+          id?: string
+          id_final?: number | null
+          numero_avaliacao?: number
+          observacoes?: string | null
+          paciente_id: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          avaliacao_anterior_id?: string | null
+          avaliacao_atual_id?: string
+          classificacao?: string | null
+          created_at?: string
+          data_registro?: string
+          delta_c?: number | null
+          delta_d?: number | null
+          delta_e?: number | null
+          delta_efi?: number | null
+          delta_f?: number | null
+          delta_id_final?: number | null
+          delta_p?: number | null
+          delta_r?: number | null
+          dias_desde_anterior?: number | null
+          id?: string
+          id_final?: number | null
+          numero_avaliacao?: number
+          observacoes?: string | null
+          paciente_id?: string
+          score_c?: number | null
+          score_d?: number | null
+          score_e?: number | null
+          score_efi?: number | null
+          score_f?: number | null
+          score_p?: number | null
+          score_r?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evolucao_paciente_avaliacao_anterior_id_fkey"
+            columns: ["avaliacao_anterior_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes_identidade"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolucao_paciente_avaliacao_atual_id_fkey"
+            columns: ["avaliacao_atual_id"]
+            isOneToOne: false
+            referencedRelation: "avaliacoes_identidade"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evolucao_paciente_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       exercicios_biblioteca: {
         Row: {
           categoria: string
