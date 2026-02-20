@@ -31,10 +31,18 @@ interface Paciente {
   telefone?: string | null;
 }
 
+interface RespostasPrecarga {
+  bloco1?: any;
+  bloco2?: any;
+  bloco3?: any;
+  bloco4?: any;
+  bloco5?: any;
+}
+
 interface Props {
   paciente: Paciente;
   onBack: () => void;
-  onIniciarAvaliacao: () => void;
+  onIniciarAvaliacao: (precarga?: RespostasPrecarga) => void;
   onVerRelatorio: (avaliacao: AvaliacaoIdentidade) => void;
   onEditarAvaliacao?: (avaliacao: AvaliacaoIdentidade) => void;
 }
@@ -224,6 +232,35 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
 
   const idFinal = (ultimaAvaliacao as any)?.id_final || 0;
 
+  // Extrair dados completos das respostas para pré-carga
+  const precargaRespostas = useMemo((): RespostasPrecarga | undefined => {
+    if (respostas.length === 0) return undefined;
+    const linkMaisRecente = linksAvPaciente.find(l =>
+      respostas.some(r => r.link_id === l.id)
+    );
+    if (!linkMaisRecente) return undefined;
+
+    const respostasLink = respostas.filter(r => r.link_id === linkMaisRecente.id);
+    const precarga: RespostasPrecarga = {};
+
+    respostasLink.forEach(r => {
+      const dados = r.dados_respostas as any;
+      if (!dados) return;
+      if (r.bloco_numero === 1) {
+        precarga.bloco1 = dados;
+        // Bloco2 (dor) is embedded in bloco1 response
+        if (dados.regioes !== undefined) {
+          precarga.bloco2 = { regioes: dados.regioes, scoreD: dados.scoreD || 0 };
+        }
+      }
+      if (r.bloco_numero === 3) precarga.bloco3 = dados;
+      if (r.bloco_numero === 4) precarga.bloco4 = dados;
+      if (r.bloco_numero === 5) precarga.bloco5 = dados;
+    });
+
+    return Object.keys(precarga).length > 0 ? precarga : undefined;
+  }, [respostas, linksAvPaciente]);
+
   // Determinar se devemos mostrar o dashboard parcial
   const temAvaliacaoCompleta = avaliacoes.length > 0;
   const temQuestionario = scoresParciais !== null;
@@ -243,7 +280,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
           <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
           <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
         </div>
-        <Button onClick={onIniciarAvaliacao} className="bg-identidade hover:bg-identidade/90 text-identidade-foreground gap-2">
+        <Button onClick={() => onIniciarAvaliacao(precargaRespostas)} className="bg-identidade hover:bg-identidade/90 text-identidade-foreground gap-2">
           <Activity className="h-4 w-4" /> Nova Avaliação
         </Button>
       </div>
@@ -318,7 +355,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
       {mostrarDashboardParcial && scoresParciais && (
         <DashboardParcial
           scoresParciais={scoresParciais}
-          onIniciarAvaliacao={onIniciarAvaliacao}
+          onIniciarAvaliacao={() => onIniciarAvaliacao(precargaRespostas)}
         />
       )}
 
@@ -355,7 +392,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
                   : 'Realize e salve uma avaliação para visualizar o histórico.'
                 }
               </p>
-              <Button className="mt-4 bg-identidade text-identidade-foreground" onClick={onIniciarAvaliacao}>
+              <Button className="mt-4 bg-identidade text-identidade-foreground" onClick={() => onIniciarAvaliacao(precargaRespostas)}>
                 {temQuestionario ? 'Completar Avaliação Estrutural' : 'Iniciar Avaliação'}
               </Button>
             </div>

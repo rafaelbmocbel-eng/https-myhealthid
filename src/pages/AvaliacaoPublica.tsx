@@ -220,7 +220,7 @@ export default function AvaliacaoPublica() {
             bloco2Data={bloco2}
             onChange={setBloco1}
             onBloco2Change={setBloco2}
-            onNext={() => avancarBloco(1, bloco1)}
+            onNext={() => avancarBloco(1, { ...bloco1, regioes: bloco2.regioes, scoreD: bloco2.scoreD })}
           />
         )}
         {blocoAtual === 3 && (

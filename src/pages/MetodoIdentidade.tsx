@@ -96,11 +96,27 @@ export default function MetodoIdentidade() {
     setShowRelatorio(false);
   };
 
-  // Inicia avaliação a partir do dashboard
-  const handleIniciarAvaliacao = () => {
+  // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário
+  const handleIniciarAvaliacao = (precarga?: { bloco1?: any; bloco2?: any; bloco3?: any; bloco4?: any; bloco5?: any }) => {
     if (!selectedPaciente) return;
-    setAvaliacao(makeDefaultAvaliacao(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`));
-    setBlocosConcluidos(new Set());
+    const base = makeDefaultAvaliacao(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`);
+
+    if (precarga) {
+      // Pré-carregar dados do questionário remoto
+      if (precarga.bloco1) base.bloco1 = { ...base.bloco1, ...precarga.bloco1 };
+      if (precarga.bloco2) base.bloco2 = { ...base.bloco2, ...precarga.bloco2 };
+      if (precarga.bloco3) base.bloco3 = { ...base.bloco3, ...precarga.bloco3 };
+      if (precarga.bloco4) base.bloco4 = { ...base.bloco4, ...precarga.bloco4 };
+      if (precarga.bloco5) base.bloco5 = { ...base.bloco5, ...precarga.bloco5 };
+      // Marcar blocos do questionário como concluídos e pular para Bloco 6 (Estrutural)
+      setBlocosConcluidos(new Set([1, 2, 3, 4, 5]));
+      base.blocoAtual = 6;
+    } else {
+      setBlocosConcluidos(new Set());
+      base.blocoAtual = 1;
+    }
+
+    setAvaliacao(base);
     setShowDashboard(false);
     setShowRelatorio(false);
   };
