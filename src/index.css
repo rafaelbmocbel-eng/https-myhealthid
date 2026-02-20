@@ -62,6 +62,13 @@
     --score-d: 270 60% 50%;
     --score-r: 200 70% 42%;
 
+    /* Módulo Identidade — Bordô/Vinho */
+    --identidade: 345 55% 32%;
+    --identidade-light: 345 45% 92%;
+    --identidade-foreground: 0 0% 100%;
+    --identidade-muted: 345 30% 45%;
+    --gradient-identidade: linear-gradient(135deg, hsl(345 55% 32%) 0%, hsl(345 50% 24%) 100%);
+
     /* Sidebar */
     --sidebar-background: 213 55% 16%;
     --sidebar-foreground: 210 20% 90%;
@@ -262,6 +269,10 @@
 
   .bg-gradient-warning {
     background: var(--gradient-warning);
+  }
+
+  .bg-gradient-identidade {
+    background: var(--gradient-identidade);
   }
 
   .shadow-card {

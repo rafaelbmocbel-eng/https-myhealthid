@@ -79,6 +79,12 @@ export default {
   				severo: 'hsl(var(--severity-severo))',
   				critico: 'hsl(var(--severity-critico))',
   				extremo: 'hsl(var(--severity-extremo))'
+  			},
+  			identidade: {
+  				DEFAULT: 'hsl(var(--identidade))',
+  				light: 'hsl(var(--identidade-light))',
+  				foreground: 'hsl(var(--identidade-foreground))',
+  				muted: 'hsl(var(--identidade-muted))'
   			}
   		},
   		borderRadius: {
