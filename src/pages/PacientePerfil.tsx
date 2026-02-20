@@ -589,7 +589,7 @@ export default function PacientePerfil() {
                   <Activity className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Método Identidade</h3>
                 </div>
-                <EvolucaoDashboard evolucoes={evolucoesId} />
+                <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
               </div>
             ) : (
               <EmptyState icon={<BarChart3 />} title="Dados insuficientes (Identidade)" subtitle="São necessárias pelo menos 2 avaliações Identidade para gerar o comparativo evolutivo." />
