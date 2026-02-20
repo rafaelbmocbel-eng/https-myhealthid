@@ -9,12 +9,12 @@ import {
 
 const SCORE_LABELS: Record<string, string> = {
   score_e: 'Estrutural',
-  score_p: 'Kinesiophobia',
-  score_c: 'Contexto',
-  score_f: 'Funcional',
+  score_p: 'Cinesiofobia',
+  score_c: 'Carga Contextual',
+  score_f: 'Contextual',
   score_d: 'Dor',
   score_r: 'Regulação',
-  score_efi: 'EFI',
+  score_efi: 'Funcionalidade',
 };
 
 const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi'];

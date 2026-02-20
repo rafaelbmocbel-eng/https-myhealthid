@@ -54,9 +54,9 @@ function interpretR(r: number): { label: string; color: string } {
 
 const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi', 'id_final'] as const;
 const SCORE_LABELS: Record<string, string> = {
-  score_e: 'E (Estrutural)', score_p: 'P (Cinesiofobia)', score_c: 'C (Carga)',
+  score_e: 'E (Estrutural)', score_p: 'P (Cinesiofobia)', score_c: 'C (Carga Contextual)',
   score_f: 'F (Contextual)', score_d: 'D (Dor)', score_r: 'R (Regulação)',
-  score_efi: 'EFI (Funcional)', id_final: 'ID Final',
+  score_efi: 'EFI (Funcionalidade)', id_final: 'ID Final',
 };
 
 // TSK-11 items
@@ -263,11 +263,11 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       .sort((a, b) => b[1].count - a[1].count)
       .map(([nome, v]) => ({ nome, count: v.count, mediaIntensidade: v.count > 0 ? v.intensidadeTotal / v.count : 0 }));
 
-    // 7. Risk factor prevalence
+    // 7. Risk factor prevalence (aligned with calcularIDFinal thresholds)
     const riskFactors = {
-      altaCinesiofobia: avaliacoes.filter(a => Number(a.score_p || 0) > 7).length,
+      altaCinesiofobia: avaliacoes.filter(a => Number(a.score_p || 0) > 7.5).length,
       cargaExcessiva: avaliacoes.filter(a => Number(a.score_c || 0) > 8).length,
-      regulacaoCritica: avaliacoes.filter(a => Number(a.score_r || 0) < 3).length,
+      regulacaoCritica: avaliacoes.filter(a => Number(a.score_r || 0) < 2).length,
       dorIntensa: avaliacoes.filter(a => Number(a.score_d || 0) > 8).length,
       severoOuPior: avaliacoes.filter(a => ['SEVERO', 'CRÍTICO', 'EXTREMO'].includes(a.classificacao || '')).length,
     };
@@ -748,9 +748,9 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         </p>
         <div className="space-y-3">
           {[
-            { label: 'Alta Cinesiofobia (P > 7)', count: analysis.riskFactors.altaCinesiofobia, desc: '+2 ao ID final · Recomendado: educação em dor e graded exposure', icon: Brain, danger: true },
+            { label: 'Alta Cinesiofobia (P > 7.5)', count: analysis.riskFactors.altaCinesiofobia, desc: '+2 ao ID final · Recomendado: educação em dor e graded exposure', icon: Brain, danger: true },
             { label: 'Carga Contextual Excessiva (C > 8)', count: analysis.riskFactors.cargaExcessiva, desc: '+2 ao ID final · Fatores psicossociais dominantes', icon: Shield, danger: true },
-            { label: 'Regulação Crítica (R < 3)', count: analysis.riskFactors.regulacaoCritica, desc: '+3 ao ID final · Desregulação neurovegetativa severa', icon: Activity, danger: true },
+            { label: 'Regulação Crítica (R < 2)', count: analysis.riskFactors.regulacaoCritica, desc: '+3 ao ID final · Desregulação neurovegetativa severa', icon: Activity, danger: true },
             { label: 'Dor Intensa (D > 8)', count: analysis.riskFactors.dorIntensa, desc: '+1 ao ID final · Componente nociceptivo significativo', icon: Heart, danger: false },
             { label: 'Classificação ≥ SEVERO', count: analysis.riskFactors.severoOuPior, desc: 'Pacientes que demandam protocolo intensivo', icon: AlertTriangle, danger: true },
           ].map(rf => {

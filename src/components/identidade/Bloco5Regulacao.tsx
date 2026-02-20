@@ -142,12 +142,12 @@ export default function Bloco5Regulacao({ data, onChange, onNext, onBack }: Prop
         <SliderItem label="Eventos de vida estressantes recentes" value={localData.eventosEstressantes} min="Nenhum" max="Múltiplos" onChange={v => update('eventosEstressantes', v)} />
       </div>
 
-      {r < 3 && (
+      {r < 2 && (
         <div className="clinical-card border-destructive bg-red-50">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <div className="font-semibold text-destructive">Regulação Neurovegetativa Crítica (R = {r.toFixed(1)} &lt; 3)</div>
+              <div className="font-semibold text-destructive">Regulação Neurovegetativa Crítica (R = {r.toFixed(1)} &lt; 2)</div>
               <p className="text-sm text-destructive/80 mt-1">
                 Este score crítico adiciona +3 ao ID final. Recomenda-se: higiene do sono, relaxamento, gestão de stress urgente.
               </p>

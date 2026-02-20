@@ -176,15 +176,14 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
 
   const { idFinal, fatoresRisco, classificacao } = calcularIDFinal(e, p, c, f, d, r);
 
-  // Amplificadores
+  // Amplificadores já aplicados dentro de calcularIDFinal — exibir sem re-somar
   const amplificadores: Array<{ desc: string; pontos: number }> = [];
-  if (p > 7.5) amplificadores.push({ desc: 'Kinesiophobia severa (P > 7.5)', pontos: 2 });
+  if (p > 7.5) amplificadores.push({ desc: 'Cinesiofobia severa (P > 7.5)', pontos: 2 });
   if (c > 8) amplificadores.push({ desc: 'Carga contextual extrema (C > 8)', pontos: 2 });
   if (r < 2) amplificadores.push({ desc: 'Regulação neurovegetativa crítica (R < 2)', pontos: 3 });
-  else if (r < 3) amplificadores.push({ desc: 'Regulação neurovegetativa crítica (R < 3)', pontos: 3 });
-  if (d > 8) amplificadores.push({ desc: 'Dor radicular/neuropática (D > 8)', pontos: 1 });
+  if (d > 8) amplificadores.push({ desc: 'Dor intensa/neuropática (D > 8)', pontos: 1 });
   const totalAmplif = amplificadores.reduce((s, a) => s + a.pontos, 0);
-  const idAjustado = Math.round((idFinal + totalAmplif) * 10) / 10;
+  const idAjustado = idFinal; // amplificadores já estão inclusos no idFinal
 
   // Numerador ponderado
   const numerador = (e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10);
