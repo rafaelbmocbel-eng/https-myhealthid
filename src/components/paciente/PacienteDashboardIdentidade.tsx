@@ -291,7 +291,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
           {/* Link Avaliação */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <Link2 className="h-4 w-4 text-identidade shrink-0" />
-            <span className="text-xs font-semibold shrink-0">Questionário</span>
+            <span className="text-xs font-semibold shrink-0">Questionário Identidade</span>
             {linkAtivo ? (
               <>
                 <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
@@ -366,7 +366,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
             <BarChart3 className="h-4 w-4" /> Avaliações {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="h-4 w-4" /> Questionários {respostas.length > 0 && `(${respostas.length})`}
+            <FileText className="h-4 w-4" /> Questionário Identidade {respostas.length > 0 && `(${respostas.length})`}
           </TabsTrigger>
           {avaliacoes.length >= 2 && (
             <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">

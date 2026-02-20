@@ -1,7 +1,8 @@
 import { useState, useMemo } from 'react';
-import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye } from 'lucide-react';
+import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye, Brain, Bed, Activity, ClipboardList, Zap, Moon, AlertTriangle, Heart, Briefcase, Home, Dumbbell, Users } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
@@ -57,8 +58,320 @@ function extractScores(dados: any): Record<string, number> {
   return scores;
 }
 
+/* ── Score Gauge Mini ── */
+function ScoreGaugeMini({ value, max = 10, label, color, subtitle }: { value: number; max?: number; label: string; color: string; subtitle?: string }) {
+  const pct = Math.min((value / max) * 100, 100);
+  const getLevel = (v: number) => {
+    if (v <= 3) return { text: 'Baixo', bg: 'bg-emerald-100 text-emerald-700' };
+    if (v <= 6) return { text: 'Moderado', bg: 'bg-amber-100 text-amber-700' };
+    return { text: 'Alto', bg: 'bg-red-100 text-red-700' };
+  };
+  const level = getLevel(value);
+  return (
+    <div className="rounded-xl border bg-card p-3 space-y-2">
+      <div className="flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted-foreground">{label}</span>
+        <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full ${level.bg}`}>{level.text}</span>
+      </div>
+      <div className="flex items-baseline gap-1">
+        <span className="text-2xl font-black" style={{ color }}>{value.toFixed(1)}</span>
+        <span className="text-xs text-muted-foreground">/{max}</span>
+      </div>
+      <div className="h-2 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: color }} />
+      </div>
+      {subtitle && <p className="text-[10px] text-muted-foreground">{subtitle}</p>}
+    </div>
+  );
+}
+
+/* ── Visual Bar Item ── */
+function VisualBarItem({ label, value, max = 10, icon: Icon, color }: { label: string; value: number; max?: number; icon?: any; color?: string }) {
+  const pct = Math.min((value / max) * 100, 100);
+  const barColor = color || (value <= 3 ? '#10b981' : value <= 6 ? '#f59e0b' : '#ef4444');
+  return (
+    <div className="flex items-center gap-3">
+      {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+      <div className="w-24 text-xs font-medium text-muted-foreground shrink-0 truncate">{label}</div>
+      <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
+        <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+      </div>
+      <span className="text-xs font-bold w-8 text-right">{value.toFixed(1)}</span>
+    </div>
+  );
+}
+
+/* ── Bloco 1 Detail: Anamnese + Dor ── */
+function Bloco1Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  const regioes = dados.regioes || [];
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <ScoreGaugeMini value={dados.scoreF ?? 0} label="Score F — Contexto" color="hsl(var(--primary))" subtitle="Fatores contextuais e histórico" />
+        <ScoreGaugeMini value={dados.scoreD ?? 0} label="Score D — Dor" color="#ef4444" subtitle="Intensidade multidimensional" />
+      </div>
+      {/* Anamnese resumo */}
+      <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Anamnese</span>
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          {dados.queixaPrincipal && (
+            <div className="col-span-2">
+              <span className="text-muted-foreground">Queixa: </span>
+              <span className="font-medium">{dados.queixaPrincipal}</span>
+            </div>
+          )}
+          {dados.duracao && (
+            <div><span className="text-muted-foreground">Duração: </span><span className="font-medium">{dados.duracao}</span></div>
+          )}
+          {dados.profissao && (
+            <div><span className="text-muted-foreground">Profissão: </span><span className="font-medium">{dados.profissao}</span></div>
+          )}
+        </div>
+        {/* Life factors */}
+        <div className="space-y-1.5 mt-2">
+          <VisualBarItem label="Impacto QV" value={dados.impactoQualidadeVida ?? 0} icon={Heart} />
+          <VisualBarItem label="Interf. Trabalho" value={dados.interferenciaTrbalho ?? 0} icon={Briefcase} />
+          <VisualBarItem label="Sedentarismo" value={dados.horasSedentario ?? 0} max={16} icon={Home} color="#6366f1" />
+        </div>
+        {dados.historicoMedico && dados.historicoMedico.length > 0 && (
+          <div className="flex gap-1 flex-wrap mt-2">
+            {dados.historicoMedico.map((c: string) => (
+              <Badge key={c} variant="outline" className="text-[10px] h-5">{c}</Badge>
+            ))}
+          </div>
+        )}
+      </div>
+      {/* Regiões de dor */}
+      {regioes.length > 0 && (
+        <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">{regioes.length} Região(ões) de Dor</span>
+          </div>
+          <div className="space-y-2">
+            {regioes.map((reg: any, i: number) => (
+              <div key={i} className="rounded-lg bg-background p-2.5 border space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold">{reg.nome || `Região ${i + 1}`}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-black" style={{ color: reg.intensidade > 6 ? '#ef4444' : reg.intensidade > 3 ? '#f59e0b' : '#10b981' }}>
+                      {reg.intensidade}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">/10</span>
+                  </div>
+                </div>
+                <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full" style={{
+                    width: `${(reg.intensidade / 10) * 100}%`,
+                    backgroundColor: reg.intensidade > 6 ? '#ef4444' : reg.intensidade > 3 ? '#f59e0b' : '#10b981',
+                  }} />
+                </div>
+                <div className="flex gap-1 flex-wrap">
+                  {reg.tipos?.map((t: string) => (
+                    <span key={t} className="text-[9px] bg-muted px-1.5 py-0.5 rounded-md font-medium">{t}</span>
+                  ))}
+                  {reg.irradiacao && <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md font-medium">Irradiação</span>}
+                  {reg.frequencia && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">{reg.frequencia}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Bloco 3 Detail: Funcionalidade ── */
+function Bloco3Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  const ITEMS = [
+    { key: 'trabalho', label: 'Trabalho/Estudo', icon: Briefcase },
+    { key: 'domesticas', label: 'Atividades Domésticas', icon: Home },
+    { key: 'exercicio', label: 'Exercício/Esporte', icon: Dumbbell },
+    { key: 'independencia', label: 'Independência', icon: Heart },
+    { key: 'vidaSocial', label: 'Vida Social', icon: Users },
+  ];
+  return (
+    <div className="space-y-3">
+      <ScoreGaugeMini value={dados.scoreEFI ?? 0} label="Score EFI — Funcionalidade" color="#10b981" subtitle="Impacto funcional global (0=sem impacto, 10=incapacitante)" />
+      <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Dimensões Funcionais</span>
+        <div className="space-y-1.5">
+          {ITEMS.map(item => (
+            <VisualBarItem key={item.key} label={item.label} value={dados[item.key] ?? 0} icon={item.icon} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ── Bloco 4 Detail: Cinesiofobia TSK-11 ── */
+function Bloco4Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  const respostas: number[] = dados.respostas || [];
+  const TSK_SHORT = [
+    'Medo de piorar', 'Medo de machucar', 'Evitar movimentos', 'Evitar dor',
+    'Dor = prejuízo', 'Inatividade segura', 'Dor = algo errado', 'Risco lesão grave',
+    'Sem controle', 'Não mover em dor', 'Mostrar dor',
+  ];
+  const OPCOES_LABEL = ['', 'Discordo Fort.', 'Discordo', 'Concordo', 'Concordo Fort.'];
+  
+  return (
+    <div className="space-y-3">
+      <ScoreGaugeMini value={dados.scoreP ?? 0} label="Score P — Cinesiofobia (TSK-11)" color="#f59e0b" subtitle="Medo do movimento (0=nenhum, 10=máximo)" />
+      <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Respostas Individuais</span>
+        <div className="space-y-1.5">
+          {respostas.map((resp, idx) => {
+            if (idx >= TSK_SHORT.length) return null;
+            const barColor = resp >= 3 ? '#f59e0b' : '#10b981';
+            const pct = (resp / 4) * 100;
+            return (
+              <div key={idx} className="flex items-center gap-2">
+                <span className="text-[10px] font-bold text-muted-foreground w-4 shrink-0">{idx + 1}</span>
+                <div className="w-24 text-[10px] text-muted-foreground shrink-0 truncate" title={TSK_SHORT[idx]}>{TSK_SHORT[idx]}</div>
+                <div className="flex-1 h-2.5 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, backgroundColor: barColor }} />
+                </div>
+                <span className="text-[10px] font-medium w-20 text-right text-muted-foreground truncate">{OPCOES_LABEL[resp] || '—'}</span>
+              </div>
+            );
+          })}
+        </div>
+        {(dados.scoreP ?? 0) > 7.5 && (
+          <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
+            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+            <span className="text-[10px] font-medium text-amber-700">Cinesiofobia acentuada — amplificador +2 no ID Final</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/* ── Bloco 5 Detail: Regulação Neurovegetativa ── */
+function Bloco5Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  
+  const SONO_ITEMS = [
+    { key: 'qualidadeSono', label: 'Qualidade', inv: true },
+    { key: 'horasSono', label: 'Horas', inv: true },
+    { key: 'acordaNaNoite', label: 'Despertar noturno', inv: false },
+    { key: 'dorAfetaSono', label: 'Dor afeta sono', inv: false },
+    { key: 'descansadoAoAcordar', label: 'Descansado', inv: true },
+  ];
+  const ENERGIA_ITEMS = [
+    { key: 'energiaAoAcordar', label: 'Energia manhã', inv: true },
+    { key: 'fadigaDia', label: 'Fadiga diurna', inv: false },
+    { key: 'precisaCochiblar', label: 'Precisa cochilar', inv: false },
+    { key: 'motivacao', label: 'Motivação', inv: true },
+    { key: 'resistenciaFisica', label: 'Resistência', inv: true },
+  ];
+  const PSICO_ITEMS = [
+    { key: 'nivelStress', label: 'Stress', inv: false },
+    { key: 'humorGeral', label: 'Humor', inv: true },
+    { key: 'concentracao', label: 'Concentração', inv: true },
+    { key: 'preocupacaoSaude', label: 'Preocupação', inv: false },
+    { key: 'sensacaoControle', label: 'Controle', inv: true },
+  ];
+  const CARGA_ITEMS = [
+    { key: 'cargaLaboral', label: 'Carga laboral' },
+    { key: 'relacionamentos', label: 'Relacionamentos' },
+    { key: 'situacaoFinanceira', label: 'Financeiro' },
+    { key: 'eventosEstressantes', label: 'Eventos stress' },
+  ];
+
+  // R sub-scores: alto = ruim
+  const getSubColor = (v: number) => v <= 3 ? '#10b981' : v <= 6 ? '#f59e0b' : '#ef4444';
+
+  const renderSubSection = (title: string, icon: any, items: { key: string; label: string; inv?: boolean }[], scoreKey: string, scoreLabel: string) => {
+    const Icon = icon;
+    const scoreVal = dados[scoreKey] ?? 0;
+    return (
+      <div className="rounded-lg bg-background p-3 border space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+            <span className="text-xs font-semibold">{title}</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="text-sm font-black" style={{ color: getSubColor(scoreVal) }}>{scoreVal.toFixed(1)}</span>
+            <span className="text-[10px] text-muted-foreground">/10</span>
+          </div>
+        </div>
+        <div className="h-1.5 rounded-full bg-muted overflow-hidden">
+          <div className="h-full rounded-full" style={{ width: `${(scoreVal / 10) * 100}%`, backgroundColor: getSubColor(scoreVal) }} />
+        </div>
+        <div className="space-y-1">
+          {items.map(item => {
+            const val = dados[item.key] ?? 5;
+            // For inverted items (high=good): show inverted bar color
+            const effectiveVal = item.inv ? 10 - val : val;
+            const barColor = effectiveVal <= 3 ? '#10b981' : effectiveVal <= 6 ? '#f59e0b' : '#ef4444';
+            return (
+              <div key={item.key} className="flex items-center gap-2">
+                <div className="w-24 text-[10px] text-muted-foreground shrink-0 truncate">{item.label}</div>
+                <div className="flex-1 h-2 rounded-full bg-muted overflow-hidden">
+                  <div className="h-full rounded-full" style={{ width: `${(val / 10) * 100}%`, backgroundColor: barColor }} />
+                </div>
+                <span className="text-[10px] font-bold w-6 text-right">{val}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <ScoreGaugeMini value={dados.scoreR ?? 0} label="Score R — Regulação" color="#8b5cf6" subtitle="Regulação neurovegetativa (alto=ruim)" />
+        <ScoreGaugeMini value={dados.scoreC ?? 0} label="Score C — Carga" color="#3b82f6" subtitle="Carga contextual (alto=ruim)" />
+      </div>
+      <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+        <span className="text-[10px] font-bold text-muted-foreground uppercase">Subdimensões</span>
+        <div className="space-y-2">
+          {renderSubSection('Sono (R1)', Moon, SONO_ITEMS, 'scoreR1', 'R1')}
+          {renderSubSection('Energia (R2)', Zap, ENERGIA_ITEMS, 'scoreR2', 'R2')}
+          {renderSubSection('Psicológico (R3)', Brain, PSICO_ITEMS, 'scoreR3', 'R3')}
+          {renderSubSection('Carga Contextual (C)', Activity, CARGA_ITEMS.map(i => ({ ...i, inv: false })), 'scoreC', 'C')}
+        </div>
+      </div>
+      {(dados.scoreR ?? 0) > 8 && (
+        <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
+          <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+          <span className="text-[10px] font-medium text-red-700">Regulação crítica (R {'>'} 8) — amplificador +3 no ID Final</span>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── Render detail by block number ── */
+function BlocoDetailRenderer({ blocoNum, dados }: { blocoNum: number; dados: any }) {
+  switch (blocoNum) {
+    case 1: return <Bloco1Detail dados={dados} />;
+    case 3: return <Bloco3Detail dados={dados} />;
+    case 4: return <Bloco4Detail dados={dados} />;
+    case 5: return <Bloco5Detail dados={dados} />;
+    default: return null;
+  }
+}
+
+const BLOCO_ICONS: Record<number, any> = {
+  1: ClipboardList,
+  3: Activity,
+  4: Brain,
+  5: Bed,
+};
+
 export default function QuestionariosComparacao({ linksAvPaciente, respostas }: Props) {
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
+  const [expandedBloco, setExpandedBloco] = useState<number | null>(null);
 
   const respostasAgrupadas = useMemo(() => {
     return linksAvPaciente
@@ -68,6 +381,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
         const blocosRecebidos = [...new Set(respostasLink.map(r => r.bloco_numero))].sort();
         const allScores: Record<string, number> = {};
         const blocoScores: Record<number, Record<string, number>> = {};
+        const blocoDados: Record<number, any> = {};
 
         blocosRecebidos.forEach(bn => {
           const resp = respostasLink
@@ -76,6 +390,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           if (resp?.dados_respostas) {
             const scores = extractScores(resp.dados_respostas);
             blocoScores[bn] = scores;
+            blocoDados[bn] = resp.dados_respostas;
             Object.assign(allScores, scores);
           }
         });
@@ -85,6 +400,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           blocosRecebidos,
           allScores,
           blocoScores,
+          blocoDados,
           completo: blocosRecebidos.length >= 4,
           data: link.data_ultimo_acesso || link.created_at,
         };
@@ -95,7 +411,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
     return (
       <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-medium">Nenhum questionário recebido</p>
+        <p className="font-medium">Nenhum Questionário Identidade recebido</p>
         <p className="text-sm mt-1">Gere e envie um link de avaliação para este paciente.</p>
       </div>
     );
@@ -150,32 +466,10 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
     <div className="space-y-4">
       {/* Summary Cards Row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard
-          label="Questionários"
-          value={totalQuestionarios}
-          icon={<FileText className="h-4 w-4" />}
-          accent="primary"
-        />
-        <SummaryCard
-          label="Completos"
-          value={completos}
-          icon={<CheckCircle2 className="h-4 w-4" />}
-          accent="success"
-        />
-        <SummaryCard
-          label="Blocos Recebidos"
-          value={totalBlocos}
-          icon={<BarChart3 className="h-4 w-4" />}
-          accent="info"
-        />
-        <SummaryCard
-          label="Taxa Conclusão"
-          value={`${taxaComplecao}%`}
-          icon={<TrendingUp className="h-4 w-4" />}
-          accent="warning"
-          isPercentage
-          percentage={taxaComplecao}
-        />
+        <SummaryCard label="Questionários" value={totalQuestionarios} icon={<FileText className="h-4 w-4" />} accent="primary" />
+        <SummaryCard label="Completos" value={completos} icon={<CheckCircle2 className="h-4 w-4" />} accent="success" />
+        <SummaryCard label="Blocos Recebidos" value={totalBlocos} icon={<BarChart3 className="h-4 w-4" />} accent="info" />
+        <SummaryCard label="Taxa Conclusão" value={`${taxaComplecao}%`} icon={<TrendingUp className="h-4 w-4" />} accent="warning" isPercentage percentage={taxaComplecao} />
       </div>
 
       {/* Charts Row */}
@@ -219,15 +513,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
             <div className="h-44 w-44 shrink-0">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie
-                    data={blocosCount}
-                    cx="50%"
-                    cy="50%"
-                    innerRadius={40}
-                    outerRadius={65}
-                    paddingAngle={3}
-                    dataKey="value"
-                  >
+                  <Pie data={blocosCount} cx="50%" cy="50%" innerRadius={40} outerRadius={65} paddingAngle={3} dataKey="value">
                     {blocosCount.map((_, i) => (
                       <Cell key={i} fill={PIE_COLORS[i]} />
                     ))}
@@ -254,7 +540,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
         <div className="clinical-card">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="h-4 w-4 text-primary" />
-            <h4 className="font-semibold text-sm">Comparação: Primeiro vs Último Questionário</h4>
+            <h4 className="font-semibold text-sm">Comparação: Primeiro vs Último Questionário Identidade</h4>
           </div>
           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
@@ -293,7 +579,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
       <div className="clinical-card">
         <div className="flex items-center gap-2 mb-4">
           <Calendar className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold text-sm">Histórico de Envios</h4>
+          <h4 className="font-semibold text-sm">Histórico — Questionário Identidade</h4>
         </div>
         <div className="space-y-2">
           {respostasAgrupadas.map((group, idx) => {
@@ -302,7 +588,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
               <div key={group.link.id}>
                 <div
                   className={`rounded-xl border p-3 cursor-pointer transition-all ${isSelected ? 'border-primary bg-accent/30 shadow-sm' : 'hover:border-primary/30 hover:bg-accent/10'}`}
-                  onClick={() => setSelectedLinkId(isSelected ? null : group.link.id)}
+                  onClick={() => { setSelectedLinkId(isSelected ? null : group.link.id); setExpandedBloco(null); }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
@@ -335,29 +621,65 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                   </div>
                 </div>
 
-                {/* Expanded detail */}
+                {/* Expanded detail with rich visual blocks */}
                 {isSelected && (
-                  <div className="mt-2 ml-12 space-y-2 animate-slide-in">
+                  <div className="mt-2 space-y-2 animate-slide-in">
+                    {/* Quick score overview radar */}
+                    {Object.keys(group.allScores).length >= 3 && (
+                      <div className="rounded-xl border bg-card p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                          <span className="text-xs font-semibold">Visão Geral dos Scores</span>
+                        </div>
+                        <div className="h-48">
+                          <ResponsiveContainer width="100%" height="100%">
+                            <RadarChart data={Object.entries(group.allScores).map(([k, v]) => ({
+                              score: k.replace('score', '').toUpperCase(),
+                              valor: Number(v.toFixed(1)),
+                            }))}>
+                              <PolarGrid className="stroke-border" />
+                              <PolarAngleAxis dataKey="score" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                              <Radar name="Score" dataKey="valor" stroke="hsl(var(--identidade))" fill="hsl(var(--identidade))" fillOpacity={0.2} strokeWidth={2} />
+                            </RadarChart>
+                          </ResponsiveContainer>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Block accordion */}
                     {group.blocosRecebidos.map(bn => {
+                      const BlocoIcon = BLOCO_ICONS[bn] || FileText;
+                      const isExpanded = expandedBloco === bn;
                       const scores = group.blocoScores[bn] || {};
                       const scoreEntries = Object.entries(scores);
                       return (
-                        <div key={bn} className="bg-muted/30 rounded-lg p-3 border border-border/50">
-                          <div className="flex items-center gap-2 mb-2">
-                            <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-xs font-semibold">{BLOCOS[BLOCO_NUMS.indexOf(bn)] ?? `Bloco ${bn}`}</span>
-                          </div>
-                          {scoreEntries.length > 0 ? (
-                            <div className="flex gap-2 flex-wrap">
-                              {scoreEntries.map(([k, v]) => (
-                                <div key={k} className="bg-background rounded-md px-2.5 py-1 border">
-                                  <span className="text-[10px] text-muted-foreground">{k.replace('score', '').toUpperCase()}</span>
-                                  <span className="text-xs font-bold ml-1.5 text-primary">{v.toFixed(1)}</span>
-                                </div>
-                              ))}
+                        <div key={bn} className="rounded-xl border bg-card overflow-hidden">
+                          <div
+                            className={`flex items-center gap-3 p-3 cursor-pointer transition-all hover:bg-accent/30 ${isExpanded ? 'bg-accent/20 border-b' : ''}`}
+                            onClick={(e) => { e.stopPropagation(); setExpandedBloco(isExpanded ? null : bn); }}
+                          >
+                            <div className="h-8 w-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                              <BlocoIcon className="h-4 w-4 text-primary" />
                             </div>
-                          ) : (
-                            <p className="text-[10px] text-muted-foreground">Sem scores calculados neste bloco</p>
+                            <div className="flex-1 min-w-0">
+                              <span className="text-xs font-semibold">{BLOCOS[BLOCO_NUMS.indexOf(bn)] ?? `Bloco ${bn}`}</span>
+                            </div>
+                            {scoreEntries.length > 0 && (
+                              <div className="flex gap-1.5">
+                                {scoreEntries.map(([k, v]) => (
+                                  <div key={k} className="bg-muted rounded-md px-2 py-0.5 flex items-center gap-1">
+                                    <span className="text-[9px] text-muted-foreground font-medium">{k.replace('score', '').toUpperCase()}</span>
+                                    <span className="text-xs font-bold text-primary">{v.toFixed(1)}</span>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          </div>
+                          {isExpanded && (
+                            <div className="p-4 animate-slide-in">
+                              <BlocoDetailRenderer blocoNum={bn} dados={group.blocoDados[bn]} />
+                            </div>
                           )}
                         </div>
                       );

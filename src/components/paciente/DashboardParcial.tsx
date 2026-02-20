@@ -67,7 +67,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
-              <h3 className="font-bold text-sm text-foreground">Dashboard Parcial — Questionário Recebido</h3>
+              <h3 className="font-bold text-sm text-foreground">Dashboard Parcial — Questionário Identidade Recebido</h3>
               <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px]">
                 Aguardando Estrutural
               </Badge>
@@ -120,7 +120,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
                 <div className="h-6 w-6 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                   <BarChart3 className="h-3.5 w-3.5 text-amber-600" />
                 </div>
-                <h4 className="font-semibold text-sm">Perfil Parcial (Questionário)</h4>
+                <h4 className="font-semibold text-sm">Perfil Parcial (Questionário Identidade)</h4>
                 <Badge variant="outline" className="ml-auto text-[10px] border-amber-200 text-amber-600">Parcial</Badge>
               </div>
               <div className="h-56">
