@@ -12,7 +12,8 @@ import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
-  Plus, Trash2, Edit, Dumbbell,
+  Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -337,44 +338,154 @@ export default function PacientePerfil() {
               </Button>
             </div>
 
-            {/* Link de Avaliação Remota */}
-            <div className="clinical-card">
-              <div className="flex items-center gap-2 mb-3">
-                <Link2 className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Link de Questionário Remoto</h3>
-              </div>
-              {linkAvAtivo ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Link ativo — expira em {differenceInDays(new Date(linkAvAtivo.data_expiracao), new Date())} dias</span>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
-                    {getLinkUrl(linkAvAtivo.token)}
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarLink(linkAvAtivo.token)}>
-                      <Copy className="h-3 w-3" /> Copiar
-                    </Button>
-                    {paciente.telefone && (
-                      <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
-                        onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAvAtivo.token))}>
-                        <MessageCircle className="h-3 w-3" /> WhatsApp
+            {/* Links Compactos (barra de ícones) */}
+            <div className="clinical-card !p-3">
+              <div className="flex items-center gap-3 flex-wrap">
+                {/* Link Avaliação */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <Link2 className="h-4 w-4 text-primary shrink-0" />
+                  <span className="text-xs font-semibold shrink-0">Questionário</span>
+                  {linkAvAtivo ? (
+                    <>
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAvAtivo.data_expiracao), new Date())}d</span>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAvAtivo.token)}>
+                        <Copy className="h-3 w-3" />
                       </Button>
-                    )}
+                      {paciente.telefone && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                          onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAvAtivo.token))}>
+                          <MessageCircle className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-primary" disabled={gerando}
+                      onClick={async () => { const novo = await gerarLink(id!); if (novo) copiarLink(novo.token); }}>
+                      {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                      Gerar
+                    </Button>
+                  )}
+                </div>
+
+                <div className="h-6 w-px bg-border shrink-0" />
+
+                {/* Link Agenda */}
+                <div className="flex items-center gap-2 flex-1 min-w-0">
+                  <CalendarDays className="h-4 w-4 text-amber-600 shrink-0" />
+                  <span className="text-xs font-semibold shrink-0">Agenda</span>
+                  {linkAgendaAtivo ? (
+                    <>
+                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                      <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</span>
+                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                      {paciente.telefone && (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                          onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
+                          <MessageCircle className="h-3 w-3" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" disabled={gerandoAgenda}
+                      onClick={gerarLinkAgenda}>
+                      {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                      Gerar
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Pontos Críticos da Última Avaliação */}
+            {avaliacoesId.length > 0 && (() => {
+              const ult = avaliacoesId[0] as any;
+              const dados = ult.dados_avaliacao as any;
+              const scores = {
+                e: ult.score_e || 0, p: ult.score_p || 0, c: ult.score_c || 0,
+                f: ult.score_f || 0, d: ult.score_d || 0, r: ult.score_r || 0,
+                idFinal: ult.id_final || 0,
+              };
+
+              // Build critical alerts from scores
+              const alertas: Array<{ icon: any; label: string; valor: string; status: 'critico' | 'alerta' | 'ok'; dica: string }> = [];
+
+              // Score-based alerts
+              if (scores.p > 7.5) alertas.push({ icon: AlertTriangle, label: 'Cinesiofobia', valor: `${scores.p.toFixed(1)}/10`, status: 'critico', dica: 'Psicoeducação em dor + exposição gradual' });
+              else if (scores.p > 5) alertas.push({ icon: AlertTriangle, label: 'Cinesiofobia', valor: `${scores.p.toFixed(1)}/10`, status: 'alerta', dica: 'Educação sobre movimento seguro' });
+
+              if (scores.r < 3) alertas.push({ icon: Shield, label: 'Regulação', valor: `${scores.r.toFixed(1)}/10`, status: 'critico', dica: 'Avaliação neurovegetativa urgente' });
+              else if (scores.r < 5) alertas.push({ icon: Shield, label: 'Regulação', valor: `${scores.r.toFixed(1)}/10`, status: 'alerta', dica: 'Técnicas de regulação + higiene do sono' });
+
+              if (scores.d > 8) alertas.push({ icon: Heart, label: 'Dor', valor: `${scores.d.toFixed(1)}/10`, status: 'critico', dica: 'Dor intensa/neuropática — TENS + terapia manual' });
+              else if (scores.d > 5) alertas.push({ icon: Heart, label: 'Dor', valor: `${scores.d.toFixed(1)}/10`, status: 'alerta', dica: 'Modulação de dor ativa' });
+
+              if (scores.c > 8) alertas.push({ icon: AlertTriangle, label: 'Carga Contextual', valor: `${scores.c.toFixed(1)}/10`, status: 'critico', dica: 'Encaminhamento psicológico recomendado' });
+              else if (scores.c > 5) alertas.push({ icon: AlertTriangle, label: 'Contexto', valor: `${scores.c.toFixed(1)}/10`, status: 'alerta', dica: 'Suporte emocional + escuta ativa' });
+
+              if (scores.e > 6) alertas.push({ icon: Activity, label: 'Estrutural', valor: `${scores.e.toFixed(1)}/10`, status: 'critico', dica: 'Intervenção manual intensiva' });
+
+              // Lifestyle alerts from dados_avaliacao
+              if (dados?.bloco1) {
+                const b1 = dados.bloco1;
+                if (b1.atividadeFisica === 'nenhuma') alertas.push({ icon: Footprints, label: 'Sedentário', valor: 'Sem atividade', status: 'critico', dica: 'Iniciar caminhadas 20min 3×/sem' });
+                if ((b1.litrosAgua ?? 2) < 1.5) alertas.push({ icon: Droplets, label: 'Hidratação', valor: `${b1.litrosAgua ?? 0}L/dia`, status: 'alerta', dica: 'Aumentar para ≥2L/dia' });
+                if (b1.tabagismo) alertas.push({ icon: Cigarette, label: 'Tabagismo', valor: 'Ativo', status: 'critico', dica: 'Cessação — retarda cicatrização' });
+                if (b1.alcool === 'frequente') alertas.push({ icon: Wine, label: 'Álcool', valor: 'Frequente', status: 'critico', dica: 'Reduzir consumo' });
+                if (b1.horasSedentario >= 10) alertas.push({ icon: Armchair, label: 'Horas sentado', valor: `${b1.horasSedentario}h/dia`, status: 'critico', dica: 'Pausas ativas a cada 45min' });
+              }
+              if (dados?.bloco5) {
+                const r1 = dados.bloco5.scoreR1 ?? 5;
+                if (r1 < 4) alertas.push({ icon: BedDouble, label: 'Sono', valor: `R1: ${r1.toFixed(1)}`, status: 'critico', dica: 'Higiene do sono urgente' });
+              }
+
+              if (alertas.length === 0) return null;
+
+              const criticos = alertas.filter(a => a.status === 'critico');
+              const alertasList = alertas.filter(a => a.status === 'alerta');
+
+              const getStyle = (s: 'critico' | 'alerta' | 'ok') =>
+                s === 'critico' ? 'border-red-200 bg-red-50/60' : s === 'alerta' ? 'border-amber-200 bg-amber-50/60' : 'border-green-200 bg-green-50/60';
+              const getIconStyle = (s: 'critico' | 'alerta' | 'ok') =>
+                s === 'critico' ? 'text-red-600' : s === 'alerta' ? 'text-amber-600' : 'text-green-600';
+
+              return (
+                <div className="clinical-card border-2 border-destructive/20">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold text-sm flex items-center gap-2">
+                      <AlertTriangle className="h-4 w-4 text-destructive" />
+                      Pontos Críticos — {ult.data_avaliacao}
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px]">
+                        ID {scores.idFinal.toFixed(1)}/50
+                      </Badge>
+                      {ult.classificacao && (
+                        <Badge variant="outline" className="text-[10px]">{ult.classificacao}</Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {[...criticos, ...alertasList].map((al, i) => {
+                      const Icon = al.icon;
+                      return (
+                        <div key={i} className={`rounded-lg border p-2.5 ${getStyle(al.status)}`}>
+                          <div className="flex items-center gap-2 mb-1">
+                            <Icon className={`h-4 w-4 shrink-0 ${getIconStyle(al.status)}`} />
+                            <span className="text-xs font-bold truncate">{al.label}</span>
+                          </div>
+                          <div className="text-sm font-black">{al.valor}</div>
+                          <div className="text-[10px] text-muted-foreground mt-1 leading-tight">💡 {al.dica}</div>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-muted-foreground flex-1">Nenhum link de questionário ativo.</p>
-                  <Button size="sm" className="bg-gradient-primary text-white gap-1" disabled={gerando}
-                    onClick={async () => { const novo = await gerarLink(id!); if (novo) copiarLink(novo.token); }}>
-                    {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                    Gerar Link (30 dias)
-                  </Button>
-                </div>
-              )}
-            </div>
+              );
+            })()}
 
             {/* Avaliações Salvas: Método Identidade */}
             {(loadingId || loadingCob) ? (
