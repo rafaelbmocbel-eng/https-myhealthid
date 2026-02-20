@@ -24,6 +24,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
 import QuestionariosComparacao from '@/components/paciente/QuestionariosComparacao';
 import EvolucaoDashboard from '@/components/paciente/EvolucaoDashboard';
+import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -41,6 +42,7 @@ export default function PacientePerfil() {
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
+  const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
@@ -581,13 +583,13 @@ export default function PacientePerfil() {
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="evolucao" className="mt-4 space-y-6">
             {/* Evolução Avaliações Identidade */}
-            {avaliacoesId.length >= 2 ? (
+            {evolucoesId.length >= 2 ? (
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Activity className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Método Identidade</h3>
                 </div>
-                <EvolucaoDashboard avaliacoes={avaliacoesId} />
+                <EvolucaoDashboard evolucoes={evolucoesId} />
               </div>
             ) : (
               <EmptyState icon={<BarChart3 />} title="Dados insuficientes (Identidade)" subtitle="São necessárias pelo menos 2 avaliações Identidade para gerar o comparativo evolutivo." />

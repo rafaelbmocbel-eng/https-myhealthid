@@ -4,8 +4,9 @@ import { Badge } from '@/components/ui/badge';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  BarChart, Bar, Cell,
+  BarChart, Bar,
 } from 'recharts';
+import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
 
 const SCORE_LABELS: Record<string, string> = {
   score_e: 'Estrutural',
@@ -28,76 +29,55 @@ const SCORE_COLORS: Record<string, string> = {
   score_efi: '#ec4899',
 };
 
-interface Avaliacao {
-  id: string;
-  data_avaliacao: string;
-  classificacao?: string | null;
-  id_final?: number | null;
-  score_e?: number | null;
-  score_p?: number | null;
-  score_c?: number | null;
-  score_f?: number | null;
-  score_d?: number | null;
-  score_r?: number | null;
-  score_efi?: number | null;
-  created_at: string;
-}
-
 interface Props {
-  avaliacoes: Avaliacao[];
+  evolucoes: EvolucaoRecord[];
 }
 
-export default function EvolucaoDashboard({ avaliacoes }: Props) {
-  const sorted = useMemo(() => [...avaliacoes].reverse(), [avaliacoes]);
+export default function EvolucaoDashboard({ evolucoes }: Props) {
+  const sorted = useMemo(() => [...evolucoes].sort((a, b) => a.numero_avaliacao - b.numero_avaliacao), [evolucoes]);
 
   const primeira = sorted[0];
   const ultima = sorted[sorted.length - 1];
 
-  // Summary stats
   const totalAvaliacoes = sorted.length;
-  const idFinalAtual = ultima?.id_final ?? 0;
-  const idFinalInicial = primeira?.id_final ?? 0;
+  const idFinalAtual = Number(ultima?.id_final ?? 0);
+  const idFinalInicial = Number(primeira?.id_final ?? 0);
   const deltaID = Number((idFinalAtual - idFinalInicial).toFixed(1));
   const classificacaoAtual = ultima?.classificacao || '—';
 
-  // Radar data (última avaliação)
   const radarData = SCORE_KEYS.slice(0, 6).map(key => ({
     score: SCORE_LABELS[key],
     atual: Number(((ultima as any)?.[key] || 0).toFixed(1)),
     inicial: Number(((primeira as any)?.[key] || 0).toFixed(1)),
   }));
 
-  // Evolution line data
-  const evolucaoData = sorted.map((av, i) => ({
-    name: `Av. ${i + 1}`,
-    data: av.data_avaliacao,
-    ID: Number((av.id_final || 0).toFixed(1)),
-    E: Number((av.score_e || 0).toFixed(1)),
-    P: Number((av.score_p || 0).toFixed(1)),
-    C: Number((av.score_c || 0).toFixed(1)),
-    F: Number((av.score_f || 0).toFixed(1)),
-    D: Number((av.score_d || 0).toFixed(1)),
-    R: Number((av.score_r || 0).toFixed(1)),
+  const evolucaoData = sorted.map(ev => ({
+    name: `Av. ${ev.numero_avaliacao}`,
+    ID: Number((ev.id_final || 0).toFixed(1)),
+    E: Number((ev.score_e || 0).toFixed(1)),
+    P: Number((ev.score_p || 0).toFixed(1)),
+    C: Number((ev.score_c || 0).toFixed(1)),
+    F: Number((ev.score_f || 0).toFixed(1)),
+    D: Number((ev.score_d || 0).toFixed(1)),
+    R: Number((ev.score_r || 0).toFixed(1)),
   }));
 
-  // Comparison bar data
   const comparisonData = SCORE_KEYS.map(key => ({
     score: key.replace('score_', '').toUpperCase(),
     Primeira: Number(((primeira as any)?.[key] || 0).toFixed(1)),
     Última: Number(((ultima as any)?.[key] || 0).toFixed(1)),
-    delta: Number((((ultima as any)?.[key] || 0) - ((primeira as any)?.[key] || 0)).toFixed(1)),
   }));
 
-  // Per-score deltas for the delta row
   const scoreDeltaData = SCORE_KEYS.map(key => {
-    const first = (primeira as any)?.[key] || 0;
-    const last = (ultima as any)?.[key] || 0;
-    const delta = Number((last - first).toFixed(1));
+    const deltaKey = key.replace('score_', 'delta_');
+    const cumulativeDelta = Number(
+      (Number((ultima as any)?.[key] || 0) - Number((primeira as any)?.[key] || 0)).toFixed(1)
+    );
     return {
       key: key.replace('score_', '').toUpperCase(),
-      first: Number(first.toFixed(1)),
-      last: Number(last.toFixed(1)),
-      delta,
+      first: Number(((primeira as any)?.[key] || 0).toFixed(1)),
+      last: Number(((ultima as any)?.[key] || 0).toFixed(1)),
+      delta: cumulativeDelta,
       color: SCORE_COLORS[key],
     };
   });
@@ -106,24 +86,9 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
     <div className="space-y-4">
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <SummaryCard
-          label="Avaliações"
-          value={totalAvaliacoes}
-          icon={<Activity className="h-4 w-4" />}
-          accent="primary"
-        />
-        <SummaryCard
-          label="ID Final Atual"
-          value={`${idFinalAtual.toFixed(1)}/50`}
-          icon={<Target className="h-4 w-4" />}
-          accent="info"
-        />
-        <SummaryCard
-          label="Classificação"
-          value={classificacaoAtual}
-          icon={<Award className="h-4 w-4" />}
-          accent="warning"
-        />
+        <SummaryCard label="Avaliações" value={totalAvaliacoes} icon={<Activity className="h-4 w-4" />} accent="primary" />
+        <SummaryCard label="ID Final Atual" value={`${idFinalAtual.toFixed(1)}/50`} icon={<Target className="h-4 w-4" />} accent="info" />
+        <SummaryCard label="Classificação" value={classificacaoAtual} icon={<Award className="h-4 w-4" />} accent="warning" />
         <SummaryCard
           label="Variação ID"
           value={`${deltaID > 0 ? '+' : ''}${deltaID}`}
@@ -134,7 +99,7 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Radar: Primeira vs Última */}
+        {/* Radar */}
         <div className="clinical-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -157,7 +122,7 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
           </div>
         </div>
 
-        {/* Evolution Line Chart */}
+        {/* Evolution Line */}
         <div className="clinical-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
@@ -172,13 +137,7 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip
-                  contentStyle={{ fontSize: 11, borderRadius: 8 }}
-                  labelFormatter={(label, payload) => {
-                    const d = payload?.[0]?.payload?.data;
-                    return d ? `${label} — ${d}` : label;
-                  }}
-                />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 <Line type="monotone" dataKey="ID" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name="ID Final" />
                 <Line type="monotone" dataKey="E" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 3 }} name="Estrutural" />
@@ -192,7 +151,7 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
         </div>
       </div>
 
-      {/* Comparison Bar Chart */}
+      {/* Comparison Bar */}
       <div className="clinical-card">
         <div className="flex items-center gap-2 mb-4">
           <BarChart3 className="h-4 w-4 text-primary" />
@@ -252,26 +211,36 @@ export default function EvolucaoDashboard({ avaliacoes }: Props) {
           <h4 className="font-semibold text-sm">Linha do Tempo</h4>
         </div>
         <div className="space-y-2">
-          {[...avaliacoes].map((av, idx) => {
-            const num = avaliacoes.length - idx;
+          {[...sorted].reverse().map((ev, idx) => {
             const isLatest = idx === 0;
             return (
-              <div key={av.id} className={`rounded-xl border p-3 flex items-center gap-3 transition-all ${isLatest ? 'border-primary bg-accent/20' : 'hover:bg-accent/10'}`}>
+              <div key={ev.id} className={`rounded-xl border p-3 flex items-center gap-3 transition-all ${isLatest ? 'border-primary bg-accent/20' : 'hover:bg-accent/10'}`}>
                 <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isLatest ? 'bg-primary/20' : 'bg-muted'}`}>
-                  <span className={`text-sm font-bold ${isLatest ? 'text-primary' : 'text-muted-foreground'}`}>{num}</span>
+                  <span className={`text-sm font-bold ${isLatest ? 'text-primary' : 'text-muted-foreground'}`}>{ev.numero_avaliacao}</span>
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className="text-sm font-semibold">{av.data_avaliacao}</span>
-                    {av.classificacao && (
-                      <Badge variant="outline" className="text-[10px] h-4">{av.classificacao}</Badge>
+                    <span className="text-sm font-semibold">
+                      {new Date(ev.data_registro).toLocaleDateString('pt-BR')}
+                    </span>
+                    {ev.classificacao && (
+                      <Badge variant="outline" className="text-[10px] h-4">{ev.classificacao}</Badge>
                     )}
                     {isLatest && (
                       <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] h-4">Mais recente</Badge>
                     )}
+                    {ev.dias_desde_anterior != null && ev.dias_desde_anterior > 0 && (
+                      <span className="text-[10px] text-muted-foreground">({ev.dias_desde_anterior}d desde anterior)</span>
+                    )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    ID: {(av.id_final || 0).toFixed(1)}/50 · E:{(av.score_e || 0).toFixed(1)} P:{(av.score_p || 0).toFixed(1)} D:{(av.score_d || 0).toFixed(1)} F:{(av.score_f || 0).toFixed(1)} R:{(av.score_r || 0).toFixed(1)}
+                    ID: {(ev.id_final || 0).toFixed(1)}/50
+                    {ev.delta_id_final != null && ev.delta_id_final !== 0 && (
+                      <span className={ev.delta_id_final < 0 ? 'text-emerald-600' : 'text-red-500'}>
+                        {' '}({ev.delta_id_final > 0 ? '+' : ''}{ev.delta_id_final.toFixed(1)})
+                      </span>
+                    )}
+                    {' · '}E:{(ev.score_e || 0).toFixed(1)} P:{(ev.score_p || 0).toFixed(1)} D:{(ev.score_d || 0).toFixed(1)} F:{(ev.score_f || 0).toFixed(1)} R:{(ev.score_r || 0).toFixed(1)}
                   </div>
                 </div>
               </div>
