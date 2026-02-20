@@ -437,8 +437,14 @@ export default function PacientePerfil() {
                 if (b1.horasSedentario >= 10) alertas.push({ icon: Armchair, label: 'Horas sentado', valor: `${b1.horasSedentario}h/dia`, status: 'critico', dica: 'Pausas ativas a cada 45min' });
               }
               if (dados?.bloco5) {
+                // R1/R2/R3 are INVERTED: high = bad (10 = worst)
                 const r1 = dados.bloco5.scoreR1 ?? 5;
-                if (r1 < 4) alertas.push({ icon: BedDouble, label: 'Sono', valor: `R1: ${r1.toFixed(1)}`, status: 'critico', dica: 'Higiene do sono urgente' });
+                const r2 = dados.bloco5.scoreR2 ?? 5;
+                const r3 = dados.bloco5.scoreR3 ?? 5;
+                if (r1 > 7) alertas.push({ icon: BedDouble, label: 'Sono', valor: `R1: ${r1.toFixed(1)}`, status: 'critico', dica: 'Higiene do sono urgente' });
+                else if (r1 > 4) alertas.push({ icon: BedDouble, label: 'Sono', valor: `R1: ${r1.toFixed(1)}`, status: 'alerta', dica: 'Regularizar rotina de sono' });
+                if (r2 > 7) alertas.push({ icon: Activity, label: 'Energia', valor: `R2: ${r2.toFixed(1)}`, status: 'critico', dica: 'Fadiga severa — investigar causa' });
+                if (r3 > 7) alertas.push({ icon: AlertTriangle, label: 'Psicológico', valor: `R3: ${r3.toFixed(1)}`, status: 'critico', dica: 'Suporte psicológico urgente' });
               }
 
               if (alertas.length === 0) return null;
