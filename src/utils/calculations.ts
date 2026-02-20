@@ -107,18 +107,20 @@ export function calcularScoreE(bloco6: Bloco6Data): number {
 export function calcularIDFinal(
   e: number, p: number, c: number, f: number, d: number, r: number
 ): { idFinal: number; fatoresRisco: string[]; classificacao: string } {
-  // R agora é alto=ruim, converter para qualidade (alto=bom) para o divisor
+  // R alto = ruim (sem controle neurovegetativo). Quanto pior R, mais amplifica o resultado.
+  // Converter para qualidade (0 = sem controle = pior, 10 = pleno controle)
   const qualidadeRegulacao = 10 - r;
+  // Divisor agressivo: R=10 → divisor=0.5 → multiplica por 20x; R=0 → divisor=10 → multiplica por 1x
   const rDivisor = Math.max(qualidadeRegulacao, 0.5);
-  // Pesos revisados: maior comprometimento para fatores biopsicossociais (P, C) e neurovegetativos (R via divisor)
-  // P: 0.25 (cinesiofobia/comportamento), C: 0.25 (carga contextual), E: 0.20, D: 0.10, F: 0.10
-  // R amplifica via divisor (quanto pior a regulação, maior o multiplicador)
-  let idBase = ((e * 0.20) + (p * 0.25) + (c * 0.25) + (f * 0.10) + (d * 0.10)) * (10 / rDivisor);
+  // R também entra como componente direto adicional (peso 0.10) para garantir impacto mesmo com scores baixos
+  let idBase = ((e * 0.18) + (p * 0.25) + (c * 0.25) + (r * 0.12) + (f * 0.10) + (d * 0.10)) * (10 / rDivisor);
 
   const fatoresRisco: string[] = [];
   if (p > 7) { idBase += 3; fatoresRisco.push('Cinesiofobia acentuada (P > 7) → +3'); }
   if (c > 7) { idBase += 3; fatoresRisco.push('Carga contextual excessiva (C > 7) → +3'); }
-  if (r > 7) { idBase += 4; fatoresRisco.push('Regulação neurovegetativa crítica (R > 7) → +4'); }
+  // R com limiares escalonados: comprometimento progressivo
+  if (r > 8) { idBase += 5; fatoresRisco.push('Regulação neurovegetativa crítica (R > 8) → +5'); }
+  else if (r > 6) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa comprometida (R > 6) → +3'); }
   if (d > 8) { idBase += 1; fatoresRisco.push('Dor intensa com irradiação (D > 8) → +1'); }
 
   const idFinal = Math.round(idBase * 10) / 10;
@@ -185,8 +187,9 @@ export function calcularEquacaoDor(
   const cronificacaoBonus = fCronicidade >= 3 ? fCronicidade * 0.1 : 0;
   const cognitiva = (c * 0.6) + (fCronicidade * 0.4) + cronificacaoBonus;
 
-  // D_neurovegetativa = R×1.0 — peso máximo para regulação neurovegetativa
-  const neurovegetativa = r * 1.0;
+  // D_neurovegetativa = R×1.2 — peso máximo para regulação neurovegetativa (0=sem controle=pior)
+  // R alto = sem regulação = amplifica dor significativamente
+  const neurovegetativa = r * 1.2;
 
   // Estilo de vida como 5ª dimensão moduladora
   const estiloVida = moduladorEstiloVida;
