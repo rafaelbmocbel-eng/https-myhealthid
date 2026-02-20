@@ -56,7 +56,7 @@ export function useLinksAvaliacao() {
         .insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,
-          blocos_inclusos: [1, 2, 3, 4, 5],
+          blocos_inclusos: [1, 3, 4, 5],
           status: 'ativo',
         })
         .select()
