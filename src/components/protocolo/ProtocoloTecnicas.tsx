@@ -27,6 +27,7 @@ const COMPLEXIDADE_BADGE: Record<string, { label: string; class: string }> = {
 const CAT_LABELS: Record<string, { icon: string; label: string }> = {
   terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
   eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
+  exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
   tracao: { icon: '🔗', label: 'Tração' },
   outros: { icon: '🧊', label: 'Outras Técnicas' },
 };

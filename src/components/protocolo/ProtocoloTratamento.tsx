@@ -1,7 +1,10 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
-import { Zap, BookOpen, Shield, Brain, CheckCircle2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Zap, Brain, CheckCircle2, Save, Loader2 } from 'lucide-react';
+import { toast } from '@/hooks/use-toast';
+import { useState } from 'react';
 
 const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
 const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
@@ -23,6 +26,7 @@ const COMPLEXIDADE_BADGE: Record<string, { label: string; class: string }> = {
 const CAT_LABELS: Record<string, { icon: string; label: string }> = {
   terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
   eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
+  exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
   tracao: { icon: '🔗', label: 'Tração' },
   outros: { icon: '🧊', label: 'Outras Técnicas' },
 };
@@ -33,7 +37,9 @@ interface Props {
 }
 
 export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
-  // Fetch selected techniques with their details
+  const [salvando, setSalvando] = useState(false);
+  const qc = useQueryClient();
+
   const { data: tratamentos = [], isLoading } = useQuery({
     queryKey: ['protocolo-tratamentos', protocoloId],
     queryFn: async () => {
@@ -47,6 +53,23 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
       return (data || []) as any[];
     },
   });
+
+  const salvarProtocolo = async () => {
+    setSalvando(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('protocolos')
+        .update({ status: 'ativo', updated_at: new Date().toISOString() })
+        .eq('id', protocoloId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['protocolos'] });
+      toast({ title: '✅ Protocolo salvo com sucesso!', description: 'O protocolo está disponível na aba Protocolos do paciente.' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar protocolo', description: err.message, variant: 'destructive' });
+    } finally {
+      setSalvando(false);
+    }
+  };
 
   if (isLoading) return null;
 
@@ -73,11 +96,21 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   return (
     <div className="space-y-4 mb-6">
       <div className="clinical-card border-l-4 border-emerald-500 bg-emerald-50/50 mb-2">
-        <div className="flex items-center gap-2">
-          <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-          <p className="text-sm text-muted-foreground">
-            <strong className="text-foreground">{tratamentos.length} técnica{tratamentos.length !== 1 ? 's' : ''} selecionadas</strong> para o tratamento deste paciente, organizadas por fase.
-          </p>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+            <p className="text-sm text-muted-foreground">
+              <strong className="text-foreground">{tratamentos.length} técnica{tratamentos.length !== 1 ? 's' : ''} selecionadas</strong> para o tratamento deste paciente, organizadas por fase.
+            </p>
+          </div>
+          <Button
+            onClick={salvarProtocolo}
+            disabled={salvando}
+            className="bg-gradient-primary text-white gap-2 shrink-0"
+          >
+            {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Salvar Protocolo
+          </Button>
         </div>
       </div>
 
