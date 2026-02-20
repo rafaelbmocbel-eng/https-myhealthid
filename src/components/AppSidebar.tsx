@@ -7,14 +7,14 @@ import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
-  { label: 'Agenda', href: '/agenda', icon: CalendarDays },
-  { label: 'Agenda', href: '/agenda', icon: CalendarDays },
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Relatórios e Links', href: '/relatorios', icon: FileText },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
@@ -29,6 +29,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
+  const { pendingCount, clearCount } = useAgendamentoNotifications();
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
@@ -71,14 +72,20 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
         {NAV_ITEMS.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href);
+          const showBadge = item.hasBadge && pendingCount > 0;
+
+          const handleClick = () => {
+            onNavClick?.();
+            if (item.hasBadge && active) clearCount();
+          };
 
           const linkEl = (
             <Link
               key={item.href}
               to={item.href}
-              onClick={onNavClick}
+              onClick={handleClick}
               className={cn(
-                'flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 group',
+                'relative flex items-center gap-3 rounded-xl text-sm font-medium transition-all duration-200 group',
                 collapsed ? 'justify-center h-12 w-12 mx-auto' : 'px-4 py-3 w-full',
                 active
                   ? 'text-primary-foreground'
@@ -93,6 +100,19 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
             >
               <Icon className={cn('shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
               {!collapsed && <span className="truncate">{item.label}</span>}
+              {showBadge && (
+                <span
+                  className={cn(
+                    'flex items-center justify-center text-[10px] font-bold rounded-full shrink-0 animate-pulse',
+                    collapsed
+                      ? 'absolute -top-0.5 -right-0.5 h-4 w-4 text-white'
+                      : 'ml-auto h-5 min-w-5 px-1 text-white',
+                  )}
+                  style={{ background: 'hsl(0 85% 55%)' }}
+                >
+                  {pendingCount > 9 ? '9+' : pendingCount}
+                </span>
+              )}
             </Link>
           );
 
@@ -100,7 +120,10 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
             return (
               <Tooltip key={item.href} delayDuration={0}>
                 <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">{item.label}</TooltipContent>
+                <TooltipContent side="right" className="font-medium">
+                  {item.label}
+                  {showBadge && ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})`}
+                </TooltipContent>
               </Tooltip>
             );
           }
