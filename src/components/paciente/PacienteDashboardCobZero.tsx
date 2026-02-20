@@ -137,42 +137,31 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         </Button>
       </div>
 
-      {/* Card de Links */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Link2 className="h-4 w-4 text-blue-600" />
-          <h3 className="font-semibold text-sm">Link de Avaliação Remota</h3>
-        </div>
-        {linkAtivo ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Link ativo — expira em {differenceInDays(new Date(linkAtivo.data_expiracao!), new Date())} dias</span>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
-              {getLinkUrl(linkAtivo.token)}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarLink(linkAtivo.token)}>
-                <Copy className="h-3 w-3" /> Copiar
+      {/* Link Compacto */}
+      <div className="clinical-card !p-3">
+        <div className="flex items-center gap-2 flex-wrap">
+          <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
+          <span className="text-xs font-semibold shrink-0">Link Avaliação</span>
+          {linkAtivo ? (
+            <>
+              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+              <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao!), new Date())}d</span>
+              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
+                <Copy className="h-3 w-3" />
               </Button>
               {paciente.telefone && (
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
-                  onClick={() => whatsApp(linkAtivo.token)}>
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]" onClick={() => whatsApp(linkAtivo.token)}>
+                  <MessageCircle className="h-3 w-3" />
                 </Button>
               )}
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-muted-foreground flex-1">Nenhum link ativo para este paciente.</p>
-            <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1" disabled={gerando} onClick={gerarLink}>
+            </>
+          ) : (
+            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600" disabled={gerando} onClick={gerarLink}>
               {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              Gerar Link (30 dias)
+              Gerar (30d)
             </Button>
-          </div>
-        )}
+          )}
+        </div>
       </div>
 
       {/* Tabs */}
