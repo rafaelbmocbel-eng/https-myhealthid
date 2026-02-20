@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Dumbbell,
+  Settings, LogOut, User, ClipboardList,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
-  { label: 'Protocolos', href: '/protocolos', icon: Dumbbell },
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
   { label: 'Relatórios e Links', href: '/relatorios', icon: FileText },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },

@@ -11,7 +11,7 @@ import Auth from "./pages/Auth";
 import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
-import Protocolos from "./pages/Protocolos";
+import Protocolos from "./pages/Protocolos"; // kept for direct URL access
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
 import AgendaPublica from "./pages/AgendaPublica";
 import Relatorios from "./pages/Relatorios";
