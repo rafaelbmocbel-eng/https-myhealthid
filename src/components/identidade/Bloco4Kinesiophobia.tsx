@@ -141,7 +141,7 @@ export default function Bloco4Kinesiophobia({ data, onChange, onNext, onBack }: 
             <div>
               <div className="font-semibold">Score TSK-11: {scoreP.toFixed(1)}/10</div>
               <div className="text-sm mt-1">{interp.label}</div>
-              {scoreP > 7 && (
+              {scoreP > 7.5 && (
                 <div className="flex items-center gap-2 mt-2 text-xs">
                   <AlertTriangle className="h-3 w-3" />
                   Cinesiofobia acentuada (+2 ao ID final) – Recomendado: educação em dor e graded exposure

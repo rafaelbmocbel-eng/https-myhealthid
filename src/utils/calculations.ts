@@ -112,10 +112,10 @@ export function calcularIDFinal(
   let idBase = ((e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10)) * (10 / rDivisor);
 
   const fatoresRisco: string[] = [];
-  if (p > 7) { idBase += 2; fatoresRisco.push('Kinesiophobia acentuada (P > 7) → +2'); }
+  if (p > 7.5) { idBase += 2; fatoresRisco.push('Cinesiofobia acentuada (P > 7.5) → +2'); }
   if (c > 8) { idBase += 2; fatoresRisco.push('Carga contextual excessiva (C > 8) → +2'); }
-  if (r < 3) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa crítica (R < 3) → +3'); }
-  if (d > 8) { idBase += 1; fatoresRisco.push('Dor intensa com irradiação → +1'); }
+  if (r < 2) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa crítica (R < 2) → +3'); }
+  if (d > 8) { idBase += 1; fatoresRisco.push('Dor intensa com irradiação (D > 8) → +1'); }
 
   const idFinal = Math.round(idBase * 10) / 10;
 
