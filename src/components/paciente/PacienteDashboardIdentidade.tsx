@@ -194,89 +194,70 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         </Button>
       </div>
 
-      {/* Card de Links */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Link2 className="h-4 w-4 text-primary" />
-          <h3 className="font-semibold text-sm">Link de Avaliação Remota</h3>
-        </div>
-        {linkAtivo ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Link ativo — expira em {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias</span>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
-              {getLinkUrl(linkAtivo.token)}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarLink(linkAtivo.token)}>
-                <Copy className="h-3 w-3" /> Copiar
+      {/* Links Compactos (barra inline) */}
+      <div className="clinical-card !p-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Link Avaliação */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Link2 className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-xs font-semibold shrink-0">Questionário</span>
+            {linkAtivo ? (
+              <>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</span>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+                {paciente.telefone && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                    onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAtivo.token))}>
+                    <MessageCircle className="h-3 w-3" />
+                  </Button>
+                )}
+                {paciente.email && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-blue-600" onClick={enviarEmail} disabled={enviandoEmail}>
+                    {enviandoEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-primary" disabled={gerando}
+                onClick={async () => { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }}>
+                {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Gerar
               </Button>
-              {paciente.telefone && (
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
-                  onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAtivo.token))}>
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
-                </Button>
-              )}
-              {paciente.email && (
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-blue-400 text-blue-600 hover:bg-blue-50"
-                  onClick={enviarEmail} disabled={enviandoEmail}>
-                  {enviandoEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
-                  Email
-                </Button>
-              )}
-            </div>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-muted-foreground flex-1">Nenhum link ativo para este paciente.</p>
-            <Button size="sm" className="bg-gradient-primary text-white gap-1" disabled={gerando}
-              onClick={async () => { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }}>
-              {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              Gerar Link (30 dias)
-            </Button>
-          </div>
-        )}
-      </div>
 
-      {/* Card de Link de Agenda */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-3">
-          <CalendarDays className="h-4 w-4 text-amber-600" />
-          <h3 className="font-semibold text-sm">Link de Automarcação (Agenda)</h3>
-        </div>
-        {linkAgendaAtivo ? (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>Link ativo — expira em {differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())} dias</span>
-            </div>
-            <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
-              {getAgendaUrl(linkAgendaAtivo.token)}
-            </div>
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
-                <Copy className="h-3 w-3" /> Copiar
-              </Button>
-              {paciente.telefone && (
-                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
-                  onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
+          <div className="h-6 w-px bg-border shrink-0" />
+
+          {/* Link Agenda */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <CalendarDays className="h-4 w-4 text-amber-600 shrink-0" />
+            <span className="text-xs font-semibold shrink-0">Agenda</span>
+            {linkAgendaAtivo ? (
+              <>
+                <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</span>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
+                  <Copy className="h-3 w-3" />
                 </Button>
-              )}
-            </div>
+                {paciente.telefone && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
+                    onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
+                    <MessageCircle className="h-3 w-3" />
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" disabled={gerandoAgenda}
+                onClick={gerarLinkAgenda}>
+                {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Gerar
+              </Button>
+            )}
           </div>
-        ) : (
-          <div className="flex items-center gap-3">
-            <p className="text-sm text-muted-foreground flex-1">Nenhum link de agenda ativo.</p>
-            <Button size="sm" variant="outline" className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-50" disabled={gerandoAgenda}
-              onClick={gerarLinkAgenda}>
-              {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />}
-              Gerar Link (90 dias)
-            </Button>
-          </div>
-        )}
+        </div>
       </div>
 
       {/* Tabs */}
