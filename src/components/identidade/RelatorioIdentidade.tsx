@@ -269,7 +269,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         .from('protocolos' as any)
         .insert({
           terapeuta_id: user.id,
-          paciente_id: user.id,
+          paciente_id: pacienteId || user.id,
           titulo: protocolo.titulo,
           objetivo_geral: protocolo.objetivo_geral,
           perfil_dominante: protocolo.perfil_dominante,
