@@ -18,6 +18,8 @@ interface AvaliacaoRaw {
   id_final: number | null;
   classificacao: string | null;
   dados_avaliacao: any;
+  paciente_id?: string;
+  created_at?: string;
 }
 
 interface Props {
@@ -77,6 +79,76 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     if (avaliacoes.length < 2) return null;
     const n = avaliacoes.length;
 
+    // ── Split into 1ª avaliação vs reavaliações per paciente ────────────
+    const byPaciente: Record<string, AvaliacaoRaw[]> = {};
+    avaliacoes.forEach(a => {
+      const pid = a.paciente_id || 'unknown';
+      if (!byPaciente[pid]) byPaciente[pid] = [];
+      byPaciente[pid].push(a);
+    });
+    // Sort each patient's evaluations by created_at
+    Object.values(byPaciente).forEach(arr => {
+      arr.sort((a, b) => (a.created_at || '').localeCompare(b.created_at || ''));
+    });
+    const primeiras: AvaliacaoRaw[] = [];
+    const reavaliacoes: AvaliacaoRaw[] = [];
+    Object.values(byPaciente).forEach(arr => {
+      if (arr.length > 0) primeiras.push(arr[0]);
+      if (arr.length > 1) reavaliacoes.push(...arr.slice(1));
+    });
+    const totalPacientes = Object.keys(byPaciente).length;
+    const pacientesComReav = Object.values(byPaciente).filter(arr => arr.length > 1).length;
+
+    // Helper: compute avg scores for a subset
+    const avgScores = (subset: AvaliacaoRaw[]) => {
+      if (subset.length === 0) return { E: 0, P: 0, C: 0, F: 0, D: 0, R: 0, EFI: 0, ID: 0 };
+      const avg = (key: string) => {
+        const vals = subset.map(a => Number((a as any)[key] || 0));
+        return vals.reduce((s, v) => s + v, 0) / vals.length;
+      };
+      return { E: avg('score_e'), P: avg('score_p'), C: avg('score_c'), F: avg('score_f'), D: avg('score_d'), R: avg('score_r'), EFI: avg('score_efi'), ID: avg('id_final') };
+    };
+    const scoresPrimeira = avgScores(primeiras);
+    const scoresReav = avgScores(reavaliacoes);
+
+    // Classification distribution for each group
+    const classDistrib = (subset: AvaliacaoRaw[]) => {
+      const dist: Record<string, number> = {};
+      subset.forEach(a => { if (a.classificacao) dist[a.classificacao] = (dist[a.classificacao] || 0) + 1; });
+      return dist;
+    };
+    const classPrimeira = classDistrib(primeiras);
+    const classReav = classDistrib(reavaliacoes);
+
+    // Per-patient deltas (last - first)
+    const deltas: { E: number; P: number; C: number; F: number; D: number; R: number; ID: number }[] = [];
+    Object.values(byPaciente).forEach(arr => {
+      if (arr.length < 2) return;
+      const first = arr[0];
+      const last = arr[arr.length - 1];
+      deltas.push({
+        E: Number(last.score_e || 0) - Number(first.score_e || 0),
+        P: Number(last.score_p || 0) - Number(first.score_p || 0),
+        C: Number(last.score_c || 0) - Number(first.score_c || 0),
+        F: Number(last.score_f || 0) - Number(first.score_f || 0),
+        D: Number(last.score_d || 0) - Number(first.score_d || 0),
+        R: Number(last.score_r || 0) - Number(first.score_r || 0),
+        ID: Number(last.id_final || 0) - Number(first.id_final || 0),
+      });
+    });
+    const avgDelta = (key: 'E' | 'P' | 'C' | 'F' | 'D' | 'R' | 'ID') => {
+      if (deltas.length === 0) return 0;
+      return deltas.reduce((s, d) => s + d[key], 0) / deltas.length;
+    };
+    const deltaMeans = { E: avgDelta('E'), P: avgDelta('P'), C: avgDelta('C'), F: avgDelta('F'), D: avgDelta('D'), R: avgDelta('R'), ID: avgDelta('ID') };
+
+    // Improvement rate (% of patients who improved ID)
+    const improved = deltas.filter(d => d.ID < 0).length;
+    const worsened = deltas.filter(d => d.ID > 0).length;
+    const stable = deltas.filter(d => d.ID === 0).length;
+
+    // ── Original analyses (use ALL avaliacoes) ──────────────────────────
+
     // 1. Extract score arrays
     const scoreArrays: Record<string, number[]> = {};
     SCORE_KEYS.forEach(k => {
@@ -110,7 +182,6 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         }
       } catch {}
     });
-    // Top 8 regions
     const topRegionsCross = Object.entries(regionClassCross)
       .sort((a, b) => {
         const sa = Object.values(a[1]).reduce((x, y) => x + y, 0);
@@ -151,7 +222,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       }));
 
     // 5. TSK response aggregation (Bloco 4)
-    const tskTotals = new Array(11).fill(0).map(() => [0, 0, 0, 0]); // 4 opções por item
+    const tskTotals = new Array(11).fill(0).map(() => [0, 0, 0, 0]);
     let tskCount = 0;
     avaliacoes.forEach(a => {
       try {
@@ -223,6 +294,13 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       n, correlations, topRegionsCross, allClasses,
       topComorbCross, tskAnalysis, tskCount,
       topPainTypes, riskFactors, funcByClass,
+      // New: 1ª vs reavaliação
+      totalPacientes, pacientesComReav,
+      primeiras, reavaliacoes,
+      scoresPrimeira, scoresReav,
+      classPrimeira, classReav,
+      deltaMeans, deltas,
+      improved, worsened, stable,
     };
   }, [avaliacoes]);
 
@@ -245,14 +323,170 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
   };
 
   return (
-    <Tabs defaultValue="correlacoes" className="w-full">
-      <TabsList className="grid grid-cols-5 mb-4">
+    <Tabs defaultValue="longitudinal" className="w-full">
+      <TabsList className="grid grid-cols-6 mb-4">
+        <TabsTrigger value="longitudinal" className="text-[10px] sm:text-xs">1ª vs Reav.</TabsTrigger>
         <TabsTrigger value="correlacoes" className="text-[10px] sm:text-xs">Correlações</TabsTrigger>
         <TabsTrigger value="crosstab" className="text-[10px] sm:text-xs">Dor × Class.</TabsTrigger>
         <TabsTrigger value="comorbidades" className="text-[10px] sm:text-xs">Comorb. × Scores</TabsTrigger>
         <TabsTrigger value="tsk" className="text-[10px] sm:text-xs">Padrões TSK</TabsTrigger>
         <TabsTrigger value="risco" className="text-[10px] sm:text-xs">Fatores Risco</TabsTrigger>
       </TabsList>
+
+      {/* LONGITUDINAL: 1ª AVALIAÇÃO vs REAVALIAÇÕES */}
+      <TabsContent value="longitudinal">
+        <div className="mb-4 p-3 rounded-lg border bg-accent/5">
+          <div className="flex items-start gap-2">
+            <Layers className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              <strong>Desenho longitudinal:</strong> Compara os resultados da 1ª avaliação de cada paciente com suas reavaliações subsequentes.
+              {' '}n total = {analysis.n} avaliações · {analysis.totalPacientes} pacientes · {analysis.pacientesComReav} com reavaliação
+              {' '}· {analysis.primeiras.length} primeiras avaliações · {analysis.reavaliacoes.length} reavaliações
+            </p>
+          </div>
+        </div>
+
+        {/* Summary cards */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pacientes</div>
+            <div className="text-xl font-black text-foreground">{analysis.totalPacientes}</div>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Com Reavaliação</div>
+            <div className="text-xl font-black text-primary">{analysis.pacientesComReav}</div>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Melhoraram (ID↓)</div>
+            <div className="text-xl font-black text-emerald-600">{analysis.improved} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.improved / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
+          </div>
+          <div className="rounded-xl border bg-card p-3 text-center">
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pioraram (ID↑)</div>
+            <div className="text-xl font-black text-red-600">{analysis.worsened} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.worsened / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
+          </div>
+        </div>
+
+        {/* Comparative scores table */}
+        <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+          <ArrowUpDown className="h-3.5 w-3.5" /> Scores Médios: 1ª Avaliação vs Reavaliações
+        </h4>
+        <div className="overflow-x-auto mb-5">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left py-2 px-1 text-muted-foreground">Score</th>
+                <th className="text-center py-2 px-1 text-muted-foreground">μ 1ª Aval. (n={analysis.primeiras.length})</th>
+                <th className="text-center py-2 px-1 text-muted-foreground">μ Reavaliações (n={analysis.reavaliacoes.length})</th>
+                <th className="text-center py-2 px-1 text-muted-foreground">Δ Média</th>
+                <th className="text-center py-2 px-1 text-muted-foreground">Direção</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(['E', 'P', 'C', 'F', 'D', 'R', 'EFI', 'ID'] as const).map(key => {
+                const first = analysis.scoresPrimeira[key];
+                const reav = analysis.reavaliacoes.length > 0 ? analysis.scoresReav[key] : null;
+                const deltaKey = key === 'EFI' ? null : analysis.deltaMeans[key as keyof typeof analysis.deltaMeans];
+                const delta = reav != null ? reav - first : null;
+                const labels: Record<string, string> = {
+                  E: 'Estrutural', P: 'Cinesiofobia', C: 'Carga', F: 'Contextual',
+                  D: 'Dor', R: 'Regulação', EFI: 'EFI', ID: 'ID Final',
+                };
+                return (
+                  <tr key={key} className="border-b border-border/30 hover:bg-accent/10">
+                    <td className="py-2 px-1 font-medium text-foreground">{labels[key]} ({key})</td>
+                    <td className="text-center py-2 px-1 font-bold">{first.toFixed(1)}</td>
+                    <td className="text-center py-2 px-1 font-bold">{reav != null ? reav.toFixed(1) : '—'}</td>
+                    <td className={`text-center py-2 px-1 font-bold ${delta != null && delta < 0 ? 'text-emerald-600' : delta != null && delta > 0 ? 'text-red-600' : ''}`}>
+                      {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}` : '—'}
+                    </td>
+                    <td className="text-center py-2 px-1">
+                      {delta != null && delta < -0.3 ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto rotate-180" /> :
+                       delta != null && delta > 0.3 ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto" /> :
+                       <span className="text-muted-foreground text-[10px]">≈</span>}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Delta per patient (mean variation) */}
+        {analysis.deltas.length > 0 && (
+          <>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <GitBranch className="h-3.5 w-3.5" /> Variação Média por Paciente (Última − 1ª)
+            </h4>
+            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-5">
+              {(['E', 'P', 'C', 'F', 'D', 'R', 'ID'] as const).map(key => {
+                const d = analysis.deltaMeans[key];
+                return (
+                  <div key={key} className="rounded-xl border bg-card p-3 text-center">
+                    <div className="text-[10px] font-semibold text-muted-foreground mb-1">{key}</div>
+                    <div className={`text-lg font-black ${d < -0.3 ? 'text-emerald-600' : d > 0.3 ? 'text-red-600' : 'text-foreground'}`}>
+                      {d > 0 ? '+' : ''}{d.toFixed(1)}
+                    </div>
+                    <div className="text-[9px] text-muted-foreground">
+                      {d < -0.3 ? '↓ melhora' : d > 0.3 ? '↑ piora' : '≈ estável'}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
+
+        {/* Classification shift */}
+        {analysis.reavaliacoes.length > 0 && (
+          <>
+            <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" /> Distribuição de Classificações: 1ª vs Reavaliações
+            </h4>
+            <div className="overflow-x-auto">
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b">
+                    <th className="text-left py-2 px-1 text-muted-foreground">Classificação</th>
+                    <th className="text-center py-2 px-1 text-muted-foreground">1ª Avaliação</th>
+                    <th className="text-center py-2 px-1 text-muted-foreground">%</th>
+                    <th className="text-center py-2 px-1 text-muted-foreground">Reavaliações</th>
+                    <th className="text-center py-2 px-1 text-muted-foreground">%</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {classOrder.map(cls => {
+                    const cp = analysis.classPrimeira[cls] || 0;
+                    const cr = analysis.classReav[cls] || 0;
+                    const pctP = analysis.primeiras.length > 0 ? ((cp / analysis.primeiras.length) * 100).toFixed(0) : '0';
+                    const pctR = analysis.reavaliacoes.length > 0 ? ((cr / analysis.reavaliacoes.length) * 100).toFixed(0) : '0';
+                    if (cp === 0 && cr === 0) return null;
+                    return (
+                      <tr key={cls} className="border-b border-border/30">
+                        <td className="py-1.5 px-1"><Badge className={`text-[9px] ${classColors[cls]}`}>{cls}</Badge></td>
+                        <td className="text-center py-1.5 px-1 font-bold">{cp}</td>
+                        <td className="text-center py-1.5 px-1 text-muted-foreground">{pctP}%</td>
+                        <td className="text-center py-1.5 px-1 font-bold">{cr}</td>
+                        <td className="text-center py-1.5 px-1 text-muted-foreground">{pctR}%</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </>
+        )}
+
+        <div className="mt-4 p-3 rounded-lg border bg-accent/5">
+          <div className="flex items-start gap-2">
+            <TrendingUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+            <p className="text-[10px] text-muted-foreground">
+              <strong>Para estudos científicos:</strong> Δ negativo nos scores = melhora clínica. 
+              Use estes dados para análise pareada (teste t pareado / Wilcoxon). 
+              A taxa de melhora do ID Final indica a efetividade do tratamento na amostra (n={analysis.deltas.length} pacientes com reavaliação).
+            </p>
+          </div>
+        </div>
+      </TabsContent>
 
       {/* CORRELAÇÕES */}
       <TabsContent value="correlacoes">
