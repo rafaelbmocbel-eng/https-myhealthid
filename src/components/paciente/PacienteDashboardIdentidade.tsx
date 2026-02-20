@@ -18,6 +18,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import EvolucaoDashboard from './EvolucaoDashboard';
+import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IdFinalGauge from '@/components/identidade/IdFinalGauge';
 import DashboardParcial from './DashboardParcial';
@@ -66,6 +67,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
   const qc = useQueryClient();
   const { avaliacoes, isLoading, deletar } = useAvaliacoesIdentidade(paciente.id);
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { evolucoes } = useEvolucaoPaciente(paciente.id);
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
 
@@ -475,9 +477,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         </TabsContent>
 
         {/* Aba: Evolução */}
-        {avaliacoes.length >= 2 && (
+        {evolucoes.length >= 2 && (
           <TabsContent value="evolucao" className="mt-4">
-            <EvolucaoDashboard avaliacoes={avaliacoes} />
+            <EvolucaoDashboard evolucoes={evolucoes} />
           </TabsContent>
         )}
 
