@@ -52,11 +52,80 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
         .select()
         .single();
       if (error) throw error;
+
+      // ── Auto-register evolution record ──────────────────────────────
+      try {
+        // Fetch previous assessments for this patient (excluding the one just saved)
+        const { data: previousAvals } = await (supabase as any)
+          .from('avaliacoes_identidade')
+          .select('id, created_at, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final')
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user!.id)
+          .neq('id', data.id)
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        // Count existing evolution records for numbering
+        const { count } = await (supabase as any)
+          .from('evolucao_paciente')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user!.id);
+
+        const numeroAvaliacao = (count || 0) + 1;
+        const prev = previousAvals?.[0] || null;
+
+        const scores = {
+          score_e: data.score_e,
+          score_p: data.score_p,
+          score_c: data.score_c,
+          score_f: data.score_f,
+          score_d: data.score_d,
+          score_r: data.score_r,
+          score_efi: data.score_efi,
+        };
+
+        const deltas = prev
+          ? {
+              delta_e: (data.score_e ?? 0) - (prev.score_e ?? 0),
+              delta_p: (data.score_p ?? 0) - (prev.score_p ?? 0),
+              delta_c: (data.score_c ?? 0) - (prev.score_c ?? 0),
+              delta_f: (data.score_f ?? 0) - (prev.score_f ?? 0),
+              delta_d: (data.score_d ?? 0) - (prev.score_d ?? 0),
+              delta_r: (data.score_r ?? 0) - (prev.score_r ?? 0),
+              delta_efi: (data.score_efi ?? 0) - (prev.score_efi ?? 0),
+              delta_id_final: (data.id_final ?? 0) - (prev.id_final ?? 0),
+            }
+          : { delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_id_final: 0 };
+
+        const diasDesdeAnterior = prev
+          ? Math.round((new Date(data.created_at).getTime() - new Date(prev.created_at).getTime()) / (1000 * 60 * 60 * 24))
+          : null;
+
+        await (supabase as any)
+          .from('evolucao_paciente')
+          .insert({
+            paciente_id: pacienteId,
+            terapeuta_id: user!.id,
+            avaliacao_atual_id: data.id,
+            avaliacao_anterior_id: prev?.id || null,
+            numero_avaliacao: numeroAvaliacao,
+            classificacao: data.classificacao,
+            id_final: data.id_final,
+            ...scores,
+            ...deltas,
+            dias_desde_anterior: diasDesdeAnterior,
+          });
+      } catch (evolErr) {
+        console.warn('Evolução não registrada:', evolErr);
+      }
+
       return data;
     },
     onSuccess: () => {
       toast({ title: '✅ Avaliação salva!', description: 'Histórico atualizado com sucesso.' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
     },
     onError: (e: any) => {
       toast({ title: 'Erro ao salvar avaliação', description: e.message, variant: 'destructive' });
