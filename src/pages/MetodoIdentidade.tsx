@@ -28,7 +28,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
 const blocos = [
-  { id: 1, label: 'Anamnese & Mapeamento', sublabel: 'Score F + D', icon: ClipboardList, time: '15 min' },
+  { id: 1, label: 'Anamnese e Mapeamento da Dor', sublabel: 'Score F + D', icon: ClipboardList, time: '15 min' },
   { id: 3, label: 'Funcionalidade', sublabel: 'Score EFI', icon: Activity, time: '4 min' },
   { id: 4, label: 'Comportamento', sublabel: 'Score P (TSK-11)', icon: Brain, time: '6 min' },
   { id: 5, label: 'Regulação Neurovegetativa', sublabel: 'Scores R e C', icon: Bed, time: '10 min' },
