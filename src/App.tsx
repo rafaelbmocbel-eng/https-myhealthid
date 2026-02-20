@@ -12,7 +12,7 @@ import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
 import Protocolos from "./pages/Protocolos"; // kept for direct URL access
-import AvaliacaoPublica from "./pages/AvaliacaoPublica";
+
 import AgendaPublica from "./pages/AgendaPublica";
 import Relatorios from "./pages/Relatorios";
 import Configuracoes from "./pages/Configuracoes";
@@ -36,7 +36,7 @@ const App = () => (
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/:id" element={<PacientePerfil />} />
             <Route path="/protocolos" element={<Protocolos />} />
-            <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
+            
             <Route path="/agenda/:token" element={<AgendaPublica />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
