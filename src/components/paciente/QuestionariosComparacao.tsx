@@ -10,7 +10,7 @@ import {
   LineChart, Line, PieChart, Pie, Cell,
 } from 'recharts';
 
-const BLOCOS = ['Anamnese', 'Dor', 'Funcionalidade', 'Cinesiofobia', 'Regulação'];
+const BLOCOS = ['Anamnese e Mapeamento da Dor', 'Funcionalidade', 'Comportamento', 'Regulação Neurovegetativa'];
 
 const SCORE_KEYS_MAP: Record<number, { key: string; label: string; color: string }[]> = {
   1: [{ key: 'scoreF', label: 'Score F', color: 'hsl(var(--primary))' }],
@@ -85,7 +85,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           blocosRecebidos,
           allScores,
           blocoScores,
-          completo: blocosRecebidos.length === 5,
+          completo: blocosRecebidos.length >= 4,
           data: link.data_ultimo_acesso || link.created_at,
         };
       });
@@ -108,9 +108,10 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
   const taxaComplecao = totalQuestionarios > 0 ? Math.round((completos / totalQuestionarios) * 100) : 0;
 
   // Completion by block for pie chart
+  const BLOCO_NUMS = [1, 3, 4, 5];
   const blocosCount = BLOCOS.map((nome, i) => ({
     name: nome,
-    value: respostasAgrupadas.filter(r => r.blocosRecebidos.includes(i + 1)).length,
+    value: respostasAgrupadas.filter(r => r.blocosRecebidos.includes(BLOCO_NUMS[i])).length,
   }));
 
   // Evolution data for line chart (scores across submissions)
@@ -315,17 +316,17 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                         {group.completo && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] h-4">Completo</Badge>}
                         {!group.completo && (
                           <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-200 bg-amber-50">
-                            {group.blocosRecebidos.length}/5 blocos
+                            {group.blocosRecebidos.length}/4 etapas
                           </Badge>
                         )}
                       </div>
                       {/* Block progress bar */}
                       <div className="flex gap-1 mt-1.5">
-                        {[1, 2, 3, 4, 5].map(n => (
+                        {BLOCO_NUMS.map((n, i) => (
                           <div
                             key={n}
                             className={`h-1.5 flex-1 rounded-sm transition-colors ${group.blocosRecebidos.includes(n) ? 'bg-primary' : 'bg-muted'}`}
-                            title={BLOCOS[n - 1]}
+                            title={BLOCOS[i]}
                           />
                         ))}
                       </div>
@@ -344,7 +345,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                         <div key={bn} className="bg-muted/30 rounded-lg p-3 border border-border/50">
                           <div className="flex items-center gap-2 mb-2">
                             <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-xs font-semibold">Bloco {bn} — {BLOCOS[bn - 1]}</span>
+                            <span className="text-xs font-semibold">{BLOCOS[BLOCO_NUMS.indexOf(bn)] ?? `Bloco ${bn}`}</span>
                           </div>
                           {scoreEntries.length > 0 ? (
                             <div className="flex gap-2 flex-wrap">
