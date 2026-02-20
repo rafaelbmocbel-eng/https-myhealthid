@@ -110,12 +110,15 @@ export function calcularIDFinal(
   // R agora é alto=ruim, converter para qualidade (alto=bom) para o divisor
   const qualidadeRegulacao = 10 - r;
   const rDivisor = Math.max(qualidadeRegulacao, 0.5);
-  let idBase = ((e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10)) * (10 / rDivisor);
+  // Pesos revisados: maior comprometimento para fatores biopsicossociais (P, C) e neurovegetativos (R via divisor)
+  // P: 0.25 (cinesiofobia/comportamento), C: 0.25 (carga contextual), E: 0.20, D: 0.10, F: 0.10
+  // R amplifica via divisor (quanto pior a regulação, maior o multiplicador)
+  let idBase = ((e * 0.20) + (p * 0.25) + (c * 0.25) + (f * 0.10) + (d * 0.10)) * (10 / rDivisor);
 
   const fatoresRisco: string[] = [];
-  if (p > 7.5) { idBase += 2; fatoresRisco.push('Cinesiofobia acentuada (P > 7.5) → +2'); }
-  if (c > 8) { idBase += 2; fatoresRisco.push('Carga contextual excessiva (C > 8) → +2'); }
-  if (r > 8) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa crítica (R > 8) → +3'); }
+  if (p > 7) { idBase += 3; fatoresRisco.push('Cinesiofobia acentuada (P > 7) → +3'); }
+  if (c > 7) { idBase += 3; fatoresRisco.push('Carga contextual excessiva (C > 7) → +3'); }
+  if (r > 7) { idBase += 4; fatoresRisco.push('Regulação neurovegetativa crítica (R > 7) → +4'); }
   if (d > 8) { idBase += 1; fatoresRisco.push('Dor intensa com irradiação (D > 8) → +1'); }
 
   const idFinal = Math.round(idBase * 10) / 10;
@@ -160,6 +163,7 @@ export function calcularModuladorEstiloVida(bloco1: Bloco1Data): { modulador: nu
 }
 
 // EQUAÇÃO DA DOR IDENTIDADE (4 dimensões – Apostila v8.0 + Moduladores Estilo de Vida)
+// Pesos revisados: maior comprometimento para componentes biopsicossociais e neurovegetativos
 export function calcularEquacaoDor(
   d: number,
   temIrradiacao: boolean,
@@ -171,25 +175,25 @@ export function calcularEquacaoDor(
   r: number,
   moduladorEstiloVida: number = 0
 ): { total: number; sensorio: number; afetiva: number; cognitiva: number; neurovegetativa: number; estiloVida: number } {
-  // D_sensório = (D×0.5) + (irradiação×2) + (tipoPeso×1)
-  const sensorio = (d * 0.5) + (temIrradiacao ? 2 : 0) + (tipoDorPeso * 1);
+  // D_sensório = (D×0.4) + (irradiação×2) + (tipoPeso×1)
+  const sensorio = (d * 0.4) + (temIrradiacao ? 2 : 0) + (tipoDorPeso * 1);
 
-  // D_afetiva = (P×0.6) + (R3×0.4) — R3 alto=ruim, contribui diretamente
-  const afetiva = (p * 0.6) + (r3 * 0.4);
+  // D_afetiva = (P×0.7) + (R3×0.5) — pesos aumentados para cinesiofobia e psicológico
+  const afetiva = (p * 0.7) + (r3 * 0.5);
 
-  // D_cognitiva = (C×0.5) + (Fcronicidade×0.5) — cronicidade >2 meses amplifica
+  // D_cognitiva = (C×0.6) + (Fcronicidade×0.4) — peso maior para carga contextual
   const cronificacaoBonus = fCronicidade >= 3 ? fCronicidade * 0.1 : 0;
-  const cognitiva = (c * 0.5) + (fCronicidade * 0.5) + cronificacaoBonus;
+  const cognitiva = (c * 0.6) + (fCronicidade * 0.4) + cronificacaoBonus;
 
-  // D_neurovegetativa = R×0.8 — R alto=ruim, contribui diretamente
-  const neurovegetativa = r * 0.8;
+  // D_neurovegetativa = R×1.0 — peso máximo para regulação neurovegetativa
+  const neurovegetativa = r * 1.0;
 
   // Estilo de vida como 5ª dimensão moduladora
   const estiloVida = moduladorEstiloVida;
 
   // Total raw, normalizar para 0-10
   const raw = sensorio + afetiva + cognitiva + neurovegetativa + estiloVida;
-  const total = Math.min(10, Math.max(0, Math.round((raw / 3) * 10) / 10));
+  const total = Math.min(10, Math.max(0, Math.round((raw / 3.5) * 10) / 10));
 
   return {
     total,
