@@ -135,13 +135,13 @@ export default function ProtocoloScores({ scores }: Props) {
           <h3 className="font-semibold text-sm mb-2">🕸️ Perfil Multidimensional</h3>
           <ResponsiveContainer width="100%" height={220}>
             <RadarChart data={radarData} outerRadius="70%">
-              <PolarGrid stroke="hsl(210, 14%, 88%)" />
-              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'hsl(220, 10%, 50%)' }} />
+              <PolarGrid stroke="hsl(210, 18%, 89%)" />
+              <PolarAngleAxis dataKey="subject" tick={{ fontSize: 10, fill: 'hsl(215, 12%, 48%)' }} />
               <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 8 }} axisLine={false} />
               <Radar
                 dataKey="value"
-                stroke="hsl(262, 83%, 58%)"
-                fill="hsl(262, 83%, 58%)"
+                stroke="hsl(213, 55%, 22%)"
+                fill="hsl(40, 95%, 52%)"
                 fillOpacity={0.25}
                 strokeWidth={2}
               />

@@ -53,14 +53,14 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
       </div>
 
       {/* Header */}
-      <div className="clinical-card mb-6" style={{ background: 'linear-gradient(135deg, hsl(220 47% 8%), hsl(210 80% 20%))', color: 'white' }}>
+      <div className="clinical-card mb-6" style={{ background: 'linear-gradient(135deg, hsl(213 55% 16%), hsl(213 55% 10%))', color: 'white' }}>
         <div className="flex items-start justify-between">
           <div>
             <div className="text-sm opacity-70 mb-1">Relatório COB° ZERO – Protocolo Integrado de Escoliose</div>
             <h1 className="text-2xl font-bold">{avaliacao.pacienteNome}</h1>
             <div className="text-sm opacity-80 mt-1">{avaliacao.dataAvaliacao} · {avaliacao.terapeutaNome}</div>
             <div className="mt-3 flex gap-2">
-              <Badge style={{ backgroundColor: 'hsl(187 76% 45%)' }}>
+              <Badge style={{ backgroundColor: 'hsl(40 95% 52%)', color: 'hsl(213 55% 14%)' }}>
                 Lenke {etapaLenke.lenkeType}{etapaLenke.lumbarModifier} {etapaLenke.sagittalModifier}
               </Badge>
               <Badge style={{ backgroundColor: 'rgba(255,255,255,0.2)' }}>
