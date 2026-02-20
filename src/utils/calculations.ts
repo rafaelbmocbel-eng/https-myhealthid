@@ -55,8 +55,10 @@ export function calcularScoreD(bloco2: Bloco2Data): number {
     somaRegiao += dRegiao;
   });
 
-  // Média entre regiões (já normalizada 0-1 domain, × 10 para 0-10)
-  const dFinal = (somaRegiao / bloco2.regioes.length) * 10;
+  // Média por região + bônus por múltiplos locais de dor (cada extra +0.5, máx +3)
+  const mediaRegiao = (somaRegiao / bloco2.regioes.length) * 10;
+  const bonusMultiSite = Math.min(3, (bloco2.regioes.length - 1) * 0.5);
+  const dFinal = mediaRegiao + bonusMultiSite;
   return Math.min(10, Math.max(0, Math.round(dFinal * 10) / 10));
 }
 
@@ -79,17 +81,14 @@ export function calcularScoreP(bloco4: Bloco4Data): number {
 // R1, R2, R3 → 0-10 onde 10 = bom (sem inversão dupla)
 // As perguntas já têm a lógica embutida: onde maior = melhor não precisam inversão
 export function calcularScoresRC(bloco5: Bloco5Data): { r1: number; r2: number; r3: number; r: number; c: number } {
-  // R1 – Sono (0=horrível, 10=ótimo)
-  // qualidadeSono 0-10 (direto), horasSono já normalizado, acordaNaNoite 0=muito/10=nunca (direto), dorAfetaSono 0=sempre/10=nunca (direto), descansadoAoAcordar 0-10 (direto)
-  const r1 = (bloco5.qualidadeSono + bloco5.horasSono + (10 - bloco5.acordaNaNoite) + (10 - bloco5.dorAfetaSono) + bloco5.descansadoAoAcordar) / 5;
+  // R1 – Sono (0=ótimo, 10=péssimo) — ALTO = RUIM
+  const r1 = ((10 - bloco5.qualidadeSono) + (10 - bloco5.horasSono) + bloco5.acordaNaNoite + bloco5.dorAfetaSono + (10 - bloco5.descansadoAoAcordar)) / 5;
 
-  // R2 – Energia (0=esgotado, 10=pleno)
-  // energiaAoAcordar 0-10 (direto), fadigaDia 0=esgotado/10=sem fadiga (inverter), precisaCochiblar inverter, motivacao direto, resistenciaFisica direto
-  const r2 = (bloco5.energiaAoAcordar + (10 - bloco5.fadigaDia) + (10 - bloco5.precisaCochiblar) + bloco5.motivacao + bloco5.resistenciaFisica) / 5;
+  // R2 – Energia (0=pleno, 10=esgotado) — ALTO = RUIM
+  const r2 = ((10 - bloco5.energiaAoAcordar) + bloco5.fadigaDia + bloco5.precisaCochiblar + (10 - bloco5.motivacao) + (10 - bloco5.resistenciaFisica)) / 5;
 
-  // R3 – Psicológico (0=comprometido, 10=ótimo)
-  // nivelStress: inverter (0=sem stress bom), humorGeral direto, concentracao direto, preocupacaoSaude inverter, sensacaoControle direto
-  const r3 = ((10 - bloco5.nivelStress) + bloco5.humorGeral + bloco5.concentracao + (10 - bloco5.preocupacaoSaude) + bloco5.sensacaoControle) / 5;
+  // R3 – Psicológico (0=ótimo, 10=comprometido) — ALTO = RUIM
+  const r3 = (bloco5.nivelStress + (10 - bloco5.humorGeral) + (10 - bloco5.concentracao) + bloco5.preocupacaoSaude + (10 - bloco5.sensacaoControle)) / 5;
 
   const r = (r1 + r2 + r3) / 3;
   const c = (bloco5.cargaLaboral + bloco5.relacionamentos + bloco5.situacaoFinanceira + bloco5.eventosEstressantes) / 4;
@@ -108,13 +107,15 @@ export function calcularScoreE(bloco6: Bloco6Data): number {
 export function calcularIDFinal(
   e: number, p: number, c: number, f: number, d: number, r: number
 ): { idFinal: number; fatoresRisco: string[]; classificacao: string } {
-  const rDivisor = Math.max(r, 0.5); // evitar divisão por zero
+  // R agora é alto=ruim, converter para qualidade (alto=bom) para o divisor
+  const qualidadeRegulacao = 10 - r;
+  const rDivisor = Math.max(qualidadeRegulacao, 0.5);
   let idBase = ((e * 0.30) + (p * 0.20) + (c * 0.20) + (f * 0.15) + (d * 0.10)) * (10 / rDivisor);
 
   const fatoresRisco: string[] = [];
   if (p > 7.5) { idBase += 2; fatoresRisco.push('Cinesiofobia acentuada (P > 7.5) → +2'); }
   if (c > 8) { idBase += 2; fatoresRisco.push('Carga contextual excessiva (C > 8) → +2'); }
-  if (r < 2) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa crítica (R < 2) → +3'); }
+  if (r > 8) { idBase += 3; fatoresRisco.push('Regulação neurovegetativa crítica (R > 8) → +3'); }
   if (d > 8) { idBase += 1; fatoresRisco.push('Dor intensa com irradiação (D > 8) → +1'); }
 
   const idFinal = Math.round(idBase * 10) / 10;
@@ -173,15 +174,15 @@ export function calcularEquacaoDor(
   // D_sensório = (D×0.5) + (irradiação×2) + (tipoPeso×1)
   const sensorio = (d * 0.5) + (temIrradiacao ? 2 : 0) + (tipoDorPeso * 1);
 
-  // D_afetiva = (P×0.6) + ((10-R3)×0.4)
-  const afetiva = (p * 0.6) + ((10 - r3) * 0.4);
+  // D_afetiva = (P×0.6) + (R3×0.4) — R3 alto=ruim, contribui diretamente
+  const afetiva = (p * 0.6) + (r3 * 0.4);
 
   // D_cognitiva = (C×0.5) + (Fcronicidade×0.5) — cronicidade >2 meses amplifica
   const cronificacaoBonus = fCronicidade >= 3 ? fCronicidade * 0.1 : 0;
   const cognitiva = (c * 0.5) + (fCronicidade * 0.5) + cronificacaoBonus;
 
-  // D_neurovegetativa = (10-R)×0.8
-  const neurovegetativa = (10 - r) * 0.8;
+  // D_neurovegetativa = R×0.8 — R alto=ruim, contribui diretamente
+  const neurovegetativa = r * 0.8;
 
   // Estilo de vida como 5ª dimensão moduladora
   const estiloVida = moduladorEstiloVida;
