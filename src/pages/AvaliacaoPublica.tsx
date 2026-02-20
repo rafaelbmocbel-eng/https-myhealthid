@@ -170,7 +170,7 @@ export default function AvaliacaoPublica() {
           <div className="flex items-center gap-4 mb-3">
             <img src={logoMetodo} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
             <div className="flex-1">
-              <h1 className="font-bold text-sm text-foreground">Questionário My Health ID</h1>
+              <h1 className="font-bold text-sm text-foreground">Questionário Identidade</h1>
               <div className="flex items-center gap-3 mt-1">
                 <Progress value={progresso} className="h-1.5 flex-1" />
                 <span className="text-xs text-muted-foreground whitespace-nowrap">{completedSteps}/{STEPS.length} etapas</span>
