@@ -479,7 +479,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
         {/* Aba: Evolução */}
         {evolucoes.length >= 2 && (
           <TabsContent value="evolucao" className="mt-4">
-            <EvolucaoDashboard evolucoes={evolucoes} />
+            <EvolucaoDashboard evolucoes={evolucoes} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
           </TabsContent>
         )}
 

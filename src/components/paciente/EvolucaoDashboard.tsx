@@ -1,12 +1,14 @@
-import { useMemo } from 'react';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award } from 'lucide-react';
+import { useMemo, useState } from 'react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
   BarChart, Bar,
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
+import { gerarPDFEvolucao } from '@/utils/pdfEvolucaoGenerator';
 
 const SCORE_LABELS: Record<string, string> = {
   score_e: 'Estrutural',
@@ -31,9 +33,26 @@ const SCORE_COLORS: Record<string, string> = {
 
 interface Props {
   evolucoes: EvolucaoRecord[];
+  pacienteNome?: string;
+  terapeutaNome?: string;
 }
 
-export default function EvolucaoDashboard({ evolucoes }: Props) {
+export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
+  const [exportando, setExportando] = useState(false);
+
+  const handleExportPDF = async () => {
+    setExportando(true);
+    try {
+      await gerarPDFEvolucao({
+        pacienteNome: pacienteNome || 'Paciente',
+        terapeutaNome: terapeutaNome || 'Terapeuta',
+        dataEmissao: new Date().toLocaleDateString('pt-BR'),
+        evolucoes,
+      });
+    } finally {
+      setExportando(false);
+    }
+  };
   const sorted = useMemo(() => [...evolucoes].sort((a, b) => a.numero_avaliacao - b.numero_avaliacao), [evolucoes]);
 
   const primeira = sorted[0];
@@ -85,6 +104,13 @@ export default function EvolucaoDashboard({ evolucoes }: Props) {
   return (
     <div className="space-y-4">
       {/* Summary Cards */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold text-muted-foreground">Resumo da Evolução</h3>
+        <Button size="sm" variant="outline" className="gap-2 text-xs" onClick={handleExportPDF} disabled={exportando}>
+          {exportando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          Exportar PDF
+        </Button>
+      </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard label="Avaliações" value={totalAvaliacoes} icon={<Activity className="h-4 w-4" />} accent="primary" />
         <SummaryCard label="ID Final Atual" value={`${idFinalAtual.toFixed(1)}/50`} icon={<Target className="h-4 w-4" />} accent="info" />
