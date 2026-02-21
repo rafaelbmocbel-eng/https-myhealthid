@@ -22,6 +22,7 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IdFinalGauge from '@/components/identidade/IdFinalGauge';
 import DashboardParcial from './DashboardParcial';
+import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 
 interface Paciente {
   id: string;
@@ -358,6 +359,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
           onIniciarAvaliacao={() => onIniciarAvaliacao(precargaRespostas)}
         />
       )}
+
+      {/* Índices de Risco — de avaliação completa ou questionário parcial */}
+      {ultimaAvaliacao ? (
+        <IndicesRiscoComprometimento scores={ultimaAvaliacao as any} />
+      ) : scoresParciais ? (
+        <IndicesRiscoComprometimento scores={scoresParciais.scores} parcial />
+      ) : null}
 
       {/* Tabs */}
       <Tabs defaultValue="avaliacoes">

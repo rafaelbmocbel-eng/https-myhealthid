@@ -26,6 +26,7 @@ import QuestionariosComparacao from '@/components/paciente/QuestionariosComparac
 import EvolucaoDashboard from '@/components/paciente/EvolucaoDashboard';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
@@ -494,6 +495,32 @@ export default function PacientePerfil() {
                   </div>
                 </div>
               );
+            })()}
+
+            {/* Índices de Risco Biopsicossocial — do questionário ou avaliação */}
+            {(() => {
+              // Prefer latest evaluation scores, fallback to questionnaire responses
+              if (avaliacoesId.length > 0) {
+                const ult = avaliacoesId[0] as any;
+                return <IndicesRiscoComprometimento scores={ult} />;
+              }
+              // Check if there are questionnaire responses with scores
+              if (respostasPaciente.length > 0) {
+                const scoresFromResponses: Record<string, number> = {};
+                respostasPaciente.forEach((r: any) => {
+                  const dados = r.dados_respostas as any;
+                  if (!dados) return;
+                  Object.entries(dados).forEach(([k, v]) => {
+                    if (k.startsWith('score') && typeof v === 'number') {
+                      scoresFromResponses[k] = v;
+                    }
+                  });
+                });
+                if (Object.keys(scoresFromResponses).length > 0) {
+                  return <IndicesRiscoComprometimento scores={scoresFromResponses} parcial />;
+                }
+              }
+              return null;
             })()}
 
             {/* Avaliações Salvas: Método Identidade */}
