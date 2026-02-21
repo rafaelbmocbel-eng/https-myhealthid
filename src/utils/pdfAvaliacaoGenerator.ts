@@ -1,5 +1,23 @@
 import jsPDF from 'jspdf';
 
+export interface PDFEstiloVidaItem {
+  label: string;
+  status: 'critico' | 'alerta' | 'ok';
+  mensagem: string;
+  recomendacao: string;
+}
+
+export interface PDFTratamentoTecnica {
+  nome: string;
+  categoria: string;
+  descricao?: string;
+  nivelEvidencia?: string;
+  complexidade?: string;
+  indicacoes?: string;
+  contraindicacoes?: string;
+  observacoes?: string;
+}
+
 export interface PDFAvaliacaoData {
   pacienteNome: string;
   terapeutaNome: string;
@@ -17,6 +35,11 @@ export interface PDFAvaliacaoData {
   duracao: string;
   probSucesso: string;
   diretrizesTecnicas: Array<{ ucId: string; ucNome: string; score: number; tecidos: Array<{ nome: string; score: number; tecnica: string }> }>;
+  estiloVidaAlertas?: PDFEstiloVidaItem[];
+  tratamentosPorFase?: Record<number, PDFTratamentoTecnica[]>;
+  objetivoGeral?: string;
+  perfilDominante?: string[];
+  prognose?: string;
 }
 
 // Colors
@@ -579,6 +602,205 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
       });
       y += 4;
     });
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // MARCADORES DE ESTILO DE VIDA
+  // ═══════════════════════════════════════════════════════
+  if (data.estiloVidaAlertas && data.estiloVidaAlertas.length > 0) {
+    y = checkPage(doc, y + 4, 40, M);
+
+    doc.setTextColor(...DARK);
+    doc.setFontSize(10);
+    doc.setFont('helvetica', 'bold');
+    doc.text('Marcadores de Estilo de Vida', M, y);
+    doc.setFillColor(...GOLD);
+    doc.rect(M, y + 2, 40, 0.8, 'F');
+    y += 8;
+
+    const statusColors: Record<string, { bg: [number, number, number]; text: [number, number, number]; label: string }> = {
+      critico: { bg: [255, 235, 235], text: [180, 40, 40], label: '⚠ Necessita ação' },
+      alerta: { bg: [255, 248, 230], text: [180, 120, 20], label: '⚡ Melhorar' },
+      ok: { bg: [235, 255, 240], text: [30, 130, 60], label: '✓ Adequado' },
+    };
+
+    data.estiloVidaAlertas.forEach(alerta => {
+      y = checkPage(doc, y, 14, M);
+      const sc = statusColors[alerta.status] || statusColors.ok;
+
+      doc.setFillColor(...sc.bg);
+      doc.roundedRect(M, y, CW, 12, 2, 2, 'F');
+
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...sc.text);
+      doc.text(`${alerta.label}  —  ${sc.label}`, M + 4, y + 4.5);
+
+      doc.setFontSize(6.5);
+      doc.setFont('helvetica', 'normal');
+      doc.text(alerta.mensagem, M + 4, y + 8.5);
+      doc.setTextColor(...GRAY);
+      doc.text(`💡 ${alerta.recomendacao}`, M + CW / 2, y + 8.5);
+
+      y += 14;
+    });
+    y += 2;
+  }
+
+  // ═══════════════════════════════════════════════════════
+  // DIRETRIZ DE TRATAMENTO SALVA (TÉCNICAS POR FASE)
+  // ═══════════════════════════════════════════════════════
+  if (data.tratamentosPorFase && Object.keys(data.tratamentosPorFase).length > 0) {
+    doc.addPage();
+    y = M + 5;
+
+    // Page header
+    doc.setFillColor(...NAVY);
+    doc.rect(0, 0, W, 12, 'F');
+    doc.setFillColor(...GOLD);
+    doc.rect(0, 12, W, 1, 'F');
+    doc.setTextColor(...WHITE);
+    doc.setFontSize(9);
+    doc.setFont('helvetica', 'bold');
+    doc.text('My Health ID — Diretriz de Tratamento', M, 8);
+    doc.text(data.pacienteNome, W - M, 8, { align: 'right' });
+
+    y = 20;
+
+    // Perfil e objetivo
+    if (data.objetivoGeral) {
+      doc.setTextColor(...DARK);
+      doc.setFontSize(10);
+      doc.setFont('helvetica', 'bold');
+      doc.text('Diretriz de Tratamento Personalizada', M, y);
+      doc.setFillColor(...GOLD);
+      doc.rect(M, y + 2, 50, 0.8, 'F');
+      y += 8;
+
+      doc.setFillColor(...LIGHT);
+      doc.roundedRect(M, y, CW, 14, 2, 2, 'F');
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text('Objetivo:', M + 4, y + 5);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY);
+      const objLines = doc.splitTextToSize(data.objetivoGeral, CW - 30);
+      doc.text(objLines, M + 22, y + 5);
+      if (data.perfilDominante && data.perfilDominante.length > 0) {
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...DARK);
+        doc.text('Perfil:', M + 4, y + 10);
+        doc.setFont('helvetica', 'normal');
+        doc.setTextColor(...GRAY);
+        doc.text(data.perfilDominante.map(p => p.replace(/_/g, ' ')).join(', '), M + 22, y + 10);
+      }
+      y += 18;
+    }
+
+    const FASE_NOMES_PDF = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
+    const FASE_CORES_PDF: C3[] = [[99, 102, 241], [245, 158, 11], [16, 185, 129], [239, 68, 68]];
+
+    const CAT_ICONS: Record<string, string> = {
+      terapia_manual: '🖐️', eletroterapia: '⚡', exercicio_respiratorio: '🫁',
+      tracao: '🔗', outros: '🧊',
+    };
+
+    const EVID_LABELS: Record<string, string> = { A: '●A', B: '●B', C: '●C' };
+
+    [1, 2, 3, 4].forEach(faseNum => {
+      const tecs = data.tratamentosPorFase![faseNum];
+      if (!tecs || tecs.length === 0) return;
+      const idx = faseNum - 1;
+      const cor = FASE_CORES_PDF[idx];
+
+      y = checkPage(doc, y, 16, M);
+
+      // Phase header
+      doc.setFillColor(...cor);
+      doc.roundedRect(M, y, CW, 9, 2, 2, 'F');
+      doc.setTextColor(...WHITE);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'bold');
+      doc.text(`FASE ${faseNum} — ${FASE_NOMES_PDF[idx]}`, M + 4, y + 6);
+      doc.text(`${tecs.length} técnica${tecs.length !== 1 ? 's' : ''}`, W - M - 4, y + 6, { align: 'right' });
+      y += 12;
+
+      // Group by category
+      const porCat: Record<string, PDFTratamentoTecnica[]> = {};
+      tecs.forEach(t => {
+        const cat = t.categoria || 'outros';
+        if (!porCat[cat]) porCat[cat] = [];
+        porCat[cat].push(t);
+      });
+
+      Object.entries(porCat).forEach(([cat, items]) => {
+        y = checkPage(doc, y, 10, M);
+        const icon = CAT_ICONS[cat] || '🔧';
+        doc.setFontSize(7.5);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...DARK);
+        doc.text(`${icon} ${cat.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}`, M + 2, y + 3);
+        y += 6;
+
+        items.forEach(tec => {
+          y = checkPage(doc, y, 14, M);
+
+          doc.setFillColor(248, 250, 255);
+          doc.roundedRect(M + 2, y, CW - 4, 12, 1.5, 1.5, 'F');
+
+          doc.setFontSize(7);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(...DARK);
+          doc.text(tec.nome, M + 5, y + 4);
+
+          // Badges
+          const badges: string[] = [];
+          if (tec.nivelEvidencia) badges.push(EVID_LABELS[tec.nivelEvidencia] || tec.nivelEvidencia);
+          if (tec.complexidade) badges.push(tec.complexidade);
+          if (badges.length > 0) {
+            doc.setFontSize(5.5);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...GRAY);
+            doc.text(badges.join(' · '), W - M - 6, y + 4, { align: 'right' });
+          }
+
+          // Description
+          if (tec.descricao) {
+            doc.setFontSize(6);
+            doc.setFont('helvetica', 'normal');
+            doc.setTextColor(...GRAY);
+            const descLines = doc.splitTextToSize(tec.descricao, CW - 14);
+            doc.text(descLines.slice(0, 1), M + 5, y + 8);
+          }
+
+          if (tec.indicacoes) {
+            doc.setFontSize(5.5);
+            doc.setTextColor(...(GREEN as unknown as [number, number, number]));
+            doc.text(`✓ ${tec.indicacoes}`.slice(0, 90), M + 5, y + 11);
+          }
+
+          y += 14;
+        });
+        y += 2;
+      });
+      y += 4;
+    });
+
+    // Prognose
+    if (data.prognose) {
+      y = checkPage(doc, y, 12, M);
+      doc.setFillColor(...LIGHT);
+      doc.roundedRect(M, y, CW, 10, 2, 2, 'F');
+      doc.setFontSize(7.5);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text('Prognose:', M + 4, y + 6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY);
+      doc.text(data.prognose, M + 25, y + 6);
+      y += 14;
+    }
   }
 
   // ═══════════════════════════════════════════════════════
