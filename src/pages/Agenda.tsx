@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -157,6 +157,18 @@ export default function Agenda() {
   const [nowMinutes, setNowMinutes] = useState(() => getHours(new Date()) * 60 + getMinutes(new Date()));
   const gridRef = useRef<HTMLDivElement>(null);
 
+  // Drag-and-drop state
+  const [dragging, setDragging] = useState<{
+    ag: Agendamento;
+    startY: number;
+    startX: number;
+    origStartMin: number;
+    durationMin: number;
+    dayIndex: number;
+    offsetY: number;
+  } | null>(null);
+  const [dragDelta, setDragDelta] = useState({ dy: 0, dx: 0 });
+
   // Current time indicator update
   useEffect(() => {
     const tick = () => setNowMinutes(getHours(new Date()) * 60 + getMinutes(new Date()));
@@ -171,14 +183,6 @@ export default function Agenda() {
       gridRef.current.scrollTop = Math.max(0, top);
     }
   }, [viewMode]);
-
-  const [form, setForm] = useState<FormData>({
-    paciente_id: '', titulo: '',
-    data_inicio: '', data_fim: '',
-    status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-  });
-
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   // Force 6h-20h range as specified
   const startHour = 6;
@@ -197,6 +201,75 @@ export default function Agenda() {
     return Array.from({ length: 7 }, (_, i) => addDays(start, i));
   };
   const days = getDays();
+
+  // Drag-and-drop handlers
+  const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, ag: Agendamento, dayIdx: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const start = parseISO(ag.data_inicio);
+    const end = parseISO(ag.data_fim);
+    const origStartMin = getHours(start) * 60 + getMinutes(start);
+    const durationMin = differenceInMinutes(end, start);
+    setDragging({ ag, startY: clientY, startX: clientX, origStartMin, durationMin, dayIndex: dayIdx, offsetY: 0 });
+    setDragDelta({ dy: 0, dx: 0 });
+  }, []);
+
+  useEffect(() => {
+    if (!dragging) return;
+    const handleMove = (e: MouseEvent | TouchEvent) => {
+      const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+      const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+      setDragDelta({ dy: clientY - dragging.startY, dx: clientX - dragging.startX });
+    };
+    const handleUp = async () => {
+      if (!dragging) return;
+      const minutesDelta = Math.round((dragDelta.dy / SLOT_HEIGHT) * SLOT_MINUTES / 15) * 15;
+      const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - dragging.durationMin, dragging.origStartMin + minutesDelta));
+
+      let newDayIndex = dragging.dayIndex;
+      if (viewMode === 'semana' && gridRef.current) {
+        const colWidth = (gridRef.current.clientWidth - 48) / days.length;
+        const dayShift = Math.round(dragDelta.dx / colWidth);
+        newDayIndex = Math.max(0, Math.min(days.length - 1, dragging.dayIndex + dayShift));
+      }
+
+      const origStart = parseISO(dragging.ag.data_inicio);
+      const newDay = viewMode === 'semana' ? days[newDayIndex] : origStart;
+      const newH = Math.floor(newStartMin / 60);
+      const newM = newStartMin % 60;
+      const newStart = setMinutes(setHours(new Date(newDay), newH), newM);
+      const newEnd = new Date(newStart.getTime() + dragging.durationMin * 60000);
+
+      if (newStart.getTime() !== origStart.getTime()) {
+        await updateAgendamento(dragging.ag.id, {
+          data_inicio: newStart.toISOString(),
+          data_fim: newEnd.toISOString(),
+        });
+      }
+      setDragging(null);
+      setDragDelta({ dy: 0, dx: 0 });
+    };
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+    window.addEventListener('touchmove', handleMove, { passive: false });
+    window.addEventListener('touchend', handleUp);
+    return () => {
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+      window.removeEventListener('touchmove', handleMove);
+      window.removeEventListener('touchend', handleUp);
+    };
+  }, [dragging, dragDelta, days, viewMode, updateAgendamento]);
+
+  const [form, setForm] = useState<FormData>({
+    paciente_id: '', titulo: '',
+    data_inicio: '', data_fim: '',
+    status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
+  });
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const navPrev = () => {
     if (viewMode === 'dia') setCurrentDate(d => subDays(d, 1));
@@ -565,16 +638,23 @@ export default function Agenda() {
                             const dur = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
                             const h = Math.max((dur / SLOT_MINUTES) * SLOT_HEIGHT - 4, 24);
                             const pac = ag.pacientes;
+                            const isDraggingThis = dragging?.ag.id === ag.id;
                             return (
                               <div
                                 key={ag.id}
-                                onClick={e => { e.stopPropagation(); openEdit(ag); }}
+                                onClick={e => { if (!dragging) { e.stopPropagation(); openEdit(ag); } }}
+                                onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
+                                onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                                 className={cn(
-                                  'absolute left-0.5 right-0.5 top-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-pointer',
-                                  'hover:brightness-95 transition-all z-10',
+                                  'absolute left-0.5 right-0.5 top-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none',
+                                  'hover:brightness-95 transition-shadow z-10',
+                                  isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                   sc.bg, sc.border, sc.text
                                 )}
-                                style={{ height: h }}
+                                style={{
+                                  height: h,
+                                  ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
+                                }}
                               >
                                 <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
                                   {sc.icon}

@@ -368,7 +368,43 @@ export default function Pacientes() {
               </div>
               <div className="space-y-1">
                 <Label>Data de Nascimento</Label>
-                <Input type="date" value={form.data_nascimento} onChange={e => setForm(f => ({ ...f, data_nascimento: e.target.value }))} />
+                <Input
+                  type="text"
+                  placeholder="dd/mm/aaaa"
+                  maxLength={10}
+                  value={form.data_nascimento ? (() => {
+                    // Show as dd/mm/yyyy if stored as ISO
+                    if (/^\d{4}-\d{2}-\d{2}$/.test(form.data_nascimento)) {
+                      const [y, m, d] = form.data_nascimento.split('-');
+                      return `${d}/${m}/${y}`;
+                    }
+                    return form.data_nascimento;
+                  })() : ''}
+                  onChange={e => {
+                    let v = e.target.value.replace(/[^\d/]/g, '');
+                    // Auto-add slashes
+                    const digits = v.replace(/\//g, '');
+                    if (digits.length >= 5) {
+                      v = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+                    } else if (digits.length >= 3) {
+                      v = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                    }
+                    setForm(f => ({ ...f, data_nascimento: v }));
+                  }}
+                  onBlur={e => {
+                    const v = e.target.value;
+                    const match = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                    if (match) {
+                      const [, d, m, y] = match;
+                      const iso = `${y}-${m}-${d}`;
+                      // Validate date
+                      const date = new Date(iso);
+                      if (!isNaN(date.getTime()) && date.getFullYear() === Number(y)) {
+                        setForm(f => ({ ...f, data_nascimento: iso }));
+                      }
+                    }
+                  }}
+                />
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">

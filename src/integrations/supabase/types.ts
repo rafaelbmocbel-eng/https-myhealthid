@@ -265,6 +265,7 @@ export type Database = {
           slug: string | null
           terapeuta_id: string
           updated_at: string
+          vagas_por_horario: number
         }
         Insert: {
           created_at?: string
@@ -277,6 +278,7 @@ export type Database = {
           slug?: string | null
           terapeuta_id: string
           updated_at?: string
+          vagas_por_horario?: number
         }
         Update: {
           created_at?: string
@@ -289,6 +291,7 @@ export type Database = {
           slug?: string | null
           terapeuta_id?: string
           updated_at?: string
+          vagas_por_horario?: number
         }
         Relationships: []
       }

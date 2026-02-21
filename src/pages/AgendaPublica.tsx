@@ -85,7 +85,7 @@ export default function AgendaPublica() {
             .maybeSingle(),
           supabase
             .from('config_agenda')
-            .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, intervalo_entre_sessoes')
+            .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, intervalo_entre_sessoes, vagas_por_horario')
             .eq('terapeuta_id', linkData.terapeuta_id)
             .maybeSingle(),
           supabase
@@ -144,15 +144,16 @@ export default function AgendaPublica() {
           continue;
         }
 
-        const ocupado = agendamentos.some(ag => {
+        const vagasMax = config.vagas_por_horario || 1;
+        const ocupadas = agendamentos.filter(ag => {
           const agStart = parseISO(ag.data_inicio);
           return isSameDay(agStart, dia) &&
             agStart.getHours() === h &&
             agStart.getMinutes() === m &&
             ag.status !== 'cancelado';
-        });
+        }).length;
 
-        slots.push({ hora: horaStr, disponivel: !ocupado, dataInicio: slotInicio, dataFim: slotFim });
+        slots.push({ hora: horaStr, disponivel: ocupadas < vagasMax, dataInicio: slotInicio, dataFim: slotFim });
         minutoAtual += duracao + intervalo;
       }
 
