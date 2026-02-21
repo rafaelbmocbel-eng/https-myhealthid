@@ -241,12 +241,12 @@ export default function CobZero() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Sidebar - horizontal scroll on mobile */}
           <div className="lg:col-span-1">
-            <div className="clinical-card sticky top-24">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">Etapas de Avaliação</h3>
-              <div className="space-y-2">
+            <div className="clinical-card lg:sticky lg:top-24 !p-3 sm:!p-6">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3 hidden lg:block">Etapas de Avaliação</h3>
+              <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1 snap-x snap-mandatory lg:snap-none">
                 {etapas.map(etapa => {
                   const Icon = etapa.icon;
                   const isActive = avaliacao.etapaAtual === etapa.id;
@@ -255,23 +255,23 @@ export default function CobZero() {
                     <button
                       key={etapa.id}
                       onClick={() => setAvaliacao(prev => ({ ...prev, etapaAtual: etapa.id }))}
-                      className={`w-full text-left block-step ${
+                      className={`shrink-0 lg:shrink text-left block-step snap-start min-w-[130px] lg:min-w-0 lg:w-full ${
                         isActive ? 'active' : isConcluida ? 'completed' : 'pending'
                       }`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         {isConcluida ? (
-                          <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
+                          <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
                         ) : isActive ? (
-                          <Icon className="h-5 w-5 text-primary flex-shrink-0" />
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                         ) : (
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <div className={`text-sm font-medium truncate ${isActive ? 'text-primary' : isConcluida ? 'text-success' : 'text-foreground'}`}>
+                          <div className={`text-xs sm:text-sm font-medium truncate ${isActive ? 'text-primary' : isConcluida ? 'text-success' : 'text-foreground'}`}>
                             {etapa.label}
                           </div>
-                          <div className="text-xs text-muted-foreground">{etapa.sublabel} · {etapa.time}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground hidden lg:block">{etapa.sublabel} · {etapa.time}</div>
                         </div>
                       </div>
                     </button>

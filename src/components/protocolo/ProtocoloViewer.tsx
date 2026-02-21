@@ -118,16 +118,16 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
 
   return (
-    <div className="container py-8 max-w-5xl">
+    <div className="container py-4 sm:py-8 max-w-5xl px-3 sm:px-6">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6">
-        <Button variant="outline" onClick={onBack} className="gap-2">
+      <div className="flex items-center justify-between mb-4 sm:mb-6 gap-2">
+        <Button variant="outline" onClick={onBack} className="gap-2" size="sm">
           <ArrowLeft className="h-4 w-4" />
-          Voltar
+          <span className="hidden sm:inline">Voltar</span>
         </Button>
-        <Button onClick={onExportPDF} className="bg-gradient-primary text-white gap-2">
+        <Button onClick={onExportPDF} className="bg-gradient-primary text-white gap-2" size="sm">
           <Download className="h-4 w-4" />
-          Exportar PDF
+          <span className="hidden sm:inline">Exportar PDF</span>
         </Button>
       </div>
 
@@ -220,26 +220,27 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
       )}
 
       {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-muted rounded-xl p-1">
+      <div className="grid grid-cols-4 gap-1 mb-4 sm:mb-6 bg-muted rounded-xl p-1">
         {[
-          { key: 'fases' as const, label: 'Fases da Diretriz', icon: Layers },
-          { key: 'tecnicas' as const, label: 'Cardápio de Técnicas', icon: Brain },
-          { key: 'tratamento' as const, label: 'Tratamento', icon: CheckCircle2 },
-          { key: 'progressao' as const, label: 'Progressão', icon: TrendingUp },
+          { key: 'fases' as const, label: 'Fases', fullLabel: 'Fases da Diretriz', icon: Layers },
+          { key: 'tecnicas' as const, label: 'Técnicas', fullLabel: 'Cardápio de Técnicas', icon: Brain },
+          { key: 'tratamento' as const, label: 'Trat.', fullLabel: 'Tratamento', icon: CheckCircle2 },
+          { key: 'progressao' as const, label: 'Prog.', fullLabel: 'Progressão', icon: TrendingUp },
         ].map(tab => {
           const Icon = tab.icon;
           return (
             <button
               key={tab.key}
               onClick={() => setTabAtiva(tab.key)}
-              className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-sm font-medium transition-all ${
+              className={`flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 sm:px-3 rounded-lg text-[10px] sm:text-sm font-medium transition-all ${
                 tabAtiva === tab.key
                   ? 'bg-background shadow-sm text-foreground'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              <Icon className="h-4 w-4" />
-              <span className="hidden sm:inline">{tab.label}</span>
+              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <span className="sm:hidden">{tab.label}</span>
+              <span className="hidden sm:inline">{tab.fullLabel}</span>
             </button>
           );
         })}
