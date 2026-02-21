@@ -63,9 +63,9 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
         .eq('id', protocoloId);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['protocolos'] });
-      toast({ title: '✅ Protocolo salvo com sucesso!', description: 'O protocolo está disponível na aba Protocolos do paciente.' });
+      toast({ title: '✅ Diretriz salva com sucesso!', description: 'A diretriz está disponível na aba Diretrizes do paciente.' });
     } catch (err: any) {
-      toast({ title: 'Erro ao salvar protocolo', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });
     } finally {
       setSalvando(false);
     }
@@ -109,7 +109,7 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
             className="bg-gradient-primary text-white gap-2 shrink-0"
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Salvar Protocolo
+            Salvar Diretriz
           </Button>
         </div>
       </div>

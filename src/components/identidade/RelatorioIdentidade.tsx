@@ -329,11 +329,11 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         }
       }
 
-      toast({ title: '✅ Protocolo gerado com sucesso!', description: 'Acesse em Protocolos para visualizar.' });
+      toast({ title: '✅ Diretriz gerada com sucesso!', description: 'Acesse em Diretrizes para visualizar.' });
       navigate('/protocolos');
     } catch (err) {
       console.error(err);
-      toast({ title: 'Erro ao gerar protocolo', variant: 'destructive' });
+      toast({ title: 'Erro ao gerar diretriz', variant: 'destructive' });
     } finally {
       setGerando(false);
     }
@@ -942,8 +942,8 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
       <div className="clinical-card bg-gradient-hero text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-lg">Gerar Plano Terapêutico</h3>
-            <p className="text-sm opacity-80 mt-1">Protocolo automático baseado nos scores · {freqRecomendada} · {duracaoRecomendada}</p>
+             <h3 className="font-bold text-lg">Gerar Diretriz de Tratamento</h3>
+             <p className="text-sm opacity-80 mt-1">Diretriz automática baseada nos scores · {freqRecomendada} · {duracaoRecomendada}</p>
           </div>
           <Button
             size="lg"
@@ -952,7 +952,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             disabled={gerando}
           >
             {gerando ? <Loader2 className="h-5 w-5 animate-spin" /> : <Dumbbell className="h-5 w-5" />}
-            {gerando ? 'Gerando...' : 'Gerar Protocolo'}
+            {gerando ? 'Gerando...' : 'Gerar Diretriz'}
           </Button>
         </div>
       </div>
@@ -963,7 +963,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           {avaliacao.dataAvaliacao} · {avaliacao.pacienteNome}
         </p>
         <p className="text-xs text-muted-foreground">
-          MÉTODO IDENTIDADE © 2026 – Avaliação Multidimensional · Protocolo v8.0
+          MÉTODO IDENTIDADE © 2026 – Avaliação Multidimensional · Diretriz v8.0
         </p>
       </div>
     </div>

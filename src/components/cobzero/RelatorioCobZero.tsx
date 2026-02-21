@@ -141,7 +141,7 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
 
       {/* Plano 4 fases */}
       <div className="clinical-card mb-6">
-        <h3 className="font-semibold mb-4">Plano de 4 Fases COB° ZERO</h3>
+        <h3 className="font-semibold mb-4">Diretriz de 4 Fases COB° ZERO</h3>
         <div className="space-y-2">
           {[
             { f: '0', label: 'Preparação & Liberação', dur: 'Meses 1-6', meta: 'ATR ↓≥15%, ROM ↑≥20%', color: 'bg-blue-50 border-blue-200' },

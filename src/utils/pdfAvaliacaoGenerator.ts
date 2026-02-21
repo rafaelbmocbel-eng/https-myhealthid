@@ -581,8 +581,140 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
     });
   }
 
+  // ═══════════════════════════════════════════════════════
+  // PLANO DE TRATAMENTO RECOMENDADO
+  // ═══════════════════════════════════════════════════════
+  y = checkPage(doc, y + 6, 80, M);
+
+  doc.setTextColor(...DARK);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Plano de Tratamento Recomendado', M, y);
+  doc.setFillColor(...GOLD);
+  doc.rect(M, y + 2, 48, 0.8, 'F');
+  y += 10;
+
+  // Frases motivacionais profissionais
+  doc.setFillColor(...NAVY);
+  doc.roundedRect(M, y, CW, 18, 3, 3, 'F');
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'bold');
+  doc.text('A sua saúde é o seu bem mais valioso.', M + CW / 2, y + 5.5, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(180, 200, 225);
+  doc.text('Investir no tratamento hoje é garantir qualidade de vida e funcionalidade no futuro.', M + CW / 2, y + 11, { align: 'center' });
+  doc.text('O acompanhamento profissional regular é essencial para resultados duradouros.', M + CW / 2, y + 15.5, { align: 'center' });
+  y += 24;
+
+  // Opção 3x/semana
+  const optionW = (CW - 6) / 2;
+  
+  // Option 1: 3x/semana (Recomendado)
+  doc.setFillColor(234, 170, 20);
+  doc.roundedRect(M, y, optionW, 42, 3, 3, 'F');
+  doc.setTextColor(...DARK);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('⭐ RECOMENDADO', M + optionW / 2, y + 5, { align: 'center' });
+  doc.setFontSize(14);
+  doc.text('3× por semana', M + optionW / 2, y + 14, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(80, 60, 10);
+  doc.text('Recuperação acelerada', M + optionW / 2, y + 20, { align: 'center' });
+  doc.text('Resultados mais rápidos e consistentes', M + optionW / 2, y + 25, { align: 'center' });
+  doc.text('Menor risco de recidivas', M + optionW / 2, y + 30, { align: 'center' });
+  doc.text('Monitoramento intensivo contínuo', M + optionW / 2, y + 35, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Duração estimada: ${data.duracao || '8-10 semanas'}`, M + optionW / 2, y + 40, { align: 'center' });
+
+  // Option 2: 2x/semana
+  const ox2 = M + optionW + 6;
+  doc.setFillColor(245, 248, 255);
+  doc.roundedRect(ox2, y, optionW, 42, 3, 3, 'F');
+  doc.setDrawColor(200, 210, 230);
+  doc.setLineWidth(0.5);
+  doc.roundedRect(ox2, y, optionW, 42, 3, 3, 'S');
+  doc.setTextColor(...DARK);
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'bold');
+  doc.text('ALTERNATIVA', ox2 + optionW / 2, y + 5, { align: 'center' });
+  doc.setFontSize(14);
+  doc.text('2× por semana', ox2 + optionW / 2, y + 14, { align: 'center' });
+  doc.setFontSize(7);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...GRAY);
+  doc.text('Recuperação progressiva', ox2 + optionW / 2, y + 20, { align: 'center' });
+  doc.text('Resultados sustentáveis', ox2 + optionW / 2, y + 25, { align: 'center' });
+  doc.text('Flexibilidade para rotina do paciente', ox2 + optionW / 2, y + 30, { align: 'center' });
+  doc.text('Acompanhamento regular', ox2 + optionW / 2, y + 35, { align: 'center' });
+  doc.setFont('helvetica', 'bold');
+  doc.text(`Duração estimada: ${data.duracao ? '10-14 semanas' : '12-16 semanas'}`, ox2 + optionW / 2, y + 40, { align: 'center' });
+  
+  y += 48;
+
+  // Frases profissionais sobre valor do tratamento
+  y = checkPage(doc, y, 25, M);
+  doc.setFillColor(248, 250, 255);
+  doc.roundedRect(M, y, CW, 22, 3, 3, 'F');
+  doc.setDrawColor(...NAVY);
+  doc.setLineWidth(0.3);
+  doc.roundedRect(M, y, CW, 22, 3, 3, 'S');
+  
+  doc.setTextColor(...NAVY);
+  doc.setFontSize(7.5);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Por que o tratamento contínuo é essencial?', M + 5, y + 5.5);
+  doc.setFont('helvetica', 'normal');
+  doc.setTextColor(...GRAY);
+  doc.setFontSize(6.5);
+  const valorTextos = [
+    '• A consistência no tratamento potencializa os resultados em até 70% comparado a atendimentos esporádicos.',
+    '• A fisioterapia baseada em evidências atua nas causas, não apenas nos sintomas, promovendo saúde a longo prazo.',
+    '• Cada sessão é desenhada de forma progressiva para maximizar ganhos funcionais e qualidade de vida.',
+  ];
+  valorTextos.forEach((txt, i) => {
+    doc.text(txt, M + 5, y + 10 + i * 4);
+  });
+  y += 28;
+
+  // Diretrizes de atendimento
+  y = checkPage(doc, y, 35, M);
+  doc.setTextColor(...DARK);
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Diretrizes de Atendimento', M, y);
+  doc.setFillColor(...GOLD);
+  doc.rect(M, y + 2, 38, 0.8, 'F');
+  y += 8;
+
+  const diretrizes = [
+    { titulo: 'Avaliação Contínua', desc: 'Reavaliações periódicas para ajuste das condutas terapêuticas conforme evolução clínica.' },
+    { titulo: 'Educação em Saúde', desc: 'Orientações sobre prevenção, postura, ergonomia e hábitos que favorecem a recuperação.' },
+    { titulo: 'Exercícios Domiciliares', desc: 'Prescrição personalizada de exercícios para realização nos dias sem sessão presencial.' },
+    { titulo: 'Progressão Individualizada', desc: 'Avanço das fases terapêuticas baseado em critérios clínicos objetivos de cada paciente.' },
+  ];
+
+  diretrizes.forEach(d => {
+    y = checkPage(doc, y, 10, M);
+    doc.setFillColor(248, 249, 252);
+    doc.roundedRect(M, y, CW, 9, 2, 2, 'F');
+    doc.setFontSize(7);
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(...DARK);
+    doc.text(d.titulo, M + 4, y + 4);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...GRAY);
+    doc.setFontSize(6);
+    doc.text(d.desc, M + 4, y + 7.5);
+    y += 11;
+  });
+  y += 4;
+
   // ── Legenda / Como interpretar ──
-  y = checkPage(doc, y + 6, 30, M);
+  y = checkPage(doc, y + 2, 30, M);
 
   doc.setFillColor(245, 248, 255);
   doc.roundedRect(M, y, CW, 32, 3, 3, 'F');

@@ -112,7 +112,7 @@ export default function ProtocoloTecnicas({ tecnicas, faseAtual, protocoloId }: 
           <div className="flex items-center gap-2">
             <BookOpen className="h-4 w-4 text-primary" />
             <p className="text-sm text-muted-foreground">
-              <strong className="text-foreground">Cardápio de {tecnicas.length} técnicas</strong> — selecione as que farão parte do <strong className="text-primary">Tratamento</strong> deste paciente.
+              <strong className="text-foreground">Cardápio de {tecnicas.length} técnicas</strong> — selecione as que farão parte da <strong className="text-primary">Diretriz de Tratamento</strong> deste paciente.
             </p>
           </div>
           <Badge className="bg-primary text-primary-foreground shrink-0">

@@ -75,7 +75,7 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
   doc.text('CORE AXIS PRO', margin, 20);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Protocolo de Tratamento Personalizado', margin, 28);
+  doc.text('Diretriz de Tratamento Personalizada', margin, 28);
 
   doc.setFontSize(9);
   doc.setTextColor(255, 200, 200);
@@ -179,7 +179,7 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
   doc.setTextColor(...CINZA_ESCURO);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'bold');
-  doc.text('PROTOCOLO DE TRATAMENTO – 4 FASES', margin, y);
+  doc.text('DIRETRIZ DE TRATAMENTO – 4 FASES', margin, y);
   y += 8;
 
   const faseCores: [number, number, number][] = [
@@ -368,9 +368,9 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...CINZA_MEDIO);
-    doc.text('Core Axis Pro · Protocolo Personalizado · Documento confidencial', margin, 293);
+    doc.text('Core Axis Pro · Diretriz Personalizada · Documento confidencial', margin, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - margin, 293, { align: 'right' });
   }
 
-  doc.save(`Protocolo_${data.pacienteNome.replace(/\s+/g, '_')}_${data.dataEmissao.replace(/\//g, '-')}.pdf`);
+  doc.save(`Diretriz_${data.pacienteNome.replace(/\s+/g, '_')}_${data.dataEmissao.replace(/\//g, '-')}.pdf`);
 }
