@@ -25,6 +25,14 @@ const FAIXA_DESCS: Record<string, string> = {
   'Extremo': 'Impacto máximo. Requer intervenção urgente.',
 };
 
+const FAIXA_EDUCATIVA: Record<string, string> = {
+  'Leve': 'Bom estado geral. Suas queixas são pontuais e não afetam suas atividades. Continue cuidando da saúde preventivamente.',
+  'Moderado': 'Algumas limitações já estão presentes. O tratamento adequado pode resolver rapidamente. Momento ideal para agir.',
+  'Severo': 'A dor está impactando várias áreas da sua vida. É importante iniciar o tratamento com disciplina e consistência.',
+  'Crítico': 'Comprometimento elevado. Múltiplas dimensões afetadas — funcional, emocional e física. Tratamento prioritário recomendado.',
+  'Extremo': 'Situação que exige atenção imediata. Encaminhamento médico e acompanhamento multidisciplinar são necessários.',
+};
+
 export default function IdFinalGauge({ value, maxValue = 50, compact = false }: Props) {
   const faixaAtual = useMemo(() => {
     return FAIXAS.find(f => value >= f.min && value < f.max) || FAIXAS[FAIXAS.length - 1];
@@ -194,6 +202,50 @@ export default function IdFinalGauge({ value, maxValue = 50, compact = false }: 
               <span key={v} className="text-[9px] text-muted-foreground">{v}</span>
             ))}
           </div>
+        </div>
+      )}
+
+      {/* Educational guide for patients */}
+      {!compact && (
+        <div className="mt-5 w-full max-w-sm space-y-1.5">
+          <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-2">
+            O que cada faixa significa?
+          </p>
+          {FAIXAS.map((f) => {
+            const isActive = f.label === faixaAtual.label;
+            return (
+              <div
+                key={f.label}
+                className={`flex items-start gap-2.5 rounded-lg px-3 py-2 text-xs transition-all ${
+                  isActive
+                    ? 'bg-card border-2 shadow-sm'
+                    : 'opacity-50'
+                }`}
+                style={isActive ? { borderColor: f.color } : undefined}
+              >
+                <div
+                  className="mt-0.5 h-3 w-3 rounded-full shrink-0"
+                  style={{ backgroundColor: f.color }}
+                />
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-bold" style={isActive ? { color: f.color } : undefined}>
+                      {f.label}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">({f.min}–{f.max} pts)</span>
+                    {isActive && (
+                      <span className="ml-auto text-[9px] font-semibold px-1.5 py-0.5 rounded-full" style={{ backgroundColor: f.color, color: 'white' }}>
+                        Você está aqui
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-muted-foreground leading-snug mt-0.5">
+                    {FAIXA_EDUCATIVA[f.label]}
+                  </p>
+                </div>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
