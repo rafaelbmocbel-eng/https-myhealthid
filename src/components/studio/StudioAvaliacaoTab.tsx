@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
+import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 
 interface Props {
   pacienteId: string;
@@ -192,6 +193,31 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           </div>
         </CardContent>
       </Card>
+
+      {/* Índices de Risco Biopsicossocial */}
+      {(() => {
+        if (ultimaId) {
+          return <IndicesRiscoComprometimento scores={ultimaId as any} />;
+        }
+        // Fallback: scores from questionnaire responses
+        if (respostas.length > 0) {
+          const scoresFromResponses: Record<string, number> = {};
+          respostas.forEach((r: any) => {
+            const dados = r.dados_respostas as any;
+            if (!dados) return;
+            Object.entries(dados).forEach(([k, v]) => {
+              if (k.startsWith('score') && typeof v === 'number') {
+                scoresFromResponses[k] = v;
+              }
+            });
+          });
+          if (Object.keys(scoresFromResponses).length > 0) {
+            return <IndicesRiscoComprometimento scores={scoresFromResponses} parcial />;
+          }
+        }
+        return null;
+      })()}
+
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Identidade */}
         <Card className={cn('border transition-all', ultimaId ? 'border-primary/20' : 'border-border')}>
