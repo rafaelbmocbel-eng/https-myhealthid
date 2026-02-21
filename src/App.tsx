@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import MetodoIdentidade from "./pages/MetodoIdentidade";
 import CobZero from "./pages/CobZero";
+import StudioPersonalID from "./pages/StudioPersonalID";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Agenda from "./pages/Agenda";
@@ -32,6 +33,7 @@ const App = () => (
             <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
             <Route path="/cob-zero" element={<CobZero />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/studio-personal-id" element={<StudioPersonalID />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/:id" element={<PacientePerfil />} />

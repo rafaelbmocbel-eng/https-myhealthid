@@ -69,6 +69,13 @@
     --identidade-muted: 345 30% 45%;
     --gradient-identidade: linear-gradient(135deg, hsl(345 55% 32%) 0%, hsl(345 50% 24%) 100%);
 
+    /* Módulo Studio Personal ID — Emerald/Teal */
+    --studio: 165 65% 32%;
+    --studio-light: 165 45% 92%;
+    --studio-foreground: 0 0% 100%;
+    --studio-muted: 165 35% 45%;
+    --gradient-studio: linear-gradient(135deg, hsl(165 65% 32%) 0%, hsl(170 60% 24%) 100%);
+
     /* Sidebar */
     --sidebar-background: 213 55% 16%;
     --sidebar-foreground: 210 20% 90%;
@@ -273,6 +280,10 @@
 
   .bg-gradient-identidade {
     background: var(--gradient-identidade);
+  }
+
+  .bg-gradient-studio {
+    background: var(--gradient-studio);
   }
 
   .shadow-card {
