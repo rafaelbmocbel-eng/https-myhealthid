@@ -97,11 +97,11 @@ export function calcularScoresRC(bloco5: Bloco5Data): { r1: number; r2: number; 
 }
 
 // CÁLCULO SCORE E – Estrutural (Bloco 6)
-// Score E = SOMA de todas as unidades (0-80), não média
-// Cada unidade contribui 0-10, total máximo = 80
+// Cada unidade contribui score/2 diretamente na equação da dor
+// Unidade com 10 = 5 pontos inteiros. Soma direta, sem média.
 export function calcularScoreE(bloco6: Bloco6Data): number {
   if (bloco6.unidades.length === 0) return 0;
-  return bloco6.unidades.reduce((acc, u) => acc + u.score, 0);
+  return bloco6.unidades.reduce((acc, u) => acc + (u.score / 2), 0);
 }
 
 // CÁLCULO ID FINAL
@@ -113,9 +113,8 @@ export function calcularIDFinal(
   const qualidadeRegulacao = 10 - r;
   // Divisor agressivo: R=10 → divisor=0.5 → multiplica por 20x; R=0 → divisor=10 → multiplica por 1x
   const rDivisor = Math.max(qualidadeRegulacao, 0.5);
-  // R também entra como componente direto adicional (peso 0.10) para garantir impacto mesmo com scores baixos
-  // E agora é soma (0-80), peso ajustado de 0.18 para 0.0225 (0.18/8) para manter proporção
-  let idBase = ((e * 0.0225) + (p * 0.25) + (c * 0.25) + (r * 0.12) + (f * 0.10) + (d * 0.10)) * (10 / rDivisor);
+  // E é soma direta de (score/2) por unidade — cada unidade com 10 = 5 pontos inteiros
+  let idBase = (e + (p * 0.25) + (c * 0.25) + (r * 0.12) + (f * 0.10) + (d * 0.10)) * (10 / rDivisor);
 
   const fatoresRisco: string[] = [];
   if (p > 7) { idBase += 3; fatoresRisco.push('Cinesiofobia acentuada (P > 7) → +3'); }
