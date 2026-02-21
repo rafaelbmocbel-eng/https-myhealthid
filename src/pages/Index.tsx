@@ -9,7 +9,7 @@ import {
   ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
   CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
   Zap, Shield, Gauge, MapPin, Stethoscope, Dumbbell, BedDouble,
-  Battery, Briefcase,
+  Battery, Briefcase, Sparkles,
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -275,6 +275,7 @@ export default function Index() {
 
   const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
   const cobZeroPacientes = pacienteServicos.filter(s => s.servico === 'cob_zero').length;
+  const studioPacientes = pacienteServicos.filter(s => s.servico === 'studio_personal_id').length;
 
   const hora = new Date().getHours();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
@@ -317,7 +318,7 @@ export default function Index() {
         </div>
 
         {/* Main modules */}
-        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
+        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
           {/* Método Identidade */}
           <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
@@ -379,6 +380,39 @@ export default function Index() {
               <Button asChild size="sm" className="flex-1 text-white" style={{ background: 'linear-gradient(135deg, hsl(210 80% 45%), hsl(187 76% 45%))' }}>
                 <Link to="/cob-zero">
                   Protocolo <ArrowRight className="h-3.5 w-3.5 ml-1" />
+                </Link>
+              </Button>
+            </div>
+          </div>
+
+          {/* Studio Personal ID */}
+          <div className="clinical-card border-2 border-[hsl(165_65%_32%/0.2)] hover:border-[hsl(165_65%_32%/0.4)] transition-all flex flex-col">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-11 w-11 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0">
+                <Sparkles className="h-6 w-6 text-white" />
+              </div>
+              <div>
+                <h2 className="font-bold text-foreground">Studio Personal ID</h2>
+                <p className="text-xs text-muted-foreground">Treinamento Personalizado</p>
+              </div>
+            </div>
+            <div className="flex-1 space-y-2 mb-4">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Pacientes</span>
+                <span className="font-semibold text-studio">{studioPacientes}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Objetivos & Sessões</span>
+                <span className="text-muted-foreground">Personalizado</span>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button asChild variant="outline" size="sm" className="flex-1">
+                <Link to="/pacientes">Ver Pacientes</Link>
+              </Button>
+              <Button asChild size="sm" className="flex-1 bg-gradient-studio text-white hover:opacity-90">
+                <Link to="/studio-personal-id">
+                  Abrir <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Link>
               </Button>
             </div>

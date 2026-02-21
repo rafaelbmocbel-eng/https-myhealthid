@@ -85,6 +85,12 @@ export default {
   				light: 'hsl(var(--identidade-light))',
   				foreground: 'hsl(var(--identidade-foreground))',
   				muted: 'hsl(var(--identidade-muted))'
+  			},
+  			studio: {
+  				DEFAULT: 'hsl(var(--studio))',
+  				light: 'hsl(var(--studio-light))',
+  				foreground: 'hsl(var(--studio-foreground))',
+  				muted: 'hsl(var(--studio-muted))'
   			}
   		},
   		borderRadius: {
