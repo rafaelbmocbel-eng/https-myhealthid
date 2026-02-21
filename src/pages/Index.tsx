@@ -319,9 +319,9 @@ export default function Index() {
         {/* Main modules */}
         <div className="grid md:grid-cols-3 gap-5 mb-8">
           {/* Método Identidade */}
-          <div className="clinical-card border-2 border-primary/20 hover:border-primary/40 transition-all flex flex-col">
+          <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-gradient-primary flex items-center justify-center shadow-primary shrink-0">
+              <div className="h-11 w-11 rounded-xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0">
                 <Activity className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -343,7 +343,7 @@ export default function Index() {
               <Button asChild variant="outline" size="sm" className="flex-1">
                 <Link to="/pacientes">Ver Pacientes</Link>
               </Button>
-              <Button asChild size="sm" className="flex-1 bg-gradient-primary text-white">
+              <Button asChild size="sm" className="flex-1 bg-gradient-identidade text-white">
                 <Link to="/metodo-identidade">
                   Avaliar <ArrowRight className="h-3.5 w-3.5 ml-1" />
                 </Link>
@@ -468,8 +468,8 @@ export default function Index() {
               {[
                 { label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' },
                 { label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' },
-                { label: 'Protocolos Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
-                { label: 'Protocolos Ativos', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
+                { label: 'Diretrizes Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
+                { label: 'Diretrizes Ativas', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
                 { label: 'Taxa Presença', value: `${statsData.taxaPresenca}%`, icon: CheckCircle2, color: 'text-teal-600' },
               ].map(s => {
