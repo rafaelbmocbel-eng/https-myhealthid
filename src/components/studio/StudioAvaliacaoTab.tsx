@@ -139,64 +139,56 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
 
   return (
     <div className="space-y-4">
-      {/* Link Actions */}
+      {/* Links compactos */}
       <Card className="border-studio/20">
-        <CardContent className="pt-4 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <Link2 className="h-4 w-4 text-studio" />
-            <h4 className="font-bold text-sm">Link do Questionário</h4>
+        <CardContent className="pt-3 pb-3">
+          <div className="flex items-center gap-2 mb-2">
+            <Link2 className="h-3.5 w-3.5 text-studio" />
+            <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Links do Paciente</h4>
           </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="gap-1 text-xs" disabled={gerando}
-              onClick={async () => {
-                if (linkAtivo) copiarLink(linkAtivo.token);
-                else { const novo = await gerarLink(pacienteId); if (novo) copiarLink(novo.token); }
-              }}>
-              {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3" />}
-              {linkAtivo ? 'Copiar Link' : 'Gerar Link'}
-            </Button>
-            {linkAtivo && (
-              <>
-                <Button size="sm" variant="outline" className="gap-1 text-xs"
-                  onClick={() => shareAvaliacaoLink(getLinkUrl(linkAtivo.token), pacienteNome, pacienteTelefone)}>
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
-                </Button>
-                <Badge variant="outline" className="text-[10px]">
-                  Expira em {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias
-                </Badge>
-              </>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Link Auto-Agendamento */}
-      <Card className="border-studio/20">
-        <CardContent className="pt-4 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <CalendarDays className="h-4 w-4 text-studio" />
-            <h4 className="font-bold text-sm">Link de Auto-Agendamento</h4>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button size="sm" variant="outline" className="gap-1 text-xs" disabled={gerandoAgenda}
-              onClick={async () => {
-                if (linkAgendaAtivo) copiarLinkAgenda(linkAgendaAtivo.token);
-                else { const novo = await gerarLinkAgenda(); if (novo) copiarLinkAgenda(novo.token); }
-              }}>
-              {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3" />}
-              {linkAgendaAtivo ? 'Copiar Link' : 'Gerar Link'}
-            </Button>
-            {linkAgendaAtivo && (
-              <>
-                <Button size="sm" variant="outline" className="gap-1 text-xs"
-                  onClick={() => shareAgendaLink(pacienteNome, pacienteTelefone || '', getAgendaUrl(linkAgendaAtivo.token))}>
-                  <MessageCircle className="h-3 w-3" /> WhatsApp
-                </Button>
-                <Badge variant="outline" className="text-[10px]">
-                  Expira em {differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())} dias
-                </Badge>
-              </>
-            )}
+          <div className="space-y-1.5">
+            {/* Questionário */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0">Questionário</span>
+              <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2" disabled={gerando}
+                onClick={async () => {
+                  if (linkAtivo) copiarLink(linkAtivo.token);
+                  else { const novo = await gerarLink(pacienteId); if (novo) copiarLink(novo.token); }
+                }}>
+                {gerando ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Copy className="h-2.5 w-2.5" />}
+                {linkAtivo ? 'Copiar' : 'Gerar'}
+              </Button>
+              {linkAtivo && (
+                <>
+                  <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2"
+                    onClick={() => shareAvaliacaoLink(getLinkUrl(linkAtivo.token), pacienteNome, pacienteTelefone)}>
+                    <MessageCircle className="h-2.5 w-2.5" /> WhatsApp
+                  </Button>
+                  <Badge variant="outline" className="text-[9px] h-5">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</Badge>
+                </>
+              )}
+            </div>
+            {/* Agenda */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0">Agendamento</span>
+              <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2" disabled={gerandoAgenda}
+                onClick={async () => {
+                  if (linkAgendaAtivo) copiarLinkAgenda(linkAgendaAtivo.token);
+                  else { const novo = await gerarLinkAgenda(); if (novo) copiarLinkAgenda(novo.token); }
+                }}>
+                {gerandoAgenda ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Copy className="h-2.5 w-2.5" />}
+                {linkAgendaAtivo ? 'Copiar' : 'Gerar'}
+              </Button>
+              {linkAgendaAtivo && (
+                <>
+                  <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2"
+                    onClick={() => shareAgendaLink(pacienteNome, pacienteTelefone || '', getAgendaUrl(linkAgendaAtivo.token))}>
+                    <MessageCircle className="h-2.5 w-2.5" /> WhatsApp
+                  </Button>
+                  <Badge variant="outline" className="text-[9px] h-5">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</Badge>
+                </>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>
