@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -581,25 +581,20 @@ export default function Agenda() {
                   </div>
                 ))}
 
-                {/* Slot rows */}
+                {/* Slot rows - grid background */}
                 {slots.map((slot, si) => (
-                  <>
+                  <React.Fragment key={`slot-${si}`}>
                     {/* Time label */}
                     <div
-                      key={`label-${si}`}
                       className="border-b border-r text-right pr-2 text-[10px] text-muted-foreground bg-background sticky left-0"
                       style={{ height: SLOT_HEIGHT, paddingTop: 6 }}
                     >
                       {slot.label}
                     </div>
 
-                    {/* Day cells */}
+                    {/* Day cells - background only */}
                     {days.map((day, di) => {
                       const slotStart = setMinutes(setHours(new Date(day), slot.hour), slot.minute);
-                      const dayAgs = getAgForDay(day).filter(ag => {
-                        const s = parseISO(ag.data_inicio);
-                        return getHours(s) === slot.hour && getMinutes(s) === slot.minute;
-                      });
 
                       // Current time indicator
                       const slotMinStart = slot.hour * 60 + slot.minute;
@@ -614,67 +609,84 @@ export default function Agenda() {
                           style={{ height: SLOT_HEIGHT }}
                           onClick={() => openNew(slotStart)}
                         >
-                          {/* Current time line */}
                           {showNowLine && (
-                            <div
-                              className="absolute left-0 right-0 z-20 pointer-events-none"
-                              style={{ top: nowLineTop }}
-                            >
+                            <div className="absolute left-0 right-0 z-20 pointer-events-none" style={{ top: nowLineTop }}>
                               <div className="flex items-center">
                                 <div className="h-2.5 w-2.5 rounded-full bg-destructive shrink-0 -ml-1.5" />
                                 <div className="flex-1 h-px bg-destructive" />
                               </div>
                             </div>
                           )}
-
-                          {/* Click hint */}
                           <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
                             <Plus className="h-3 w-3 text-muted-foreground/50" />
                           </div>
-
-                          {/* Agendamentos starting in this slot */}
-                          {dayAgs.map(ag => {
-                            const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
-                            const dur = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
-                            const h = Math.max((dur / SLOT_MINUTES) * SLOT_HEIGHT - 4, 24);
-                            const pac = ag.pacientes;
-                            const isDraggingThis = dragging?.ag.id === ag.id;
-                            return (
-                              <div
-                                key={ag.id}
-                                onClick={e => { if (!dragging) { e.stopPropagation(); openEdit(ag); } }}
-                                onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
-                                onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
-                                className={cn(
-                                  'absolute left-0.5 right-0.5 top-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none',
-                                  'hover:brightness-95 transition-shadow z-10',
-                                  isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
-                                  sc.bg, sc.border, sc.text
-                                )}
-                                style={{
-                                  height: h,
-                                  ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
-                                }}
-                              >
-                                <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
-                                  {sc.icon}
-                                  <span className="truncate">
-                                    {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
-                                  </span>
-                                </div>
-                                {h > 36 && (
-                                  <div className="text-[9px] opacity-70 truncate mt-0.5">
-                                    {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
-                                  </div>
-                                )}
-                              </div>
-                            );
-                          })}
                         </div>
                       );
                     })}
-                  </>
+                  </React.Fragment>
                 ))}
+
+                {/* Appointments overlay - positioned absolutely per day column */}
+                {/* We use a second grid layer on top for absolute positioning */}
+                <div
+                  className="pointer-events-none"
+                  style={{
+                    display: 'grid',
+                    gridTemplateColumns: `48px repeat(${days.length}, 1fr)`,
+                    position: 'absolute',
+                    top: 0, left: 0, right: 0,
+                    // offset by header height
+                    marginTop: days.length > 0 ? '52px' : '0',
+                  }}
+                >
+                  {/* Empty time-label column */}
+                  <div />
+                  {days.map((day, di) => {
+                    const dayAgs = getAgForDay(day);
+                    const totalHeight = slots.length * SLOT_HEIGHT;
+                    return (
+                      <div key={`overlay-${di}`} className="relative pointer-events-auto" style={{ height: totalHeight }}>
+                        {dayAgs.map(ag => {
+                          const pos = getAgPos(ag);
+                          const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
+                          const pac = ag.pacientes;
+                          const isDraggingThis = dragging?.ag.id === ag.id;
+                          return (
+                            <div
+                              key={ag.id}
+                              onClick={e => { if (!dragging) { e.stopPropagation(); openEdit(ag); } }}
+                              onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
+                              onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
+                              className={cn(
+                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none',
+                                'hover:brightness-95 transition-shadow z-10',
+                                isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
+                                sc.bg, sc.border, sc.text
+                              )}
+                              style={{
+                                top: pos.top,
+                                height: pos.height - 4,
+                                ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
+                              }}
+                            >
+                              <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
+                                {sc.icon}
+                                <span className="truncate">
+                                  {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
+                                </span>
+                              </div>
+                              {pos.height > 40 && (
+                                <div className="text-[9px] opacity-70 truncate mt-0.5">
+                                  {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
           </div>
