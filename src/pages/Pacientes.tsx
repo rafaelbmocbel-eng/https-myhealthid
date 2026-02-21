@@ -244,18 +244,18 @@ export default function Pacientes() {
     <AppLayout>
       <div className="container py-6 max-w-6xl">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+        <div className="flex items-center justify-between mb-6 gap-3">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0">
               <Users className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <h1 className="text-xl font-bold">Meus Pacientes</h1>
-              <p className="text-sm text-muted-foreground">{pacientes.length} pacientes cadastrados</p>
+            <div className="min-w-0">
+              <h1 className="text-lg sm:text-xl font-bold truncate">Meus Pacientes</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">{pacientes.length} cadastrados</p>
             </div>
           </div>
-          <Button onClick={openNew} className="bg-gradient-primary text-white gap-2">
-            <Plus className="h-4 w-4" /> Novo Paciente
+          <Button onClick={openNew} className="bg-gradient-primary text-white gap-2 shrink-0" size="sm">
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
           </Button>
         </div>
 
@@ -288,50 +288,41 @@ export default function Pacientes() {
               const linkAtivo = pLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
               const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
               return (
-                <div key={p.id} className="clinical-card flex items-center gap-4 p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
-                  <div className="h-11 w-11 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
-                    {p.nome[0]}{p.sobrenome?.[0] || ''}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-foreground">{p.nome} {p.sobrenome}</span>
-                      {pServicos.map(s => {
-                        const cfg = SERVICOS.find(x => x.key === s);
-                        return cfg ? (
-                          <Badge key={s} variant="outline" className={cn('text-[10px] h-5', cfg.color)}>{cfg.label}</Badge>
-                        ) : null;
-                      })}
-                      {linkAtivo && (
-                        <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-                          <Link2 className="h-2.5 w-2.5" /> Link ativo · {diasRestantes}d
-                        </Badge>
-                      )}
+                <div key={p.id} className="clinical-card p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
+                  <div className="flex items-center gap-3 sm:gap-4">
+                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                      {p.nome[0]}{p.sobrenome?.[0] || ''}
                     </div>
-                    <div className="flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-                      {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
-                      {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
-                      {p.data_nascimento && (
-                        <span className="flex items-center gap-1">
-                          <Calendar className="h-3 w-3" />
-                          {format(parseISO(p.data_nascimento), 'dd/MM/yyyy', { locale: ptBR })}
-                        </span>
-                      )}
-                      <span className="flex items-center gap-1">
-                        <CalendarDays className="h-3 w-3" />
-                        Cadastrado em {format(parseISO(p.created_at), 'dd/MM/yyyy', { locale: ptBR })}
-                      </span>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
+                        {linkAtivo && (
+                          <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
+                            <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
+                          </Badge>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {pServicos.map(s => {
+                          const cfg = SERVICOS.find(x => x.key === s);
+                          return cfg ? (
+                            <Badge key={s} variant="outline" className={cn('text-[10px] h-5', cfg.color)}>{cfg.label}</Badge>
+                          ) : null;
+                        })}
+                      </div>
+                      <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
+                        {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
+                        {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
+                      </div>
                     </div>
-                  </div>
-                   <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                    <Button variant="outline" size="sm" className="h-8 text-xs gap-1" onClick={() => setLinkModal({ open: true, paciente: p })}>
-                      <Link2 className="h-3 w-3" /> Link
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
-                      <Edit2 className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => handleDelete(p)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
+                        <Edit2 className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => handleDelete(p)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
                   </div>
                 </div>
               );

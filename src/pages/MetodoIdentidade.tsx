@@ -263,11 +263,11 @@ export default function MetodoIdentidade() {
                         </div>
                         <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
                       </div>
-                      <div className="flex items-center gap-2" onClick={e => e.stopPropagation()}>
+                      <div className="flex items-center gap-1 sm:gap-2 shrink-0" onClick={e => e.stopPropagation()}>
                         <Button
                           variant="outline"
-                          size="sm"
-                          className="h-8 text-xs gap-1"
+                          size="icon"
+                          className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3"
                           onClick={async () => {
                             if (linkAtivo) copiarLink(linkAtivo.token);
                             else { const novo = await gerarLink(p.id); if (novo) copiarLink(novo.token); }
@@ -275,24 +275,14 @@ export default function MetodoIdentidade() {
                           disabled={gerando}
                         >
                           {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                          {linkAtivo ? 'Copiar' : 'Gerar link'}
+                          <span className="hidden sm:inline text-xs ml-1">{linkAtivo ? 'Copiar' : 'Link'}</span>
                         </Button>
-                        {linkAtivo && p.telefone && (
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-8 text-xs gap-1 border-green-500 text-green-600 hover:bg-green-50"
-                            onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))}
-                          >
-                            <MessageCircle className="h-3 w-3" />
-                          </Button>
-                        )}
                         <Button
                           size="sm"
                           className="h-8 text-xs bg-gradient-primary text-white gap-1"
                           onClick={() => handleSelectPaciente(p)}
                         >
-                          Abrir <ChevronRight className="h-3 w-3" />
+                          <span className="hidden sm:inline">Abrir</span> <ChevronRight className="h-3 w-3" />
                         </Button>
                       </div>
                     </div>
@@ -339,12 +329,12 @@ export default function MetodoIdentidade() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Sidebar */}
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+          {/* Sidebar - horizontal scroll on mobile, vertical on desktop */}
           <div className="lg:col-span-1">
-            <div className="clinical-card sticky top-24">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-4">Blocos de Avaliação</h3>
-              <div className="space-y-2">
+            <div className="clinical-card lg:sticky lg:top-24 !p-3 sm:!p-6">
+              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3 hidden lg:block">Blocos de Avaliação</h3>
+              <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1 snap-x snap-mandatory lg:snap-none">
                 {blocos.map(bloco => {
                   const Icon = bloco.icon;
                   const isActive = avaliacao.blocoAtual === bloco.id;
@@ -353,21 +343,21 @@ export default function MetodoIdentidade() {
                     <button
                       key={bloco.id}
                       onClick={() => setAvaliacao(prev => ({ ...prev, blocoAtual: bloco.id }))}
-                      className={`w-full text-left block-step ${isActive ? 'active' : isConcluido ? 'completed' : 'pending'}`}
+                      className={`shrink-0 lg:shrink text-left block-step snap-start min-w-[140px] lg:min-w-0 lg:w-full ${isActive ? 'active' : isConcluido ? 'completed' : 'pending'}`}
                     >
-                      <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 sm:gap-3">
                         {isConcluido ? (
-                          <CheckCircle2 className="h-5 w-5 text-success flex-shrink-0" />
+                          <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
                         ) : isActive ? (
-                          <Icon className="h-5 w-5 text-primary flex-shrink-0" />
+                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
                         ) : (
-                          <Circle className="h-5 w-5 text-muted-foreground flex-shrink-0" />
+                          <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
                         )}
                         <div className="min-w-0">
-                          <div className={cn('text-sm font-medium truncate', isActive ? 'text-primary' : isConcluido ? 'text-success' : 'text-foreground')}>
+                          <div className={cn('text-xs sm:text-sm font-medium truncate', isActive ? 'text-primary' : isConcluido ? 'text-success' : 'text-foreground')}>
                             {bloco.label}
                           </div>
-                          <div className="text-xs text-muted-foreground">{bloco.sublabel} · {bloco.time}</div>
+                          <div className="text-[10px] sm:text-xs text-muted-foreground hidden lg:block">{bloco.sublabel} · {bloco.time}</div>
                         </div>
                       </div>
                     </button>

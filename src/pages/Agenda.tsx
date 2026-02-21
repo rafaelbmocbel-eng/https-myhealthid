@@ -146,7 +146,7 @@ export default function Agenda() {
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
   const { toast } = useToast();
 
-  const [viewMode, setViewMode] = useState<ViewMode>('semana');
+  const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [showNewPaciente, setShowNewPaciente] = useState(false);

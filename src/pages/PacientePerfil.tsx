@@ -245,17 +245,17 @@ export default function PacientePerfil() {
 
   return (
     <AppLayout>
-      <div className="container py-6 max-w-5xl">
+      <div className="container py-4 sm:py-6 max-w-5xl px-3 sm:px-6">
         {/* Header */}
-        <div className="flex items-start gap-4 mb-6">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-1" onClick={() => navigate('/pacientes')}>
+        <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
+          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-1 shrink-0" onClick={() => navigate('/pacientes')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-14 w-14 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-lg">
+          <div className="h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-base sm:text-lg">
             {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
           </div>
-          <div className="flex-1">
-            <h1 className="text-2xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h1>
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {(paciente._servicos as string[]).map((s: string) => {
                 const cfg = SERVICOS_MAP[s];
@@ -311,18 +311,18 @@ export default function PacientePerfil() {
 
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue="avaliacoes">
-          <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto gap-1">
-            <TabsTrigger value="avaliacoes" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
-              <Activity className="h-3.5 w-3.5" /> Avaliações & Questionários
+          <TabsList className="bg-secondary p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
+            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
-              <BarChart3 className="h-3.5 w-3.5" /> Evolução
+            <TabsTrigger value="evolucao" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+              <BarChart3 className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evolução</span><span className="sm:hidden">Evol.</span>
             </TabsTrigger>
-            <TabsTrigger value="protocolos" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
-              <ClipboardList className="h-3.5 w-3.5" /> Diretrizes
+            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
             </TabsTrigger>
-            <TabsTrigger value="agenda" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
-              <CalendarDays className="h-3.5 w-3.5" /> Agenda
+            <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+              <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
             </TabsTrigger>
           </TabsList>
 

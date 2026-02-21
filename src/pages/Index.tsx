@@ -281,10 +281,10 @@ export default function Index() {
 
   return (
     <AppLayout>
-      <div className="container py-8 max-w-6xl">
+      <div className="container py-4 sm:py-8 max-w-6xl px-1 sm:px-6">
         {/* Welcome header */}
-        <div className="mb-8">
-          <h1 className="text-2xl font-black text-foreground">
+        <div className="mb-6 sm:mb-8">
+          <h1 className="text-xl sm:text-2xl font-black text-foreground">
             {saudacao}, {profile?.nome || 'Terapeuta'}! 👋
           </h1>
           <p className="text-muted-foreground text-sm mt-1">
@@ -317,7 +317,7 @@ export default function Index() {
         </div>
 
         {/* Main modules */}
-        <div className="grid md:grid-cols-3 gap-5 mb-8">
+        <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-5 mb-6 sm:mb-8">
           {/* Método Identidade */}
           <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">

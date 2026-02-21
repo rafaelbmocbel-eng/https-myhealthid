@@ -55,7 +55,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </header>
         )}
 
-        <main className={cn('flex-1 px-4 pb-8', !isMobile && 'px-6')}>
+        <main className={cn('flex-1 px-3 pb-8 pt-2', !isMobile && 'px-6 pt-0')}>
           {children}
         </main>
       </div>
