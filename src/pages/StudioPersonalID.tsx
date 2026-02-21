@@ -9,28 +9,82 @@ import { useQuery } from '@tanstack/react-query';
 import {
   Sparkles, Users, Search, ChevronRight, Loader2,
   CalendarDays, Target, TrendingUp, BarChart3,
-  Dumbbell, Clock, FileText, Plus, Link2, Copy,
-  Activity, AlignCenter, MessageCircle, ExternalLink,
-  ArrowLeft, Brain, Bed, Shield, Gauge,
+  Dumbbell, Clock, FileText, Plus, Link2,
+  Activity, MessageCircle, ExternalLink,
+  ArrowLeft, AlertTriangle, Bell, Eye,
+  ClipboardList, StickyNote, Ruler,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
-import { differenceInDays, format, parseISO } from 'date-fns';
+import { differenceInDays, format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import { shareAvaliacaoLink } from '@/utils/whatsapp';
+
+// Sub-components
+import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
+import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
+import StudioNotasTab from '@/components/studio/StudioNotasTab';
+import StudioAvaliacaoTab from '@/components/studio/StudioAvaliacaoTab';
 
 export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
-  // Show ALL patients — Studio is cross-service
   const { allPacientes: pacientes, isLoading: loadingPacientes } = usePacientes();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
   const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
   const [searchPac, setSearchPac] = useState('');
+
+  // Stats queries (always called for hook order)
+  const { data: agendamentosHoje = [] } = useQuery({
+    queryKey: ['studio-agenda-hoje', user?.id],
+    queryFn: async () => {
+      const today = startOfDay(new Date());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('*, pacientes(nome, sobrenome)')
+        .eq('terapeuta_id', user!.id)
+        .gte('data_inicio', today.toISOString())
+        .lt('data_inicio', tomorrow.toISOString())
+        .order('data_inicio');
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: avaliacoesPendentes = [] } = useQuery({
+    queryKey: ['studio-avaliacoes-pendentes', user?.id],
+    queryFn: async () => {
+      // Recent unreviewed questionnaire responses (links with responses but no identity assessment)
+      const { data } = await (supabase as any)
+        .from('respostas_avaliacao_paciente')
+        .select('paciente_id, data_preenchimento, link_id, links_avaliacao!inner(terapeuta_id)')
+        .eq('links_avaliacao.terapeuta_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: studioTreinosCount = 0 } = useQuery({
+    queryKey: ['studio-treinos-count', user?.id],
+    queryFn: async () => {
+      const { count } = await (supabase as any)
+        .from('studio_treinos')
+        .select('id', { count: 'exact', head: true })
+        .eq('terapeuta_id', user!.id)
+        .eq('ativo', true);
+      return count || 0;
+    },
+    enabled: !!user,
+  });
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -47,30 +101,76 @@ export default function StudioPersonalID() {
     setShowDashboard(true);
   };
 
-  // Dashboard do paciente selecionado
+  // ─── Student Dashboard (Tab-based) ──────────────────────────────────────────
   if (selectedPacienteId && showDashboard && selectedPaciente) {
     return (
       <AppLayout>
-        <StudioPacienteDashboard
-          paciente={selectedPaciente}
-          userId={user!.id}
-          links={links}
-          gerarLink={gerarLink}
-          copiarLink={copiarLink}
-          getLinkUrl={getLinkUrl}
-          gerando={gerando}
-          onBack={() => { setSelectedPacienteId(null); setShowDashboard(false); }}
-        />
+        <div className="container py-6 max-w-4xl">
+          {/* Header */}
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="ghost" size="icon" onClick={() => { setSelectedPacienteId(null); setShowDashboard(false); }} className="shrink-0">
+              <ArrowLeft className="h-5 w-5" />
+            </Button>
+            <div className="h-12 w-12 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
+              {selectedPaciente.nome[0]}{selectedPaciente.sobrenome?.[0] || ''}
+            </div>
+            <div className="flex-1 min-w-0">
+              <h1 className="text-xl font-black text-foreground truncate">
+                {selectedPaciente.nome} {selectedPaciente.sobrenome}
+              </h1>
+              <p className="text-xs text-muted-foreground">Studio Personal ID</p>
+            </div>
+            <Button variant="outline" size="sm" asChild>
+              <Link to={`/pacientes/${selectedPaciente.id}`}>
+                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
+              </Link>
+            </Button>
+          </div>
+
+          {/* Tabs */}
+          <Tabs defaultValue="avaliacao" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60">
+              <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+                <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+              </TabsTrigger>
+              <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+                <Dumbbell className="h-3.5 w-3.5" /> Treinos
+              </TabsTrigger>
+              <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+                <BarChart3 className="h-3.5 w-3.5" /> Evolução
+              </TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+                <StickyNote className="h-3.5 w-3.5" /> Notas
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="avaliacao" className="mt-4">
+              <StudioAvaliacaoTab pacienteId={selectedPaciente.id} pacienteNome={selectedPaciente.nome} pacienteTelefone={selectedPaciente.telefone} />
+            </TabsContent>
+
+            <TabsContent value="treinos" className="mt-4">
+              <StudioTreinosTab pacienteId={selectedPaciente.id} pacienteNome={selectedPaciente.nome} />
+            </TabsContent>
+
+            <TabsContent value="evolucao" className="mt-4">
+              <StudioEvolucaoTab pacienteId={selectedPaciente.id} />
+            </TabsContent>
+
+            <TabsContent value="notas" className="mt-4">
+              <StudioNotasTab pacienteId={selectedPaciente.id} />
+            </TabsContent>
+          </Tabs>
+        </div>
       </AppLayout>
     );
   }
 
-  // Patient selection screen
+  // ─── Main Dashboard ─────────────────────────────────────────────────────────
   return (
     <AppLayout>
-      <div className="container py-8 max-w-3xl">
+      <div className="container py-6 max-w-4xl">
         {/* Module Header */}
-        <div className="flex items-center gap-4 mb-8">
+        <div className="flex items-center gap-4 mb-6">
           <div className="h-12 w-12 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg">
             <Sparkles className="h-7 w-7 text-white" />
           </div>
@@ -80,595 +180,150 @@ export default function StudioPersonalID() {
           </div>
         </div>
 
-        {/* Feature highlights */}
-        <div className="grid grid-cols-3 gap-3 mb-8">
+        {/* Visão Geral Stats */}
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
           {[
-            { icon: Target, label: 'Objetivos', desc: 'Metas individuais' },
-            { icon: Dumbbell, label: 'Exercícios', desc: 'Biblioteca completa' },
-            { icon: FileText, label: 'Relatórios', desc: 'Evolução detalhada' },
-          ].map(feat => {
-            const Icon = feat.icon;
+            { icon: Users, label: 'Alunos Ativos', value: pacientes.length, color: 'text-studio' },
+            { icon: CalendarDays, label: 'Sessões Hoje', value: agendamentosHoje.length, color: 'text-studio' },
+            { icon: Dumbbell, label: 'Treinos Ativos', value: studioTreinosCount, color: 'text-studio' },
+            { icon: Bell, label: 'Alertas', value: avaliacoesPendentes.length > 0 ? '!' : '0', color: avaliacoesPendentes.length > 0 ? 'text-amber-600' : 'text-studio' },
+          ].map(stat => {
+            const Icon = stat.icon;
             return (
-              <Card key={feat.label} className="border-studio/20 hover:border-studio/40 transition-all">
+              <Card key={stat.label} className="border-studio/10 hover:border-studio/30 transition-all">
                 <CardContent className="pt-4 pb-3 text-center">
-                  <div className="h-10 w-10 rounded-xl bg-studio-light mx-auto mb-2 flex items-center justify-center">
-                    <Icon className="h-5 w-5 text-studio" />
-                  </div>
-                  <div className="font-semibold text-sm text-foreground">{feat.label}</div>
-                  <div className="text-[10px] text-muted-foreground">{feat.desc}</div>
+                  <Icon className={cn('h-5 w-5 mx-auto mb-1', stat.color)} />
+                  <div className="text-2xl font-black text-foreground">{stat.value}</div>
+                  <div className="text-[10px] text-muted-foreground">{stat.label}</div>
                 </CardContent>
               </Card>
             );
           })}
         </div>
 
-        {/* Patient list */}
-        <div className="clinical-card">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">
-                Todos os Pacientes
-              </h3>
-            </div>
-            <Badge variant="outline" className="text-xs">{pacientes.length} pacientes</Badge>
-          </div>
-          <div className="relative mb-4">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar paciente..."
-              className="pl-9"
-              value={searchPac}
-              onChange={e => setSearchPac(e.target.value)}
-            />
-          </div>
-
-          {loadingPacientes ? (
-            <div className="flex items-center justify-center py-12">
-              <Loader2 className="h-6 w-6 animate-spin text-studio" />
-            </div>
-          ) : filteredPac.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <Sparkles className="h-10 w-10 mx-auto mb-2 opacity-30" />
-              <p className="font-medium">Nenhum paciente cadastrado</p>
-              <p className="text-sm mt-1">
-                Cadastre pacientes em <strong>Pacientes</strong> para começar.
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filteredPac.map(p => {
-                const servicos = p.servicos || [];
-                const linkAtivo = getLinkAtivo(p.id);
-                const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
-                return (
-                  <div
-                    key={p.id}
-                    className="flex items-center gap-3 p-3 rounded-xl border hover:border-studio/40 hover:bg-studio-light/30 transition-all cursor-pointer"
-                    onClick={() => handleSelectPaciente(p)}
-                  >
-                    <div className="h-10 w-10 rounded-full bg-gradient-studio flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-md">
-                      {p.nome[0]}{p.sobrenome?.[0] || ''}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
-                        {linkAtivo && (
-                          <Badge variant="outline" className="text-[10px] h-4 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-                            <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1.5 mt-0.5">
-                        <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
-                        {servicos.length > 0 && (
-                          <div className="flex gap-1">
-                            {servicos.includes('metodo_identidade') && (
-                              <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-primary/5 text-primary border-primary/20">ID</Badge>
-                            )}
-                            {servicos.includes('cob_zero') && (
-                              <Badge variant="outline" className="text-[9px] h-3.5 px-1 bg-blue-50 text-blue-600 border-blue-200">COB</Badge>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={async () => {
-                          if (linkAtivo) copiarLink(linkAtivo.token);
-                          else { const novo = await gerarLink(p.id); if (novo) copiarLink(novo.token); }
-                        }}
-                        disabled={gerando}
-                        title="Link Questionário"
-                      >
-                        {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                      </Button>
-                      <Button
-                        size="sm"
-                        className="h-8 text-xs bg-gradient-studio text-white gap-1 hover:opacity-90 shadow-md"
-                        onClick={() => handleSelectPaciente(p)}
-                      >
-                        Abrir <ChevronRight className="h-3 w-3" />
-                      </Button>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      </div>
-    </AppLayout>
-  );
-}
-
-// ─── Patient Dashboard with cross-service data ───────────────────────────
-interface StudioDashboardProps {
-  paciente: any;
-  userId: string;
-  links: any[];
-  gerarLink: (pid: string) => Promise<any>;
-  copiarLink: (token: string) => void;
-  getLinkUrl: (token: string) => string;
-  gerando: boolean;
-  onBack: () => void;
-}
-
-function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLink, getLinkUrl, gerando, onBack }: StudioDashboardProps) {
-  // Fetch Identidade assessments
-  const { data: avaliacoesIdentidade = [] } = useQuery({
-    queryKey: ['studio-av-identidade', paciente.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_identidade')
-        .select('id, paciente_nome, data_avaliacao, id_final, classificacao, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, created_at')
-        .eq('paciente_id', paciente.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data || [];
-    },
-  });
-
-  // Fetch COB ZERO assessments
-  const { data: avaliacoesCobZero = [] } = useQuery({
-    queryKey: ['studio-av-cobzero', paciente.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('id, paciente_nome, data_avaliacao, cobb_angle, lenke_type, risco_level, risco_percentage, score_e, created_at')
-        .eq('paciente_id', paciente.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data || [];
-    },
-  });
-
-  // Fetch agenda links
-  const { data: linksAgenda = [] } = useQuery({
-    queryKey: ['studio-links-agenda', paciente.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('links_agenda_paciente')
-        .select('*')
-        .eq('paciente_id', paciente.id)
-        .eq('status', 'ativo')
-        .order('created_at', { ascending: false })
-        .limit(1);
-      return data || [];
-    },
-  });
-
-  // Fetch upcoming appointments
-  const { data: proximosAgendamentos = [] } = useQuery({
-    queryKey: ['studio-agenda', paciente.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('agendamentos')
-        .select('*')
-        .eq('paciente_id', paciente.id)
-        .gte('data_inicio', new Date().toISOString())
-        .order('data_inicio')
-        .limit(3);
-      return data || [];
-    },
-  });
-
-  // Fetch patient questionnaire responses
-  const { data: respostasQuestionario = [] } = useQuery({
-    queryKey: ['studio-respostas-quest', paciente.id],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('respostas_avaliacao_paciente')
-        .select('id, bloco_numero, data_preenchimento, dados_respostas, numero_tentativa, link_id')
-        .eq('paciente_id', paciente.id)
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
-  const linkAtivo = links.find(l => l.paciente_id === paciente.id && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-  const linkAgendaAtivo = linksAgenda[0];
-  const ultimaIdentidade = avaliacoesIdentidade[0];
-  const ultimaCob = avaliacoesCobZero[0];
-
-  const SCORE_COLORS: Record<string, string> = {
-    E: 'bg-score-e/10 text-score-e border-score-e/20',
-    P: 'bg-score-p/10 text-score-p border-score-p/20',
-    C: 'bg-score-c/10 text-score-c border-score-c/20',
-    F: 'bg-score-f/10 text-score-f border-score-f/20',
-    D: 'bg-score-d/10 text-score-d border-score-d/20',
-    R: 'bg-score-r/10 text-score-r border-score-r/20',
-  };
-
-  return (
-    <div className="container py-8 max-w-4xl">
-      {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="h-14 w-14 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0">
-          <Sparkles className="h-7 w-7 text-white" />
-        </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-2xl font-black text-foreground truncate">
-            {paciente.nome} {paciente.sobrenome}
-          </h1>
-          <p className="text-muted-foreground text-sm">Studio Personal ID — Visão Integrada</p>
-        </div>
-        <div className="flex gap-2 shrink-0">
-          <Button variant="outline" size="sm" asChild>
-            <Link to={`/pacientes/${paciente.id}`}>
-              <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
-            </Link>
-          </Button>
-        </div>
-      </div>
-
-      {/* Quick Links — only questionnaire & WhatsApp */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
-        {/* Link Questionário Identidade */}
-        <Card className="border-studio/20 hover:border-studio/40 transition-all cursor-pointer group"
-          onClick={async () => {
-            if (linkAtivo) copiarLink(linkAtivo.token);
-            else { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }
-          }}
-        >
-          <CardContent className="pt-4 pb-3 text-center">
-            <Link2 className="h-5 w-5 mx-auto mb-1.5 text-studio" />
-            <div className="text-xs font-semibold text-foreground">Questionário ID</div>
-            <div className="text-[10px] text-muted-foreground">
-              {linkAtivo ? 'Copiar link' : 'Gerar link'}
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* WhatsApp Questionário */}
-        {linkAtivo && (
-          <Card className="border-emerald-200 hover:border-emerald-400 transition-all cursor-pointer"
-            onClick={() => shareAvaliacaoLink(getLinkUrl(linkAtivo.token), paciente.nome, paciente.telefone)}
-          >
-            <CardContent className="pt-4 pb-3 text-center">
-              <MessageCircle className="h-5 w-5 mx-auto mb-1.5 text-emerald-600" />
-              <div className="text-xs font-semibold text-foreground">WhatsApp</div>
-              <div className="text-[10px] text-muted-foreground">Enviar questionário</div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* Agenda */}
-        <Link to={`/agenda`} className="block">
-          <Card className="border-studio/20 hover:border-studio/40 transition-all cursor-pointer">
-            <CardContent className="pt-4 pb-3 text-center">
-              <CalendarDays className="h-5 w-5 mx-auto mb-1.5 text-studio" />
-              <div className="text-xs font-semibold text-foreground">Agenda</div>
-              <div className="text-[10px] text-muted-foreground">Agendamentos</div>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
-      {/* Cross-service assessments */}
-      <div className="grid sm:grid-cols-2 gap-4 mb-8">
-        {/* Última Avaliação Identidade */}
-        <Card className={cn('border-2 transition-all', ultimaIdentidade ? 'border-primary/20' : 'border-border')}>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-gradient-identidade flex items-center justify-center shrink-0">
-                <Activity className="h-5 w-5 text-white" />
+        {/* Ações Necessárias */}
+        {avaliacoesPendentes.length > 0 && (
+          <Card className="mb-6 border-amber-200 bg-amber-50/30">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <AlertTriangle className="h-4 w-4 text-amber-600" />
+                <h3 className="font-bold text-sm text-foreground">Ações Necessárias</h3>
+                <Badge className="ml-auto text-[10px] bg-amber-100 text-amber-700">{avaliacoesPendentes.length}</Badge>
               </div>
-              <div>
-                <h3 className="font-bold text-sm text-foreground">Método Identidade</h3>
-                <p className="text-[10px] text-muted-foreground">
-                  {ultimaIdentidade
-                    ? `Última: ${ultimaIdentidade.data_avaliacao}`
-                    : 'Sem avaliação'}
-                </p>
-              </div>
-              {ultimaIdentidade?.classificacao && (
-                <Badge className={cn('ml-auto text-[10px]',
-                  ultimaIdentidade.classificacao === 'LEVE' ? 'bg-emerald-100 text-emerald-700' :
-                  ultimaIdentidade.classificacao === 'MODERADO' ? 'bg-amber-100 text-amber-700' :
-                  ultimaIdentidade.classificacao === 'SEVERO' ? 'bg-orange-100 text-orange-700' :
-                  ultimaIdentidade.classificacao === 'CRÍTICO' ? 'bg-red-100 text-red-700' :
-                  'bg-purple-100 text-purple-700'
-                )}>
-                  {ultimaIdentidade.classificacao}
-                </Badge>
-              )}
-            </div>
-
-            {ultimaIdentidade ? (
-              <>
-                <div className="flex items-center justify-between mb-3 px-1">
-                  <span className="text-sm text-muted-foreground">ID Final</span>
-                  <span className="text-2xl font-black text-foreground">
-                    {Number(ultimaIdentidade.id_final || 0).toFixed(1)}
-                  </span>
-                </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {[
-                    { k: 'E', v: ultimaIdentidade.score_e },
-                    { k: 'P', v: ultimaIdentidade.score_p },
-                    { k: 'C', v: ultimaIdentidade.score_c },
-                    { k: 'F', v: ultimaIdentidade.score_f },
-                    { k: 'D', v: ultimaIdentidade.score_d },
-                    { k: 'R', v: ultimaIdentidade.score_r },
-                  ].map(s => (
-                    <Badge key={s.k} variant="outline" className={cn('text-[10px] font-bold', SCORE_COLORS[s.k])}>
-                      {s.k}: {Number(s.v || 0).toFixed(1)}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {avaliacoesIdentidade.length} avaliação(ões) no total
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                <p className="text-sm">Nenhuma avaliação Identidade registrada</p>
-                <p className="text-xs mt-1">Envie o questionário ao paciente para iniciar</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Última Avaliação COB ZERO */}
-        <Card className={cn('border-2 transition-all', ultimaCob ? 'border-blue-200' : 'border-border')}>
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0">
-                <AlignCenter className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h3 className="font-bold text-sm text-foreground">COB° ZERO</h3>
-                <p className="text-[10px] text-muted-foreground">
-                  {ultimaCob
-                    ? `Última: ${ultimaCob.data_avaliacao}`
-                    : 'Sem avaliação'}
-                </p>
-              </div>
-              {ultimaCob?.risco_level && (
-                <Badge className={cn('ml-auto text-[10px]',
-                  ultimaCob.risco_level === 'BAIXO' ? 'bg-emerald-100 text-emerald-700' :
-                  ultimaCob.risco_level === 'MODERADO' ? 'bg-amber-100 text-amber-700' :
-                  'bg-red-100 text-red-700'
-                )}>
-                  {ultimaCob.risco_level}
-                </Badge>
-              )}
-            </div>
-
-            {ultimaCob ? (
-              <>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Ângulo Cobb</span>
-                    <span className="font-bold text-foreground">{ultimaCob.cobb_angle}°</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Tipo Lenke</span>
-                    <span className="font-bold text-foreground">{ultimaCob.lenke_type || '—'}</span>
-                  </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Risco Progressão</span>
-                    <span className="font-bold text-foreground">{ultimaCob.risco_percentage ? `${Number(ultimaCob.risco_percentage).toFixed(0)}%` : '—'}</span>
-                  </div>
-                  {ultimaCob.score_e != null && (
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">Score E</span>
-                      <Badge variant="outline" className={cn('text-[10px] font-bold', SCORE_COLORS['E'])}>
-                        {Number(ultimaCob.score_e).toFixed(1)}
-                      </Badge>
-                    </div>
-                  )}
-                </div>
-                <div className="mt-3 text-xs text-muted-foreground">
-                  {avaliacoesCobZero.length} avaliação(ões) no total
-                </div>
-              </>
-            ) : (
-              <div className="text-center py-4 text-muted-foreground">
-                <p className="text-sm">Nenhuma avaliação COB° ZERO registrada</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Histórico de Questionários Respondidos */}
-      <Card className="mb-8 border-studio/20">
-        <CardContent className="pt-5 pb-4">
-          <div className="flex items-center gap-2 mb-4">
-            <FileText className="h-4 w-4 text-studio" />
-            <h3 className="font-bold text-sm text-foreground">Questionários Respondidos</h3>
-            <Badge variant="outline" className="ml-auto text-[10px]">
-              {respostasQuestionario.length} resposta(s)
-            </Badge>
-          </div>
-
-          {respostasQuestionario.length > 0 ? (() => {
-            const BLOCO_NAMES: Record<number, string> = {
-              1: 'Anamnese & Dor',
-              3: 'Funcionalidade',
-              4: 'Comportamento',
-              5: 'Regulação',
-            };
-            // Group by link_id (session)
-            const sessions = respostasQuestionario.reduce((acc: Record<string, any[]>, r: any) => {
-              const key = r.link_id;
-              if (!acc[key]) acc[key] = [];
-              acc[key].push(r);
-              return acc;
-            }, {} as Record<string, any[]>);
-            const sessionKeys = Object.keys(sessions);
-
-            return (
-              <div className="space-y-3">
-                {sessionKeys.slice(0, 5).map((linkId, idx) => {
-                  const respostas = sessions[linkId];
-                  const blocos = respostas.map((r: any) => r.bloco_numero).sort();
-                  const dataPreench = respostas[0]?.data_preenchimento;
+              <div className="space-y-2">
+                {/* Group by paciente_id for unique entries */}
+                {[...new Set(avaliacoesPendentes.map((a: any) => a.paciente_id))].slice(0, 3).map((pid: string) => {
+                  const pac = pacientes.find(p => p.id === pid);
+                  if (!pac) return null;
                   return (
-                    <div key={linkId} className="p-3 rounded-xl border bg-muted/30">
-                      <div className="flex items-center justify-between mb-2">
-                        <span className="text-sm font-semibold text-foreground">
-                          Sessão {sessionKeys.length - idx}
-                        </span>
-                        {dataPreench && (
-                          <span className="text-[10px] text-muted-foreground">
-                            {format(parseISO(dataPreench), "dd/MM/yyyy · HH:mm", { locale: ptBR })}
-                          </span>
-                        )}
+                    <div key={pid} className="flex items-center gap-3 p-2 rounded-lg bg-card border">
+                      <div className="h-8 w-8 rounded-full bg-gradient-studio flex items-center justify-center text-white text-xs font-bold">
+                        {pac.nome[0]}
                       </div>
-                      <div className="flex flex-wrap gap-1.5">
-                        {blocos.map((b: number) => (
-                          <Badge key={b} variant="outline" className="text-[10px] bg-studio-light text-studio border-studio/20">
-                            B{b} — {BLOCO_NAMES[b] || `Bloco ${b}`}
-                          </Badge>
-                        ))}
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-foreground">{pac.nome} {pac.sobrenome}</span>
+                        <p className="text-[10px] text-muted-foreground">Questionário respondido — aguardando revisão</p>
                       </div>
-                      {/* Extract key stats from responses if available */}
-                      {respostas.map((r: any) => {
-                        const dados = r.dados_respostas;
-                        if (!dados) return null;
-                        if (r.bloco_numero === 3 && dados.scoreEFI != null) {
-                          return (
-                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
-                              <Badge variant="outline" className="text-[10px] font-bold bg-score-e/10 text-score-e border-score-e/20">
-                                EFI: {Number(dados.scoreEFI).toFixed(1)}
-                              </Badge>
-                            </div>
-                          );
-                        }
-                        if (r.bloco_numero === 4 && dados.scoreP != null) {
-                          return (
-                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
-                              <Badge variant="outline" className="text-[10px] font-bold bg-score-p/10 text-score-p border-score-p/20">
-                                P: {Number(dados.scoreP).toFixed(1)}
-                              </Badge>
-                            </div>
-                          );
-                        }
-                        if (r.bloco_numero === 5 && (dados.scoreR != null || dados.scoreC != null)) {
-                          return (
-                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
-                              {dados.scoreR != null && (
-                                <Badge variant="outline" className="text-[10px] font-bold bg-score-r/10 text-score-r border-score-r/20">
-                                  R: {Number(dados.scoreR).toFixed(1)}
-                                </Badge>
-                              )}
-                              {dados.scoreC != null && (
-                                <Badge variant="outline" className="text-[10px] font-bold bg-score-c/10 text-score-c border-score-c/20">
-                                  C: {Number(dados.scoreC).toFixed(1)}
-                                </Badge>
-                              )}
-                            </div>
-                          );
-                        }
-                        return null;
-                      })}
+                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleSelectPaciente(pac)}>
+                        <Eye className="h-3 w-3" /> Revisar
+                      </Button>
                     </div>
                   );
                 })}
               </div>
-            );
-          })() : (
-            <div className="text-center py-6 text-muted-foreground">
-              <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">Nenhum questionário respondido</p>
-              <p className="text-xs mt-1">Envie o link do questionário ao paciente</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Próximos Agendamentos */}
-      {proximosAgendamentos.length > 0 && (
-        <Card className="mb-8">
-          <CardContent className="pt-5 pb-4">
-            <div className="flex items-center gap-2 mb-3">
-              <CalendarDays className="h-4 w-4 text-studio" />
-              <h3 className="font-bold text-sm text-foreground">Próximos Agendamentos</h3>
-            </div>
-            <div className="space-y-2">
-              {proximosAgendamentos.map((ag: any) => (
-                <div key={ag.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
-                  <div className="h-8 w-8 rounded-lg bg-gradient-studio flex items-center justify-center shrink-0">
-                    <Clock className="h-4 w-4 text-white" />
-                  </div>
-                  <div>
-                    <div className="text-sm font-medium text-foreground">
-                      {format(parseISO(ag.data_inicio), "dd/MM · HH:mm", { locale: ptBR })}
+        {/* Agenda Hoje */}
+        {agendamentosHoje.length > 0 && (
+          <Card className="mb-6">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="h-4 w-4 text-studio" />
+                <h3 className="font-bold text-sm text-foreground">
+                  Agenda Hoje — {format(new Date(), "EEEE, dd/MM", { locale: ptBR })}
+                </h3>
+              </div>
+              <div className="space-y-2">
+                {agendamentosHoje.map((ag: any) => (
+                  <div key={ag.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-studio flex items-center justify-center shrink-0">
+                      <Clock className="h-4 w-4 text-white" />
                     </div>
-                    <div className="text-[10px] text-muted-foreground">{ag.tipo_atendimento || 'Sessão'}</div>
+                    <div className="flex-1">
+                      <div className="text-sm font-medium text-foreground">
+                        {format(parseISO(ag.data_inicio), "HH:mm")} — {(ag.pacientes as any)?.nome || ag.titulo || 'Sessão'}
+                      </div>
+                      <div className="text-[10px] text-muted-foreground">{ag.tipo_atendimento || 'Atendimento'}</div>
+                    </div>
+                    <Badge variant="outline" className={cn('text-[10px]',
+                      ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                      ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                      'bg-muted text-muted-foreground'
+                    )}>{ag.status}</Badge>
                   </div>
-                  <Badge variant="outline" className={cn('ml-auto text-[10px]',
-                    ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                    'bg-muted text-muted-foreground'
-                  )}>
-                    {ag.status}
-                  </Badge>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
-      )}
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Action Cards */}
-      <div className="grid sm:grid-cols-2 gap-4">
-        <Card className="border-2 border-studio/20 hover:border-studio/40 transition-all cursor-pointer group">
-          <CardContent className="pt-6 pb-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-studio flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <Plus className="h-6 w-6 text-white" />
+        {/* Patient List */}
+        <Card>
+          <CardContent className="pt-4 pb-3">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Alunos</h3>
+              </div>
+              <Badge variant="outline" className="text-xs">{pacientes.length}</Badge>
             </div>
-            <div>
-              <h3 className="font-bold text-foreground">Nova Sessão</h3>
-              <p className="text-xs text-muted-foreground">Registrar treino personalizado</p>
+            <div className="relative mb-3">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input placeholder="Buscar aluno..." className="pl-9" value={searchPac} onChange={e => setSearchPac(e.target.value)} />
             </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto group-hover:text-studio transition-colors" />
-          </CardContent>
-        </Card>
 
-        <Card className="border-2 border-studio/20 hover:border-studio/40 transition-all cursor-pointer group">
-          <CardContent className="pt-6 pb-5 flex items-center gap-4">
-            <div className="h-12 w-12 rounded-xl bg-gradient-studio flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-              <BarChart3 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h3 className="font-bold text-foreground">Relatórios</h3>
-              <p className="text-xs text-muted-foreground">Evolução e métricas integradas</p>
-            </div>
-            <ChevronRight className="h-5 w-5 text-muted-foreground ml-auto group-hover:text-studio transition-colors" />
+            {loadingPacientes ? (
+              <div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-studio" /></div>
+            ) : filteredPac.length === 0 ? (
+              <div className="text-center py-10 text-muted-foreground">
+                <Sparkles className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                <p className="font-medium">Nenhum aluno cadastrado</p>
+                <p className="text-sm mt-1">Cadastre em <strong>Pacientes</strong> para começar</p>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                {filteredPac.map(p => {
+                  const linkAtivo = getLinkAtivo(p.id);
+                  return (
+                    <div key={p.id}
+                      className="flex items-center gap-3 p-2.5 rounded-xl border hover:border-studio/40 hover:bg-studio-light/20 transition-all cursor-pointer"
+                      onClick={() => handleSelectPaciente(p)}
+                    >
+                      <div className="h-9 w-9 rounded-full bg-gradient-studio flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md">
+                        {p.nome[0]}{p.sobrenome?.[0] || ''}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
+                        <div className="flex items-center gap-1.5 mt-0.5">
+                          <p className="text-[10px] text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
+                          {linkAtivo && (
+                            <Badge variant="outline" className="text-[9px] h-3.5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-0.5">
+                              <Link2 className="h-2 w-2" /> {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d
+                            </Badge>
+                          )}
+                        </div>
+                      </div>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
-    </div>
+    </AppLayout>
   );
 }

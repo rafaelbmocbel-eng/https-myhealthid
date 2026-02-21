@@ -1176,6 +1176,411 @@ export type Database = {
           },
         ]
       }
+      studio_execucao_exercicios: {
+        Row: {
+          carga_utilizada: number | null
+          created_at: string | null
+          execucao_id: string
+          id: string
+          nome_exercicio: string
+          observacoes: string | null
+          repeticoes_por_serie: Json | null
+          series_realizadas: number | null
+          treino_exercicio_id: string | null
+        }
+        Insert: {
+          carga_utilizada?: number | null
+          created_at?: string | null
+          execucao_id: string
+          id?: string
+          nome_exercicio: string
+          observacoes?: string | null
+          repeticoes_por_serie?: Json | null
+          series_realizadas?: number | null
+          treino_exercicio_id?: string | null
+        }
+        Update: {
+          carga_utilizada?: number | null
+          created_at?: string | null
+          execucao_id?: string
+          id?: string
+          nome_exercicio?: string
+          observacoes?: string | null
+          repeticoes_por_serie?: Json | null
+          series_realizadas?: number | null
+          treino_exercicio_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_execucao_exercicios_execucao_id_fkey"
+            columns: ["execucao_id"]
+            isOneToOne: false
+            referencedRelation: "studio_execucoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_execucao_exercicios_treino_exercicio_id_fkey"
+            columns: ["treino_exercicio_id"]
+            isOneToOne: false
+            referencedRelation: "studio_treino_exercicios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_execucoes: {
+        Row: {
+          completo: boolean | null
+          created_at: string | null
+          data_execucao: string | null
+          duracao_minutos: number | null
+          feedback_aluno: string | null
+          feedback_educador: string | null
+          id: string
+          nota_dor: number | null
+          paciente_id: string
+          terapeuta_id: string
+          treino_id: string
+        }
+        Insert: {
+          completo?: boolean | null
+          created_at?: string | null
+          data_execucao?: string | null
+          duracao_minutos?: number | null
+          feedback_aluno?: string | null
+          feedback_educador?: string | null
+          id?: string
+          nota_dor?: number | null
+          paciente_id: string
+          terapeuta_id: string
+          treino_id: string
+        }
+        Update: {
+          completo?: boolean | null
+          created_at?: string | null
+          data_execucao?: string | null
+          duracao_minutos?: number | null
+          feedback_aluno?: string | null
+          feedback_educador?: string | null
+          id?: string
+          nota_dor?: number | null
+          paciente_id?: string
+          terapeuta_id?: string
+          treino_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_execucoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_execucoes_treino_id_fkey"
+            columns: ["treino_id"]
+            isOneToOne: false
+            referencedRelation: "studio_treinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_medidas: {
+        Row: {
+          braco_direito: number | null
+          braco_esquerdo: number | null
+          cintura: number | null
+          coxa_direita: number | null
+          coxa_esquerda: number | null
+          created_at: string | null
+          data_medida: string | null
+          id: string
+          imc: number | null
+          massa_magra: number | null
+          observacoes: string | null
+          paciente_id: string
+          panturrilha: number | null
+          peitoral: number | null
+          percentual_gordura: number | null
+          peso: number | null
+          quadril: number | null
+          terapeuta_id: string
+        }
+        Insert: {
+          braco_direito?: number | null
+          braco_esquerdo?: number | null
+          cintura?: number | null
+          coxa_direita?: number | null
+          coxa_esquerda?: number | null
+          created_at?: string | null
+          data_medida?: string | null
+          id?: string
+          imc?: number | null
+          massa_magra?: number | null
+          observacoes?: string | null
+          paciente_id: string
+          panturrilha?: number | null
+          peitoral?: number | null
+          percentual_gordura?: number | null
+          peso?: number | null
+          quadril?: number | null
+          terapeuta_id: string
+        }
+        Update: {
+          braco_direito?: number | null
+          braco_esquerdo?: number | null
+          cintura?: number | null
+          coxa_direita?: number | null
+          coxa_esquerda?: number | null
+          created_at?: string | null
+          data_medida?: string | null
+          id?: string
+          imc?: number | null
+          massa_magra?: number | null
+          observacoes?: string | null
+          paciente_id?: string
+          panturrilha?: number | null
+          peitoral?: number | null
+          percentual_gordura?: number | null
+          peso?: number | null
+          quadril?: number | null
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_medidas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_notas: {
+        Row: {
+          conteudo: string
+          created_at: string | null
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string | null
+        }
+        Insert: {
+          conteudo: string
+          created_at?: string | null
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          tipo?: string | null
+        }
+        Update: {
+          conteudo?: string
+          created_at?: string | null
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          tipo?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_notas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_periodizacoes: {
+        Row: {
+          ativa: boolean | null
+          created_at: string | null
+          data_fim: string | null
+          data_inicio: string | null
+          divisao: string | null
+          duracao_semanas: number | null
+          id: string
+          nome: string
+          objetivo: string | null
+          paciente_id: string
+          terapeuta_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativa?: boolean | null
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          divisao?: string | null
+          duracao_semanas?: number | null
+          id?: string
+          nome: string
+          objetivo?: string | null
+          paciente_id: string
+          terapeuta_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativa?: boolean | null
+          created_at?: string | null
+          data_fim?: string | null
+          data_inicio?: string | null
+          divisao?: string | null
+          duracao_semanas?: number | null
+          id?: string
+          nome?: string
+          objetivo?: string | null
+          paciente_id?: string
+          terapeuta_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_periodizacoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_treino_exercicios: {
+        Row: {
+          cadencia: string | null
+          carga_kg: number | null
+          created_at: string | null
+          descanso_segundos: number | null
+          exercicio_id: string | null
+          grupo_muscular: string | null
+          id: string
+          metodo: string | null
+          nome_customizado: string | null
+          ordem: number | null
+          orientacoes: string | null
+          repeticoes: number | null
+          series: number | null
+          treino_id: string
+          updated_at: string | null
+          video_url: string | null
+        }
+        Insert: {
+          cadencia?: string | null
+          carga_kg?: number | null
+          created_at?: string | null
+          descanso_segundos?: number | null
+          exercicio_id?: string | null
+          grupo_muscular?: string | null
+          id?: string
+          metodo?: string | null
+          nome_customizado?: string | null
+          ordem?: number | null
+          orientacoes?: string | null
+          repeticoes?: number | null
+          series?: number | null
+          treino_id: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Update: {
+          cadencia?: string | null
+          carga_kg?: number | null
+          created_at?: string | null
+          descanso_segundos?: number | null
+          exercicio_id?: string | null
+          grupo_muscular?: string | null
+          id?: string
+          metodo?: string | null
+          nome_customizado?: string | null
+          ordem?: number | null
+          orientacoes?: string | null
+          repeticoes?: number | null
+          series?: number | null
+          treino_id?: string
+          updated_at?: string | null
+          video_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_treino_exercicios_exercicio_id_fkey"
+            columns: ["exercicio_id"]
+            isOneToOne: false
+            referencedRelation: "exercicios_biblioteca"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_treino_exercicios_treino_id_fkey"
+            columns: ["treino_id"]
+            isOneToOne: false
+            referencedRelation: "studio_treinos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      studio_treinos: {
+        Row: {
+          ativo: boolean | null
+          created_at: string | null
+          duracao_estimada: string | null
+          frequencia: string | null
+          id: string
+          intensidade: string | null
+          objetivo: string | null
+          ordem: number | null
+          paciente_id: string
+          periodizacao_id: string | null
+          publicado: boolean | null
+          terapeuta_id: string
+          titulo: string
+          updated_at: string | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          created_at?: string | null
+          duracao_estimada?: string | null
+          frequencia?: string | null
+          id?: string
+          intensidade?: string | null
+          objetivo?: string | null
+          ordem?: number | null
+          paciente_id: string
+          periodizacao_id?: string | null
+          publicado?: boolean | null
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string | null
+        }
+        Update: {
+          ativo?: boolean | null
+          created_at?: string | null
+          duracao_estimada?: string | null
+          frequencia?: string | null
+          id?: string
+          intensidade?: string | null
+          objetivo?: string | null
+          ordem?: number | null
+          paciente_id?: string
+          periodizacao_id?: string | null
+          publicado?: boolean | null
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "studio_treinos_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "studio_treinos_periodizacao_id_fkey"
+            columns: ["periodizacao_id"]
+            isOneToOne: false
+            referencedRelation: "studio_periodizacoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tecnicas_tratamento: {
         Row: {
           categoria: string
