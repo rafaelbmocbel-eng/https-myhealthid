@@ -277,6 +277,19 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
     },
   });
 
+  // Fetch patient questionnaire responses
+  const { data: respostasQuestionario = [] } = useQuery({
+    queryKey: ['studio-respostas-quest', paciente.id],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('respostas_avaliacao_paciente')
+        .select('id, bloco_numero, data_preenchimento, dados_respostas, numero_tentativa, link_id')
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+  });
+
   const linkAtivo = links.find(l => l.paciente_id === paciente.id && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
   const linkAgendaAtivo = linksAgenda[0];
   const ultimaIdentidade = avaliacoesIdentidade[0];
@@ -316,9 +329,9 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
         </div>
       </div>
 
-      {/* Quick Links */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
-        {/* Link Questionário */}
+      {/* Quick Links — only questionnaire & WhatsApp */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-8">
+        {/* Link Questionário Identidade */}
         <Card className="border-studio/20 hover:border-studio/40 transition-all cursor-pointer group"
           onClick={async () => {
             if (linkAtivo) copiarLink(linkAtivo.token);
@@ -327,7 +340,7 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
         >
           <CardContent className="pt-4 pb-3 text-center">
             <Link2 className="h-5 w-5 mx-auto mb-1.5 text-studio" />
-            <div className="text-xs font-semibold text-foreground">Questionário</div>
+            <div className="text-xs font-semibold text-foreground">Questionário ID</div>
             <div className="text-[10px] text-muted-foreground">
               {linkAtivo ? 'Copiar link' : 'Gerar link'}
             </div>
@@ -347,23 +360,16 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
           </Card>
         )}
 
-        {/* Avaliação Identidade */}
-        <Card className="border-primary/20 hover:border-primary/40 transition-all cursor-pointer" onClick={() => window.location.href = `/metodo-identidade?paciente=${paciente.id}`}>
-          <CardContent className="pt-4 pb-3 text-center">
-            <Activity className="h-5 w-5 mx-auto mb-1.5 text-primary" />
-            <div className="text-xs font-semibold text-foreground">Identidade</div>
-            <div className="text-[10px] text-muted-foreground">Avaliar</div>
-          </CardContent>
-        </Card>
-
-        {/* COB ZERO */}
-        <Card className="border-blue-200 hover:border-blue-400 transition-all cursor-pointer" onClick={() => window.location.href = `/cob-zero?paciente=${paciente.id}`}>
-          <CardContent className="pt-4 pb-3 text-center">
-            <AlignCenter className="h-5 w-5 mx-auto mb-1.5 text-blue-600" />
-            <div className="text-xs font-semibold text-foreground">COB° ZERO</div>
-            <div className="text-[10px] text-muted-foreground">Protocolo</div>
-          </CardContent>
-        </Card>
+        {/* Agenda */}
+        <Link to={`/agenda`} className="block">
+          <Card className="border-studio/20 hover:border-studio/40 transition-all cursor-pointer">
+            <CardContent className="pt-4 pb-3 text-center">
+              <CalendarDays className="h-5 w-5 mx-auto mb-1.5 text-studio" />
+              <div className="text-xs font-semibold text-foreground">Agenda</div>
+              <div className="text-[10px] text-muted-foreground">Agendamentos</div>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       {/* Cross-service assessments */}
@@ -425,9 +431,7 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
             ) : (
               <div className="text-center py-4 text-muted-foreground">
                 <p className="text-sm">Nenhuma avaliação Identidade registrada</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => window.location.href = `/metodo-identidade?paciente=${paciente.id}`}>
-                  <Activity className="h-3.5 w-3.5 mr-1" /> Iniciar Avaliação
-                </Button>
+                <p className="text-xs mt-1">Envie o questionário ao paciente para iniciar</p>
               </div>
             )}
           </CardContent>
@@ -490,14 +494,118 @@ function StudioPacienteDashboard({ paciente, userId, links, gerarLink, copiarLin
             ) : (
               <div className="text-center py-4 text-muted-foreground">
                 <p className="text-sm">Nenhuma avaliação COB° ZERO registrada</p>
-                <Button variant="outline" size="sm" className="mt-3" onClick={() => window.location.href = `/cob-zero?paciente=${paciente.id}`}>
-                  <AlignCenter className="h-3.5 w-3.5 mr-1" /> Iniciar Protocolo
-                </Button>
               </div>
             )}
           </CardContent>
         </Card>
       </div>
+
+      {/* Histórico de Questionários Respondidos */}
+      <Card className="mb-8 border-studio/20">
+        <CardContent className="pt-5 pb-4">
+          <div className="flex items-center gap-2 mb-4">
+            <FileText className="h-4 w-4 text-studio" />
+            <h3 className="font-bold text-sm text-foreground">Questionários Respondidos</h3>
+            <Badge variant="outline" className="ml-auto text-[10px]">
+              {respostasQuestionario.length} resposta(s)
+            </Badge>
+          </div>
+
+          {respostasQuestionario.length > 0 ? (() => {
+            const BLOCO_NAMES: Record<number, string> = {
+              1: 'Anamnese & Dor',
+              3: 'Funcionalidade',
+              4: 'Comportamento',
+              5: 'Regulação',
+            };
+            // Group by link_id (session)
+            const sessions = respostasQuestionario.reduce((acc: Record<string, any[]>, r: any) => {
+              const key = r.link_id;
+              if (!acc[key]) acc[key] = [];
+              acc[key].push(r);
+              return acc;
+            }, {} as Record<string, any[]>);
+            const sessionKeys = Object.keys(sessions);
+
+            return (
+              <div className="space-y-3">
+                {sessionKeys.slice(0, 5).map((linkId, idx) => {
+                  const respostas = sessions[linkId];
+                  const blocos = respostas.map((r: any) => r.bloco_numero).sort();
+                  const dataPreench = respostas[0]?.data_preenchimento;
+                  return (
+                    <div key={linkId} className="p-3 rounded-xl border bg-muted/30">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-sm font-semibold text-foreground">
+                          Sessão {sessionKeys.length - idx}
+                        </span>
+                        {dataPreench && (
+                          <span className="text-[10px] text-muted-foreground">
+                            {format(parseISO(dataPreench), "dd/MM/yyyy · HH:mm", { locale: ptBR })}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-1.5">
+                        {blocos.map((b: number) => (
+                          <Badge key={b} variant="outline" className="text-[10px] bg-studio-light text-studio border-studio/20">
+                            B{b} — {BLOCO_NAMES[b] || `Bloco ${b}`}
+                          </Badge>
+                        ))}
+                      </div>
+                      {/* Extract key stats from responses if available */}
+                      {respostas.map((r: any) => {
+                        const dados = r.dados_respostas;
+                        if (!dados) return null;
+                        if (r.bloco_numero === 3 && dados.scoreEFI != null) {
+                          return (
+                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
+                              <Badge variant="outline" className="text-[10px] font-bold bg-score-e/10 text-score-e border-score-e/20">
+                                EFI: {Number(dados.scoreEFI).toFixed(1)}
+                              </Badge>
+                            </div>
+                          );
+                        }
+                        if (r.bloco_numero === 4 && dados.scoreP != null) {
+                          return (
+                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
+                              <Badge variant="outline" className="text-[10px] font-bold bg-score-p/10 text-score-p border-score-p/20">
+                                P: {Number(dados.scoreP).toFixed(1)}
+                              </Badge>
+                            </div>
+                          );
+                        }
+                        if (r.bloco_numero === 5 && (dados.scoreR != null || dados.scoreC != null)) {
+                          return (
+                            <div key={r.id} className="mt-2 flex items-center gap-2 text-xs">
+                              {dados.scoreR != null && (
+                                <Badge variant="outline" className="text-[10px] font-bold bg-score-r/10 text-score-r border-score-r/20">
+                                  R: {Number(dados.scoreR).toFixed(1)}
+                                </Badge>
+                              )}
+                              {dados.scoreC != null && (
+                                <Badge variant="outline" className="text-[10px] font-bold bg-score-c/10 text-score-c border-score-c/20">
+                                  C: {Number(dados.scoreC).toFixed(1)}
+                                </Badge>
+                              )}
+                            </div>
+                          );
+                        }
+                        return null;
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            );
+          })() : (
+            <div className="text-center py-6 text-muted-foreground">
+              <FileText className="h-8 w-8 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">Nenhum questionário respondido</p>
+              <p className="text-xs mt-1">Envie o link do questionário ao paciente</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Próximos Agendamentos */}
       {proximosAgendamentos.length > 0 && (
