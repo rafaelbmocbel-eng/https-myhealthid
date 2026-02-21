@@ -18,6 +18,7 @@ import {
   BarChart, Bar,
 } from 'recharts';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 
 interface Paciente {
   id: string;
@@ -47,6 +48,22 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
   const qc = useQueryClient();
   const { avaliacoes, isLoading, deletar } = useAvaliacoesCobZero(paciente.id);
   const [gerando, setGerando] = useState(false);
+
+  // Buscar última avaliação identidade para índices de risco completos
+  const { data: ultimaIdentidade } = useQuery({
+    queryKey: ['cobzero-ultima-identidade', paciente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_identidade')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final')
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!user,
+  });
 
   // Link de avaliação ativo
   const { data: linksAv = [] } = useQuery({
@@ -164,6 +181,17 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
           )}
         </div>
       </div>
+
+      {/* Índices de Risco — combina scores de identidade + COB */}
+      {(ultimaIdentidade || avaliacoes.length > 0) && (
+        <IndicesRiscoComprometimento
+          scores={{
+            ...(ultimaIdentidade || {}),
+            score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
+          } as any}
+          parcial={!ultimaIdentidade}
+        />
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="avaliacoes">
