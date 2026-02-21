@@ -137,9 +137,9 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
             <p className="text-muted-foreground text-sm mt-1">8 Unidades Corporais – estruturas moduladoras da dor</p>
           </div>
           <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score E</div>
+            <div className="text-xs text-muted-foreground">Soma estrutural</div>
             <div className="text-3xl font-bold text-primary">{scoreE.toFixed(1)}</div>
-            <div className="text-xs text-muted-foreground">pts</div>
+            <div className="text-xs text-muted-foreground">pontos</div>
           </div>
         </div>
       </div>
@@ -355,7 +355,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
           <Button variant="outline" onClick={onBack}>
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
-          <span className="text-sm text-muted-foreground">Score E: <strong className="text-primary">{scoreE.toFixed(1)} pts</strong></span>
+          <span className="text-sm text-muted-foreground">Soma: <strong className="text-primary">{scoreE.toFixed(1)} pontos</strong></span>
           <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
             Gerar Relatório ID
             <ChevronRight className="h-4 w-4 ml-1" />
