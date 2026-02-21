@@ -27,78 +27,12 @@ import { gerarProtocolo } from '@/utils/protocolGenerator';
 import { toast } from '@/hooks/use-toast';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { gerarPDFAvaliacao, PDFAvaliacaoData } from '@/utils/pdfAvaliacaoGenerator';
+import IdFinalGauge from '@/components/identidade/IdFinalGauge';
 
 interface Props {
   avaliacao: AvaliacaoIdentidade;
   pacienteId?: string;
   onBack: () => void;
-}
-
-/* ── Gauge SVG Component ─────────────────────────────────────── */
-function GaugeChart({ value, max, classificacao }: { value: number; max: number; classificacao: string }) {
-  const clampedValue = Math.min(value, max);
-  const percentage = clampedValue / max;
-  
-  // Arc from -135° to 135° (270° total)
-  const startAngle = -225;
-  const endAngle = 45;
-  const totalAngle = 270;
-  const currentAngle = startAngle + (percentage * totalAngle);
-  
-  const cx = 120, cy = 120, r = 90;
-  
-  const polarToCartesian = (angle: number) => {
-    const rad = (angle * Math.PI) / 180;
-    return { x: cx + r * Math.cos(rad), y: cy + r * Math.sin(rad) };
-  };
-  
-  const start = polarToCartesian(startAngle);
-  const end = polarToCartesian(endAngle);
-  const current = polarToCartesian(currentAngle);
-  
-  const largeArcBg = totalAngle > 180 ? 1 : 0;
-  const actualArc = percentage * totalAngle;
-  const largeArcFg = actualArc > 180 ? 1 : 0;
-  
-  const bgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcBg} 1 ${end.x} ${end.y}`;
-  const fgPath = `M ${start.x} ${start.y} A ${r} ${r} 0 ${largeArcFg} 1 ${current.x} ${current.y}`;
-  
-  const getGaugeColor = () => {
-    if (value <= 10) return 'hsl(var(--success))';
-    if (value <= 20) return 'hsl(var(--warning))';
-    if (value <= 30) return 'hsl(var(--severity-severo))';
-    return 'hsl(var(--destructive))';
-  };
-
-  const getBadgeStyle = () => {
-    switch (classificacao) {
-      case 'LEVE': return 'bg-green-100 text-green-800 border-green-300';
-      case 'MODERADO': return 'bg-amber-100 text-amber-800 border-amber-300';
-      case 'SEVERO': return 'bg-orange-100 text-orange-800 border-orange-300';
-      case 'CRÍTICO': return 'bg-red-100 text-red-800 border-red-300';
-      case 'EXTREMO': return 'bg-red-600 text-white border-red-700';
-      default: return 'bg-muted text-muted-foreground border-border';
-    }
-  };
-
-  return (
-    <div className="flex flex-col items-center">
-      <svg viewBox="0 0 240 160" className="w-56 h-auto">
-        {/* Background arc */}
-        <path d={bgPath} fill="none" stroke="hsl(var(--border))" strokeWidth="18" strokeLinecap="round" />
-        {/* Foreground arc */}
-        <path d={fgPath} fill="none" stroke={getGaugeColor()} strokeWidth="18" strokeLinecap="round" />
-        {/* Value text */}
-        <text x={cx} y={cy - 5} textAnchor="middle" className="fill-foreground" fontSize="36" fontWeight="900" fontFamily="monospace">
-          {value.toFixed(1)}
-        </text>
-      </svg>
-      <div className={`-mt-2 px-4 py-1.5 rounded-full border-2 font-bold text-sm flex items-center gap-1.5 ${getBadgeStyle()}`}>
-        <AlertTriangle className="h-3.5 w-3.5" />
-        {classificacao}
-      </div>
-    </div>
-  );
 }
 
 /* ── Score Mini Card ─────────────────────────────────────────── */
@@ -427,7 +361,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         <div className="lg:col-span-3 space-y-4">
           <div className="clinical-card">
             <div className="flex flex-col items-center py-4">
-              <GaugeChart value={idAjustado} max={60} classificacao={classificacao} />
+              <IdFinalGauge value={idAjustado} compact />
               
               {alertaCritico && (
                 <div className="mt-4 w-full px-3 py-2 rounded-lg bg-red-100 border border-red-300 text-red-800 text-sm font-medium text-center">
