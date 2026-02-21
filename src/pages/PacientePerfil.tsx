@@ -319,7 +319,7 @@ export default function PacientePerfil() {
               <BarChart3 className="h-3.5 w-3.5" /> Evolução
             </TabsTrigger>
             <TabsTrigger value="protocolos" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
-              <ClipboardList className="h-3.5 w-3.5" /> Protocolos
+              <ClipboardList className="h-3.5 w-3.5" /> Diretrizes
             </TabsTrigger>
             <TabsTrigger value="agenda" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs">
               <CalendarDays className="h-3.5 w-3.5" /> Agenda
@@ -618,10 +618,10 @@ export default function PacientePerfil() {
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
                 <Dumbbell className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Protocolos de Tratamento</h3>
+                <h3 className="font-semibold text-sm">Diretrizes de Tratamento</h3>
               </div>
               <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={() => navigate(`/protocolos?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Novo Protocolo
+                <Plus className="h-3.5 w-3.5" /> Nova Diretriz
               </Button>
             </div>
 
@@ -629,7 +629,7 @@ export default function PacientePerfil() {
             {(avaliacoesId.length > 0 || avaliacoesCob.length > 0) && (
               <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
                 <p className="text-xs text-primary">
-                  💡 O novo protocolo será gerado com base na avaliação mais recente
+                  💡 A nova diretriz será gerada com base na avaliação mais recente
                   {avaliacoesId.length > 0 && ` (Identidade: ${avaliacoesId[0]?.data_avaliacao})`}
                   {avaliacoesCob.length > 0 && ` (COB° ZERO: ${avaliacoesCob[0]?.data_avaliacao})`}
                   {respostasPaciente.length > 0 && ` e ${respostasPaciente.length} questionário(s) remoto(s)`}.
@@ -640,7 +640,7 @@ export default function PacientePerfil() {
             {loadingProto ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : protocolos.length === 0 ? (
-              <EmptyState icon={<ClipboardList />} title="Nenhum protocolo" subtitle="Crie um protocolo de tratamento baseado nas avaliações e questionários atuais." />
+              <EmptyState icon={<ClipboardList />} title="Nenhuma diretriz" subtitle="Crie uma diretriz de tratamento baseada nas avaliações e questionários atuais." />
             ) : (
               <div className="space-y-3">
                 {protocolos.map((proto: any) => {

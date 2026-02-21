@@ -204,7 +204,7 @@ export default function MetodoIdentidade() {
       <AppLayout>
         <div className="container py-8 max-w-3xl">
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-identidade flex items-center justify-center">
               <Activity className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -249,7 +249,7 @@ export default function MetodoIdentidade() {
                       className="flex items-center gap-3 p-3 rounded-xl border hover:border-primary/30 hover:bg-accent/20 transition-all cursor-pointer"
                       onClick={() => handleSelectPaciente(p)}
                     >
-                      <div className="h-10 w-10 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                      <div className="h-10 w-10 rounded-full bg-gradient-identidade flex items-center justify-center shrink-0 text-white font-bold text-sm">
                         {p.nome[0]}{p.sobrenome?.[0] || ''}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -313,7 +313,7 @@ export default function MetodoIdentidade() {
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center gap-3 mb-2">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-gradient-identidade flex items-center justify-center">
               <Activity className="h-6 w-6 text-white" />
             </div>
             <div>
