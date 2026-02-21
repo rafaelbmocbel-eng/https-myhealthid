@@ -26,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { gerarProtocolo } from '@/utils/protocolGenerator';
 import { toast } from '@/hooks/use-toast';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
-import { gerarPDFAvaliacao, PDFAvaliacaoData } from '@/utils/pdfAvaliacaoGenerator';
+import { gerarPDFAvaliacao, PDFAvaliacaoData, PDFEstiloVidaItem, PDFTratamentoTecnica } from '@/utils/pdfAvaliacaoGenerator';
 import IdFinalGauge from '@/components/identidade/IdFinalGauge';
 
 interface Props {
@@ -298,7 +298,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               {salvo ? 'Salvo ✓' : 'Salvar'}
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          <Button variant="outline" size="sm" className="gap-1.5" onClick={async () => {
             const getTopTecidoFn = (u: typeof avaliacao.bloco6.unidades[0]) => {
               const tecidos = [
                 { nome: 'Muscular', score: u.scoreMuscular },
@@ -309,6 +309,72 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               ];
               return tecidos.reduce((max, t) => t.score > max.score ? t : max, tecidos[0]);
             };
+
+            // Build lifestyle alerts
+            const bloco1 = avaliacao.bloco1;
+            const estiloVidaAlertas: PDFEstiloVidaItem[] = [];
+            if (bloco1.atividadeFisica === 'nenhuma') estiloVidaAlertas.push({ label: 'Atividade Física', status: 'critico', mensagem: 'Sedentário — sem atividade física', recomendacao: 'Iniciar caminhadas de 20min, 3×/semana' });
+            else if (bloco1.atividadeFisica === 'leve') estiloVidaAlertas.push({ label: 'Atividade Física', status: 'alerta', mensagem: 'Atividade física insuficiente', recomendacao: 'Aumentar para ≥3×/semana com intensidade moderada' });
+            else estiloVidaAlertas.push({ label: 'Atividade Física', status: 'ok', mensagem: 'Nível de atividade adequado', recomendacao: 'Manter rotina atual' });
+            const agua = bloco1.litrosAgua ?? 2;
+            if (agua < 1) estiloVidaAlertas.push({ label: 'Hidratação', status: 'critico', mensagem: `Apenas ${agua}L/dia — desidratação`, recomendacao: 'Meta: ≥2L/dia' });
+            else if (agua < 2) estiloVidaAlertas.push({ label: 'Hidratação', status: 'alerta', mensagem: `${agua}L/dia — abaixo do ideal`, recomendacao: 'Aumentar para 2-3L/dia' });
+            else estiloVidaAlertas.push({ label: 'Hidratação', status: 'ok', mensagem: `${agua}L/dia — boa hidratação`, recomendacao: 'Manter ingestão hídrica' });
+            if (r1 > 7) estiloVidaAlertas.push({ label: 'Sono', status: 'critico', mensagem: `Sono gravemente comprometido (${r1.toFixed(1)}/10)`, recomendacao: 'Higiene do sono: horário fixo, sem telas 1h antes' });
+            else if (r1 > 4) estiloVidaAlertas.push({ label: 'Sono', status: 'alerta', mensagem: `Sono abaixo do ideal (${r1.toFixed(1)}/10)`, recomendacao: 'Regularizar horário e ambiente escuro/silencioso' });
+            else estiloVidaAlertas.push({ label: 'Sono', status: 'ok', mensagem: 'Sono adequado', recomendacao: 'Manter rotina de sono' });
+            if (bloco1.tabagismo) estiloVidaAlertas.push({ label: 'Tabagismo', status: 'critico', mensagem: 'Fumante ativo — retarda cicatrização', recomendacao: 'Encaminhar para programa de cessação' });
+            if (bloco1.alcool === 'frequente') estiloVidaAlertas.push({ label: 'Álcool', status: 'critico', mensagem: 'Consumo frequente — interfere na recuperação', recomendacao: 'Reduzir para ≤1×/semana' });
+            else if (bloco1.alcool === 'moderado') estiloVidaAlertas.push({ label: 'Álcool', status: 'alerta', mensagem: 'Consumo moderado — atenção', recomendacao: 'Reduzir para ocasional' });
+            if (bloco1.horasSedentario >= 10) estiloVidaAlertas.push({ label: 'Sedentarismo', status: 'critico', mensagem: `${bloco1.horasSedentario}h sentado/dia — risco alto`, recomendacao: 'Pausas ativas a cada 45min' });
+            else if (bloco1.horasSedentario >= 6) estiloVidaAlertas.push({ label: 'Sedentarismo', status: 'alerta', mensagem: `${bloco1.horasSedentario}h sentado/dia — atenção`, recomendacao: 'Incluir pausas de movimento a cada 1h' });
+
+            // Fetch saved treatment directive
+            let tratamentosPorFase: Record<number, PDFTratamentoTecnica[]> | undefined;
+            let objetivoGeral: string | undefined;
+            let perfilDominante: string[] | undefined;
+            let prognose: string | undefined;
+            if (pacienteId) {
+              const { data: protocolos } = await supabase
+                .from('protocolos' as any)
+                .select('*')
+                .eq('paciente_id', pacienteId)
+                .eq('status', 'ativo')
+                .order('created_at', { ascending: false })
+                .limit(1);
+              const prot = (protocolos as any)?.[0];
+              if (prot) {
+                objetivoGeral = prot.objetivo_geral;
+                perfilDominante = prot.perfil_dominante || [];
+                prognose = prot.scores_avaliacao?.prognose;
+                const { data: tratamentos } = await (supabase as any)
+                  .from('protocolo_tratamentos')
+                  .select('*, tecnica:tecnica_id(*)')
+                  .eq('protocolo_id', prot.id)
+                  .eq('ativo', true)
+                  .order('fase_numero');
+                if (tratamentos && tratamentos.length > 0) {
+                  tratamentosPorFase = {};
+                  (tratamentos as any[]).forEach((t: any) => {
+                    const f = t.fase_numero || 1;
+                    if (!tratamentosPorFase![f]) tratamentosPorFase![f] = [];
+                    if (t.tecnica) {
+                      tratamentosPorFase![f].push({
+                        nome: t.tecnica.nome,
+                        categoria: t.tecnica.categoria,
+                        descricao: t.tecnica.descricao,
+                        nivelEvidencia: t.tecnica.nivel_evidencia,
+                        complexidade: t.tecnica.complexidade,
+                        indicacoes: t.tecnica.indicacoes,
+                        contraindicacoes: t.tecnica.contraindicacoes,
+                        observacoes: t.observacoes,
+                      });
+                    }
+                  });
+                }
+              }
+            }
+
             const pdfData: PDFAvaliacaoData = {
               pacienteNome: avaliacao.pacienteNome,
               terapeutaNome: avaliacao.terapeutaNome || 'Terapeuta',
@@ -344,9 +410,14 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
                     { nome: 'Visceral', score: u.scoreVisceral, tecnica: 'Manipulação visceral / Diafragmática' },
                   ].filter(t => t.score > 0).sort((a, b) => b.score - a.score),
                 })),
+              estiloVidaAlertas,
+              tratamentosPorFase,
+              objetivoGeral,
+              perfilDominante,
+              prognose,
             };
             gerarPDFAvaliacao(pdfData);
-            toast({ title: '📄 PDF gerado!', description: 'O download do relatório iniciou.' });
+            toast({ title: '📄 PDF gerado!', description: 'O download do relatório completo iniciou.' });
           }}>
             <Download className="h-3.5 w-3.5" />
             PDF Paciente
