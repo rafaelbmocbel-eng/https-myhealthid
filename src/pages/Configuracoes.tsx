@@ -8,8 +8,9 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Link } from 'react-router-dom';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -56,14 +57,19 @@ export default function Configuracoes() {
   return (
     <AppLayout>
       <div className="container py-8 max-w-2xl">
-        <div className="flex items-center gap-3 mb-8">
-          <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
-            <Settings className="h-6 w-6 text-white" />
+        <div className="flex items-center justify-between mb-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+              <Settings className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
+              <p className="text-muted-foreground text-sm">Gerencie horários de trabalho e dias livres da agenda</p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-            <p className="text-muted-foreground text-sm">Gerencie horários de trabalho e dias livres da agenda</p>
-          </div>
+          <Button asChild variant="outline" className="gap-2">
+            <Link to="/agenda"><CalendarDays className="h-4 w-4" /> Abrir Agenda</Link>
+          </Button>
         </div>
 
         {/* Dias de atendimento */}
@@ -158,6 +164,28 @@ export default function Configuracoes() {
               onChange={e => setForm(f => ({ ...f, intervalo_entre_sessoes: Number(e.target.value) }))}
             />
             <p className="text-[11px] text-muted-foreground mt-1">Tempo livre automático entre cada sessão (0 = sem intervalo)</p>
+          </div>
+        </div>
+
+        {/* Vagas por horário */}
+        <div className="clinical-card mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Users className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Vagas por Horário</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Quantos pacientes podem agendar no <strong>mesmo horário</strong> simultaneamente.
+          </p>
+          <div className="max-w-xs">
+            <Label className="text-xs font-medium mb-1.5 block">Vagas simultâneas</Label>
+            <Input
+              type="number"
+              min={1}
+              max={10}
+              value={form.vagas_por_horario}
+              onChange={e => setForm(f => ({ ...f, vagas_por_horario: Math.max(1, Math.min(10, Number(e.target.value))) }))}
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">Padrão: 1 (atendimento individual)</p>
           </div>
         </div>
 
