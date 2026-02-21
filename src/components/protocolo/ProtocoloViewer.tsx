@@ -136,7 +136,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
         <div className="flex items-start justify-between">
           <div>
             <div className="text-xs opacity-70 uppercase tracking-widest mb-1">
-              Protocolo Baseado em Evidências
+              Diretriz de Tratamento Baseada em Evidências
             </div>
             <h1 className="text-xl font-bold">{protocolo.titulo}</h1>
             <p className="text-sm opacity-80 mt-1">{protocolo.duracao_total} · {protocolo.frequencia}</p>
@@ -222,7 +222,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
       {/* Tabs */}
       <div className="flex gap-1 mb-6 bg-muted rounded-xl p-1">
         {[
-          { key: 'fases' as const, label: 'Fases do Protocolo', icon: Layers },
+          { key: 'fases' as const, label: 'Fases da Diretriz', icon: Layers },
           { key: 'tecnicas' as const, label: 'Cardápio de Técnicas', icon: Brain },
           { key: 'tratamento' as const, label: 'Tratamento', icon: CheckCircle2 },
           { key: 'progressao' as const, label: 'Progressão', icon: TrendingUp },

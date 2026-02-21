@@ -91,7 +91,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
-      toast({ title: 'Protocolo excluído' });
+      toast({ title: 'Diretriz excluída' });
     },
     onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
   });
@@ -190,11 +190,11 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     return (
       <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-medium">Nenhum protocolo criado</p>
+        <p className="font-medium">Nenhuma diretriz criada</p>
         <p className="text-sm mt-1">
           {tipo === 'identidade'
-            ? 'Conclua uma avaliação para gerar um protocolo automaticamente.'
-            : 'Conclua uma avaliação COB° ZERO para gerar um protocolo.'}
+            ? 'Conclua uma avaliação para gerar uma diretriz automaticamente.'
+            : 'Conclua uma avaliação COB° ZERO para gerar uma diretriz.'}
         </p>
       </div>
     );
@@ -207,7 +207,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         <div className="space-y-2">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="h-4 w-4 text-amber-500" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Prontas para Protocolo</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Prontas para Diretriz</span>
             <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{avaliacoesSemProtocolo.length}</Badge>
           </div>
           {avaliacoesSemProtocolo.map((av: any) => {
@@ -297,7 +297,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                    onClick={() => { if (confirm('Excluir este protocolo?')) deleteMutation.mutate(protocolo.id); }}>
+                    onClick={() => { if (confirm('Excluir esta diretriz?')) deleteMutation.mutate(protocolo.id); }}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>

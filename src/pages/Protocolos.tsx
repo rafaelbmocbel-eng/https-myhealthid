@@ -179,7 +179,7 @@ function AnaliseAutomatica({
             <div className="text-xs opacity-70 uppercase tracking-widest mb-1 flex items-center gap-2">
               <Zap className="h-3 w-3" /> Análise Automática Gerada
             </div>
-            <h2 className="text-xl font-bold">Protocolo Personalizado – {pacienteNome}</h2>
+            <h2 className="text-xl font-bold">Diretriz Personalizada – {pacienteNome}</h2>
             <p className="text-sm opacity-80 mt-1">{analise.duracaoTotal} · {analise.frequencia}</p>
           </div>
           <div className="text-right shrink-0 ml-4">
@@ -270,7 +270,7 @@ function AnaliseAutomatica({
       <div>
         <h3 className="font-semibold text-lg mb-3 flex items-center gap-2">
           <ClipboardList className="h-5 w-5 text-primary" />
-          Protocolo em 4 Fases
+          Diretriz em 4 Fases
         </h3>
         <div className="space-y-3">
           {analise.fases.map((fase, idx) => {
@@ -408,8 +408,8 @@ function AnaliseAutomatica({
             <strong className="text-foreground">{totalTecSelecionados}</strong>/{totalTec} técnicas
           </span>
         </div>
-        <p className="text-xs text-muted-foreground mb-3">
-          Clique nos exercícios e técnicas acima para selecionar ou remover os tratamentos mais adequados para este paciente. Apenas os itens selecionados serão incluídos no protocolo final.
+         <p className="text-xs text-muted-foreground mb-3">
+           Clique nos exercícios e técnicas acima para selecionar ou remover os tratamentos mais adequados para este paciente. Apenas os itens selecionados serão incluídos na diretriz final.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button
@@ -418,7 +418,7 @@ function AnaliseAutomatica({
             disabled={salvando || (totalExSelecionados === 0 && totalTecSelecionados === 0)}
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
-            Aceitar e Salvar Protocolo ({totalExSelecionados + totalTecSelecionados} itens)
+            Aceitar e Salvar Diretriz ({totalExSelecionados + totalTecSelecionados} itens)
           </Button>
           <Button variant="outline" onClick={onDescartar} className="gap-2">
             <X className="h-4 w-4" />
@@ -494,7 +494,7 @@ export default function Protocolos() {
       const { error } = await supabase.from('protocolos' as any).delete().eq('id', id);
       if (error) throw error;
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['protocolos'] }); toast({ title: 'Protocolo excluído' }); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['protocolos'] }); toast({ title: 'Diretriz excluída' }); },
     onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
   });
 
@@ -597,7 +597,7 @@ export default function Protocolos() {
           paciente_id: analiseAvaliacao.paciente_id,
           terapeuta_id: user.id,
           avaliacao_id: analiseAvaliacao.id,
-          titulo: `Protocolo Personalizado – ${pacNome}`,
+          titulo: `Diretriz Personalizada – ${pacNome}`,
           objetivo_geral: analise.objetivoGeral,
           duracao_total: analise.duracaoTotal,
           frequencia: analise.frequencia,
@@ -632,11 +632,11 @@ export default function Protocolos() {
 
       qc.invalidateQueries({ queryKey: ['protocolos'] });
       qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo'] });
-      toast({ title: '✅ Protocolo salvo com sucesso!', description: 'Protocolo em 4 fases criado e pronto para uso.' });
+      toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada e pronta para uso.' });
       setAnaliseAvaliacao(null);
     } catch (err: any) {
       console.error(err);
-      toast({ title: 'Erro ao salvar protocolo', description: err.message, variant: 'destructive' });
+      toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });
     } finally {
       setSalvando(false);
     }
@@ -660,8 +660,8 @@ export default function Protocolos() {
               Voltar
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Análise Automática de Protocolo</h1>
-              <p className="text-sm text-muted-foreground">Baseada nos scores da avaliação · {getPacienteNome(analiseAvaliacao.paciente_id)}</p>
+               <h1 className="text-xl font-bold text-foreground">Análise Automática de Diretriz</h1>
+               <p className="text-sm text-muted-foreground">Baseada nos scores da avaliação · {getPacienteNome(analiseAvaliacao.paciente_id)}</p>
             </div>
           </div>
           <AnaliseAutomatica
@@ -703,10 +703,10 @@ export default function Protocolos() {
               <ClipboardList className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Protocolos de Tratamento</h1>
-              <p className="text-muted-foreground text-sm">
-                {protocolos.length} protocolo{protocolos.length !== 1 ? 's' : ''} · {avaliacoesSemProtocolo.length} avaliação{avaliacoesSemProtocolo.length !== 1 ? 'ões' : ''} pendente{avaliacoesSemProtocolo.length !== 1 ? 's' : ''}
-              </p>
+               <h1 className="text-2xl font-bold text-foreground">Diretrizes de Tratamento</h1>
+               <p className="text-muted-foreground text-sm">
+                 {protocolos.length} diretriz{protocolos.length !== 1 ? 'es' : ''} · {avaliacoesSemProtocolo.length} avaliação{avaliacoesSemProtocolo.length !== 1 ? 'ões' : ''} pendente{avaliacoesSemProtocolo.length !== 1 ? 's' : ''}
+               </p>
             </div>
           </div>
           <Button
@@ -723,7 +723,7 @@ export default function Protocolos() {
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-4 w-4 text-amber-500" />
-              <h2 className="font-semibold text-sm text-foreground">Avaliações Prontas para Protocolo</h2>
+              <h2 className="font-semibold text-sm text-foreground">Avaliações Prontas para Diretriz</h2>
               <Badge className="bg-amber-100 text-amber-700 border-0">{avaliacoesSemProtocolo.length}</Badge>
             </div>
             <div className="space-y-2">
@@ -753,8 +753,8 @@ export default function Protocolos() {
                       size="sm"
                       onClick={() => setAnaliseAvaliacao(av)}
                     >
-                      <Zap className="h-3.5 w-3.5" />
-                      Gerar Protocolo
+                       <Zap className="h-3.5 w-3.5" />
+                       Gerar Diretriz
                     </Button>
                   </div>
                 );
@@ -767,7 +767,7 @@ export default function Protocolos() {
         <div className="relative mb-6 max-w-sm">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por paciente ou protocolo..."
+            placeholder="Buscar por paciente ou diretriz..."
             className="pl-10"
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -782,10 +782,10 @@ export default function Protocolos() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-            <h3 className="text-lg font-semibold text-foreground mb-2">Nenhum protocolo encontrado</h3>
-            <p className="text-muted-foreground mb-6">
-              Conclua uma avaliação do Método Identidade para gerar um protocolo automaticamente.
-            </p>
+             <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma diretriz encontrada</h3>
+             <p className="text-muted-foreground mb-6">
+               Conclua uma avaliação do Método Identidade para gerar uma diretriz automaticamente.
+             </p>
             <Button onClick={() => navigate('/metodo-identidade')} className="bg-gradient-primary text-white">
               <Plus className="h-4 w-4 mr-2" />
               Iniciar Avaliação
@@ -878,7 +878,7 @@ export default function Protocolos() {
                         variant="ghost"
                         size="sm"
                         onClick={() => {
-                          if (confirm('Excluir este protocolo?')) deleteMutation.mutate(protocolo.id);
+                          if (confirm('Excluir esta diretriz?')) deleteMutation.mutate(protocolo.id);
                         }}
                         className="text-destructive hover:text-destructive"
                       >

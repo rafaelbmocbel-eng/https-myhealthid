@@ -202,7 +202,7 @@ export function gerarProtocolo(scores: Scores, pacienteNome: string): ProtocoloG
   ];
 
   return {
-    titulo: `Protocolo Personalizado – ${pacienteNome}`,
+    titulo: `Diretriz Personalizada – ${pacienteNome}`,
     objetivo_geral: `Restaurar funcionalidade e reduzir dor (ID ${scores.idFinal.toFixed(1)} → meta <20) através de intervenção terapêutica multidimensional em 12 semanas`,
     perfil_dominante: perfil,
     duracao_total: '12 semanas',
