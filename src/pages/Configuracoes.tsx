@@ -182,8 +182,14 @@ export default function Configuracoes() {
               type="number"
               min={1}
               max={10}
-              value={form.vagas_por_horario}
-              onChange={e => setForm(f => ({ ...f, vagas_por_horario: Math.max(1, Math.min(10, Number(e.target.value))) }))}
+              value={form.vagas_por_horario || ''}
+              onChange={e => {
+                const raw = e.target.value;
+                if (raw === '') { setForm(f => ({ ...f, vagas_por_horario: 0 })); return; }
+                const num = parseInt(raw, 10);
+                if (!isNaN(num)) setForm(f => ({ ...f, vagas_por_horario: Math.min(99, num) }));
+              }}
+              onBlur={() => setForm(f => ({ ...f, vagas_por_horario: Math.max(1, f.vagas_por_horario || 1) }))}
             />
             <p className="text-[11px] text-muted-foreground mt-1">Padrão: 1 (atendimento individual)</p>
           </div>
