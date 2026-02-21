@@ -55,7 +55,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao')
         .eq('paciente_id', paciente.id)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -190,6 +190,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
             score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
           } as any}
           parcial={!ultimaIdentidade}
+          dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
         />
       )}
 

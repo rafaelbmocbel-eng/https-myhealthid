@@ -93,7 +93,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('id, paciente_nome, data_avaliacao, id_final, classificacao, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, created_at')
+        .select('id, paciente_nome, data_avaliacao, id_final, classificacao, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, dados_avaliacao, created_at')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false });
       return data || [];
@@ -197,7 +197,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
       {/* Índices de Risco Biopsicossocial */}
       {(() => {
         if (ultimaId) {
-          return <IndicesRiscoComprometimento scores={ultimaId as any} />;
+          return <IndicesRiscoComprometimento scores={ultimaId as any} dadosAvaliacao={(ultimaId as any)?.dados_avaliacao} />;
         }
         // Fallback: scores from questionnaire responses
         if (respostas.length > 0) {

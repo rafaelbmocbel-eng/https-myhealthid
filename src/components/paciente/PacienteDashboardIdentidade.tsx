@@ -362,7 +362,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
 
       {/* Índices de Risco — de avaliação completa ou questionário parcial */}
       {ultimaAvaliacao ? (
-        <IndicesRiscoComprometimento scores={ultimaAvaliacao as any} />
+        <IndicesRiscoComprometimento scores={ultimaAvaliacao as any} dadosAvaliacao={(ultimaAvaliacao as any)?.dados_avaliacao} />
       ) : scoresParciais ? (
         <IndicesRiscoComprometimento scores={scoresParciais.scores} parcial />
       ) : null}

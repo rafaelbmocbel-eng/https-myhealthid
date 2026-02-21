@@ -502,7 +502,7 @@ export default function PacientePerfil() {
               // Prefer latest evaluation scores, fallback to questionnaire responses
               if (avaliacoesId.length > 0) {
                 const ult = avaliacoesId[0] as any;
-                return <IndicesRiscoComprometimento scores={ult} />;
+                return <IndicesRiscoComprometimento scores={ult} dadosAvaliacao={ult?.dados_avaliacao} />;
               }
               // Check if there are questionnaire responses with scores
               if (respostasPaciente.length > 0) {
