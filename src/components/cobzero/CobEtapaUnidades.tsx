@@ -38,18 +38,18 @@ export default function CobEtapaUnidades({ unidades: initialUnidades, onChange, 
   const updateUnidade = (id: string, updater: (u: UnidadeCobZero) => UnidadeCobZero) => {
     const newU = unidades.map(u => u.id === id ? updater(u) : u);
     setUnidades(newU);
-    const scoreE = newU.reduce((a, u) => a + u.score, 0) / newU.length;
+    const scoreE = newU.reduce((a, u) => a + u.score, 0);
     onChange(newU, scoreE);
   };
 
-  const scoreE = unidades.reduce((a, u) => a + u.score, 0) / unidades.length;
+  const scoreE = unidades.reduce((a, u) => a + u.score, 0);
 
   return (
     <div className="space-y-6">
       <div className="clinical-card">
         <Badge variant="outline" className="text-xs mb-1">Etapa 4</Badge>
         <h2 className="text-xl font-bold">Mapeamento das 8 Unidades Corporais</h2>
-        <p className="text-muted-foreground text-sm mt-1">Score E médio: <strong className="text-primary">{scoreE.toFixed(1)}/10</strong></p>
+        <p className="text-muted-foreground text-sm mt-1">Score E total: <strong className="text-primary">{scoreE.toFixed(1)}/80</strong></p>
       </div>
 
       <div className="grid grid-cols-4 gap-2 mb-2">
