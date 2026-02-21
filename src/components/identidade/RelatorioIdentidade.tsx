@@ -361,7 +361,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         <div className="lg:col-span-3 space-y-4">
           <div className="clinical-card">
             <div className="flex flex-col items-center py-4">
-              <IdFinalGauge value={idAjustado} compact />
+              <IdFinalGauge value={idAjustado} />
               
               {alertaCritico && (
                 <div className="mt-4 w-full px-3 py-2 rounded-lg bg-red-100 border border-red-300 text-red-800 text-sm font-medium text-center">

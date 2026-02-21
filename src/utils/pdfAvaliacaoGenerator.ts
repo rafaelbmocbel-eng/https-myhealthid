@@ -713,39 +713,55 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   });
   y += 4;
 
-  // ── Legenda / Como interpretar ──
-  y = checkPage(doc, y + 2, 30, M);
+  // ── Escala Educativa — O que cada faixa significa ──
+  y = checkPage(doc, y + 2, 65, M);
 
   doc.setFillColor(245, 248, 255);
-  doc.roundedRect(M, y, CW, 32, 3, 3, 'F');
+  doc.roundedRect(M, y, CW, 62, 3, 3, 'F');
 
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(...DARK);
-  doc.text('Como Interpretar este Relatório', M + 5, y + 7);
+  doc.text('O que cada faixa do ID Final significa para você?', M + 5, y + 7);
 
   doc.setFontSize(6.5);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(...GRAY);
+  doc.text('A Equação da Dor (ID Final) mede o impacto total da dor na sua vida, de 0 a 50 pontos.', M + 5, y + 13);
 
-  const legendItems = [
-    { color: GREEN, label: '0–3 Baixo risco', desc: 'Área saudável, manutenção recomendada' },
-    { color: AMBER, label: '4–6 Moderado', desc: 'Atenção necessária, intervenção preventiva' },
-    { color: ORANGE, label: '7–8 Alto risco', desc: 'Intervenção terapêutica prioritária' },
-    { color: RED, label: '9–10 Crítico', desc: 'Prioridade máxima no tratamento' },
+  const faixasEducativas = [
+    { color: GREEN, faixa: 'LEVE (0–10)', desc: 'Bom estado geral. Queixas pontuais que não afetam atividades. Continue cuidando preventivamente.', active: data.classificacao === 'LEVE' },
+    { color: AMBER, faixa: 'MODERADO (10–20)', desc: 'Algumas limitações presentes. Tratamento adequado pode resolver rapidamente. Momento ideal para agir.', active: data.classificacao === 'MODERADO' },
+    { color: ORANGE, faixa: 'SEVERO (20–30)', desc: 'A dor impacta várias áreas. Importante iniciar tratamento com disciplina e consistência.', active: data.classificacao === 'SEVERO' },
+    { color: RED, faixa: 'CRÍTICO (30–40)', desc: 'Comprometimento elevado. Múltiplas dimensões afetadas. Tratamento prioritário recomendado.', active: data.classificacao === 'CRÍTICO' },
+    { color: [148, 51, 234] as C3, faixa: 'EXTREMO (40–50)', desc: 'Atenção imediata necessária. Encaminhamento médico e acompanhamento multidisciplinar.', active: data.classificacao === 'EXTREMO' },
   ];
 
-  legendItems.forEach((item, i) => {
-    const ly = y + 12 + i * 5;
-    doc.setFillColor(...(item.color as unknown as [number, number, number]));
-    doc.circle(M + 8, ly - 0.5, 1.5, 'F');
+  faixasEducativas.forEach((item, i) => {
+    const ly = y + 19 + i * 9;
+    const isActive = item.active;
+
+    if (isActive) {
+      doc.setFillColor(...(item.color as unknown as [number, number, number]));
+      doc.roundedRect(M + 3, ly - 3.5, CW - 6, 8, 2, 2, 'F');
+      doc.setTextColor(...WHITE);
+    } else {
+      doc.setFillColor(...(item.color as unknown as [number, number, number]));
+      doc.circle(M + 8, ly, 1.5, 'F');
+      doc.setTextColor(...DARK);
+    }
+
+    doc.setFontSize(7);
     doc.setFont('helvetica', 'bold');
-    doc.setTextColor(...DARK);
-    doc.text(item.label, M + 13, ly + 0.5);
+    doc.text(item.faixa + (isActive ? '  ← Você está aqui' : ''), isActive ? M + 6 : M + 13, ly + 1);
     doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...GRAY);
-    doc.text(item.desc, M + 45, ly + 0.5);
+    doc.setFontSize(6);
+    if (isActive) doc.setTextColor(255, 255, 255);
+    else doc.setTextColor(...GRAY);
+    doc.text(item.desc, isActive ? M + 6 : M + 13, ly + (isActive ? 4 : 4.5));
   });
+
+  y += 68;
 
   // ── Footer on all pages ──
   const totalPages = (doc as any).internal.getNumberOfPages();
