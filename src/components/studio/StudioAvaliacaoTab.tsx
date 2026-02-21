@@ -1,6 +1,9 @@
-import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
+import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -8,9 +11,10 @@ import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Activity, AlignCenter, Link2, MessageCircle, FileText, Loader2, Copy,
+  Activity, AlignCenter, Link2, MessageCircle, FileText, Loader2, Copy, CalendarDays,
 } from 'lucide-react';
-import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import { getAgendaUrl } from '@/utils/linkUrls';
 
 interface Props {
   pacienteId: string;
@@ -28,7 +32,60 @@ const SCORE_COLORS: Record<string, string> = {
 };
 
 export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteTelefone }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+
+  // Agenda links
+  const { data: linksAgenda = [] } = useQuery({
+    queryKey: ['links_agenda_paciente', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('links_agenda_paciente')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: false });
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const linkAgendaAtivo = linksAgenda.find((l: any) => l.paciente_id === pacienteId && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+
+  const gerarLinkAgenda = async () => {
+    if (!user) return;
+    setGerandoAgenda(true);
+    try {
+      await supabase
+        .from('links_agenda_paciente')
+        .update({ status: 'cancelado' } as any)
+        .eq('paciente_id', pacienteId)
+        .eq('terapeuta_id', user.id)
+        .eq('status', 'ativo');
+
+      const { data, error } = await supabase
+        .from('links_agenda_paciente')
+        .insert({ paciente_id: pacienteId, terapeuta_id: user.id } as any)
+        .select()
+        .single();
+
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['links_agenda_paciente'] });
+      toast({ title: 'Link de agenda gerado! ✅', description: 'Válido por 90 dias.' });
+      return data;
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoAgenda(false);
+    }
+  };
+
+  const copiarLinkAgenda = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link de agenda copiado! 📋' });
+  };
 
   const { data: avaliacoesIdentidade = [] } = useQuery({
     queryKey: ['studio-av-identidade', pacienteId],
@@ -113,7 +170,36 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
         </CardContent>
       </Card>
 
-      {/* Cross-service Scores */}
+      {/* Link Auto-Agendamento */}
+      <Card className="border-studio/20">
+        <CardContent className="pt-4 pb-3">
+          <div className="flex items-center gap-2 mb-3">
+            <CalendarDays className="h-4 w-4 text-studio" />
+            <h4 className="font-bold text-sm">Link de Auto-Agendamento</h4>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button size="sm" variant="outline" className="gap-1 text-xs" disabled={gerandoAgenda}
+              onClick={async () => {
+                if (linkAgendaAtivo) copiarLinkAgenda(linkAgendaAtivo.token);
+                else { const novo = await gerarLinkAgenda(); if (novo) copiarLinkAgenda(novo.token); }
+              }}>
+              {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Copy className="h-3 w-3" />}
+              {linkAgendaAtivo ? 'Copiar Link' : 'Gerar Link'}
+            </Button>
+            {linkAgendaAtivo && (
+              <>
+                <Button size="sm" variant="outline" className="gap-1 text-xs"
+                  onClick={() => shareAgendaLink(pacienteNome, pacienteTelefone || '', getAgendaUrl(linkAgendaAtivo.token))}>
+                  <MessageCircle className="h-3 w-3" /> WhatsApp
+                </Button>
+                <Badge variant="outline" className="text-[10px]">
+                  Expira em {differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())} dias
+                </Badge>
+              </>
+            )}
+          </div>
+        </CardContent>
+      </Card>
       <div className="grid sm:grid-cols-2 gap-3">
         {/* Identidade */}
         <Card className={cn('border transition-all', ultimaId ? 'border-primary/20' : 'border-border')}>
