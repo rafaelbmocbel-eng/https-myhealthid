@@ -109,7 +109,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
   const updateUnidade = (id: string, updater: (u: UnidadeCorporal) => UnidadeCorporal) => {
     const newUnidades = unidades.map(u => u.id === id ? updater(u) : u);
     setUnidades(newUnidades);
-    const scoreE = newUnidades.reduce((acc, u) => acc + u.score, 0) / newUnidades.length;
+    const scoreE = newUnidades.reduce((acc, u) => acc + (u.score / 2), 0);
     onChange({ unidades: newUnidades, scoreE });
   };
 
@@ -119,7 +119,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
     return Math.round((marked / totalItems) * 10 * 10) / 10;
   };
 
-  const scoreE = unidades.reduce((acc, u) => acc + u.score, 0) / unidades.length;
+  const scoreE = unidades.reduce((acc, u) => acc + (u.score / 2), 0);
 
   // Build ucScoreMap for avatar
   const ucScoreMap = Object.fromEntries(unidades.map(u => [u.id, u.score]));
@@ -139,7 +139,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
           <div className="text-right">
             <div className="text-xs text-muted-foreground">Score E</div>
             <div className="text-3xl font-bold text-primary">{scoreE.toFixed(1)}</div>
-            <div className="text-xs text-muted-foreground">/10</div>
+            <div className="text-xs text-muted-foreground">pts</div>
           </div>
         </div>
       </div>
@@ -355,7 +355,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
           <Button variant="outline" onClick={onBack}>
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
-          <span className="text-sm text-muted-foreground">Score E: <strong className="text-primary">{scoreE.toFixed(1)}/10</strong></span>
+          <span className="text-sm text-muted-foreground">Score E: <strong className="text-primary">{scoreE.toFixed(1)} pts</strong></span>
           <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
             Gerar Relatório ID
             <ChevronRight className="h-4 w-4 ml-1" />
