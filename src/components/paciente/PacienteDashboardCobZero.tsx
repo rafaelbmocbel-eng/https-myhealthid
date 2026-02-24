@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell } from 'lucide-react';
+import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -11,6 +11,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format, parseISO } from 'date-fns';
+import { calcularTerrenos } from '@/utils/calculations';
 import { ptBR } from 'date-fns/locale';
 import { AvaliacaoCobZero } from '@/types/cobzero';
 import {
@@ -61,6 +62,56 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         .limit(1)
         .maybeSingle();
       return data;
+    },
+    enabled: !!user,
+  });
+
+  // Buscar última resposta de questionário para terreno
+  const { data: questionnaireData } = useQuery({
+    queryKey: ['cobzero-questionnaire-data', paciente.id],
+    queryFn: async () => {
+      const { data: links } = await supabase
+        .from('links_avaliacao')
+        .select('id')
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false });
+
+      if (!links || links.length === 0) return null;
+
+      const { data: respostas } = await supabase
+        .from('respostas_avaliacao_paciente')
+        .select('*')
+        .in('link_id', links.map(l => l.id))
+        .order('created_at', { ascending: false });
+
+      if (!respostas || respostas.length === 0) return null;
+
+      const blocos: Record<number, any> = {};
+      const scores: Record<string, number> = {};
+
+      respostas.forEach(r => {
+        const d = r.dados_respostas as any;
+        if (!blocos[r.bloco_numero]) blocos[r.bloco_numero] = d;
+        Object.entries(d || {}).forEach(([k, v]) => {
+          if (k.startsWith('score') && typeof v === 'number') scores[k] = v;
+        });
+      });
+
+      return { blocos, scores };
+    },
+    enabled: !!user,
+  });
+
+  const { data: ultimaMedidaStudio } = useQuery({
+    queryKey: ['cobzero-ultima-medida-studio', paciente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('studio_medidas')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .order('data_medida', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
     },
     enabled: !!user,
   });
@@ -192,6 +243,76 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
           parcial={!ultimaIdentidade}
           dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
         />
+      )}
+
+      {/* Perfil de Terreno Integrado */}
+      {questionnaireData?.blocos[1] && questionnaireData?.blocos[4] && questionnaireData?.blocos[5] && (() => {
+        const terrenos = calcularTerrenos(questionnaireData.blocos[1], questionnaireData.blocos[4], questionnaireData.blocos[5], questionnaireData.scores.scoreD || 0);
+        return (
+          <div className="clinical-card border-2 border-primary/10 bg-gradient-to-br from-card to-primary/5">
+            <div className="flex flex-col md:flex-row items-center gap-6">
+              <div className="flex-1 space-y-3">
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <PersonStanding className="h-4 w-4 text-primary" />
+                  Terreno Biopsicossocial (Baseado no Questionário)
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-1">
+                      <span className="font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-green-500" style={{ width: `${terrenos.porcentagemMod}%` }} />
+                    </div>
+                  </div>
+                  <div>
+                    <div className="flex justify-between text-[10px] mb-1">
+                      <span className="font-bold text-red-500">Fixos ({terrenos.porcentagemNaoMod}%)</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                      <div className="h-full bg-red-400" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
+                    </div>
+                  </div>
+                </div>
+                <p className="text-[10px] text-muted-foreground">
+                  Fator Amplificador de Sintomas: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
+                </p>
+              </div>
+              <div className="relative w-20 h-20 shrink-0 flex items-center justify-center bg-card rounded-full border-2 border-muted overflow-hidden">
+                <PersonStanding className="h-10 w-10 text-primary opacity-50" />
+                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle cx="40" cy="40" r="37" className="stroke-green-500 fill-none" strokeWidth="3" strokeDasharray="233" strokeDashoffset={233 - (233 * terrenos.porcentagemMod) / 100} />
+                  <circle cx="40" cy="40" r="33" className="stroke-red-400 fill-none" strokeWidth="2" strokeDasharray="207" strokeDashoffset={207 - (207 * terrenos.porcentagemNaoMod) / 100} />
+                </svg>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
+      {/* Studio Personal Integration Card */}
+      {ultimaMedidaStudio && (
+        <div className="clinical-card border-l-4 border-l-emerald-500 bg-emerald-50/20">
+          <div className="flex items-center gap-2 mb-2">
+            <Dumbbell className="h-4 w-4 text-emerald-600" />
+            <span className="text-xs font-bold text-emerald-900">Última Composição Corporal (Studio)</span>
+            <Badge variant="outline" className="ml-auto text-[10px] h-4 bg-white">{format(parseISO(ultimaMedidaStudio.data_medida), 'dd/MM/yy', { locale: ptBR })}</Badge>
+          </div>
+          <div className="flex gap-4">
+            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.peso}kg</div>
+              <div className="text-[9px] text-muted-foreground uppercase">Peso</div>
+            </div>
+            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.percentual_gordura}%</div>
+              <div className="text-[9px] text-muted-foreground uppercase">% Gord.</div>
+            </div>
+            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.imc || '—'}</div>
+              <div className="text-[9px] text-muted-foreground uppercase">IMC</div>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* Tabs */}

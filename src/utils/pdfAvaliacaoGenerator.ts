@@ -56,6 +56,21 @@ const ORANGE = [240, 120, 40] as const;
 
 type C3 = readonly [number, number, number];
 
+// Logo My Health ID (Base64 placeholder for now, ideally passed as prop or from asset)
+// Using a simplified vector drawing function or a placeholder image
+async function drawLogo(doc: jsPDF, x: number, y: number, size: number) {
+  // Simple circular logo representation like LogoIcon.tsx
+  doc.setFillColor(28, 55, 83); // Navy background
+  doc.circle(x + size / 2, y + size / 2, size / 2, 'F');
+
+  doc.setFillColor(234, 170, 20); // Gold inner circle
+  doc.circle(x + size / 2, y + size / 2, size / 3, 'F');
+
+  doc.setDrawColor(255, 255, 255);
+  doc.setLineWidth(0.5);
+  doc.circle(x + size / 2, y + size / 2, size / 2, 'S');
+}
+
 function checkPage(doc: jsPDF, y: number, needed: number, margin: number): number {
   if (y + needed > 275) { doc.addPage(); return margin + 5; }
   return y;
@@ -205,17 +220,21 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setFillColor(...GOLD);
   doc.rect(0, 48, W, 2, 'F');
 
-  // Title
+  // Logo & Title
+  await drawLogo(doc, M, 10, 16);
   doc.setTextColor(...WHITE);
-  doc.setFontSize(20);
+  doc.setFontSize(18);
   doc.setFont('helvetica', 'bold');
-  doc.text('My Health ID', M, 18);
+  doc.text('MY HEALTH', M + 20, 18);
+  doc.setTextColor(...GOLD);
+  doc.text('ID', M + 62, 18);
+
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 200, 225);
-  doc.text('Relatório de Avaliação Multidimensional da Dor', M, 26);
+  doc.text('Relatório de Avaliação Multidimensional da Dor', M + 20, 24);
   doc.setFontSize(8);
-  doc.text(`${data.dataAvaliacao}  ·  Terapeuta: ${data.terapeutaNome}`, M, 33);
+  doc.text(`${data.dataAvaliacao}  ·  Terapeuta: ${data.terapeutaNome}`, M + 20, 30);
 
   // ID Score on header
   doc.setTextColor(...WHITE);
@@ -325,10 +344,12 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setFillColor(...GOLD);
   doc.rect(0, 12, W, 1, 'F');
   doc.setTextColor(...WHITE);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('My Health ID — Análise Detalhada', M, 8);
-  doc.text(data.pacienteNome, W - M, 8, { align: 'right' });
+  doc.text('MY HEALTH ID', M, 8);
+  doc.setFontSize(8);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Análise Detalhada  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
 
   y = 20;
 
@@ -513,10 +534,10 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setFillColor(...GOLD);
   doc.rect(0, 12, W, 1, 'F');
   doc.setTextColor(...WHITE);
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setFont('helvetica', 'bold');
-  doc.text('My Health ID — Plano de Tratamento', M, 8);
-  doc.text(data.pacienteNome, W - M, 8, { align: 'right' });
+  doc.text('MY HEALTH ID', M, 8);
+  doc.text(`Plano de Tratamento  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
 
   y = 20;
 
@@ -660,10 +681,10 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
     doc.setFillColor(...GOLD);
     doc.rect(0, 12, W, 1, 'F');
     doc.setTextColor(...WHITE);
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setFont('helvetica', 'bold');
-    doc.text('My Health ID — Diretriz de Tratamento', M, 8);
-    doc.text(data.pacienteNome, W - M, 8, { align: 'right' });
+    doc.text('MY HEALTH ID', M, 8);
+    doc.text(`Diretriz de Tratamento  ·  ${data.pacienteNome}`, W - M, 8, { align: 'right' });
 
     y = 20;
 
@@ -832,7 +853,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
 
   // Opção 3x/semana
   const optionW = (CW - 6) / 2;
-  
+
   // Option 1: 3x/semana (Recomendado)
   doc.setFillColor(234, 170, 20);
   doc.roundedRect(M, y, optionW, 42, 3, 3, 'F');
@@ -874,7 +895,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.text('Acompanhamento regular', ox2 + optionW / 2, y + 35, { align: 'center' });
   doc.setFont('helvetica', 'bold');
   doc.text(`Duração estimada: ${data.duracao ? '10-14 semanas' : '12-16 semanas'}`, ox2 + optionW / 2, y + 40, { align: 'center' });
-  
+
   y += 48;
 
   // Frases profissionais sobre valor do tratamento
@@ -884,7 +905,7 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
   doc.setDrawColor(...NAVY);
   doc.setLineWidth(0.3);
   doc.roundedRect(M, y, CW, 22, 3, 3, 'S');
-  
+
   doc.setTextColor(...NAVY);
   doc.setFontSize(7.5);
   doc.setFont('helvetica', 'bold');
@@ -993,8 +1014,11 @@ export async function gerarPDFAvaliacao(data: PDFAvaliacaoData): Promise<void> {
     doc.rect(0, 287, W, 10, 'F');
     doc.setFontSize(6);
     doc.setTextColor(180, 200, 225);
-    doc.text('My Health ID · Relatório de Avaliação · Documento confidencial', M, 292);
-    doc.text(`Página ${i}/${totalPages}`, W - M, 292, { align: 'right' });
+    doc.setFont('helvetica', 'bold');
+    doc.text('MY HEALTH ID', M, 292);
+    doc.setFont('helvetica', 'normal');
+    doc.text('·  Relatório de Avaliação  ·  Documento confidencial', M + 18, 292);
+    doc.text(`Página ${i} de ${totalPages}`, W - M, 292, { align: 'right' });
   }
 
   doc.save(`MyHealthID_Avaliacao_${data.pacienteNome.replace(/\s+/g, '_')}_${data.dataAvaliacao.replace(/\//g, '-')}.pdf`);

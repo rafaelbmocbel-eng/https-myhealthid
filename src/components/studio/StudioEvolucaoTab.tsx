@@ -9,8 +9,12 @@ import { format, parseISO, differenceInDays, startOfMonth, endOfMonth, eachDayOf
 import { ptBR } from 'date-fns/locale';
 import {
   Plus, Ruler, TrendingUp, TrendingDown, Save, Loader2,
-  CalendarDays, CheckCircle2, XCircle, Circle,
+  CalendarDays, CheckCircle2, XCircle, Circle
 } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
 
 interface Props {
   pacienteId: string;
@@ -27,6 +31,10 @@ export default function StudioEvolucaoTab({ pacienteId }: Props) {
     coxa_direita: '', coxa_esquerda: '', peitoral: '', panturrilha: '',
     observacoes: '',
   });
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+
 
   const handleSave = async () => {
     const payload: any = { paciente_id: pacienteId };
@@ -186,6 +194,7 @@ export default function StudioEvolucaoTab({ pacienteId }: Props) {
           )}
         </CardContent>
       </Card>
+
     </div>
   );
 }

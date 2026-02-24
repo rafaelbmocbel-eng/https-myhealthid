@@ -52,12 +52,12 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
       }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-center h-20 shrink-0 px-3">
-        <Link to="/" className="flex items-center gap-3 min-w-0">
-          <LogoIcon size={38} />
+      <div className="flex items-center justify-center h-24 shrink-0 px-4">
+        <Link to="/" className="flex items-center gap-4 min-w-0 group">
+          <LogoIcon size={collapsed ? 44 : 52} glow />
           {!collapsed && (
-            <div className="min-w-0">
-              <div className="text-xs font-black leading-none text-white tracking-wide">
+            <div className="min-w-0 transition-all duration-300 group-hover:pl-1">
+              <div className="text-sm font-black leading-tight text-white tracking-widest uppercase">
                 My Health
               </div>
               <div className="text-xs font-black leading-none tracking-wide" style={{ color: 'hsl(40 95% 52%)' }}>

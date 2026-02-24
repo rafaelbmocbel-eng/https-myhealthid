@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -8,7 +8,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
-  Lock, Clock, CheckCircle2, AlertCircle, Calendar,
+  Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -171,10 +171,32 @@ export default function Agenda() {
 
   // Current time indicator update
   useEffect(() => {
-    const tick = () => setNowMinutes(getHours(new Date()) * 60 + getMinutes(new Date()));
+    const tick = () => {
+      const now = new Date();
+      setNowMinutes(getHours(now) * 60 + getMinutes(now));
+    };
+    tick();
     const id = setInterval(tick, 60000);
     return () => clearInterval(id);
   }, []);
+
+  // Find next upcoming confirmed appointment
+  const proximaSessao = useMemo(() => {
+    const now = new Date();
+    return agendamentos
+      .filter(ag => ag.status === 'confirmado' && parseISO(ag.data_inicio) > now)
+      .sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime())[0];
+  }, [agendamentos]);
+
+  const tempoAteProxima = useMemo(() => {
+    if (!proximaSessao) return null;
+    const diff = differenceInMinutes(parseISO(proximaSessao.data_inicio), new Date());
+    if (diff < 0) return 'Agora';
+    if (diff < 60) return `${diff} min`;
+    const h = Math.floor(diff / 60);
+    const m = diff % 60;
+    return `${h}h ${m}m`;
+  }, [proximaSessao, nowMinutes]);
 
   // Auto-scroll to current time on day/week view
   useEffect(() => {
@@ -460,6 +482,47 @@ export default function Agenda() {
               agendamentos={agendamentos}
             />
 
+            {/* Proxima Sessão Widget */}
+            {proximaSessao && (
+              <div className="clinical-card !p-0 border-l-4 border-l-primary bg-gradient-to-br from-card to-primary/5 shadow-md animate-pulse-subtle">
+                <div className="p-3">
+                  <div className="flex justify-between items-center mb-2">
+                    <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-none">Próxima Sessão</Badge>
+                    <span className="text-[10px] font-black text-primary">{tempoAteProxima}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-white font-bold text-xs ring-2 ring-background">
+                      {proximaSessao.pacientes?.nome[0]}
+                    </div>
+                    <div className="min-w-0">
+                      <div className="text-sm font-bold truncate leading-tight">{proximaSessao.pacientes ? `${proximaSessao.pacientes.nome} ${proximaSessao.pacientes.sobrenome}` : proximaSessao.titulo}</div>
+                      <div className="text-[10px] text-muted-foreground">{format(parseISO(proximaSessao.data_inicio), 'HH:mm')} • {proximaSessao.tipo_atendimento ? TIPO_LABELS[proximaSessao.tipo_atendimento] : 'Sessão'}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1 px-2 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                      onClick={() => {
+                        if (proximaSessao.pacientes?.telefone) {
+                          const tel = proximaSessao.pacientes.telefone.replace(/\D/g, '');
+                          const msg = encodeURIComponent(`Olá ${proximaSessao.pacientes.nome}, tudo bem? Estou aguardando você para nossa sessão hoje às ${format(parseISO(proximaSessao.data_inicio), 'HH:mm')}. Até já!`);
+                          window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
+                        }
+                      }}>
+                      <MessageCircle className="h-3 w-3" /> WhatsApp
+                    </Button>
+                    <Button size="sm" className="h-7 text-[10px] gap-1 px-2 bg-primary text-white"
+                      onClick={() => {
+                        if (proximaSessao.paciente_id) {
+                          window.location.href = `/pacientes/${proximaSessao.paciente_id}?service=metodo_identidade`;
+                        }
+                      }}>
+                      <Users className="h-3 w-3" /> Perfil
+                    </Button>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {/* Today stats */}
             <div className="clinical-card p-3 space-y-2">
               <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Hoje</div>
@@ -469,7 +532,7 @@ export default function Agenda() {
                   <div className="text-[10px] text-muted-foreground">Total</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-black text-success">{statsToday.filter(a => a.status === 'confirmado').length}</div>
+                  <div className="text-xl font-black text-emerald-600">{statsToday.filter(a => a.status === 'confirmado').length}</div>
                   <div className="text-[10px] text-muted-foreground">Confirmados</div>
                 </div>
               </div>
@@ -703,6 +766,33 @@ export default function Agenda() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Clinical Snapshot (Quick insight if patient selected) */}
+            {form.paciente_id && form.paciente_id !== 'bloqueio' && (() => {
+              const pac = pacientes.find(p => p.id === form.paciente_id);
+              // Note: In a real scenario we'd use a dedicated hook/query here
+              // For now, let's show a placeholder or basic info we have
+              return (
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                      <Users className="h-5 w-5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
+                      </p>
+                    </div>
+                  </div>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
+                    <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
+                      Ver Prontuário →
+                    </a>
+                  </Button>
+                </div>
+              );
+            })()}
+
             {/* Paciente */}
             <div>
               <Label>Paciente</Label>
@@ -802,6 +892,6 @@ export default function Agenda() {
           </div>
         </DialogContent>
       </Dialog>
-    </AppLayout>
+    </AppLayout >
   );
 }

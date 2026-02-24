@@ -27,7 +27,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const sidebarW = sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background relative overflow-hidden">
+      {/* Background decoration */}
+      <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      <div className="absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+
       {/* Fixed sidebar — always visible */}
       <AppSidebar
         collapsed={sidebarCollapsed}
@@ -37,25 +41,28 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content offset by sidebar width */}
       <div
-        className="flex flex-col min-h-screen transition-all duration-300"
+        className="flex flex-col min-h-screen transition-all duration-500 ease-in-out relative z-10"
         style={{ marginLeft: sidebarW }}
       >
         {/* Desktop collapse toggle */}
         {!isMobile && (
-          <header className="sticky top-0 z-20 flex h-14 items-center bg-background/80 backdrop-blur-sm px-6 gap-4 border-b border-border">
+          <header className="sticky top-0 z-20 flex h-16 items-center bg-background/60 backdrop-blur-md px-8 gap-4 border-b border-border/50">
             <button
               onClick={() => setCollapsed(c => !c)}
-              className="h-9 w-9 rounded-xl bg-card flex items-center justify-center text-muted-foreground hover:text-foreground border border-border transition-all hover:shadow-sm"
+              className="h-10 w-10 rounded-xl bg-card/80 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/5 border border-border/50 transition-all hover:shadow-md active:scale-95"
             >
               {collapsed
-                ? <ChevronRight className="h-4 w-4" />
-                : <ChevronLeft className="h-4 w-4" />
+                ? <ChevronRight className="h-5 w-5" />
+                : <ChevronLeft className="h-5 w-5" />
               }
             </button>
+            <div className="ml-auto flex items-center gap-4">
+              {/* Add any global header actions here if needed */}
+            </div>
           </header>
         )}
 
-        <main className={cn('flex-1 px-3 pb-8 pt-2', !isMobile && 'px-6 pt-0')}>
+        <main className={cn('flex-1 px-4 pb-12 pt-4 transition-all duration-500', !isMobile && 'px-8 pt-6')}>
           {children}
         </main>
       </div>

@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit, CalendarDays, Dumbbell, AlertCircle, Clock } from 'lucide-react';
+import { ArrowLeft, Activity, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Edit, CalendarDays, Dumbbell, AlertCircle, Clock, PersonStanding, AlignCenter, Share2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -9,7 +9,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { differenceInDays } from 'date-fns';
+import { differenceInDays, format } from 'date-fns';
+import { calcularTerrenos } from '@/utils/calculations';
 import { AvaliacaoIdentidade } from '@/types/identidade';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
@@ -166,6 +167,33 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     enabled: linksAvPaciente.length > 0,
   });
 
+  // Buscar dados de outros serviços para integração (COB e Studio)
+  const { data: ultimaCob } = useQuery({
+    queryKey: ['dashboard-ultima-cob', paciente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_cob_zero')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+  });
+
+  const { data: ultimaMedidaStudio } = useQuery({
+    queryKey: ['dashboard-ultima-medida-studio', paciente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('studio_medidas')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .order('data_medida', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+  });
+
   const enviarEmail = async () => {
     if (!paciente.email || !linkAtivo) return;
     setEnviandoEmail(true);
@@ -201,10 +229,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
     const scores: Record<string, number> = {};
     const blocosRecebidos: number[] = [];
 
+    const blocoDados: Record<number, any> = {};
+
     respostasLink.forEach(r => {
       if (!blocosRecebidos.includes(r.bloco_numero)) blocosRecebidos.push(r.bloco_numero);
       const dados = r.dados_respostas as any;
       if (!dados) return;
+      blocoDados[r.bloco_numero] = dados;
       // Extract scores from response data
       Object.entries(dados).forEach(([k, v]) => {
         if (k.startsWith('score') && typeof v === 'number') {
@@ -222,6 +253,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
       completo: blocosRecebidos.length >= 4,
       linkId: linkMaisRecente.id,
       data: linkMaisRecente.data_ultimo_acesso || linkMaisRecente.created_at,
+      blocoDados,
     };
   }, [respostas, linksAvPaciente]);
 
@@ -451,6 +483,62 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
                 <PerfilTerrenosChart avaliacao={(ultimaAvaliacao as any)?.dados_avaliacao as any} />
               )}
 
+              {/* ── Integração de Outros Serviços (COB e Studio) ── */}
+              {(ultimaCob || ultimaMedidaStudio) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2">
+                  {ultimaCob && (
+                    <div className="clinical-card border-l-4 border-l-blue-500 bg-blue-50/30">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                          <AlignCenter className="h-4 w-4 text-white" />
+                        </div>
+                        <h4 className="font-bold text-xs text-blue-900">Exame COB° ZERO</h4>
+                        <Badge variant="outline" className="ml-auto text-[10px] bg-white">{ultimaCob.data_avaliacao}</Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                          <div className="text-xs font-black text-blue-700">{ultimaCob.cobb_angle}°</div>
+                          <div className="text-[10px] text-muted-foreground">Ângulo</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                          <div className="text-xs font-black text-blue-700">{ultimaCob.risco_percentage}%</div>
+                          <div className="text-[10px] text-muted-foreground">Risco</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                          <div className="text-xs font-black text-blue-700">{ultimaCob.score_e || '—'}</div>
+                          <div className="text-[10px] text-muted-foreground">Score E</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {ultimaMedidaStudio && (
+                    <div className="clinical-card border-l-4 border-l-studio bg-studio-light/10">
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="h-7 w-7 rounded-lg bg-studio flex items-center justify-center">
+                          <Dumbbell className="h-4 w-4 text-white" />
+                        </div>
+                        <h4 className="font-bold text-xs text-studio-foreground">Studio Personal ID</h4>
+                        <Badge variant="outline" className="ml-auto text-[10px] bg-white">{format(new Date(ultimaMedidaStudio.data_medida), 'dd/MM/yy')}</Badge>
+                      </div>
+                      <div className="grid grid-cols-3 gap-2 text-center">
+                        <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                          <div className="text-xs font-black text-studio">{ultimaMedidaStudio.peso}kg</div>
+                          <div className="text-[10px] text-muted-foreground">Peso</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                          <div className="text-xs font-black text-studio">{ultimaMedidaStudio.percentual_gordura}%</div>
+                          <div className="text-[10px] text-muted-foreground">% Gord.</div>
+                        </div>
+                        <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                          <div className="text-xs font-black text-studio">{ultimaMedidaStudio.imc || '—'}</div>
+                          <div className="text-[10px] text-muted-foreground">IMC</div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
               {/* Barras comparativas por dimensão */}
               {ultimaAvaliacao && (
                 <div className="clinical-card">

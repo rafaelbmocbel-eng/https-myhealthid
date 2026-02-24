@@ -58,20 +58,6 @@ export default function StudioPersonalID() {
     enabled: !!user,
   });
 
-  const { data: avaliacoesPendentes = [] } = useQuery({
-    queryKey: ['studio-avaliacoes-pendentes', user?.id],
-    queryFn: async () => {
-      // Recent unreviewed questionnaire responses (links with responses but no identity assessment)
-      const { data } = await (supabase as any)
-        .from('respostas_avaliacao_paciente')
-        .select('paciente_id, data_preenchimento, link_id, links_avaliacao!inner(terapeuta_id)')
-        .eq('links_avaliacao.terapeuta_id', user!.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
-      return data || [];
-    },
-    enabled: !!user,
-  });
 
   const { data: studioTreinosCount = 0 } = useQuery({
     queryKey: ['studio-treinos-count', user?.id],
@@ -186,7 +172,7 @@ export default function StudioPersonalID() {
             { icon: Users, label: 'Alunos Ativos', value: pacientes.length, color: 'text-studio' },
             { icon: CalendarDays, label: 'Sessões Hoje', value: agendamentosHoje.length, color: 'text-studio' },
             { icon: Dumbbell, label: 'Treinos Ativos', value: studioTreinosCount, color: 'text-studio' },
-            { icon: Bell, label: 'Alertas', value: avaliacoesPendentes.length > 0 ? '!' : '0', color: avaliacoesPendentes.length > 0 ? 'text-amber-600' : 'text-studio' },
+            { icon: Activity, label: 'Status', value: 'On', color: 'text-studio' },
           ].map(stat => {
             const Icon = stat.icon;
             return (
@@ -201,39 +187,6 @@ export default function StudioPersonalID() {
           })}
         </div>
 
-        {/* Ações Necessárias */}
-        {avaliacoesPendentes.length > 0 && (
-          <Card className="mb-6 border-amber-200 bg-amber-50/30">
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-2 mb-3">
-                <AlertTriangle className="h-4 w-4 text-amber-600" />
-                <h3 className="font-bold text-sm text-foreground">Ações Necessárias</h3>
-                <Badge className="ml-auto text-[10px] bg-amber-100 text-amber-700">{avaliacoesPendentes.length}</Badge>
-              </div>
-              <div className="space-y-2">
-                {/* Group by paciente_id for unique entries */}
-                {[...new Set(avaliacoesPendentes.map((a: any) => a.paciente_id))].slice(0, 3).map((pid: string) => {
-                  const pac = pacientes.find(p => p.id === pid);
-                  if (!pac) return null;
-                  return (
-                    <div key={pid} className="flex items-center gap-3 p-2 rounded-lg bg-card border">
-                      <div className="h-8 w-8 rounded-full bg-gradient-studio flex items-center justify-center text-white text-xs font-bold">
-                        {pac.nome[0]}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="text-sm font-medium text-foreground">{pac.nome} {pac.sobrenome}</span>
-                        <p className="text-[10px] text-muted-foreground">Questionário respondido — aguardando revisão</p>
-                      </div>
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => handleSelectPaciente(pac)}>
-                        <Eye className="h-3 w-3" /> Revisar
-                      </Button>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-        )}
 
         {/* Agenda Hoje */}
         {agendamentosHoje.length > 0 && (
@@ -259,8 +212,8 @@ export default function StudioPersonalID() {
                     </div>
                     <Badge variant="outline" className={cn('text-[10px]',
                       ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                      ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                      'bg-muted text-muted-foreground'
+                        ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          'bg-muted text-muted-foreground'
                     )}>{ag.status}</Badge>
                   </div>
                 ))}

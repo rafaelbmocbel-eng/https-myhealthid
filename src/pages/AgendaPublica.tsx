@@ -5,8 +5,9 @@ import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone, ArrowLeft }
 import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
-import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes } from 'date-fns';
+import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { Badge } from '@/components/ui/badge';
 
 interface LinkInfo {
   id: string;
@@ -26,6 +27,8 @@ interface TerapeutaInfo {
   sobrenome: string;
   telefone?: string;
   especialidade?: string;
+  bio?: string;
+  user_id: string;
 }
 
 interface SelectedSlot {
@@ -80,7 +83,7 @@ export default function AgendaPublica() {
         const [{ data: profileData }, { data: cfg }, { data: ags }] = await Promise.all([
           supabase
             .from('profiles')
-            .select('nome, sobrenome, telefone, especialidade')
+            .select('nome, sobrenome, telefone, especialidade, bio, user_id')
             .eq('user_id', linkData.terapeuta_id)
             .maybeSingle(),
           supabase
@@ -133,7 +136,7 @@ export default function AgendaPublica() {
         const h = Math.floor(minutoAtual / 60);
         const m = minutoAtual % 60;
         const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        
+
         const slotInicio = new Date(dia);
         slotInicio.setHours(h, m, 0, 0);
         const slotFim = addMinutes(slotInicio, duracao);
@@ -215,44 +218,58 @@ export default function AgendaPublica() {
     </div>
   );
 
-  // Success screen
+  // Success screen (Premium WOW)
   if (sucesso && selectedSlot) return (
-    <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 p-6">
-      <img src={logoMyHealthId} alt="Logo" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
-      <div className="relative">
-        <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center">
-          <CheckCircle2 className="h-12 w-12 text-primary" />
+    <div className="min-h-screen flex flex-col items-center justify-center bg-background px-6">
+      <div className="w-full max-w-sm clinical-card border-2 border-primary/20 bg-gradient-to-b from-card to-primary/5 p-8 text-center space-y-6 shadow-2xl animate-scale-in">
+        <div className="relative mx-auto">
+          <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center mx-auto animate-bounce-subtle">
+            <CheckCircle2 className="h-14 w-14 text-primary" />
+          </div>
+          <div className="absolute -bottom-1 -right-1 bg-background rounded-full p-1 shadow-md">
+            <img src={logoMyHealthId} alt="Logo" className="h-8 w-8 rounded-lg object-cover" />
+          </div>
         </div>
-      </div>
-      <div className="text-center max-w-sm space-y-2">
-        <h2 className="text-2xl font-bold text-foreground">Horário Reservado!</h2>
-        <div className="bg-card border rounded-xl p-4 space-y-1">
-          <p className="text-sm font-semibold text-foreground capitalize">
+
+        <div className="space-y-2">
+          <h2 className="text-2xl font-black text-foreground tracking-tight">Tudo Certo!</h2>
+          <p className="text-sm text-muted-foreground">Sua reserva foi enviada com sucesso para análise.</p>
+        </div>
+
+        <div className="bg-background/80 backdrop-blur border rounded-2xl p-5 shadow-inner">
+          <p className="text-[10px] text-muted-foreground uppercase font-black tracking-widest mb-1">Horário Selecionado</p>
+          <p className="text-sm font-bold text-foreground capitalize">
             {format(selectedSlot.data, "EEEE, dd 'de' MMMM", { locale: ptBR })}
           </p>
-          <p className="text-lg font-bold text-primary">{selectedSlot.hora}</p>
-          <p className="text-xs text-muted-foreground">
-            com {terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'seu terapeuta'}
-          </p>
+          <p className="text-3xl font-black text-primary mt-1">{selectedSlot.hora}</p>
+          <div className="mt-3 pt-3 border-t">
+            <p className="text-xs text-muted-foreground">Profissional:</p>
+            <p className="text-sm font-bold text-foreground">{terapeuta?.nome} {terapeuta?.sobrenome}</p>
+          </div>
         </div>
-        <p className="text-sm text-muted-foreground mt-3">
-          Seu terapeuta será notificado e confirmará em breve. O status atual é <strong>pendente</strong>.
+
+        <div className="space-y-3">
+          {terapeuta?.telefone && (
+            <Button
+              className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-lg"
+              onClick={() => {
+                const msg = `Olá, ${terapeuta.nome}! Acabei de reservar um horário para ${format(selectedSlot.data, "dd/MM/yyyy")} às ${selectedSlot.hora} pela agenda online.`;
+                shareViaWhatsApp(terapeuta.telefone || '', msg);
+              }}
+            >
+              <Phone className="h-4 w-4" />
+              Avisar via WhatsApp
+            </Button>
+          )}
+          <Button variant="ghost" className="w-full text-[11px] text-muted-foreground hover:text-primary" onClick={() => window.location.reload()}>
+            Fazer outro agendamento
+          </Button>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground italic">
+          * Fique atento ao seu celular, você receberá uma confirmação em breve.
         </p>
       </div>
-      {terapeuta?.telefone && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={() => {
-            const msg = `Olá, ${terapeuta.nome}! Acabei de reservar um horário para ${format(selectedSlot.data, "dd/MM/yyyy")} às ${selectedSlot.hora} pela agenda online.`;
-            shareViaWhatsApp(terapeuta.telefone || '', msg);
-          }}
-        >
-          <Phone className="h-4 w-4" />
-          Enviar mensagem no WhatsApp
-        </Button>
-      )}
     </div>
   );
 
@@ -325,25 +342,63 @@ export default function AgendaPublica() {
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
-      <div className="border-b bg-card px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto flex items-center gap-4">
-          <img src={logoMyHealthId} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-          <div>
-            <h1 className="font-bold text-sm text-foreground">
-              Agenda Online{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ''}
-            </h1>
-            <p className="text-xs text-muted-foreground">
-              {terapeuta?.especialidade || 'Fisioterapeuta'} · Selecione um horário disponível
-            </p>
+      <div className="border-b bg-card px-4 py-4 sticky top-0 z-10 shadow-sm">
+        <div className="max-w-2xl mx-auto flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <img src={logoMyHealthId} alt="Logo" className="h-10 w-10 rounded-xl object-cover shrink-0" />
+            <div>
+              <h1 className="font-bold text-sm text-foreground">
+                Agenda Online{terapeuta ? ` — ${terapeuta.nome} ${terapeuta.sobrenome}` : ''}
+              </h1>
+              <p className="text-xs text-muted-foreground">
+                {terapeuta?.especialidade || 'Fisioterapeuta'} · Reserve seu horário
+              </p>
+            </div>
           </div>
+          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 border-emerald-200 gap-1 animate-pulse">
+            <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            Horários Disponíveis
+          </Badge>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-6 space-y-5">
+      <div className="max-w-2xl mx-auto px-4 py-6 space-y-6">
+        {/* Terapeuta Profile Card */}
+        {terapeuta && (
+          <div className="clinical-card !p-0 overflow-hidden border-2 border-primary/10 shadow-lg animate-slide-in">
+            <div className="bg-gradient-to-r from-primary/10 to-primary/5 p-5 flex flex-col sm:flex-row items-center gap-4">
+              <div className="h-16 w-16 rounded-full bg-primary flex items-center justify-center text-white text-2xl font-black ring-4 ring-white shadow-md shrink-0">
+                {terapeuta.nome[0]}{terapeuta.sobrenome[0]}
+              </div>
+              <div className="text-center sm:text-left flex-1">
+                <h2 className="text-xl font-bold text-foreground">{terapeuta.nome} {terapeuta.sobrenome}</h2>
+                <p className="text-primary font-semibold text-sm">{terapeuta.especialidade || 'Especialista em Saúde'}</p>
+                {terapeuta.bio && <p className="text-xs text-muted-foreground mt-2 line-clamp-2 italic">"{terapeuta.bio}"</p>}
+              </div>
+            </div>
+            <div className="px-5 py-3 bg-card border-t flex items-center justify-around gap-4 text-center">
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Duração</p>
+                <p className="text-sm font-bold text-foreground">{config?.duracao_padrao || 45} min</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Atendimento</p>
+                <p className="text-sm font-bold text-foreground">Presencial</p>
+              </div>
+              <div className="w-px h-8 bg-border" />
+              <div>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Localização</p>
+                <p className="text-sm font-bold text-foreground">Clínica</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Info banner */}
         <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 text-center">
-          <p className="text-xs text-primary font-medium">
-            📅 Clique em um horário disponível para reservar diretamente
+          <p className="text-xs text-primary font-medium flex items-center justify-center gap-2">
+            <CalendarDays className="h-4 w-4" /> Toque em um horário em azul para reservar sua consulta
           </p>
         </div>
 
@@ -388,11 +443,10 @@ export default function AgendaPublica() {
                       <button
                         key={slot.hora}
                         disabled={!slot.disponivel}
-                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${
-                          slot.disponivel
+                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${slot.disponivel
                             ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
                             : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
-                        }`}
+                          }`}
                         onClick={() => {
                           if (!slot.disponivel) return;
                           setSelectedSlot({

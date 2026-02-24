@@ -9,6 +9,9 @@ import Bloco3Funcionalidade from '@/components/identidade/Bloco3Funcionalidade';
 import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
 import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
 import type { Bloco1Data, Bloco2Data, Bloco3Data, Bloco4Data, Bloco5Data } from '@/types/identidade';
+import { calcularTerrenos } from '@/utils/calculations';
+import HumanSilhouette from '@/components/HumanSilhouette';
+import { Badge } from '@/components/ui/badge';
 
 interface LinkInfo {
   id: string;
@@ -154,8 +157,62 @@ export default function AvaliacaoPublica() {
       <CheckCircle2 className="h-16 w-16 text-emerald-500" />
       <div className="text-center max-w-sm">
         <h2 className="text-2xl font-bold text-foreground mb-2">Avaliação Concluída!</h2>
-        <p className="text-muted-foreground">Suas respostas foram salvas com sucesso. Seu terapeuta já pode visualizá-las.</p>
+        <p className="text-muted-foreground mb-6">Suas respostas foram salvas com sucesso. Seu terapeuta já pode visualizá-las.</p>
       </div>
+
+      {/* Perfil de Terrenos (Feedback imediato para o paciente) */}
+      {(() => {
+        const terrenos = calcularTerrenos(bloco1, bloco4, bloco5, bloco2.scoreD);
+        return (
+          <div className="w-full max-w-md clinical-card border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 p-6 animate-slide-in">
+            <div className="flex flex-col items-center gap-4">
+              <h3 className="font-bold text-lg flex items-center gap-2 text-center">
+                <HumanSilhouette className="h-5 w-5 text-primary" />
+                Seu Perfil de Terreno
+              </h3>
+
+              <div className="relative w-32 h-32 flex-shrink-0 flex items-center justify-center bg-card rounded-full border-4 border-muted shadow-inner overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-tr from-primary/10 to-transparent" />
+                <HumanSilhouette className="h-20 w-20 text-primary/80 relative z-10" />
+                <svg className="absolute inset-0 w-full h-full -rotate-90 scale-105">
+                  <circle cx="64" cy="64" r="62" className="stroke-secondary fill-none" strokeWidth="6" />
+                  <circle cx="64" cy="64" r="62" className="stroke-green-500 fill-none" strokeWidth="6" strokeDasharray="390" strokeDashoffset={390 - (390 * terrenos.porcentagemMod) / 100} strokeLinecap="round" />
+                </svg>
+                <svg className="absolute inset-0 w-full h-full -rotate-90">
+                  <circle cx="64" cy="64" r="52" className="stroke-secondary fill-none" strokeWidth="4" />
+                  <circle cx="64" cy="64" r="52" className="stroke-red-400 fill-none" strokeWidth="4" strokeDasharray="327" strokeDashoffset={327 - (327 * terrenos.porcentagemNaoMod) / 100} strokeLinecap="round" />
+                </svg>
+              </div>
+
+              <div className="w-full space-y-4">
+                <div>
+                  <div className="flex justify-between items-end mb-1 text-xs">
+                    <span className="font-bold text-green-600">Fatores Modificáveis</span>
+                    <span className="font-bold">{terrenos.porcentagemMod}%</span>
+                  </div>
+                  <Progress value={terrenos.porcentagemMod} className="h-2 bg-green-100" />
+                  <p className="text-[10px] text-muted-foreground mt-1">Aspectos do estilo de vida que podemos melhorar juntos.</p>
+                </div>
+
+                <div>
+                  <div className="flex justify-between items-end mb-1 text-xs">
+                    <span className="font-bold text-red-500">Fatores Fixos</span>
+                    <span className="font-bold">{terrenos.porcentagemNaoMod}%</span>
+                  </div>
+                  <Progress value={terrenos.porcentagemNaoMod} className="h-2 bg-red-100" />
+                  <p className="text-[10px] text-muted-foreground mt-1">Aspectos biológicos ou históricos que requerem atenção específica.</p>
+                </div>
+              </div>
+
+              <div className="pt-2 border-t w-full text-center">
+                <p className="text-[10px] text-muted-foreground italic leading-relaxed">
+                  *Esta visualização ajuda seu terapeuta a entender como seu corpo amplia a percepção de dor.
+                </p>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
     </div>
   );
 
@@ -185,11 +242,10 @@ export default function AvaliacaoPublica() {
               return (
                 <div
                   key={step.blocoNum}
-                  className={`flex-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all ${
-                    isActive ? 'bg-primary/10 text-primary border border-primary/20' :
+                  className={`flex-1 flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-[10px] font-medium transition-all ${isActive ? 'bg-primary/10 text-primary border border-primary/20' :
                     isDone ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30' :
-                    'text-muted-foreground'
-                  }`}
+                      'text-muted-foreground'
+                    }`}
                 >
                   {isDone ? (
                     <CheckCircle2 className="h-3 w-3 shrink-0" />

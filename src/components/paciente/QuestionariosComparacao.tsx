@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye, Brain, Bed, Activity, ClipboardList, Zap, Moon, AlertTriangle, Heart, Briefcase, Home, Dumbbell, Users } from 'lucide-react';
+import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye, Brain, Bed, Activity, ClipboardList, Zap, Moon, AlertTriangle, Heart, Briefcase, Home, Dumbbell, Users, PersonStanding } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -12,6 +12,7 @@ import {
 } from 'recharts';
 
 const BLOCOS = ['Anamnese e Mapeamento da Dor', 'Funcionalidade', 'Comportamento', 'Regulação Neurovegetativa'];
+import { calcularTerrenos } from '@/utils/calculations';
 
 const SCORE_KEYS_MAP: Record<number, { key: string; label: string; color: string }[]> = {
   1: [{ key: 'scoreF', label: 'Score F', color: 'hsl(var(--primary))' }],
@@ -218,7 +219,7 @@ function Bloco4Detail({ dados }: { dados: any }) {
     'Sem controle', 'Não mover em dor', 'Mostrar dor',
   ];
   const OPCOES_LABEL = ['', 'Discordo Fort.', 'Discordo', 'Concordo', 'Concordo Fort.'];
-  
+
   return (
     <div className="space-y-3">
       <ScoreGaugeMini value={dados.scoreP ?? 0} label="Score P — Cinesiofobia (TSK-11)" color="#f59e0b" subtitle="Medo do movimento (0=nenhum, 10=máximo)" />
@@ -255,7 +256,7 @@ function Bloco4Detail({ dados }: { dados: any }) {
 /* ── Bloco 5 Detail: Regulação Neurovegetativa ── */
 function Bloco5Detail({ dados }: { dados: any }) {
   if (!dados) return null;
-  
+
   const SONO_ITEMS = [
     { key: 'qualidadeSono', label: 'Qualidade', inv: true },
     { key: 'horasSono', label: 'Horas', inv: true },
@@ -448,16 +449,16 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
   // Comparison bar data (latest vs first if 2+)
   const comparisonData = respostasAgrupadas.length >= 2
     ? (() => {
-        const first = respostasAgrupadas[respostasAgrupadas.length - 1];
-        const last = respostasAgrupadas[0];
-        return ['scoreF', 'scoreD', 'scoreEFI', 'scoreP', 'scoreR', 'scoreC']
-          .filter(k => first.allScores[k] !== undefined || last.allScores[k] !== undefined)
-          .map(k => ({
-            score: k.replace('score', ''),
-            Primeiro: first.allScores[k] ?? 0,
-            Último: last.allScores[k] ?? 0,
-          }));
-      })()
+      const first = respostasAgrupadas[respostasAgrupadas.length - 1];
+      const last = respostasAgrupadas[0];
+      return ['scoreF', 'scoreD', 'scoreEFI', 'scoreP', 'scoreR', 'scoreC']
+        .filter(k => first.allScores[k] !== undefined || last.allScores[k] !== undefined)
+        .map(k => ({
+          score: k.replace('score', ''),
+          Primeiro: first.allScores[k] ?? 0,
+          Último: last.allScores[k] ?? 0,
+        }));
+    })()
     : null;
 
   const selectedGroup = selectedLinkId ? respostasAgrupadas.find(r => r.link.id === selectedLinkId) : null;
@@ -626,23 +627,72 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                   <div className="mt-2 space-y-2 animate-slide-in">
                     {/* Quick score overview radar */}
                     {Object.keys(group.allScores).length >= 3 && (
-                      <div className="rounded-xl border bg-card p-4">
-                        <div className="flex items-center gap-2 mb-3">
-                          <BarChart3 className="h-3.5 w-3.5 text-primary" />
-                          <span className="text-xs font-semibold">Visão Geral dos Scores</span>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <div className="rounded-xl border bg-card p-4">
+                          <div className="flex items-center gap-2 mb-3">
+                            <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-xs font-semibold">Visão Geral dos Scores</span>
+                          </div>
+                          <div className="h-48">
+                            <ResponsiveContainer width="100%" height="100%">
+                              <RadarChart data={Object.entries(group.allScores).map(([k, v]) => ({
+                                score: k.replace('score', '').toUpperCase(),
+                                valor: Number(v.toFixed(1)),
+                              }))}>
+                                <PolarGrid className="stroke-border" />
+                                <PolarAngleAxis dataKey="score" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
+                                <Radar name="Score" dataKey="valor" stroke="hsl(var(--identidade))" fill="hsl(var(--identidade))" fillOpacity={0.2} strokeWidth={2} />
+                              </RadarChart>
+                            </ResponsiveContainer>
+                          </div>
                         </div>
-                        <div className="h-48">
-                          <ResponsiveContainer width="100%" height="100%">
-                            <RadarChart data={Object.entries(group.allScores).map(([k, v]) => ({
-                              score: k.replace('score', '').toUpperCase(),
-                              valor: Number(v.toFixed(1)),
-                            }))}>
-                              <PolarGrid className="stroke-border" />
-                              <PolarAngleAxis dataKey="score" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
-                              <Radar name="Score" dataKey="valor" stroke="hsl(var(--identidade))" fill="hsl(var(--identidade))" fillOpacity={0.2} strokeWidth={2} />
-                            </RadarChart>
-                          </ResponsiveContainer>
-                        </div>
+
+                        {/* Terrenos Profile for this submission */}
+                        {group.blocoDados[1] && group.blocoDados[4] && group.blocoDados[5] && (() => {
+                          const terrenos = calcularTerrenos(group.blocoDados[1], group.blocoDados[4], group.blocoDados[5], group.allScores.scoreD || 0);
+                          return (
+                            <div className="rounded-xl border bg-card p-4 flex flex-col justify-center">
+                              <div className="flex items-center gap-2 mb-3">
+                                <PersonStanding className="h-3.5 w-3.5 text-primary" />
+                                <span className="text-xs font-semibold">Perfil de Terrenos</span>
+                              </div>
+                              <div className="flex items-center gap-4">
+                                <div className="space-y-3 flex-1">
+                                  <div>
+                                    <div className="flex justify-between text-[10px] mb-1">
+                                      <span className="font-bold text-green-600">Modificáveis</span>
+                                      <span>{terrenos.porcentagemMod}%</span>
+                                    </div>
+                                    <Progress value={terrenos.porcentagemMod} className="h-1.5 bg-green-100" />
+                                  </div>
+                                  <div>
+                                    <div className="flex justify-between text-[10px] mb-1">
+                                      <span className="font-bold text-red-500">Fixos</span>
+                                      <span>{terrenos.porcentagemNaoMod}%</span>
+                                    </div>
+                                    <Progress value={terrenos.porcentagemNaoMod} className="h-1.5 bg-red-100" />
+                                  </div>
+                                  <div className="pt-1">
+                                    <Badge variant="outline" className="text-[10px] w-full justify-center py-1 border-primary/20 text-primary">
+                                      Amp: {terrenos.amplificadorDor.toFixed(2)}x
+                                    </Badge>
+                                  </div>
+                                </div>
+                                <div className="relative w-24 h-24 shrink-0 flex items-center justify-center bg-muted/30 rounded-full border-2 border-muted overflow-hidden">
+                                  <PersonStanding className="h-12 w-12 text-primary opacity-60" />
+                                  <svg className="absolute inset-0 w-full h-full -rotate-90">
+                                    <circle cx="48" cy="48" r="44" className="stroke-green-500/10 fill-none" strokeWidth="4" />
+                                    <circle cx="48" cy="48" r="44" className="stroke-green-500 fill-none transition-all" strokeWidth="4" strokeDasharray="276" strokeDashoffset={276 - (276 * terrenos.porcentagemMod) / 100} />
+                                  </svg>
+                                  <svg className="absolute inset-0 w-full h-full -rotate-90">
+                                    <circle cx="48" cy="48" r="38" className="stroke-red-400/10 fill-none" strokeWidth="3" />
+                                    <circle cx="48" cy="48" r="38" className="stroke-red-400 fill-none transition-all" strokeWidth="3" strokeDasharray="238" strokeDashoffset={238 - (238 * terrenos.porcentagemNaoMod) / 100} />
+                                  </svg>
+                                </div>
+                              </div>
+                            </div>
+                          );
+                        })()}
                       </div>
                     )}
 

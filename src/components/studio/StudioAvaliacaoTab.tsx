@@ -7,15 +7,20 @@ import { useToast } from '@/hooks/use-toast';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { cn } from '@/lib/utils';
 import {
-  Activity, AlignCenter, Link2, MessageCircle, FileText, Loader2, Copy, CalendarDays,
+  Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart
 } from 'lucide-react';
+import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
+import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
+import RelatorioIdentidade from '../identidade/RelatorioIdentidade';
+import { AvaliacaoIdentidade } from '@/types/identidade';
+import { getSeverityColorHex } from '@/utils/calculations';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
-import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 
 interface Props {
   pacienteId: string;
@@ -23,23 +28,15 @@ interface Props {
   pacienteTelefone?: string;
 }
 
-const SCORE_COLORS: Record<string, string> = {
-  E: 'bg-score-e/10 text-score-e border-score-e/20',
-  P: 'bg-score-p/10 text-score-p border-score-p/20',
-  C: 'bg-score-c/10 text-score-c border-score-c/20',
-  F: 'bg-score-f/10 text-score-f border-score-f/20',
-  D: 'bg-score-d/10 text-score-d border-score-d/20',
-  R: 'bg-score-r/10 text-score-r border-score-r/20',
-};
-
 export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteTelefone }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesIdentidade(pacienteId);
+  const [selectedAvaliacao, setSelectedAvaliacao] = useState<AvaliacaoIdentidade | null>(null);
 
-  // Agenda links
   const { data: linksAgenda = [] } = useQuery({
     queryKey: ['links_agenda_paciente', user?.id],
     queryFn: async () => {
@@ -88,105 +85,56 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
     toast({ title: 'Link de agenda copiado! 📋' });
   };
 
-  const { data: avaliacoesIdentidade = [] } = useQuery({
-    queryKey: ['studio-av-identidade', pacienteId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_identidade')
-        .select('id, paciente_nome, data_avaliacao, id_final, classificacao, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, dados_avaliacao, created_at')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
-  const { data: avaliacoesCob = [] } = useQuery({
-    queryKey: ['studio-av-cobzero', pacienteId],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('id, data_avaliacao, cobb_angle, lenke_type, risco_level, risco_percentage, score_e, created_at')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
-  const { data: respostas = [] } = useQuery({
-    queryKey: ['studio-respostas', pacienteId],
-    queryFn: async () => {
-      const { data } = await (supabase as any)
-        .from('respostas_avaliacao_paciente')
-        .select('id, bloco_numero, data_preenchimento, dados_respostas, link_id')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false });
-      return data || [];
-    },
-  });
-
   const linkAtivo = links.find(l => l.paciente_id === pacienteId && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
-  const ultimaId = avaliacoesIdentidade[0];
-  const ultimaCob = avaliacoesCob[0];
-
-  const BLOCO_NAMES: Record<number, string> = { 1: 'Anamnese & Dor', 3: 'Funcionalidade', 4: 'Comportamento', 5: 'Regulação' };
-
-  // Group respostas by link_id
-  const sessions = respostas.reduce((acc: Record<string, any[]>, r: any) => {
-    if (!acc[r.link_id]) acc[r.link_id] = [];
-    acc[r.link_id].push(r);
-    return acc;
-  }, {} as Record<string, any[]>);
-  const sessionKeys = Object.keys(sessions);
+  const ultimaAvaliacao = avaliacoes?.[0];
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 pb-10">
       {/* Links compactos */}
-      <Card className="border-studio/20">
+      <Card className="border-studio/20 shadow-sm">
         <CardContent className="pt-3 pb-3">
           <div className="flex items-center gap-2 mb-2">
             <Link2 className="h-3.5 w-3.5 text-studio" />
-            <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Links do Paciente</h4>
+            <h4 className="font-semibold text-xs text-muted-foreground uppercase tracking-wider">Gestão de Acessos</h4>
           </div>
           <div className="space-y-1.5">
-            {/* Questionário */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0">Questionário</span>
+              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0 uppercase tracking-tighter">Questionário</span>
               <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2" disabled={gerando}
                 onClick={async () => {
                   if (linkAtivo) copiarLink(linkAtivo.token);
                   else { const novo = await gerarLink(pacienteId); if (novo) copiarLink(novo.token); }
                 }}>
                 {gerando ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Copy className="h-2.5 w-2.5" />}
-                {linkAtivo ? 'Copiar' : 'Gerar'}
+                {linkAtivo ? 'Copiar' : 'Gerar Novo'}
               </Button>
               {linkAtivo && (
                 <>
                   <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2"
                     onClick={() => shareAvaliacaoLink(getLinkUrl(linkAtivo.token), pacienteNome, pacienteTelefone)}>
-                    <MessageCircle className="h-2.5 w-2.5" /> WhatsApp
+                    <MessageCircle className="h-2.5 w-2.5 text-emerald-500" /> WhatsApp
                   </Button>
-                  <Badge variant="outline" className="text-[9px] h-5">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</Badge>
+                  <Badge variant="outline" className="text-[9px] h-5 px-1.5 font-bold">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d restantes</Badge>
                 </>
               )}
             </div>
-            {/* Agenda */}
             <div className="flex items-center gap-1.5 flex-wrap">
-              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0">Agendamento</span>
+              <span className="text-[10px] font-medium text-muted-foreground w-20 shrink-0 uppercase tracking-tighter">Agendamento</span>
               <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2" disabled={gerandoAgenda}
                 onClick={async () => {
                   if (linkAgendaAtivo) copiarLinkAgenda(linkAgendaAtivo.token);
                   else { const novo = await gerarLinkAgenda(); if (novo) copiarLinkAgenda(novo.token); }
                 }}>
                 {gerandoAgenda ? <Loader2 className="h-2.5 w-2.5 animate-spin" /> : <Copy className="h-2.5 w-2.5" />}
-                {linkAgendaAtivo ? 'Copiar' : 'Gerar'}
+                {linkAgendaAtivo ? 'Copiar' : 'Gerar Novo'}
               </Button>
               {linkAgendaAtivo && (
                 <>
                   <Button size="sm" variant="outline" className="h-6 gap-1 text-[10px] px-2"
                     onClick={() => shareAgendaLink(pacienteNome, pacienteTelefone || '', getAgendaUrl(linkAgendaAtivo.token))}>
-                    <MessageCircle className="h-2.5 w-2.5" /> WhatsApp
+                    <MessageCircle className="h-2.5 w-2.5 text-emerald-500" /> WhatsApp
                   </Button>
-                  <Badge variant="outline" className="text-[9px] h-5">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</Badge>
+                  <Badge variant="outline" className="text-[9px] h-5 px-1.5 font-bold">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d restantes</Badge>
                 </>
               )}
             </div>
@@ -194,143 +142,250 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
         </CardContent>
       </Card>
 
-      {/* Índices de Risco Biopsicossocial */}
-      {(() => {
-        if (ultimaId) {
-          return <IndicesRiscoComprometimento scores={ultimaId as any} dadosAvaliacao={(ultimaId as any)?.dados_avaliacao} />;
-        }
-        // Fallback: scores from questionnaire responses
-        if (respostas.length > 0) {
-          const scoresFromResponses: Record<string, number> = {};
-          respostas.forEach((r: any) => {
-            const dados = r.dados_respostas as any;
-            if (!dados) return;
-            Object.entries(dados).forEach(([k, v]) => {
-              if (k.startsWith('score') && typeof v === 'number') {
-                scoresFromResponses[k] = v;
-              }
-            });
-          });
-          if (Object.keys(scoresFromResponses).length > 0) {
-            return <IndicesRiscoComprometimento scores={scoresFromResponses} parcial />;
-          }
-        }
-        return null;
-      })()}
-
-      <div className="grid sm:grid-cols-2 gap-3">
-        {/* Identidade */}
-        <Card className={cn('border transition-all', ultimaId ? 'border-primary/20' : 'border-border')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-identidade flex items-center justify-center">
-                <Activity className="h-4 w-4 text-white" />
-              </div>
-              <div>
-                <h4 className="font-bold text-xs">Método Identidade</h4>
-                <p className="text-[10px] text-muted-foreground">{ultimaId ? `Última: ${ultimaId.data_avaliacao}` : 'Sem avaliação'}</p>
-              </div>
-              {ultimaId?.classificacao && (
-                <Badge className={cn('ml-auto text-[9px]',
-                  ultimaId.classificacao === 'LEVE' ? 'bg-emerald-100 text-emerald-700' :
-                  ultimaId.classificacao === 'MODERADO' ? 'bg-amber-100 text-amber-700' :
-                  'bg-red-100 text-red-700'
-                )}>{ultimaId.classificacao}</Badge>
-              )}
+      {/* Seção Clinica Premium: Bio-Individualidade Elite */}
+      {ultimaAvaliacao && (
+        <div className="space-y-4">
+          <Card className="border-studio/20 bg-gradient-to-br from-studio/5 via-background to-studio/5 overflow-hidden shadow-xl relative backdrop-blur-sm">
+            <div className="h-1.5 bg-gradient-studio w-full" />
+            <div className="absolute top-0 right-0 p-4 opacity-10 pointer-events-none">
+              <Sparkles className="h-24 w-24 text-studio" />
             </div>
-            {ultimaId ? (
-              <>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground">ID Final</span>
-                  <span className="text-xl font-black">{Number(ultimaId.id_final || 0).toFixed(1)}</span>
-                </div>
-                <div className="flex flex-wrap gap-1">
-                  {['E', 'P', 'C', 'F', 'D', 'R'].map(k => (
-                    <Badge key={k} variant="outline" className={cn('text-[9px] font-bold', SCORE_COLORS[k])}>
-                      {k}: {Number((ultimaId as any)[`score_${k.toLowerCase()}`] || 0).toFixed(1)}
-                    </Badge>
-                  ))}
-                </div>
-                <p className="text-[10px] text-muted-foreground mt-2">{avaliacoesIdentidade.length} avaliação(ões)</p>
-              </>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-3">Envie o questionário ao aluno</p>
-            )}
-          </CardContent>
-        </Card>
 
-        {/* COB ZERO */}
-        <Card className={cn('border transition-all', ultimaCob ? 'border-blue-200' : 'border-border')}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center">
-                <AlignCenter className="h-4 w-4 text-white" />
+            <CardContent className="pt-6 relative">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-studio/10 flex items-center justify-center border border-studio/20 shadow-inner">
+                    <Sparkles className="h-5 w-5 text-studio" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-lg text-studio-dark tracking-tighter uppercase italic leading-none">Bio-Individualidade Elite</h4>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-1">Algoritmo de Performance Humana</p>
+                  </div>
+                </div>
+                <Badge className="bg-gradient-studio text-white text-[10px] border-none shadow-lg px-3 py-1 animate-pulse font-black tracking-widest">CONDUCTA PREMIUM</Badge>
               </div>
-              <div>
-                <h4 className="font-bold text-xs">COB° ZERO</h4>
-                <p className="text-[10px] text-muted-foreground">{ultimaCob ? `Última: ${ultimaCob.data_avaliacao}` : 'Sem avaliação'}</p>
-              </div>
-            </div>
-            {ultimaCob ? (
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between"><span className="text-muted-foreground">Cobb</span><span className="font-bold">{ultimaCob.cobb_angle}°</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Lenke</span><span className="font-bold">{ultimaCob.lenke_type || '—'}</span></div>
-                <div className="flex justify-between"><span className="text-muted-foreground">Risco</span><span className="font-bold">{ultimaCob.risco_percentage ? `${Number(ultimaCob.risco_percentage).toFixed(0)}%` : '—'}</span></div>
-              </div>
-            ) : (
-              <p className="text-xs text-muted-foreground text-center py-3">Sem dados COB° ZERO</p>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Questionário Responses */}
-      <Card>
-        <CardContent className="pt-4 pb-3">
-          <div className="flex items-center gap-2 mb-3">
-            <FileText className="h-4 w-4 text-studio" />
-            <h4 className="font-bold text-sm">Questionários Respondidos</h4>
-            <Badge variant="outline" className="ml-auto text-[10px]">{respostas.length} resposta(s)</Badge>
-          </div>
-          {sessionKeys.length > 0 ? (
-            <div className="space-y-2">
-              {sessionKeys.slice(0, 5).map((linkId, idx) => {
-                const rs = sessions[linkId];
-                const blocos = rs.map((r: any) => r.bloco_numero).sort();
-                const dataP = rs[0]?.data_preenchimento;
-                return (
-                  <div key={linkId} className="p-2.5 rounded-lg border bg-muted/30">
-                    <div className="flex items-center justify-between mb-1.5">
-                      <span className="text-xs font-semibold">Sessão {sessionKeys.length - idx}</span>
-                      {dataP && <span className="text-[10px] text-muted-foreground">{format(parseISO(dataP), "dd/MM/yyyy HH:mm", { locale: ptBR })}</span>}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="space-y-4">
+                  <div className="p-4 rounded-2xl bg-white/40 dark:bg-black/20 border border-white/60 dark:border-white/10 shadow-sm backdrop-blur-md transition-all hover:shadow-md">
+                    <div className="text-[10px] uppercase font-black text-muted-foreground mb-2 tracking-widest flex items-center gap-2">
+                      <Shield className="h-3 w-3 text-studio" /> Terreno Biológico
                     </div>
-                    <div className="flex flex-wrap gap-1">
-                      {blocos.map((b: number) => (
-                        <Badge key={b} variant="outline" className="text-[9px] bg-studio-light text-studio border-studio/20">
-                          B{b} — {BLOCO_NAMES[b] || `Bloco ${b}`}
-                        </Badge>
-                      ))}
+                    <div className="text-lg font-black text-foreground tracking-tight">
+                      {(ultimaAvaliacao.score_r || 0) > 7 ? 'Perfil de Exaustão (Simpaticotônico)' :
+                        (ultimaAvaliacao.score_r || 0) > 4 ? 'Perfil Reativo (Alerta Laranja)' : 'Perfil Resiliente (Equilibrado)'}
                     </div>
-                    {/* Extract scores */}
-                    <div className="flex flex-wrap gap-1 mt-1.5">
-                      {rs.map((r: any) => {
-                        const d = r.dados_respostas;
-                        if (!d) return null;
-                        if (r.bloco_numero === 3 && d.scoreEFI != null) return <Badge key={r.id} variant="outline" className="text-[9px] font-bold bg-score-e/10 text-score-e border-score-e/20">EFI: {Number(d.scoreEFI).toFixed(1)}</Badge>;
-                        if (r.bloco_numero === 4 && d.scoreP != null) return <Badge key={r.id} variant="outline" className="text-[9px] font-bold bg-score-p/10 text-score-p border-score-p/20">P: {Number(d.scoreP).toFixed(1)}</Badge>;
-                        if (r.bloco_numero === 5 && d.scoreR != null) return <Badge key={r.id} variant="outline" className="text-[9px] font-bold bg-score-r/10 text-score-r border-score-r/20">R: {Number(d.scoreR).toFixed(1)}</Badge>;
-                        return null;
-                      })}
+                    <p className="text-[10px] text-muted-foreground mt-2 leading-relaxed font-semibold">
+                      Análise de regulação neurovegetativa (R: {ultimaAvaliacao.score_r?.toFixed(1)}) e carga biográfica (F: {ultimaAvaliacao.score_f?.toFixed(1)}).
+                    </p>
+                  </div>
+
+                  <div className="p-4 rounded-2xl bg-studio/5 border border-studio/10 shadow-sm transition-all hover:bg-studio/10">
+                    <div className="text-[10px] uppercase font-black text-studio mb-2 tracking-widest flex items-center gap-2">
+                      <Activity className="h-3 w-3" /> Capacidade de Carga (Performance)
+                    </div>
+                    <div className="flex items-end gap-3">
+                      <div className="text-3xl font-black text-studio tracking-tighter leading-none">
+                        {Math.max(10 - (ultimaAvaliacao.score_r || 0), 2).toFixed(1)}
+                        <span className="text-sm font-normal text-muted-foreground/60 ml-1">/ 10</span>
+                      </div>
+                      <Badge className="text-[10px] mb-1 font-black h-5 px-2 bg-studio/20 text-studio-dark border-none">
+                        {(ultimaAvaliacao.score_r || 0) > 7 ? 'BAIXA PRONTIDÃO' : (ultimaAvaliacao.score_r || 0) > 4 ? 'MODERADA' : 'ALTA PERFORMANCE'}
+                      </Badge>
                     </div>
                   </div>
-                );
-              })}
+                </div>
+
+                <div className="relative group">
+                  <div className="absolute -inset-0.5 bg-gradient-studio rounded-2xl blur opacity-10 group-hover:opacity-20 transition duration-1000"></div>
+                  <Card className="relative border-none shadow-none bg-white/60 dark:bg-black/40 backdrop-blur-lg overflow-hidden h-full">
+                    <CardContent className="p-5 space-y-4">
+                      <h5 className="text-[11px] font-black flex items-center gap-2 uppercase text-studio tracking-[0.2em]">
+                        <Target className="h-4 w-4" /> Plano de Conduta Estratégica
+                      </h5>
+                      <ul className="space-y-3">
+                        {[
+                          (ultimaAvaliacao.score_r || 0) > 6 ? 'Priorizar Sessão Regenerativa: Mobilidade Fluida & Vagal' : 'Foco em Sessão High Intensity: Força & Potência Máxima',
+                          (ultimaAvaliacao.score_f || 0) > 5 ? 'Ajustar densidade do treino: Carga psicobiológica alta' : 'Permitida progressão de volume agressiva (Overload)',
+                          (ultimaAvaliacao.score_r || 0) > 4 ? 'Monitorar prontidão neural: Evitar falha concêntrica' : 'Estímulos de refinamento técnico e recordes pessoais',
+                        ].map((item, i) => (
+                          <li key={i} className="text-[11px] flex items-start gap-2.5 leading-tight font-bold text-foreground/90 group/item">
+                            <div className="h-4 w-4 rounded-full bg-studio/10 flex items-center justify-center shrink-0 mt-0.5 group-hover/item:bg-studio/20 transition-colors">
+                              <CheckCircle2 className="h-2.5 w-2.5 text-studio" />
+                            </div>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </CardContent>
+                  </Card>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Seção Estratégia Biopsicossocial */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Card className="border-studio/10 shadow-lg bg-gradient-to-br from-card to-studio/5 overflow-hidden">
+              <CardContent className="pt-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-studio/10 flex items-center justify-center">
+                    <Target className="h-4 w-4 text-studio" />
+                  </div>
+                  <h4 className="font-black text-sm tracking-tighter text-foreground uppercase">Estratégia Biopsicossocial</h4>
+                </div>
+
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-end mb-1 px-1">
+                      <span className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">Carga Contextual (Score C)</span>
+                      <span className="text-xs font-black text-studio">{(ultimaAvaliacao.score_c || 0).toFixed(1)}/10</span>
+                    </div>
+                    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                      <div
+                        className="h-full bg-studio rounded-full transition-all duration-1000"
+                        style={{ width: `${(ultimaAvaliacao.score_c || 0) * 10}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="p-3 rounded-xl bg-muted/30 border border-border/50 space-y-2">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-3 w-3 text-studio" />
+                      <span className="text-[10px] font-black uppercase tracking-wider">Diretriz Social & Estilo de Vida</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground leading-relaxed font-medium">
+                      {(ultimaAvaliacao.score_c || 0) > 6
+                        ? "Alta demanda externa detectada. O treino deve servir como ferramenta de regulação emocional e descompressão, evitando metas de performance punitivas."
+                        : "Carga contextual estável. Momento ideal para cobrança de disciplina e foco em objetivos de longo prazo."
+                      }
+                    </p>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-studio/10 shadow-lg bg-gradient-to-br from-card to-cyan-50/20">
+              <CardContent className="pt-5">
+                <div className="flex items-center gap-2 mb-4">
+                  <div className="h-8 w-8 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                    <Heart className="h-4 w-4 text-rose-500" />
+                  </div>
+                  <h4 className="font-black text-sm tracking-tighter text-foreground uppercase">Status Neuro-Fisiológico</h4>
+                  <Badge variant="outline" className="ml-auto text-[9px] font-black text-cyan-800 bg-white/80 border-cyan-100 px-2 uppercase tracking-tighter shadow-sm">R Total: {ultimaAvaliacao.score_r?.toFixed(1)}</Badge>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3 mb-4">
+                  {[
+                    { icon: Moon, val: (ultimaAvaliacao as any).dados_avaliacao?.bloco5?.scoreR1 || (ultimaAvaliacao as any).score_r1 || 5, label: 'Sono (R1)', color: 'blue' },
+                    { icon: Zap, val: (ultimaAvaliacao as any).dados_avaliacao?.bloco5?.scoreR2 || (ultimaAvaliacao as any).score_r2 || 5, label: 'Energia (R2)', color: 'amber' },
+                    { icon: Brain, val: (ultimaAvaliacao as any).dados_avaliacao?.bloco5?.scoreR3 || (ultimaAvaliacao as any).score_r3 || 5, label: 'Psico (R3)', color: 'purple' },
+                  ].map((item, idx) => {
+                    const getRColor = (val: number) => val > 7 ? 'text-red-500' : val > 4 ? 'text-amber-500' : 'text-emerald-500';
+                    const Icon = item.icon;
+                    return (
+                      <div key={idx} className="text-center p-2.5 rounded-2xl bg-white dark:bg-black/20 border border-border shadow-sm transition-all hover:scale-[1.03]">
+                        <Icon className={`h-4 w-4 mx-auto mb-1.5 text-${item.color}-500`} />
+                        <div className={cn("text-lg font-black tracking-tighter", getRColor(item.val))}>{item.val.toFixed(1)}</div>
+                        <div className="text-[8px] text-muted-foreground uppercase font-black tracking-tighter">{item.label}</div>
+                      </div>
+                    );
+                  })}
+                </div>
+
+                <div className="flex items-start gap-2.5 p-3 rounded-xl bg-cyan-900/5 border border-cyan-900/10 transition-all hover:bg-cyan-900/10">
+                  <div className="h-5 w-5 rounded-full bg-cyan-500/20 flex items-center justify-center shrink-0 mt-0.5">
+                    <AlertTriangle className="h-3 w-3 text-cyan-700" />
+                  </div>
+                  <p className="text-[10px] text-cyan-900 leading-tight font-bold">
+                    <span className="opacity-60 uppercase tracking-widest block mb-0.5">Diagnóstico Direcionado:</span>
+                    A regulação {ultimaAvaliacao.score_r && ultimaAvaliacao.score_r > 5 ? 'comprometida' : 'altamente estável'}
+                    indica {ultimaAvaliacao.score_r && ultimaAvaliacao.score_r > 5 ? 'foco em modulação do SN (Down-Training)' : 'estímulos de carga tensional (Up-Training)'} nesta janela biológica.
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      )}
+
+
+      {/* Histórico de Avaliações */}
+      <div className="space-y-3 mt-6">
+        <div className="flex items-center gap-2 px-1">
+          <Activity className="h-4 w-4 text-studio" />
+          <h4 className="font-black text-sm text-foreground tracking-tight uppercase">Histórico de Performance</h4>
+        </div>
+
+        {loadingAvaliacoes ? (
+          <div className="flex justify-center py-10"><Loader2 className="h-6 w-6 animate-spin text-studio opacity-50" /></div>
+        ) : !avaliacoes || avaliacoes.length === 0 ? (
+          <div className="text-center py-10 border-2 rounded-2xl border-dashed bg-muted/20 border-muted-foreground/10">
+            <Sparkles className="h-8 w-8 text-muted-foreground opacity-20 mx-auto mb-2" />
+            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Aguardando Primeira Avaliação</p>
+          </div>
+        ) : (
+          <div className="space-y-2">
+            {avaliacoes.map((av: any) => (
+              <div key={av.id} className="group border rounded-2xl p-4 bg-white/60 dark:bg-black/20 hover:bg-studio/5 hover:border-studio/30 transition-all duration-500 shadow-sm hover:shadow-md cursor-default relative overflow-hidden">
+                <div className="absolute top-0 left-0 w-1 h-full bg-studio opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 rounded-2xl bg-studio/5 flex items-center justify-center shrink-0 group-hover:bg-gradient-studio transition-all duration-700 shadow-inner">
+                    <Calendar className="h-6 w-6 text-studio group-hover:text-white transition-colors duration-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-center gap-2 mb-1">
+                      <span className="text-sm font-black text-foreground">{format(parseISO(av.created_at), "dd 'de' MMMM", { locale: ptBR })}</span>
+                      {av.classificacao && (
+                        <Badge variant="outline" className="text-[10px] h-4 py-0 font-bold border-none bg-muted/60" style={{ color: getSeverityColorHex(av.id_final) }}>
+                          {av.classificacao}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">
+                      <span className="flex items-center gap-1"><Target className="h-3 w-3" /> ID: <span className="text-foreground">{av.id_final?.toFixed(1)}</span></span>
+                      <span className="flex items-center gap-1"><Activity className="h-3 w-3" /> F: {av.score_f?.toFixed(1)}</span>
+                      <span className="flex items-center gap-1"><Zap className="h-3 w-3" /> R: {av.score_r?.toFixed(1)}</span>
+                    </div>
+                  </div>
+                  <Button size="sm" variant="outline" className="h-9 text-[10px] font-black gap-2 px-4 rounded-xl border-border bg-white group-hover:border-studio group-hover:text-studio group-hover:shadow-lg transition-all duration-300 uppercase tracking-widest"
+                    onClick={() => setSelectedAvaliacao(av.dados_avaliacao as AvaliacaoIdentidade)}>
+                    <FileText className="h-3.5 w-3.5" /> Ver Relatório
+                    <ChevronRight className="h-3 w-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium opacity-60">
+        * As métricas premium são baseadas em algoritmos de saúde integrativa e regulação autonômica.
+      </p>
+
+      {/* Modal Relatório Premium */}
+      {
+        selectedAvaliacao && (
+          <div className="fixed inset-0 z-[100] bg-background/95 backdrop-blur-md overflow-y-auto animate-in fade-in duration-300">
+            <div className="container max-w-5xl py-10 relative">
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute top-4 right-4 z-[110] rounded-xl shadow-xl hover:bg-rose-50 hover:text-rose-600 hover:border-rose-200 transition-all"
+                onClick={() => setSelectedAvaliacao(null)}
+              >
+                FECHAR RELATÓRIO
+              </Button>
+              <RelatorioIdentidade
+                avaliacao={selectedAvaliacao}
+                pacienteId={pacienteId}
+                onBack={() => setSelectedAvaliacao(null)}
+              />
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground text-center py-6">Nenhum questionário respondido</p>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+          </div>
+        )
+      }
+    </div >
   );
 }
