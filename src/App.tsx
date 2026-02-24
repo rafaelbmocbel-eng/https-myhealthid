@@ -10,6 +10,7 @@ import StudioPersonalID from "./pages/StudioPersonalID";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import Agenda from "./pages/Agenda";
+import AgendaPremium from "./pages/AgendaPremium";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
 import Protocolos from "./pages/Protocolos"; // kept for direct URL access
@@ -35,10 +36,11 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/studio-personal-id" element={<StudioPersonalID />} />
             <Route path="/agenda" element={<Agenda />} />
+            <Route path="/agenda-premium" element={<AgendaPremium />} />
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/:id" element={<PacientePerfil />} />
             <Route path="/protocolos" element={<Protocolos />} />
-            
+
             <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
             <Route path="/agenda/:token" element={<AgendaPublica />} />
             <Route path="/relatorios" element={<Relatorios />} />
