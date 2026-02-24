@@ -133,7 +133,7 @@ export default function AgendaPublica() {
         const h = Math.floor(minutoAtual / 60);
         const m = minutoAtual % 60;
         const horaStr = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-        
+
         const slotInicio = new Date(dia);
         slotInicio.setHours(h, m, 0, 0);
         const slotFim = addMinutes(slotInicio, duracao);
@@ -388,11 +388,10 @@ export default function AgendaPublica() {
                       <button
                         key={slot.hora}
                         disabled={!slot.disponivel}
-                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${
-                          slot.disponivel
+                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${slot.disponivel
                             ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
                             : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
-                        }`}
+                          }`}
                         onClick={() => {
                           if (!slot.disponivel) return;
                           setSelectedSlot({

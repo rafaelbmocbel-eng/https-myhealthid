@@ -15,6 +15,7 @@ export interface Bloco1Data {
   queixaPrincipal: string;
   duracao: string;
   eventoPrecipitante: boolean;
+  eventoPrecipitanteOpcao?: string;
   eventoPrecipitanteDescricao: string;
   historicoMedico: string[];
   historicoFamiliar: boolean;
@@ -25,6 +26,7 @@ export interface Bloco1Data {
   atividadeFisica: string;
   qualidadeSono: number;
   tabagismo: boolean;
+  tabagismoQuantidade?: string;
   alcool: string;
   litrosAgua: number;
   impactoQualidadeVida: number;

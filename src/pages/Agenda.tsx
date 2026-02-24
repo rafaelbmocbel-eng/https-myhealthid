@@ -16,6 +16,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { ToastAction } from '@/components/ui/toast';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -336,6 +337,17 @@ export default function Agenda() {
     else await createAgendamento(payload as Omit<Agendamento, 'id'>);
     setModal({ open: false });
     setSubmitting(false);
+
+    if (pac && pac.telefone) {
+      const tel = pac.telefone.replace(/\D/g, '');
+      const dataFormatada = format(new Date(form.data_inicio), "dd/MM/yyyy 'às' HH:mm");
+      const msg = encodeURIComponent(`Olá ${pac.nome}, seu agendamento para ${dataFormatada} foi marcado na agenda.`);
+      toast({
+        title: 'Agendamento salvo!',
+        description: 'Deseja avisar o paciente?',
+        action: <ToastAction altText="Avisar WhatsApp" onClick={() => window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')}>WhatsApp</ToastAction>,
+      });
+    }
   };
 
   const handleDelete = async () => {
@@ -366,7 +378,19 @@ export default function Agenda() {
   const handleConfirmar = async (id: string) => {
     await updateAgendamento(id, { status: 'confirmado' });
     refetchNotifications();
-    toast({ title: '✅ Agendamento confirmado!' });
+    const ag = agendamentos.find(a => a.id === id);
+    const pac = pacientes.find(p => p.id === ag?.paciente_id);
+    if (pac?.telefone && ag) {
+      const tel = pac.telefone.replace(/\D/g, '');
+      const dataFormatada = format(parseISO(ag.data_inicio), "dd/MM/yyyy 'às' HH:mm");
+      const msg = encodeURIComponent(`Olá ${pac.nome}, seu agendamento para ${dataFormatada} foi confirmado!`);
+      toast({
+        title: '✅ Agendamento confirmado!',
+        action: <ToastAction altText="Avisar WhatsApp" onClick={() => window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank')}>Avisar WhatsApp</ToastAction>,
+      });
+    } else {
+      toast({ title: '✅ Agendamento confirmado!' });
+    }
   };
 
   const handleRecusar = async (id: string) => {
@@ -645,7 +669,7 @@ export default function Agenda() {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     return (
-                      <div key={`overlay-${di}`} className="relative pointer-events-auto" style={{ height: totalHeight }}>
+                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
                         {dayAgs.map(ag => {
                           const pos = getAgPos(ag);
                           const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
@@ -658,7 +682,7 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none',
+                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
                                 'hover:brightness-95 transition-shadow z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 sc.bg, sc.border, sc.text

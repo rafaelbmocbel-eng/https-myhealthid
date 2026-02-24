@@ -2,14 +2,15 @@ import { Bloco1Data, Bloco2Data, Bloco3Data, Bloco4Data, Bloco5Data, Bloco6Data 
 
 // CÁLCULO SCORE F – Fator Contextual (Bloco 1)
 export function calcularScoreF(bloco1: Bloco1Data): number {
+  const qtdComorbs = bloco1.historicoMedico ? Math.min(bloco1.historicoMedico.length, 5) : 0;
   const mediaLikert = (
     bloco1.impactoQualidadeVida +
     bloco1.interferenciaTrbalho +
-    bloco1.quantidadeComorbidades * 2 +
+    qtdComorbs * 2 +
     bloco1.historicoFamiliarPeso
   ) / 4;
 
-  const bonusComorbidades = Math.min(bloco1.historicoMedico.length, 3);
+  const bonusComorbidades = Math.min(qtdComorbs, 3);
   const bonusCronicidade = ['6-12 meses', '>1 ano'].includes(bloco1.duracao) ? 2 : 0;
 
   return Math.min(10, mediaLikert + bonusComorbidades * 0.5 + bonusCronicidade * 0.5);
@@ -227,7 +228,7 @@ export function duracaoParaCronicidade(duracao: string): number {
 export function calcularRiscoProgressao(cobbAngle: number, sexo: 'M' | 'F', risser: number): { percentage: number; level: string } {
   const sexoNum = sexo === 'F' ? 1 : 0;
   let risk = 0.24 * cobbAngle + 0.41 * sexoNum - 3.93;
-  
+
   // Ajuste Risser
   if (risser <= 2) risk *= 1.5;
   else if (risser === 3) risk *= 1.25;
@@ -267,4 +268,56 @@ export function getCobbClassification(cobb: number): { label: string; color: str
   if (cobb < 40) return { label: 'MODERADO', color: 'text-amber-600 bg-amber-50' };
   if (cobb < 50) return { label: 'SEVERO', color: 'text-orange-600 bg-orange-50' };
   return { label: 'CRÍTICO', color: 'text-red-600 bg-red-50' };
+}
+
+// CÁLCULO DE TERRENOS (Modificáveis vs Não-Modificáveis)
+export function calcularTerrenos(bloco1: Bloco1Data, bloco4: Bloco4Data, bloco5: Bloco5Data, d: number) {
+  let scoreModificavel = 0;
+  let scoreNaoModificavel = 0;
+  const itensModificaveis = [];
+  const itensNaoModificaveis = [];
+
+  // Modificáveis
+  if (bloco1.horasSedentario > 6) { scoreModificavel += 2; itensModificaveis.push('Sedentarismo'); }
+  if (bloco1.tabagismo) { scoreModificavel += 2; itensModificaveis.push(`Tabagismo (${bloco1.tabagismoQuantidade || 'Ativo'})`); }
+  if (['moderado', 'frequente'].includes(bloco1.alcool)) { scoreModificavel += 1.5; itensModificaveis.push('Consumo Álcool'); }
+  if ((bloco1.litrosAgua ?? 2) < 1.5) { scoreModificavel += 1.5; itensModificaveis.push('Baixa Água'); }
+  if (bloco1.atividadeFisica === 'nenhuma') { scoreModificavel += 2; itensModificaveis.push('Ausência de Ativ. Física'); }
+
+  const scoreP = calcularScoreP(bloco4);
+  if (scoreP > 5) { scoreModificavel += 2; itensModificaveis.push('Cinesiofobia Ocupacional'); }
+
+  const { r1, r3 } = calcularScoresRC(bloco5);
+  if (r1 > 5) { scoreModificavel += 2; itensModificaveis.push('Déficit de Sono'); }
+  if (r3 > 5) { scoreModificavel += 2; itensModificaveis.push('Stress/Carga Psicológica'); }
+
+  if (bloco1.eventoPrecipitante) { scoreModificavel += 1; itensModificaveis.push(`Evento Precipitante (${bloco1.eventoPrecipitanteOpcao || 'Outro'})`); }
+
+  // Não-Modificáveis
+  const qtdComorbs = bloco1.historicoMedico ? bloco1.historicoMedico.length : 0;
+  if (qtdComorbs > 0) { scoreNaoModificavel += Math.min(qtdComorbs * 1.5, 4); itensNaoModificaveis.push('Comorbidades/Doenças Base'); }
+
+  if (bloco1.historicoFamiliar) { scoreNaoModificavel += 2; itensNaoModificaveis.push('Histórico Familiar'); }
+
+  if (['6-12 meses', '>1 ano'].includes(bloco1.duracao)) { scoreNaoModificavel += 2.5; itensNaoModificaveis.push('Cronicidade da Dor'); }
+
+  const idade = 50; // Approximated if not passed in, ideally we'd pass patientIdade but we assume fixed for now via this utility or ignore.
+
+  // Normalizar para 100%
+  const totalRaw = scoreModificavel + scoreNaoModificavel || 1;
+  const porcentagemMod = Math.round((scoreModificavel / totalRaw) * 100);
+  const porcentagemNaoMod = Math.round((scoreNaoModificavel / totalRaw) * 100);
+
+  // Fator de amplificação
+  const amplificadorDor = 1 + ((scoreModificavel + scoreNaoModificavel) / 20);
+
+  return {
+    modificavel: Math.min(10, scoreModificavel),
+    naoModificavel: Math.min(10, scoreNaoModificavel),
+    porcentagemMod,
+    porcentagemNaoMod,
+    itensModificaveis,
+    itensNaoModificaveis,
+    amplificadorDor
+  };
 }
