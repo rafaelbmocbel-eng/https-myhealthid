@@ -28,12 +28,12 @@ const FATORES_MELHORA = ['Repouso', 'Movimento', 'Calor/frio', 'Medicação', 'F
 type SintomaTipo = 'dor' | 'irradiacao' | 'rigidez' | 'formigamento' | 'inchaco' | 'queimacao';
 
 const SINTOMA_CONFIG: Record<SintomaTipo, { label: string; cor: string; descricao: string }> = {
-  dor: { label: 'Dor', cor: '#C41E3A', descricao: 'Dor localizada' },
-  irradiacao: { label: 'Irradiação', cor: '#F97316', descricao: 'Dor que se irradia' },
-  rigidez: { label: 'Rigidez/Tensão', cor: '#3B82F6', descricao: 'Tensão muscular' },
-  formigamento: { label: 'Formigamento', cor: '#FBBF24', descricao: 'Parestesia' },
-  inchaco: { label: 'Inchaço', cor: '#10B981', descricao: 'Edema local' },
-  queimacao: { label: 'Queimação', cor: '#DC2626', descricao: 'Sensação de queima' },
+  dor:          { label: 'Dor',           cor: '#C41E3A', descricao: 'Dor localizada' },
+  irradiacao:   { label: 'Irradiação',    cor: '#F97316', descricao: 'Dor que se irradia' },
+  rigidez:      { label: 'Rigidez/Tensão', cor: '#3B82F6', descricao: 'Tensão muscular' },
+  formigamento: { label: 'Formigamento',  cor: '#FBBF24', descricao: 'Parestesia' },
+  inchaco:      { label: 'Inchaço',       cor: '#10B981', descricao: 'Edema local' },
+  queimacao:    { label: 'Queimação',     cor: '#DC2626', descricao: 'Sensação de queima' },
 };
 
 interface RegiaoExtendida extends RegiaoDor {
@@ -242,20 +242,8 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
           <Label htmlFor="evento" className="cursor-pointer">Houve evento precipitante?</Label>
         </div>
         {localData.eventoPrecipitante && (
-          <div className="space-y-3 pl-7 border-l-2 ml-2 border-primary/20">
-            <Select value={localData.eventoPrecipitanteOpcao || ''} onValueChange={v => update('eventoPrecipitanteOpcao', v)}>
-              <SelectTrigger><SelectValue placeholder="Selecione o tipo de evento..." /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="aumento_volume">Aumento do volume de atividade</SelectItem>
-                <SelectItem value="intensidade">Aumento da intensidade</SelectItem>
-                <SelectItem value="movimento_novo">Movimento/posição/exercício novo</SelectItem>
-                <SelectItem value="sapato_cama">Sapato ou cama nova</SelectItem>
-                <SelectItem value="outro">Outro (descrever)</SelectItem>
-              </SelectContent>
-            </Select>
-            <Input placeholder="Descreva mais detalhes (opcional)..." value={localData.eventoPrecipitanteDescricao}
-              onChange={e => update('eventoPrecipitanteDescricao', e.target.value)} />
-          </div>
+          <Input placeholder="Descreva o evento..." value={localData.eventoPrecipitanteDescricao}
+            onChange={e => update('eventoPrecipitanteDescricao', e.target.value)} />
         )}
 
         <div>
@@ -277,21 +265,10 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t">
           <div>
             <Label className="mb-2 block">Tabagismo</Label>
-            <div className="flex items-center gap-3 mb-2">
+            <div className="flex items-center gap-3">
               <Checkbox id="tabagismo" checked={localData.tabagismo} onCheckedChange={v => update('tabagismo', !!v)} />
               <Label htmlFor="tabagismo" className="cursor-pointer text-sm">Fumante ativo</Label>
             </div>
-            {localData.tabagismo && (
-              <Select value={localData.tabagismoQuantidade || ''} onValueChange={v => update('tabagismoQuantidade', v)}>
-                <SelectTrigger className="mt-1.5 h-8 text-xs"><SelectValue placeholder="Quantidade" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="esporadico">Esporádico (&lt;5/dia)</SelectItem>
-                  <SelectItem value="leve">Leve (5-10/dia)</SelectItem>
-                  <SelectItem value="moderado">Moderado (~1 maço/dia)</SelectItem>
-                  <SelectItem value="avancado">Avançado (&gt;1 maço/dia)</SelectItem>
-                </SelectContent>
-              </Select>
-            )}
           </div>
           <div>
             <Label>Consumo de álcool</Label>
@@ -356,7 +333,8 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
         </h3>
         {[
           { key: 'impactoQualidadeVida', label: 'Impacto na qualidade de vida?', l: 'Nenhum', r: 'Total' },
-          { key: 'interferenciaTrbalho', label: 'Interferência no trabalho/produtividade?', l: 'Nenhuma', r: 'Impossível trabalhar' },
+          { key: 'interferenciaTrbalho', label: 'Interferência no trabalho?', l: 'Nenhuma', r: 'Impossível trabalhar' },
+          { key: 'quantidadeComorbidades', label: 'Quantidade de comorbidades (0-5+)?', l: '0 (nenhuma)', r: '5+ comorbidades' },
           { key: 'historicoFamiliarPeso', label: 'Peso do histórico familiar?', l: 'Sem relevância', r: 'Muito relevante' },
         ].map(({ key, label, l, r }) => (
           <div key={key}>

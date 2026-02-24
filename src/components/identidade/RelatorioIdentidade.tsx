@@ -8,7 +8,6 @@ import {
   calcularEquacaoDor,
   duracaoParaCronicidade,
   calcularModuladorEstiloVida,
-  calcularTerrenos,
 } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -131,17 +130,15 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   const temIrradiacao = avaliacao.bloco2.regioes.some(r => r.irradiacao);
   const tipoPeso = avaliacao.bloco2.regioes.length > 0
     ? Math.max(...avaliacao.bloco2.regioes.flatMap(reg =>
-      reg.tipos.map(t => {
-        if (['Ardor', 'Queimação', 'Dormência'].includes(t)) return 1.0;
-        if (['Pontada', 'Dor profunda'].includes(t)) return 0.75;
-        return 0.5;
-      })
-    ), 0.5)
+        reg.tipos.map(t => {
+          if (['Ardor', 'Queimação', 'Dormência'].includes(t)) return 1.0;
+          if (['Pontada', 'Dor profunda'].includes(t)) return 0.75;
+          return 0.5;
+        })
+      ), 0.5)
     : 0.5;
   const { modulador: modEstiloVida } = calcularModuladorEstiloVida(avaliacao.bloco1);
   const equacaoDor = calcularEquacaoDor(d, temIrradiacao, tipoPeso, p, r3, c, fCrono, r, modEstiloVida);
-
-  const terrenos = calcularTerrenos(avaliacao.bloco1, avaliacao.bloco4, avaliacao.bloco5, d);
 
   // Unidades Críticas Top 3
   const unidadesSorted = [...avaliacao.bloco6.unidades]
@@ -436,7 +433,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           <div className="clinical-card">
             <div className="flex flex-col items-center py-4">
               <IdFinalGauge value={idAjustado} />
-
+              
               {alertaCritico && (
                 <div className="mt-4 w-full px-3 py-2 rounded-lg bg-red-100 border border-red-300 text-red-800 text-sm font-medium text-center">
                   <AlertTriangle className="h-4 w-4 inline mr-1.5" />
@@ -721,7 +718,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             }}
           />
         </div>
-
+        
         <div className="grid grid-cols-3 gap-4 mb-4">
           <div className="text-center">
             <Moon className="h-5 w-5 mx-auto mb-1 text-blue-500" />
@@ -793,77 +790,6 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
                 <span className="text-xs font-bold w-8 text-right" style={{ color: b.color }}>{b.value.toFixed(1)}</span>
               </div>
             ))}
-          </div>
-        </div>
-      </div>
-
-      {/* ── Terreno Modificável vs Não Modificável (Silhueta) ── */}
-      <div className="clinical-card border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div className="flex-1 space-y-4 w-full">
-            <h3 className="font-bold text-lg flex items-center gap-2">
-              <PersonStanding className="h-5 w-5 text-primary" />
-              Terreno Modulável (Modificável) vs Não-Modificável
-            </h3>
-            <p className="text-sm text-muted-foreground">
-              Os terrenos <strong>amplificam</strong> os sintomas. Focar nos fatores modificáveis reduz radicalmente a equação da dor.
-              <br />Amplificador Atual da Dor: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
-            </p>
-
-            <div className="space-y-4 mt-6">
-              {/* Modificável Bar */}
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-sm font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
-                  <span className="text-xs text-muted-foreground">{terrenos.itensModificaveis.length} itens encontrados</span>
-                </div>
-                <div className="h-3 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full rounded-full bg-green-500 transition-all" style={{ width: `${terrenos.porcentagemMod}%` }} />
-                </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {terrenos.itensModificaveis.map((m, i) => (
-                    <Badge key={i} variant="outline" className="text-[10px] bg-green-50 text-green-700 border-green-200">{m}</Badge>
-                  ))}
-                  {terrenos.itensModificaveis.length === 0 && <span className="text-xs text-muted-foreground">Nenhum fator modificável crítico detectado.</span>}
-                </div>
-              </div>
-
-              {/* Não Modificável Bar */}
-              <div>
-                <div className="flex justify-between items-end mb-1">
-                  <span className="text-sm font-bold text-red-500">Não-Modificáveis ({terrenos.porcentagemNaoMod}%)</span>
-                  <span className="text-xs text-muted-foreground">{terrenos.itensNaoModificaveis.length} itens encontrados</span>
-                </div>
-                <div className="h-3 rounded-full bg-secondary overflow-hidden">
-                  <div className="h-full rounded-full bg-red-400 transition-all" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
-                </div>
-                <div className="flex flex-wrap gap-1 mt-2">
-                  {terrenos.itensNaoModificaveis.map((m, i) => (
-                    <Badge key={i} variant="outline" className="text-[10px] bg-red-50 text-red-700 border-red-200">{m}</Badge>
-                  ))}
-                  {terrenos.itensNaoModificaveis.length === 0 && <span className="text-xs text-muted-foreground">Nenhum fator fixo detectado.</span>}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Silhueta Gráfica Central */}
-          <div className="relative w-48 h-48 flex-shrink-0 flex items-center justify-center bg-card rounded-full border-4 border-muted shadow-inner">
-            <PersonStanding className="h-24 w-24 text-primary opacity-80" strokeWidth={1} />
-            {/* Círculo externo Modificável */}
-            <svg className="absolute inset-0 w-full h-full -rotate-90">
-              <circle cx="92" cy="92" r="88" className="stroke-secondary fill-none" strokeWidth="6" />
-              <circle cx="92" cy="92" r="88" className="stroke-green-500 fill-none transition-all duration-1000" strokeWidth="6" strokeDasharray="553" strokeDashoffset={553 - (553 * terrenos.porcentagemMod) / 100} strokeLinecap="round" />
-            </svg>
-            {/* Círculo interno Não Modificável */}
-            <svg className="absolute inset-0 w-full h-full -rotate-90">
-              <circle cx="92" cy="92" r="76" className="stroke-secondary fill-none" strokeWidth="4" />
-              <circle cx="92" cy="92" r="76" className="stroke-red-400 fill-none transition-all duration-1000" strokeWidth="4" strokeDasharray="477" strokeDashoffset={477 - (477 * terrenos.porcentagemNaoMod) / 100} strokeLinecap="round" />
-            </svg>
-            <div className="absolute top-2 right-2 flex flex-col items-center">
-              <span className="text-[10px] uppercase font-bold text-muted-foreground">Amp</span>
-              <span className="text-sm font-black text-primary">{terrenos.amplificadorDor.toFixed(1)}x</span>
-            </div>
           </div>
         </div>
       </div>
@@ -987,7 +913,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
                     { nome: 'Nervosa', score: u.scoreNervosa, tecnicas: ['Neurodinâmica', 'Dessensibilização neural', 'TENS'] },
                     { nome: 'Visceral', score: u.scoreVisceral, tecnicas: ['Manipulação visceral', 'Técnica diafragmática', 'Mobilização fascial'] },
                   ].filter(t => t.score > 0).sort((a, b) => b.score - a.score);
-
+                  
                   if (tecidos.length === 0) return null;
                   const nomeSimples = u.nome.replace(/^(UC\d|UA-[DE]|[ID]D)\s*–\s*/, '');
 
@@ -1021,8 +947,8 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
       <div className="clinical-card bg-gradient-hero text-white">
         <div className="flex items-center justify-between">
           <div>
-            <h3 className="font-bold text-lg">Gerar Diretriz de Tratamento</h3>
-            <p className="text-sm opacity-80 mt-1">Diretriz automática baseada nos scores · {freqRecomendada} · {duracaoRecomendada}</p>
+             <h3 className="font-bold text-lg">Gerar Diretriz de Tratamento</h3>
+             <p className="text-sm opacity-80 mt-1">Diretriz automática baseada nos scores · {freqRecomendada} · {duracaoRecomendada}</p>
           </div>
           <Button
             size="lg"
