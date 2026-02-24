@@ -204,7 +204,7 @@ export default function Index() {
               tecidosTotal.count++;
             });
           }
-        } catch { }
+        } catch {}
       });
 
       const toRanked = (rec: Record<string, number>, max = 8) =>
@@ -440,7 +440,7 @@ export default function Index() {
               </div>
             </div>
             <Button asChild size="sm" className="w-full text-white" style={{ background: 'linear-gradient(135deg, hsl(40 96% 52%), hsl(25 95% 53%))' }}>
-              <Link to="/agenda-premium">
+              <Link to="/agenda">
                 Abrir Agenda <ArrowRight className="h-3.5 w-3.5 ml-1" />
               </Link>
             </Button>
@@ -471,10 +471,11 @@ export default function Index() {
                       </div>
                       <div className="text-xs text-muted-foreground">{ag.tipo_atendimento || 'Retorno'}</div>
                     </div>
-                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' :
-                        ag.status === 'pendente' ? 'bg-amber-100 text-amber-700' :
-                          'bg-slate-100 text-slate-600'
-                      }`}>
+                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${
+                      ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' :
+                      ag.status === 'pendente' ? 'bg-amber-100 text-amber-700' :
+                      'bg-slate-100 text-slate-600'
+                    }`}>
                       {ag.status}
                     </div>
                   </div>
