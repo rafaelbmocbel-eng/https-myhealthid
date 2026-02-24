@@ -21,6 +21,7 @@ import EvolucaoDashboard from './EvolucaoDashboard';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IdFinalGauge from '@/components/identidade/IdFinalGauge';
+import PerfilTerrenosChart from '@/components/identidade/PerfilTerrenosChart';
 import DashboardParcial from './DashboardParcial';
 import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 
@@ -443,6 +444,11 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, onInicia
                     </div>
                   </div>
                 </div>
+              )}
+
+              {/* Perfil de Terrenos */}
+              {ultimaAvaliacao && (
+                <PerfilTerrenosChart avaliacao={(ultimaAvaliacao as any)?.dados_avaliacao as any} />
               )}
 
               {/* Barras comparativas por dimensão */}
