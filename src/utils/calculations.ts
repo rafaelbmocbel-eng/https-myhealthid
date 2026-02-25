@@ -241,6 +241,48 @@ export function calcularRiscoProgressao(cobbAngle: number, sexo: 'M' | 'F', riss
   return { percentage, level };
 }
 
+// CÁLCULO TERRENOS MODIFICÁVEIS vs NÃO-MODIFICÁVEIS
+export function calcularTerrenos(
+  bloco1: Bloco1Data,
+  bloco4: Bloco4Data,
+  bloco5: Bloco5Data,
+  scoreD: number
+): { amplificadorDor: number; porcentagemMod: number; porcentagemNaoMod: number; itensModificaveis: string[]; itensNaoModificaveis: string[] } {
+  const itensModificaveis: string[] = [];
+  const itensNaoModificaveis: string[] = [];
+  let somaModificavel = 0;
+  let somaNaoModificavel = 0;
+
+  // Modificáveis (hábitos, estilo de vida)
+  if (bloco1.horasSedentario >= 6) { somaModificavel += bloco1.horasSedentario / 10; itensModificaveis.push('Sedentarismo'); }
+  if ((bloco1.litrosAgua ?? 2) < 1.5) { somaModificavel += 0.5; itensModificaveis.push('Hidratação insuficiente'); }
+  if (bloco1.tabagismo) { somaModificavel += 1; itensModificaveis.push('Tabagismo'); }
+  if (bloco1.alcool === 'frequente' || bloco1.alcool === 'moderado') { somaModificavel += 0.5; itensModificaveis.push('Álcool'); }
+  if (bloco5.qualidadeSono < 5) { somaModificavel += 0.8; itensModificaveis.push('Qualidade do sono'); }
+  if (bloco5.fadigaDia > 6) { somaModificavel += 0.6; itensModificaveis.push('Fadiga diurna'); }
+  if (bloco5.nivelStress > 6) { somaModificavel += 0.7; itensModificaveis.push('Nível de estresse'); }
+  if (bloco5.motivacao < 4) { somaModificavel += 0.4; itensModificaveis.push('Baixa motivação'); }
+  if (bloco5.resistenciaFisica < 4) { somaModificavel += 0.4; itensModificaveis.push('Baixa resistência física'); }
+
+  // Não-modificáveis (histórico, genética, cronicidade)
+  if (bloco1.historicoMedico.length > 0) { somaNaoModificavel += Math.min(bloco1.historicoMedico.length * 0.4, 2); itensNaoModificaveis.push(`${bloco1.historicoMedico.length} comorbidade(s)`); }
+  if (bloco1.historicoFamiliar) { somaNaoModificavel += 0.5; itensNaoModificaveis.push('Histórico familiar'); }
+  if (['6-12 meses', '>1 ano', '>2 anos'].includes(bloco1.duracao)) { somaNaoModificavel += 1; itensNaoModificaveis.push('Cronicidade'); }
+  if (bloco1.historicoFamiliarPeso > 6) { somaNaoModificavel += 0.5; itensNaoModificaveis.push('Peso familiar genético'); }
+  // Cinesiofobia alta como fator semi-fixo
+  const scorePBruto = bloco4.respostas.reduce((a, b) => a + (b || 0), 0);
+  if (scorePBruto > 33) { somaNaoModificavel += 0.8; itensNaoModificaveis.push('Cinesiofobia arraigada'); }
+
+  const totalTerreno = somaModificavel + somaNaoModificavel;
+  const porcentagemMod = totalTerreno > 0 ? Math.round((somaModificavel / totalTerreno) * 100) : 50;
+  const porcentagemNaoMod = 100 - porcentagemMod;
+
+  // Amplificador: 1.0 (sem terreno) a ~2.0 (terreno pesado)
+  const amplificadorDor = 1 + Math.min(1, totalTerreno / 8);
+
+  return { amplificadorDor, porcentagemMod, porcentagemNaoMod, itensModificaveis, itensNaoModificaveis };
+}
+
 // UTILITÁRIOS
 export function getSeverityColor(classificacao: string): string {
   switch (classificacao) {

@@ -8,6 +8,7 @@ import {
   calcularEquacaoDor,
   duracaoParaCronicidade,
   calcularModuladorEstiloVida,
+  calcularTerrenos,
 } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -113,6 +114,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   const efi = avaliacao.bloco3.scoreEFI;
 
   const { idFinal, fatoresRisco, classificacao } = calcularIDFinal(e, p, c, f, d, r);
+  const terrenos = calcularTerrenos(avaliacao.bloco1, avaliacao.bloco4, avaliacao.bloco5, d);
 
   // Amplificadores já aplicados dentro de calcularIDFinal — exibir sem re-somar
   const amplificadores: Array<{ desc: string; pontos: number }> = [];
