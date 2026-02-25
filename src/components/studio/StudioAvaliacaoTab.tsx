@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
-  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight
 } from 'lucide-react';
 import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
