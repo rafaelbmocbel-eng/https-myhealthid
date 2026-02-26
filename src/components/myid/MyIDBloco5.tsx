@@ -28,15 +28,6 @@ export default function MyIDBloco5({ data, onChange, onNext, onBack }: Props) {
     onChange(updated);
   };
 
-  const scores = calcularScoreR_MyID(localData);
-
-  const getColor = (score: number, inverted = false) => {
-    const v = inverted ? 10 - score : score;
-    if (v >= 7) return 'text-destructive';
-    if (v >= 4) return 'text-amber-600';
-    return 'text-green-600';
-  };
-
   return (
     <div className="space-y-6">
       <div className="clinical-card">
@@ -46,33 +37,7 @@ export default function MyIDBloco5({ data, onChange, onNext, onBack }: Props) {
             <h2 className="text-xl font-bold mt-1">Regulação Neurovegetativa</h2>
             <p className="text-muted-foreground text-sm">Sono, energia, psicológico e contexto social</p>
           </div>
-          <div className="flex gap-3 text-right">
-            <div>
-              <div className="text-xs text-muted-foreground">R</div>
-              <div className={`text-xl font-bold ${getColor(scores.r)}`}>{scores.r.toFixed(1)}</div>
-            </div>
-            <div>
-              <div className="text-xs text-muted-foreground">C</div>
-              <div className={`text-xl font-bold ${getColor(scores.c)}`}>{scores.c.toFixed(1)}</div>
-            </div>
-          </div>
         </div>
-      </div>
-
-      {/* Mini-scores */}
-      <div className="grid grid-cols-4 gap-2">
-        {[
-          { label: 'Sono', val: scores.r1, icon: '🛌' },
-          { label: 'Energia', val: scores.r2, icon: '⚡' },
-          { label: 'Psicológico', val: scores.r3, icon: '🧠' },
-          { label: 'Contexto', val: scores.c, icon: '⚖️' },
-        ].map(({ label, val, icon }) => (
-          <div key={label} className="clinical-card p-3 text-center">
-            <div className="text-lg">{icon}</div>
-            <div className={`text-lg font-bold ${getColor(val)}`}>{val.toFixed(1)}</div>
-            <div className="text-[10px] text-muted-foreground">{label}</div>
-          </div>
-        ))}
       </div>
 
       {/* 5A: Sono */}

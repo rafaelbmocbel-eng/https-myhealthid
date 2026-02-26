@@ -48,8 +48,6 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
     });
   };
 
-  const scoreI = calcularScoreI(localData);
-
   return (
     <div className="space-y-6">
       <div className="clinical-card">
@@ -61,11 +59,6 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
             </div>
             <h2 className="text-xl font-bold">Identificação e Gatilhos</h2>
             <p className="text-muted-foreground text-sm mt-1">Queixa principal e mudanças recentes</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score I</div>
-            <div className="text-2xl font-bold text-primary">{scoreI.toFixed(1)}</div>
-            <div className="text-xs text-muted-foreground">/10</div>
           </div>
         </div>
       </div>

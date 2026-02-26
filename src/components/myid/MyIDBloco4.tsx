@@ -38,8 +38,6 @@ export default function MyIDBloco4({ data, onChange, onNext, onBack }: Props) {
     onChange(updated);
   };
 
-  const scoreP = calcularScoreP_MyID(localData);
-
   return (
     <div className="space-y-6">
       <div className="clinical-card">
@@ -48,10 +46,6 @@ export default function MyIDBloco4({ data, onChange, onNext, onBack }: Props) {
             <Badge variant="outline" className="text-xs">Bloco 4</Badge>
             <h2 className="text-xl font-bold mt-1">Comportamento e Crenças</h2>
             <p className="text-muted-foreground text-sm">Como você pensa sobre movimento e dor</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score P</div>
-            <div className="text-2xl font-bold text-primary">{scoreP.toFixed(1)}</div>
           </div>
         </div>
       </div>

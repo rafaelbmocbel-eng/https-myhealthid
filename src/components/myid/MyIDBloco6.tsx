@@ -41,8 +41,6 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
     }
   };
 
-  const scoreN = calcularScoreN(localData);
-
   return (
     <div className="space-y-6">
       <div className="clinical-card">
@@ -51,10 +49,6 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
             <Badge variant="outline" className="text-xs">Bloco 6</Badge>
             <h2 className="text-xl font-bold mt-1">Ruído Sistêmico</h2>
             <p className="text-muted-foreground text-sm">Histórico de traumas, cicatrizes e saúde visceral</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score N</div>
-            <div className="text-2xl font-bold text-primary">{scoreN.toFixed(1)}</div>
           </div>
         </div>
       </div>
@@ -159,7 +153,7 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
           <Button variant="outline" onClick={onBack}><ChevronLeft className="h-4 w-4 mr-1" />Voltar</Button>
           <Button onClick={onSubmit} disabled={submitting}
             className="bg-gradient-primary text-white shadow-primary">
-            {submitting ? 'Enviando...' : 'Finalizar Avaliação'}
+            {submitting ? 'Enviando...' : 'Finalizar Questionário'}
             <CheckCircle2 className="h-4 w-4 ml-1" />
           </Button>
         </div>

@@ -32,8 +32,6 @@ export default function MyIDBloco3({ data, onChange, onNext, onBack }: Props) {
     onChange(updated);
   };
 
-  const scoreEFI = calcularScoreEFI_MyID(localData);
-
   return (
     <div className="space-y-6">
       <div className="clinical-card">
@@ -42,10 +40,6 @@ export default function MyIDBloco3({ data, onChange, onNext, onBack }: Props) {
             <Badge variant="outline" className="text-xs">Bloco 3</Badge>
             <h2 className="text-xl font-bold mt-1">Funcionalidade</h2>
             <p className="text-muted-foreground text-sm">Impacto na vida real (0 = Nada impede | 10 = Totalmente impedido)</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score EFI</div>
-            <div className="text-2xl font-bold text-primary">{scoreEFI.toFixed(1)}</div>
           </div>
         </div>
       </div>

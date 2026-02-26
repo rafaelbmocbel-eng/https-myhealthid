@@ -65,7 +65,6 @@ export default function MyIDBloco2({ data, onChange, onNext, onBack }: Props) {
     syncData(regioes, updated);
   };
 
-  const scoreD = calcularScoreD_MyID({ ...data, regioes });
   const { detected: hasRedFlags, alerts } = checkRedFlags(redFlags);
   const painMap: Record<string, number> = {};
   regioes.forEach(r => { painMap[r.id] = r.intensidadeAtual; });
@@ -79,10 +78,6 @@ export default function MyIDBloco2({ data, onChange, onNext, onBack }: Props) {
             <Badge variant="outline" className="text-xs">Bloco 2</Badge>
             <h2 className="text-xl font-bold mt-1">Mapeamento da Dor</h2>
             <p className="text-muted-foreground text-sm">Clique onde dói e defina a intensidade</p>
-          </div>
-          <div className="text-right">
-            <div className="text-xs text-muted-foreground">Score D</div>
-            <div className="text-2xl font-bold text-primary">{scoreD.toFixed(1)}</div>
           </div>
         </div>
       </div>
