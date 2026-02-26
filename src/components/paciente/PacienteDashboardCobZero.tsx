@@ -20,6 +20,7 @@ import {
 } from 'recharts';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
+import QuestionariosComparacao from './QuestionariosComparacao';
 
 interface Paciente {
   id: string;
@@ -133,6 +134,23 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
   });
 
   const linkAtivo = linksAv.find(l => l.status === 'ativo' && new Date(l.data_expiracao!) > new Date());
+
+  const { data: respostas = [] } = useQuery({
+    queryKey: ['respostas-paciente-cobzero', paciente.id],
+    queryFn: async () => {
+      const linkIds = linksAv.map((l: any) => l.id);
+      if (linkIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('respostas_avaliacao_paciente')
+        .select('*')
+        .in('link_id', linkIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: linksAv.length > 0,
+  });
+
   const getLinkUrl = (token: string) => getAvaliacaoUrl(token);
 
   const gerarLink = async () => {
@@ -206,133 +224,147 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         </Button>
       </div>
 
-      {/* Link Compacto */}
-      <div className="clinical-card !p-3">
-        <div className="flex items-center gap-2 flex-wrap">
-          <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
-          <span className="text-xs font-semibold shrink-0">Link Avaliação</span>
-          {linkAtivo ? (
-            <>
-              <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-              <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao!), new Date())}d</span>
-              <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
-                <Copy className="h-3 w-3" />
-              </Button>
-              {paciente.telefone && (
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]" onClick={() => whatsApp(linkAtivo.token)}>
-                  <MessageCircle className="h-3 w-3" />
-                </Button>
-              )}
-            </>
-          ) : (
-            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600" disabled={gerando} onClick={gerarLink}>
-              {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-              Gerar (30d)
-            </Button>
-          )}
-        </div>
-      </div>
-
-      {/* Índices de Risco — combina scores de identidade + COB */}
-      {(ultimaIdentidade || avaliacoes.length > 0) && (
-        <IndicesRiscoComprometimento
-          scores={{
-            ...(ultimaIdentidade || {}),
-            score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
-          } as any}
-          parcial={!ultimaIdentidade}
-          dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
-        />
-      )}
-
-      {/* Perfil de Terreno Integrado */}
-      {questionnaireData?.blocos[1] && questionnaireData?.blocos[4] && questionnaireData?.blocos[5] && (() => {
-        const terrenos = calcularTerrenos(questionnaireData.blocos[1], questionnaireData.blocos[4], questionnaireData.blocos[5], questionnaireData.scores.scoreD || 0);
-        return (
-          <div className="clinical-card border-2 border-primary/10 bg-gradient-to-br from-card to-primary/5">
-            <div className="flex flex-col md:flex-row items-center gap-6">
-              <div className="flex-1 space-y-3">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <PersonStanding className="h-4 w-4 text-primary" />
-                  Terreno Biopsicossocial (Baseado no Questionário)
-                </h3>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <div className="flex justify-between text-[10px] mb-1">
-                      <span className="font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                      <div className="h-full bg-green-500" style={{ width: `${terrenos.porcentagemMod}%` }} />
-                    </div>
-                  </div>
-                  <div>
-                    <div className="flex justify-between text-[10px] mb-1">
-                      <span className="font-bold text-red-500">Fixos ({terrenos.porcentagemNaoMod}%)</span>
-                    </div>
-                    <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                      <div className="h-full bg-red-400" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[10px] text-muted-foreground">
-                  Fator Amplificador de Sintomas: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
-                </p>
-              </div>
-              <div className="relative w-20 h-20 shrink-0 flex items-center justify-center bg-card rounded-full border-2 border-muted overflow-hidden">
-                <PersonStanding className="h-10 w-10 text-primary opacity-50" />
-                <svg className="absolute inset-0 w-full h-full -rotate-90">
-                  <circle cx="40" cy="40" r="37" className="stroke-green-500 fill-none" strokeWidth="3" strokeDasharray="233" strokeDashoffset={233 - (233 * terrenos.porcentagemMod) / 100} />
-                  <circle cx="40" cy="40" r="33" className="stroke-red-400 fill-none" strokeWidth="2" strokeDasharray="207" strokeDashoffset={207 - (207 * terrenos.porcentagemNaoMod) / 100} />
-                </svg>
-              </div>
-            </div>
-          </div>
-        );
-      })()}
-
-      {/* Studio Personal Integration Card */}
-      {ultimaMedidaStudio && (
-        <div className="clinical-card border-l-4 border-l-emerald-500 bg-emerald-50/20">
-          <div className="flex items-center gap-2 mb-2">
-            <Dumbbell className="h-4 w-4 text-emerald-600" />
-            <span className="text-xs font-bold text-emerald-900">Última Composição Corporal (Studio)</span>
-            <Badge variant="outline" className="ml-auto text-[10px] h-4 bg-white">{format(parseISO(ultimaMedidaStudio.data_medida), 'dd/MM/yy', { locale: ptBR })}</Badge>
-          </div>
-          <div className="flex gap-4">
-            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.peso}kg</div>
-              <div className="text-[9px] text-muted-foreground uppercase">Peso</div>
-            </div>
-            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.percentual_gordura}%</div>
-              <div className="text-[9px] text-muted-foreground uppercase">% Gord.</div>
-            </div>
-            <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-              <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.imc || '—'}</div>
-              <div className="text-[9px] text-muted-foreground uppercase">IMC</div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Tabs */}
-      <Tabs defaultValue="avaliacoes">
-        <TabsList className="bg-secondary p-1 rounded-xl">
-          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <BarChart3 className="h-4 w-4" /> Avaliações {avaliacoes.length > 0 && `(${avaliacoes.length})`}
+      {/* Tabs Principais */}
+      <Tabs defaultValue="remota">
+        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
+          <TabsTrigger value="remota" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+            <FileText className="h-4 w-4" /> Avaliação Remota
+          </TabsTrigger>
+          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+            <AlignCenter className="h-4 w-4" /> Avaliação em Consultório {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           {evolucaoData.length >= 2 && (
-            <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
               <TrendingUp className="h-4 w-4" /> Evolução
             </TabsTrigger>
           )}
-          <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+          <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
             <Dumbbell className="h-4 w-4" /> Protocolos
           </TabsTrigger>
         </TabsList>
 
-        {/* Aba: Avaliações Salvas */}
-        <TabsContent value="avaliacoes" className="mt-4">
+        {/* Aba: Avaliação Remota */}
+        <TabsContent value="remota" className="mt-4 space-y-4">
+          {/* Link Compacto */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 flex-wrap">
+              <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
+              <span className="text-xs font-semibold shrink-0">Link Avaliação (MyID)</span>
+              {linkAtivo ? (
+                <>
+                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                  <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao!), new Date())}d</span>
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
+                    <Copy className="h-3 w-3" />
+                  </Button>
+                  {paciente.telefone && (
+                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]" onClick={() => whatsApp(linkAtivo.token)}>
+                      <MessageCircle className="h-3 w-3" />
+                    </Button>
+                  )}
+                </>
+              ) : (
+                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600" disabled={gerando} onClick={gerarLink}>
+                  {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  Gerar (30d)
+                </Button>
+              )}
+            </div>
+          </div>
+
+          <QuestionariosComparacao linksAvPaciente={linksAv} respostas={respostas} />
+        </TabsContent>
+
+        {/* Aba: Avaliação em Consultório */}
+        <TabsContent value="avaliacoes" className="mt-4 space-y-6">
+          
+          {/* Seções de Resumo da Presencial */}
+          <div className="space-y-6">
+            {/* Índices de Risco — combina scores de identidade + COB */}
+            {(ultimaIdentidade || avaliacoes.length > 0) && (
+              <IndicesRiscoComprometimento
+                scores={{
+                  ...(ultimaIdentidade || {}),
+                  score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
+                } as any}
+                parcial={!ultimaIdentidade}
+                dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
+              />
+            )}
+
+            {/* Perfil de Terreno Integrado */}
+            {questionnaireData?.blocos[1] && questionnaireData?.blocos[4] && questionnaireData?.blocos[5] && (() => {
+              const terrenos = calcularTerrenos(questionnaireData.blocos[1], questionnaireData.blocos[4], questionnaireData.blocos[5], questionnaireData.scores.scoreD || 0);
+              return (
+                <div className="clinical-card border-2 border-primary/10 bg-gradient-to-br from-card to-primary/5">
+                  <div className="flex flex-col md:flex-row items-center gap-6">
+                    <div className="flex-1 space-y-3">
+                      <h3 className="font-bold text-sm flex items-center gap-2">
+                        <PersonStanding className="h-4 w-4 text-primary" />
+                        Terreno Biopsicossocial (Baseado no Questionário)
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <div className="flex justify-between text-[10px] mb-1">
+                            <span className="font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                            <div className="h-full bg-green-500" style={{ width: `${terrenos.porcentagemMod}%` }} />
+                          </div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] mb-1">
+                            <span className="font-bold text-red-500">Fixos ({terrenos.porcentagemNaoMod}%)</span>
+                          </div>
+                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                            <div className="h-full bg-red-400" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">
+                        Fator Amplificador de Sintomas: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
+                      </p>
+                    </div>
+                    <div className="relative w-20 h-20 shrink-0 flex items-center justify-center bg-card rounded-full border-2 border-muted overflow-hidden">
+                      <PersonStanding className="h-10 w-10 text-primary opacity-50" />
+                      <svg className="absolute inset-0 w-full h-full -rotate-90">
+                        <circle cx="40" cy="40" r="37" className="stroke-green-500 fill-none" strokeWidth="3" strokeDasharray="233" strokeDashoffset={233 - (233 * terrenos.porcentagemMod) / 100} />
+                        <circle cx="40" cy="40" r="33" className="stroke-red-400 fill-none" strokeWidth="2" strokeDasharray="207" strokeDashoffset={207 - (207 * terrenos.porcentagemNaoMod) / 100} />
+                      </svg>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
+
+            {/* Studio Personal Integration Card */}
+            {ultimaMedidaStudio && (
+              <div className="clinical-card border-l-4 border-l-emerald-500 bg-emerald-50/20">
+                <div className="flex items-center gap-2 mb-2">
+                  <Dumbbell className="h-4 w-4 text-emerald-600" />
+                  <span className="text-xs font-bold text-emerald-900">Última Composição Corporal (Studio)</span>
+                  <Badge variant="outline" className="ml-auto text-[10px] h-4 bg-white">{format(parseISO(ultimaMedidaStudio.data_medida), 'dd/MM/yy', { locale: ptBR })}</Badge>
+                </div>
+                <div className="flex gap-4">
+                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.peso}kg</div>
+                    <div className="text-[9px] text-muted-foreground uppercase">Peso</div>
+                  </div>
+                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.percentual_gordura}%</div>
+                    <div className="text-[9px] text-muted-foreground uppercase">% Gord.</div>
+                  </div>
+                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.imc || '—'}</div>
+                    <div className="text-[9px] text-muted-foreground uppercase">IMC</div>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <div className="h-px bg-border my-6" />
+
           {isLoading ? (
             <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
           ) : avaliacoes.length === 0 ? (

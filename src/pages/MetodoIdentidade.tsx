@@ -1,15 +1,14 @@
 import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { AvaliacaoIdentidade } from '@/types/identidade';
-import Bloco1Anamnese from '@/components/identidade/Bloco1Anamnese';
-// Bloco2Dor is now merged into Bloco1Anamnese
-import Bloco3Funcionalidade from '@/components/identidade/Bloco3Funcionalidade';
-import Bloco4Kinesiophobia from '@/components/identidade/Bloco4Kinesiophobia';
-import Bloco5Regulacao from '@/components/identidade/Bloco5Regulacao';
-import Bloco6Estrutural from '@/components/identidade/Bloco6Estrutural';
+import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
+import { calcularMyID, calcularScoreI, calcularScoreD_MyID, calcularScoreEFI_MyID, calcularScoreP_MyID, calcularScoreR_MyID, calcularScoreN } from '@/utils/myidCalculations';
+import MyIDBloco1 from '@/components/myid/MyIDBloco1';
+import MyIDBloco2 from '@/components/myid/MyIDBloco2';
+import MyIDBloco3 from '@/components/myid/MyIDBloco3';
+import MyIDBloco4 from '@/components/myid/MyIDBloco4';
+import MyIDBloco5 from '@/components/myid/MyIDBloco5';
+import MyIDBloco6 from '@/components/myid/MyIDBloco6';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
-import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
-import { calcularIDFinal } from '@/utils/calculations';
 import {
   CheckCircle2, Circle, ClipboardList, Activity, Brain,
   Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
@@ -28,39 +27,25 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 
 const blocos = [
-  { id: 1, label: 'Anamnese e Mapeamento da Dor', sublabel: 'Score F + D', icon: ClipboardList, time: '15 min' },
-  { id: 3, label: 'Funcionalidade', sublabel: 'Score EFI', icon: Activity, time: '4 min' },
-  { id: 4, label: 'Comportamento', sublabel: 'Score P (TSK-11)', icon: Brain, time: '6 min' },
-  { id: 5, label: 'Regulação Neurovegetativa', sublabel: 'Scores R e C', icon: Bed, time: '10 min' },
-  { id: 6, label: 'Avaliação Estrutural', sublabel: 'Score E (8 UCs)', icon: Dumbbell, time: '15 min' },
+  { id: 1, label: 'Identificação', sublabel: 'Gatilho I', icon: ClipboardList, time: '2 min' },
+  { id: 2, label: 'Mapeamento Dor', sublabel: 'Score D', icon: Activity, time: '4 min' },
+  { id: 3, label: 'Funcionalidade', sublabel: 'Score EFI', icon: Activity, time: '3 min' },
+  { id: 4, label: 'Comportamento', sublabel: 'Score P', icon: Brain, time: '4 min' },
+  { id: 5, label: 'Regulação', sublabel: 'Scores R e C', icon: Bed, time: '5 min' },
+  { id: 6, label: 'Ruído Sistêmico', sublabel: 'Score N', icon: Dumbbell, time: '3 min' },
 ];
 
-const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoIdentidade => ({
+const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoMyID => ({
   pacienteNome,
   pacienteIdade: 35,
-  terapeutaNome: '',
   dataAvaliacao: new Date().toLocaleDateString('pt-BR'),
-  bloco1: {
-    queixaPrincipal: '', duracao: '', eventoPrecipitante: false, eventoPrecipitanteDescricao: '',
-    historicoMedico: [], historicoFamiliar: false, historicoFamiliarDescricao: '',
-    metasTerapeuticas: ['', '', ''], profissao: '', horasSedentario: 8, atividadeFisica: 'leve',
-    qualidadeSono: 5, tabagismo: false, alcool: 'nenhum', litrosAgua: 2,
-    impactoQualidadeVida: 5, interferenciaTrbalho: 5, quantidadeComorbidades: 2, historicoFamiliarPeso: 3,
-    scoreF: 0,
-  },
-  bloco2: { regioes: [], scoreD: 0 },
-  bloco3: { trabalho: 5, domesticas: 5, exercicio: 5, independencia: 5, vidaSocial: 5, scoreEFI: 5 },
-  bloco4: { respostas: Array(11).fill(2), scoreP: 0 },
-  bloco5: {
-    qualidadeSono: 5, horasSono: 7, acordaNaNoite: 3, dorAfetaSono: 3, descansadoAoAcordar: 6,
-    scoreR1: 0, energiaAoAcordar: 6, fadigaDia: 4, precisaCochiblar: 2, motivacao: 6, resistenciaFisica: 6,
-    scoreR2: 0, nivelStress: 5, humorGeral: 6, concentracao: 6, preocupacaoSaude: 4, sensacaoControle: 6,
-    scoreR3: 0, cargaLaboral: 5, relacionamentos: 4, situacaoFinanceira: 4, eventosEstressantes: 3,
-    scoreC: 0, scoreR: 0,
-  },
-  bloco6: { unidades: [], scoreE: 0 },
-  idFinal: 0,
-  classificacao: '',
+  bloco1: { ...DEFAULT_BLOCO1 },
+  bloco2: { ...DEFAULT_BLOCO2 },
+  bloco3: { ...DEFAULT_BLOCO3 },
+  bloco4: { ...DEFAULT_BLOCO4 },
+  bloco5: { ...DEFAULT_BLOCO5 },
+  bloco6: { ...DEFAULT_BLOCO6 },
+  resultado: { myidScore: 0, myidStatus: '', componentScores: { D:0, EFI:0, P:0, I:0, R:0, C:0, N:0 }, redFlagsDetected: false, redFlagAlerts: [], classificacao: '' },
   blocoAtual: 1,
   concluido: false,
 });
@@ -108,8 +93,8 @@ export default function MetodoIdentidade() {
       if (precarga.bloco3) base.bloco3 = { ...base.bloco3, ...precarga.bloco3 };
       if (precarga.bloco4) base.bloco4 = { ...base.bloco4, ...precarga.bloco4 };
       if (precarga.bloco5) base.bloco5 = { ...base.bloco5, ...precarga.bloco5 };
-      // Marcar blocos do questionário como concluídos e pular para Bloco 6 (Estrutural)
-      setBlocosConcluidos(new Set([1, 2, 3, 4, 5]));
+      // Marcar blocos do questionário como concluídos (para edição ou visualização)
+      setBlocosConcluidos(new Set([1, 2, 3, 4, 5, 6]));
       base.blocoAtual = 6;
     } else {
       setBlocosConcluidos(new Set());
@@ -121,28 +106,28 @@ export default function MetodoIdentidade() {
     setShowRelatorio(false);
   };
 
-  const updateBloco = useCallback((blocoKey: keyof AvaliacaoIdentidade, data: any) => {
+  const updateBloco = useCallback((blocoKey: keyof AvaliacaoMyID, data: any) => {
     setAvaliacao(prev => ({ ...prev, [blocoKey]: data }));
   }, []);
 
-  // Block flow: 1 → 3 → 4 → 5 → 6 (Bloco2 merged into Bloco1)
-  const BLOCK_ORDER = [1, 3, 4, 5, 6];
+  const BLOCK_ORDER = [1, 2, 3, 4, 5, 6];
 
   const avancarBloco = useCallback((blocoAtual: number) => {
     setBlocosConcluidos(prev => new Set([...prev, blocoAtual]));
-    // Also mark bloco2 as concluded when bloco1 finishes (merged)
-    if (blocoAtual === 1) setBlocosConcluidos(prev => new Set([...prev, 1, 2]));
     const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
     const nextBlock = BLOCK_ORDER[currentIdx + 1];
     if (nextBlock) {
       setAvaliacao(prev => ({ ...prev, blocoAtual: nextBlock }));
     } else {
-      const { idFinal, classificacao } = calcularIDFinal(
-        avaliacao.bloco6.scoreE, avaliacao.bloco4.scoreP,
-        avaliacao.bloco5.scoreC, avaliacao.bloco1.scoreF,
-        avaliacao.bloco2.scoreD, avaliacao.bloco5.scoreR,
-      );
-      const finalAv = { ...avaliacao, idFinal, classificacao, concluido: true };
+      const i = calcularScoreI(avaliacao.bloco1);
+      const d = calcularScoreD_MyID(avaliacao.bloco2);
+      const efi = calcularScoreEFI_MyID(avaliacao.bloco3);
+      const p = calcularScoreP_MyID(avaliacao.bloco4);
+      const { r, c } = calcularScoreR_MyID(avaliacao.bloco5);
+      const n = calcularScoreN(avaliacao.bloco6);
+      const resultado = calcularMyID(d, efi, p, i, r, c, n);
+
+      const finalAv = { ...avaliacao, resultado, concluido: true };
       setAvaliacao(finalAv);
       setShowRelatorio(true);
       // Auto-save to patient record
@@ -404,12 +389,14 @@ export default function MetodoIdentidade() {
                 <Button
                   className="w-full mt-3 bg-gradient-primary text-white text-xs"
                   onClick={() => {
-                    const { idFinal, classificacao } = calcularIDFinal(
-                      avaliacao.bloco6.scoreE, avaliacao.bloco4.scoreP,
-                      avaliacao.bloco5.scoreC, avaliacao.bloco1.scoreF,
-                      avaliacao.bloco2.scoreD, avaliacao.bloco5.scoreR,
-                    );
-                    setAvaliacao(prev => ({ ...prev, idFinal, classificacao }));
+                    const i = calcularScoreI(avaliacao.bloco1);
+                    const d = calcularScoreD_MyID(avaliacao.bloco2);
+                    const efi = calcularScoreEFI_MyID(avaliacao.bloco3);
+                    const p = calcularScoreP_MyID(avaliacao.bloco4);
+                    const { r, c } = calcularScoreR_MyID(avaliacao.bloco5);
+                    const n = calcularScoreN(avaliacao.bloco6);
+                    const resultado = calcularMyID(d, efi, p, i, r, c, n);
+                    setAvaliacao(prev => ({ ...prev, resultado }));
                     setShowRelatorio(true);
                   }}
                 >
@@ -423,21 +410,22 @@ export default function MetodoIdentidade() {
           <div className="lg:col-span-3">
             <div className="animate-slide-in">
               {avaliacao.blocoAtual === 1 && (
-                <Bloco1Anamnese data={avaliacao.bloco1} bloco2Data={avaliacao.bloco2}
-                  onChange={(d) => updateBloco('bloco1', d)} onBloco2Change={(d) => updateBloco('bloco2', d)}
-                  onNext={() => avancarBloco(1)} />
+                <MyIDBloco1 data={avaliacao.bloco1} onChange={(d) => updateBloco('bloco1', d)} onNext={() => avancarBloco(1)} />
+              )}
+              {avaliacao.blocoAtual === 2 && (
+                <MyIDBloco2 data={avaliacao.bloco2} onChange={(d) => updateBloco('bloco2', d)} onNext={() => avancarBloco(2)} onBack={voltarBloco} />
               )}
               {avaliacao.blocoAtual === 3 && (
-                <Bloco3Funcionalidade data={avaliacao.bloco3} onChange={(d) => updateBloco('bloco3', d)} onNext={() => avancarBloco(3)} onBack={voltarBloco} />
+                <MyIDBloco3 data={avaliacao.bloco3} onChange={(d) => updateBloco('bloco3', d)} onNext={() => avancarBloco(3)} onBack={voltarBloco} />
               )}
               {avaliacao.blocoAtual === 4 && (
-                <Bloco4Kinesiophobia data={avaliacao.bloco4} onChange={(d) => updateBloco('bloco4', d)} onNext={() => avancarBloco(4)} onBack={voltarBloco} />
+                <MyIDBloco4 data={avaliacao.bloco4} onChange={(d) => updateBloco('bloco4', d)} onNext={() => avancarBloco(4)} onBack={voltarBloco} />
               )}
               {avaliacao.blocoAtual === 5 && (
-                <Bloco5Regulacao data={avaliacao.bloco5} onChange={(d) => updateBloco('bloco5', d)} onNext={() => avancarBloco(5)} onBack={voltarBloco} />
+                <MyIDBloco5 data={avaliacao.bloco5} onChange={(d) => updateBloco('bloco5', d)} onNext={() => avancarBloco(5)} onBack={voltarBloco} />
               )}
               {avaliacao.blocoAtual === 6 && (
-                <Bloco6Estrutural data={avaliacao.bloco6} onChange={(d) => updateBloco('bloco6', d)} onNext={() => avancarBloco(6)} onBack={voltarBloco} />
+                <MyIDBloco6 data={avaliacao.bloco6} onChange={(d) => updateBloco('bloco6', d)} onSubmit={() => avancarBloco(6)} onBack={voltarBloco} />
               )}
             </div>
           </div>

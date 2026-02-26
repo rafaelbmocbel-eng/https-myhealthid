@@ -12,8 +12,10 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
-  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation
 } from 'lucide-react';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import QuestionariosComparacao from '../paciente/QuestionariosComparacao';
 import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import RelatorioIdentidade from '../identidade/RelatorioIdentidade';
@@ -88,10 +90,53 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const linkAtivo = links.find(l => l.paciente_id === pacienteId && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
   const ultimaAvaliacao = avaliacoes?.[0];
 
+  // Fetch questionnaire responses for the remote tab
+  const { data: linksAvPaciente = [] } = useQuery({
+    queryKey: ['links-av-paciente-studio', user?.id, pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('links_avaliacao')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: respostas = [] } = useQuery({
+    queryKey: ['respostas-paciente-studio', pacienteId],
+    queryFn: async () => {
+      const linkIds = linksAvPaciente.map(l => l.id);
+      if (linkIds.length === 0) return [];
+      const { data, error } = await supabase
+        .from('respostas_avaliacao_paciente')
+        .select('*')
+        .in('link_id', linkIds)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: linksAvPaciente.length > 0,
+  });
+
   return (
     <div className="space-y-4 pb-10">
-      {/* Links compactos */}
-      <Card className="border-studio/20 shadow-sm">
+      <Tabs defaultValue="remota">
+        <TabsList className="bg-studio/10 p-1 rounded-xl">
+          <TabsTrigger value="remota" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
+            <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+          </TabsTrigger>
+          <TabsTrigger value="presencial" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
+            <Presentation className="h-4 w-4" /> Avaliação Presencial
+          </TabsTrigger>
+        </TabsList>
+
+        {/* Tab: Avaliação Remota & Agenda */}
+        <TabsContent value="remota" className="space-y-4 mt-4">
+          <Card className="border-studio/20 shadow-sm">
         <CardContent className="pt-3 pb-3">
           <div className="flex items-center gap-2 mb-2">
             <Link2 className="h-3.5 w-3.5 text-studio" />
@@ -142,6 +187,12 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
         </CardContent>
       </Card>
 
+      {/* Comparação dos questionários remotos do paciente */}
+      <QuestionariosComparacao linksAvPaciente={linksAvPaciente} respostas={respostas} />
+    </TabsContent>
+
+    {/* Tab: Avaliação Presencial */}
+    <TabsContent value="presencial" className="space-y-4 mt-4">
       {/* Seção Clinica Premium: Bio-Individualidade Elite */}
       {ultimaAvaliacao && (
         <div className="space-y-4">
@@ -358,11 +409,12 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
             ))}
           </div>
         )}
-      </div>
+        </div>
 
-      <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium opacity-60">
-        * As métricas premium são baseadas em algoritmos de saúde integrativa e regulação autonômica.
-      </p>
+        <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium opacity-60">
+          * As métricas premium são baseadas em algoritmos de saúde integrativa e regulação autonômica.
+        </p>
+      </TabsContent>
 
       {/* Modal Relatório Premium */}
       {
@@ -386,6 +438,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           </div>
         )
       }
-    </div >
+      </Tabs>
+    </div>
   );
 }

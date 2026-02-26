@@ -2,7 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { AvaliacaoIdentidade } from '@/types/identidade';
+import { AvaliacaoMyID } from '@/types/myid';
 import { AvaliacaoCobZero } from '@/types/cobzero';
 
 // ── Método Identidade ─────────────────────────────────────────────────────────
@@ -29,22 +29,33 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
   });
 
   const salvarMutation = useMutation({
-    mutationFn: async ({ avaliacao, pacienteId }: { avaliacao: AvaliacaoIdentidade; pacienteId: string }) => {
+    mutationFn: async ({ avaliacao, pacienteId }: { avaliacao: AvaliacaoMyID; pacienteId: string }) => {
+      const isMyID = !!avaliacao.resultado;
+
       const payload = {
         terapeuta_id: user!.id,
         paciente_id: pacienteId,
         paciente_nome: avaliacao.pacienteNome,
         data_avaliacao: avaliacao.dataAvaliacao,
         dados_avaliacao: avaliacao as any,
-        id_final: avaliacao.idFinal,
-        classificacao: avaliacao.classificacao,
-        score_e: avaliacao.bloco6.scoreE,
-        score_p: avaliacao.bloco4.scoreP,
-        score_c: avaliacao.bloco5.scoreC,
-        score_f: avaliacao.bloco1.scoreF,
-        score_d: avaliacao.bloco2.scoreD,
-        score_r: avaliacao.bloco5.scoreR,
-        score_efi: avaliacao.bloco3.scoreEFI,
+        classificacao: avaliacao.resultado?.classificacao || 'N/A',
+        
+        // Novos campos MyID
+        myid_score: avaliacao.resultado?.myidScore || 0,
+        score_i: avaliacao.resultado?.componentScores.I || 0,
+        score_n: avaliacao.resultado?.componentScores.N || 0,
+        
+        // Campos compartilhados (mapeados a partir do resultado MyID)
+        score_p: avaliacao.resultado?.componentScores.P || 0,
+        score_c: avaliacao.resultado?.componentScores.C || 0,
+        score_d: avaliacao.resultado?.componentScores.D || 0,
+        score_r: avaliacao.resultado?.componentScores.R || 0,
+        score_efi: avaliacao.resultado?.componentScores.EFI || 0,
+        
+        // Campos que não existem mais (anulados)
+        score_e: null,
+        score_f: null,
+        id_final: null,
       };
       const { data, error } = await (supabase as any)
         .from('avaliacoes_identidade')
@@ -58,7 +69,7 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
         // Fetch previous assessments for this patient (excluding the one just saved)
         const { data: previousAvals } = await (supabase as any)
           .from('avaliacoes_identidade')
-          .select('id, created_at, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final')
+          .select('id, created_at, score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, myid_score, score_i, score_n')
           .eq('paciente_id', pacienteId)
           .eq('terapeuta_id', user!.id)
           .neq('id', data.id)
@@ -83,6 +94,9 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
           score_d: data.score_d,
           score_r: data.score_r,
           score_efi: data.score_efi,
+          score_i: data.score_i,
+          score_n: data.score_n,
+          myid_score: data.myid_score,
         };
 
         const deltas = prev
@@ -94,9 +108,11 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
               delta_d: (data.score_d ?? 0) - (prev.score_d ?? 0),
               delta_r: (data.score_r ?? 0) - (prev.score_r ?? 0),
               delta_efi: (data.score_efi ?? 0) - (prev.score_efi ?? 0),
-              delta_id_final: (data.id_final ?? 0) - (prev.id_final ?? 0),
+              delta_i: (data.score_i ?? 0) - (prev.score_i ?? 0),
+              delta_n: (data.score_n ?? 0) - (prev.score_n ?? 0),
+              delta_id_final: (data.myid_score ?? data.id_final ?? 0) - (prev.myid_score ?? prev.id_final ?? 0),
             }
-          : { delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_id_final: 0 };
+          : { delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_i: 0, delta_n: 0, delta_id_final: 0 };
 
         const diasDesdeAnterior = prev
           ? Math.round((new Date(data.created_at).getTime() - new Date(prev.created_at).getTime()) / (1000 * 60 * 60 * 24))

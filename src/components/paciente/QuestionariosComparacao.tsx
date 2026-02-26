@@ -11,11 +11,11 @@ import {
   LineChart, Line, PieChart, Pie, Cell,
 } from 'recharts';
 
-const BLOCOS = ['Anamnese e Mapeamento da Dor', 'Funcionalidade', 'Comportamento', 'Regulação Neurovegetativa'];
+const BLOCOS = ['Identificação', 'Mapeamento Dor', 'Funcionalidade', 'Comportamento', 'Regulação', 'Ruído Sistêmico'];
 import { calcularTerrenos } from '@/utils/calculations';
 
 const SCORE_KEYS_MAP: Record<number, { key: string; label: string; color: string }[]> = {
-  1: [{ key: 'scoreF', label: 'Score F', color: 'hsl(var(--primary))' }],
+  1: [{ key: 'scoreI', label: 'Score I', color: '#FF8C42' }],
   2: [{ key: 'scoreD', label: 'Score D', color: '#ef4444' }],
   3: [{ key: 'scoreEFI', label: 'Score EFI', color: '#10b981' }],
   4: [{ key: 'scoreP', label: 'Score P', color: '#f59e0b' }],
@@ -23,9 +23,10 @@ const SCORE_KEYS_MAP: Record<number, { key: string; label: string; color: string
     { key: 'scoreR', label: 'Score R', color: '#8b5cf6' },
     { key: 'scoreC', label: 'Score C', color: '#3b82f6' },
   ],
+  6: [{ key: 'scoreN', label: 'Score N', color: '#4A90E2' }],
 };
 
-const PIE_COLORS = ['#7c3aed', '#3b82f6', '#ef4444', '#10b981', '#f59e0b'];
+const PIE_COLORS = ['#FF8C42', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6', '#4A90E2'];
 
 interface LinkAvaliacao {
   id: string;
@@ -174,6 +175,41 @@ function Bloco1Detail({ dados }: { dados: any }) {
                   ))}
                   {reg.irradiacao && <span className="text-[9px] bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded-md font-medium">Irradiação</span>}
                   {reg.frequencia && <span className="text-[9px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-md font-medium">{reg.frequencia}</span>}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function Bloco2Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  const regioes = dados.regioes || [];
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        <ScoreGaugeMini value={dados.scoreD ?? 0} label="Score D — Dor" color="#ef4444" subtitle="Intensidade da dor" />
+      </div>
+      {regioes.length > 0 && (
+        <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
+          <div className="flex items-center gap-2">
+            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">{regioes.length} Região(ões) de Dor</span>
+          </div>
+          <div className="space-y-2">
+            {regioes.map((reg: any, i: number) => (
+              <div key={i} className="rounded-lg bg-background p-2.5 border space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold">{reg.nome || `Região ${i + 1}`}</span>
+                  <div className="flex items-center gap-1">
+                    <span className="text-lg font-black" style={{ color: reg.intensidadeAtual > 6 ? '#ef4444' : reg.intensidadeAtual > 3 ? '#f59e0b' : '#10b981' }}>
+                      {reg.intensidadeAtual ?? reg.intensidade ?? 0}
+                    </span>
+                    <span className="text-[10px] text-muted-foreground">/10</span>
+                  </div>
                 </div>
               </div>
             ))}
@@ -352,22 +388,39 @@ function Bloco5Detail({ dados }: { dados: any }) {
   );
 }
 
+function Bloco6Detail({ dados }: { dados: any }) {
+  if (!dados) return null;
+  return (
+    <div className="space-y-3">
+      <ScoreGaugeMini value={dados.scoreN ?? 0} label="Score N — Ruído Sistêmico" color="#4A90E2" subtitle="Fatores sistêmicos e autonômicos" />
+      <div className="rounded-xl border bg-muted/30 p-3 space-y-2 text-xs">
+        <div><span className="text-muted-foreground">Trauma Axial:</span> {dados.traumaAxial ? `Sim (${dados.traumaAxialAnos || 0} anos)` : 'Não'}</div>
+        <div><span className="text-muted-foreground">Cicatriz Abd:</span> {dados.cicatrizAbdominal ? `Sim (${dados.cicatrizTipo})` : 'Não'}</div>
+      </div>
+    </div>
+  );
+}
+
 /* ── Render detail by block number ── */
 function BlocoDetailRenderer({ blocoNum, dados }: { blocoNum: number; dados: any }) {
   switch (blocoNum) {
     case 1: return <Bloco1Detail dados={dados} />;
+    case 2: return <Bloco2Detail dados={dados} />;
     case 3: return <Bloco3Detail dados={dados} />;
     case 4: return <Bloco4Detail dados={dados} />;
     case 5: return <Bloco5Detail dados={dados} />;
-    default: return null;
+    case 6: return <Bloco6Detail dados={dados} />;
+    default: return <div className="text-xs text-muted-foreground p-2">Detalhes não configurados para este bloco. (Score computado).</div>;
   }
 }
 
 const BLOCO_ICONS: Record<number, any> = {
   1: ClipboardList,
-  3: Activity,
+  2: Activity,
+  3: Dumbbell,
   4: Brain,
   5: Bed,
+  6: AlertTriangle,
 };
 
 export default function QuestionariosComparacao({ linksAvPaciente, respostas }: Props) {
@@ -402,7 +455,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           allScores,
           blocoScores,
           blocoDados,
-          completo: blocosRecebidos.length >= 4,
+          completo: blocosRecebidos.length >= 6,
           data: link.data_ultimo_acesso || link.created_at,
         };
       });
@@ -425,7 +478,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
   const taxaComplecao = totalQuestionarios > 0 ? Math.round((completos / totalQuestionarios) * 100) : 0;
 
   // Completion by block for pie chart
-  const BLOCO_NUMS = [1, 3, 4, 5];
+  const BLOCO_NUMS = [1, 2, 3, 4, 5, 6];
   const blocosCount = BLOCOS.map((nome, i) => ({
     name: nome,
     value: respostasAgrupadas.filter(r => r.blocosRecebidos.includes(BLOCO_NUMS[i])).length,
@@ -438,12 +491,13 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
     .map((r, i) => ({
       name: `Q${i + 1}`,
       data: r.data ? format(parseISO(r.data), 'dd/MM', { locale: ptBR }) : `Q${i + 1}`,
-      F: r.allScores.scoreF ?? null,
+      I: r.allScores.scoreI ?? r.allScores.scoreF ?? null, // Fallback to F if old
       D: r.allScores.scoreD ?? null,
       EFI: r.allScores.scoreEFI ?? null,
       P: r.allScores.scoreP ?? null,
       R: r.allScores.scoreR ?? null,
       C: r.allScores.scoreC ?? null,
+      N: r.allScores.scoreN ?? null,
     }));
 
   // Comparison bar data (latest vs first if 2+)
@@ -451,7 +505,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
     ? (() => {
       const first = respostasAgrupadas[respostasAgrupadas.length - 1];
       const last = respostasAgrupadas[0];
-      return ['scoreF', 'scoreD', 'scoreEFI', 'scoreP', 'scoreR', 'scoreC']
+      return ['scoreI', 'scoreD', 'scoreEFI', 'scoreP', 'scoreR', 'scoreC', 'scoreN']
         .filter(k => first.allScores[k] !== undefined || last.allScores[k] !== undefined)
         .map(k => ({
           score: k.replace('score', ''),
@@ -493,11 +547,12 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                   <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Line type="monotone" dataKey="F" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} name="F" connectNulls />
+                  <Line type="monotone" dataKey="I" stroke="#FF8C42" strokeWidth={2} dot={{ r: 3 }} name="I" connectNulls />
                   <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="D" connectNulls />
+                  <Line type="monotone" dataKey="EFI" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="EFI" connectNulls />
                   <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="P" connectNulls />
                   <Line type="monotone" dataKey="R" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} name="R" connectNulls />
-                  <Line type="monotone" dataKey="EFI" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="EFI" connectNulls />
+                  <Line type="monotone" dataKey="N" stroke="#4A90E2" strokeWidth={2} dot={{ r: 3 }} name="N" connectNulls />
                 </LineChart>
               </ResponsiveContainer>
             </div>
@@ -603,7 +658,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
                         {group.completo && <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] h-4">Completo</Badge>}
                         {!group.completo && (
                           <Badge variant="outline" className="text-[10px] h-4 text-amber-600 border-amber-200 bg-amber-50">
-                            {group.blocosRecebidos.length}/4 etapas
+                            {group.blocosRecebidos.length}/6 etapas
                           </Badge>
                         )}
                       </div>
