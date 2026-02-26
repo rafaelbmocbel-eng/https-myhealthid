@@ -193,13 +193,18 @@ export type Database = {
           data_avaliacao: string
           id: string
           id_final: number | null
+          myid_analysis: Json | null
+          myid_score: number | null
           paciente_id: string
           paciente_nome: string
+          red_flags: Json | null
           score_c: number | null
           score_d: number | null
           score_e: number | null
           score_efi: number | null
           score_f: number | null
+          score_i: number | null
+          score_n: number | null
           score_p: number | null
           score_r: number | null
           terapeuta_id: string
@@ -212,13 +217,18 @@ export type Database = {
           data_avaliacao: string
           id?: string
           id_final?: number | null
+          myid_analysis?: Json | null
+          myid_score?: number | null
           paciente_id: string
           paciente_nome: string
+          red_flags?: Json | null
           score_c?: number | null
           score_d?: number | null
           score_e?: number | null
           score_efi?: number | null
           score_f?: number | null
+          score_i?: number | null
+          score_n?: number | null
           score_p?: number | null
           score_r?: number | null
           terapeuta_id: string
@@ -231,13 +241,18 @@ export type Database = {
           data_avaliacao?: string
           id?: string
           id_final?: number | null
+          myid_analysis?: Json | null
+          myid_score?: number | null
           paciente_id?: string
           paciente_nome?: string
+          red_flags?: Json | null
           score_c?: number | null
           score_d?: number | null
           score_e?: number | null
           score_efi?: number | null
           score_f?: number | null
+          score_i?: number | null
+          score_n?: number | null
           score_p?: number | null
           score_r?: number | null
           terapeuta_id?: string
@@ -307,12 +322,15 @@ export type Database = {
           delta_e: number | null
           delta_efi: number | null
           delta_f: number | null
+          delta_i: number | null
           delta_id_final: number | null
+          delta_n: number | null
           delta_p: number | null
           delta_r: number | null
           dias_desde_anterior: number | null
           id: string
           id_final: number | null
+          myid_score: number | null
           numero_avaliacao: number
           observacoes: string | null
           paciente_id: string
@@ -321,6 +339,8 @@ export type Database = {
           score_e: number | null
           score_efi: number | null
           score_f: number | null
+          score_i: number | null
+          score_n: number | null
           score_p: number | null
           score_r: number | null
           terapeuta_id: string
@@ -337,12 +357,15 @@ export type Database = {
           delta_e?: number | null
           delta_efi?: number | null
           delta_f?: number | null
+          delta_i?: number | null
           delta_id_final?: number | null
+          delta_n?: number | null
           delta_p?: number | null
           delta_r?: number | null
           dias_desde_anterior?: number | null
           id?: string
           id_final?: number | null
+          myid_score?: number | null
           numero_avaliacao?: number
           observacoes?: string | null
           paciente_id: string
@@ -351,6 +374,8 @@ export type Database = {
           score_e?: number | null
           score_efi?: number | null
           score_f?: number | null
+          score_i?: number | null
+          score_n?: number | null
           score_p?: number | null
           score_r?: number | null
           terapeuta_id: string
@@ -367,12 +392,15 @@ export type Database = {
           delta_e?: number | null
           delta_efi?: number | null
           delta_f?: number | null
+          delta_i?: number | null
           delta_id_final?: number | null
+          delta_n?: number | null
           delta_p?: number | null
           delta_r?: number | null
           dias_desde_anterior?: number | null
           id?: string
           id_final?: number | null
+          myid_score?: number | null
           numero_avaliacao?: number
           observacoes?: string | null
           paciente_id?: string
@@ -381,6 +409,8 @@ export type Database = {
           score_e?: number | null
           score_efi?: number | null
           score_f?: number | null
+          score_i?: number | null
+          score_n?: number | null
           score_p?: number | null
           score_r?: number | null
           terapeuta_id?: string
