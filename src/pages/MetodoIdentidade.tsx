@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
+import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import { calcularMyID, calcularScoreI, calcularScoreD_MyID, calcularScoreEFI_MyID, calcularScoreP_MyID, calcularScoreR_MyID, calcularScoreN } from '@/utils/myidCalculations';
 import MyIDBloco1 from '@/components/myid/MyIDBloco1';
 import MyIDBloco2 from '@/components/myid/MyIDBloco2';
@@ -60,7 +61,7 @@ export default function MetodoIdentidade() {
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
   const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
   const [searchPac, setSearchPac] = useState('');
-  const [avaliacao, setAvaliacao] = useState<AvaliacaoIdentidade>(makeDefaultAvaliacao());
+  const [avaliacao, setAvaliacao] = useState<AvaliacaoMyID>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
 
@@ -160,7 +161,7 @@ export default function MetodoIdentidade() {
 
   // Dashboard do paciente selecionado
   if (selectedPacienteId && showDashboard && selectedPaciente) {
-    const handleEditarAvaliacao = (av: AvaliacaoIdentidade) => {
+    const handleEditarAvaliacao = (av: AvaliacaoMyID) => {
       // Load saved assessment back into form for editing
       setAvaliacao({ ...av, blocoAtual: 1, concluido: false });
       setBlocosConcluidos(new Set());
