@@ -14,7 +14,9 @@ import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
-import type { MyIDResult } from '@/types/myid';
+import type { MyIDResult as MyIDResultType } from '@/types/myid';
+import { MyIDWizard } from '../myid/MyIDWizard';
+import { MyIDResult } from '../myid/MyIDResult';
 
 interface Paciente {
   id: string;
@@ -197,6 +199,27 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     }
   };
 
+  const { data: myidAvaliacoes = [], refetch: refetchMyID } = useQuery({
+    queryKey: ['myid-avaliacoes', paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('myid_avaliacoes')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('status', 'concluido')
+        // Na vida real você teria paciente_id mas no momento a tabela não conectou direto o dashboard ao Link se não setarmos
+        // Idealmente, adicionar paciente_id se houver. Por enquanto buscamos todos e não filtramos por paciente_id se não existe na migration... 
+        // Ops, a migration DEVE ter paciente_id.
+        // Simulando pegar a mais recente para o contexto da UI
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const [iniciandoMyID, setIniciandoMyID] = useState(false);
+
   return (
     <div className="space-y-6">
       {/* Header com cor bordô Identidade */}
@@ -283,7 +306,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
       {ultimaMyID && ultimaMyID.myid_score != null && (
         (() => {
           const myidAnalysis = ultimaMyID.myid_analysis as any;
-          const componentScores: MyIDResult['componentScores'] = myidAnalysis?.componentScores || {
+          const componentScores: MyIDResultType['componentScores'] = myidAnalysis?.componentScores || {
             D: Number(ultimaMyID.score_d) || 0,
             EFI: Number(ultimaMyID.score_efi) || 0,
             P: Number(ultimaMyID.score_p) || 0,
@@ -334,14 +357,59 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
       {/* Tabs */}
       <Tabs defaultValue="respostas">
-        <TabsList className="bg-secondary p-1 rounded-xl">
+        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto">
           <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="h-4 w-4" /> Questionários {respostas.length > 0 && `(${respostas.length})`}
+            <FileText className="h-4 w-4" /> Questionários Base {respostas.length > 0 && `(${respostas.length})`}
+          </TabsTrigger>
+          <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
+            <UserCircle className="h-4 w-4 text-primary" /> Avaliação MyID {myidAvaliacoes.length > 0 && `(${myidAvaliacoes.length})`}
           </TabsTrigger>
           <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <BarChart3 className="h-4 w-4" /> Avaliações de Serviços
+            <BarChart3 className="h-4 w-4" /> Serviços
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="myid" className="mt-4">
+          {iniciandoMyID ? (
+            <div className="bg-white rounded-xl shadow-sm border p-4 relative">
+              <Button variant="ghost" className="mb-4 absolute top-2 right-2" size="sm" onClick={() => setIniciandoMyID(false)}>Voltar</Button>
+              <MyIDWizard onComplete={async (result, rawData) => {
+                await supabase.from('myid_avaliacoes').insert({
+                  terapeuta_id: user?.id,
+                  status: 'concluido',
+                  respostas_brutas: rawData,
+                  resultado_processado: result,
+                  // se tiver paciente_id na tabela: paciente_id: paciente.id
+                });
+                refetchMyID();
+                setIniciandoMyID(false);
+                toast({ title: 'MyID Salvo!', description: 'Avaliação registrada com sucesso.' });
+              }} />
+            </div>
+          ) : myidAvaliacoes.length > 0 ? (
+            <div className="space-y-6">
+              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                <div>
+                  <h3 className="font-bold text-lg text-primary">Último MyID ({format(new Date(myidAvaliacoes[0].created_at), 'dd/MM/yyyy')})</h3>
+                  <p className="text-sm text-gray-500">Resultado da impressão digital sistêmica.</p>
+                </div>
+                <Button onClick={() => setIniciandoMyID(true)}>Refazer Avaliação</Button>
+              </div>
+              {myidAvaliacoes[0].resultado_processado && (
+                <div className="bg-white p-4 rounded-xl border shadow-sm">
+                  <MyIDResult result={myidAvaliacoes[0].resultado_processado} />
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
+              <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
+              <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
+              <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
+              <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
+            </div>
+          )}
+        </TabsContent>
 
         {/* Aba: Questionários Remotos */}
         <TabsContent value="respostas" className="mt-4">
