@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter } from 'lucide-react';
+import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -12,6 +12,9 @@ import { differenceInDays, format } from 'date-fns';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
+import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
+import type { MyIDResult } from '@/types/myid';
 
 interface Paciente {
   id: string;
@@ -157,6 +160,21 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     },
   });
 
+  // Buscar última avaliação MyID
+  const { data: ultimaMyID } = useQuery({
+    queryKey: ['dashboard-ultima-myid', paciente.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_identidade')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .not('myid_score', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      return data?.[0] || null;
+    },
+  });
+
   const enviarEmail = async () => {
     if (!paciente.email || !linkAtivo) return;
     setEnviandoEmail(true);
@@ -260,6 +278,59 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           </div>
         </div>
       </div>
+
+      {/* MyID Fingerprint Card */}
+      {ultimaMyID && ultimaMyID.myid_score != null && (
+        (() => {
+          const myidAnalysis = ultimaMyID.myid_analysis as any;
+          const componentScores: MyIDResult['componentScores'] = myidAnalysis?.componentScores || {
+            D: Number(ultimaMyID.score_d) || 0,
+            EFI: Number(ultimaMyID.score_efi) || 0,
+            P: Number(ultimaMyID.score_p) || 0,
+            I: Number(ultimaMyID.score_i) || 0,
+            R: Number(ultimaMyID.score_r) || 0,
+            C: Number(ultimaMyID.score_c) || 0,
+            N: Number(ultimaMyID.score_n) || 0,
+          };
+          const rings = getMyIDFingerprintData(componentScores);
+          const classificacao = ultimaMyID.classificacao || 'LEVE';
+          const severityClass = getMyIDSeverityColor(classificacao);
+          return (
+            <div className="clinical-card border-l-4 border-l-identidade">
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-7 w-7 rounded-lg bg-identidade flex items-center justify-center">
+                  <Fingerprint className="h-4 w-4 text-identidade-foreground" />
+                </div>
+                <h4 className="font-bold text-sm">MyID Fingerprint</h4>
+                <Badge className={`ml-auto text-[10px] border ${severityClass}`}>{classificacao}</Badge>
+              </div>
+              <div className="flex flex-col md:flex-row items-center gap-4">
+                <div className="w-full md:w-1/2">
+                  <MyIDFingerprint rings={rings} myidScore={Number(ultimaMyID.myid_score)} />
+                </div>
+                <div className="w-full md:w-1/2 space-y-2">
+                  <div className="text-center md:text-left">
+                    <div className="text-3xl font-black text-foreground">{Number(ultimaMyID.myid_score).toFixed(1)}</div>
+                    <div className="text-xs text-muted-foreground">MyID Score</div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-1.5">
+                    {rings.map(r => (
+                      <div key={r.scoreKey} className="flex items-center gap-1.5">
+                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                        <span className="text-[10px] text-muted-foreground truncate">{r.label}</span>
+                        <span className="text-[10px] font-bold ml-auto">{r.value.toFixed(1)}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border">
+                    {ultimaMyID.data_avaliacao}
+                  </div>
+                </div>
+              </div>
+            </div>
+          );
+        })()
+      )}
 
       {/* Tabs */}
       <Tabs defaultValue="respostas">
