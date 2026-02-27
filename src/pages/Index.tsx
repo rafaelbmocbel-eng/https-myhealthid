@@ -4,12 +4,14 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
+import { useState } from 'react';
+import { useToast } from '@/components/ui/use-toast';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
   ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
   CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
   Zap, Shield, Gauge, MapPin, Stethoscope, Dumbbell, BedDouble,
-  Battery, Briefcase, Sparkles,
+  Battery, Briefcase, Sparkles, Link as LinkIcon
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -204,7 +206,7 @@ export default function Index() {
               tecidosTotal.count++;
             });
           }
-        } catch {}
+        } catch { }
       });
 
       const toRanked = (rec: Record<string, number>, max = 8) =>
@@ -257,6 +259,47 @@ export default function Index() {
     },
     enabled: !!user,
   });
+
+  const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const { toast } = useToast();
+
+  const handleGerarLinkMyID = async () => {
+    if (!user) return;
+    try {
+      setIsGeneratingLink(true);
+
+      const token = Math.random().toString(36).substring(2, 12);
+
+      const { data, error } = await supabase
+        .from('myid_avaliacoes')
+        .insert({
+          terapeuta_id: user.id,
+          token_acesso: token,
+          status: 'pendente'
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const link = `${window.location.origin}/myid/responder/${token}`;
+      await navigator.clipboard.writeText(`Olá! Para iniciarmos nosso trabalho ou atualização, por favor responda ao Questionário MyID através deste link. Leva cerca de 10 minutinhos:\n\n${link}`);
+
+      toast({
+        title: "Link Copiado!",
+        description: "O link do MyID foi copiado para a área de transferência.",
+      });
+
+    } catch (err: any) {
+      toast({
+        title: "Erro ao gerar link",
+        description: err.message,
+        variant: "destructive"
+      });
+    } finally {
+      setIsGeneratingLink(false);
+    }
+  };
 
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
@@ -471,11 +514,10 @@ export default function Index() {
                       </div>
                       <div className="text-xs text-muted-foreground">{ag.tipo_atendimento || 'Retorno'}</div>
                     </div>
-                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${
-                      ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' :
+                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' :
                       ag.status === 'pendente' ? 'bg-amber-100 text-amber-700' :
-                      'bg-slate-100 text-slate-600'
-                    }`}>
+                        'bg-slate-100 text-slate-600'
+                      }`}>
                       {ag.status}
                     </div>
                   </div>
@@ -776,7 +818,6 @@ export default function Index() {
           </div>
         )}
 
-        {/* Quick actions */}
         <div className="mt-6 flex flex-wrap gap-3">
           <Button asChild variant="outline" className="gap-2">
             <Link to="/pacientes"><Plus className="h-4 w-4" /> Novo Paciente</Link>
@@ -786,6 +827,15 @@ export default function Index() {
           </Button>
           <Button asChild variant="outline" className="gap-2">
             <Link to="/metodo-identidade"><ClipboardList className="h-4 w-4" /> Nova Avaliação</Link>
+          </Button>
+          <div className="flex-1" />
+          <Button
+            onClick={handleGerarLinkMyID}
+            disabled={isGeneratingLink}
+            className="gap-2 bg-slate-900 hover:bg-slate-800 text-white"
+          >
+            {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
+            Gerar Link MyID
           </Button>
         </div>
       </div>
