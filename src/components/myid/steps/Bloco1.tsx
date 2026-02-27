@@ -21,159 +21,199 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
     };
 
     return (
-        <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Bloco 1: Identificação e Gatilhos</h2>
-                <p className="text-gray-500">O que mudou nos últimos 30 dias?</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 1: O QUE MUDOU NOS ÚLTIMOS 30 DIAS?</h2>
+                <p className="text-gray-500">Seu corpo detecta MUDANÇAS como "ameaças potenciais".<br />Seu corpo ADORA rotina. Quando algo muda, ele entra em alerta. Este bloco detecta o que disparou o problema.</p>
             </div>
 
-            <div className="space-y-4">
-                <div className="space-y-2">
-                    <Label className="text-base font-semibold">1.1 Qual é a sua queixa principal?</Label>
+            <div className="space-y-8">
+                <div className="space-y-3">
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 1.1: QUAL É SUA QUEIXA PRINCIPAL?</Label>
+                    <p className="text-sm text-gray-500 mb-2">Descreva brevemente o que te trouxe aqui:</p>
                     <Input
-                        placeholder="Ex: Dor nas costas ao acordar..."
+                        placeholder="Ex: Dor nas costas ao acordar, dor no joelho ao correr, dor de cabeça constante..."
                         value={data.bloco_1_queixa || ''}
                         onChange={(e) => updateData({ bloco_1_queixa: e.target.value })}
                         maxLength={200}
                     />
                 </div>
 
-                <div className="space-y-3">
-                    <Label className="text-base font-semibold">1.2 Nas últimas 4 semanas, houve alguma mudança?</Label>
-                    <p className="text-sm text-gray-500">Marque TODAS que se aplicam:</p>
-                    <div className="space-y-2">
+                <div className="space-y-4">
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 1.2: NAS ÚLTIMAS 4 SEMANAS, HOUVE ALGUMA MUDANÇA?</Label>
+                    <p className="text-sm text-gray-500 mb-2">Marque TODAS que se aplicam:</p>
+                    <div className="space-y-3 bg-muted/20 p-4 rounded-xl border border-muted">
                         <div className="flex items-start space-x-3">
-                            <Checkbox
-                                id="change-equip"
-                                checked={(data.bloco_1_changes || []).includes('equipment')}
-                                onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'equipment', !!c)}
-                            />
-                            <div className="space-y-1 leading-none">
-                                <Label htmlFor="change-equip" className="font-medium cursor-pointer">Novo Equipamento</Label>
-                                <p className="text-sm text-gray-500">Tênis, colchão, cadeira nova, etc.</p>
+                            <Checkbox id="change-equip" checked={(data.bloco_1_changes || []).includes('equipment')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'equipment', !!c)} />
+                            <div className="space-y-1 mt-0.5">
+                                <Label htmlFor="change-equip" className="font-bold cursor-pointer text-sm">NOVO EQUIPAMENTO</Label>
+                                <p className="text-xs text-gray-500">Tênis novo, colchão novo, travesseiro novo, cadeira de trabalho nova, mochila nova, cinto, ou qualquer coisa que sua estrutura usa diariamente</p>
                             </div>
                         </div>
 
                         <div className="flex items-start space-x-3">
-                            <Checkbox
-                                id="change-load"
-                                checked={(data.bloco_1_changes || []).includes('load')}
-                                onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'load', !!c)}
-                            />
-                            <div className="space-y-1 leading-none">
-                                <Label htmlFor="change-load" className="font-medium cursor-pointer">Aumento de Carga</Label>
-                                <p className="text-sm text-gray-500">Novo treino, mais volume, trabalho mais pesado</p>
+                            <Checkbox id="change-load" checked={(data.bloco_1_changes || []).includes('load')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'load', !!c)} />
+                            <div className="space-y-1 mt-0.5">
+                                <Label htmlFor="change-load" className="font-bold cursor-pointer text-sm">AUMENTO DE CARGA</Label>
+                                <p className="text-xs text-gray-500">Começou novo treino, aumentou volume de exercício, novo trabalho mais pesado, competição próxima, aumento de horas na academia, ou atividade inusitada</p>
                             </div>
                         </div>
 
                         <div className="flex items-start space-x-3">
-                            <Checkbox
-                                id="change-posture"
-                                checked={(data.bloco_1_changes || []).includes('posture')}
-                                onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'posture', !!c)}
-                            />
-                            <div className="space-y-1 leading-none">
-                                <Label htmlFor="change-posture" className="font-medium cursor-pointer">Mudança de Postura/Contexto</Label>
-                                <p className="text-sm text-gray-500">Home office, viagem, mudança de local</p>
+                            <Checkbox id="change-posture" checked={(data.bloco_1_changes || []).includes('posture')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'posture', !!c)} />
+                            <div className="space-y-1 mt-0.5">
+                                <Label htmlFor="change-posture" className="font-bold cursor-pointer text-sm">MUDANÇA DE POSTURA / CONTEXTO</Label>
+                                <p className="text-xs text-gray-500">Mais tempo sentado, home office novo, viagem longa, mudança de casa, novo local de trabalho, posição diferente ao dormir</p>
                             </div>
                         </div>
 
                         <div className="flex items-start space-x-3">
-                            <Checkbox
-                                id="change-scare"
-                                checked={(data.bloco_1_changes || []).includes('scare')}
-                                onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'scare', !!c)}
-                            />
-                            <div className="space-y-1 leading-none">
-                                <Label htmlFor="change-scare" className="font-medium cursor-pointer">Susto Físico / Quase Lesão</Label>
-                                <p className="text-sm text-gray-500">Movimento em falso, quase escorregou</p>
+                            <Checkbox id="change-scare" checked={(data.bloco_1_changes || []).includes('scare')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'scare', !!c)} />
+                            <div className="space-y-1 mt-0.5">
+                                <Label htmlFor="change-scare" className="font-bold cursor-pointer text-sm">SUSTO FÍSICO / QUASE-LESÃO</Label>
+                                <p className="text-xs text-gray-500">Quase escorregou, movimento "em falso", sensação de "travada" súbita, queda leve, torcida que não evoluiu para lesão completa</p>
+                            </div>
+                        </div>
+
+                        <div className="flex items-start space-x-3 pt-2">
+                            <Checkbox id="change-none" checked={(data.bloco_1_changes || []).includes('none')} onCheckedChange={(c) => handleCheckboxChange('bloco_1_changes', 'none', !!c)} />
+                            <div className="space-y-1 mt-0.5">
+                                <Label htmlFor="change-none" className="font-bold cursor-pointer text-sm text-gray-500">NENHUMA MUDANÇA QUE EU NOTE</Label>
+                                <p className="text-xs text-gray-400">Tudo estava normal e a dor apareceu "do nada"</p>
                             </div>
                         </div>
                     </div>
                 </div>
 
                 <div className="space-y-3">
-                    <Label className="text-base font-semibold">1.4 Você já teve lesão/dor parecida antes?</Label>
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 1.3: QUANDO EXATAMENTE COMEÇOU?</Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold">Data aproximada:</Label>
+                            <Input
+                                type="date"
+                                value={data.bloco_1_quando_data || ''}
+                                onChange={(e) => updateData({ bloco_1_quando_data: e.target.value })}
+                            />
+                        </div>
+                        <div className="space-y-2">
+                            <Label className="text-sm font-semibold">O que você estava fazendo quando notou:</Label>
+                            <Input
+                                placeholder="Ex: Acordei com dor, não sei por quê"
+                                value={data.bloco_1_quando_desc || ''}
+                                onChange={(e) => updateData({ bloco_1_quando_desc: e.target.value })}
+                            />
+                        </div>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 1.4: VOCÊ JÁ TEVE LESÃO PARECIDA ANTES? ⭐ NOVO</Label>
                     <RadioGroup
+                        className="space-y-2"
                         value={data.bloco_1_similar_injury === undefined ? '' : (data.bloco_1_similar_injury ? 'yes' : 'no')}
                         onValueChange={(v) => updateData({ bloco_1_similar_injury: v === 'yes' })}
                     >
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="no" id="sim-inj-no" />
-                            <Label htmlFor="sim-inj-no">Não, primeira vez</Label>
+                            <Label htmlFor="sim-inj-no" className="font-medium cursor-pointer">NÃO, nunca tive problema assim</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="yes" id="sim-inj-yes" />
-                            <Label htmlFor="sim-inj-yes">Sim, já tive dor parecida</Label>
+                            <Label htmlFor="sim-inj-yes" className="font-medium cursor-pointer text-primary">SIM, já tive lesão/dor parecida</Label>
                         </div>
                     </RadioGroup>
 
                     {data.bloco_1_similar_injury && (
-                        <div className="ml-6 mt-3 space-y-3 p-4 bg-muted/30 rounded-md">
-                            <Label className="text-sm font-semibold">Como foi a cicatrização na época?</Label>
-                            <RadioGroup
-                                value={data.bloco_1_healing_speed || ''}
-                                onValueChange={(v) => updateData({ bloco_1_healing_speed: v })}
-                            >
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="fast" id="heal-fast" />
-                                    <Label htmlFor="heal-fast">Rápida (menos de 4 semanas)</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="moderate" id="heal-mod" />
-                                    <Label htmlFor="heal-mod">Moderada (4-12 semanas)</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="slow" id="heal-slow" />
-                                    <Label htmlFor="heal-slow">Lenta (mais de 12 semanas)</Label>
-                                </div>
-                                <div className="flex items-center space-x-2">
-                                    <RadioGroupItem value="with_sequela" id="heal-seq" />
-                                    <Label htmlFor="heal-seq">Ficou com sequela/dor frequente</Label>
-                                </div>
-                            </RadioGroup>
+                        <div className="ml-6 space-y-4 p-4 bg-primary/5 rounded-xl border border-primary/10">
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Quando foi?</Label>
+                                <Input
+                                    placeholder="Ex: Há 6 meses, há 2 anos..."
+                                    value={data.bloco_1_similar_quando || ''}
+                                    onChange={(e) => updateData({ bloco_1_similar_quando: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2">
+                                <Label className="text-sm font-semibold">Quanto tempo levou para melhorar?</Label>
+                                <Input
+                                    placeholder="Ex: 3 semanas, 6 meses..."
+                                    value={data.bloco_1_similar_tempo || ''}
+                                    onChange={(e) => updateData({ bloco_1_similar_tempo: e.target.value })}
+                                />
+                            </div>
+
+                            <div className="space-y-2 pt-2">
+                                <Label className="text-sm font-semibold text-primary">Cicatrizou 100% ou ficou com sequela?</Label>
+                                <p className="text-xs text-gray-500 mb-2">IMPORTÂNCIA: Isto ajuda a prever tempo de recuperação e potencial de resposta</p>
+                                <RadioGroup
+                                    className="space-y-2"
+                                    value={data.bloco_1_healing_speed || ''}
+                                    onValueChange={(v) => updateData({ bloco_1_healing_speed: v })}
+                                >
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="fast" id="heal-fast" />
+                                        <Label htmlFor="heal-fast" className="cursor-pointer text-sm">Cicatrizou completamente (sem dor)</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="moderate" id="heal-mod" />
+                                        <Label htmlFor="heal-mod" className="cursor-pointer text-sm">Ficou com dor ocasional</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="slow" id="heal-slow" />
+                                        <Label htmlFor="heal-slow" className="cursor-pointer text-sm">Ficou com dor constante</Label>
+                                    </div>
+                                    <div className="flex items-center space-x-2">
+                                        <RadioGroupItem value="with_sequela" id="heal-seq" />
+                                        <Label htmlFor="heal-seq" className="cursor-pointer text-sm font-bold text-red-600">Ficou com limitação importante</Label>
+                                    </div>
+                                </RadioGroup>
+                            </div>
                         </div>
                     )}
                 </div>
 
-                <div className="space-y-3 border-t pt-4">
-                    <Label className="text-base font-semibold">1.5 Fez fisioterapia para esse problema antes?</Label>
+                <div className="space-y-4 border-t border-muted pt-6">
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 1.5: VOCÊ JÁ FEZ REABILITAÇÃO/FISIOTERAPIA ANTES? ⭐ NOVO</Label>
                     <RadioGroup
+                        className="space-y-2"
                         value={data.bloco_1_did_physio === undefined ? '' : (data.bloco_1_did_physio ? 'yes' : 'no')}
                         onValueChange={(v) => updateData({ bloco_1_did_physio: v === 'yes' })}
                     >
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="no" id="physio-no" />
-                            <Label htmlFor="physio-no">Não</Label>
+                            <Label htmlFor="physio-no" className="font-medium cursor-pointer">NUNCA fiz fisioterapia</Label>
                         </div>
                         <div className="flex items-center space-x-2">
                             <RadioGroupItem value="yes" id="physio-yes" />
-                            <Label htmlFor="physio-yes">Sim</Label>
+                            <Label htmlFor="physio-yes" className="font-medium cursor-pointer text-primary">JÁ FIZ fisioterapia</Label>
                         </div>
                     </RadioGroup>
 
                     {data.bloco_1_did_physio && (
-                        <div className="ml-6 mt-3 space-y-3 p-4 bg-muted/30 rounded-md">
+                        <div className="ml-6 space-y-3 p-4 bg-primary/5 rounded-xl border border-primary/10 mt-2">
                             <Label className="text-sm font-semibold">Qual foi o resultado?</Label>
                             <RadioGroup
+                                className="space-y-2"
                                 value={data.bloco_1_physio_result || ''}
                                 onValueChange={(v) => updateData({ bloco_1_physio_result: v })}
                             >
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="excellent" id="physres-exc" />
-                                    <Label htmlFor="physres-exc">Excelente (80-100% melhora)</Label>
+                                    <Label htmlFor="physres-exc" className="cursor-pointer text-sm">Excelente (80-100% de melhora)</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="good" id="physres-good" />
-                                    <Label htmlFor="physres-good">Bom (50-80% melhora)</Label>
+                                    <Label htmlFor="physres-good" className="cursor-pointer text-sm">Bom (50-80% de melhora)</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="moderate" id="physres-mod" />
-                                    <Label htmlFor="physres-mod">Moderado (20-50% melhora)</Label>
+                                    <Label htmlFor="physres-mod" className="cursor-pointer text-sm">Moderado (20-50% de melhora)</Label>
                                 </div>
                                 <div className="flex items-center space-x-2">
                                     <RadioGroupItem value="bad" id="physres-bad" />
-                                    <Label htmlFor="physres-bad">Ruim (&lt; 20% melhora)</Label>
+                                    <Label htmlFor="physres-bad" className="cursor-pointer text-sm">Ruim (&lt;20% de melhora)</Label>
                                 </div>
                             </RadioGroup>
                         </div>
