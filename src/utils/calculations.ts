@@ -265,12 +265,13 @@ export function calcularTerrenos(
   if (bloco5.resistenciaFisica < 4) { somaModificavel += 0.4; itensModificaveis.push('Baixa resistência física'); }
 
   // Não-modificáveis (histórico, genética, cronicidade)
-  if (bloco1.historicoMedico.length > 0) { somaNaoModificavel += Math.min(bloco1.historicoMedico.length * 0.4, 2); itensNaoModificaveis.push(`${bloco1.historicoMedico.length} comorbidade(s)`); }
+  if ((bloco1.historicoMedico || []).length > 0) { somaNaoModificavel += Math.min((bloco1.historicoMedico || []).length * 0.4, 2); itensNaoModificaveis.push(`${(bloco1.historicoMedico || []).length} comorbidade(s)`); }
   if (bloco1.historicoFamiliar) { somaNaoModificavel += 0.5; itensNaoModificaveis.push('Histórico familiar'); }
   if (['6-12 meses', '>1 ano', '>2 anos'].includes(bloco1.duracao)) { somaNaoModificavel += 1; itensNaoModificaveis.push('Cronicidade'); }
-  if (bloco1.historicoFamiliarPeso > 6) { somaNaoModificavel += 0.5; itensNaoModificaveis.push('Peso familiar genético'); }
+  if ((bloco1.historicoFamiliarPeso ?? 0) > 6) { somaNaoModificavel += 0.5; itensNaoModificaveis.push('Peso familiar genético'); }
   // Cinesiofobia alta como fator semi-fixo
-  const scorePBruto = bloco4.respostas.reduce((a, b) => a + (b || 0), 0);
+  const respostasP = bloco4.respostas || [];
+  const scorePBruto = respostasP.reduce((a: number, b: number) => a + (b || 0), 0);
   if (scorePBruto > 33) { somaNaoModificavel += 0.8; itensNaoModificaveis.push('Cinesiofobia arraigada'); }
 
   const totalTerreno = somaModificavel + somaNaoModificavel;
