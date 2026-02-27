@@ -1,13 +1,8 @@
-// URL base for patient-facing links (published app, not preview)
-const PUBLISHED_URL = 'https://core-axis-pro.lovable.app';
-
-function getBaseUrl() {
-  // In production (published), use origin; otherwise use the published URL
-  // so patients never see the Lovable preview domain
-  if (typeof window !== 'undefined' && window.location.origin.includes('lovable.app') && !window.location.origin.includes('preview')) {
+export function getBaseUrl() {
+  if (typeof window !== 'undefined') {
     return window.location.origin;
   }
-  return PUBLISHED_URL;
+  return '';
 }
 
 export function getAvaliacaoUrl(token: string) {
