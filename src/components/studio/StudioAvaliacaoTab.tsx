@@ -82,9 +82,25 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
     }
   };
 
-  const copiarLinkAgenda = (token: string) => {
-    navigator.clipboard.writeText(getAgendaUrl(token));
-    toast({ title: 'Link de agenda copiado! 📋' });
+  const copiarLinkAgenda = async (token: string) => {
+    const url = getAgendaUrl(token);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.prepend(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      toast({ title: 'Link de agenda copiado! 📋' });
+    } catch(e) {
+      toast({ title: 'Erro ao copiar', variant: 'destructive' });
+    }
   };
 
   const linkAtivo = links.find(l => l.paciente_id === pacienteId && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());

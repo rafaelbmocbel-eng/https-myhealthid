@@ -51,13 +51,17 @@ export function useLinksAvaliacao() {
         .eq('terapeuta_id', user.id)
         .eq('status', 'ativo');
 
+      const dataExpiracao = new Date();
+      dataExpiracao.setDate(dataExpiracao.getDate() + 30);
+
       const { data, error } = await supabase
         .from('links_avaliacao')
         .insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,
-          blocos_inclusos: [1, 3, 4, 5],
+          blocos_inclusos: [1, 2, 3, 4, 5, 6],
           status: 'ativo',
+          data_expiracao: dataExpiracao.toISOString(),
         })
         .select()
         .single();
@@ -82,9 +86,25 @@ export function useLinksAvaliacao() {
 
   const getLinkUrl = (token: string) => getAvaliacaoUrl(token);
 
-  const copiarLink = (token: string) => {
-    navigator.clipboard.writeText(getLinkUrl(token));
-    toast({ title: 'Link copiado! 📋' });
+  const copiarLink = async (token: string) => {
+    const url = getLinkUrl(token);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.prepend(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      toast({ title: 'Link copiado! 📋', description: 'Pronto para enviar.' });
+    } catch (error) {
+      toast({ title: 'Erro ao copiar', description: 'Tente novamente.', variant: 'destructive' });
+    }
   };
 
   return { links, isLoading, gerando, gerarLink, cancelarLink, copiarLink, getLinkUrl };

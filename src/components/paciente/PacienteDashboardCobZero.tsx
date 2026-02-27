@@ -163,7 +163,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         paciente_id: paciente.id,
         terapeuta_id: user.id,
         data_expiracao: dataExpiracao.toISOString(),
-        blocos_inclusos: [1, 2, 3, 4, 5],
+        blocos_inclusos: [1, 2, 3, 4, 5, 6],
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links-av-cobzero'] });
@@ -175,9 +175,25 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
     }
   };
 
-  const copiarLink = (token: string) => {
-    navigator.clipboard.writeText(getLinkUrl(token));
-    toast({ title: 'Link copiado! 📋' });
+  const copiarLink = async (token: string) => {
+    const url = getLinkUrl(token);
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const textArea = document.createElement("textarea");
+        textArea.value = url;
+        textArea.style.position = "absolute";
+        textArea.style.left = "-999999px";
+        document.body.prepend(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        textArea.remove();
+      }
+      toast({ title: 'Link copiado! 📋' });
+    } catch(e) {
+      toast({ title: 'Erro ao copiar', variant: 'destructive' });
+    }
   };
 
   const whatsApp = (token: string) => {
