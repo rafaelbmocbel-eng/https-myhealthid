@@ -88,26 +88,11 @@ serve(async (req) => {
 </body>
 </html>`;
 
-    // Use Lovable AI Gateway to send email via Resend-compatible endpoint
-    const LOVABLE_API_KEY = Deno.env.get('LOVABLE_API_KEY');
-    
-    // Use Resend directly via fetch if we have a key, otherwise use a simple fallback
-    // Since we don't have SendGrid/Resend key, we'll use the Lovable AI gateway approach
-    // Actually, let's use Resend npm package which is the standard approach
-    const { Resend } = await import("npm:resend@4");
-    
-    // Try with LOVABLE_API_KEY as Resend key (won't work), so we need to handle gracefully
-    // The correct fix: use the LOVABLE_API_KEY from secrets which is for AI, not email
-    // We need to tell the user to add a Resend/SendGrid key
-    // But for now, let's make it work by returning a proper error message
-    
-    const resendKey = Deno.env.get('RESEND_API_KEY') || Deno.env.get('SENDGRID_API_KEY');
+    const resendKey = Deno.env.get('RESEND_API_KEY');
     
     if (!resendKey) {
-      // Return success but log that no email key is configured
-      console.log('No email API key configured (RESEND_API_KEY or SENDGRID_API_KEY). Email not sent.');
+      console.log('No RESEND_API_KEY configured. Email not sent.');
       console.log(`Would have sent to: ${patientEmail}, subject: ${tpl.subject}`);
-      console.log(`Link URL: ${linkUrl}`);
       return new Response(JSON.stringify({ 
         success: false, 
         error: 'Chave de API de email não configurada. Configure RESEND_API_KEY nas configurações.' 
@@ -116,18 +101,25 @@ serve(async (req) => {
       });
     }
 
-    // Use Resend
-    const resend = new Resend(resendKey);
-    const { data, error } = await resend.emails.send({
-      from: 'Método Identidade <noreply@metodoidentidade.app>',
-      to: [patientEmail],
-      subject: tpl.subject,
-      html,
+    const res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${resendKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        from: 'Método Identidade <noreply@metodoidentidade.app>',
+        to: [patientEmail],
+        subject: tpl.subject,
+        html,
+      }),
     });
 
-    if (error) {
-      console.error('Resend error:', error);
-      return new Response(JSON.stringify({ error: 'Falha ao enviar email', detail: error.message }), {
+    const data = await res.json();
+
+    if (!res.ok) {
+      console.error('Resend error:', data);
+      return new Response(JSON.stringify({ error: 'Falha ao enviar email', detail: data.message }), {
         status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }

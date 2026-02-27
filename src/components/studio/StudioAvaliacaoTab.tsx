@@ -19,7 +19,7 @@ import QuestionariosComparacao from '../paciente/QuestionariosComparacao';
 import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import RelatorioIdentidade from '../identidade/RelatorioIdentidade';
-import { AvaliacaoIdentidade } from '@/types/identidade';
+import { AvaliacaoMyID } from '@/types/myid';
 import { getSeverityColorHex } from '@/utils/calculations';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
@@ -37,7 +37,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesIdentidade(pacienteId);
-  const [selectedAvaliacao, setSelectedAvaliacao] = useState<AvaliacaoIdentidade | null>(null);
+  const [selectedAvaliacao, setSelectedAvaliacao] = useState<AvaliacaoMyID | null>(null);
 
   const { data: linksAgenda = [] } = useQuery({
     queryKey: ['links_agenda_paciente', user?.id],
@@ -400,7 +400,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
                     </div>
                   </div>
                   <Button size="sm" variant="outline" className="h-9 text-[10px] font-black gap-2 px-4 rounded-xl border-border bg-white group-hover:border-studio group-hover:text-studio group-hover:shadow-lg transition-all duration-300 uppercase tracking-widest"
-                    onClick={() => setSelectedAvaliacao(av.dados_avaliacao as AvaliacaoIdentidade)}>
+                    onClick={() => setSelectedAvaliacao(av.dados_avaliacao as unknown as AvaliacaoMyID)}>
                     <FileText className="h-3.5 w-3.5" /> Ver Relatório
                     <ChevronRight className="h-3 w-3 opacity-50 group-hover:translate-x-0.5 transition-transform" />
                   </Button>
