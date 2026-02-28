@@ -98,10 +98,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5E: Atividade Física */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5E. Atividade Física</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5E: ATIVIDADE FÍSICA E TENSÃO DIÁRIA</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Quantas horas por dia fica sentado direto?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5E.1: TEMPO SENTADO CONTÍNUO</Label>
+                    <p className="text-sm text-gray-500">Quantas horas por dia fica sentado direto?</p>
                     <Input
                         type="number"
                         min="0" max="24"
@@ -113,7 +114,8 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Nível de estilo de vida atual?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5E.2: ESTILO DE VIDA GERAL</Label>
+                    <p className="text-sm text-gray-500">Qual o seu nível de estilo de vida atual?</p>
                     <RadioGroup
                         value={data.bloco_5e_lifestyle || ''}
                         onValueChange={(v) => updateData({ bloco_5e_lifestyle: v })}
@@ -123,16 +125,58 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <div className="flex items-center space-x-2"><RadioGroupItem value="sedentary" id="ls-s" /><Label htmlFor="ls-s">Sedentário (passos em casa/trabalho apenas)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="moderate" id="ls-m" /><Label htmlFor="ls-m">Moderado (alguma caminhada, tarefas ativas)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="active" id="ls-a" /><Label htmlFor="ls-a">Ativo (exercícios regulares 3+ vezes/semana)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="very_active" id="ls-va" /><Label htmlFor="ls-va">Muito ativo (treinos intensos quase diariamente)</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5E.3: TIPO DE EXERCÍCIO QUE FAZ</Label>
+                    <p className="text-sm text-gray-500">Que tipo de exercício você pratica REGULARMENTE? (Marque TODOS que se aplicam)</p>
+                    <div className="space-y-2">
+                        {[
+                            { id: 'none', label: 'NENHUM / SEM EXERCÍCIO' },
+                            { id: 'cardio', label: 'CARDIO (Corrida, bicicleta, natação, dança)' },
+                            { id: 'strength', label: 'FORÇA / MUSCULAÇÃO' },
+                            { id: 'yoga', label: 'YOGA / PILATES / ALONGAMENTO' },
+                            { id: 'sports', label: 'ESPORTE (Futebol, vôlei, tênis, etc.)' },
+                            { id: 'daily', label: 'ATIVIDADE DIÁRIA (Caminhada, subir escadas, tarefas)' }
+                        ].map(ex => (
+                            <div key={ex.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`ex-${ex.id}`}
+                                    checked={(data.bloco_5e_exercise_types || []).includes(ex.id)}
+                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5e_exercise_types', ex.id, !!c)}
+                                />
+                                <Label htmlFor={`ex-${ex.id}`}>{ex.label}</Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5E.4: INTENSIDADE DO EXERCÍCIO</Label>
+                    <p className="text-sm text-gray-500">Quando você se exercita, qual é a INTENSIDADE?</p>
+                    <RadioGroup
+                        value={data.bloco_5e_intensity || ''}
+                        onValueChange={(v) => updateData({ bloco_5e_intensity: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="int-none" /><Label htmlFor="int-none">NÃO FAÇO EXERCÍCIO</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="light" id="int-light" /><Label htmlFor="int-light">LEVE (Consigo falar durante, ex: caminhada tranquila)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="moderate" id="int-mod" /><Label htmlFor="int-mod">MODERADA (Consigo conversar com dificuldade)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="intense" id="int-int" /><Label htmlFor="int-int">INTENSA (Falar é difícil, respirando pesado)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="maximum" id="int-max" /><Label htmlFor="int-max">MÁXIMA (Estou no limite, não consigo falar)</Label></div>
                     </RadioGroup>
                 </div>
             </section>
 
             {/* 5F: Hidratação */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5F. Hidratação</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5F: HIDRATAÇÃO (Hydration Factor)</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Quantos litros de água bebe por dia? (Ideal: 3-4L)</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5F.1: INGESTÃO DE ÁGUA DIÁRIA</Label>
+                    <p className="text-sm text-gray-500">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
                     <Input
                         type="number"
                         min="0" max="10" step="0.1"
@@ -144,7 +188,36 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Sintomas comuns?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5F.2: COR DA URINA</Label>
+                    <p className="text-sm text-gray-500">Qual é a COR da sua URINA na maior parte do dia?</p>
+                    <RadioGroup
+                        value={data.bloco_5f_urine_color || ''}
+                        onValueChange={(v) => updateData({ bloco_5f_urine_color: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="very_dark" id="uc-1" /><Label htmlFor="uc-1">MUITO ESCURA (Marrom/Âmbar escuro) - "Estou desidratado"</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="dark" id="uc-2" /><Label htmlFor="uc-2">ESCURA (Âmbar) - "Preciso beber mais"</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="yellow_clear" id="uc-3" /><Label htmlFor="uc-3">AMARELA CLARA (Amarelo pálido) - "Aceitável"</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="clear" id="uc-4" /><Label htmlFor="uc-4">QUASE INCOLOR (Transparente) - "Perfeito!"</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5F.3: FREQUÊNCIA DE MICÇÃO</Label>
+                    <p className="text-sm text-gray-500">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
+                    <Input
+                        type="number"
+                        min="0" max="30"
+                        placeholder="Ex: 6"
+                        value={data.bloco_5f_micturition || ''}
+                        onChange={(e) => updateData({ bloco_5f_micturition: parseInt(e.target.value) })}
+                        className="w-32"
+                    />
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5F.4: SINTOMAS DE DESIDRATAÇÃO</Label>
+                    <p className="text-sm text-gray-500">Você sente com frequência algum disto?</p>
                     <div className="space-y-2">
                         <div className="flex items-center space-x-2">
                             <Checkbox
@@ -156,11 +229,19 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         </div>
                         <div className="flex items-center space-x-2">
                             <Checkbox
+                                id="hid-skin"
+                                checked={!!data.bloco_5f_dehydration_symptoms?.dry_skin_frequent}
+                                onCheckedChange={(c) => handleObjCheckboxChange('bloco_5f_dehydration_symptoms', 'dry_skin_frequent', !!c)}
+                            />
+                            <Label htmlFor="hid-skin">Pele seca frequentemente</Label>
+                        </div>
+                        <div className="flex items-center space-x-2">
+                            <Checkbox
                                 id="hid-2"
                                 checked={!!data.bloco_5f_dehydration_symptoms?.fatigue_water_helps}
                                 onCheckedChange={(c) => handleObjCheckboxChange('bloco_5f_dehydration_symptoms', 'fatigue_water_helps', !!c)}
                             />
-                            <Label htmlFor="hid-2">Sente cansaço e melhora muito quando bebe água</Label>
+                            <Label htmlFor="hid-2">Letargia / Fadiga (que melhora muito ao beber água)</Label>
                         </div>
                     </div>
                 </div>
@@ -168,24 +249,27 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5G: Nutrição */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5G. Nutrição</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5G: NUTRIÇÃO GERAL (Nutrition Factor)</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Consumo de proteína (carne, peixe, frango, ovos)?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5G.1: QUALIDADE NUTRICIONAL GERAL</Label>
+                    <p className="text-sm text-gray-500">Como você avalia a QUALIDADE da sua alimentação?</p>
                     <RadioGroup
-                        value={data.bloco_5g_protein || ''}
-                        onValueChange={(v) => updateData({ bloco_5g_protein: v })}
+                        value={data.bloco_5g_quality || ''}
+                        onValueChange={(v) => updateData({ bloco_5g_quality: v })}
                         className="space-y-2"
                     >
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="rarely" id="pt-1" /><Label htmlFor="pt-1">Raramente</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="sometimes" id="pt-2" /><Label htmlFor="pt-2">Às vezes (1 refeição/dia)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="almost_all" id="pt-3" /><Label htmlFor="pt-3">Quase todas as refeições</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="all" id="pt-4" /><Label htmlFor="pt-4">Todas (ideal)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="very_poor" id="q-vp" /><Label htmlFor="q-vp">MUITO POBRE (Ultraprocessados, fast food)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="poor" id="q-p" /><Label htmlFor="q-p">POBRE (Poucas frutas, muitos carboidratos simples)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="q-a" /><Label htmlFor="q-a">ACEITÁVEL (Mistura de saudáveis e menos saudáveis)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="good" id="q-g" /><Label htmlFor="q-g">BOA (Frutas, verduras, proteína, pouco processado)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="excellent" id="q-e" /><Label htmlFor="q-e">EXCELENTE (Balanceada, orgânico, sem processados)</Label></div>
                     </RadioGroup>
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Porções de frutas/vegetais por dia?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5G.2: FREQUÊNCIA DE FRUTAS E VERDURAS</Label>
+                    <p className="text-sm text-gray-500">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
                     <Input
                         type="number"
                         min="0" max="20"
@@ -195,40 +279,141 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         className="w-32"
                     />
                 </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5G.3: INGESTÃO DE PROTEÍNA</Label>
+                    <p className="text-sm text-gray-500">Você consome PROTEÍNA em TODAS as refeições?</p>
+                    <RadioGroup
+                        value={data.bloco_5g_protein || ''}
+                        onValueChange={(v) => updateData({ bloco_5g_protein: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="rarely" id="pt-1" /><Label htmlFor="pt-1">NÃO, raramente como proteína</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="sometimes" id="pt-2" /><Label htmlFor="pt-2">ÀS VEZES, em algumas refeições</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="almost_all" id="pt-3" /><Label htmlFor="pt-3">SIM, em quase todas as refeições</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="all" id="pt-4" /><Label htmlFor="pt-4">SIM, em todas as refeições</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5G.4: ALIMENTOS INFLAMATÓRIOS</Label>
+                    <p className="text-sm text-gray-500">Com que frequência você consome alimentos altamente inflamatórios? (Açúcar, fritura, álcool)</p>
+                    <RadioGroup
+                        value={data.bloco_5g_inflammatory || ''}
+                        onValueChange={(v) => updateData({ bloco_5g_inflammatory: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="daily" id="inf-1" /><Label htmlFor="inf-1">DIARIAMENTE ou quase todos os dias</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="several_week" id="inf-2" /><Label htmlFor="inf-2">VÁRIOS DIAS POR SEMANA</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="1_2_week" id="inf-3" /><Label htmlFor="inf-3">1-2 DIAS POR SEMANA</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="rarely" id="inf-4" /><Label htmlFor="inf-4">RARAMENTE (1x ao mês)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="never" id="inf-5" /><Label htmlFor="inf-5">NUNCA</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5G.5: DEFICIÊNCIAS NUTRICIONAIS CONHECIDAS</Label>
+                    <p className="text-sm text-gray-500">Você tem diagnóstico de alguma deficiência nutricional?</p>
+                    <RadioGroup
+                        value={data.bloco_5g_deficiency || ''}
+                        onValueChange={(v) => updateData({ bloco_5g_deficiency: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="multiple" id="def-1" /><Label htmlFor="def-1">SIM, múltiplas deficiências</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="one_significant" id="def-2" /><Label htmlFor="def-2">SIM, uma deficiência significativa (Vit D, B12, Ferro...)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="possible" id="def-3" /><Label htmlFor="def-3">POSSÍVEL (Nunca fiz teste)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="def-4" /><Label htmlFor="def-4">NÃO, fiz teste e está tudo bem</Label></div>
+                    </RadioGroup>
+                </div>
             </section>
 
             {/* 5H: Ergonomia */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5H. Postura e Ergonomia</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5H: POSTURA E ERGONOMIA ⭐ NOVO</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Ambiente de trabalho?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5H.1: ERGONOMIA NO TRABALHO</Label>
+                    <p className="text-sm text-gray-500">Como é seu AMBIENTE DE TRABALHO? (Se trabalha em escritório)</p>
                     <RadioGroup
                         value={data.bloco_5h_workspace || ''}
                         onValueChange={(v) => updateData({ bloco_5h_workspace: v })}
                         className="space-y-2"
                     >
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="ws-none" /><Label htmlFor="ws-none">Nenhum (cama/sofá improvisado)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="precarious" id="ws-prec" /><Label htmlFor="ws-prec">Precário (mesa de jantar, sem apoio)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="ws-acc" /><Label htmlFor="ws-acc">Aceitável (cadeira simples, alguma adaptação)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="good" id="ws-good" /><Label htmlFor="ws-good">Bom (cadeira escritório, monitor ajustado)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="excellent" id="ws-exc" /><Label htmlFor="ws-exc">Excelente (setup ergonômico completo, apoio braço/pé)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="ws-none" /><Label htmlFor="ws-none">SEM LUGAR ADEQUADO (cama, sofá, improvisado)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="precarious" id="ws-prec" /><Label htmlFor="ws-prec">PRECÁRIO (cadeira ruim, mesa baixa, sem suporte)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="ws-acc" /><Label htmlFor="ws-acc">ACEITÁVEL (tem cadeira/mesa, pouco ajuste)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="good" id="ws-good" /><Label htmlFor="ws-good">BOM (cadeira ergonômica, monitor alinhado)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="excellent" id="ws-exc" /><Label htmlFor="ws-exc">EXCELENTE (setup profissional, suportes corretos)</Label></div>
                     </RadioGroup>
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold">Qualidade do Colchão?</Label>
+                    <Label className="font-semibold text-base">PERGUNTA 5H.2: TEMPO SENTADO CONTÍNUO</Label>
+                    <p className="text-sm text-gray-500">Qual é o MÁXIMO DE TEMPO que você fica sentado sem pausar?</p>
+                    <div className="flex items-center gap-2">
+                        <Input
+                            type="number"
+                            min="0" max="600"
+                            placeholder="Ex: 120"
+                            value={data.bloco_5h_sitting_continuous || ''}
+                            onChange={(e) => updateData({ bloco_5h_sitting_continuous: parseInt(e.target.value) })}
+                            className="w-32"
+                        />
+                        <span className="text-sm text-slate-500">minutos (sem pausar)</span>
+                    </div>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5H.3: POSIÇÃO DE DORMIR</Label>
+                    <p className="text-sm text-gray-500">Como você DORME (posição habitual)?</p>
+                    <RadioGroup
+                        value={data.bloco_5h_sleep_position || ''}
+                        onValueChange={(v) => updateData({ bloco_5h_sleep_position: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="back" id="sl-1" /><Label htmlFor="sl-1">COSTAS (deitado de costas)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="side" id="sl-2" /><Label htmlFor="sl-2">LADO (Fetal)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="stomach" id="sl-3" /><Label htmlFor="sl-3">BARRIGA (de barriga para baixo)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="mixed" id="sl-4" /><Label htmlFor="sl-4">MISTO (mudo de posição bastante)</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5H.4: QUALIDADE DO COLCHÃO E TRAVESSEIRO ⭐ NOVO</Label>
+                    <p className="text-sm text-gray-500">Como está a QUALIDADE do seu colchão?</p>
                     <RadioGroup
                         value={data.bloco_5h_mattress || ''}
                         onValueChange={(v) => updateData({ bloco_5h_mattress: v })}
                         className="space-y-2"
                     >
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="old" id="mat-old" /><Label htmlFor="mat-old">Muito Velho/Afundando</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="bad" id="mat-bad" /><Label htmlFor="mat-bad">Ruim (muito mole ou muito duro, dá dor)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="mat-acc" /><Label htmlFor="mat-acc">Aceitável</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="good" id="mat-good" /><Label htmlFor="mat-good">Bom e firme</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="excellent" id="mat-exc" /><Label htmlFor="mat-exc">Excelente / Específico</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="old" id="mat-old" /><Label htmlFor="mat-old">VELHO / DESGASTADO (mais de 10 anos)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="bad" id="mat-bad" /><Label htmlFor="mat-bad">RUIM (muito mole ou causa firmeza excessiva/desconforto)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="acceptable" id="mat-acc" /><Label htmlFor="mat-acc">ACEITÁVEL (suporta, mas não ideal)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="good" id="mat-good" /><Label htmlFor="mat-good">BOM (firme, oferece suporte, confortável)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="excellent" id="mat-exc" /><Label htmlFor="mat-exc">EXCELENTE (novo, ortopédico, adaptável)</Label></div>
                     </RadioGroup>
+                </div>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5H.5: HÁBITOS POSTURAIS PREJUDICIAIS ⭐ NOVO</Label>
+                    <p className="text-sm text-gray-500">Você faz algum destes hábitos que PREJUDICAM postura?</p>
+                    <div className="space-y-2">
+                        {[
+                            { id: 'phone', label: 'MEXE NO TELEFONE (com pescoço inclinado para baixo)' },
+                            { id: 'bag', label: 'CARREGAR BOLSA PESADA de um lado só' },
+                            { id: 'crossed_legs', label: 'SENTA DE PERNA CRUZADA frequentemente' },
+                            { id: 'keyboard_high', label: 'TECLADO / MOUSE ALTO causando dor/tensão' },
+                        ].map(hb => (
+                            <div key={hb.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`hab-${hb.id}`}
+                                    checked={(data.bloco_5h_bad_habits || []).includes(hb.id)}
+                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5h_bad_habits', hb.id, !!c)}
+                                />
+                                <Label htmlFor={`hab-${hb.id}`}>{hb.label}</Label>
+                            </div>
+                        ))}
+                    </div>
                 </div>
             </section>
 

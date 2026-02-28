@@ -148,7 +148,7 @@ export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {
                     {step === 5 && <Bloco5 data={data} updateData={updateData} />}
                     {step === 6 && <Bloco6 data={data} updateData={updateData} />}
 
-                    {step === 7 && result && <MyIDResult result={result} />}
+                    {step === 7 && result && <MyIDResult result={result} rawData={data} />}
 
                 </CardContent>
             </Card>

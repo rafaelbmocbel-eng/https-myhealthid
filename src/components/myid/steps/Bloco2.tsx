@@ -32,7 +32,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.1: QUAL É A INTENSIDADE DA SUA DOR AGORA?</Label>
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.1: QUAL É A INTENSIDADE DA SUA DOR AGORA (NESTE EXATO MOMENTO)?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_now || 0]}
@@ -41,15 +41,15 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             onValueChange={(v) => updateData({ bloco_2_pain_now: v[0] })}
                         />
                         <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
-                            <span>0 (Nenhuma)</span>
-                            <span>10 (Pior possível)</span>
+                            <span>0 (Nenhuma Dor)</span>
+                            <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
                     <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_now || 0} <span className="text-xl text-gray-400 font-bold">/ 10</span></div>
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.2: QUAL FOI A PIOR INTENSIDADE NOS ÚLTIMOS 7 DIAS?</Label>
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.2: QUAL FOI A PIOR INTENSIDADE DA DOR NOS ÚLTIMOS 7 DIAS?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_max || 0]}
@@ -58,8 +58,8 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                             onValueChange={(v) => updateData({ bloco_2_pain_max: v[0] })}
                         />
                         <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
-                            <span>0 (Nenhuma)</span>
-                            <span>10 (Pior possível)</span>
+                            <span>0 (Nenhuma Dor)</span>
+                            <span>10 (Pior dor imaginável)</span>
                         </div>
                     </div>
                     <div className="text-center font-black text-3xl text-primary mt-2">{data.bloco_2_pain_max || 0} <span className="text-xl text-gray-400 font-bold">/ 10</span></div>
@@ -68,18 +68,19 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
                         <Label className="text-base font-bold text-gray-800 flex items-center gap-2">PERGUNTA 2.3: SINAIS DE ALERTA (RED FLAGS) <span className="text-xl">⚠️</span></Label>
-                        <p className="text-sm text-gray-500 mt-1">Você apresentou algum destes SINTOMAS RECENTEMENTE junto com a dor?</p>
+                        <p className="text-sm font-bold text-red-600 mt-1 uppercase">MUITO IMPORTANTE: RESPONDER COM ATENÇÃO</p>
+                        <p className="text-sm text-gray-500 mt-1">Você apresentou algum destes SINTOMAS nas últimas semanas, JUNTO COM SUA DOR atual?</p>
                     </div>
 
                     <div className="space-y-3 bg-red-50/40 p-5 rounded-xl border border-red-100/50">
                         {[
-                            { id: 'weight_loss', label: 'Perda de peso inexplicada' },
-                            { id: 'fever', label: 'Febre ou calafrios frequentes' },
-                            { id: 'night_pain', label: 'Dor severa que te acorda de madrugada e não melhora mudando de posição' },
-                            { id: 'incontinence', label: 'Perda de controle do xixi ou cocô (ou dormência na região íntima)' },
-                            { id: 'progressive', label: 'Fraqueza grave nas pernas que piora rápido' },
-                            { id: 'neuropathy', label: 'Dormência, formigamento severo e perda de força em um braço/perna inteira' },
-                            { id: 'none', label: 'NENHUM DESSES SINAIS' }
+                            { id: 'weight_loss', label: 'Perda de peso inexplicada e rápida (sem fazer dieta)' },
+                            { id: 'fever', label: 'Febre inexplicada, calafrios ou suores noturnos frequentes' },
+                            { id: 'night_pain', label: 'Dor severa que te acorda de madrugada e NÃO MELHORA nada quando você muda de posição na cama' },
+                            { id: 'incontinence', label: 'Perda recente do controle da urina/fezes (ou dormência na região genital/ânus tipo "sela de cavalo")' },
+                            { id: 'progressive', label: 'Fraqueza grave nas pernas/braços que está piorando nos últimos dias (ex: tropeçando por fraqueza)' },
+                            { id: 'neuropathy', label: 'Dormência, formigamento severo ("choque") descendo por um braço ou perna inteira' },
+                            { id: 'none', label: 'NENHUM DESSES SINAIS SE APLICA (Marque aqui apenas se a resposta for "Não" para todas acima)' }
                         ].map(flag => (
                             <div key={flag.id} className="flex items-start space-x-3">
                                 <Checkbox
@@ -98,14 +99,14 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
                         <Label className="text-base font-bold text-gray-800">PERGUNTA 2.4: QUAL É SEU PADRÃO TEMPORAL?</Label>
-                        <p className="text-sm text-gray-500 mt-1">Marque TODAS as situações onde a dor é pior:</p>
+                        <p className="text-sm text-gray-500 mt-1">Quando a dor costuma ser PIOR durante as suas 24h? (Marque as aplicáveis)</p>
                     </div>
                     <div className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50">
                         {[
-                            { id: 'nocturnal', label: 'NOTURNO', desc: 'Dói muito de madrugada / piora ao deitar' },
-                            { id: 'morning_stiffness', label: 'MATINAL', desc: 'Dói pra levantar da cama e fica rígido até "aquecer" o corpo' },
-                            { id: 'mechanical', label: 'MECÂNICO', desc: 'Dói SÓ quando faço movimentos específicos ou fico muito tempo na mesma posição' },
-                            { id: 'post_exercise', label: 'PÓS-ESFORÇO', desc: 'Só começa a doer horas depois do exercício ou no dia seguinte' }
+                            { id: 'nocturnal', label: 'NOTURNA', desc: 'Dói muito PARADO durante a madrugada, e costuma me acordar. Andar/movimentar de noite muitas vezes alivia um pouco.' },
+                            { id: 'morning_stiffness', label: 'RIGIDEZ MATINAL', desc: 'Acorda "travado", parecendo um robô. Leva mais de 30-40 min depois que acordo para "destravar" e soltar o corpo.' },
+                            { id: 'mechanical', label: 'MECÂNICO', desc: 'Piora claramente DEPOIS ou DURANTE movimento longo (ex: muito tempo sentado, andando muito, levantando peso). Costuma melhorar deitando em repouso.' },
+                            { id: 'post_exercise', label: 'PÓS-ESFORÇO', desc: 'Durante o treino tá "tudo bem" mas a dor chega com força no FINAL do dia ou no DIA SEGUINTE com sensação pesada.' }
                         ].map(pattern => (
                             <div key={pattern.id} className="flex items-start space-x-3">
                                 <Checkbox

@@ -159,16 +159,16 @@ export class MyIDCalculator {
 
     detectPainPattern(): string {
         const patterns = this.responses.bloco_2_temporal_pattern || [];
-        let patternType = 'Mixed';
+        let patternType = 'Misto';
 
         if (patterns.includes('nocturnal')) {
-            patternType = 'Nocturnal (Inflamation)';
+            patternType = 'Noturno (Inflamatório)';
         } else if (patterns.includes('morning_stiffness')) {
-            patternType = 'Morning Stiffness (Inflamation)';
+            patternType = 'Rigidez Matinal (Inflamatório)';
         } else if (patterns.includes('mechanical')) {
-            patternType = 'Mechanical (Movement-related)';
+            patternType = 'Mecânico (Ao movimento)';
         } else if (patterns.includes('post_exercise')) {
-            patternType = 'Post-Exercise (Recovery issue)';
+            patternType = 'Pós-Exercício (Fadiga/Recuperação)';
         }
 
         this.result['pain_pattern'] = patternType;
@@ -449,7 +449,7 @@ export class MyIDCalculator {
     // ==================== BLOCO 6: CICLO MENSTRUAL (HOR) ====================
     calculateHormones(): number {
         const cycleRegularity = this.responses.bloco_6_cycle_regularity || 'regular';
-        const regularPenalty = cycleRegularity === 'regular' ? 0 : 1;
+        const regularPenalty = cycleRegularity === 'irregular' ? 1 : 0;
 
         let painPenalty = 0;
         if (this.responses.bloco_6_cycle_affects_pain) {
@@ -481,7 +481,7 @@ export class MyIDCalculator {
 
         if (this.responses.bloco_6_daily_nsaid) {
             medPenalty -= 1;
-            medicationsList.push('NSAID (daily)');
+            medicationsList.push('Anti-inflamatório (diário)');
         }
 
         if (this.responses.bloco_6_antidepressant) {
@@ -491,22 +491,22 @@ export class MyIDCalculator {
             } else {
                 medPenalty += 0.5;
             }
-            medicationsList.push('Antidepressant');
+            medicationsList.push('Antidepressivo / Ansiolítico');
         }
 
         if (this.responses.bloco_6_muscle_relaxant) {
             medPenalty -= 1;
-            medicationsList.push('Muscle Relaxant');
+            medicationsList.push('Relaxante Muscular');
         }
 
         if (this.responses.bloco_6_supplementation) {
             medPenalty += 1;
-            medicationsList.push('Supplementation');
+            medicationsList.push('Suplementação Vitamínica');
         }
 
         if (this.responses.bloco_6_corticoid) {
             medPenalty -= 2.5;
-            medicationsList.push('Corticoid (SEVERE)');
+            medicationsList.push('Corticoide Sistêmico (ALERTA)');
         }
 
         this.result['med_penalty'] = medPenalty;
@@ -518,19 +518,27 @@ export class MyIDCalculator {
     calculateHealingHistory(): string {
         const hadSimilarInjury = !!this.responses.bloco_1_similar_injury;
         let prognosis = '';
-        let healingSpeed = 'unknown';
+        let healingSpeed = 'Não Avaliado';
 
         if (!hadSimilarInjury) {
-            prognosis = 'First experience - unpredictable timeline';
+            prognosis = 'Primeira lesão, tempo imprevisível';
         } else {
-            healingSpeed = this.responses.bloco_1_healing_speed || 'moderate';
-            const prognosisMapping: Record<string, string> = {
-                fast: 'Fast healer - expect quick recovery',
-                moderate: 'Moderate healing - standard timeline',
-                slow: 'Slow healer - expect extended recovery',
-                with_sequela: 'Incomplete healing - may need specialized approach'
+            const rawSpeed = this.responses.bloco_1_healing_speed || 'moderate';
+            const speedMap: Record<string, string> = {
+                fast: 'Rápido',
+                moderate: 'Moderado',
+                slow: 'Lento',
+                with_sequela: 'Com sequelas'
             };
-            prognosis = prognosisMapping[healingSpeed] || 'Unknown';
+            healingSpeed = speedMap[rawSpeed] || 'Moderado';
+
+            const prognosisMapping: Record<string, string> = {
+                fast: 'Cicatrizador rápido',
+                moderate: 'Cicatrização moderada (padrão)',
+                slow: 'Cicatrizador lento',
+                with_sequela: 'Cicatrização incompleta/sequelas'
+            };
+            prognosis = prognosisMapping[rawSpeed] || 'Desconhecido';
         }
 
         const didPhysio = !!this.responses.bloco_1_did_physio;

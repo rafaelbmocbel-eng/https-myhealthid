@@ -1,13 +1,67 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { Label } from "@/components/ui/label";
 
 interface MyIDResultProps {
     result: any;
+    rawData?: any;
 }
 
-export function MyIDResult({ result }: MyIDResultProps) {
+const translateWorkspace = (val: string) => {
+    const map: Record<string, string> = {
+        none: 'Nenhum / Improvisado',
+        precarious: 'Precário',
+        acceptable: 'Aceitável',
+        good: 'Bom',
+        excellent: 'Excelente'
+    };
+    return map[val] || val;
+};
+
+const translateLifestyle = (val: string) => {
+    const map: Record<string, string> = {
+        very_sedentary: 'Muito sedentário',
+        sedentary: 'Sedentário',
+        moderate: 'Moderado',
+        active: 'Ativo',
+        very_active: 'Muito ativo'
+    };
+    return map[val] || val;
+};
+
+const translateIntensity = (val: string) => {
+    const map: Record<string, string> = {
+        none: 'Nenhuma',
+        light: 'Leve',
+        moderate: 'Moderada',
+        intense: 'Intensa',
+        maximum: 'Máxima'
+    };
+    return map[val] || val;
+};
+
+const translateInflammatory = (val: string) => {
+    const map: Record<string, string> = {
+        daily: 'Diariamente',
+        several_week: 'Vários dias p/ semana',
+        '1_2_week': '1-2 dias p/ semana',
+        rarely: 'Raramente',
+        never: 'Nunca'
+    };
+    return map[val] || val;
+};
+
+const translateHormonal = (val: string) => {
+    const map: Record<string, string> = {
+        none: 'Não utiliza',
+        oral: 'Anticoncepcional',
+        iud: 'DIU Hormonal',
+        other: 'Outro (implante, etc)'
+    };
+    return map[val] || val;
+};
+
+export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     if (!result) return null;
 
     const {
@@ -15,7 +69,7 @@ export function MyIDResult({ result }: MyIDResultProps) {
         status,
         color,
         component_scores,
-        red_flags,
+        red_flags_detected,
         red_flags_details,
         pain_pattern,
         clinical_priority,
@@ -30,6 +84,8 @@ export function MyIDResult({ result }: MyIDResultProps) {
         R_regulation, C_context, AF_activity, HID_hydration,
         NUT_nutrition, ERG_ergonomics, N_noise
     } = component_scores || {};
+
+    const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 
     return (
         <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
@@ -60,7 +116,7 @@ export function MyIDResult({ result }: MyIDResultProps) {
                             <p className="text-lg font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{recommendation}</p>
                             {status === 'EMERGENCY' && (
                                 <div className="mt-4 p-4 bg-red-50 text-red-900 border border-red-200 rounded-lg text-sm font-medium">
-                                    🚨 AÇÕES IMEDIATAS NECESSÁRIAS: Procure um médico, pare exercícios pesados, foque em 8+ horas de sono e hidratação agressiva.
+                                    🚨 AÇÕES IMEDIATAS NECESSÁRIAS: Procure um médico urgentemente para descartar Red Flags, pare exercícios pesados, foque em sono e hidratação.
                                 </div>
                             )}
                         </div>
@@ -68,159 +124,157 @@ export function MyIDResult({ result }: MyIDResultProps) {
                 </CardContent>
             </Card>
 
-            <div className="space-y-2">
-                <h3 className="text-xl font-bold bg-muted py-2 px-4 rounded-md">📋 COMPONENTES DO SEU RESULTADO</h3>
-            </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <Card className="border-red-200 shadow-sm">
+                <Card className="border-red-200 shadow-sm flex flex-col">
                     <CardHeader className="bg-red-50/50 pb-4">
-                        <CardTitle className="text-red-700 flex items-center gap-2">
-                            <span className="text-xl">⚠️</span> NUMERADOR (O QUE PREJUDICA)
+                        <CardTitle className="text-red-700 flex items-center gap-2 text-lg">
+                            <span className="text-xl">⚠️</span> O QUE ESTÁ SOBRECARREGANDO (Numerador)
                         </CardTitle>
-                        <CardDescription>O que está sobrecarregando o sistema</CardDescription>
+                        <CardDescription>Fatores que aumentam sua dor</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-5 pt-4">
+                    <CardContent className="space-y-5 pt-4 flex-1">
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm font-bold text-gray-700">
-                                <span>🔴 Dor (D)</span>
-                                <span>{D_pain}/10</span>
+                                <span>🔴 Dor (D)</span><span>{typeof D_pain === 'number' ? D_pain.toFixed(1) : 0}/10</span>
                             </div>
                             <Progress value={D_pain * 10} className="h-2.5 bg-red-100 [&>div]:bg-red-500" />
-                            <p className="text-xs text-gray-500">Intensidade da dor percebida</p>
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm font-bold text-gray-700">
-                                <span>🟠 Funcionalidade (EFI)</span>
-                                <span>{EFI_functionality}/10</span>
+                                <span>🟠 Funcionalidade (EFI)</span><span>{typeof EFI_functionality === 'number' ? EFI_functionality.toFixed(1) : 0}/10</span>
                             </div>
                             <Progress value={EFI_functionality * 10} className="h-2.5 bg-orange-100 [&>div]:bg-orange-500" />
-                            <p className="text-xs text-gray-500">Quanto a dor impede suas atividades</p>
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm font-bold text-gray-700">
-                                <span>🟡 Psicológico (P)</span>
-                                <span>{P_psychological}/10</span>
+                                <span>🟡 Psicológico (P)</span><span>{typeof P_psychological === 'number' ? P_psychological.toFixed(1) : 0}/10</span>
                             </div>
                             <Progress value={P_psychological * 10} className="h-2.5 bg-yellow-100 [&>div]:bg-yellow-500" />
-                            <p className="text-xs text-gray-500">Quanto seu medo amplifica a dor</p>
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm font-bold text-gray-700">
-                                <span>🟠 Inércia (I)</span>
-                                <span>{I_inertia}/10</span>
+                                <span>🟠 Inércia (I)</span><span>{typeof I_inertia === 'number' ? I_inertia.toFixed(1) : 0}/10</span>
                             </div>
                             <Progress value={I_inertia * 10} className="h-2.5 bg-yellow-100 [&>div]:bg-yellow-500" />
-                            <p className="text-xs text-gray-500">Quantas mudanças recentes ocorreram</p>
                         </div>
                     </CardContent>
                 </Card>
 
-                <Card className="border-green-200 shadow-sm">
+                <Card className="border-green-200 shadow-sm flex flex-col">
                     <CardHeader className="bg-green-50/50 pb-4">
-                        <CardTitle className="text-green-700 flex items-center gap-2">
-                            <span className="text-xl">🟢</span> DENOMINADOR (O QUE AJUDA)
+                        <CardTitle className="text-green-700 flex items-center gap-2 text-lg">
+                            <span className="text-xl">🟢</span> O QUE ESTÁ AJUDANDO (Denominador)
                         </CardTitle>
-                        <CardDescription>O que está ajudando ou falhando na recuperação</CardDescription>
+                        <CardDescription>Fatores de recuperação do seu sistema</CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-5 pt-4">
+                    <CardContent className="space-y-5 pt-4 flex-1">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Regulação (R)</span><span>{R_regulation}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Regulação (R)</span><span>{typeof R_regulation === 'number' ? R_regulation.toFixed(1) : 0}/10</span></div>
                                 <Progress value={R_regulation * 10} className={`h-1.5 bg-green-100 ${R_regulation < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
-                                <p className="text-[10px] text-gray-500">Sono e recuperação</p>
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Contexto (C)</span><span>{C_context}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Contexto (C)</span><span>{typeof C_context === 'number' ? C_context.toFixed(1) : 0}/10</span></div>
                                 <Progress value={C_context * 10} className={`h-1.5 bg-green-100 ${C_context < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
-                                <p className="text-[10px] text-gray-500">Suporte social</p>
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Atividade (AF)</span><span>{AF_activity}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Atividade (AF)</span><span>{typeof AF_activity === 'number' ? AF_activity.toFixed(1) : 0}/10</span></div>
                                 <Progress value={AF_activity * 10} className={`h-1.5 bg-green-100 ${AF_activity < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
-                                <p className="text-[10px] text-gray-500">Nível de movimento</p>
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>💧 Hidratação (HID)</span><span>{HID_hydration}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>💧 Hidratação (HID)</span><span>{typeof HID_hydration === 'number' ? HID_hydration.toFixed(1) : 0}/10</span></div>
                                 <Progress value={HID_hydration * 10} className={`h-1.5 bg-blue-100 ${HID_hydration < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-blue-500"}`} />
-                                <p className="text-[10px] text-gray-500">Água e hidratação</p>
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🥗 Nutrição (NUT)</span><span>{NUT_nutrition}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🥗 Nutrição (NUT)</span><span>{typeof NUT_nutrition === 'number' ? NUT_nutrition.toFixed(1) : 0}/10</span></div>
                                 <Progress value={NUT_nutrition * 10} className={`h-1.5 bg-green-100 ${NUT_nutrition < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
-                                <p className="text-[10px] text-gray-500">Qualidade alimentar</p>
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🪑 Ergonomia (ERG)</span><span>{ERG_ergonomics}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🪑 Ergonomia (ERG)</span><span>{typeof ERG_ergonomics === 'number' ? ERG_ergonomics.toFixed(1) : 0}/10</span></div>
                                 <Progress value={ERG_ergonomics * 10} className={`h-1.5 bg-purple-100 ${ERG_ergonomics < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-purple-500"}`} />
-                                <p className="text-[10px] text-gray-500">Postura e trabalho</p>
-                            </div>
-                        </div>
-
-                        <div className="pt-4 border-t border-green-100 space-y-3">
-                            <div className="flex justify-between text-sm py-1 border-b border-gray-100">
-                                <span className="font-bold text-gray-700 text-xs">🔵 Ruído Sistêmico (N):</span>
-                                <span className="font-mono bg-gray-100 px-2 rounded">{N_noise}/10</span>
-                            </div>
-                            <div className="flex justify-between text-sm py-1 border-b border-gray-100">
-                                <span className="font-bold text-gray-700 text-xs">📅 Histórico (Cicatrização):</span>
-                                <span className="font-mono bg-gray-100 px-2 rounded text-[10px] text-right max-w-[150px] truncate">{healing_history?.healing_speed}</span>
-                            </div>
-                            <div className="flex justify-between text-sm py-1 border-b border-gray-100">
-                                <span className="font-bold text-gray-700 text-xs">📝 Padrão (Temporal):</span>
-                                <span className="font-mono bg-gray-100 px-2 rounded text-[10px] text-right max-w-[150px] truncate">{pain_pattern}</span>
                             </div>
                         </div>
                     </CardContent>
                 </Card>
             </div>
 
-            <Card className="bg-slate-50 border-slate-200 shadow-sm border-l-4 border-l-primary pt-2">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-slate-800 text-xl font-bold flex items-center gap-2">
-                        <span>🎯</span> ANÁLISE DETALHADA E PLANO DE AÇÃO
+            <Card className="border-slate-200 shadow-sm">
+                <CardHeader className="bg-slate-50/50 pb-4">
+                    <CardTitle className="text-slate-700 flex items-center gap-2 text-lg">
+                        <span>🔍</span> FATORES OCULTOS
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <h4 className="font-bold text-blue-700 uppercase text-xs tracking-wider mb-2">Prioridade Clínica</h4>
-                        <div className="p-3 bg-white border rounded-md font-medium text-gray-800">
-                            {clinical_priority}
-                        </div>
+                <CardContent className="space-y-3 pt-4">
+                    <div className="flex justify-between text-sm py-2 border-b border-gray-100">
+                        <span className="font-bold text-gray-700">Ruído Sistêmico (N):</span>
+                        <span className="font-mono bg-gray-100 px-3 py-0.5 rounded text-sm">{typeof N_noise === 'number' ? N_noise.toFixed(1) : 0}/10</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-2 border-b border-gray-100">
+                        <span className="font-bold text-gray-700">Histórico / Cicatrização:</span>
+                        <span className="font-mono bg-gray-100 px-3 py-0.5 rounded text-sm text-right">{healing_history?.healing_speed || 'Normal'}</span>
+                    </div>
+                    <div className="flex justify-between text-sm py-2 border-b border-gray-100">
+                        <span className="font-bold text-gray-700">Padrão Temporal da Dor:</span>
+                        <span className="font-mono bg-gray-100 px-3 py-0.5 rounded text-sm text-right">{pain_pattern}</span>
+                    </div>
+                </CardContent>
+            </Card>
+
+            <Card className="bg-blue-50 border-blue-200 shadow-sm border-l-4 border-l-blue-500 pt-2">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-blue-900 text-xl font-bold flex items-center gap-2">
+                        <span>🚀</span> PLANO DE AÇÃO MULTIDISCIPLINAR
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-6 pt-2">
+
+                    <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
+                        <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> PARA O MÉDICO:</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                            Paciente apresenta Score MyID de <strong>{typeof MyID_score === 'number' ? MyID_score.toFixed(1) : 0}</strong>, com predomínio de dor <strong>{pain_pattern}</strong>.
+                            Sinal de Alerta (Red Flags) <strong>{red_flags_detected ? 'PRESENTE' : 'AUSENTE'}</strong>.
+                            Medicações em uso: <strong>{medications?.length > 0 ? medications.join(', ') : 'Nenhuma contínua relatada'}</strong>.
+                        </p>
                     </div>
 
-                    <div>
-                        <h4 className="font-bold text-blue-700 uppercase text-xs tracking-wider mb-2">Foco e Recomendações</h4>
-                        <ul className="space-y-2 bg-white p-4 border rounded-md">
-                            {(focus_areas || []).map((area: string, i: number) => (
-                                <li key={i} className="flex items-start gap-2">
-                                    <span className="text-blue-500 font-bold mt-0.5">✓</span>
-                                    <span className="text-gray-800 font-medium text-sm leading-tight">{area}</span>
-                                </li>
-                            ))}
-                        </ul>
+                    <div className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm">
+                        <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> PARA O ERGONOMISTA:</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                            Score ERG de <strong>{typeof ERG_ergonomics === 'number' ? ERG_ergonomics.toFixed(1) : 0}/10</strong>. Usa setup <strong>{translateWorkspace(rawData.bloco_5h_workspace || 'não informado')}</strong>,
+                            passa <strong>{rawData.bloco_5h_sitting_continuous || 0} minutos</strong> sentado continuamente.
+                            Hábitos prejudiciais: <strong>{rawData.bloco_5h_bad_habits?.length > 0 ? rawData.bloco_5h_bad_habits.join(', ') : 'Nenhum relatado'}</strong>.
+                        </p>
                     </div>
 
-                    {red_flags && (
-                        <div className="p-4 bg-red-100 rounded-md text-red-800 border border-red-200">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-red-900">🚨 SINAIS DE ALERTA (RED FLAGS) DETECTADOS</Label>
-                            <ul className="list-disc list-inside mt-2 text-sm font-medium">
-                                {Object.entries(red_flags_details || {})
-                                    .filter(([_, value]) => value === true)
-                                    .map(([key, _]) => <li key={key}>{key}</li>)}
-                            </ul>
-                            <p className="mt-3 text-xs font-bold text-red-900">Recomendação: Avaliação médica investigar estes sinais.</p>
+                    <div className="bg-white p-4 rounded-lg border border-orange-100 shadow-sm">
+                        <h4 className="font-bold text-orange-700 flex items-center gap-2 mb-2"><span className="text-lg">💪</span> PARA O PERSONAL TRAINER:</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                            Score AF de <strong>{typeof AF_activity === 'number' ? AF_activity.toFixed(1) : 0}/10</strong>. Nível de vida <strong>{translateLifestyle(rawData.bloco_5e_lifestyle || 'não informado')}</strong>,
+                            intensidade habitual <strong>{translateIntensity(rawData.bloco_5e_intensity || 'nenhuma')}</strong>.
+                            Dor padrão: <strong>{pain_pattern}</strong>.
+                        </p>
+                    </div>
+
+                    <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
+                        <h4 className="font-bold text-green-700 flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> PARA O NUTRICIONISTA:</h4>
+                        <p className="text-gray-700 text-sm leading-relaxed">
+                            Score NUT de <strong>{typeof NUT_nutrition === 'number' ? NUT_nutrition.toFixed(1) : 0}/10</strong>. Consumo de água: <strong>{rawData.bloco_5f_water_liters || 0}L</strong>.
+                            Score Hidratação: <strong>{typeof HID_hydration === 'number' ? HID_hydration.toFixed(1) : 0}/10</strong>.
+                            Frequência de inflamatórios: <strong>{translateInflammatory(rawData.bloco_5g_inflammatory || 'não informado')}</strong>.
+                        </p>
+                    </div>
+
+                    {hasWomenHealth && (
+                        <div className="bg-pink-50 p-4 rounded-lg border border-pink-200 shadow-sm">
+                            <h4 className="font-bold text-pink-700 flex items-center gap-2 mb-2"><span className="text-lg">👩</span> PARA O GINECOLOGISTA:</h4>
+                            <p className="text-gray-700 text-sm leading-relaxed">
+                                Score de Ruído Sistêmico: <strong>{typeof N_noise === 'number' ? N_noise.toFixed(1) : 0}/10</strong>.
+                                Piora a dor no ciclo? <strong>{rawData.bloco_6_cycle_affects_pain ? 'SIM' : 'NÃO'}</strong>.
+                                Uso hormonal: <strong>{translateHormonal(rawData.bloco_6_hormonal_use || 'none')}</strong>.
+                            </p>
                         </div>
                     )}
 
-                    {medications && medications.length > 0 && (
-                        <div className="p-4 bg-yellow-50 rounded-md border border-yellow-200">
-                            <Label className="text-xs font-bold uppercase tracking-wider text-yellow-800">💊 IMPACTO DE MEDICAÇÕES NA RECUPERAÇÃO</Label>
-                            <ul className="list-disc list-inside mt-2 text-sm text-yellow-900 font-medium">
-                                {medications.map((m: string, i: number) => <li key={i}>{m}</li>)}
-                            </ul>
-                        </div>
-                    )}
                 </CardContent>
             </Card>
 
@@ -242,7 +296,7 @@ export function MyIDResult({ result }: MyIDResultProps) {
                     </button>
                 </div>
                 <p className="text-xs text-slate-400 font-mono mt-4">
-                    Data: {new Date().toLocaleDateString()} | ID: {result.session_id} | Versão: MyID v2.0
+                    Data: {new Date().toLocaleDateString()} | ID: {result.session_id || 'LOCAL'} | Versão: MyID v2.0
                 </p>
             </div>
         </div>

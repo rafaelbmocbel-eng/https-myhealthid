@@ -12,35 +12,38 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
         {
             id: "bloco_3_work",
             label: "3.1 TRABALHO E ESTUDO",
-            desc: "O quanto a dor atrapalha seu trabalho/estudo ou tarefas diárias principais?"
+            desc: "O quanto a dor atrapalha seu trabalho, estudo ou obrigações financeiras?"
         },
         {
             id: "bloco_3_home",
             label: "3.2 TAREFAS DE CASA",
-            desc: "O quanto atrapalha cuidar da casa (limpar, cozinhar, lavar)?"
+            desc: "O quanto atrapalha cuidar da casa (limpar, cozinhar, lavar, pegar compras)?"
         },
         {
             id: "bloco_3_exercise",
             label: "3.3 EXERCÍCIO / ESPORTE",
-            desc: "O quanto atrapalha você de fazer exercícios ou esporte na intensidade desejada?"
+            desc: "O quanto atrapalha você de fazer exercícios, musculação ou praticar seu esporte na intensidade desejada?"
         },
         {
             id: "bloco_3_independence",
-            label: "3.4 INDEPENDÊNCIA PESSOAL",
-            desc: "O quanto atrapalha cuidados pessoais básicos (tomar banho, vestir, amarrar sapato)?"
+            label: "3.4 INDEPENDÊNCIA FÍSICA PESSOAL",
+            desc: "O quanto atrapalha seus cuidados de higiene (ex: entrar/sair do banho, vestir roupa, virar na cama à noite, levantar/sentar na cadeira/sanita)?"
         },
         {
             id: "bloco_3_social",
-            label: "3.5 VIDA SOCIAL / LAZER",
-            desc: "O quanto atrapalha de sair com amigos, viajar, pegar filhos no colo ou ter lazer?"
+            label: "3.5 VIDA SOCIAL / LAZER / FAMÍLIA",
+            desc: "O quanto atrapalha sair com amigos, ir ao parque/restaurante com a família, pegar filhos pequenos ou brincar com eles no chão?"
         }
     ];
 
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Bloco 3: Funcionalidade</h2>
-                <p className="text-gray-500">Como a dor impede suas atividades diárias? (De 0 a 10)</p>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 3: IMPACTO FUNCIONAL NA VIDA DIÁRIA</h2>
+                <p className="text-gray-500">
+                    Sua dor é apenas um número de dor, mas o quanto ela IMPEDE você de viver é o mais importante.<br />
+                    Escolha de 0 a 10 para cada uma (0 = Não atrapalha nada / 10 = Não consigo fazer de jeito nenhum).
+                </p>
             </div>
 
             <div className="space-y-8">
@@ -61,11 +64,11 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
                                         htmlFor={`${q.id}-${val}`}
                                         className="text-xs font-medium cursor-pointer"
                                     >
-                                        {val === 0 ? '0 (Nada)' :
-                                            val === 2 ? '2 (Pouco)' :
-                                                val === 5 ? '5 (Metade)' :
-                                                    val === 8 ? '8 (Muito)' :
-                                                        '10 (Incapacita)'}
+                                        {val === 0 ? '0 (Tudo Normal)' :
+                                            val === 2 ? '2 (Incomoda mas faço)' :
+                                                val === 5 ? '5 (Faço pela metade)' :
+                                                    val === 8 ? '8 (Muito difícil/Pouco)' :
+                                                        '10 (Impossível)'}
                                     </Label>
                                 </div>
                             ))}
