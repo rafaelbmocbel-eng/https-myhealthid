@@ -603,6 +603,50 @@ export type Database = {
           },
         ]
       }
+      myid_avaliacoes: {
+        Row: {
+          created_at: string
+          id: string
+          paciente_id: string | null
+          respostas_brutas: Json | null
+          resultado_processado: Json | null
+          status: string
+          terapeuta_id: string
+          token_acesso: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          paciente_id?: string | null
+          respostas_brutas?: Json | null
+          resultado_processado?: Json | null
+          status?: string
+          terapeuta_id: string
+          token_acesso?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          paciente_id?: string | null
+          respostas_brutas?: Json | null
+          resultado_processado?: Json | null
+          status?: string
+          terapeuta_id?: string
+          token_acesso?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "myid_avaliacoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
