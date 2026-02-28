@@ -1,6 +1,8 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import MyIDFingerprint from './MyIDFingerprint';
+import type { FingerprintRing } from '@/types/myid';
 
 interface MyIDResultProps {
     result: any;
@@ -60,6 +62,25 @@ const translateHormonal = (val: string) => {
     };
     return map[val] || val;
 };
+
+function buildFingerprintRings(scores: any): FingerprintRing[] {
+    if (!scores) return [];
+    return [
+        // Inner (warm) — Demand / Numerator
+        { label: 'Dor', value: scores.D_pain ?? 0, type: 'inner', color: '#dc2626', scoreKey: 'D' },
+        { label: 'Funcionalidade', value: scores.EFI_functionality ?? 0, type: 'inner', color: '#f97316', scoreKey: 'EFI' },
+        { label: 'Psicológico', value: scores.P_psychological ?? 0, type: 'inner', color: '#eab308', scoreKey: 'P' },
+        { label: 'Inércia', value: scores.I_inertia ?? 0, type: 'inner', color: '#f59e0b', scoreKey: 'I' },
+        // Outer (cool) — Capacity / Denominator
+        { label: 'Regulação', value: scores.R_regulation ?? 0, type: 'outer', color: '#22c55e', scoreKey: 'R' },
+        { label: 'Contexto', value: scores.C_context ?? 0, type: 'outer', color: '#14b8a6', scoreKey: 'C' },
+        { label: 'Atividade', value: scores.AF_activity ?? 0, type: 'outer', color: '#06b6d4', scoreKey: 'AF' },
+        { label: 'Hidratação', value: scores.HID_hydration ?? 0, type: 'outer', color: '#38bdf8', scoreKey: 'HID' },
+        { label: 'Nutrição', value: scores.NUT_nutrition ?? 0, type: 'outer', color: '#818cf8', scoreKey: 'NUT' },
+        { label: 'Ergonomia', value: scores.ERG_ergonomics ?? 0, type: 'outer', color: '#a78bfa', scoreKey: 'ERG' },
+        { label: 'Ruído', value: scores.N_noise ?? 0, type: 'outer', color: '#c084fc', scoreKey: 'N' },
+    ];
+}
 
 export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     if (!result) return null;
@@ -121,6 +142,21 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                             )}
                         </div>
                     </div>
+                </CardContent>
+            </Card>
+
+            {/* ── FINGERPRINT VISUALIZATION ── */}
+            <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
+                <CardHeader className="text-center pb-2">
+                    <CardTitle className="text-xl font-bold text-foreground">🔏 Sua Impressão Digital Sistêmica</CardTitle>
+                    <CardDescription>Cada crista representa uma dimensão do seu perfil de saúde</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center pb-8">
+                    <MyIDFingerprint
+                        rings={buildFingerprintRings(component_scores)}
+                        myidScore={MyID_score ?? 0}
+                        className="w-full max-w-sm"
+                    />
                 </CardContent>
             </Card>
 
