@@ -69,7 +69,11 @@
     --identidade-muted: 345 30% 45%;
     --gradient-identidade: linear-gradient(135deg, hsl(345 55% 32%) 0%, hsl(345 50% 24%) 100%);
 
-    /* Módulo Studio Personal ID — Emerald/Teal */
+    /* Módulo COB° ZERO — Blue */
+    --cobzero: 210 80% 45%;
+    --cobzero-light: 210 60% 92%;
+    --cobzero-foreground: 0 0% 100%;
+    --gradient-cobzero: linear-gradient(135deg, hsl(210 80% 45%) 0%, hsl(190 70% 40%) 100%);
     --studio: 165 65% 32%;
     --studio-light: 165 45% 92%;
     --studio-foreground: 0 0% 100%;
@@ -304,6 +308,10 @@
 
   .bg-gradient-studio {
     background: var(--gradient-studio);
+  }
+
+  .bg-gradient-cobzero {
+    background: var(--gradient-cobzero);
   }
 
   .shadow-card {

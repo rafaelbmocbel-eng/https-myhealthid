@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding } from 'lucide-react';
+import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -205,41 +205,44 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
     lenke: av.lenke_type,
   }));
 
+
   return (
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+          <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0 text-white font-bold">
+        <div className="h-12 w-12 rounded-2xl bg-gradient-cobzero flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
           {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
         </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
-          <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-black text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
+          <p className="text-xs text-muted-foreground">COB° ZERO</p>
         </div>
-        <Button onClick={onIniciarAvaliacao} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
-          <AlignCenter className="h-4 w-4" /> Nova Avaliação
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/pacientes/${paciente.id}`}>
+            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
+          </a>
         </Button>
       </div>
 
-      {/* Tabs Principais */}
-      <Tabs defaultValue="remota">
-        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
-          <TabsTrigger value="remota" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-            <FileText className="h-4 w-4" /> Avaliação Remota
+      {/* Tabs */}
+      <Tabs defaultValue="remota" className="w-full">
+        <TabsList className={`grid w-full h-10 bg-muted/60 ${evolucaoData.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
+          <TabsTrigger value="remota" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
+            <FileText className="h-3.5 w-3.5" /> Remota
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-            <AlignCenter className="h-4 w-4" /> Avaliação em Consultório {avaliacoes.length > 0 && `(${avaliacoes.length})`}
+          <TabsTrigger value="avaliacoes" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
+            <AlignCenter className="h-3.5 w-3.5" /> Consultório {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           {evolucaoData.length >= 2 && (
-            <TabsTrigger value="evolucao" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-              <TrendingUp className="h-4 w-4" /> Evolução
+            <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
+              <TrendingUp className="h-3.5 w-3.5" /> Evolução
             </TabsTrigger>
           )}
-          <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-            <Dumbbell className="h-4 w-4" /> Protocolos
+          <TabsTrigger value="protocolos" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
+            <Dumbbell className="h-3.5 w-3.5" /> Protocolos
           </TabsTrigger>
         </TabsList>
 
