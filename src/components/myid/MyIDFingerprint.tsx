@@ -81,53 +81,54 @@ export default function MyIDFingerprint({ rings, myidScore, className = '' }: Pr
   // Score color with vivid palette
   const scoreColor =
     myidScore <= 2 ? '#10b981' :
-    myidScore <= 4 ? '#22c55e' :
-    myidScore <= 6 ? '#f59e0b' :
-    myidScore <= 8 ? '#f97316' : '#ef4444';
+      myidScore <= 4 ? '#22c55e' :
+        myidScore <= 6 ? '#f59e0b' :
+          myidScore <= 8 ? '#f97316' : '#ef4444';
 
   const scoreLabel =
     myidScore <= 2 ? 'BAIXO' :
-    myidScore <= 4 ? 'MODERADO' :
-    myidScore <= 6 ? 'ELEVADO' :
-    myidScore <= 8 ? 'ALTO' : 'CRÍTICO';
+      myidScore <= 4 ? 'MODERADO' :
+        myidScore <= 6 ? 'ELEVADO' :
+          myidScore <= 8 ? 'ALTO' : 'CRÍTICO';
 
   return (
     <div className={`relative ${className}`}>
       <svg viewBox="0 0 600 640" className="w-full max-w-lg mx-auto" style={{ filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.08))' }}>
         <defs>
-          {/* Glow for high-value ridges */}
           <filter id="fp-glow-strong">
-            <feGaussianBlur stdDeviation="4" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+            <feGaussianBlur stdDeviation="3.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-glow-soft">
-            <feGaussianBlur stdDeviation="2" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-center-glow">
-            <feGaussianBlur stdDeviation="8" result="blur" />
-            <feMerge>
-              <feMergeNode in="blur" />
-              <feMergeNode in="SourceGraphic" />
-            </feMerge>
+            <feGaussianBlur stdDeviation="10" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
-          {/* Center radial */}
+
+          {/* Scanner Line Effect */}
+          <linearGradient id="scanner-grad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={scoreColor} stopOpacity="0" />
+            <stop offset="50%" stopColor={scoreColor} stopOpacity="0.4" />
+            <stop offset="100%" stopColor={scoreColor} stopOpacity="0" />
+          </linearGradient>
+
+          {/* Ridge Texture Noise */}
+          <filter id="ridge-noise">
+            <feTurbulence type="fractalNoise" baseFrequency="0.6" numOctaves="3" result="noise" />
+            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.5" xChannelSelector="R" yChannelSelector="G" />
+          </filter>
+
           <radialGradient id="fp-core" cx="50%" cy="50%">
-            <stop offset="0%" stopColor={scoreColor} stopOpacity="0.25" />
-            <stop offset="60%" stopColor={scoreColor} stopOpacity="0.08" />
+            <stop offset="0%" stopColor={scoreColor} stopOpacity="0.3" />
             <stop offset="100%" stopColor={scoreColor} stopOpacity="0" />
           </radialGradient>
-          {/* Background subtle */}
+
           <radialGradient id="fp-bg-grad" cx="50%" cy="48%" r="50%">
-            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.04" />
-            <stop offset="70%" stopColor="hsl(var(--muted))" stopOpacity="0.02" />
-            <stop offset="100%" stopColor="hsl(var(--muted))" stopOpacity="0" />
+            <stop offset="0%" stopColor="hsl(var(--primary))" stopOpacity="0.06" />
+            <stop offset="100%" stopColor="hsl(var(--primary))" stopOpacity="0" />
           </radialGradient>
         </defs>
 
@@ -135,7 +136,12 @@ export default function MyIDFingerprint({ rings, myidScore, className = '' }: Pr
         <ellipse cx={cx} cy={cy} rx={280} ry={300} fill="url(#fp-bg-grad)" />
 
         {/* Center warm core */}
-        <ellipse cx={cx} cy={cy} rx={55} ry={65} fill="url(#fp-core)" filter="url(#fp-center-glow)" />
+        <ellipse cx={cx} cy={cy} rx={60} ry={70} fill="url(#fp-core)" filter="url(#fp-center-glow)" />
+
+        {/* Animated Scanner Pulse */}
+        <ellipse cx={cx} cy={cy} rx={270} ry={310} fill="none" stroke="url(#scanner-grad)" strokeWidth="2" opacity="0.4">
+          <animate attributeName="cy" from="-100" to="700" dur="4s" repeatCount="indefinite" />
+        </ellipse>
 
         {/* ── RIDGES ── */}
         {ridgeData.map((ridge) => {
@@ -165,16 +171,16 @@ export default function MyIDFingerprint({ rings, myidScore, className = '' }: Pr
 
           // Determine label placement — alternate left/right
           const labelSide = ridge.index % 2 === 0 ? 'right' : 'left';
-          const labelAngleDeg = labelSide === 'right' 
+          const labelAngleDeg = labelSide === 'right'
             ? ridge.startAngle + ridge.availableSweep * 0.15
             : ridge.startAngle + ridge.availableSweep * 0.85;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
           const dotX = cx + ridge.rx * Math.cos(labelRad);
           const dotY = cy + ridge.ry * Math.sin(labelRad);
-          
+
           // Leader line endpoint
           const leaderLen = 35 + (totalRings - ridge.index) * 3;
-          const leaderX = labelSide === 'right' 
+          const leaderX = labelSide === 'right'
             ? cx + ridge.rx + leaderLen + 10
             : cx - ridge.rx - leaderLen - 10;
           const leaderY = dotY;
@@ -221,8 +227,8 @@ export default function MyIDFingerprint({ rings, myidScore, className = '' }: Pr
                     stroke={ridge.color}
                     strokeWidth={ridge.strokeWidth}
                     strokeLinecap="round"
-                    opacity={isHighValue ? 1 : isMedValue ? 0.85 : 0.65}
-                    filter={isHighValue ? 'url(#fp-glow-strong)' : isMedValue ? 'url(#fp-glow-soft)' : undefined}
+                    opacity={isHighValue ? 1 : isMedValue ? 0.9 : 0.75}
+                    filter={`${isHighValue ? 'url(#fp-glow-strong)' : isMedValue ? 'url(#fp-glow-soft)' : ''} url(#ridge-noise)`}
                   />
                 );
               })}

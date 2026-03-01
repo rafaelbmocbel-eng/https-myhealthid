@@ -150,6 +150,10 @@ export default function PatientIntegratedDashboard({
             R: Number(ultimaMyID.score_r) || 0,
             C: Number(ultimaMyID.score_c) || 0,
             N: Number(ultimaMyID.score_n) || 0,
+            AF: 5,   // Dashboards usually show defaults until specific assessment
+            HID: 7,
+            NUT: 7,
+            ERG: 7,
         };
 
         const rings = getMyIDFingerprintData(componentScores);
@@ -183,12 +187,12 @@ export default function PatientIntegratedDashboard({
                             </div>
                             <div className="text-xs text-muted-foreground font-medium">MyID Score Global</div>
                         </div>
-                        <div className="grid grid-cols-2 gap-x-2 gap-y-1.5 mt-2 pt-2 border-t border-border/50">
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-2 gap-y-1.5 mt-2 pt-2 border-t border-border/50">
                             {rings.map(r => (
                                 <div key={r.scoreKey} className="flex items-center gap-1.5">
-                                    <div className="h-2 w-2 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                                    <span className="text-[9px] text-muted-foreground truncate uppercase font-bold">{r.label}</span>
-                                    <span className="text-[10px] font-black ml-auto">{r.value.toFixed(1)}</span>
+                                    <div className="h-1.5 w-1.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                                    <span className="text-[8px] text-muted-foreground truncate uppercase font-bold">{r.label.split(' ')[0]}</span>
+                                    <span className="text-[9px] font-black ml-auto">{r.value.toFixed(1)}</span>
                                 </div>
                             ))}
                         </div>

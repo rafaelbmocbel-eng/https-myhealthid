@@ -8,9 +8,13 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
+import { getAgendaUrl } from '@/utils/linkUrls';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -167,6 +171,19 @@ export default function Configuracoes() {
           </div>
         </div>
 
+        {/* Link de Agendamento Online (Geral) */}
+        <div className="clinical-card mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <Link2 className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Agendamento Online</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento. Eles preencherão o cadastro automaticamente.
+          </p>
+
+          <GeneralLinkSection />
+        </div>
+
         {/* Vagas por horário */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
@@ -214,5 +231,109 @@ export default function Configuracoes() {
         </div>
       </div>
     </AppLayout>
+  );
+}
+
+function GeneralLinkSection() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
+  const [gerando, setGerando] = useState(false);
+
+  const { data: linkGeral, isLoading } = useQuery({
+    queryKey: ['link-agenda-geral', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('links_agenda_paciente')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .is('paciente_id', null)
+        .eq('status', 'ativo')
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!user,
+  });
+
+  const gerarLinkGeral = async () => {
+    if (!user) return;
+    setGerando(true);
+    try {
+      // Cancelar anteriores
+      await supabase
+        .from('links_agenda_paciente')
+        .update({ status: 'cancelado' })
+        .is('paciente_id', null)
+        .eq('terapeuta_id', user.id)
+        .eq('status', 'ativo');
+
+      const dataExpiracao = new Date();
+      dataExpiracao.setFullYear(dataExpiracao.getFullYear() + 1); // 1 ano de validade para o geral
+
+      const { data, error } = await supabase.from('links_agenda_paciente').insert({
+        terapeuta_id: user.id,
+        paciente_id: null,
+        data_expiracao: dataExpiracao.toISOString(),
+      }).select().single();
+
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['link-agenda-geral'] });
+      toast({ title: 'Link geral gerado! 🚀', description: 'Agora novos pacientes podem se cadastrar.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerando(false);
+    }
+  };
+
+  const copiarLink = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link copiado! 📋', description: 'Envie para seus novos pacientes.' });
+  };
+
+  if (isLoading) return <div className="h-20 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  if (!linkGeral) {
+    return (
+      <Button
+        variant="outline"
+        className="w-full border-dashed border-primary/30 hover:border-primary/60 hover:bg-primary/5 gap-2 h-12"
+        onClick={gerarLinkGeral}
+        disabled={gerando}
+      >
+        {gerando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+        Gerar Link de Agendamento Geral
+      </Button>
+    );
+  }
+
+  return (
+    <div className="space-y-3 animate-in fade-in slide-in-from-top-2">
+      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border border-primary/10">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Seu Link Geral</p>
+          <p className="text-xs font-medium truncate text-primary">{getAgendaUrl(linkGeral.token)}</p>
+        </div>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => copiarLink(linkGeral.token)}>
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => window.open(getAgendaUrl(linkGeral.token), '_blank')}>
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        className="text-[10px] text-muted-foreground hover:text-destructive h-7 gap-1"
+        onClick={gerarLinkGeral}
+        disabled={gerando}
+      >
+        <RefreshCw className={cn("h-3 w-3", gerando && "animate-spin")} />
+        Gerar novo link (invalida o atual)
+      </Button>
+    </div>
   );
 }

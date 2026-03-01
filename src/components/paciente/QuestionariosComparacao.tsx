@@ -13,6 +13,17 @@ import {
 
 const BLOCOS = ['Identificação', 'Mapeamento Dor', 'Funcionalidade', 'Comportamento', 'Regulação', 'Ruído Sistêmico'];
 import { calcularTerrenos } from '@/utils/calculations';
+import MyIDFingerprint from '../myid/MyIDFingerprint';
+import {
+  getMyIDFingerprintData,
+  calcularMyID,
+  calcularScoreI,
+  calcularScoreD_MyID,
+  calcularScoreEFI_MyID,
+  calcularScoreP_MyID,
+  calcularScoreR_MyID,
+  calcularScoreN
+} from '@/utils/myidCalculations';
 
 const SCORE_KEYS_MAP: Record<number, { key: string; label: string; color: string }[]> = {
   1: [{ key: 'scoreI', label: 'Score I', color: '#FF8C42' }],

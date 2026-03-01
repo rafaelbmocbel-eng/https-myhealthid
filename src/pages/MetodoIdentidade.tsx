@@ -2,17 +2,17 @@ import { useState, useCallback, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
-import { calcularMyID, calcularScoreI, calcularScoreD_MyID, calcularScoreEFI_MyID, calcularScoreP_MyID, calcularScoreR_MyID, calcularScoreN } from '@/utils/myidCalculations';
-import MyIDBloco1 from '@/components/myid/MyIDBloco1';
-import MyIDBloco2 from '@/components/myid/MyIDBloco2';
-import MyIDBloco3 from '@/components/myid/MyIDBloco3';
-import MyIDBloco4 from '@/components/myid/MyIDBloco4';
-import MyIDBloco5 from '@/components/myid/MyIDBloco5';
-import MyIDBloco6 from '@/components/myid/MyIDBloco6';
+import { Bloco1 } from '@/components/myid/steps/Bloco1';
+import { Bloco2 } from '@/components/myid/steps/Bloco2';
+import { Bloco3 } from '@/components/myid/steps/Bloco3';
+import { Bloco4 } from '@/components/myid/steps/Bloco4';
+import { Bloco5 } from '@/components/myid/steps/Bloco5';
+import { Bloco6 } from '@/components/myid/steps/Bloco6';
+import { MyIDCalculator } from '@/utils/myid/calculator';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
 import {
   CheckCircle2, Circle, ClipboardList, Activity, Brain,
-  Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
+  Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, ArrowLeft, ArrowRight, MessageCircle,
   CalendarDays, Clock, Smartphone, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -168,8 +168,8 @@ export default function MetodoIdentidade() {
     setShowRelatorio(false);
   };
 
-  const updateBloco = useCallback((blocoKey: keyof AvaliacaoMyID, data: any) => {
-    setAvaliacao(prev => ({ ...prev, [blocoKey]: data }));
+  const updateData = useCallback((newData: any) => {
+    setAvaliacao(prev => ({ ...prev, ...newData }));
   }, []);
 
   const BLOCK_ORDER = [1, 2, 3, 4, 5, 6];
@@ -181,13 +181,8 @@ export default function MetodoIdentidade() {
     if (nextBlock) {
       setAvaliacao(prev => ({ ...prev, blocoAtual: nextBlock }));
     } else {
-      const i = calcularScoreI(avaliacao.bloco1);
-      const d = calcularScoreD_MyID(avaliacao.bloco2);
-      const efi = calcularScoreEFI_MyID(avaliacao.bloco3);
-      const p = calcularScoreP_MyID(avaliacao.bloco4);
-      const { r, c } = calcularScoreR_MyID(avaliacao.bloco5);
-      const n = calcularScoreN(avaliacao.bloco6);
-      const resultado = calcularMyID(d, efi, p, i, r, c, n);
+      const calculator = new MyIDCalculator(avaliacao);
+      const resultado = calculator.getFullResult();
 
       const finalAv = { ...avaliacao, resultado, concluido: true };
       setAvaliacao(finalAv);
@@ -544,13 +539,9 @@ export default function MetodoIdentidade() {
                 <Button
                   className="w-full mt-3 bg-gradient-primary text-white text-xs"
                   onClick={() => {
-                    const i = calcularScoreI(avaliacao.bloco1);
-                    const d = calcularScoreD_MyID(avaliacao.bloco2);
-                    const efi = calcularScoreEFI_MyID(avaliacao.bloco3);
-                    const p = calcularScoreP_MyID(avaliacao.bloco4);
-                    const { r, c } = calcularScoreR_MyID(avaliacao.bloco5);
-                    const n = calcularScoreN(avaliacao.bloco6);
-                    const resultado = calcularMyID(d, efi, p, i, r, c, n);
+                    const calculator = new MyIDCalculator(avaliacao);
+                    const resultado = calculator.getFullResult();
+                    setAvaliacao(prev => ({ ...prev, resultado }));
                     setAvaliacao(prev => ({ ...prev, resultado }));
                     setShowRelatorio(true);
                   }}
@@ -565,23 +556,46 @@ export default function MetodoIdentidade() {
           <div className="lg:col-span-3">
             <div className="animate-slide-in">
               {avaliacao.blocoAtual === 1 && (
-                <MyIDBloco1 data={avaliacao.bloco1} onChange={(d) => updateBloco('bloco1', d)} onNext={() => avancarBloco(1)} />
+                <Bloco1 data={avaliacao} updateData={updateData} />
               )}
               {avaliacao.blocoAtual === 2 && (
-                <MyIDBloco2 data={avaliacao.bloco2} onChange={(d) => updateBloco('bloco2', d)} onNext={() => avancarBloco(2)} onBack={voltarBloco} />
+                <Bloco2 data={avaliacao} updateData={updateData} />
               )}
               {avaliacao.blocoAtual === 3 && (
-                <MyIDBloco3 data={avaliacao.bloco3} onChange={(d) => updateBloco('bloco3', d)} onNext={() => avancarBloco(3)} onBack={voltarBloco} />
+                <Bloco3 data={avaliacao} updateData={updateData} />
               )}
               {avaliacao.blocoAtual === 4 && (
-                <MyIDBloco4 data={avaliacao.bloco4} onChange={(d) => updateBloco('bloco4', d)} onNext={() => avancarBloco(4)} onBack={voltarBloco} />
+                <Bloco4 data={avaliacao} updateData={updateData} />
               )}
               {avaliacao.blocoAtual === 5 && (
-                <MyIDBloco5 data={avaliacao.bloco5} onChange={(d) => updateBloco('bloco5', d)} onNext={() => avancarBloco(5)} onBack={voltarBloco} />
+                <Bloco5 data={avaliacao} updateData={updateData} />
               )}
               {avaliacao.blocoAtual === 6 && (
-                <MyIDBloco6 data={avaliacao.bloco6} onChange={(d) => updateBloco('bloco6', d)} onSubmit={() => avancarBloco(6)} onBack={voltarBloco} />
+                <Bloco6 data={avaliacao} updateData={updateData} />
               )}
+            </div>
+
+            {/* Navegação entre Blocos */}
+            <div className="flex justify-between items-center mt-8 bg-card p-4 rounded-xl shadow-sm border">
+              <Button
+                variant="outline"
+                onClick={voltarBloco}
+                className="gap-2 h-10 px-6"
+                disabled={avaliacao.blocoAtual === 1}
+              >
+                <ArrowLeft className="h-4 w-4" /> Anterior
+              </Button>
+
+              <Button
+                onClick={() => avancarBloco(avaliacao.blocoAtual)}
+                className="bg-gradient-primary text-white gap-2 h-10 px-8"
+              >
+                {avaliacao.blocoAtual === 6 ? (
+                  <>Finalizar Avaliação <CheckCircle2 className="h-4 w-4" /></>
+                ) : (
+                  <>Próximo Passo <ArrowRight className="h-4 w-4" /></>
+                )}
+              </Button>
             </div>
           </div>
         </div>

@@ -54,6 +54,14 @@ export default function AgendaPublica() {
   const [sucesso, setSucesso] = useState(false);
   const [erroBooking, setErroBooking] = useState<string | null>(null);
 
+  // New patient registration state
+  const [newPacData, setNewPacData] = useState({
+    nome: '',
+    sobrenome: '',
+    email: '',
+    telefone: '',
+  });
+
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
     (async () => {
@@ -165,20 +173,62 @@ export default function AgendaPublica() {
     return dias;
   };
 
-  const handleConfirmarAgendamento = async () => {
+  const handleConfirmarComCadastro = async () => {
     if (!selectedSlot || !linkInfo) return;
+
+    // Se for link geral, validar campos obrigatórios
+    if (!linkInfo.paciente_id && (!newPacData.nome || !newPacData.telefone)) {
+      setErroBooking('Nome e WhatsApp são obrigatórios para novos pacientes.');
+      return;
+    }
+
     setConfirmando(true);
     setErroBooking(null);
 
     try {
+      let patientId = linkInfo.paciente_id;
+
+      // Fluxo para NOVO PACIENTE ou LINK GERAL
+      if (!patientId) {
+        // 1. Verificar se paciente já existe pelo telefone para este terapeuta
+        const { data: existingPac } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('terapeuta_id', linkInfo.terapeuta_id)
+          .eq('telefone', newPacData.telefone)
+          .maybeSingle();
+
+        if (existingPac) {
+          patientId = existingPac.id;
+        } else {
+          // 2. Criar novo paciente
+          const { data: newPac, error: pacError } = await supabase
+            .from('pacientes')
+            .insert({
+              terapeuta_id: linkInfo.terapeuta_id,
+              nome: newPacData.nome,
+              sobrenome: newPacData.sobrenome,
+              email: newPacData.email,
+              telefone: newPacData.telefone,
+              ativo: true,
+            })
+            .select()
+            .single();
+
+          if (pacError) throw pacError;
+          patientId = newPac.id;
+        }
+      }
+
+      // 3. Criar agendamento
       const { error } = await supabase.from('agendamentos').insert({
         terapeuta_id: linkInfo.terapeuta_id,
-        paciente_id: linkInfo.paciente_id,
+        paciente_id: patientId,
         data_inicio: selectedSlot.dataInicio.toISOString(),
         data_fim: selectedSlot.dataFim.toISOString(),
         status: 'pendente',
-        tipo_atendimento: 'retorno',
-        titulo: 'Auto-agendamento',
+        tipo_atendimento: linkInfo.paciente_id ? 'retorno' : 'primeira_consulta',
+        titulo: linkInfo.paciente_id ? 'Auto-agendamento' : `Novo Paciente: ${newPacData.nome}`,
       });
 
       if (error) {
@@ -188,7 +238,7 @@ export default function AgendaPublica() {
         return;
       }
 
-      // Add to local state so slot appears occupied
+      // Atualizar estado local
       setAgendamentos(prev => [...prev, {
         data_inicio: selectedSlot.dataInicio.toISOString(),
         data_fim: selectedSlot.dataFim.toISOString(),
@@ -196,8 +246,9 @@ export default function AgendaPublica() {
       }]);
 
       setSucesso(true);
-    } catch {
-      setErroBooking('Erro de conexão. Tente novamente.');
+    } catch (e: any) {
+      console.error('Error in booking flow:', e);
+      setErroBooking('Erro de conexão ao processar agendamento.');
     }
     setConfirmando(false);
   };
@@ -289,20 +340,71 @@ export default function AgendaPublica() {
       </div>
 
       <div className="max-w-md mx-auto px-4 py-10 space-y-6">
-        <div className="border rounded-2xl overflow-hidden">
+        <div className="border rounded-2xl overflow-hidden bg-card shadow-sm">
           <div className="bg-primary/5 border-b px-5 py-4 text-center">
             <CalendarDays className="h-8 w-8 mx-auto text-primary mb-2" />
             <p className="text-lg font-bold text-foreground capitalize">
               {format(selectedSlot.data, "EEEE, dd 'de' MMMM", { locale: ptBR })}
             </p>
           </div>
-          <div className="p-5 text-center space-y-4">
-            <div>
-              <p className="text-3xl font-black text-primary">{selectedSlot.hora}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                Duração: {config?.duracao_padrao || 45} minutos
-              </p>
+          <div className="p-5 text-center border-b">
+            <p className="text-3xl font-black text-primary">{selectedSlot.hora}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              Duração: {config?.duracao_padrao || 45} minutos
+            </p>
+          </div>
+
+          {!linkInfo.paciente_id && (
+            <div className="p-5 space-y-4 bg-muted/10">
+              <div className="space-y-2">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Seus Dados</p>
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground ml-1">Nome</label>
+                    <input
+                      type="text"
+                      placeholder="Nome"
+                      className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                      value={newPacData.nome}
+                      onChange={e => setNewPacData(d => ({ ...d, nome: e.target.value }))}
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground ml-1">Sobrenome</label>
+                    <input
+                      type="text"
+                      placeholder="Sobrenome"
+                      className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                      value={newPacData.sobrenome}
+                      onChange={e => setNewPacData(d => ({ ...d, sobrenome: e.target.value }))}
+                    />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground ml-1">WhatsApp</label>
+                  <input
+                    type="tel"
+                    placeholder="(00) 00000-0000"
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    value={newPacData.telefone}
+                    onChange={e => setNewPacData(d => ({ ...d, telefone: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-medium text-muted-foreground ml-1">E-mail (opcional)</label>
+                  <input
+                    type="email"
+                    placeholder="email@exemplo.com"
+                    className="w-full h-9 px-3 rounded-lg border bg-background text-sm focus:ring-2 focus:ring-primary/20 outline-none"
+                    value={newPacData.email}
+                    onChange={e => setNewPacData(d => ({ ...d, email: e.target.value }))}
+                  />
+                </div>
+              </div>
             </div>
+          )}
+
+          <div className="p-5 text-center space-y-4">
             <div className="text-sm text-muted-foreground">
               <p>Profissional: <strong className="text-foreground">{terapeuta ? `${terapeuta.nome} ${terapeuta.sobrenome}` : 'Terapeuta'}</strong></p>
               {terapeuta?.especialidade && <p className="text-xs">{terapeuta.especialidade}</p>}
@@ -318,7 +420,7 @@ export default function AgendaPublica() {
 
         <Button
           className="w-full h-12 text-base font-bold bg-gradient-to-r from-primary to-primary/80"
-          onClick={handleConfirmarAgendamento}
+          onClick={handleConfirmarComCadastro}
           disabled={confirmando}
         >
           {confirmando ? (
@@ -444,8 +546,8 @@ export default function AgendaPublica() {
                         key={slot.hora}
                         disabled={!slot.disponivel}
                         className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${slot.disponivel
-                            ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
-                            : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
+                          ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
+                          : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
                           }`}
                         onClick={() => {
                           if (!slot.disponivel) return;

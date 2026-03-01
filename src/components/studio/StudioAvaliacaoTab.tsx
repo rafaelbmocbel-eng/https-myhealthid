@@ -24,6 +24,8 @@ import { getSeverityColorHex } from '@/utils/calculations';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import PatientIntegratedDashboard from '../paciente/PatientIntegratedDashboard';
+import StudioMedidasForm from './StudioMedidasForm';
+import { useStudioMedidas } from '@/hooks/useStudioData';
 
 interface Props {
   pacienteId: string;
@@ -39,6 +41,8 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesIdentidade(pacienteId);
   const [selectedAvaliacao, setSelectedAvaliacao] = useState<AvaliacaoMyID | null>(null);
+  const [iniciandoMedidas, setIniciandoMedidas] = useState(false);
+  const { salvarMedida, salvando: salvandoMedida } = useStudioMedidas(pacienteId);
 
   const { data: linksAgenda = [] } = useQuery({
     queryKey: ['links_agenda_paciente', user?.id],
@@ -205,6 +209,32 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
 
         {/* Tab: Avaliação Presencial */}
         <TabsContent value="presencial" className="space-y-4 mt-4">
+          <div className="flex justify-between items-center px-1">
+            <h3 className="font-black text-sm text-foreground tracking-tight uppercase">Avaliação em Consultório</h3>
+            {!iniciandoMedidas && (
+              <Button
+                size="sm"
+                className="h-8 bg-gradient-studio text-white gap-2 font-bold px-4"
+                onClick={() => setIniciandoMedidas(true)}
+              >
+                <Plus className="h-4 w-4" /> Nova Medição
+              </Button>
+            )}
+          </div>
+
+          {iniciandoMedidas && (
+            <StudioMedidasForm
+              pacienteId={pacienteId}
+              isPending={salvandoMedida}
+              onCancel={() => setIniciandoMedidas(false)}
+              onSave={async (data) => {
+                await salvarMedida(data);
+                setIniciandoMedidas(false);
+                qc.invalidateQueries({ queryKey: ['studio-medidas', pacienteId] });
+              }}
+            />
+          )}
+
           {/* Seção Clinica Premium: Bio-Individualidade Elite */}
           {ultimaAvaliacao && (
             <div className="space-y-4">

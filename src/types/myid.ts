@@ -4,10 +4,14 @@
 
 // ── BLOCO 1: Identificação e Gatilhos (Score I - Inércia) ──
 export interface MyIDBloco1Data {
-  queixaPrincipal: string;
-  mudancasRecentes: string[]; // checkboxes
-  dataInicioDor: string;
-  descricaoEvento: string;
+  queixaPrincipal: string;      // Legacy
+  queixa_principal?: string;    // v2
+  mudancasRecentes: string[];   // Legacy
+  mudancas_recentes?: string[]; // v2
+  dataInicioDor: string;        // Legacy
+  data_inicio_dor?: string;     // v2
+  descricaoEvento: string;      // Legacy
+  descricao_evento?: string;    // v2
   scoreI: number;
 }
 
@@ -35,6 +39,8 @@ export interface MyIDBloco2Data {
   redFlags: RedFlags;
   temRedFlag: boolean;
   scoreD: number;
+  bloco_2_pain_frequency?: string;
+  bloco_2_worst_time?: string;
 }
 
 // ── BLOCO 3: Funcionalidade (Score EFI) ──
@@ -53,33 +59,68 @@ export interface MyIDBloco4Data {
   catastrofizacao: number; // 1-4
   evitacao: number;        // 1-4
   autoeficacia: number;    // 0-10 (invertida)
+  bloco_4_expectation?: number; // 0-10
   scoreP: number;
 }
 
 // ── BLOCO 5: Regulação Neurovegetativa (Score R + C) ──
 export interface MyIDBloco5Data {
   // 5A: Sono (R1)
-  qualidadeSono: number;   // 0-10
-  horasSono: number;       // numérico (horas)
-  acordaPorDor: string;    // 'nunca','raramente','frequentemente','sempre'
+  qualidadeSono: number;   // Legacy
+  horasSono: number;       // Legacy
+  acordaPorDor: string;    // Legacy
+  bloco_5a_hours?: number;
+  bloco_5a_quality?: number;
+  bloco_5a_awake?: string;
+  bloco_5a_disorders?: string[];
   scoreR1: number;
 
   // 5B: Energia (R2)
-  fadiga: number;          // 0-10
-  exaustoAoAcordar: string; // 'nunca','as_vezes','frequentemente','sempre'
+  fadiga: number;          // Legacy
+  exaustoAoAcordar: string; // Legacy
+  bloco_5b_tired_awake?: string;
   scoreR2: number;
 
   // 5C: Psicológico (R3)
-  estresse: number;        // 0-10
-  ansiedade: number;       // 0-10
-  controleSaude: string;   // 'muito','moderado','pouco','sem'
+  estresse: number;        // Legacy
+  ansiedade: number;       // Legacy
+  controleSaude: string;   // Legacy
+  bloco_5c_stress?: number;
+  bloco_5c_anxiety?: number;
+  bloco_5c_control?: string;
   scoreR3: number;
 
   // 5D: Contexto (C)
-  trabalhoEstressante: number;    // 0-10
-  conflitosFamiliares: number;    // 0-10
-  preocupacaoFinanceira: number;  // 0-10
+  trabalhoEstressante: number;    // Legacy
+  conflitosFamiliares: number;    // Legacy
+  preocupacaoFinanceira: number;  // Legacy
   scoreC: number;
+
+  // 5E: Atividade Física (AF)
+  bloco_5e_sitting_hours?: number;
+  bloco_5e_lifestyle?: string;
+  bloco_5e_exercise_types?: string[];
+  bloco_5e_intensity?: string;
+
+  // 5F: Hidratação (HID)
+  bloco_5f_water_liters?: number;
+  bloco_5f_urine_color?: string;
+  bloco_5f_micturition?: number;
+  bloco_5f_dehydration_symptoms?: Record<string, boolean>;
+
+  // 5G: Nutrição (NUT)
+  bloco_5g_quality?: string;
+  bloco_5g_fruits_portions?: number;
+  bloco_5g_protein?: string;
+  bloco_5g_inflammatory?: string;
+  bloco_5g_deficiency?: string;
+
+  // 5H: Ergonomia (ERG)
+  bloco_5h_workspace?: string;
+  bloco_5h_sitting_continuous?: number;
+  bloco_5h_sleep_position?: string;
+  bloco_5h_mattress?: string;
+  bloco_5h_bad_habits?: string[];
 
   scoreR: number;
 }
@@ -92,6 +133,23 @@ export interface MyIDBloco6Data {
   cicatrizTipo: string;
   cicatrizAnos: number | null;
   sinaisAutonomicos: string[];  // checkboxes
+  // v2 fields
+  bloco_6_axial_trauma?: boolean;
+  bloco_6_abdominal_surgeries?: string[];
+  bloco_6_visceral_issues?: string[];
+  bloco_6_endometriosis?: boolean;
+  bloco_6_pcos?: boolean;
+  bloco_6_cycle_regularity?: string;
+  bloco_6_cycle_affects_pain?: boolean;
+  bloco_6_cycle_pain_phase?: string[];
+  bloco_6_hormonal_use?: string;
+  bloco_6_hormonal_improved?: boolean;
+  bloco_6_daily_nsaid?: boolean;
+  bloco_6_antidepressant?: boolean;
+  bloco_6_antidepressant_type?: string;
+  bloco_6_muscle_relaxant?: boolean;
+  bloco_6_supplementation?: boolean;
+  bloco_6_corticoid?: boolean;
   // Saúde feminina (opcional)
   diagnosticoFeminino: string; // 'endometriose','pcos','ambas','nao','prefiro_nao'
   scoreN: number;
@@ -109,6 +167,10 @@ export interface MyIDResult {
     R: number;
     C: number;
     N: number;
+    AF?: number;
+    HID?: number;
+    NUT?: number;
+    ERG?: number;
   };
   redFlagsDetected: boolean;
   redFlagAlerts: string[];

@@ -5,6 +5,7 @@ import { cn } from '@/lib/utils';
 
 interface AppLayoutProps {
   children: React.ReactNode;
+  title?: string;
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {

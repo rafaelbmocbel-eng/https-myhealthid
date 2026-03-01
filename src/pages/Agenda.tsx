@@ -8,7 +8,8 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
-  Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle
+  Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
+  Smartphone, CreditCard, Info
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -772,24 +773,57 @@ export default function Agenda() {
               // Note: In a real scenario we'd use a dedicated hook/query here
               // For now, let's show a placeholder or basic info we have
               return (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                      <Users className="h-5 w-5" />
+                <>
+                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
-                      </p>
-                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
+                      <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
+                        Ver Prontuário →
+                      </a>
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
-                    <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
-                      Ver Prontuário →
-                    </a>
-                  </Button>
-                </div>
+
+                  {/* Alerta de Sinal via Pix (Se não tiver pacote) */}
+                  {!pac?.possui_pacote && (
+                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-300">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
+                          <Smartphone className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm font-bold text-amber-900">Pagamento de Sinal Obrigatório</p>
+                          <p className="text-xs text-amber-800/80 leading-relaxed">
+                            Este paciente ainda não possui um pacote fechado. Para confirmar o agendamento, solicite um sinal via Pix.
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className="bg-white/60 border border-amber-100 rounded-lg p-3 space-y-2">
+                        <div className="flex justify-between items-center text-xs">
+                          <span className="font-semibold text-amber-900/60 uppercase text-[10px]">Chave Pix (CNPJ)</span>
+                          <Badge variant="outline" className="h-5 text-[9px] bg-amber-100/50 text-amber-700 border-amber-200 cursor-pointer">Copiar</Badge>
+                        </div>
+                        <p className="text-sm font-mono font-bold text-amber-900 tracking-wider">00.000.000/0001-00</p>
+                        <p className="text-[10px] text-amber-700 italic">Beneficiário: MyHealthID Soluções Médicas</p>
+                      </div>
+
+                      <div className="flex items-center gap-2 text-[10px] text-amber-700 font-medium bg-amber-100/30 p-2 rounded-md">
+                        <Info className="h-3 w-3" />
+                        O status será definido como "Pendente" até a confirmação do sinal.
+                      </div>
+                    </div>
+                  )}
+                </>
               );
             })()}
 
@@ -797,7 +831,15 @@ export default function Agenda() {
             <div>
               <Label>Paciente</Label>
               <div className="flex gap-2 mt-1.5">
-                <Select value={form.paciente_id} onValueChange={v => setForm(f => ({ ...f, paciente_id: v }))}>
+                <Select value={form.paciente_id} onValueChange={v => {
+                  const pac = pacientes.find(p => p.id === v);
+                  setForm(f => ({
+                    ...f,
+                    paciente_id: v,
+                    status: (pac && !pac.possui_pacote) ? 'pendente' : f.status,
+                    observacoes: (pac && !pac.possui_pacote) ? (f.observacoes + "\n[AGUARDANDO SINAL PIX]").trim() : f.observacoes
+                  }));
+                }}>
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Selecionar paciente" />
                   </SelectTrigger>
@@ -891,7 +933,7 @@ export default function Agenda() {
             </div>
           </div>
         </DialogContent>
-      </Dialog>
+      </Dialog >
     </AppLayout >
   );
 }

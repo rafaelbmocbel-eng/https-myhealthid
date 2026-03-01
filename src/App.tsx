@@ -16,6 +16,7 @@ import Protocolos from "./pages/Protocolos"; // kept for direct URL access
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
 import AgendaPublica from "./pages/AgendaPublica";
 import Relatorios from "./pages/Relatorios";
+import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import MyIDResponder from "./pages/MyIDResponder";
 import { AuthProvider } from "./contexts/AuthContext";
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/agenda/:token" element={<AgendaPublica />} />
             <Route path="/myid/responder/:token" element={<MyIDResponder />} />
             <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/crm" element={<GestaoVendas />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

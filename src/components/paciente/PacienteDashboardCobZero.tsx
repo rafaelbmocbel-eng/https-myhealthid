@@ -22,6 +22,7 @@ import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import PatientIntegratedDashboard from './PatientIntegratedDashboard';
+import { CobZeroWizard } from '../cobzero/CobZeroWizard';
 
 interface Paciente {
   id: string;
@@ -49,8 +50,9 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
-  const { avaliacoes, isLoading, deletar } = useAvaliacoesCobZero(paciente.id);
+  const { avaliacoes, isLoading, salvar: salvarCobZero, deletar } = useAvaliacoesCobZero(paciente.id);
   const [gerando, setGerando] = useState(false);
+  const [iniciandoAvaliacao, setIniciandoAvaliacao] = useState(false);
 
   // Buscar última avaliação identidade para índices de risco completos
   const { data: ultimaIdentidade } = useQuery({
@@ -229,7 +231,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
             <ExternalLink className="h-4 w-4" />
             Perfil
           </Button>
-          <Button onClick={onIniciarAvaliacao} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+          <Button onClick={() => setIniciandoAvaliacao(true)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
             <AlignCenter className="h-4 w-4" /> Nova Avaliação
           </Button>
         </div>
@@ -295,157 +297,179 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
         {/* Aba: Avaliação em Consultório */}
         <TabsContent value="avaliacoes" className="mt-4 space-y-6">
-
-          {/* Seções de Resumo da Presencial */}
-          <div className="space-y-6">
-            {/* Índices de Risco — combina scores de identidade + COB */}
-            {(ultimaIdentidade || avaliacoes.length > 0) && (
-              <IndicesRiscoComprometimento
-                scores={{
-                  ...(ultimaIdentidade || {}),
-                  score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
-                } as any}
-                parcial={!ultimaIdentidade}
-                dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
-              />
-            )}
-
-            {/* Perfil de Terreno Integrado */}
-            {questionnaireData?.blocos[1] && questionnaireData?.blocos[4] && questionnaireData?.blocos[5] && (() => {
-              const terrenos = calcularTerrenos(questionnaireData.blocos[1], questionnaireData.blocos[4], questionnaireData.blocos[5], questionnaireData.scores.scoreD || 0);
-              return (
-                <div className="clinical-card border-2 border-primary/10 bg-gradient-to-br from-card to-primary/5">
-                  <div className="flex flex-col md:flex-row items-center gap-6">
-                    <div className="flex-1 space-y-3">
-                      <h3 className="font-bold text-sm flex items-center gap-2">
-                        <PersonStanding className="h-4 w-4 text-primary" />
-                        Terreno Biopsicossocial (Baseado no Questionário)
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <div className="flex justify-between text-[10px] mb-1">
-                            <span className="font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div className="h-full bg-green-500" style={{ width: `${terrenos.porcentagemMod}%` }} />
-                          </div>
-                        </div>
-                        <div>
-                          <div className="flex justify-between text-[10px] mb-1">
-                            <span className="font-bold text-red-500">Fixos ({terrenos.porcentagemNaoMod}%)</span>
-                          </div>
-                          <div className="h-2 rounded-full bg-secondary overflow-hidden">
-                            <div className="h-full bg-red-400" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
-                          </div>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">
-                        Fator Amplificador de Sintomas: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
-                      </p>
-                    </div>
-                    <div className="relative w-20 h-20 shrink-0 flex items-center justify-center bg-card rounded-full border-2 border-muted overflow-hidden">
-                      <PersonStanding className="h-10 w-10 text-primary opacity-50" />
-                      <svg className="absolute inset-0 w-full h-full -rotate-90">
-                        <circle cx="40" cy="40" r="37" className="stroke-green-500 fill-none" strokeWidth="3" strokeDasharray="233" strokeDashoffset={233 - (233 * terrenos.porcentagemMod) / 100} />
-                        <circle cx="40" cy="40" r="33" className="stroke-red-400 fill-none" strokeWidth="2" strokeDasharray="207" strokeDashoffset={207 - (207 * terrenos.porcentagemNaoMod) / 100} />
-                      </svg>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Studio Personal Integration Card */}
-            {ultimaMedidaStudio && (
-              <div className="clinical-card border-l-4 border-l-emerald-500 bg-emerald-50/20">
-                <div className="flex items-center gap-2 mb-2">
-                  <Dumbbell className="h-4 w-4 text-emerald-600" />
-                  <span className="text-xs font-bold text-emerald-900">Última Composição Corporal (Studio)</span>
-                  <Badge variant="outline" className="ml-auto text-[10px] h-4 bg-white">{format(parseISO(ultimaMedidaStudio.data_medida), 'dd/MM/yy', { locale: ptBR })}</Badge>
-                </div>
-                <div className="flex gap-4">
-                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.peso}kg</div>
-                    <div className="text-[9px] text-muted-foreground uppercase">Peso</div>
-                  </div>
-                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.percentual_gordura}%</div>
-                    <div className="text-[9px] text-muted-foreground uppercase">% Gord.</div>
-                  </div>
-                  <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
-                    <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.imc || '—'}</div>
-                    <div className="text-[9px] text-muted-foreground uppercase">IMC</div>
-                  </div>
-                </div>
+          {iniciandoAvaliacao ? (
+            <div className="bg-white rounded-xl shadow-sm border p-6 relative animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex justify-between items-center mb-6">
+                <h3 className="text-xl font-black text-foreground">Nova Avaliação COB° ZERO</h3>
+                <Button variant="ghost" size="sm" onClick={() => setIniciandoAvaliacao(false)}>
+                  Voltar ao Histórico
+                </Button>
               </div>
-            )}
-          </div>
-
-          <div className="h-px bg-border my-6" />
-
-          {isLoading ? (
-            <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-          ) : avaliacoes.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
-              <AlignCenter className="h-10 w-10 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Nenhuma avaliação salva</p>
-              <p className="text-sm mt-1">Realize e salve uma avaliação COB° ZERO para ver o histórico.</p>
-              <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={onIniciarAvaliacao}>Iniciar Avaliação</Button>
+              <CobZeroWizard
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                pacienteId={paciente.id}
+                onCancel={() => setIniciandoAvaliacao(false)}
+                onComplete={async (result) => {
+                  try {
+                    await salvarCobZero({ avaliacao: result, pacienteId: paciente.id });
+                    setIniciandoAvaliacao(false);
+                    qc.invalidateQueries({ queryKey: ['avaliacoes-cob-zero', paciente.id] });
+                  } catch (err) {
+                    console.error('Erro ao salvar:', err);
+                  }
+                }}
+              />
             </div>
           ) : (
-            <div className="space-y-4">
-              {/* Gráfico de barras: Cobb por avaliação */}
-              {barData.length > 0 && (
-                <div className="clinical-card">
-                  <div className="flex items-center gap-2 mb-4">
-                    <BarChart3 className="h-4 w-4 text-blue-600" />
-                    <h4 className="font-semibold text-sm">Ângulo de Cobb por Avaliação</h4>
+            <div className="space-y-6">
+              {/* Índices de Risco — combina scores de identidade + COB */}
+              {(ultimaIdentidade || avaliacoes.length > 0) && (
+                <IndicesRiscoComprometimento
+                  scores={{
+                    ...(ultimaIdentidade || {}),
+                    score_e: avaliacoes[0]?.score_e ?? ultimaIdentidade?.score_e,
+                  } as any}
+                  parcial={!ultimaIdentidade}
+                  dadosAvaliacao={(ultimaIdentidade as any)?.dados_avaliacao}
+                />
+              )}
+
+              {/* Perfil de Terreno Integrado */}
+              {questionnaireData?.blocos[1] && questionnaireData?.blocos[4] && questionnaireData?.blocos[5] && (() => {
+                const terrenos = calcularTerrenos(questionnaireData.blocos[1], questionnaireData.blocos[4], questionnaireData.blocos[5], questionnaireData.scores.scoreD || 0);
+                return (
+                  <div className="clinical-card border-2 border-primary/10 bg-gradient-to-br from-card to-primary/5">
+                    <div className="flex flex-col md:flex-row items-center gap-6">
+                      <div className="flex-1 space-y-3">
+                        <h3 className="font-bold text-sm flex items-center gap-2">
+                          <PersonStanding className="h-4 w-4 text-primary" />
+                          Terreno Biopsicossocial (Baseado no Questionário)
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className="font-bold text-green-600">Modificáveis ({terrenos.porcentagemMod}%)</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                              <div className="h-full bg-green-500" style={{ width: `${terrenos.porcentagemMod}%` }} />
+                            </div>
+                          </div>
+                          <div>
+                            <div className="flex justify-between text-[10px] mb-1">
+                              <span className="font-bold text-red-500">Fixos ({terrenos.porcentagemNaoMod}%)</span>
+                            </div>
+                            <div className="h-2 rounded-full bg-secondary overflow-hidden">
+                              <div className="h-full bg-red-400" style={{ width: `${terrenos.porcentagemNaoMod}%` }} />
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">
+                          Fator Amplificador de Sintomas: <strong>{terrenos.amplificadorDor.toFixed(2)}x</strong>
+                        </p>
+                      </div>
+                      <div className="relative w-20 h-20 shrink-0 flex items-center justify-center bg-card rounded-full border-2 border-muted overflow-hidden">
+                        <PersonStanding className="h-10 w-10 text-primary opacity-50" />
+                        <svg className="absolute inset-0 w-full h-full -rotate-90">
+                          <circle cx="40" cy="40" r="37" className="stroke-green-500 fill-none" strokeWidth="3" strokeDasharray="233" strokeDashoffset={233 - (233 * terrenos.porcentagemMod) / 100} />
+                          <circle cx="40" cy="40" r="33" className="stroke-red-400 fill-none" strokeWidth="2" strokeDasharray="207" strokeDashoffset={207 - (207 * terrenos.porcentagemNaoMod) / 100} />
+                        </svg>
+                      </div>
+                    </div>
                   </div>
-                  <div className="h-48">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <BarChart data={barData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
-                        <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                        <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                        <YAxis tick={{ fontSize: 11 }} unit="°" />
-                        <Tooltip formatter={(v) => [`${v}°`, 'Cobb']} labelFormatter={(l, p) => `${l} — ${p?.[0]?.payload?.data || ''}`} />
-                        <Bar dataKey="Ângulo Cobb" fill="#2563eb" radius={[4, 4, 0, 0]} />
-                      </BarChart>
-                    </ResponsiveContainer>
+                );
+              })()}
+
+              {/* Studio Personal Integration Card */}
+              {ultimaMedidaStudio && (
+                <div className="clinical-card border-l-4 border-l-emerald-500 bg-emerald-50/20">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Dumbbell className="h-4 w-4 text-emerald-600" />
+                    <span className="text-xs font-bold text-emerald-900">Última Composição Corporal (Studio)</span>
+                    <Badge variant="outline" className="ml-auto text-[10px] h-4 bg-white">{format(parseISO(ultimaMedidaStudio.data_medida), 'dd/MM/yy', { locale: ptBR })}</Badge>
+                  </div>
+                  <div className="flex gap-4">
+                    <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                      <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.peso}kg</div>
+                      <div className="text-[9px] text-muted-foreground uppercase">Peso</div>
+                    </div>
+                    <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                      <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.percentual_gordura}%</div>
+                      <div className="text-[9px] text-muted-foreground uppercase">% Gord.</div>
+                    </div>
+                    <div className="text-center bg-white/50 rounded-lg p-2 flex-1 border border-emerald-100">
+                      <div className="font-bold text-sm text-emerald-700">{ultimaMedidaStudio.imc || '—'}</div>
+                      <div className="text-[9px] text-muted-foreground uppercase">IMC</div>
+                    </div>
                   </div>
                 </div>
               )}
 
-              {/* Lista de avaliações */}
-              <div className="space-y-2">
-                {avaliacoes.map((av: any) => (
-                  <div key={av.id} className="border rounded-xl p-3 flex items-center gap-3 hover:bg-accent/10 transition-all">
-                    <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-semibold">{av.data_avaliacao}</span>
-                        <Badge variant="outline" className="text-[10px] h-4">Lenke {av.lenke_type}</Badge>
-                        {av.risco_level && (
-                          <Badge variant="outline" className={`text-[10px] h-4 ${RISCO_COLOR[av.risco_level] || ''}`}>{av.risco_level}</Badge>
-                        )}
+              <div className="h-px bg-border my-6" />
+
+              {isLoading ? (
+                <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+              ) : avaliacoes.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
+                  <AlignCenter className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                  <p className="font-medium">Nenhuma avaliação salva</p>
+                  <p className="text-sm mt-1">Realize e salve uma avaliação COB° ZERO para ver o histórico.</p>
+                  <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={onIniciarAvaliacao}>Iniciar Avaliação</Button>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {/* Gráfico de barras: Cobb por avaliação */}
+                  {barData.length > 0 && (
+                    <div className="clinical-card">
+                      <div className="flex items-center gap-2 mb-4">
+                        <BarChart3 className="h-4 w-4 text-blue-600" />
+                        <h4 className="font-semibold text-sm">Ângulo de Cobb por Avaliação</h4>
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        Cobb: {av.cobb_angle}° · Risco: {av.risco_percentage}% · Score E: {av.score_e?.toFixed(1)}
+                      <div className="h-48">
+                        <ResponsiveContainer width="100%" height="100%">
+                          <BarChart data={barData} margin={{ top: 5, right: 10, left: -10, bottom: 5 }}>
+                            <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+                            <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                            <YAxis tick={{ fontSize: 11 }} unit="°" />
+                            <Tooltip formatter={(v) => [`${v}°`, 'Cobb']} labelFormatter={(l, p) => `${l} — ${p?.[0]?.payload?.data || ''}`} />
+                            <Bar dataKey="Ângulo Cobb" fill="#2563eb" radius={[4, 4, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                        onClick={() => onVerRelatorio(av.dados_avaliacao as AvaliacaoCobZero)}>
-                        <FileText className="h-3 w-3" /> Ver
-                      </Button>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                        onClick={() => deletar(av.id)}>
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
-                    </div>
+                  )}
+
+                  {/* Lista de avaliações */}
+                  <div className="space-y-2">
+                    {avaliacoes.map((av: any) => (
+                      <div key={av.id} className="border rounded-xl p-3 flex items-center gap-3 hover:bg-accent/10 transition-all">
+                        <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-sm font-semibold">{av.data_avaliacao}</span>
+                            <Badge variant="outline" className="text-[10px] h-4">Lenke {av.lenke_type}</Badge>
+                            {av.risco_level && (
+                              <Badge variant="outline" className={`text-[10px] h-4 ${RISCO_COLOR[av.risco_level] || ''}`}>{av.risco_level}</Badge>
+                            )}
+                          </div>
+                          <div className="text-xs text-muted-foreground mt-0.5">
+                            Cobb: {av.cobb_angle}° · Risco: {av.risco_percentage}% · Score E: {av.score_e?.toFixed(1)}
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
+                            onClick={() => onVerRelatorio(av.dados_avaliacao as AvaliacaoCobZero)}>
+                            <FileText className="h-3 w-3" /> Ver
+                          </Button>
+                          <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
+                            onClick={() => deletar(av.id)}>
+                            <Trash2 className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))}
+                </div>
               </div>
-            </div>
           )}
         </TabsContent>
 

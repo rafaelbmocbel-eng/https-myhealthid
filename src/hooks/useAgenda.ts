@@ -10,6 +10,7 @@ export interface Paciente {
   email?: string;
   telefone?: string;
   ativo: boolean;
+  possui_pacote?: boolean;
 }
 
 export interface Agendamento {
@@ -56,10 +57,10 @@ export function useAgenda() {
     if (!user) return;
     setLoading(true);
     const [{ data: ag }, { data: pac }, { data: cfg }] = await Promise.all([
-      supabase.from('agendamentos').select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)').eq('terapeuta_id', user.id).order('data_inicio'),
+      supabase.from('agendamentos').select('*, pacientes(id, nome, sobrenome, email, telefone, ativo, possui_pacote)').eq('terapeuta_id', user.id).order('data_inicio'),
       supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
       supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).single(),
-    ]);
+    ]) as any;
     setAgendamentos((ag as Agendamento[]) || []);
     setPacientes((pac as Paciente[]) || []);
     if (cfg) setConfig(cfg as ConfigAgenda);

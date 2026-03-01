@@ -4,15 +4,15 @@ import {
     MyIDResult as MyIDResultType, FingerprintRing
 } from '@/types/myid';
 
-export interface MyIDResponses {
+export interface MyIDResponses extends Record<string, any> {
     session_id?: string;
-    // Dados brutos vindos do Wizard/Formulário
-    bloco1: MyIDBloco1Data;
-    bloco2: MyIDBloco2Data;
-    bloco3: MyIDBloco3Data;
-    bloco4: MyIDBloco4Data;
-    bloco5: MyIDBloco5Data;
-    bloco6: MyIDBloco6Data;
+    // Legacy nested structure
+    bloco1?: MyIDBloco1Data;
+    bloco2?: MyIDBloco2Data;
+    bloco3?: MyIDBloco3Data;
+    bloco4?: MyIDBloco4Data;
+    bloco5?: MyIDBloco5Data;
+    bloco6?: MyIDBloco6Data;
 }
 
 
@@ -51,8 +51,8 @@ export class MyIDCalculator {
     calculateInertia(): number {
         // No v2, scoreI pode vir pré-calculado ou baseado em mudançasRecentes
         const b1 = this.responses.bloco1;
-        const changes = b1?.mudancasRecentes || [];
-        const mudancasReais = changes.filter(m => m !== 'Nenhuma mudança que eu note');
+        const changes = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
+        const mudancasReais = changes.filter((m: string) => m !== 'Nenhuma mudança que eu note' && m !== 'none');
 
         // Cada mudança real conta 2 pontos de inércia
         const iPoints = mudancasReais.length * 2;
@@ -64,6 +64,15 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 2: DOR (D) ====================
     calculatePain(): number {
+        const painNow = this.responses.bloco_2_pain_now;
+        const painMax = this.responses.bloco_2_pain_max;
+
+        if (painNow !== undefined && painMax !== undefined) {
+            const d = (painNow + painMax) / 2;
+            this.scores['D'] = Math.round(d * 10) / 10;
+            return this.scores['D'];
+        }
+
         const regioes = this.responses.bloco2?.regioes || [];
         if (regioes.length === 0) {
             this.scores['D'] = 0;
@@ -84,23 +93,15 @@ export class MyIDCalculator {
     }
 
     detectRedFlags(): boolean {
-        const b2 = this.responses.bloco2;
-        const flags = b2?.redFlags || {
-            perdaPeso: false,
-            febreCalafrios: false,
-            dorNoturnaImpedeSono: false,
-            alteracaoEsfincteriana: false,
-            dorPioraConsistente: false,
-            dormenciaProgressiva: false
-        };
+        const flags = this.responses.bloco_2_red_flags || this.responses.bloco2?.redFlags || {};
 
         const criticalFlags = {
-            weight_loss: !!flags.perdaPeso,
-            fever: !!flags.febreCalafrios,
-            night_pain: !!flags.dorNoturnaImpedeSono,
-            incontinence: !!flags.alteracaoEsfincteriana,
-            progressive: !!flags.dorPioraConsistente,
-            neuropathy: !!flags.dormenciaProgressiva,
+            weight_loss: !!(flags.weight_loss || flags.perdaPeso),
+            fever: !!(flags.fever || flags.febreCalafrios),
+            night_pain: !!(flags.night_pain || flags.dorNoturnaImpedeSono),
+            incontinence: !!(flags.incontinence || flags.alteracaoEsfincteriana),
+            progressive: !!(flags.progressive || flags.dorPioraConsistente),
+            neuropathy: !!(flags.neuropathy || flags.dormenciaProgressiva),
         };
 
         this.result.red_flags_detected = Object.values(criticalFlags).some(v => v === true);
@@ -127,13 +128,12 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 3: FUNCIONALIDADE (EFI) ====================
     calculateFunctionality(): number {
-        const b3 = this.responses.bloco3;
         const efiValues = [
-            b3?.trabalho || 0,
-            b3?.domesticas || 0,
-            b3?.exercicio || 0,
-            b3?.independencia || 0,
-            b3?.vidaSocial || 0,
+            this.responses.bloco_3_work ?? this.responses.bloco3?.trabalho ?? 0,
+            this.responses.bloco_3_home ?? this.responses.bloco3?.domesticas ?? 0,
+            this.responses.bloco_3_exercise ?? this.responses.bloco3?.exercicio ?? 0,
+            this.responses.bloco_3_independence ?? this.responses.bloco3?.independencia ?? 0,
+            this.responses.bloco_3_social ?? this.responses.bloco3?.vidaSocial ?? 0,
         ];
 
         const efi = efiValues.reduce((a, b) => a + b, 0) / efiValues.length;
@@ -143,11 +143,10 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 4: PSICOLÓGICO (P) ====================
     calculatePsychological(): number {
-        const b4 = this.responses.bloco4;
-        const fearMovement = b4?.medoMovimento || 2; // 1-4
-        const beliefDamage = b4?.catastrofizacao || 2; // 1-4
-        const avoidance = b4?.evitacao || 2; // 1-4
-        const selfEfficacy = b4?.autoeficacia || 5; // 0-10
+        const fearMovement = this.responses.bloco_4_fear_movement ?? this.responses.bloco4?.medoMovimento ?? 2;
+        const beliefDamage = this.responses.bloco_4_belief_damage ?? this.responses.bloco4?.catastrofizacao ?? 2;
+        const avoidance = this.responses.bloco_4_avoidance ?? this.responses.bloco4?.evitacao ?? 2;
+        const selfEfficacy = this.responses.bloco_4_self_efficacy ?? this.responses.bloco4?.autoeficacia ?? 5;
 
         const fearNormalized = ((fearMovement - 1) / 3) * 10;
         const beliefNormalized = ((beliefDamage - 1) / 3) * 10;
@@ -162,37 +161,38 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 5: REGULAÇÃO (R) ====================
     calculateRegulation(): number {
-        const b5 = this.responses.bloco5;
         // 5A: Sono
-        const sleepQuality = b5?.qualidadeSono || 5;
-        const sleepHours = b5?.horasSono || 7;
+        const sleepQuality = this.responses.bloco_5a_quality ?? this.responses.bloco5?.qualidadeSono ?? 5;
+        const sleepHours = this.responses.bloco_5a_hours ?? this.responses.bloco5?.horasSono ?? 7;
         const sleepHoursNormalized = this.normalizeTo10(sleepHours, 9);
 
-        const awakeMapping: Record<string, number> = { nunca: 10, raramente: 7, frequentemente: 4, sempre: 0 };
-        let sleepAwake = awakeMapping[b5?.acordaPorDor || 'raramente'] ?? 5;
+        const awakeMapping: Record<string, number> = { nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
+        let sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
 
-        // Nota: bloco_5a_disorders não existe em MyIDBloco5Data, mas podemos inferir sinais se necessário.
-        // Por enquanto, manteremos a lógica compatível com o tipo.
-        const rSleep = (sleepQuality + sleepHoursNormalized + sleepAwake) / 3;
+        // 5A.4: Distúrbios de sono
+        const disorders = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
+        const disorderPenalty = disorders.length * 1.5;
+
+        const rSleep = Math.max(0, ((sleepQuality + sleepHoursNormalized + sleepAwake) / 3) - disorderPenalty);
 
         // 5B: Energia
-        const fatigue = b5?.fadiga || 5;
+        const fatigue = this.responses.fadiga ?? 5;
         const fatigueInverted = 10 - fatigue;
 
-        const tirednessMapping: Record<string, number> = { nunca: 10, as_vezes: 6, frequentemente: 3, sempre: 0 };
-        const wakingTired = tirednessMapping[b5?.exaustoAoAcordar || 'as_vezes'] ?? 5;
+        const tirednessMapping: Record<string, number> = { nunca: 10, sometimes: 6, frequently: 3, always: 0 };
+        const wakingTired = tirednessMapping[this.responses.bloco_5b_tired_awake || this.responses.bloco5?.exaustoAoAcordar || 'sometimes'] ?? 5;
 
         const rEnergy = (fatigueInverted + wakingTired) / 2;
 
         // 5C: Psicológico
-        const stress = b5?.estresse || 5;
+        const stress = this.responses.bloco_5c_stress ?? this.responses.bloco5?.estresse ?? 5;
         const stressInverted = 10 - stress;
 
-        const anxiety = b5?.ansiedade || 5;
+        const anxiety = this.responses.bloco_5c_anxiety ?? this.responses.bloco5?.ansiedade ?? 5;
         const anxietyInverted = 10 - anxiety;
 
-        const controlMapping: Record<string, number> = { muito: 10, moderado: 6, pouco: 3, sem: 0 };
-        const control = controlMapping[b5?.controleSaude || 'moderado'] ?? 5;
+        const controlMapping: Record<string, number> = { very: 10, moderate: 6, little: 3, none: 0, muito: 10, sem: 0 };
+        const control = controlMapping[this.responses.bloco_5c_control || this.responses.bloco5?.controleSaude || 'moderate'] ?? 5;
 
         const rPsychology = (stressInverted + anxietyInverted + control) / 3;
 
@@ -203,14 +203,13 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 5D: CONTEXTO (C) ====================
     calculateContext(): number {
-        const b5 = this.responses.bloco5;
-        const workStress = b5?.trabalhoEstressante || 5;
+        const workStress = this.responses.bloco_5d_work_stress ?? this.responses.bloco5?.trabalhoEstressante ?? 5;
         const workSupport = 10 - workStress;
 
-        const familyConflict = b5?.conflitosFamiliares || 5;
+        const familyConflict = this.responses.bloco_5d_family_conflict ?? this.responses.bloco5?.conflitosFamiliares ?? 5;
         const familySupport = 10 - familyConflict;
 
-        const financialWorry = b5?.preocupacaoFinanceira || 5;
+        const financialWorry = this.responses.bloco_5d_financial_worry ?? this.responses.bloco5?.preocupacaoFinanceira ?? 5;
         const financialSupport = 10 - financialWorry;
 
         const c = (workSupport + familySupport + financialSupport) / 3;
@@ -220,54 +219,85 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 5E: ATIVIDADE FÍSICA (AF) ====================
     calculateActivityFactor(): number {
-        // Nota: O novo modelo MyIDBloco5Data não tem lifestyle, sitting_hours, etc.
-        // Eles foram simplificados ou movidos. 
-        // Para manter compatibilidade com a fórmula, usaremos valores padrão ou derivados se possível.
-        // Como o MyIDBloco5Data foca em R e C, AF pode ser um valor fixo ou vindo de outra parte.
-        // Mas o calculator.ts original tinha esses campos. 
-        // Vou assumir que o usuário quer manter a lógica, então vou marcar como 5 (moderado) 
-        // a menos que eu encontre onde esses dados estão no novo wizard.
+        const lifestyle = this.responses.bloco_5e_lifestyle ?? this.responses.bloco5?.bloco_5e_lifestyle ?? 'moderate';
+        const intensity = this.responses.bloco_5e_intensity ?? this.responses.bloco5?.bloco_5e_intensity ?? 'moderate';
 
-        this.scores['AF'] = 5;
+        const styleMap: Record<string, number> = {
+            very_sedentary: 0, sedentary: 3, moderate: 6, active: 8, very_active: 10
+        };
+        const intensityMap: Record<string, number> = {
+            none: 0, light: 4, moderate: 7, intense: 9, maximum: 10
+        };
+
+        const af = (styleMap[lifestyle] || 5 + intensityMap[intensity] || 5) / 2;
+        this.scores['AF'] = Math.round(af * 10) / 10;
         return this.scores['AF'];
     }
 
     // ==================== BLOCO 5F: HIDRATAÇÃO (HID) ====================
     calculateHydration(): number {
-        // Simplificado no novo modelo.
-        this.scores['HID'] = 7; // Valor padrão de segurança
+        const water = this.responses.bloco_5f_water_liters ?? this.responses.bloco5?.bloco_5f_water_liters ?? 2;
+        const waterScore = Math.min((water / 3) * 10, 10);
+
+        const colorMap: Record<string, number> = {
+            very_dark: 0, dark: 4, yellow_clear: 8, clear: 10
+        };
+        const colorScore = colorMap[this.responses.bloco_5f_urine_color || this.responses.bloco5?.bloco_5f_urine_color || 'yellow_clear'] ?? 5;
+
+        const symptoms = this.responses.bloco_5f_dehydration_symptoms || this.responses.bloco5?.bloco_5f_dehydration_symptoms || {};
+        const symptomPenalty = Object.values(symptoms).filter(v => v === true).length * 2;
+
+        const hid = Math.max(0, (waterScore + colorScore) / 2 - symptomPenalty);
+        this.scores['HID'] = Math.round(hid * 10) / 10;
         return this.scores['HID'];
     }
 
     // ==================== BLOCO 5G: NUTRIÇÃO (NUT) ====================
     calculateNutrition(): number {
-        // Simplificado no novo modelo.
-        this.scores['NUT'] = 7;
+        const qualityMap: Record<string, number> = {
+            very_poor: 0, poor: 3, acceptable: 6, good: 8, excellent: 10
+        };
+        const qualityVal = qualityMap[this.responses.bloco_5g_quality || this.responses.bloco5?.bloco_5g_quality || 'acceptable'] ?? 5;
+
+        const proteinMap: Record<string, number> = {
+            rarely: 0, sometimes: 5, almost_all: 8, all: 10
+        };
+        const proteinVal = proteinMap[this.responses.bloco_5g_protein || this.responses.bloco5?.bloco_5g_protein || 'sometimes'] ?? 5;
+
+        const nut = (qualityVal + proteinVal) / 2;
+        this.scores['NUT'] = Math.round(nut * 10) / 10;
         return this.scores['NUT'];
     }
 
     // ==================== BLOCO 5H: ERGONOMIA (ERG) ====================
     calculateErgonomics(): number {
-        // Simplificado no novo modelo.
-        this.scores['ERG'] = 7;
+        const spaceMap: Record<string, number> = {
+            none: 0, precarious: 3, acceptable: 6, good: 9, excellent: 10
+        };
+        const spaceVal = spaceMap[this.responses.bloco_5h_workspace || this.responses.bloco5?.bloco_5h_workspace || 'acceptable'] ?? 5;
+
+        const habitsPenalty = (this.responses.bloco_5h_bad_habits || this.responses.bloco5?.bloco_5h_bad_habits || []).length * 1.5;
+
+        const erg = Math.max(0, spaceVal - habitsPenalty);
+        this.scores['ERG'] = Math.round(erg * 10) / 10;
         return this.scores['ERG'];
     }
 
     // ==================== BLOCO 6: RUÍDO (N) ====================
     calculateNoise(): number {
-        const b6 = this.responses.bloco6;
         let nPoints = 0;
 
-        if (b6?.traumaAxial) nPoints += 2;
-        if (b6?.cicatrizAbdominal) nPoints += 2;
+        if (this.responses.bloco_6_axial_trauma ?? this.responses.bloco6?.bloco_6_axial_trauma ?? this.responses.bloco6?.traumaAxial) nPoints += 2;
 
-        const signs = b6?.sinaisAutonomicos || [];
-        const signPoints = signs.filter(s => s !== 'Nenhum desses').length * 1.5;
+        const abdominalIssues = this.responses.bloco_6_abdominal_surgeries || this.responses.bloco6?.bloco_6_abdominal_surgeries || [];
+        if (abdominalIssues.length > 0 || this.responses.bloco6?.cicatrizAbdominal) nPoints += 2;
+
+        const signs = this.responses.bloco_6_visceral_issues || this.responses.bloco6?.sinaisAutonomicos || [];
+        const signPoints = signs.filter((s: string) => s !== 'Nenhum desses' && s !== 'none').length * 1.5;
         nPoints += signPoints;
 
-        const diag = b6?.diagnosticoFeminino || 'nao';
-        if (diag === 'endometriose' || diag === 'ambas') nPoints += 3;
-        if (diag === 'pcos' || diag === 'ambas') nPoints += 2;
+        if (this.responses.bloco_6_endometriosis || this.responses.bloco6?.bloco_6_endometriosis) nPoints += 3;
+        if (this.responses.bloco_6_pcos || this.responses.bloco6?.bloco_6_pcos) nPoints += 2;
 
         const n = Math.min(nPoints, 10);
         this.scores['N'] = Math.round(n * 10) / 10;

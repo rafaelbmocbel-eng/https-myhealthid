@@ -151,17 +151,22 @@ export function calcularMyID(
 }
 
 // ── Fingerprint visualization data ──
-export function getMyIDFingerprintData(scores: MyIDResult['componentScores']): FingerprintRing[] {
+export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
   return [
     // Inner rings (warm - demand)
-    { label: 'D (Dor)', value: scores.D, type: 'inner', color: '#FF6B6B', scoreKey: 'D' },
-    { label: 'EFI (Funcionalidade)', value: scores.EFI, type: 'inner', color: '#FFA500', scoreKey: 'EFI' },
-    { label: 'P (Psicológico)', value: scores.P, type: 'inner', color: '#FFB84D', scoreKey: 'P' },
-    { label: 'I (Inércia)', value: scores.I, type: 'inner', color: '#FF8C42', scoreKey: 'I' },
-    // Outer rings (cool - capacity)
-    { label: 'R (Regulação)', value: scores.R, type: 'outer', color: '#87CEEB', scoreKey: 'R' },
-    { label: 'C (Contexto)', value: scores.C, type: 'outer', color: '#50C878', scoreKey: 'C' },
-    { label: 'N (Ruído)', value: scores.N, type: 'outer', color: '#4A90E2', scoreKey: 'N' },
+    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: '#FF4D4D', scoreKey: 'D' },
+    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: '#FF8C00', scoreKey: 'EFI' },
+    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: '#FFA500', scoreKey: 'P' },
+    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: '#FFB84D', scoreKey: 'I' },
+
+    // Outer rings (cool/neutral - capacity/support)
+    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: '#4DA6FF', scoreKey: 'R' },
+    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: '#32CD32', scoreKey: 'C' },
+    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: '#66BD63', scoreKey: 'AF' },
+    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: '#1E90FF', scoreKey: 'HID' },
+    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: '#228B22', scoreKey: 'NUT' },
+    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: '#6B8E23', scoreKey: 'ERG' },
+    { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: '#4682B4', scoreKey: 'N' },
   ];
 }
 
