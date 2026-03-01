@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, ExternalLink } from 'lucide-react';
+import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,6 +21,7 @@ import {
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 import QuestionariosComparacao from './QuestionariosComparacao';
+import PatientIntegratedDashboard from './PatientIntegratedDashboard';
 
 interface Paciente {
   id: string;
@@ -208,33 +209,43 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="h-12 w-12 rounded-2xl bg-gradient-cobzero flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
-          {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
+      {/* Header Unificado */}
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0 text-white font-bold">
+            {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
+            <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-black text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
-          <p className="text-xs text-muted-foreground">COB° ZERO</p>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
+            <ExternalLink className="h-4 w-4" />
+            Perfil
+          </Button>
+          <Button onClick={onIniciarAvaliacao} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+            <AlignCenter className="h-4 w-4" /> Nova Avaliação
+          </Button>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <a href={`/pacientes/${paciente.id}`}>
-            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
-          </a>
-        </Button>
       </div>
 
-      {/* Tabs */}
-      <Tabs defaultValue="remota" className="w-full">
-        <TabsList className={`grid w-full h-10 bg-muted/60 ${evolucaoData.length >= 2 ? 'grid-cols-4' : 'grid-cols-3'}`}>
-          <TabsTrigger value="remota" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
-            <FileText className="h-3.5 w-3.5" /> Remota
+      {/* Tabs Principais */}
+      <Tabs defaultValue="integrada">
+        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
+          <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+            <Fingerprint className="h-4 w-4" /> Visão Integrada
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
-            <AlignCenter className="h-3.5 w-3.5" /> Consultório {avaliacoes.length > 0 && `(${avaliacoes.length})`}
+          <TabsTrigger value="remota" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+            <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+          </TabsTrigger>
+          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+            <Presentation className="h-4 w-4" /> Avaliação Presencial {avaliacoes.length > 0 && `(${avaliacoes.length})`}
           </TabsTrigger>
           {evolucaoData.length >= 2 && (
             <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-gradient-cobzero data-[state=active]:text-white">
@@ -245,6 +256,10 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
             <Dumbbell className="h-3.5 w-3.5" /> Protocolos
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="integrada" className="mt-4">
+          <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
+        </TabsContent>
 
         {/* Aba: Avaliação Remota */}
         <TabsContent value="remota" className="mt-4 space-y-4">
@@ -280,7 +295,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
         {/* Aba: Avaliação em Consultório */}
         <TabsContent value="avaliacoes" className="mt-4 space-y-6">
-          
+
           {/* Seções de Resumo da Presencial */}
           <div className="space-y-6">
             {/* Índices de Risco — combina scores de identidade + COB */}

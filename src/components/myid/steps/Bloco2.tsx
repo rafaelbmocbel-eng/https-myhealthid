@@ -98,8 +98,55 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.4: QUAL É SEU PADRÃO TEMPORAL?</Label>
-                        <p className="text-sm text-gray-500 mt-1">Quando a dor costuma ser PIOR durante as suas 24h? (Marque as aplicáveis)</p>
+                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.4: COM QUE FREQUÊNCIA VOCÊ SENTE DOR?</Label>
+                        <p className="text-sm text-gray-500 mt-1">Qual a frequência com que a dor aparece?</p>
+                    </div>
+                    <RadioGroup
+                        value={data.bloco_2_pain_frequency || ''}
+                        onValueChange={(v) => updateData({ bloco_2_pain_frequency: v })}
+                        className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50"
+                    >
+                        <div className="flex items-center space-x-3">
+                            <RadioGroupItem value="constant" id="freq-1" />
+                            <Label htmlFor="freq-1" className="cursor-pointer text-sm font-semibold">Constantemente (O tempo todo ou quase todo o tempo)</Label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <RadioGroupItem value="daily" id="freq-2" />
+                            <Label htmlFor="freq-2" className="cursor-pointer text-sm font-semibold">Diariamente (Todos os dias, mas em momentos específicos)</Label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <RadioGroupItem value="weekly" id="freq-3" />
+                            <Label htmlFor="freq-3" className="cursor-pointer text-sm font-semibold">Semanalmente (Alguns dias na semana)</Label>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                            <RadioGroupItem value="monthly" id="freq-4" />
+                            <Label htmlFor="freq-4" className="cursor-pointer text-sm font-semibold">Mensalmente ou Raramente (Episódios isolados)</Label>
+                        </div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4 pt-6 border-t border-muted">
+                    <div>
+                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.5: QUANDO A DOR É PIOR?</Label>
+                        <p className="text-sm text-gray-500 mt-1">Em qual período do dia a dor costuma ser mais forte?</p>
+                    </div>
+                    <RadioGroup
+                        value={data.bloco_2_worst_time || ''}
+                        onValueChange={(v) => updateData({ bloco_2_worst_time: v })}
+                        className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50"
+                    >
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="morning" id="wt-1" /><Label htmlFor="wt-1" className="cursor-pointer text-sm font-semibold">Manhã (Ao acordar ou logo nas primeiras horas)</Label></div>
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="afternoon" id="wt-2" /><Label htmlFor="wt-2" className="cursor-pointer text-sm font-semibold">Tarde (Durante as atividades do dia)</Label></div>
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="night" id="wt-3" /><Label htmlFor="wt-3" className="cursor-pointer text-sm font-semibold">Noite (Fim do dia, após a jornada)</Label></div>
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="dawn" id="wt-4" /><Label htmlFor="wt-4" className="cursor-pointer text-sm font-semibold">Madrugada (Acorda por causa da dor)</Label></div>
+                        <div className="flex items-center space-x-3"><RadioGroupItem value="random" id="wt-5" /><Label htmlFor="wt-5" className="cursor-pointer text-sm font-semibold">Aleatório (Não tem hora certa)</Label></div>
+                    </RadioGroup>
+                </div>
+
+                <div className="space-y-4 pt-6 border-t border-muted">
+                    <div>
+                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.6: QUAL É SEU PADRÃO TEMPORAL E MECÂNICO?</Label>
+                        <p className="text-sm text-gray-500 mt-1">Como o seu corpo se comporta perante a dor? (Marque as aplicáveis)</p>
                     </div>
                     <div className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50">
                         {[

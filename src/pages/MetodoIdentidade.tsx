@@ -13,19 +13,26 @@ import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
 import {
   CheckCircle2, Circle, ClipboardList, Activity, Brain,
   Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, MessageCircle,
+  CalendarDays, Clock, Smartphone, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { differenceInDays } from 'date-fns';
-import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import { getAgendaUrl } from '@/utils/linkUrls';
+import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Navigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 const blocos = [
   { id: 1, label: 'Identificação', sublabel: 'Gatilho I', icon: ClipboardList, time: '2 min' },
@@ -46,7 +53,7 @@ const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoMyID => ({
   bloco4: { ...DEFAULT_BLOCO4 },
   bloco5: { ...DEFAULT_BLOCO5 },
   bloco6: { ...DEFAULT_BLOCO6 },
-  resultado: { myidScore: 0, myidStatus: '', componentScores: { D:0, EFI:0, P:0, I:0, R:0, C:0, N:0 }, redFlagsDetected: false, redFlagAlerts: [], classificacao: '' },
+  resultado: { myidScore: 0, myidStatus: '', componentScores: { D: 0, EFI: 0, P: 0, I: 0, R: 0, C: 0, N: 0 }, redFlagsDetected: false, redFlagAlerts: [], classificacao: '' },
   blocoAtual: 1,
   concluido: false,
 });
@@ -57,6 +64,7 @@ export default function MetodoIdentidade() {
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { salvar: salvarAvaliacao } = useAvaliacoesIdentidade();
 
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
   const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
@@ -64,6 +72,52 @@ export default function MetodoIdentidade() {
   const [avaliacao, setAvaliacao] = useState<AvaliacaoMyID>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
+
+  // Stats queries (always called for hook order)
+  const { data: agendamentosHoje = [] } = useQuery({
+    queryKey: ['metodo-agenda-hoje', user?.id],
+    queryFn: async () => {
+      const today = startOfDay(new Date());
+      const tomorrow = new Date(today);
+      tomorrow.setDate(tomorrow.getDate() + 1);
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('*, pacientes(nome, sobrenome)')
+        .eq('terapeuta_id', user!.id)
+        .gte('data_inicio', today.toISOString())
+        .lt('data_inicio', tomorrow.toISOString())
+        .order('data_inicio');
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: myidAvaliacoesCount = 0 } = useQuery({
+    queryKey: ['myid-count', user?.id],
+    queryFn: async () => {
+      const { count } = await (supabase as any)
+        .from('myid_avaliacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('terapeuta_id', user!.id)
+        .eq('status', 'concluido');
+      return count || 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: linksAgenda = [] } = useQuery({
+    queryKey: ['links-agenda-dashboard', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('links_agenda')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('status', 'ativo')
+        .gt('data_expiracao', new Date().toISOString());
+      return data || [];
+    },
+    enabled: !!user,
+  });
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -74,6 +128,13 @@ export default function MetodoIdentidade() {
 
   const getLinkAtivo = (pid: string) =>
     links.find(l => l.paciente_id === pid && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
+
+  const getAgendaAtivo = (pid: string) => linksAgenda.find(l => l.paciente_id === pid);
+
+  const copiarAgendaLink = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link da agenda copiado! 📋' });
+  };
 
   // Abre o dashboard do paciente
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
@@ -188,95 +249,188 @@ export default function MetodoIdentidade() {
   if (!selectedPacienteId) {
     return (
       <AppLayout>
-        <div className="container py-8 max-w-3xl">
-          <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 rounded-xl bg-gradient-identidade flex items-center justify-center">
-              <Activity className="h-6 w-6 text-white" />
+        <div className="container py-6 max-w-4xl">
+          {/* Module Header */}
+          <div className="flex items-center gap-4 mb-6">
+            <div className="h-12 w-12 rounded-2xl bg-gradient-identidade flex items-center justify-center shadow-lg">
+              <Activity className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Método Identidade</h1>
-              <p className="text-muted-foreground text-sm">Selecione o paciente para ver o dashboard ou iniciar avaliação</p>
+              <h1 className="text-2xl font-black text-foreground">Método Identidade</h1>
+              <p className="text-muted-foreground text-sm">Avaliação Integrada de Disfunções e Saúde</p>
             </div>
           </div>
 
-          <div className="clinical-card">
-            <div className="flex items-center gap-3 mb-4">
-              <Users className="h-4 w-4 text-muted-foreground" />
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pacientes — Método Identidade</h3>
-            </div>
-            <div className="relative mb-4">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar paciente..."
-                className="pl-9"
-                value={searchPac}
-                onChange={e => setSearchPac(e.target.value)}
-              />
-            </div>
+          {/* Visão Geral Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+            {[
+              { icon: Users, label: 'Pacientes Ativos', value: pacientes.length, color: 'text-primary' },
+              { icon: CalendarDays, label: 'Sessões Hoje', value: agendamentosHoje.length, color: 'text-primary' },
+              { icon: Activity, label: 'Avaliações MyID', value: myidAvaliacoesCount, color: 'text-primary' },
+              { icon: CheckCircle2, label: 'Status', value: 'On', color: 'text-primary' },
+            ].map(stat => {
+              const Icon = stat.icon;
+              return (
+                <Card key={stat.label} className="border-primary/10 hover:border-primary/30 transition-all">
+                  <CardContent className="pt-4 pb-3 text-center">
+                    <Icon className={cn('h-5 w-5 mx-auto mb-1', stat.color)} />
+                    <div className="text-2xl font-black text-foreground">{stat.value}</div>
+                    <div className="text-[10px] text-muted-foreground">{stat.label}</div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
 
-            {loadingPacientes ? (
-              <div className="flex items-center justify-center py-12">
-                <Loader2 className="h-6 w-6 animate-spin text-primary" />
-              </div>
-            ) : filteredPac.length === 0 ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                <p className="font-medium">Nenhum paciente com Método Identidade ativo</p>
-                <p className="text-sm mt-1">Cadastre pacientes em <strong>Pacientes</strong> e ative o serviço.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {filteredPac.map(p => {
-                  const linkAtivo = getLinkAtivo(p.id);
-                  const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
-                  return (
-                    <div
-                      key={p.id}
-                      className="flex items-center gap-3 p-3 rounded-xl border hover:border-primary/30 hover:bg-accent/20 transition-all cursor-pointer"
-                      onClick={() => handleSelectPaciente(p)}
-                    >
-                      <div className="h-10 w-10 rounded-full bg-gradient-identidade flex items-center justify-center shrink-0 text-white font-bold text-sm">
-                        {p.nome[0]}{p.sobrenome?.[0] || ''}
+          {/* Agenda Hoje */}
+          {agendamentosHoje.length > 0 && (
+            <Card className="mb-6">
+              <CardContent className="pt-4 pb-3">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <h3 className="font-bold text-sm text-foreground">
+                    Agenda Hoje — {format(new Date(), "EEEE, dd/MM", { locale: ptBR })}
+                  </h3>
+                </div>
+                <div className="space-y-2">
+                  {agendamentosHoje.map((ag: any) => (
+                    <div key={ag.id} className="flex items-center gap-3 p-2 rounded-lg bg-muted/50">
+                      <div className="h-8 w-8 rounded-lg bg-gradient-identidade flex items-center justify-center shrink-0">
+                        <Clock className="h-4 w-4 text-white" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
-                          {linkAtivo && (
-                            <Badge variant="outline" className="text-[10px] h-4 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
-                              <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
-                            </Badge>
-                          )}
+                      <div className="flex-1">
+                        <div className="text-sm font-medium text-foreground">
+                          {format(parseISO(ag.data_inicio), "HH:mm")} — {(ag.pacientes as any)?.nome || ag.titulo || 'Sessão'}
                         </div>
-                        <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
+                        <div className="text-[10px] text-muted-foreground">{ag.tipo_atendimento || 'Atendimento'}</div>
                       </div>
-                      <div className="flex items-center gap-1 sm:gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-8 w-8 sm:h-8 sm:w-auto sm:px-3"
-                          onClick={async () => {
-                            if (linkAtivo) copiarLink(linkAtivo.token);
-                            else { const novo = await gerarLink(p.id); if (novo) copiarLink(novo.token); }
-                          }}
-                          disabled={gerando}
-                        >
-                          {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                          <span className="hidden sm:inline text-xs ml-1">{linkAtivo ? 'Copiar' : 'Link'}</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          className="h-8 text-xs bg-gradient-primary text-white gap-1"
-                          onClick={() => handleSelectPaciente(p)}
-                        >
-                          <span className="hidden sm:inline">Abrir</span> <ChevronRight className="h-3 w-3" />
-                        </Button>
-                      </div>
+                      <Badge variant="outline" className={cn('text-[10px]',
+                        ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                            'bg-muted text-muted-foreground'
+                      )}>{ag.status}</Badge>
                     </div>
-                  );
-                })}
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Patient List */}
+          <Card>
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Users className="h-4 w-4 text-muted-foreground" />
+                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pacientes</h3>
+                </div>
+                <Badge variant="outline" className="text-xs">{pacientes.length}</Badge>
               </div>
-            )}
-          </div>
+              <div className="relative mb-3">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar paciente..."
+                  className="pl-9"
+                  value={searchPac}
+                  onChange={e => setSearchPac(e.target.value)}
+                />
+              </div>
+
+              {loadingPacientes ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                </div>
+              ) : filteredPac.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
+                  <p className="font-medium">Nenhum paciente com Método Identidade ativo</p>
+                  <p className="text-sm mt-1">Cadastre pacientes em <strong>Pacientes</strong> e ative o serviço.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {filteredPac.map(p => {
+                    const linkAtivo = getLinkAtivo(p.id);
+                    const linkAgenda = getAgendaAtivo(p.id);
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border hover:border-primary/40 hover:bg-primary-light/10 transition-all cursor-pointer bg-card"
+                        onClick={() => handleSelectPaciente(p)}
+                      >
+                        {/* Paciente Info */}
+                        <div className="flex items-center gap-3 flex-1 min-w-0">
+                          <div className="h-10 w-10 rounded-full bg-gradient-identidade flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-md">
+                            {p.nome[0]}{p.sobrenome?.[0] || ''}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
+                            <div className="flex justify-between items-center sm:block mt-0.5">
+                              <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ações (Links + Avaliação) */}
+                        <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap sm:flex-nowrap" onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-2 border-r pr-3">
+                            {/* Link MyID */}
+                            <div className="flex flex-col gap-1 items-center">
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
+                              {linkAtivo ? (
+                                <div className="flex items-center gap-1">
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  {p.telefone && (
+                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
+                                      <Smartphone className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" disabled={gerando} onClick={() => gerarLink(p.id)}>
+                                  {gerando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />} Novo Link
+                                </Button>
+                              )}
+                            </div>
+
+                            {/* Link Agenda */}
+                            <div className="flex flex-col gap-1 items-center pl-1">
+                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
+                              {linkAgenda ? (
+                                <div className="flex items-center gap-1">
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  {p.telefone && (
+                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
+                                      <Smartphone className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              ) : (
+                                <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
+                              )}
+                            </div>
+                          </div>
+
+                          <Button
+                            size="sm"
+                            className="bg-primary hover:bg-primary-dark text-white gap-1 ml-1"
+                            onClick={() => handleSelectPaciente(p)}
+                          >
+                            Avaliação <ChevronRight className="h-3 w-3" />
+                          </Button>
+
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </AppLayout>
     );

@@ -108,6 +108,31 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                         ))}
                     </RadioGroup>
                 </div>
+
+                <div className="space-y-4 pt-6 border-t border-muted">
+                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.5: EXPECTATIVA DE MELHORA</Label>
+                    <p className="text-sm font-medium text-gray-600 italic">"Quanto você acredita que consegue melhorar do seu problema atual?"</p>
+                    <RadioGroup
+                        className="flex flex-wrap gap-2 sm:gap-4 mt-2"
+                        value={data.bloco_4_expectation?.toString() || ''}
+                        onValueChange={(v) => updateData({ bloco_4_expectation: parseInt(v) })}
+                    >
+                        {[
+                            { val: 0, label: '0 (Acho que não vou melhorar nada, meu caso não tem solução)' },
+                            { val: 2, label: '2' },
+                            { val: 5, label: '5 (Tenho esperança de melhorar parcialmente)' },
+                            { val: 8, label: '8' },
+                            { val: 10, label: '10 (Acredito que vou me recuperar 100% e voltar ao normal)' },
+                        ].map(item => (
+                            <div key={item.val} className="flex flex-col items-center space-y-1">
+                                <RadioGroupItem value={item.val.toString()} id={`exp-${item.val}`} className="w-5 h-5 sm:w-6 sm:h-6" />
+                                <Label htmlFor={`exp-${item.val}`} className="text-xs font-medium cursor-pointer text-center max-w-28">
+                                    {item.label}
+                                </Label>
+                            </div>
+                        ))}
+                    </RadioGroup>
+                </div>
             </div>
         </div>
     );

@@ -75,6 +75,28 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="sa-always" /><Label htmlFor="sa-always">Sempre</Label></div>
                     </RadioGroup>
                 </div>
+
+                <div className="space-y-4 pt-4">
+                    <Label className="font-semibold">5A.4 Você tem algum distúrbio de sono diagnosticado ou suspeito?</Label>
+                    <p className="text-sm text-gray-500">Marque se você sofre frequentemente de algum destes problemas:</p>
+                    <div className="space-y-2">
+                        {[
+                            { id: 'insomnia', label: 'Insônia (dificuldade de pegar no sono ou se manter dormindo)' },
+                            { id: 'apnea', label: 'Apneia do Sono (ronco forte, falta de ar dormindo)' },
+                            { id: 'bruxism', label: 'Bruxismo (aperta ou range os dentes)' },
+                            { id: 'restless_legs', label: 'Síndrome das Pernas Inquietas' },
+                        ].map(dis => (
+                            <div key={dis.id} className="flex items-center space-x-2">
+                                <Checkbox
+                                    id={`sd-${dis.id}`}
+                                    checked={(data.bloco_5a_disorders || []).includes(dis.id)}
+                                    onCheckedChange={(c) => handleCheckboxChange('bloco_5a_disorders', dis.id, !!c)}
+                                />
+                                <Label htmlFor={`sd-${dis.id}`}>{dis.label}</Label>
+                            </div>
+                        ))}
+                    </div>
+                </div>
             </section>
 
             {/* 5B: Energia */}
@@ -92,6 +114,64 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         <div className="flex items-center space-x-2"><RadioGroupItem value="sometimes" id="en-some" /><Label htmlFor="en-some">Às vezes</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="frequently" id="en-freq" /><Label htmlFor="en-freq">Frequentemente</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="always" id="en-always" /><Label htmlFor="en-always">Sempre</Label></div>
+                    </RadioGroup>
+                </div>
+            </section>
+
+            {/* 5C: Fatores Psicológicos */}
+            <section className="space-y-6">
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5C. Fatores Psicológicos (Regulação Mental)</h3>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5C.1: QUAL SEU NÍVEL DE ESTRESSE?</Label>
+                    <p className="text-sm text-gray-500">No seu dia a dia (trabalho, família, vida geral), quão estressado você se sente?</p>
+                    <div className="px-2 pt-2">
+                        <Input
+                            type="range"
+                            min="0" max="10" step="1"
+                            value={data.bloco_5c_stress || 0}
+                            onChange={(e) => updateData({ bloco_5c_stress: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <span>0 (Totalmente Calmo)</span>
+                            <span>10 (Estresse Máximo)</span>
+                        </div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-muted border-dashed">
+                    <Label className="font-semibold text-base">PERGUNTA 5C.2: QUAL É O SEU NÍVEL DE ANSIEDADE?</Label>
+                    <p className="text-sm text-gray-500">O quanto a ansiedade (preocupações com o futuro, agitação constante) afeta você?</p>
+                    <div className="px-2 pt-2">
+                        <Input
+                            type="range"
+                            min="0" max="10" step="1"
+                            value={data.bloco_5c_anxiety || 0}
+                            onChange={(e) => updateData({ bloco_5c_anxiety: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <span>0 (Nenhuma)</span>
+                            <span>10 (Ansiedade Extrema)</span>
+                        </div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5c_anxiety || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-muted border-dashed">
+                    <Label className="font-semibold text-base">PERGUNTA 5C.3: SENSÃO DE CONTROLE</Label>
+                    <p className="text-sm text-gray-500">Você sente que tem controle sobre o estresse e as pressões da sua vida diária?</p>
+                    <RadioGroup
+                        value={data.bloco_5c_control || ''}
+                        onValueChange={(v) => updateData({ bloco_5c_control: v })}
+                        className="space-y-2"
+                    >
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="very" id="ctrl-very" /><Label htmlFor="ctrl-very">Muito controle (Lido muito bem com a pressão)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="moderate" id="ctrl-mod" /><Label htmlFor="ctrl-mod">Controle Moderado (Lido razoavelmente bem)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="little" id="ctrl-lit" /><Label htmlFor="ctrl-lit">Pouco controle (Me sinto frequentemente sobrecarregado)</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="ctrl-none" /><Label htmlFor="ctrl-none">Nenhum controle (Sensação de que vou explodir)</Label></div>
                     </RadioGroup>
                 </div>
             </section>

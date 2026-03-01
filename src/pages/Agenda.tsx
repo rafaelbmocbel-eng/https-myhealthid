@@ -708,7 +708,7 @@ export default function Agenda() {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     return (
-                      <div key={`overlay-${di}`} className="relative pointer-events-auto" style={{ height: totalHeight }}>
+                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
                         {dayAgs.map(ag => {
                           const pos = getAgPos(ag);
                           const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
@@ -721,7 +721,7 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none',
+                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
                                 'hover:brightness-95 transition-shadow z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 sc.bg, sc.border, sc.text

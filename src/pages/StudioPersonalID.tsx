@@ -12,7 +12,8 @@ import {
   Dumbbell, Clock, FileText, Plus, Link2,
   Activity, MessageCircle, ExternalLink,
   ArrowLeft, AlertTriangle, Bell, Eye,
-  ClipboardList, StickyNote, Ruler,
+  ClipboardList, StickyNote, Ruler, Copy, Smartphone,
+  Calendar, X, AlignCenter
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -22,7 +23,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { differenceInDays, format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import { getAgendaUrl } from '@/utils/linkUrls';
+import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
+import { useToast } from '@/hooks/use-toast';
 
 // Sub-components
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
@@ -34,6 +37,7 @@ export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
   const { allPacientes: pacientes, isLoading: loadingPacientes } = usePacientes();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
   const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
@@ -58,7 +62,6 @@ export default function StudioPersonalID() {
     enabled: !!user,
   });
 
-
   const { data: studioTreinosCount = 0 } = useQuery({
     queryKey: ['studio-treinos-count', user?.id],
     queryFn: async () => {
@@ -68,6 +71,20 @@ export default function StudioPersonalID() {
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true);
       return count || 0;
+    },
+    enabled: !!user,
+  });
+
+  const { data: linksAgenda = [] } = useQuery({
+    queryKey: ['links-agenda-dashboard', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('links_agenda')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('status', 'ativo')
+        .gt('data_expiracao', new Date().toISOString());
+      return data || [];
     },
     enabled: !!user,
   });
@@ -82,6 +99,13 @@ export default function StudioPersonalID() {
   const getLinkAtivo = (pid: string) =>
     links.find(l => l.paciente_id === pid && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
 
+  const getAgendaAtivo = (pid: string) => linksAgenda.find(l => l.paciente_id === pid);
+
+  const copiarAgendaLink = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link da agenda copiado! 📋' });
+  };
+
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
     setSelectedPacienteId(pac.id);
     setShowDashboard(true);
@@ -92,25 +116,34 @@ export default function StudioPersonalID() {
     return (
       <AppLayout>
         <div className="container py-6 max-w-4xl">
-          {/* Header */}
-          <div className="flex items-center gap-3 mb-6">
-            <Button variant="ghost" size="icon" onClick={() => { setSelectedPacienteId(null); setShowDashboard(false); }} className="shrink-0">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="h-12 w-12 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
-              {selectedPaciente.nome[0]}{selectedPaciente.sobrenome?.[0] || ''}
+          {/* Header Unificado */}
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-3">
+              <Button variant="ghost" size="icon" onClick={() => { setSelectedPacienteId(null); setShowDashboard(false); }} className="shrink-0 h-8 w-8 p-0">
+                <ArrowLeft className="h-4 w-4" />
+              </Button>
+              <div className="h-10 w-10 rounded-full bg-studio flex items-center justify-center shrink-0 text-white font-bold">
+                {selectedPaciente.nome[0]}{selectedPaciente.sobrenome?.[0] || ''}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-xl font-bold text-foreground truncate">
+                  {selectedPaciente.nome} {selectedPaciente.sobrenome}
+                </h1>
+                <p className="text-sm text-muted-foreground">{selectedPaciente.email || selectedPaciente.telefone || 'Sem contato'}</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h1 className="text-xl font-black text-foreground truncate">
-                {selectedPaciente.nome} {selectedPaciente.sobrenome}
-              </h1>
-              <p className="text-xs text-muted-foreground">Studio Personal ID</p>
+
+            <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" asChild>
+                <Link to={`/pacientes/${selectedPaciente.id}`}>
+                  <ExternalLink className="h-4 w-4" />
+                  Perfil
+                </Link>
+              </Button>
+              <Button className="bg-studio hover:bg-studio/90 text-white gap-2">
+                <AlignCenter className="h-4 w-4" /> Nova Avaliação
+              </Button>
             </div>
-            <Button variant="outline" size="sm" asChild>
-              <Link to={`/pacientes/${selectedPaciente.id}`}>
-                <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
-              </Link>
-            </Button>
           </div>
 
           {/* Tabs */}
@@ -246,29 +279,82 @@ export default function StudioPersonalID() {
                 <p className="text-sm mt-1">Cadastre em <strong>Pacientes</strong> para começar</p>
               </div>
             ) : (
-              <div className="space-y-1.5">
+              <div className="space-y-3">
                 {filteredPac.map(p => {
                   const linkAtivo = getLinkAtivo(p.id);
+                  const linkAgenda = getAgendaAtivo(p.id);
+
                   return (
                     <div key={p.id}
-                      className="flex items-center gap-3 p-2.5 rounded-xl border hover:border-studio/40 hover:bg-studio-light/20 transition-all cursor-pointer"
+                      className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border hover:border-studio/40 hover:bg-studio-light/20 transition-all cursor-pointer bg-card"
                       onClick={() => handleSelectPaciente(p)}
                     >
-                      <div className="h-9 w-9 rounded-full bg-gradient-studio flex items-center justify-center shrink-0 text-white font-bold text-xs shadow-md">
-                        {p.nome[0]}{p.sobrenome?.[0] || ''}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
-                        <div className="flex items-center gap-1.5 mt-0.5">
-                          <p className="text-[10px] text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
-                          {linkAtivo && (
-                            <Badge variant="outline" className="text-[9px] h-3.5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-0.5">
-                              <Link2 className="h-2 w-2" /> {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d
-                            </Badge>
-                          )}
+                      {/* Paciente Info */}
+                      <div className="flex items-center gap-3 flex-1 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-gradient-studio flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-md">
+                          {p.nome[0]}{p.sobrenome?.[0] || ''}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
+                          <div className="flex justify-between items-center sm:block mt-0.5">
+                            <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
+                          </div>
                         </div>
                       </div>
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+
+                      {/* Ações (Links + Avaliação) */}
+                      <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap sm:flex-nowrap" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 border-r pr-3">
+                          {/* Link MyID */}
+                          <div className="flex flex-col gap-1 items-center">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
+                            {linkAtivo ? (
+                              <div className="flex items-center gap-1">
+                                <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                {p.telefone && (
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
+                                    <Smartphone className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" disabled={gerando} onClick={() => gerarLink(p.id)}>
+                                {gerando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />} Novo Link
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Link Agenda */}
+                          <div className="flex flex-col gap-1 items-center pl-1">
+                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
+                            {linkAgenda ? (
+                              <div className="flex items-center gap-1">
+                                <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
+                                  <Copy className="h-3 w-3" />
+                                </Button>
+                                {p.telefone && (
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
+                                    <Smartphone className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
+                            )}
+                          </div>
+                        </div>
+
+                        <Button
+                          size="sm"
+                          className="bg-studio hover:bg-studio-dark text-white gap-1 ml-1"
+                          onClick={() => handleSelectPaciente(p)}
+                        >
+                          Avaliação <ChevronRight className="h-3 w-3" />
+                        </Button>
+
+                      </div>
                     </div>
                   );
                 })}

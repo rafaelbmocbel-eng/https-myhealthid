@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink } from 'lucide-react';
+import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -16,6 +16,7 @@ import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import type { MyIDResult as MyIDResultType } from '@/types/myid';
 import { MyIDWizard } from '../myid/MyIDWizard';
+import PatientIntegratedDashboard from './PatientIntegratedDashboard';
 import { MyIDResult } from '../myid/MyIDResult';
 
 interface Paciente {
@@ -101,6 +102,53 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const copiarAgendaLink = (token: string) => {
     navigator.clipboard.writeText(getAgendaUrl(token));
     toast({ title: 'Link de agenda copiado! 📋' });
+  };
+
+  // Link MyID para este paciente
+  const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
+  const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
+    queryKey: ['links-myid-dashboard', user?.id, paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('myid_avaliacoes')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', paciente.id)
+        .eq('status', 'pendente')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const linkMyIDAtivo = linksMyID[0]; // Pega o mais recente pendente
+
+  const gerarLinkMyID = async () => {
+    if (!user) return;
+    setGerandoMyIDLink(true);
+    try {
+      const token = Math.random().toString(36).substring(2, 12);
+      const { error } = await supabase.from('myid_avaliacoes').insert({
+        terapeuta_id: user.id,
+        paciente_id: paciente.id,
+        token_acesso: token,
+        status: 'pendente'
+      });
+      if (error) throw error;
+      refetchLinksMyID();
+      toast({ title: 'Link MyID gerado! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link MyID', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoMyIDLink(false);
+    }
+  };
+
+  const copiarMyIDLink = (token: string) => {
+    const url = `${window.location.origin}/myid/responder/${token}`;
+    navigator.clipboard.writeText(url);
+    toast({ title: 'Link MyID copiado! 📋' });
   };
 
   // Respostas remotas para este paciente
@@ -206,11 +254,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         .from('myid_avaliacoes')
         .select('*')
         .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', paciente.id)
         .eq('status', 'concluido')
-        // Na vida real você teria paciente_id mas no momento a tabela não conectou direto o dashboard ao Link se não setarmos
-        // Idealmente, adicionar paciente_id se houver. Por enquanto buscamos todos e não filtramos por paciente_id se não existe na migration... 
-        // Ops, a migration DEVE ter paciente_id.
-        // Simulando pegar a mais recente para o contexto da UI
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -222,62 +267,35 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
-          <ArrowLeft className="h-5 w-5" />
-        </Button>
-        <div className="h-12 w-12 rounded-2xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
-          {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
+      {/* Header Unificado */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
+            <ArrowLeft className="h-4 w-4" />
+          </Button>
+          <div className="h-10 w-10 rounded-full bg-identidade flex items-center justify-center shrink-0 text-identidade-foreground font-bold">
+            {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
+            <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+          </div>
         </div>
-        <div className="flex-1 min-w-0">
-          <h1 className="text-xl font-black text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
-          <p className="text-xs text-muted-foreground">Método Identidade</p>
+
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
+            <ExternalLink className="h-4 w-4" />
+            Perfil
+          </Button>
+          <Button onClick={() => setIniciandoMyID(true)} className="bg-identidade hover:bg-identidade/90 text-white gap-2">
+            <AlignCenter className="h-4 w-4" /> Nova Avaliação
+          </Button>
         </div>
-        <Button variant="outline" size="sm" asChild>
-          <a href={`/pacientes/${paciente.id}`}>
-            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
-          </a>
-        </Button>
       </div>
 
       {/* Links Compactos */}
       <div className="clinical-card !p-3">
         <div className="flex items-center gap-3 flex-wrap">
-          {/* Link Avaliação */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Link2 className="h-4 w-4 text-identidade shrink-0" />
-            <span className="text-xs font-semibold shrink-0">Questionário Identidade</span>
-            {linkAtivo ? (
-              <>
-                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
-                <span className="text-[10px] text-success shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao), new Date())}d</span>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-                {paciente.telefone && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
-                    onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAtivo.token))}>
-                    <MessageCircle className="h-3 w-3" />
-                  </Button>
-                )}
-                {paciente.email && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-identidade" onClick={enviarEmail} disabled={enviandoEmail}>
-                    {enviandoEmail ? <Loader2 className="h-3 w-3 animate-spin" /> : <Mail className="h-3 w-3" />}
-                  </Button>
-                )}
-              </>
-            ) : (
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-identidade" disabled={gerando}
-                onClick={async () => { const novo = await gerarLink(paciente.id); if (novo) copiarLink(novo.token); }}>
-                {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                Gerar
-              </Button>
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-border shrink-0" />
-
           {/* Link Agenda */}
           <div className="flex items-center gap-2 flex-1 min-w-0">
             <CalendarDays className="h-4 w-4 text-accent shrink-0" />
@@ -304,75 +322,58 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               </Button>
             )}
           </div>
+
+          <div className="h-6 w-px bg-border shrink-0" />
+
+          {/* Link MyID (Novo) */}
+          <div className="flex items-center gap-2 flex-1 min-w-0">
+            <Fingerprint className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-xs font-semibold shrink-0 text-primary">MyID (Novo)</span>
+            {linkMyIDAtivo ? (
+              <>
+                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
+                <span className="text-[10px] text-success shrink-0">Pendente</span>
+                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarMyIDLink(linkMyIDAtivo.token_acesso)}>
+                  <Copy className="h-3 w-3" />
+                </Button>
+                {paciente.telefone && (
+                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
+                    onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)}>
+                    <MessageCircle className="h-3 w-3" />
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-primary" disabled={gerandoMyIDLink}
+                onClick={gerarLinkMyID}>
+                {gerandoMyIDLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                Gerar
+              </Button>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* MyID Fingerprint Card */}
-      {ultimaMyID && ultimaMyID.myid_score != null && (
-        (() => {
-          const myidAnalysis = ultimaMyID.myid_analysis as any;
-          const componentScores: MyIDResultType['componentScores'] = myidAnalysis?.componentScores || {
-            D: Number(ultimaMyID.score_d) || 0,
-            EFI: Number(ultimaMyID.score_efi) || 0,
-            P: Number(ultimaMyID.score_p) || 0,
-            I: Number(ultimaMyID.score_i) || 0,
-            R: Number(ultimaMyID.score_r) || 0,
-            C: Number(ultimaMyID.score_c) || 0,
-            N: Number(ultimaMyID.score_n) || 0,
-          };
-          const rings = getMyIDFingerprintData(componentScores);
-          const classificacao = ultimaMyID.classificacao || 'LEVE';
-          const severityClass = getMyIDSeverityColor(classificacao);
-          return (
-            <div className="clinical-card border-l-4 border-l-identidade">
-              <div className="flex items-center gap-2 mb-3">
-                <div className="h-7 w-7 rounded-lg bg-identidade flex items-center justify-center">
-                  <Fingerprint className="h-4 w-4 text-identidade-foreground" />
-                </div>
-                <h4 className="font-bold text-sm">MyID Fingerprint</h4>
-                <Badge className={`ml-auto text-[10px] border ${severityClass}`}>{classificacao}</Badge>
-              </div>
-              <div className="flex flex-col md:flex-row items-center gap-4">
-                <div className="w-full md:w-1/2">
-                  <MyIDFingerprint rings={rings} myidScore={Number(ultimaMyID.myid_score)} />
-                </div>
-                <div className="w-full md:w-1/2 space-y-2">
-                  <div className="text-center md:text-left">
-                    <div className="text-3xl font-black text-foreground">{Number(ultimaMyID.myid_score).toFixed(1)}</div>
-                    <div className="text-xs text-muted-foreground">MyID Score</div>
-                  </div>
-                  <div className="grid grid-cols-2 gap-1.5">
-                    {rings.map(r => (
-                      <div key={r.scoreKey} className="flex items-center gap-1.5">
-                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                        <span className="text-[10px] text-muted-foreground truncate">{r.label}</span>
-                        <span className="text-[10px] font-bold ml-auto">{r.value.toFixed(1)}</span>
-                      </div>
-                    ))}
-                  </div>
-                  <div className="text-[10px] text-muted-foreground pt-1 border-t border-border">
-                    {ultimaMyID.data_avaliacao}
-                  </div>
-                </div>
-              </div>
-            </div>
-          );
-        })()
-      )}
-
-      {/* Tabs */}
-      <Tabs defaultValue="respostas" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/60">
-          <TabsTrigger value="respostas" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
-            <FileText className="h-3.5 w-3.5" /> Questionários {respostas.length > 0 && `(${respostas.length})`}
+      {/* MyID Fingerprint Card foi movido para PatientIntegratedDashboard */}
+      <Tabs defaultValue="integrada">
+        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
+          <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+            <Fingerprint className="h-4 w-4" /> Visão Integrada
           </TabsTrigger>
-          <TabsTrigger value="myid" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
-            <UserCircle className="h-3.5 w-3.5" /> MyID {myidAvaliacoes.length > 0 && `(${myidAvaliacoes.length})`}
+          <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+            <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
-            <BarChart3 className="h-3.5 w-3.5" /> Serviços
+          <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+            <Presentation className="h-4 w-4" /> Avaliação Presencial
+          </TabsTrigger>
+          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+            <Dumbbell className="h-4 w-4" /> Protocolos & Serviços
           </TabsTrigger>
         </TabsList>
+
+        <TabsContent value="integrada" className="mt-4">
+          <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+        </TabsContent>
 
         <TabsContent value="myid" className="mt-4">
           {iniciandoMyID ? (
@@ -381,10 +382,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <MyIDWizard onComplete={async (result, rawData) => {
                 await supabase.from('myid_avaliacoes').insert({
                   terapeuta_id: user?.id,
+                  paciente_id: paciente.id,
                   status: 'concluido',
                   respostas_brutas: rawData,
                   resultado_processado: result,
-                  // se tiver paciente_id na tabela: paciente_id: paciente.id
                 });
                 refetchMyID();
                 setIniciandoMyID(false);
