@@ -171,7 +171,7 @@ export default function MetodoIdentidade() {
 
     return (
       <AppLayout>
-        <div className="container py-8 max-w-3xl">
+        <div className="container py-6 max-w-4xl">
           <PacienteDashboardIdentidade
             paciente={selectedPaciente}
             onBack={() => { setSelectedPacienteId(null); setShowDashboard(false); }}

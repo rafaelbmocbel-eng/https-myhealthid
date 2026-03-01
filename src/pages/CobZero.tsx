@@ -142,7 +142,7 @@ export default function CobZero() {
   if (selectedPacienteId && showDashboard && selectedPaciente) {
     return (
       <AppLayout>
-        <div className="container py-8 max-w-3xl">
+        <div className="container py-6 max-w-4xl">
           <PacienteDashboardCobZero
             paciente={selectedPaciente}
             onBack={() => { setSelectedPacienteId(null); setShowDashboard(false); }}

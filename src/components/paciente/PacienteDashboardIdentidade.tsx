@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle } from 'lucide-react';
+import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -222,18 +222,23 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
   return (
     <div className="space-y-6">
-      {/* Header com cor bordô Identidade */}
+      {/* Header */}
       <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
-          <ArrowLeft className="h-4 w-4" />
+        <Button variant="ghost" size="icon" onClick={onBack} className="shrink-0">
+          <ArrowLeft className="h-5 w-5" />
         </Button>
-        <div className="h-10 w-10 rounded-full bg-identidade flex items-center justify-center shrink-0 text-identidade-foreground font-bold">
+        <div className="h-12 w-12 rounded-2xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0 text-white font-bold text-lg">
           {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
         </div>
-        <div className="flex-1">
-          <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
-          <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl font-black text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
+          <p className="text-xs text-muted-foreground">Método Identidade</p>
         </div>
+        <Button variant="outline" size="sm" asChild>
+          <a href={`/pacientes/${paciente.id}`}>
+            <ExternalLink className="h-3.5 w-3.5 mr-1" /> Perfil
+          </a>
+        </Button>
       </div>
 
       {/* Links Compactos */}
@@ -356,16 +361,16 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
       )}
 
       {/* Tabs */}
-      <Tabs defaultValue="respostas">
-        <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto">
-          <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <FileText className="h-4 w-4" /> Questionários Base {respostas.length > 0 && `(${respostas.length})`}
+      <Tabs defaultValue="respostas" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/60">
+          <TabsTrigger value="respostas" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
+            <FileText className="h-3.5 w-3.5" /> Questionários {respostas.length > 0 && `(${respostas.length})`}
           </TabsTrigger>
-          <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <UserCircle className="h-4 w-4 text-primary" /> Avaliação MyID {myidAvaliacoes.length > 0 && `(${myidAvaliacoes.length})`}
+          <TabsTrigger value="myid" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
+            <UserCircle className="h-3.5 w-3.5" /> MyID {myidAvaliacoes.length > 0 && `(${myidAvaliacoes.length})`}
           </TabsTrigger>
-          <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm">
-            <BarChart3 className="h-4 w-4" /> Serviços
+          <TabsTrigger value="avaliacoes" className="text-xs gap-1 data-[state=active]:bg-gradient-identidade data-[state=active]:text-white">
+            <BarChart3 className="h-3.5 w-3.5" /> Serviços
           </TabsTrigger>
         </TabsList>
 
