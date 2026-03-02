@@ -3,6 +3,7 @@ import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Progress } from '@/components/ui/progress';
 import { Loader2, CheckCircle2, XCircle, AlertCircle, ClipboardList, MapPin, Activity, Brain, Bed, Stethoscope, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
 import { Bloco1 } from '@/components/myid/steps/Bloco1';
 import { Bloco2 } from '@/components/myid/steps/Bloco2';

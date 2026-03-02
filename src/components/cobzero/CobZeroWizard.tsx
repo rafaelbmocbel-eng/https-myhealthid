@@ -179,8 +179,7 @@ export function CobZeroWizard({ pacienteNome, pacienteId, onComplete, onCancel }
                 )}
                 {etapaAtual === 5 && (
                     <CobEtapaPrograma
-                        data={{ faseAtual: avaliacao.faseAtual as any }}
-                        onChange={(d) => updateEtapa('faseAtual', d.faseAtual)}
+                        avaliacao={avaliacao}
                         onNext={next}
                         onBack={back}
                     />

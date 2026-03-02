@@ -469,7 +469,8 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                     ))}
                   </div>
                 </div>
-              </div>
+              )}
+            </div>
           )}
         </TabsContent>
 

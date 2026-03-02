@@ -109,7 +109,7 @@ export default function MetodoIdentidade() {
     queryKey: ['links-agenda-dashboard', user?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('links_agenda')
+        .from('links_agenda_paciente')
         .select('*')
         .eq('terapeuta_id', user!.id)
         .eq('status', 'ativo')

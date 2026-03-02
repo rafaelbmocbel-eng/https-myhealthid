@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
-  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell, Plus
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import QuestionariosComparacao from '../paciente/QuestionariosComparacao';
@@ -42,7 +42,8 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const { avaliacoes, isLoading: loadingAvaliacoes } = useAvaliacoesIdentidade(pacienteId);
   const [selectedAvaliacao, setSelectedAvaliacao] = useState<AvaliacaoMyID | null>(null);
   const [iniciandoMedidas, setIniciandoMedidas] = useState(false);
-  const { salvarMedida, salvando: salvandoMedida } = useStudioMedidas(pacienteId);
+  const { salvarMedida } = useStudioMedidas(pacienteId);
+  const salvandoMedida = salvarMedida.isPending;
 
   const { data: linksAgenda = [] } = useQuery({
     queryKey: ['links_agenda_paciente', user?.id],
@@ -228,7 +229,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
               isPending={salvandoMedida}
               onCancel={() => setIniciandoMedidas(false)}
               onSave={async (data) => {
-                await salvarMedida(data);
+                await salvarMedida.mutateAsync(data);
                 setIniciandoMedidas(false);
                 qc.invalidateQueries({ queryKey: ['studio-medidas', pacienteId] });
               }}

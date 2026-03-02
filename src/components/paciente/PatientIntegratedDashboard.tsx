@@ -111,14 +111,15 @@ export default function PatientIntegratedDashboard({
         }
 
         if (serviceMatch) {
+            const sm = serviceMatch as any;
             if (serviceType === 'cob_zero') {
-                point.cobb = Number(serviceMatch.cobb_angle) || null;
-                point.scoreE = Number(serviceMatch.score_e) || null;
-                point.risco = Number(serviceMatch.risco_percentage) || null;
+                point.cobb = Number(sm.cobb_angle) || null;
+                point.scoreE = Number(sm.score_e) || null;
+                point.risco = Number(sm.risco_percentage) || null;
             } else if (serviceType === 'studio') {
-                point.gordura = Number(serviceMatch.percentual_gordura) || null;
-                point.peso = Number(serviceMatch.peso) || null;
-                point.imc = Number(serviceMatch.imc) || null;
+                point.gordura = Number(sm.percentual_gordura) || null;
+                point.peso = Number(sm.peso) || null;
+                point.imc = Number(sm.imc) || null;
             }
         }
         return point;
