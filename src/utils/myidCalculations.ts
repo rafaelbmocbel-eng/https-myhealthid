@@ -152,21 +152,32 @@ export function calcularMyID(
 
 // ── Fingerprint visualization data ──
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
-  return [
-    // Inner rings (warm - demand)
-    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: '#FF4D4D', scoreKey: 'D' },
-    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: '#FF8C00', scoreKey: 'EFI' },
-    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: '#FFA500', scoreKey: 'P' },
-    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: '#FFB84D', scoreKey: 'I' },
+  // Color scale: violet (good) → blue → orange → red (bad)
+  const valueToColor = (v: number): string => {
+    if (v <= 1) return '#a78bfa';      // violet-400
+    if (v <= 2.5) return '#8b5cf6';    // violet-500
+    if (v <= 4) return '#6366f1';      // indigo-500
+    if (v <= 5.5) return '#3b82f6';    // blue-500
+    if (v <= 7) return '#f59e0b';      // amber-500
+    if (v <= 8.5) return '#f97316';    // orange-500
+    return '#ef4444';                   // red-500
+  };
 
-    // Outer rings (cool/neutral - capacity/support)
-    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: '#4DA6FF', scoreKey: 'R' },
-    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: '#32CD32', scoreKey: 'C' },
-    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: '#66BD63', scoreKey: 'AF' },
-    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: '#1E90FF', scoreKey: 'HID' },
-    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: '#228B22', scoreKey: 'NUT' },
-    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: '#6B8E23', scoreKey: 'ERG' },
-    { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: '#4682B4', scoreKey: 'N' },
+  return [
+    // Inner rings (demand)
+    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: valueToColor(scores.D || 0), scoreKey: 'D' },
+    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: valueToColor(scores.EFI || 0), scoreKey: 'EFI' },
+    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: valueToColor(scores.P || 0), scoreKey: 'P' },
+    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: valueToColor(scores.I || 0), scoreKey: 'I' },
+
+    // Outer rings (capacity) — inverted: low value = bad
+    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: valueToColor(10 - (scores.R || 0)), scoreKey: 'R' },
+    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: valueToColor(10 - (scores.C || 0)), scoreKey: 'C' },
+    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: valueToColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
+    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: valueToColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
+    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: valueToColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
+    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: valueToColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
+    { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: valueToColor(scores.N || 0), scoreKey: 'N' },
   ];
 }
 
