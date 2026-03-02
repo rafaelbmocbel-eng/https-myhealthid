@@ -189,7 +189,7 @@ export interface AvaliacaoMyID {
   bloco4: MyIDBloco4Data;
   bloco5: MyIDBloco5Data;
   bloco6: MyIDBloco6Data;
-  resultado: MyIDResult;
+  resultado: MyIDResult | Record<string, any>;
   blocoAtual: number;
   concluido: boolean;
 }
