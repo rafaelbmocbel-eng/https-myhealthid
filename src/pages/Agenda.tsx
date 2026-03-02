@@ -345,9 +345,10 @@ export default function Agenda() {
 
   const handleSave = async () => {
     setSubmitting(true);
-    const pac = pacientes.find(p => p.id === form.paciente_id);
+    const pacienteIdFinal = form.paciente_id === 'bloqueio' ? undefined : (form.paciente_id || undefined);
+    const pac = pacientes.find(p => p.id === pacienteIdFinal);
     const payload = {
-      paciente_id: form.paciente_id || undefined,
+      paciente_id: pacienteIdFinal,
       titulo: form.titulo || (pac ? `${pac.nome} ${pac.sobrenome}` : form.tipo_atendimento === 'bloqueio' ? 'Bloqueado' : 'Agendamento'),
       data_inicio: new Date(form.data_inicio).toISOString(),
       data_fim: new Date(form.data_fim).toISOString(),
@@ -595,13 +596,16 @@ export default function Agenda() {
                               {dayAgs.slice(0, 3).map(ag => {
                                 const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
                                 const pac = ag.pacientes;
+                                const label = ag.titulo
+                                  || (pac ? `${pac.nome} ${pac.sobrenome}` : null)
+                                  || 'Agendamento';
                                 return (
                                   <div
                                     key={ag.id}
                                     onClick={e => { e.stopPropagation(); openEdit(ag); }}
                                     className={cn('text-[9px] font-semibold px-1 py-0.5 rounded truncate border-l-2', sc.bg, sc.border, sc.text)}
                                   >
-                                    {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
+                                    {format(parseISO(ag.data_inicio), 'HH:mm')} {label}
                                   </div>
                                 );
                               })}
@@ -736,7 +740,12 @@ export default function Agenda() {
                               <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
                                 {sc.icon}
                                 <span className="truncate">
-                                  {format(parseISO(ag.data_inicio), 'HH:mm')} {ag.titulo || pac?.nome || ''}
+                                  {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
+                                  {ag.titulo
+                                    || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
+                                    || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
+                                    || 'Agendamento'
+                                  }
                                 </span>
                               </div>
                               {pos.height > 40 && (

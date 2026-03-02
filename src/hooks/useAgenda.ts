@@ -56,14 +56,22 @@ export function useAgenda() {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [{ data: ag }, { data: pac }, { data: cfg }] = await Promise.all([
-      supabase.from('agendamentos').select('*, pacientes(id, nome, sobrenome, email, telefone, ativo, possui_pacote)').eq('terapeuta_id', user.id).order('data_inicio'),
+    const [agResult, pacResult, cfgResult] = await Promise.all([
+      supabase
+        .from('agendamentos')
+        .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo, possui_pacote)')
+        .eq('terapeuta_id', user.id)
+        .order('data_inicio'),
       supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
-      supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).single(),
-    ]) as any;
-    setAgendamentos((ag as Agendamento[]) || []);
-    setPacientes((pac as Paciente[]) || []);
-    if (cfg) setConfig(cfg as ConfigAgenda);
+      supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle(),
+    ]);
+
+    if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
+    if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+
+    setAgendamentos((agResult.data as Agendamento[]) || []);
+    setPacientes((pacResult.data as Paciente[]) || []);
+    if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
     setLoading(false);
   }, [user]);
 
