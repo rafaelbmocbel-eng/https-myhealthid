@@ -13,7 +13,7 @@ Deno.serve(async (req) => {
   try {
     const { token } = await req.json();
 
-    if (!token || typeof token !== 'string' || token.length !== 64) {
+    if (!token || typeof token !== 'string' || token.length !== 64 || !/^[a-f0-9]{64}$/.test(token)) {
       return new Response(JSON.stringify({ error: 'Token inválido.' }), {
         status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },

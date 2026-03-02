@@ -88,22 +88,14 @@ export default function AvaliacaoPublica() {
     if (!linkInfo) return;
     setSalvando(true);
     try {
-      let tentativa = 1;
-      const { data: existente } = await supabase
-        .from('respostas_avaliacao_paciente')
-        .select('id, numero_tentativa')
-        .eq('link_id', linkInfo.id)
-        .eq('bloco_numero', blocoNum)
-        .order('numero_tentativa', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      if (existente) tentativa = (existente.numero_tentativa || 1) + 1;
-      await supabase.from('respostas_avaliacao_paciente').insert({
-        link_id: linkInfo.id,
-        paciente_id: linkInfo.paciente_id,
-        bloco_numero: blocoNum,
-        dados_respostas: dados,
-        numero_tentativa: tentativa,
+      // Salva via edge function para não expor a tabela anonimamente
+      await supabase.functions.invoke('salvar-bloco-avaliacao', {
+        body: {
+          link_id: linkInfo.id,
+          paciente_id: linkInfo.paciente_id,
+          bloco_numero: blocoNum,
+          dados_respostas: dados,
+        },
       });
     } catch (e) {
       console.error('Erro ao salvar bloco:', e);
