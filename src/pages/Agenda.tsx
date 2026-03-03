@@ -803,7 +803,7 @@ export default function Agenda() {
                   </div>
 
                   {/* Alerta de Sinal via Pix (Se não tiver pacote) */}
-                  {!pac?.possui_pacote && (
+                  {false && (
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-300">
                       <div className="flex items-start gap-3">
                         <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
@@ -842,12 +842,10 @@ export default function Agenda() {
               <div className="flex gap-2 mt-1.5">
                 <Select value={form.paciente_id} onValueChange={v => {
                   const pac = pacientes.find(p => p.id === v);
-                  setForm(f => ({
-                    ...f,
-                    paciente_id: v,
-                    status: (pac && !pac.possui_pacote) ? 'pendente' : f.status,
-                    observacoes: (pac && !pac.possui_pacote) ? (f.observacoes + "\n[AGUARDANDO SINAL PIX]").trim() : f.observacoes
-                  }));
+                    setForm(f => ({
+                      ...f,
+                      paciente_id: v,
+                    }));
                 }}>
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Selecionar paciente" />
