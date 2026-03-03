@@ -2,6 +2,7 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import MyIDFingerprint from './MyIDFingerprint';
+import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import { shareMyIDResults } from '@/utils/whatsapp';
@@ -125,29 +126,75 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 <div className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-bold rounded-full mb-2 tracking-wide text-sm">
                     PROCESSAMENTO CONCLUÍDO
                 </div>
-                <h1 className="text-4xl font-extrabold text-gray-900 tracking-tight">🎯 SEU RESULTADO MyID</h1>
+                <h1 className="text-4xl font-extrabold tracking-tight">🎯 SEU RESULTADO MyID</h1>
             </div>
 
-            <Card className="border-4 bg-white/50 backdrop-blur-sm overflow-hidden shadow-xl" style={{ borderColor: color || '#10b981' }}>
+            {/* Score principal com gauge de severidade */}
+            <Card className="border-2 bg-card/80 backdrop-blur-sm overflow-hidden shadow-xl" style={{ borderColor: color || '#10b981' }}>
                 <CardContent className="p-8 text-center space-y-6">
                     <div className="space-y-4">
-                        <h2 className="text-sm font-bold uppercase tracking-widest text-gray-500">ÍNDICE MyID</h2>
+                        <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">ÍNDICE MyID</h2>
                         <div className="flex justify-center items-center gap-4">
-                            <span className="text-6xl sm:text-8xl font-black">{MyID_score?.toFixed(1)}</span>
-                            <span className="text-3xl sm:text-5xl text-gray-400">/ 10</span>
+                            <span className="text-6xl sm:text-8xl font-black" style={{ color: color }}>{MyID_score?.toFixed(1)}</span>
+                            <span className="text-3xl sm:text-5xl text-muted-foreground/50">/ 10</span>
                         </div>
-                        <div className="inline-block mt-4 px-6 py-2 rounded-full font-bold text-lg"
-                            style={{
-                                backgroundColor: `${color}15`,
-                                color: color
-                            }}>
+
+                        {/* Severity gauge bar - inspired by reference */}
+                        <div className="max-w-md mx-auto mt-4 space-y-2">
+                            <div className="relative h-5 rounded-full overflow-hidden shadow-inner"
+                                style={{ background: 'linear-gradient(to right, hsl(142,70%,45%), hsl(48,90%,50%), hsl(25,90%,50%), hsl(0,85%,45%))' }}>
+                                <div
+                                    className="absolute top-0 w-1 h-full bg-white shadow-lg border border-foreground/20 rounded-full transition-all duration-700"
+                                    style={{ left: `${Math.min(Math.max(MyID_score / 10 * 100, 2), 98)}%`, transform: 'translateX(-50%)' }}
+                                />
+                                {/* Marker triangle */}
+                                <div
+                                    className="absolute -top-2 transition-all duration-700"
+                                    style={{ left: `${Math.min(Math.max(MyID_score / 10 * 100, 2), 98)}%`, transform: 'translateX(-50%)' }}
+                                >
+                                    <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-foreground/60" />
+                                </div>
+                            </div>
+                            <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
+                                <span>0</span>
+                                <span>3</span>
+                                <span>6</span>
+                                <span>8</span>
+                                <span>10</span>
+                            </div>
+                        </div>
+
+                        {/* Severity categories */}
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-lg mx-auto mt-4">
+                            {[
+                                { range: '< 3', label: 'RECUPERAÇÃO FAVORÁVEL', bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-800', icon: '✅' },
+                                { range: '3-6', label: 'SOBRECARGA MODERADA', bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-800', icon: '⚠️' },
+                                { range: '6-8', label: 'SOBRECARGA CRÍTICA', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-800', icon: '🔶' },
+                                { range: '> 8', label: 'RISCO CRONIFICAÇÃO', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', icon: '🚨' },
+                            ].map(cat => (
+                                <div key={cat.range} className={`p-2 rounded-lg border ${cat.bg} ${cat.border} ${
+                                    (MyID_score < 3 && cat.range === '< 3') ||
+                                    (MyID_score >= 3 && MyID_score < 6 && cat.range === '3-6') ||
+                                    (MyID_score >= 6 && MyID_score < 8 && cat.range === '6-8') ||
+                                    (MyID_score >= 8 && cat.range === '> 8')
+                                        ? 'ring-2 ring-offset-1 ring-current shadow-md' : 'opacity-50'
+                                }`}>
+                                    <div className="text-xs font-black">{cat.icon} {cat.range}</div>
+                                    <div className={`text-[9px] font-bold ${cat.text} leading-tight mt-0.5`}>{cat.label}</div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="inline-block mt-4 px-6 py-2 rounded-full font-bold text-lg text-white shadow-md"
+                            style={{ backgroundColor: color }}>
                             {status}
                         </div>
-                        <div className="bg-white p-6 rounded-xl border mt-6 shadow-sm text-left">
+
+                        <div className="bg-muted/30 p-6 rounded-xl border mt-6 shadow-sm text-left">
                             <h3 className="font-bold text-lg mb-2">🎯 INTERPRETAÇÃO GERAL:</h3>
-                            <p className="text-lg font-medium text-gray-800 leading-relaxed whitespace-pre-wrap">{recommendation}</p>
+                            <p className="text-lg font-medium leading-relaxed whitespace-pre-wrap">{recommendation}</p>
                             {status === 'EXTREMO' && (
-                                <div className="mt-4 p-4 bg-red-50 text-red-900 border border-red-200 rounded-lg text-sm font-medium">
+                                <div className="mt-4 p-4 bg-destructive/10 text-destructive border border-destructive/20 rounded-lg text-sm font-medium">
                                     🚨 AÇÕES IMEDIATAS NECESSÁRIAS: Procure um médico urgentemente para descartar Red Flags, pare exercícios pesados, foque em sono e hidratação.
                                 </div>
                             )}
@@ -156,17 +203,23 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 </CardContent>
             </Card>
 
+            {/* ── FORMULA DISPLAY ── */}
+            <MyIDFormulaDisplay
+                scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N }}
+                myidScore={MyID_score ?? 0}
+            />
+
             {/* ── FINGERPRINT VISUALIZATION ── */}
             <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
                 <CardHeader className="text-center pb-2">
                     <CardTitle className="text-xl font-bold text-foreground">🔏 Sua Impressão Digital Sistêmica</CardTitle>
-                    <CardDescription>Cada crista representa uma dimensão do seu perfil de saúde</CardDescription>
+                    <CardDescription>Cada crista representa uma dimensão do seu perfil de saúde — toque para explorar</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center pb-8">
                     <MyIDFingerprint
                         rings={buildFingerprintRings(component_scores)}
                         myidScore={MyID_score ?? 0}
-                        className="w-full max-w-sm"
+                        className="w-full max-w-2xl"
                     />
                 </CardContent>
             </Card>
