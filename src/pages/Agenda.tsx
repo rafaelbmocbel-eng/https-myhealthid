@@ -68,6 +68,8 @@ interface FormData {
   paciente_id: string; titulo: string;
   data_inicio: string; data_fim: string;
   status: string; tipo_atendimento: string; observacoes: string;
+  recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal';
+  recorrencia_semanas: number;
 }
 
 // Mini calendar component
@@ -290,6 +292,7 @@ export default function Agenda() {
     paciente_id: '', titulo: '',
     data_inicio: '', data_fim: '',
     status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
+    recorrencia: 'none', recorrencia_semanas: 4,
   });
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
@@ -326,6 +329,7 @@ export default function Agenda() {
       data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
+      recorrencia: 'none', recorrencia_semanas: 4,
     });
     setModal({ open: true });
   };
@@ -339,6 +343,8 @@ export default function Agenda() {
       status: ag.status,
       tipo_atendimento: ag.tipo_atendimento || 'retorno',
       observacoes: ag.observacoes || '',
+      recorrencia: 'none',
+      recorrencia_semanas: 4,
     });
     setModal({ open: true, agendamento: ag });
   };
@@ -356,8 +362,36 @@ export default function Agenda() {
       tipo_atendimento: form.tipo_atendimento,
       observacoes: form.observacoes,
     };
-    if (modal.agendamento) await updateAgendamento(modal.agendamento.id, payload);
-    else await createAgendamento(payload as Omit<Agendamento, 'id'>);
+    
+    if (modal.agendamento) {
+      await updateAgendamento(modal.agendamento.id, payload);
+    } else {
+      // Create initial appointment
+      await createAgendamento(payload as Omit<Agendamento, 'id'>);
+      
+      // Create recurring appointments if configured
+      if (form.recorrencia !== 'none') {
+        const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+        const totalWeeks = form.recorrencia_semanas;
+        const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
+        
+        for (let i = 1; i <= totalSlots; i++) {
+          const newStart = new Date(form.data_inicio);
+          newStart.setDate(newStart.getDate() + (intervalDays * i));
+          const newEnd = new Date(form.data_fim);
+          newEnd.setDate(newEnd.getDate() + (intervalDays * i));
+          
+          await createAgendamento({
+            ...payload,
+            data_inicio: newStart.toISOString(),
+            data_fim: newEnd.toISOString(),
+          } as Omit<Agendamento, 'id'>);
+        }
+        
+        toast({ title: `✅ ${totalSlots + 1} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+      }
+    }
+    
     setModal({ open: false });
     setSubmitting(false);
   };
@@ -916,6 +950,33 @@ export default function Agenda() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Recorrência (só para novos) */}
+            {!modal.agendamento && (
+              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
+                <div>
+                  <Label className="text-xs font-bold">Recorrência</Label>
+                  <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
+                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sessão única</SelectItem>
+                      <SelectItem value="semanal">Semanal (mesmo dia/horário)</SelectItem>
+                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                      <SelectItem value="mensal">Mensal</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                {form.recorrencia !== 'none' && (
+                  <div>
+                    <Label className="text-xs font-bold">Por quantas semanas?</Label>
+                    <Input type="number" min={2} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
+                    <p className="text-[10px] text-muted-foreground mt-1">
+                      Serão criadas {Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* Observações */}
             <div>

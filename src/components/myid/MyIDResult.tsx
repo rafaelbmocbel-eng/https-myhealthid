@@ -117,6 +117,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     const NUT = scores.NUT ?? scores.NUT_nutrition ?? 0;
     const ERG = scores.ERG ?? scores.ERG_ergonomics ?? 0;
     const N = scores.N ?? scores.N_noise ?? 0;
+    const MED = scores.MED ?? scores.MED_penalty ?? 0;
 
     const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 
@@ -205,7 +206,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
 
             {/* ── FORMULA DISPLAY ── */}
             <MyIDFormulaDisplay
-                scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N }}
+                scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
                 myidScore={MyID_score ?? 0}
             />
 

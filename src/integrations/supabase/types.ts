@@ -310,6 +310,72 @@ export type Database = {
         }
         Relationships: []
       }
+      controle_sessoes: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          data_sessao: string
+          duracao_minutos: number | null
+          forma_pagamento: string | null
+          id: string
+          numero_sessao: number
+          observacoes: string | null
+          paciente_id: string
+          status: string
+          terapeuta_id: string
+          tipo_atendimento: string | null
+          updated_at: string
+          valor_cobrado: number | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_sessao?: string
+          duracao_minutos?: number | null
+          forma_pagamento?: string | null
+          id?: string
+          numero_sessao?: number
+          observacoes?: string | null
+          paciente_id: string
+          status?: string
+          terapeuta_id: string
+          tipo_atendimento?: string | null
+          updated_at?: string
+          valor_cobrado?: number | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          data_sessao?: string
+          duracao_minutos?: number | null
+          forma_pagamento?: string | null
+          id?: string
+          numero_sessao?: number
+          observacoes?: string | null
+          paciente_id?: string
+          status?: string
+          terapeuta_id?: string
+          tipo_atendimento?: string | null
+          updated_at?: string
+          valor_cobrado?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "controle_sessoes_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "controle_sessoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolucao_paciente: {
         Row: {
           avaliacao_anterior_id: string | null
