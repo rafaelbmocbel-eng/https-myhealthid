@@ -313,11 +313,45 @@ export class MyIDCalculator {
 
     // ==================== BLOCO 6: MEDICAÇÕES (MED) ====================
     calculateMedications(): number {
-        // Bloco6 v2 não tem medicamentos explícitos na interface, 
-        // mas manteve-se o rastro no resultado processado caso venha de fontes legadas.
-        this.result.med_penalty = 0;
-        this.result.medications = [];
-        return 0;
+        let medPenalty = 0;
+        const medications: string[] = [];
+
+        const b6 = this.responses.bloco6;
+        
+        // AINE diário
+        if (this.responses.bloco_6_daily_nsaid ?? b6?.bloco_6_daily_nsaid) {
+            medPenalty += 2;
+            medications.push('AINE diário');
+        }
+        
+        // Antidepressivo
+        if (this.responses.bloco_6_antidepressant ?? b6?.bloco_6_antidepressant) {
+            medPenalty += 1.5;
+            medications.push(`Antidepressivo${b6?.bloco_6_antidepressant_type ? ` (${b6.bloco_6_antidepressant_type})` : ''}`);
+        }
+        
+        // Relaxante muscular
+        if (this.responses.bloco_6_muscle_relaxant ?? b6?.bloco_6_muscle_relaxant) {
+            medPenalty += 1.5;
+            medications.push('Relaxante muscular');
+        }
+        
+        // Corticóide
+        if (this.responses.bloco_6_corticoid ?? b6?.bloco_6_corticoid) {
+            medPenalty += 2;
+            medications.push('Corticóide');
+        }
+        
+        // Suplementação (positivo = -0.5 penalty, ou seja, melhora capacidade)
+        if (this.responses.bloco_6_supplementation ?? b6?.bloco_6_supplementation) {
+            medPenalty -= 0.5;
+            medications.push('Suplementação (↑)');
+        }
+
+        this.result.med_penalty = Math.max(0, Math.round(medPenalty * 10) / 10);
+        this.result.medications = medications;
+        this.scores['MED'] = this.result.med_penalty;
+        return this.result.med_penalty;
     }
 
     // ==================== HISTÓRICO DE CICATRIZAÇÃO ====================
@@ -478,6 +512,7 @@ export class MyIDCalculator {
                 NUT_nutrition: parseFloat((this.scores['NUT'] || 0).toFixed(2)),
                 ERG_ergonomics: parseFloat((this.scores['ERG'] || 0).toFixed(2)),
                 N_noise: parseFloat((this.scores['N'] || 0).toFixed(2)),
+                MED_penalty: parseFloat((this.scores['MED'] || 0).toFixed(2)),
             },
 
             red_flags: this.result.red_flags_detected || false,

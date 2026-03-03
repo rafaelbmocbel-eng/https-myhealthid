@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // Motor de Cálculo MyID v2
-// Fórmula: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C) - N]
+// Fórmula: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
 
 import type {
@@ -117,33 +117,33 @@ export function calcularScoreN(bloco6: MyIDBloco6Data): number {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C) - N]
+// FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
 export function calcularMyID(
   d: number, efi: number, p: number, i: number,
-  r: number, c: number, n: number
+  r: number, c: number, n: number,
+  af: number = 5, hid: number = 7, nut: number = 7, erg: number = 7, med: number = 0
 ): MyIDResult {
   // Numerador: Demanda
   const numerador = ((d + efi) * (1 + p / 10)) + i;
 
   // Denominador: Capacidade (mínimo 0.5 para evitar divisão por 0)
-  const denominador = Math.max(0.5, (r + c) - n);
+  const denominador = Math.max(0.5, (r + c + af + hid + nut + erg) - n - med);
 
   const myidRaw = numerador / denominador;
-  const myidScore = Math.round(myidRaw * 10) / 10;
+  const myidScore = Math.min(10, Math.max(0, Math.round(myidRaw * 10) / 10));
 
-  // Status
-  let myidStatus = 'Demanda Baixa com Suporte Alto';
+  // Status baseado nas 4 zonas clínicas
+  let myidStatus = 'Recuperação Favorável';
   let classificacao = 'LEVE';
-  if (myidScore > 5) { myidStatus = 'Demanda Muito Alta com Suporte Insuficiente'; classificacao = 'EXTREMO'; }
-  else if (myidScore > 3.5) { myidStatus = 'Demanda Alta com Suporte Baixo'; classificacao = 'CRÍTICO'; }
-  else if (myidScore > 2.5) { myidStatus = 'Demanda Alta com Suporte Moderado'; classificacao = 'SEVERO'; }
-  else if (myidScore > 1.5) { myidStatus = 'Demanda Moderada com Suporte Moderado'; classificacao = 'MODERADO'; }
+  if (myidScore >= 8) { myidStatus = 'Risco de Cronificação'; classificacao = 'EXTREMO'; }
+  else if (myidScore >= 6) { myidStatus = 'Sobrecarga Crítica'; classificacao = 'CRÍTICO'; }
+  else if (myidScore >= 3) { myidStatus = 'Sobrecarga Moderada'; classificacao = 'MODERADO'; }
 
   return {
     myidScore,
     myidStatus,
-    componentScores: { D: d, EFI: efi, P: p, I: i, R: r, C: c, N: n },
+    componentScores: { D: d, EFI: efi, P: p, I: i, R: r, C: c, N: n, AF: af, HID: hid, NUT: nut, ERG: erg },
     redFlagsDetected: false,
     redFlagAlerts: [],
     classificacao,
@@ -178,6 +178,7 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
     { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: valueToColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
     { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: valueToColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
     { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: valueToColor(scores.N || 0), scoreKey: 'N' },
+    { label: 'MED (Medicação)', value: scores.MED || 0, type: 'outer', color: valueToColor(scores.MED || 0), scoreKey: 'MED' },
   ];
 }
 

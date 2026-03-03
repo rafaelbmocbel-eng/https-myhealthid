@@ -136,12 +136,8 @@ export default function MyIDFormulaDisplay({ scores, myidScore, className = '' }
               <span className="text-muted-foreground text-sm">)</span>
               <span className="text-muted-foreground text-sm">−</span>
               <ScoreChip label="N" value={N} type="noise" />
-              {MED > 0 && (
-                <>
-                  <span className="text-muted-foreground text-sm">−</span>
-                  <ScoreChip label="MED" value={MED} type="noise" />
-                </>
-              )}
+              <span className="text-muted-foreground text-sm">−</span>
+              <ScoreChip label="MED" value={MED} type="noise" />
               <span className="text-muted-foreground font-bold text-sm">]</span>
             </div>
 
