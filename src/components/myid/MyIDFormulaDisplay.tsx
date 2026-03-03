@@ -21,110 +21,169 @@ interface Props {
   className?: string;
 }
 
-function valueColor(val: number, inverted = false): string {
-  const v = inverted ? 10 - val : val;
-  if (v <= 2) return 'text-violet-500';
-  if (v <= 4) return 'text-blue-500';
-  if (v <= 6) return 'text-amber-500';
-  if (v <= 8) return 'text-orange-500';
-  return 'text-red-500';
+function severityColor(val: number): string {
+  if (val <= 2) return 'hsl(142, 70%, 45%)';   // green
+  if (val <= 4) return 'hsl(48, 90%, 50%)';     // yellow
+  if (val <= 6) return 'hsl(25, 90%, 50%)';     // orange
+  if (val <= 8) return 'hsl(0, 80%, 50%)';      // red
+  return 'hsl(0, 85%, 40%)';                     // dark red
 }
 
-/**
- * Displays the MyID formula with actual score values inline.
- * Each symbol is colored by its severity.
- */
+function capacityColor(val: number): string {
+  // Inverted: high = good (green), low = bad (red)
+  if (val >= 8) return 'hsl(142, 70%, 45%)';
+  if (val >= 6) return 'hsl(142, 50%, 55%)';
+  if (val >= 4) return 'hsl(48, 90%, 50%)';
+  if (val >= 2) return 'hsl(25, 90%, 50%)';
+  return 'hsl(0, 80%, 50%)';
+}
+
+function scoreColor(myid: number): string {
+  if (myid < 3) return 'hsl(142, 70%, 45%)';
+  if (myid < 6) return 'hsl(48, 90%, 50%)';
+  if (myid < 8) return 'hsl(25, 90%, 50%)';
+  return 'hsl(0, 85%, 45%)';
+}
+
+function scoreStatus(myid: number): string {
+  if (myid < 3) return 'RECUPERAÇÃO FAVORÁVEL';
+  if (myid < 6) return 'SOBRECARGA MODERADA';
+  if (myid < 8) return 'SOBRECARGA CRÍTICA';
+  return 'RISCO DE CRONIFICAÇÃO';
+}
+
+const ScoreChip = ({ label, value, type }: { label: string; value: number; type: 'demand' | 'capacity' | 'noise' }) => {
+  const color = type === 'demand' ? severityColor(value) : type === 'capacity' ? capacityColor(value) : severityColor(value);
+  return (
+    <span className="inline-flex items-center gap-1 font-mono">
+      <span className="font-black text-sm" style={{ color }}>{label}</span>
+      <span
+        className="text-[11px] px-1.5 py-0.5 rounded-md font-black text-white min-w-[32px] text-center"
+        style={{ backgroundColor: color }}
+      >
+        {value.toFixed(1)}
+      </span>
+    </span>
+  );
+};
+
 export default function MyIDFormulaDisplay({ scores, myidScore, className = '' }: Props) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
 
   const numerator = ((D + EFI) * (1 + P / 10)) + I;
   const denominator = Math.max(0.5, (R + C + AF + HID + NUT + ERG) - N - MED);
-
-  const ScoreChip = ({ label, value, inverted = false }: { label: string; value: number; inverted?: boolean }) => (
-    <span className={`inline-flex items-center gap-0.5 font-mono text-sm ${valueColor(value, inverted)}`}>
-      <span className="font-bold">{label}</span>
-      <span className="text-[10px] bg-muted/80 px-1 py-0.5 rounded font-black">{value.toFixed(1)}</span>
-    </span>
-  );
+  const myidColor = scoreColor(myidScore);
+  const status = scoreStatus(myidScore);
 
   return (
-    <div className={`rounded-xl border bg-card p-4 space-y-3 ${className}`}>
-      <div className="flex items-center gap-2 mb-2">
-        <span className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Equação MyID</span>
-        <span className="ml-auto text-lg font-black" style={{ color: myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : myidScore <= 8 ? 'hsl(15,90%,50%)' : 'hsl(0,85%,50%)' }}>
-          {myidScore.toFixed(2)}
-        </span>
-      </div>
-
-      {/* Fraction layout */}
-      <div className="flex flex-col items-center gap-0">
-        {/* Numerator */}
-        <div className="flex items-center gap-1 flex-wrap justify-center text-sm pb-1.5">
-          <span className="text-muted-foreground">[</span>
-          <span className="text-muted-foreground">(</span>
-          <ScoreChip label="D" value={D} />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="EFI" value={EFI} />
-          <span className="text-muted-foreground">)</span>
-          <span className="text-muted-foreground">×</span>
-          <span className="text-muted-foreground">(1 +</span>
-          <ScoreChip label="P" value={P} />
-          <span className="text-muted-foreground">/10)</span>
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="I" value={I} />
-          <span className="text-muted-foreground">]</span>
-          <span className="text-[10px] text-muted-foreground ml-1">= {numerator.toFixed(2)}</span>
+    <div className={`rounded-2xl border-2 bg-card overflow-hidden shadow-lg ${className}`} style={{ borderColor: `${myidColor}40` }}>
+      {/* Header */}
+      <div className="px-5 py-3 border-b bg-muted/30 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: myidColor }} />
+          <span className="text-xs font-black uppercase tracking-[0.2em] text-muted-foreground">A Equação do MyID</span>
         </div>
-
-        {/* Divider */}
-        <div className="w-full h-px bg-border my-0.5" />
-
-        {/* Denominator */}
-        <div className="flex items-center gap-1 flex-wrap justify-center text-sm pt-1.5">
-          <span className="text-muted-foreground">[</span>
-          <span className="text-muted-foreground">(</span>
-          <ScoreChip label="R" value={R} inverted />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="C" value={C} inverted />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="AF" value={AF} inverted />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="HID" value={HID} inverted />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="NUT" value={NUT} inverted />
-          <span className="text-muted-foreground">+</span>
-          <ScoreChip label="ERG" value={ERG} inverted />
-          <span className="text-muted-foreground">)</span>
-          <span className="text-muted-foreground">−</span>
-          <ScoreChip label="N" value={N} />
-          {MED > 0 && (
-            <>
-              <span className="text-muted-foreground">−</span>
-              <ScoreChip label="MED" value={MED} />
-            </>
-          )}
-          <span className="text-muted-foreground">]</span>
-          <span className="text-[10px] text-muted-foreground ml-1">= {denominator.toFixed(2)}</span>
+        <div className="flex items-center gap-2">
+          <span className="text-2xl font-black" style={{ color: myidColor }}>{myidScore.toFixed(1)}</span>
+          <span className="text-xs font-bold text-muted-foreground">/10</span>
         </div>
       </div>
 
-      {/* Legend */}
-      <div className="grid grid-cols-2 gap-x-4 gap-y-1 mt-3 pt-2 border-t border-border/50">
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-violet-500" />
-          <span className="text-[9px] text-muted-foreground">Bom (0-2)</span>
+      {/* Main formula */}
+      <div className="px-5 py-5 space-y-4">
+        {/* Visual formula representation */}
+        <div className="text-center space-y-1">
+          <div className="text-xs font-bold text-muted-foreground tracking-wider mb-3">MyID =</div>
+
+          {/* Fraction */}
+          <div className="inline-flex flex-col items-center">
+            {/* Numerator */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center px-4 pb-2">
+              <span className="text-muted-foreground font-bold text-sm">[</span>
+              <span className="text-muted-foreground text-sm">(</span>
+              <ScoreChip label="D" value={D} type="demand" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="EFI" value={EFI} type="demand" />
+              <span className="text-muted-foreground text-sm">) ×</span>
+              <span className="text-muted-foreground text-sm">(1 +</span>
+              <ScoreChip label="P" value={P} type="demand" />
+              <span className="text-muted-foreground text-sm">/10) +</span>
+              <ScoreChip label="I" value={I} type="demand" />
+              <span className="text-muted-foreground font-bold text-sm">]</span>
+            </div>
+
+            {/* Result numerator */}
+            <div className="text-xs text-muted-foreground font-mono mb-1">= {numerator.toFixed(2)}</div>
+
+            {/* Divider line */}
+            <div className="w-full h-[2px] rounded-full bg-gradient-to-r from-transparent via-foreground/30 to-transparent my-1" />
+
+            {/* Denominator */}
+            <div className="flex items-center gap-1.5 flex-wrap justify-center px-4 pt-2">
+              <span className="text-muted-foreground font-bold text-sm">[</span>
+              <span className="text-muted-foreground text-sm">(</span>
+              <ScoreChip label="R" value={R} type="capacity" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="C" value={C} type="capacity" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="AF" value={AF} type="capacity" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="HID" value={HID} type="capacity" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="NUT" value={NUT} type="capacity" />
+              <span className="text-muted-foreground text-sm">+</span>
+              <ScoreChip label="ERG" value={ERG} type="capacity" />
+              <span className="text-muted-foreground text-sm">)</span>
+              <span className="text-muted-foreground text-sm">−</span>
+              <ScoreChip label="N" value={N} type="noise" />
+              {MED > 0 && (
+                <>
+                  <span className="text-muted-foreground text-sm">−</span>
+                  <ScoreChip label="MED" value={MED} type="noise" />
+                </>
+              )}
+              <span className="text-muted-foreground font-bold text-sm">]</span>
+            </div>
+
+            {/* Result denominator */}
+            <div className="text-xs text-muted-foreground font-mono mt-1">= {denominator.toFixed(2)}</div>
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-blue-500" />
-          <span className="text-[9px] text-muted-foreground">Aceitável (2-4)</span>
+
+        {/* Status badge */}
+        <div className="flex justify-center pt-2">
+          <div
+            className="px-5 py-1.5 rounded-full text-xs font-black tracking-wider text-white shadow-md"
+            style={{ backgroundColor: myidColor }}
+          >
+            {status}
+          </div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-amber-500" />
-          <span className="text-[9px] text-muted-foreground">Atenção (4-6)</span>
+
+        {/* Two-column legend */}
+        <div className="grid grid-cols-2 gap-x-6 gap-y-0.5 mt-4 pt-3 border-t border-border/40">
+          <div className="text-[9px] text-muted-foreground">
+            <span className="font-bold text-foreground">NUMERADOR</span> = Demanda (↑ pior)
+          </div>
+          <div className="text-[9px] text-muted-foreground">
+            <span className="font-bold text-foreground">DENOMINADOR</span> = Capacidade (↑ melhor)
+          </div>
+          <div className="text-[9px] text-muted-foreground mt-1">Quanto <strong>MAIOR</strong> o MyID,</div>
+          <div className="text-[9px] text-muted-foreground mt-1"><strong>MAIOR</strong> a sobrecarga do sistema</div>
         </div>
-        <div className="flex items-center gap-1.5">
-          <div className="h-2 w-2 rounded-full bg-red-500" />
-          <span className="text-[9px] text-muted-foreground">Crítico (8-10)</span>
+
+        {/* Severity scale */}
+        <div className="flex items-center gap-1 mt-2">
+          <div className="h-2 flex-1 rounded-l-full" style={{ background: 'hsl(142, 70%, 45%)' }} />
+          <div className="h-2 flex-1" style={{ background: 'hsl(48, 90%, 50%)' }} />
+          <div className="h-2 flex-1" style={{ background: 'hsl(25, 90%, 50%)' }} />
+          <div className="h-2 flex-1 rounded-r-full" style={{ background: 'hsl(0, 85%, 45%)' }} />
+        </div>
+        <div className="flex justify-between text-[8px] text-muted-foreground font-medium">
+          <span>&lt;3 Favorável</span>
+          <span>3-6 Moderado</span>
+          <span>6-8 Crítico</span>
+          <span>&gt;8 Cronificação</span>
         </div>
       </div>
     </div>
