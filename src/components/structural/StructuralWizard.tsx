@@ -35,7 +35,9 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
   const completedUnits = useMemo(() => {
     return UNIT_CONFIGS.filter(cfg => {
       const unit = data.units[cfg.id];
-      return unit && unit.testsPerformed.some(t => t.performed);
+      if (!unit) return false;
+      // Unit is considered evaluated if score > 0 (slider) or any test has notes
+      return unit.score > 0 || unit.testsPerformed.some(t => t.performed || t.notes.length > 0);
     }).map(cfg => cfg.id);
   }, [data.units]);
 
