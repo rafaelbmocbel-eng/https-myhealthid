@@ -98,9 +98,9 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
             className="w-full"
           />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>0 = Crítico</span>
+            <span>0 = Sem Alteração</span>
             <span>5 = Moderado</span>
-            <span>10 = Excelente</span>
+            <span>10 = Crítico</span>
           </div>
         </div>
       </div>

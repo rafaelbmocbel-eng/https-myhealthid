@@ -19,10 +19,12 @@ const UNIT_COLORS: Record<string, { base: string; hover: string; active: string 
     'UA-4': { base: '#FFA07A', hover: '#F08A64', active: '#E0744E' },
 };
 
+// ESCALA INVERTIDA: 0=sem alteração (melhor), 10=crítico (pior)
 function getSeverityColor(score: number): string {
-    if (score >= 8) return '#22C55E';
-    if (score >= 6) return '#F59E0B';
-    if (score >= 4) return '#F97316';
+    if (score <= 2) return '#22C55E';
+    if (score <= 4) return '#84CC16';
+    if (score <= 6) return '#F59E0B';
+    if (score <= 8) return '#F97316';
     return '#EF4444';
 }
 
@@ -256,10 +258,11 @@ export default function BodyMapSelector({ units, activeUnitId, onSelectUnit }: P
                 <div className="flex lg:flex-col gap-2 flex-wrap justify-center">
                     <div className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider mb-1 hidden lg:block">Severidade</div>
                     {[
-                        { label: 'Excelente', color: '#22C55E', range: '8-10' },
-                        { label: 'Moderado', color: '#F59E0B', range: '6-8' },
-                        { label: 'Alerta', color: '#F97316', range: '4-6' },
-                        { label: 'Crítico', color: '#EF4444', range: '0-4' },
+                        { label: 'Sem Alteração', color: '#22C55E', range: '0-2' },
+                        { label: 'Leve', color: '#84CC16', range: '2-4' },
+                        { label: 'Moderado', color: '#F59E0B', range: '4-6' },
+                        { label: 'Alerta', color: '#F97316', range: '6-8' },
+                        { label: 'Crítico', color: '#EF4444', range: '8-10' },
                     ].map(item => (
                         <div key={item.label} className="flex items-center gap-1.5">
                             <div className="h-3 w-3 rounded-sm border" style={{ backgroundColor: item.color }} />

@@ -235,102 +235,184 @@ export interface EvidenceTest {
 
 export const EVIDENCE_TESTS: Record<string, EvidenceTest[]> = {
   'UC-1': [
-    { id: 'uc1_a1', name: 'Posicionamento Craniano', category: 'Postura', evidence: 'Verificar alinhamento orelha-ombro', optional: false, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Neutra', value: 10 }, { label: 'Anteriorizada 1-2cm', value: 6 }, { label: 'Anteriorizada >2cm', value: 2 }] },
-    { id: 'uc1_a2', name: 'Simetria Craniana', category: 'Postura', evidence: 'ASIS alinhadas, mandíbula simétrica', optional: false, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Simétrica', value: 8 }, { label: 'Desvio leve', value: 4 }, { label: 'Desvio severo', value: 0 }] },
-    { id: 'uc1_b1', name: 'ROM ATM (Abertura)', category: 'Mobilidade', evidence: '40-50mm normal | <30mm limitada', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: '40-50mm (Normal)', value: 4 }, { label: '30-40mm (Reduzida)', value: 2 }, { label: '<30mm (Limitada)', value: 0 }] },
-    { id: 'uc1_b2', name: 'ROM Cervical Global', category: 'Mobilidade', evidence: 'Flexão/Extensão/Rotação em todos os planos', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Normal (completo)', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 1 }] },
-    { id: 'uc1_c1', name: 'Palpação Muscular (ECM/Escalenos/Masseter)', category: 'Neuromuscular', evidence: 'Tônus, trigger points, assimetria', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Relaxados', value: 10 }, { label: 'Discretamente tensos', value: 5 }, { label: 'Hipertônico com TP', value: 0 }] },
-    { id: 'uc1_d1', name: 'Teste Dix-Hallpike', category: 'Vertigem', evidence: 'Especificidade 85-95% para VPPB', optional: true, difficulty: 'Médio', time: '3 min',
-      scoring: [{ label: 'Negativo', value: 2 }, { label: 'Leve positivo', value: 1 }, { label: 'Positivo com vertigem', value: 0 }] },
-    { id: 'uc1_d2', name: 'Função Laríngea', category: 'Visceral', evidence: 'Avaliação de voz e deglutição', optional: true, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Voz clara', value: 1 }, { label: 'Rouquidão leve', value: 0.5 }, { label: 'Rouquidão severa', value: 0 }] },
+    {
+      id: 'uc1_a1', name: 'Posicionamento Craniano', category: 'Postura', evidence: 'Verificar alinhamento orelha-ombro', optional: false, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Neutra', value: 10 }, { label: 'Anteriorizada 1-2cm', value: 6 }, { label: 'Anteriorizada >2cm', value: 2 }]
+    },
+    {
+      id: 'uc1_a2', name: 'Simetria Craniana', category: 'Postura', evidence: 'ASIS alinhadas, mandíbula simétrica', optional: false, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Simétrica', value: 8 }, { label: 'Desvio leve', value: 4 }, { label: 'Desvio severo', value: 0 }]
+    },
+    {
+      id: 'uc1_b1', name: 'ROM ATM (Abertura)', category: 'Mobilidade', evidence: '40-50mm normal | <30mm limitada', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: '40-50mm (Normal)', value: 4 }, { label: '30-40mm (Reduzida)', value: 2 }, { label: '<30mm (Limitada)', value: 0 }]
+    },
+    {
+      id: 'uc1_b2', name: 'ROM Cervical Global', category: 'Mobilidade', evidence: 'Flexão/Extensão/Rotação em todos os planos', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Normal (completo)', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 1 }]
+    },
+    {
+      id: 'uc1_c1', name: 'Palpação Muscular (ECM/Escalenos/Masseter)', category: 'Neuromuscular', evidence: 'Tônus, trigger points, assimetria', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Relaxados', value: 10 }, { label: 'Discretamente tensos', value: 5 }, { label: 'Hipertônico com TP', value: 0 }]
+    },
+    {
+      id: 'uc1_d1', name: 'Teste Dix-Hallpike', category: 'Vertigem', evidence: 'Especificidade 85-95% para VPPB', optional: true, difficulty: 'Médio', time: '3 min',
+      scoring: [{ label: 'Negativo', value: 2 }, { label: 'Leve positivo', value: 1 }, { label: 'Positivo com vertigem', value: 0 }]
+    },
+    {
+      id: 'uc1_d2', name: 'Função Laríngea', category: 'Visceral', evidence: 'Avaliação de voz e deglutição', optional: true, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Voz clara', value: 1 }, { label: 'Rouquidão leve', value: 0.5 }, { label: 'Rouquidão severa', value: 0 }]
+    },
   ],
   'UC-2': [
-    { id: 'uc2_a1', name: 'Avaliação de Cifose', category: 'Postura', evidence: 'Ângulo de Cobb torácico (gold standard)', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal (<40°)', value: 10 }, { label: 'Moderada (40-60°)', value: 5 }, { label: 'Severa (>60°)', value: 2 }] },
-    { id: 'uc2_a2', name: 'Expansão Torácica', category: 'Mobilidade', evidence: 'Normal ≥5cm diferença inspiração-expiração', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: '≥5cm (Normal)', value: 8 }, { label: '3-5cm (Reduzida)', value: 4 }, { label: '<3cm (Severa)', value: 0 }] },
-    { id: 'uc2_b1', name: 'Rotação Torácica', category: 'Mobilidade', evidence: 'Normal 30-50° cada lado', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida 20-40%', value: 3 }, { label: 'Reduzida >40%', value: 0 }] },
-    { id: 'uc2_c1', name: 'Palpação Intercostais/Diafragma', category: 'Neuromuscular', evidence: 'Tônus, restrição costal', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Sem restrição', value: 6 }, { label: 'Restrição leve', value: 3 }, { label: 'Restrição severa', value: 0 }] },
-    { id: 'uc2_d1', name: 'Padrão Respiratório', category: 'Visceral', evidence: 'Diafragmático vs Costal', optional: true, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Diafragmático', value: 4 }, { label: 'Misto', value: 2 }, { label: 'Costal puro', value: 0 }] },
+    {
+      id: 'uc2_a1', name: 'Avaliação de Cifose', category: 'Postura', evidence: 'Ângulo de Cobb torácico (gold standard)', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal (<40°)', value: 10 }, { label: 'Moderada (40-60°)', value: 5 }, { label: 'Severa (>60°)', value: 2 }]
+    },
+    {
+      id: 'uc2_a2', name: 'Expansão Torácica', category: 'Mobilidade', evidence: 'Normal ≥5cm diferença inspiração-expiração', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: '≥5cm (Normal)', value: 8 }, { label: '3-5cm (Reduzida)', value: 4 }, { label: '<3cm (Severa)', value: 0 }]
+    },
+    {
+      id: 'uc2_b1', name: 'Rotação Torácica', category: 'Mobilidade', evidence: 'Normal 30-50° cada lado', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida 20-40%', value: 3 }, { label: 'Reduzida >40%', value: 0 }]
+    },
+    {
+      id: 'uc2_c1', name: 'Palpação Intercostais/Diafragma', category: 'Neuromuscular', evidence: 'Tônus, restrição costal', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Sem restrição', value: 6 }, { label: 'Restrição leve', value: 3 }, { label: 'Restrição severa', value: 0 }]
+    },
+    {
+      id: 'uc2_d1', name: 'Padrão Respiratório', category: 'Visceral', evidence: 'Diafragmático vs Costal', optional: true, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Diafragmático', value: 4 }, { label: 'Misto', value: 2 }, { label: 'Costal puro', value: 0 }]
+    },
   ],
   'UC-3': [
-    { id: 'uc3_a1', name: 'Lordose Lombar', category: 'Postura', evidence: 'Avaliação da curvatura lombar', optional: false, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Normal', value: 8 }, { label: 'Hiperlordose leve', value: 4 }, { label: 'Hiperlordose severa', value: 0 }] },
-    { id: 'uc3_b1', name: 'Schober Modificado', category: 'Mobilidade', evidence: 'Gold standard flexão lombar (sens. 80%)', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: '≥5cm (Normal)', value: 6 }, { label: '3-5cm', value: 3 }, { label: '<3cm', value: 0 }] },
-    { id: 'uc3_c1', name: 'Teste de Lasègue (SLR)', category: 'Nervo', evidence: 'Sens. 80%, esp. 40% para hérnia', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Positivo >60°', value: 2 }, { label: 'Positivo <30°', value: 0 }] },
-    { id: 'uc3_c2', name: 'Teste Slump', category: 'Nervo', evidence: 'Sens. 84%, esp. 83%', optional: true, difficulty: 'Médio', time: '3 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve positivo', value: 2 }, { label: 'Positivo com irradiação', value: 0 }] },
-    { id: 'uc3_d1', name: 'Palpação Paravertebral Lombar', category: 'Neuromuscular', evidence: 'Tônus, espasmo, trigger points', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }] },
-    { id: 'uc3_e1', name: 'Patrick/FABER', category: 'Quadril/SIJ', evidence: 'Sens. 72% para SIJ', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 2 }, { label: 'Leve dor', value: 1 }, { label: 'Positivo', value: 0 }] },
+    {
+      id: 'uc3_a1', name: 'Lordose Lombar', category: 'Postura', evidence: 'Avaliação da curvatura lombar', optional: false, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Normal', value: 8 }, { label: 'Hiperlordose leve', value: 4 }, { label: 'Hiperlordose severa', value: 0 }]
+    },
+    {
+      id: 'uc3_b1', name: 'Schober Modificado', category: 'Mobilidade', evidence: 'Gold standard flexão lombar (sens. 80%)', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: '≥5cm (Normal)', value: 6 }, { label: '3-5cm', value: 3 }, { label: '<3cm', value: 0 }]
+    },
+    {
+      id: 'uc3_c1', name: 'Teste de Lasègue (SLR)', category: 'Nervo', evidence: 'Sens. 80%, esp. 40% para hérnia', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Positivo >60°', value: 2 }, { label: 'Positivo <30°', value: 0 }]
+    },
+    {
+      id: 'uc3_c2', name: 'Teste Slump', category: 'Nervo', evidence: 'Sens. 84%, esp. 83%', optional: true, difficulty: 'Médio', time: '3 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve positivo', value: 2 }, { label: 'Positivo com irradiação', value: 0 }]
+    },
+    {
+      id: 'uc3_d1', name: 'Palpação Paravertebral Lombar', category: 'Neuromuscular', evidence: 'Tônus, espasmo, trigger points', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }]
+    },
+    {
+      id: 'uc3_e1', name: 'Patrick/FABER', category: 'Quadril/SIJ', evidence: 'Sens. 72% para SIJ', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 2 }, { label: 'Leve dor', value: 1 }, { label: 'Positivo', value: 0 }]
+    },
   ],
   'UC-4': [
-    { id: 'uc4_a1', name: 'Alinhamento Pélvico', category: 'Postura', evidence: 'EIAS, cristas ilíacas, assimetria', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Simétrico', value: 8 }, { label: 'Assimetria leve', value: 4 }, { label: 'Assimetria severa', value: 0 }] },
-    { id: 'uc4_b1', name: 'Trendelenburg', category: 'Força Glútea', evidence: 'Sens. 65-75% fraqueza glútea', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 6 }, { label: 'Leve queda', value: 3 }, { label: 'Positivo', value: 0 }] },
-    { id: 'uc4_b2', name: 'Teste de Thomas', category: 'Flexibilidade', evidence: 'Gold standard encurtamento psoas', optional: false, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 6 }, { label: 'Encurtamento leve', value: 3 }, { label: 'Encurtamento severo', value: 0 }] },
-    { id: 'uc4_c1', name: 'Compressão/Distração SIJ', category: 'Articulação', evidence: 'Avaliação disfunção SIJ', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'uc4_d1', name: 'Avaliação Assoalho Pélvico', category: 'Visceral', evidence: 'Tônus e força do assoalho', optional: true, difficulty: 'Médio', time: '3 min',
-      scoring: [{ label: 'Normal', value: 4 }, { label: 'Fraqueza leve', value: 2 }, { label: 'Fraqueza severa', value: 0 }] },
+    {
+      id: 'uc4_a1', name: 'Alinhamento Pélvico', category: 'Postura', evidence: 'EIAS, cristas ilíacas, assimetria', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Simétrico', value: 8 }, { label: 'Assimetria leve', value: 4 }, { label: 'Assimetria severa', value: 0 }]
+    },
+    {
+      id: 'uc4_b1', name: 'Trendelenburg', category: 'Força Glútea', evidence: 'Sens. 65-75% fraqueza glútea', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 6 }, { label: 'Leve queda', value: 3 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'uc4_b2', name: 'Teste de Thomas', category: 'Flexibilidade', evidence: 'Gold standard encurtamento psoas', optional: false, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 6 }, { label: 'Encurtamento leve', value: 3 }, { label: 'Encurtamento severo', value: 0 }]
+    },
+    {
+      id: 'uc4_c1', name: 'Compressão/Distração SIJ', category: 'Articulação', evidence: 'Avaliação disfunção SIJ', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'uc4_d1', name: 'Avaliação Assoalho Pélvico', category: 'Visceral', evidence: 'Tônus e força do assoalho', optional: true, difficulty: 'Médio', time: '3 min',
+      scoring: [{ label: 'Normal', value: 4 }, { label: 'Fraqueza leve', value: 2 }, { label: 'Fraqueza severa', value: 0 }]
+    },
   ],
   'UA-1': [
-    { id: 'ua1_a1', name: 'ROM Ombro D', category: 'Mobilidade', evidence: 'Flexão, Abdução, Rotações', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }] },
-    { id: 'ua1_b1', name: 'Teste Hawkins', category: 'Impacto', evidence: 'Sens. 72%, esp. 93%', optional: true, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'ua1_b2', name: 'Teste O\'Brien (SLAP)', category: 'Labrum', evidence: 'Sens. 72%, esp. 96%', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'ua1_c1', name: 'Força Preensão (Dinamômetro)', category: 'Força', evidence: 'Gold standard força de mão', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida', value: 3 }, { label: 'Fraca', value: 0 }] },
-    { id: 'ua1_d1', name: 'Palpação Rotador Cuff', category: 'Neuromuscular', evidence: 'Tônus, dor, trigger points', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Sem dor', value: 6 }, { label: 'Dor leve', value: 3 }, { label: 'Dor severa/TP', value: 0 }] },
+    {
+      id: 'ua1_a1', name: 'ROM Ombro D', category: 'Mobilidade', evidence: 'Flexão, Abdução, Rotações', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }]
+    },
+    {
+      id: 'ua1_b1', name: 'Teste Hawkins', category: 'Impacto', evidence: 'Sens. 72%, esp. 93%', optional: true, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'ua1_b2', name: 'Teste O\'Brien (SLAP)', category: 'Labrum', evidence: 'Sens. 72%, esp. 96%', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'ua1_c1', name: 'Força Preensão (Dinamômetro)', category: 'Força', evidence: 'Gold standard força de mão', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida', value: 3 }, { label: 'Fraca', value: 0 }]
+    },
+    {
+      id: 'ua1_d1', name: 'Palpação Rotador Cuff', category: 'Neuromuscular', evidence: 'Tônus, dor, trigger points', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Sem dor', value: 6 }, { label: 'Dor leve', value: 3 }, { label: 'Dor severa/TP', value: 0 }]
+    },
   ],
   'UA-2': [
-    { id: 'ua2_a1', name: 'ROM Ombro E', category: 'Mobilidade', evidence: 'Flexão, Abdução, Rotações', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }] },
-    { id: 'ua2_b1', name: 'Teste Hawkins E', category: 'Impacto', evidence: 'Sens. 72%, esp. 93%', optional: true, difficulty: 'Baixo', time: '1 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'ua2_c1', name: 'Força Preensão E', category: 'Força', evidence: 'Gold standard força de mão', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida', value: 3 }, { label: 'Fraca', value: 0 }] },
-    { id: 'ua2_d1', name: 'Palpação Rotador Cuff E', category: 'Neuromuscular', evidence: 'Tônus, dor, trigger points', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Sem dor', value: 6 }, { label: 'Dor leve', value: 3 }, { label: 'Dor severa/TP', value: 0 }] },
+    {
+      id: 'ua2_a1', name: 'ROM Ombro E', category: 'Mobilidade', evidence: 'Flexão, Abdução, Rotações', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }]
+    },
+    {
+      id: 'ua2_b1', name: 'Teste Hawkins E', category: 'Impacto', evidence: 'Sens. 72%, esp. 93%', optional: true, difficulty: 'Baixo', time: '1 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve dor', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'ua2_c1', name: 'Força Preensão E', category: 'Força', evidence: 'Gold standard força de mão', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzida', value: 3 }, { label: 'Fraca', value: 0 }]
+    },
+    {
+      id: 'ua2_d1', name: 'Palpação Rotador Cuff E', category: 'Neuromuscular', evidence: 'Tônus, dor, trigger points', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Sem dor', value: 6 }, { label: 'Dor leve', value: 3 }, { label: 'Dor severa/TP', value: 0 }]
+    },
   ],
   'UA-3': [
-    { id: 'ua3_a1', name: 'ROM Quadril/Joelho D', category: 'Mobilidade', evidence: 'Flexão, extensão, rotações', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }] },
-    { id: 'ua3_b1', name: 'Lachman D', category: 'Joelho', evidence: 'Sens. 85%, esp. 95% para LCA', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve frouxidão', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'ua3_b2', name: 'McMurray D', category: 'Menisco', evidence: 'Sens. 50-70%, esp. 95%', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Dor leve', value: 2 }, { label: 'Positivo com click', value: 0 }] },
-    { id: 'ua3_c1', name: 'Tornozelo/Pé D', category: 'Mobilidade', evidence: 'Dorsiflexão, inversão, eversão', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzido', value: 3 }, { label: 'Limitado', value: 0 }] },
-    { id: 'ua3_d1', name: 'Palpação MID', category: 'Neuromuscular', evidence: 'Quadríceps, isquiotibiais, gastrocnêmio', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }] },
+    {
+      id: 'ua3_a1', name: 'ROM Quadril/Joelho D', category: 'Mobilidade', evidence: 'Flexão, extensão, rotações', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }]
+    },
+    {
+      id: 'ua3_b1', name: 'Lachman D', category: 'Joelho', evidence: 'Sens. 85%, esp. 95% para LCA', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve frouxidão', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'ua3_b2', name: 'McMurray D', category: 'Menisco', evidence: 'Sens. 50-70%, esp. 95%', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Dor leve', value: 2 }, { label: 'Positivo com click', value: 0 }]
+    },
+    {
+      id: 'ua3_c1', name: 'Tornozelo/Pé D', category: 'Mobilidade', evidence: 'Dorsiflexão, inversão, eversão', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzido', value: 3 }, { label: 'Limitado', value: 0 }]
+    },
+    {
+      id: 'ua3_d1', name: 'Palpação MID', category: 'Neuromuscular', evidence: 'Quadríceps, isquiotibiais, gastrocnêmio', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }]
+    },
   ],
   'UA-4': [
-    { id: 'ua4_a1', name: 'ROM Quadril/Joelho E', category: 'Mobilidade', evidence: 'Flexão, extensão, rotações', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }] },
-    { id: 'ua4_b1', name: 'Lachman E', category: 'Joelho', evidence: 'Sens. 85%, esp. 95% para LCA', optional: true, difficulty: 'Médio', time: '2 min',
-      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve frouxidão', value: 2 }, { label: 'Positivo', value: 0 }] },
-    { id: 'ua4_c1', name: 'Tornozelo/Pé E', category: 'Mobilidade', evidence: 'Dorsiflexão, inversão, eversão', optional: false, difficulty: 'Baixo', time: '2 min',
-      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzido', value: 3 }, { label: 'Limitado', value: 0 }] },
-    { id: 'ua4_d1', name: 'Palpação MIE', category: 'Neuromuscular', evidence: 'Quadríceps, isquiotibiais, gastrocnêmio', optional: false, difficulty: 'Baixo', time: '3 min',
-      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }] },
+    {
+      id: 'ua4_a1', name: 'ROM Quadril/Joelho E', category: 'Mobilidade', evidence: 'Flexão, extensão, rotações', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Normal', value: 8 }, { label: 'Reduzido 20-40%', value: 4 }, { label: 'Reduzido >40%', value: 0 }]
+    },
+    {
+      id: 'ua4_b1', name: 'Lachman E', category: 'Joelho', evidence: 'Sens. 85%, esp. 95% para LCA', optional: true, difficulty: 'Médio', time: '2 min',
+      scoring: [{ label: 'Negativo', value: 4 }, { label: 'Leve frouxidão', value: 2 }, { label: 'Positivo', value: 0 }]
+    },
+    {
+      id: 'ua4_c1', name: 'Tornozelo/Pé E', category: 'Mobilidade', evidence: 'Dorsiflexão, inversão, eversão', optional: false, difficulty: 'Baixo', time: '2 min',
+      scoring: [{ label: 'Normal', value: 6 }, { label: 'Reduzido', value: 3 }, { label: 'Limitado', value: 0 }]
+    },
+    {
+      id: 'ua4_d1', name: 'Palpação MIE', category: 'Neuromuscular', evidence: 'Quadríceps, isquiotibiais, gastrocnêmio', optional: false, difficulty: 'Baixo', time: '3 min',
+      scoring: [{ label: 'Sem tensão', value: 6 }, { label: 'Tensão moderada', value: 3 }, { label: 'Espasmo/TP', value: 0 }]
+    },
   ],
 };
 
@@ -386,24 +468,28 @@ export const UNIT_RELATIONSHIPS: Record<string, { direct: Omit<StructuralRelatio
 
 // ---- Funções de Cálculo ----
 
+// ESCALA INVERTIDA: 0 = Sem Alteração (melhor), 10 = Crítico (pior)
 export function classifyScore(score: number): string {
-  if (score >= 8) return 'EXCELENTE';
-  if (score >= 6) return 'MODERADO';
-  if (score >= 4) return 'ALERTA';
+  if (score <= 2) return 'SEM ALTERAÇÃO';
+  if (score <= 4) return 'LEVE';
+  if (score <= 6) return 'MODERADO';
+  if (score <= 8) return 'ALERTA';
   return 'CRÍTICO';
 }
 
 export function classifyScoreColor(score: number): string {
-  if (score >= 8) return 'text-emerald-600';
-  if (score >= 6) return 'text-amber-600';
-  if (score >= 4) return 'text-orange-600';
+  if (score <= 2) return 'text-emerald-600';
+  if (score <= 4) return 'text-green-500';
+  if (score <= 6) return 'text-amber-600';
+  if (score <= 8) return 'text-orange-600';
   return 'text-red-600';
 }
 
 export function classifyScoreBg(score: number): string {
-  if (score >= 8) return 'bg-emerald-50 border-emerald-200';
-  if (score >= 6) return 'bg-amber-50 border-amber-200';
-  if (score >= 4) return 'bg-orange-50 border-orange-200';
+  if (score <= 2) return 'bg-emerald-50 border-emerald-200';
+  if (score <= 4) return 'bg-green-50 border-green-200';
+  if (score <= 6) return 'bg-amber-50 border-amber-200';
+  if (score <= 8) return 'bg-orange-50 border-orange-200';
   return 'bg-red-50 border-red-200';
 }
 
@@ -437,21 +523,21 @@ export function mapRelationships(units: Record<string, UnitAssessment>): { direc
   const indirectRels: IndirectRelationship[] = [];
 
   for (const [unitId, assessment] of Object.entries(units)) {
-    if (assessment.score >= 8) continue; // healthy unit, skip relationships
+    if (assessment.score <= 2) continue; // healthy unit (0-2 = sem alteração), skip
     const rels = UNIT_RELATIONSHIPS[unitId];
     if (!rels) continue;
 
     for (const rel of rels.direct) {
       const targetAssessment = units[rel.target];
-      if (!targetAssessment || targetAssessment.score >= 8) continue;
-      const severity = assessment.score < 4 ? 'SEVERA' : assessment.score < 6 ? 'MODERADA' : 'LEVE';
+      if (!targetAssessment || targetAssessment.score <= 2) continue;
+      const severity = assessment.score >= 8 ? 'SEVERA' : assessment.score >= 5 ? 'MODERADA' : 'LEVE';
       directRels.push({ ...rel, severity, interventionPriority: directRels.length + 1 });
     }
 
     for (const rel of rels.indirect) {
       const targetAssessment = units[rel.target];
-      if (!targetAssessment || targetAssessment.score >= 8) continue;
-      const severity = assessment.score < 4 ? 'SEVERA' : assessment.score < 6 ? 'MODERADA' : 'LEVE';
+      if (!targetAssessment || targetAssessment.score <= 2) continue;
+      const severity = assessment.score >= 8 ? 'SEVERA' : assessment.score >= 5 ? 'MODERADA' : 'LEVE';
       indirectRels.push({ ...rel, severity });
     }
   }
@@ -461,28 +547,28 @@ export function mapRelationships(units: Record<string, UnitAssessment>): { direc
 
 export function identifyPrimaryDriver(units: Record<string, UnitAssessment>): string | null {
   let worst: string | null = null;
-  let worstScore = 10;
+  let worstScore = -1;
   for (const [id, u] of Object.entries(units)) {
-    if (u.score < worstScore) {
+    if (u.score > worstScore) {
       worstScore = u.score;
       worst = id;
     }
   }
-  return worst;
+  return worstScore > 2 ? worst : null; // only return if there's actual compromise
 }
 
 export function generateClinicalPriorities(units: Record<string, UnitAssessment>): ClinicalPriority[] {
   const sorted = Object.entries(units)
-    .filter(([, u]) => u.score < 7)
-    .sort(([, a], [, b]) => a.score - b.score);
+    .filter(([, u]) => u.score > 2) // score > 2 means there's compromise
+    .sort(([, a], [, b]) => b.score - a.score); // highest score = worst = first priority
 
   return sorted.map(([id, u], i) => ({
     priority: i + 1,
     unitId: id,
     score: u.score,
-    action: u.score < 4 ? 'Release + mobilidade + reeducação' : u.score < 6 ? 'Estabilização + fortalecimento' : 'Manutenção + prevenção',
-    durationWeeks: u.score < 4 ? 3 : u.score < 6 ? 4 : 2,
-    expectedImprovement: `${id} > ${Math.min(10, u.score + 2).toFixed(1)}`,
+    action: u.score >= 8 ? 'Release + mobilidade + reeducação' : u.score >= 5 ? 'Estabilização + fortalecimento' : 'Manutenção + prevenção',
+    durationWeeks: u.score >= 8 ? 3 : u.score >= 5 ? 4 : 2,
+    expectedImprovement: `${id} → ${Math.max(0, u.score - 2).toFixed(1)}`,
   }));
 }
 
@@ -492,7 +578,7 @@ export function createDefaultAssessment(): StructuralAssessmentData {
     units[cfg.id] = {
       unitId: cfg.id,
       score: 0,
-      classification: 'CRÍTICO',
+      classification: 'SEM ALTERAÇÃO',
       testsPerformed: (EVIDENCE_TESTS[cfg.id] || []).map(t => ({
         testId: t.id,
         testName: t.name,
@@ -518,7 +604,7 @@ export function createDefaultAssessment(): StructuralAssessmentData {
     primaryDriver: null,
     dysfunctionChain: [],
     scoreStructuralGeneral: 0,
-    classification: 'CRÍTICO',
+    classification: 'SEM ALTERAÇÃO',
     clinicalPriorities: [],
   };
 }

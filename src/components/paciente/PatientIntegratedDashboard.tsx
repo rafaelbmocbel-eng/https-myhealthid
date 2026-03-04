@@ -13,6 +13,8 @@ import {
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
+import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
+import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
@@ -83,6 +85,24 @@ export default function PatientIntegratedDashboard({
       return [];
     },
   });
+
+  // ── Structural assessment data
+  const { data: structuralAvaliacoes = [] } = useQuery({
+    queryKey: ['integrated-structural', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_identidade')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .not('dados_estruturais', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  const structuralData = structuralAvaliacoes[0]?.dados_estruturais as StructuralAssessmentData | null;
 
   const lastServiceEntry = serviceData[0] as any;
 
@@ -243,6 +263,47 @@ export default function PatientIntegratedDashboard({
             <MyIDFormulaDisplay scores={scores} myidScore={myidScore} />
           )}
         </>
+      )}
+
+      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL ─── */}
+      {structuralData && (
+        <Card className="shadow-sm overflow-hidden">
+          <CardContent className="p-5">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
+                <Activity className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-black text-lg text-foreground">Avaliação Estrutural</h3>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">8 Unidades Funcionais</p>
+              </div>
+              <div className="ml-auto text-right">
+                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral))}>
+                  {structuralData.scoreStructuralGeneral.toFixed(1)}
+                </div>
+                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral)}</div>
+              </div>
+            </div>
+
+            {/* Unit scores grid */}
+            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4">
+              {UNIT_CONFIGS.map(cfg => {
+                const unit = structuralData.units[cfg.id];
+                const score = unit?.score || 0;
+                return (
+                  <div key={cfg.id} className="text-center p-1.5 rounded-lg bg-muted/40">
+                    <div className="text-xs">{cfg.emoji}</div>
+                    <div className={cn('text-sm font-black', classifyScoreColor(score))}>{score.toFixed(1)}</div>
+                    <div className="text-[8px] text-muted-foreground font-bold">{cfg.id}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Connection Map */}
+            <StructuralConnectionMap data={structuralData} />
+          </CardContent>
+        </Card>
       )}
 
       {/* ─── SEÇÃO 2: AVALIAÇÃO ESPECÍFICA DO SERVIÇO ─── */}
