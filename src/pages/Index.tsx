@@ -1,26 +1,27 @@
-import { Link, Navigate } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
   ClipboardList, Clock, Plus, Loader2, BarChart3, TrendingUp,
   CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
   Zap, Shield, Gauge, MapPin, Stethoscope, Dumbbell, BedDouble,
-  Battery, Briefcase, Sparkles, Link as LinkIcon
+  Battery, Briefcase, Sparkles, Link as LinkIcon, X, UserPlus, MessageCircle
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AmostraEpidemiologica from '@/components/dashboard/AmostraEpidemiologica';
-import { format, parseISO, startOfDay, endOfDay } from 'date-fns';
+import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
+  const navigate = useNavigate();
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
@@ -261,7 +262,38 @@ export default function Index() {
   });
 
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
+  const [isFabOpen, setIsFabOpen] = useState(false);
+  const fabRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (fabRef.current && !fabRef.current.contains(e.target as Node)) setIsFabOpen(false);
+    };
+    if (isFabOpen) document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isFabOpen]);
+
+  const { data: atividadesRecentes = [] } = useQuery({
+    queryKey: ['atividades-recentes', user?.id],
+    queryFn: async () => {
+      const sevenDaysAgo = subDays(new Date(), 7).toISOString();
+      const [agResult, avalIdResult, avalCobResult, pacResult] = await Promise.all([
+        supabase.from('agendamentos').select('id, data_inicio, status, tipo_atendimento, created_at, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
+        supabase.from('avaliacoes_identidade').select('id, created_at, classificacao, paciente_id, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
+        supabase.from('avaliacoes_cob_zero').select('id, created_at, paciente_id, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
+        supabase.from('pacientes').select('id, nome, sobrenome, created_at').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
+      ]);
+      type ActivityItem = { id: string; type: 'agendamento' | 'avaliacao_id' | 'avaliacao_cob' | 'novo_paciente'; description: string; pacienteNome: string; pacienteId?: string; timestamp: string; icon: 'calendar' | 'clipboard' | 'align' | 'user-plus' };
+      const items: ActivityItem[] = [];
+      (agResult.data || []).forEach((a: any) => items.push({ id: `ag-${a.id}`, type: 'agendamento', description: `${a.tipo_atendimento || 'Consulta'} ${a.status === 'concluido' ? 'concluída' : a.status === 'cancelado' ? 'cancelada' : 'agendada'}`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.pacientes?.id, timestamp: a.created_at, icon: 'calendar' }));
+      (avalIdResult.data || []).forEach((a: any) => items.push({ id: `avi-${a.id}`, type: 'avaliacao_id', description: `Avaliação Identidade${a.classificacao ? ` — ${a.classificacao}` : ''} concluída`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'clipboard' }));
+      (avalCobResult.data || []).forEach((a: any) => items.push({ id: `avc-${a.id}`, type: 'avaliacao_cob', description: 'Avaliação COB° concluída', pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'align' }));
+      (pacResult.data || []).forEach((p: any) => items.push({ id: `pac-${p.id}`, type: 'novo_paciente', description: 'Novo paciente cadastrado', pacienteNome: `${p.nome} ${p.sobrenome}`, pacienteId: p.id, timestamp: p.created_at, icon: 'user-plus' }));
+      return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
+    },
+    enabled: !!user,
+  });
 
   const handleGerarLinkMyID = async () => {
     if (!user) return;
@@ -342,12 +374,6 @@ export default function Index() {
             { label: 'Pacientes Totais', value: pacientes.length, icon: Users, color: 'text-primary' },
             { label: 'Atendimentos Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
             { label: 'Avaliações Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, color: 'text-amber-600' },
-            {
-              label: 'Próximo Atendimento',
-              value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—',
-              icon: Clock,
-              color: 'text-blue-600',
-            },
           ].map(stat => {
             const Icon = stat.icon;
             return (
@@ -358,6 +384,23 @@ export default function Index() {
               </div>
             );
           })}
+          {/* Próximo Atendimento — enriched */}
+          <div
+            className={`clinical-card text-center p-4 ${proximoAtendimento ? 'cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all' : ''}`}
+            onClick={() => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
+          >
+            <Clock className="h-6 w-6 mx-auto mb-2 text-blue-600" />
+            <div className="text-2xl font-black text-foreground">
+              {proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—'}
+            </div>
+            {proximoAtendimento?.pacientes ? (
+              <div className="text-xs text-blue-600 font-semibold mt-1 truncate">
+                {(proximoAtendimento as any).pacientes.nome} {(proximoAtendimento as any).pacientes.sobrenome}
+              </div>
+            ) : (
+              <div className="text-xs text-muted-foreground mt-1 leading-tight">Próximo Atendimento</div>
+            )}
+          </div>
         </div>
 
         {/* Main modules */}
@@ -519,6 +562,47 @@ export default function Index() {
                         'bg-slate-100 text-slate-600'
                       }`}>
                       {ag.status}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Feed de Atividades Recentes */}
+        {atividadesRecentes.length > 0 && (
+          <div className="clinical-card mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-lg">
+                  <Activity className="h-4.5 w-4.5 text-white" />
+                </div>
+                <h2 className="font-bold text-foreground">Últimas Atividades</h2>
+              </div>
+              <Button asChild variant="ghost" size="sm" className="text-primary">
+                <Link to="/pacientes">Ver tudo <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+              </Button>
+            </div>
+            <div className="space-y-1.5">
+              {atividadesRecentes.map((item: any) => {
+                const ActivityIcon = item.icon === 'calendar' ? CalendarDays : item.icon === 'clipboard' ? ClipboardList : item.icon === 'align' ? AlignCenter : UserPlus;
+                const colorMap: Record<string, string> = { calendar: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', clipboard: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400', align: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400', 'user-plus': 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400' };
+                return (
+                  <div
+                    key={item.id}
+                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/10 transition-all cursor-pointer"
+                    onClick={() => item.pacienteId && navigate(`/pacientes/${item.pacienteId}`)}
+                  >
+                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${colorMap[item.icon] || 'bg-slate-100 text-slate-600'}`}>
+                      <ActivityIcon className="h-4 w-4" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">{item.pacienteNome}</div>
+                      <div className="text-xs text-muted-foreground truncate">{item.description}</div>
+                    </div>
+                    <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                      {formatDistanceToNow(parseISO(item.timestamp), { addSuffix: true, locale: ptBR })}
                     </div>
                   </div>
                 );
@@ -818,26 +902,49 @@ export default function Index() {
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap gap-3">
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/pacientes"><Plus className="h-4 w-4" /> Novo Paciente</Link>
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/agenda"><CalendarDays className="h-4 w-4" /> Agendar</Link>
-          </Button>
-          <Button asChild variant="outline" className="gap-2">
-            <Link to="/metodo-identidade"><ClipboardList className="h-4 w-4" /> Nova Avaliação</Link>
-          </Button>
-          <div className="flex-1" />
-          <Button
-            onClick={handleGerarLinkMyID}
-            disabled={isGeneratingLink}
-            className="gap-2 bg-slate-900 hover:bg-slate-800 text-white"
-          >
-            {isGeneratingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <LinkIcon className="h-4 w-4" />}
-            Gerar Link MyID
-          </Button>
-        </div>
+      </div>
+
+      {/* Quick Action FAB */}
+      <div ref={fabRef} className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-2">
+        {isFabOpen && (
+          <div className="flex flex-col gap-2 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+            {[
+              { label: 'Novo Paciente', icon: UserPlus, to: '/pacientes', gradient: 'from-primary to-rose-500' },
+              { label: 'Agendar', icon: CalendarDays, to: '/agenda', gradient: 'from-amber-500 to-orange-500' },
+              { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
+              { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },
+            ].map(item => (
+              <div key={item.label} className="flex items-center gap-2">
+                <span className="px-3 py-1.5 rounded-lg bg-card border shadow-lg text-xs font-medium text-foreground whitespace-nowrap">
+                  {item.label}
+                </span>
+                {item.to ? (
+                  <Link
+                    to={item.to}
+                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform`}
+                  >
+                    <item.icon className="h-5 w-5 text-white" />
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => { item.action?.(); setIsFabOpen(false); }}
+                    disabled={isGeneratingLink}
+                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform disabled:opacity-50`}
+                  >
+                    {isGeneratingLink ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <item.icon className="h-5 w-5 text-white" />}
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+        <button
+          onClick={() => setIsFabOpen(prev => !prev)}
+          className={`h-14 w-14 rounded-full bg-gradient-to-br from-primary to-rose-600 flex items-center justify-center shadow-2xl hover:scale-105 transition-all duration-200 ${isFabOpen ? 'rotate-45' : ''}`}
+          aria-label="Ações rápidas"
+        >
+          {isFabOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-7 w-7 text-white" />}
+        </button>
       </div>
     </AppLayout>
   );

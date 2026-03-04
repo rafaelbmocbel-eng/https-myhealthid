@@ -3,8 +3,8 @@ import { Label } from '@/components/ui/label';
 import { Slider } from '@/components/ui/slider';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
-import { StructuralPreferences, TECHNIQUE_OPTIONS, AVERSION_OPTIONS, MEDICAL_HISTORY_OPTIONS } from '@/types/structural';
-import { Heart, Shield, Stethoscope } from 'lucide-react';
+import { StructuralPreferences, TECHNIQUE_OPTIONS, AVERSION_OPTIONS } from '@/types/structural';
+import { Heart, Shield } from 'lucide-react';
 
 interface Props {
   data: StructuralPreferences;
@@ -63,24 +63,7 @@ export default function StructuralPreferencesStep({ data, onChange }: Props) {
         </div>
       </div>
 
-      {/* Histórico Médico */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-3">
-          <Stethoscope className="h-4 w-4 text-amber-600" />
-          <Label className="font-semibold">Histórico Médico Relevante</Label>
-        </div>
-        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-          {MEDICAL_HISTORY_OPTIONS.map(opt => (
-            <div key={opt} className="flex items-center gap-2">
-              <Checkbox
-                checked={data.medicalHistory.includes(opt)}
-                onCheckedChange={() => onChange({ ...data, medicalHistory: toggle(data.medicalHistory, opt) })}
-              />
-              <Label className="text-sm cursor-pointer">{opt}</Label>
-            </div>
-          ))}
-        </div>
-      </div>
+
 
       {/* Dor Tolerável */}
       <div className="clinical-card">

@@ -15,6 +15,7 @@ import {
 import StructuralPreferencesStep from './StructuralPreferencesStep';
 import StructuralUnitStep from './StructuralUnitStep';
 import StructuralResultsSummary from './StructuralResultsSummary';
+import BodyMapSelector from './BodyMapSelector';
 
 // Steps: 0=Preferences, 1-8=Units, 9=Results
 const TOTAL_STEPS = 10;
@@ -66,6 +67,11 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
     setStep(s => Math.max(s - 1, 0));
   }, [step, onBack]);
 
+  const handleBodyMapSelect = useCallback((unitId: string) => {
+    const unitIdx = UNIT_CONFIGS.findIndex(c => c.id === unitId);
+    if (unitIdx >= 0) setStep(unitIdx + 1); // +1 because step 0 = preferences
+  }, []);
+
   const progress = ((step + 1) / TOTAL_STEPS) * 100;
 
   const isResultsStep = step === TOTAL_STEPS - 1;
@@ -102,7 +108,7 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
               className={cn(
                 'shrink-0 flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg border text-xs transition-all snap-start',
                 isActive ? 'border-primary bg-primary/10 font-semibold' :
-                isDone ? 'border-emerald-200 bg-emerald-50' : 'border-border hover:border-primary/30'
+                  isDone ? 'border-emerald-200 bg-emerald-50' : 'border-border hover:border-primary/30'
               )}
             >
               {isDone ? (
@@ -126,25 +132,44 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
       {/* Content */}
       <div className="animate-slide-in">
         {step === 0 && (
-          <StructuralPreferencesStep
-            data={data.preferences}
-            onChange={prefs => setData(d => ({ ...d, preferences: prefs }))}
-          />
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <StructuralPreferencesStep
+              data={data.preferences}
+              onChange={prefs => setData(d => ({ ...d, preferences: prefs }))}
+            />
+            <BodyMapSelector
+              units={data.units}
+              onSelectUnit={handleBodyMapSelect}
+            />
+          </div>
         )}
         {step >= 1 && step <= 8 && (() => {
           const unitIdx = step - 1;
           const cfg = UNIT_CONFIGS[unitIdx];
           const assessment = data.units[cfg.id];
           return (
-            <StructuralUnitStep
-              key={cfg.id}
-              unitConfig={cfg}
-              assessment={assessment}
-              onChange={updated => setData(d => ({
-                ...d,
-                units: { ...d.units, [cfg.id]: updated },
-              }))}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+              <div className="lg:col-span-2">
+                <StructuralUnitStep
+                  key={cfg.id}
+                  unitConfig={cfg}
+                  assessment={assessment}
+                  onChange={updated => setData(d => ({
+                    ...d,
+                    units: { ...d.units, [cfg.id]: updated },
+                  }))}
+                />
+              </div>
+              <div className="hidden lg:block">
+                <div className="sticky top-24">
+                  <BodyMapSelector
+                    units={data.units}
+                    activeUnitId={cfg.id}
+                    onSelectUnit={handleBodyMapSelect}
+                  />
+                </div>
+              </div>
+            </div>
           );
         })()}
         {isResultsStep && <StructuralResultsSummary data={data} />}

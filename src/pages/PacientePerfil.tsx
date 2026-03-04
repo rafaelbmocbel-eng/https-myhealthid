@@ -15,7 +15,7 @@ import {
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
 } from 'lucide-react';
-import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday } from 'date-fns';
+import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
@@ -248,7 +248,7 @@ export default function PacientePerfil() {
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-5xl px-3 sm:px-6">
-        {/* Header */}
+        {/* Rich Header */}
         <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
           <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-1 shrink-0" onClick={() => navigate('/pacientes')}>
             <ArrowLeft className="h-4 w-4" />
@@ -257,7 +257,15 @@ export default function PacientePerfil() {
             {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
           </div>
           <div className="flex-1 min-w-0">
-            <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
+              {paciente.telefone && (
+                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#25D366] hover:bg-[#25D366]/10 shrink-0" title="WhatsApp"
+                  onClick={() => window.open(`https://wa.me/55${paciente.telefone?.replace(/\D/g, '')}`, '_blank')}>
+                  <MessageCircle className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {(paciente._servicos as string[]).map((s: string) => {
                 const cfg = SERVICOS_MAP[s];
@@ -274,42 +282,107 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* Info Cards */}
+        {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-          {paciente.email && (
-            <div className="clinical-card !p-3 flex items-center gap-2">
-              <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground truncate">{paciente.email}</span>
+          {/* Idade */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Idade</span>
             </div>
-          )}
-          {paciente.telefone && (
-            <div className="clinical-card !p-3 flex items-center gap-2">
-              <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground">{paciente.telefone}</span>
+            <div className="text-lg font-bold">
+              {idade !== null ? `${idade} anos` : '—'}
             </div>
-          )}
-          {paciente.data_nascimento && (
-            <div className="clinical-card !p-3 flex items-center gap-2">
-              <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground">
-                {format(parseISO(paciente.data_nascimento), 'dd/MM/yyyy', { locale: ptBR })}
-                {idade !== null && ` (${idade} anos)`}
-              </span>
+            {paciente.data_nascimento && (
+              <span className="text-[10px] text-muted-foreground">{format(parseISO(paciente.data_nascimento), 'dd/MM/yyyy')}</span>
+            )}
+          </div>
+
+          {/* Tempo de acompanhamento */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Acompanhamento</span>
             </div>
-          )}
-          {paciente.genero && (
-            <div className="clinical-card !p-3 flex items-center gap-2">
-              <User className="h-4 w-4 text-muted-foreground shrink-0" />
-              <span className="text-xs text-muted-foreground capitalize">{paciente.genero}</span>
+            <div className="text-lg font-bold">
+              {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR })}
+            </div>
+            <span className="text-[10px] text-muted-foreground">Desde {format(parseISO(paciente.created_at), 'dd/MM/yyyy')}</span>
+          </div>
+
+          {/* Total de avaliações */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Avaliações</span>
+            </div>
+            <div className="text-lg font-bold">
+              {avaliacoesId.length + avaliacoesCob.length}
+            </div>
+            <div className="flex gap-2">
+              {avaliacoesId.length > 0 && <span className="text-[10px] text-primary">{avaliacoesId.length} ID</span>}
+              {avaliacoesCob.length > 0 && <span className="text-[10px] text-blue-600">{avaliacoesCob.length} COB°</span>}
+              {avaliacoesId.length + avaliacoesCob.length === 0 && <span className="text-[10px] text-muted-foreground">Nenhuma</span>}
+            </div>
+          </div>
+
+          {/* Próxima consulta */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Próxima Consulta</span>
+            </div>
+            {agendamentosFuturos.length > 0 ? (
+              <>
+                <div className="text-lg font-bold">
+                  {format(parseISO(agendamentosFuturos[agendamentosFuturos.length - 1].data_inicio), 'dd/MM', { locale: ptBR })}
+                </div>
+                <span className="text-[10px] text-muted-foreground">
+                  {format(parseISO(agendamentosFuturos[agendamentosFuturos.length - 1].data_inicio), "HH:mm", { locale: ptBR })}
+                </span>
+              </>
+            ) : (
+              <div className="text-lg font-bold text-muted-foreground">—</div>
+            )}
+          </div>
+        </div>
+
+        {/* Contact + Notes */}
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
+          {/* Contact info */}
+          <div className="clinical-card !p-3">
+            <div className="space-y-1.5">
+              {paciente.telefone && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span>{paciente.telefone}</span>
+                </div>
+              )}
+              {paciente.email && (
+                <div className="flex items-center gap-2 text-xs">
+                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="truncate">{paciente.email}</span>
+                </div>
+              )}
+              {paciente.genero && (
+                <div className="flex items-center gap-2 text-xs">
+                  <User className="h-3.5 w-3.5 text-muted-foreground" />
+                  <span className="capitalize">{paciente.genero}</span>
+                </div>
+              )}
+            </div>
+          </div>
+          {/* Observations */}
+          {paciente.observacoes && (
+            <div className="clinical-card !p-3">
+              <div className="flex items-center gap-2 mb-1">
+                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                <span className="text-[10px] text-muted-foreground uppercase font-semibold">Observações</span>
+              </div>
+              <p className="text-xs text-muted-foreground">{paciente.observacoes}</p>
             </div>
           )}
         </div>
-
-        {paciente.observacoes && (
-          <div className="clinical-card !p-3 mb-6">
-            <p className="text-xs text-muted-foreground">{paciente.observacoes}</p>
-          </div>
-        )}
 
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue="avaliacoes">
@@ -674,38 +747,38 @@ export default function PacientePerfil() {
                 {protocolos.map((proto: any) => {
                   const tratamentos = (tratamentosMap as Record<string, any[]>)[proto.id] || [];
 
-                    const isExpanded = tratamentoAberto === proto.id;
-                    const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
-                    const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
-                    const FASE_CORES_TEXT = ['text-indigo-700', 'text-amber-700', 'text-emerald-700', 'text-red-700'];
-                    const FASE_CORES_BADGE = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500'];
-                    const CAT_LABELS: Record<string, { icon: string; label: string }> = {
-                      terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
-                      eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
-                      exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
-                      tracao: { icon: '🔗', label: 'Tração' },
-                      outros: { icon: '🧊', label: 'Outras Técnicas' },
-                    };
-                    const EVIDENCIA_BADGE: Record<string, { label: string; cls: string }> = {
-                      A: { label: 'Evidência A', cls: 'bg-emerald-100 text-emerald-700' },
-                      B: { label: 'Evidência B', cls: 'bg-blue-100 text-blue-700' },
-                      C: { label: 'Evidência C', cls: 'bg-amber-100 text-amber-700' },
-                    };
-                    const COMPLEXIDADE_BADGE: Record<string, { label: string; cls: string }> = {
-                      basica: { label: 'Básica', cls: 'bg-emerald-100 text-emerald-700' },
-                      intermediaria: { label: 'Intermediária', cls: 'bg-amber-100 text-amber-700' },
-                      avancada: { label: 'Avançada', cls: 'bg-red-100 text-red-700' },
-                    };
+                  const isExpanded = tratamentoAberto === proto.id;
+                  const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
+                  const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
+                  const FASE_CORES_TEXT = ['text-indigo-700', 'text-amber-700', 'text-emerald-700', 'text-red-700'];
+                  const FASE_CORES_BADGE = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500'];
+                  const CAT_LABELS: Record<string, { icon: string; label: string }> = {
+                    terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
+                    eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
+                    exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
+                    tracao: { icon: '🔗', label: 'Tração' },
+                    outros: { icon: '🧊', label: 'Outras Técnicas' },
+                  };
+                  const EVIDENCIA_BADGE: Record<string, { label: string; cls: string }> = {
+                    A: { label: 'Evidência A', cls: 'bg-emerald-100 text-emerald-700' },
+                    B: { label: 'Evidência B', cls: 'bg-blue-100 text-blue-700' },
+                    C: { label: 'Evidência C', cls: 'bg-amber-100 text-amber-700' },
+                  };
+                  const COMPLEXIDADE_BADGE: Record<string, { label: string; cls: string }> = {
+                    basica: { label: 'Básica', cls: 'bg-emerald-100 text-emerald-700' },
+                    intermediaria: { label: 'Intermediária', cls: 'bg-amber-100 text-amber-700' },
+                    avancada: { label: 'Avançada', cls: 'bg-red-100 text-red-700' },
+                  };
 
-                    // Group by fase
-                    const porFase: Record<number, any[]> = {};
-                    tratamentos.forEach((t: any) => {
-                      const f = t.fase_numero || 1;
-                      if (!porFase[f]) porFase[f] = [];
-                      porFase[f].push(t);
-                    });
+                  // Group by fase
+                  const porFase: Record<number, any[]> = {};
+                  tratamentos.forEach((t: any) => {
+                    const f = t.fase_numero || 1;
+                    if (!porFase[f]) porFase[f] = [];
+                    porFase[f].push(t);
+                  });
 
-                    return (
+                  return (
                     <div key={proto.id} className="clinical-card !p-4">
                       <div className="flex items-center gap-3">
                         <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">

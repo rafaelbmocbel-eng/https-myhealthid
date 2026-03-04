@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation } from 'lucide-react';
+import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -18,6 +18,8 @@ import type { MyIDResult as MyIDResultType } from '@/types/myid';
 import { MyIDWizard } from '../myid/MyIDWizard';
 import PatientIntegratedDashboard from './PatientIntegratedDashboard';
 import { MyIDResult } from '../myid/MyIDResult';
+import StructuralWizard from '../structural/StructuralWizard';
+import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 
 interface Paciente {
   id: string;
@@ -264,6 +266,23 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   });
 
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
+  const [showStructural, setShowStructural] = useState(false);
+  const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
+
+  // Buscar avaliações estruturais salvas
+  const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
+    queryKey: ['structural-avaliacoes', paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_identidade')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .not('dados_estruturais', 'is', null)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+  });
 
   return (
     <div className="space-y-6">
@@ -376,45 +395,142 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         </TabsContent>
 
         <TabsContent value="myid" className="mt-4">
-          {iniciandoMyID ? (
-            <div className="bg-white rounded-xl shadow-sm border p-4 relative">
-              <Button variant="ghost" className="mb-4 absolute top-2 right-2" size="sm" onClick={() => setIniciandoMyID(false)}>Voltar</Button>
-              <MyIDWizard onComplete={async (result, rawData) => {
-                await supabase.from('myid_avaliacoes').insert({
-                  terapeuta_id: user?.id,
-                  paciente_id: paciente.id,
-                  status: 'concluido',
-                  respostas_brutas: rawData,
-                  resultado_processado: result,
-                });
-                refetchMyID();
-                setIniciandoMyID(false);
-                toast({ title: 'MyID Salvo!', description: 'Avaliação registrada com sucesso.' });
-              }} />
-            </div>
-          ) : myidAvaliacoes.length > 0 ? (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
-                <div>
-                  <h3 className="font-bold text-lg text-primary">Último MyID ({format(new Date(myidAvaliacoes[0].created_at), 'dd/MM/yyyy')})</h3>
-                  <p className="text-sm text-gray-500">Resultado da impressão digital sistêmica.</p>
+          <div className="space-y-6">
+            {/* ── Avaliação Estrutural (Unidades Corporais) ── */}
+            {showStructural ? (
+              <StructuralWizard
+                initialData={structuralData}
+                onComplete={async (sData) => {
+                  setStructuralData(sData);
+                  setShowStructural(false);
+                  // Salvar no Supabase
+                  try {
+                    await supabase.from('avaliacoes_identidade').insert({
+                      paciente_id: paciente.id,
+                      terapeuta_id: user?.id,
+                      dados_estruturais: sData as any,
+                      score_e: sData.scoreStructuralGeneral,
+                      data_avaliacao: new Date().toLocaleDateString('pt-BR'),
+                    });
+                    refetchStructural();
+                    toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${sData.scoreStructuralGeneral.toFixed(1)}` });
+                  } catch (e: any) {
+                    toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+                  }
+                }}
+                onBack={() => setShowStructural(false)}
+              />
+            ) : (
+              <div className="clinical-card">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+                      <Activity className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Avaliação Estrutural — Unidades ID</h3>
+                      <p className="text-xs text-muted-foreground">8 Unidades Funcionais · Testes baseados em evidências</p>
+                    </div>
+                  </div>
+                  <Button
+                    onClick={() => setShowStructural(true)}
+                    className="bg-identidade hover:bg-identidade/90 text-white gap-2"
+                  >
+                    <Activity className="h-4 w-4" />
+                    {structuralAvaliacoes.length > 0 ? 'Nova Avaliação' : 'Iniciar Avaliação'}
+                  </Button>
                 </div>
-                <Button onClick={() => setIniciandoMyID(true)}>Refazer Avaliação</Button>
+
+                {structuralAvaliacoes.length > 0 ? (
+                  <div className="space-y-3">
+                    {structuralAvaliacoes.slice(0, 2).map((av: any, idx: number) => {
+                      const dados = av.dados_estruturais as StructuralAssessmentData | null;
+                      if (!dados) return null;
+                      const score = dados.scoreStructuralGeneral || Number(av.score_e) || 0;
+                      return (
+                        <div key={av.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border">
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação'}</span>
+                              <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
+                                {dados.units && Object.entries(dados.units).slice(0, 4).map(([unitId, unit]: [string, any]) => {
+                                  const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
+                                  return (
+                                    <span key={unitId} className="flex items-center gap-0.5">
+                                      {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{unit.score.toFixed(1)}</span>
+                                    </span>
+                                  );
+                                })}
+                                {dados.units && Object.keys(dados.units).length > 4 && (
+                                  <span className="text-muted-foreground">+{Object.keys(dados.units).length - 4}</span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{score.toFixed(1)}</div>
+                            <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma avaliação estrutural registrada</p>
+                    <p className="text-xs mt-1">Avalie as 8 unidades corporais do paciente individualmente.</p>
+                  </div>
+                )}
               </div>
-              {myidAvaliacoes[0].resultado_processado && (
-                <div className="bg-white p-4 rounded-xl border shadow-sm">
-                  <MyIDResult result={myidAvaliacoes[0].resultado_processado} />
-                </div>
-              )}
-            </div>
-          ) : (
-            <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
-              <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
-              <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
-              <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
-              <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
-            </div>
-          )}
+            )}
+
+            {/* ── MyID Presencial ── */}
+            {!showStructural && (
+              <>
+                {iniciandoMyID ? (
+                  <div className="bg-white rounded-xl shadow-sm border p-4 relative">
+                    <Button variant="ghost" className="mb-4 absolute top-2 right-2" size="sm" onClick={() => setIniciandoMyID(false)}>Voltar</Button>
+                    <MyIDWizard onComplete={async (result, rawData) => {
+                      await supabase.from('myid_avaliacoes').insert({
+                        terapeuta_id: user?.id,
+                        paciente_id: paciente.id,
+                        status: 'concluido',
+                        respostas_brutas: rawData,
+                        resultado_processado: result,
+                      });
+                      refetchMyID();
+                      setIniciandoMyID(false);
+                      toast({ title: 'MyID Salvo!', description: 'Avaliação registrada com sucesso.' });
+                    }} />
+                  </div>
+                ) : myidAvaliacoes.length > 0 ? (
+                  <div className="space-y-6">
+                    <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                      <div>
+                        <h3 className="font-bold text-lg text-primary">Último MyID ({format(new Date(myidAvaliacoes[0].created_at), 'dd/MM/yyyy')})</h3>
+                        <p className="text-sm text-gray-500">Resultado da impressão digital sistêmica.</p>
+                      </div>
+                      <Button onClick={() => setIniciandoMyID(true)}>Refazer Avaliação</Button>
+                    </div>
+                    {myidAvaliacoes[0].resultado_processado && (
+                      <div className="bg-white p-4 rounded-xl border shadow-sm">
+                        <MyIDResult result={myidAvaliacoes[0].resultado_processado} />
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
+                    <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
+                    <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
+                    <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
+                    <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
         </TabsContent>
 
         {/* Aba: Questionários Remotos */}

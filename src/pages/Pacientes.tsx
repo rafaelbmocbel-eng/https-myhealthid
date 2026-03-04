@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -16,11 +16,29 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
+  ArrowUpDown, MessageCircle, ClipboardList, Clock,
 } from 'lucide-react';
-import { format, parseISO, differenceInDays } from 'date-fns';
+import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
+
+// ── Utilitários de máscara ──────────────────────────────────────────────────
+const maskPhone = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+const maskCPF = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+type SortKey = 'nome' | 'created_at' | 'ultimo_agendamento';
 
 interface Paciente {
   id: string;
@@ -49,12 +67,13 @@ const SERVICOS = [
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
   data_nascimento: string; genero: string; cpf: string; endereco: string;
-  observacoes: string; servicos: string[];
+  queixa_principal: string; observacoes: string; servicos: string[];
 }
 
 const emptyForm: FormData = {
   nome: '', sobrenome: '', email: '', telefone: '',
-  data_nascimento: '', genero: '', cpf: '', endereco: '', observacoes: '',
+  data_nascimento: '', genero: '', cpf: '', endereco: '',
+  queixa_principal: '', observacoes: '',
   servicos: [],
 };
 
@@ -129,6 +148,7 @@ export default function Pacientes() {
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
+  const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
@@ -154,6 +174,40 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
+  // Fetch ultimo agendamento for each paciente
+  const { data: ultimosAgendamentos = {} } = useQuery({
+    queryKey: ['ultimos-agendamentos', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('paciente_id, data_inicio, status')
+        .eq('terapeuta_id', user!.id)
+        .order('data_inicio', { ascending: false });
+      const map: Record<string, { data: string; status: string }> = {};
+      (data || []).forEach((a: any) => {
+        if (!map[a.paciente_id]) map[a.paciente_id] = { data: a.data_inicio, status: a.status };
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
+
+  // Fetch pending evaluations
+  const { data: avaliacoesPendentes = {} } = useQuery({
+    queryKey: ['avaliacoes-pendentes', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('myid_avaliacoes')
+        .select('paciente_id, status')
+        .eq('terapeuta_id', user!.id)
+        .neq('status', 'concluido');
+      const map: Record<string, boolean> = {};
+      (data || []).forEach((a: any) => { if (a.paciente_id) map[a.paciente_id] = true; });
+      return map;
+    },
+    enabled: !!user,
+  });
+
   const getServicosForPaciente = (pid: string): string[] => {
     const p = pacientes.find(x => x.id === pid);
     return p?._servicos || [];
@@ -165,7 +219,8 @@ export default function Pacientes() {
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
       genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
-      observacoes: p.observacoes || '', servicos: p._servicos || [],
+      queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
+      servicos: p._servicos || [],
     });
     setModal({ open: true, paciente: p });
   };
@@ -222,14 +277,38 @@ export default function Pacientes() {
     }));
   };
 
-  const filtered = pacientes.filter(p => {
-    const matchSearch = `${p.nome} ${p.sobrenome} ${p.email || ''} ${p.telefone || ''}`.toLowerCase().includes(search.toLowerCase());
-    if (!matchSearch) return false;
-    if (filterServico === 'todos') return true;
-    return getServicosForPaciente(p.id).includes(filterServico);
-  });
-
   const getLinksForPaciente = (pid: string) => links.filter(l => l.paciente_id === pid);
+
+  // Patient status helper
+  const getPatientStatus = (pid: string): { color: string; label: string } => {
+    if (avaliacoesPendentes[pid]) return { color: 'bg-amber-400', label: 'Avaliação pendente' };
+    const ultimo = ultimosAgendamentos[pid];
+    if (!ultimo) return { color: 'bg-slate-300', label: 'Sem agendamentos' };
+    const dias = differenceInDays(new Date(), new Date(ultimo.data));
+    if (dias <= 7) return { color: 'bg-emerald-400', label: 'Ativo' };
+    if (dias <= 30) return { color: 'bg-amber-400', label: `Última consulta há ${dias}d` };
+    return { color: 'bg-slate-300', label: `Inativo (${dias}d)` };
+  };
+
+  const filtered = useMemo(() => {
+    const list = pacientes.filter(p => {
+      const matchSearch = `${p.nome} ${p.sobrenome} ${p.email || ''} ${p.telefone || ''}`.toLowerCase().includes(search.toLowerCase());
+      if (!matchSearch) return false;
+      if (filterServico === 'todos') return true;
+      return getServicosForPaciente(p.id).includes(filterServico);
+    });
+    // Sort
+    return [...list].sort((a, b) => {
+      if (sortBy === 'nome') return a.nome.localeCompare(b.nome);
+      if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      if (sortBy === 'ultimo_agendamento') {
+        const da = ultimosAgendamentos[a.id]?.data || '1900-01-01';
+        const db = ultimosAgendamentos[b.id]?.data || '1900-01-01';
+        return new Date(db).getTime() - new Date(da).getTime();
+      }
+      return 0;
+    });
+  }, [pacientes, search, filterServico, sortBy, ultimosAgendamentos]);
 
   if (isLoading) {
     return (
@@ -273,6 +352,17 @@ export default function Pacientes() {
               {SERVICOS.map(s => <SelectItem key={s.key} value={s.key}>{s.label}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
+            <SelectTrigger className="w-48">
+              <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="nome">Nome (A-Z)</SelectItem>
+              <SelectItem value="created_at">Mais recentes</SelectItem>
+              <SelectItem value="ultimo_agendamento">Última consulta</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {filtered.length === 0 ? (
@@ -288,11 +378,17 @@ export default function Pacientes() {
               const pLinks = getLinksForPaciente(p.id);
               const linkAtivo = pLinks.find(l => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
               const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
+              const status = getPatientStatus(p.id);
+              const ultimoAg = ultimosAgendamentos[p.id];
               return (
-                <div key={p.id} className="clinical-card p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
+                <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
                   <div className="flex items-center gap-3 sm:gap-4">
-                    <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
-                      {p.nome[0]}{p.sobrenome?.[0] || ''}
+                    {/* Avatar with status dot */}
+                    <div className="relative shrink-0">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-primary flex items-center justify-center text-white font-bold text-sm">
+                        {p.nome[0]}{p.sobrenome?.[0] || ''}
+                      </div>
+                      <div className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white', status.color)} title={status.label} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
@@ -312,15 +408,30 @@ export default function Pacientes() {
                         })}
                       </div>
                       <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
-                        {p.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{p.email}</span>}
                         {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
+                        {ultimoAg ? (
+                          <span className="flex items-center gap-1"><Clock className="h-3 w-3" />Última consulta: {formatDistanceToNow(new Date(ultimoAg.data), { addSuffix: true, locale: ptBR })}</span>
+                        ) : (
+                          <span className="flex items-center gap-1 text-slate-400"><Clock className="h-3 w-3" />Sem consultas</span>
+                        )}
                       </div>
                     </div>
+                    {/* Actions — visible on hover */}
                     <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)}>
+                      {p.telefone && (
+                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600" title="WhatsApp"
+                          onClick={() => window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}`, '_blank')}>
+                          <MessageCircle className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Nova Avaliação"
+                        onClick={() => navigate(`/pacientes/${p.id}`)}>
+                        <ClipboardList className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => handleDelete(p)}>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => handleDelete(p)} title="Desativar">
                         <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
@@ -356,7 +467,9 @@ export default function Pacientes() {
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
                 <Label>Telefone</Label>
-                <Input placeholder="(11) 98765-4321" value={form.telefone} onChange={e => setForm(f => ({ ...f, telefone: e.target.value }))} />
+                <Input placeholder="(11) 98765-4321" value={form.telefone}
+                  onChange={e => setForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))}
+                  maxLength={15} />
               </div>
               <div className="space-y-1">
                 <Label>Data de Nascimento</Label>
@@ -365,7 +478,6 @@ export default function Pacientes() {
                   placeholder="dd/mm/aaaa"
                   maxLength={10}
                   value={form.data_nascimento ? (() => {
-                    // Show as dd/mm/yyyy if stored as ISO
                     if (/^\d{4}-\d{2}-\d{2}$/.test(form.data_nascimento)) {
                       const [y, m, d] = form.data_nascimento.split('-');
                       return `${d}/${m}/${y}`;
@@ -374,7 +486,6 @@ export default function Pacientes() {
                   })() : ''}
                   onChange={e => {
                     let v = e.target.value.replace(/[^\d/]/g, '');
-                    // Auto-add slashes
                     const digits = v.replace(/\//g, '');
                     if (digits.length >= 5) {
                       v = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
@@ -389,7 +500,6 @@ export default function Pacientes() {
                     if (match) {
                       const [, d, m, y] = match;
                       const iso = `${y}-${m}-${d}`;
-                      // Validate date
                       const date = new Date(iso);
                       if (!isNaN(date.getTime()) && date.getFullYear() === Number(y)) {
                         setForm(f => ({ ...f, data_nascimento: iso }));
@@ -413,8 +523,15 @@ export default function Pacientes() {
               </div>
               <div className="space-y-1">
                 <Label>CPF</Label>
-                <Input placeholder="123.456.789-00" value={form.cpf} onChange={e => setForm(f => ({ ...f, cpf: e.target.value }))} />
+                <Input placeholder="123.456.789-00" value={form.cpf}
+                  onChange={e => setForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))}
+                  maxLength={14} />
               </div>
+            </div>
+            <div className="space-y-1">
+              <Label>Queixa Principal</Label>
+              <Input placeholder="Ex: Dor lombar crônica, escoliose..." value={form.queixa_principal}
+                onChange={e => setForm(f => ({ ...f, queixa_principal: e.target.value }))} />
             </div>
             <div className="space-y-1">
               <Label>Observações</Label>

@@ -10,11 +10,10 @@ import { Bloco5 } from '@/components/myid/steps/Bloco5';
 import { Bloco6 } from '@/components/myid/steps/Bloco6';
 import { MyIDCalculator } from '@/utils/myid/calculator';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
-import StructuralWizard from '@/components/structural/StructuralWizard';
-import { StructuralAssessmentData, createDefaultAssessment } from '@/types/structural';
+
 import {
   CheckCircle2, Circle, ClipboardList, Activity, Brain,
-  Bed, Dumbbell, Bone, Users, Link2, Copy, Loader2, Search, ChevronRight, ArrowLeft, ArrowRight, MessageCircle,
+  Bed, Dumbbell, Users, Link2, Copy, Loader2, Search, ChevronRight, ArrowLeft, ArrowRight, MessageCircle,
   CalendarDays, Clock, Smartphone, Mail
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -43,7 +42,6 @@ const blocos = [
   { id: 4, label: 'Comportamento', sublabel: 'Score P', icon: Brain, time: '4 min' },
   { id: 5, label: 'Regulação', sublabel: 'Scores R e C', icon: Bed, time: '5 min' },
   { id: 6, label: 'Ruído Sistêmico', sublabel: 'Score N', icon: Dumbbell, time: '3 min' },
-  { id: 7, label: 'Unidades ID', sublabel: 'Estrutural', icon: Bone, time: '15 min' },
 ];
 
 const makeDefaultAvaliacao = (pacienteNome = 'Paciente'): AvaliacaoMyID => ({
@@ -75,8 +73,7 @@ export default function MetodoIdentidade() {
   const [avaliacao, setAvaliacao] = useState<AvaliacaoMyID>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
-  const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
-  const [showStructural, setShowStructural] = useState(false);
+
 
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
@@ -177,22 +174,16 @@ export default function MetodoIdentidade() {
     setAvaliacao(prev => ({ ...prev, ...newData }));
   }, []);
 
-  const BLOCK_ORDER = [1, 2, 3, 4, 5, 6, 7];
+  const BLOCK_ORDER = [1, 2, 3, 4, 5, 6];
 
   const avancarBloco = useCallback((blocoAtual: number) => {
     setBlocosConcluidos(prev => new Set([...prev, blocoAtual]));
     const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
     const nextBlock = BLOCK_ORDER[currentIdx + 1];
-    if (blocoAtual === 6) {
-      // After bloco 6, show structural wizard
-      setShowStructural(true);
-      setBlocosConcluidos(prev => new Set([...prev, blocoAtual]));
-      setAvaliacao(prev => ({ ...prev, blocoAtual: 7 }));
-      return;
-    }
     if (nextBlock) {
       setAvaliacao(prev => ({ ...prev, blocoAtual: nextBlock }));
     } else {
+      // Last block — finalize MyID
       const calculator = new MyIDCalculator(avaliacao);
       const resultado = calculator.getFullResult();
 
@@ -214,7 +205,7 @@ export default function MetodoIdentidade() {
     });
   }, []);
 
-  const progresso = (blocosConcluidos.size / 7) * 100;
+  const progresso = (blocosConcluidos.size / 6) * 100;
 
   if (showRelatorio) {
     return (
@@ -465,7 +456,7 @@ export default function MetodoIdentidade() {
             <div className="flex-1">
               <div className="flex justify-between text-sm mb-1">
                 <span className="text-muted-foreground">Progresso da avaliação</span>
-                <span className="font-medium text-primary">{blocosConcluidos.size}/7 blocos</span>
+                <span className="font-medium text-primary">{blocosConcluidos.size}/6 blocos</span>
               </div>
               <Progress value={progresso} className="h-2" />
             </div>
@@ -585,33 +576,11 @@ export default function MetodoIdentidade() {
               {avaliacao.blocoAtual === 6 && (
                 <Bloco6 data={avaliacao} updateData={updateData} />
               )}
-              {avaliacao.blocoAtual === 7 && (
-                <StructuralWizard
-                  initialData={structuralData}
-                  onComplete={(sData) => {
-                    setStructuralData(sData);
-                    setBlocosConcluidos(prev => new Set([...prev, 7]));
-                    // Finalize: calculate MyID + merge structural
-                    const calculator = new MyIDCalculator(avaliacao);
-                    const resultado = calculator.getFullResult();
-                    const finalAv = { ...avaliacao, resultado, concluido: true };
-                    setAvaliacao(finalAv);
-                    setShowRelatorio(true);
-                    setShowStructural(false);
-                    if (selectedPacienteId) {
-                      salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
-                    }
-                  }}
-                  onBack={() => {
-                    setAvaliacao(prev => ({ ...prev, blocoAtual: 6 }));
-                    setShowStructural(false);
-                  }}
-                />
-              )}
+
             </div>
 
-            {/* Navegação entre Blocos - hide when structural wizard is active */}
-            {avaliacao.blocoAtual !== 7 && (
+            {/* Navegação entre Blocos */}
+            {(
               <div className="flex justify-between items-center mt-8 bg-card p-4 rounded-xl shadow-sm border">
                 <Button
                   variant="outline"
@@ -627,7 +596,7 @@ export default function MetodoIdentidade() {
                   className="bg-gradient-primary text-white gap-2 h-10 px-8"
                 >
                   {avaliacao.blocoAtual === 6 ? (
-                    <>Avaliação Estrutural <ArrowRight className="h-4 w-4" /></>
+                    <>Finalizar Avaliação <CheckCircle2 className="h-4 w-4" /></>
                   ) : (
                     <>Próximo Passo <ArrowRight className="h-4 w-4" /></>
                   )}
