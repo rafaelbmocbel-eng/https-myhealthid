@@ -1,14 +1,14 @@
 import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
-import { ChevronDown, ChevronUp, Info, FlaskConical } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Slider } from '@/components/ui/slider';
+import { ChevronDown } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
-  UnitAssessment, UnitConfig, EvidenceTest, EVIDENCE_TESTS,
-  calculateUnitScore, classifyScore, classifyScoreColor, classifyScoreBg,
+  UnitAssessment, UnitConfig, EVIDENCE_TESTS,
+  classifyScore, classifyScoreColor, classifyScoreBg,
   AffectedStructure,
 } from '@/types/structural';
 
@@ -19,19 +19,22 @@ interface Props {
 }
 
 export default function StructuralUnitStep({ unitConfig, assessment, onChange }: Props) {
-  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
+  const [expandedSection, setExpandedSection] = useState<string | null>('score');
   const tests = EVIDENCE_TESTS[unitConfig.id] || [];
 
-  // Group tests by category
-  const categories = [...new Set(tests.map(t => t.category))];
+  const toggle = (section: string) =>
+    setExpandedSection(prev => prev === section ? null : section);
 
-  const updateTest = (testId: string, updates: Partial<typeof assessment.testsPerformed[0]>) => {
-    const newTests = assessment.testsPerformed.map(t =>
-      t.testId === testId ? { ...t, ...updates } : t
-    );
-    const score = calculateUnitScore(newTests);
+  const updateScore = (score: number) => {
     const classification = classifyScore(score);
-    onChange({ ...assessment, testsPerformed: newTests, score, classification });
+    onChange({ ...assessment, score, classification });
+  };
+
+  const updateTestNotes = (testId: string, notes: string) => {
+    const newTests = assessment.testsPerformed.map(t =>
+      t.testId === testId ? { ...t, notes, performed: true } : t
+    );
+    onChange({ ...assessment, testsPerformed: newTests });
   };
 
   const toggleStructure = (
@@ -52,156 +55,136 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
     });
   };
 
-  const performedCount = assessment.testsPerformed.filter(t => t.performed).length;
-  const totalTests = tests.length;
+  const structureCategories = [
+    { key: 'muscles' as const, label: 'Músculos', icon: '💪', color: 'text-blue-600', borderColor: 'border-blue-200' },
+    { key: 'joints' as const, label: 'Articulações', icon: '🦴', color: 'text-amber-600', borderColor: 'border-amber-200' },
+    { key: 'ligaments' as const, label: 'Ligamentos', icon: '🔗', color: 'text-green-600', borderColor: 'border-green-200' },
+    { key: 'nerves' as const, label: 'Nervos', icon: '⚡', color: 'text-red-600', borderColor: 'border-red-200' },
+    { key: 'viscera' as const, label: 'Vísceras', icon: '🫀', color: 'text-purple-600', borderColor: 'border-purple-200' },
+  ];
 
   return (
-    <div className="space-y-4">
-      {/* Header */}
+    <div className="space-y-3">
+
+      {/* ── Score 0-10 ── */}
       <div className="clinical-card">
-        <div className="flex items-center justify-between">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="text-2xl">{unitConfig.emoji}</span>
-              <h2 className="text-lg font-bold">{unitConfig.id}: {unitConfig.shortName}</h2>
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <span className="text-xl">{unitConfig.emoji}</span>
+            <div>
+              <h3 className="font-bold text-sm">{unitConfig.id}: {unitConfig.name}</h3>
+              <p className="text-[10px] text-muted-foreground">{unitConfig.region}</p>
             </div>
-            <p className="text-muted-foreground text-xs">{performedCount}/{totalTests} testes realizados</p>
           </div>
           <div className="text-right">
             <div className={cn('text-3xl font-black', classifyScoreColor(assessment.score))}>
               {assessment.score.toFixed(1)}
             </div>
-            <Badge className={cn('text-xs', classifyScoreBg(assessment.score))}>
-              {assessment.classification}
+            <Badge className={cn('text-[10px]', classifyScoreBg(assessment.score))}>
+              {classifyScore(assessment.score)}
             </Badge>
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>Avaliação da Unidade</span>
+            <span className="font-medium">{assessment.score.toFixed(1)} / 10</span>
+          </div>
+          <Slider
+            value={[assessment.score]}
+            min={0} max={10} step={0.5}
+            onValueChange={([v]) => updateScore(v)}
+            className="w-full"
+          />
+          <div className="flex justify-between text-[10px] text-muted-foreground">
+            <span>0 = Crítico</span>
+            <span>5 = Moderado</span>
+            <span>10 = Excelente</span>
           </div>
         </div>
       </div>
 
-      {/* Tests by category */}
-      {categories.map(cat => {
-        const catTests = tests.filter(t => t.category === cat);
-        const isExpanded = expandedCategory === cat;
+      {/* ── Testes Clínicos ── */}
+      <button
+        onClick={() => toggle('tests')}
+        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Testes Clínicos</span>
+          <Badge variant="outline" className="text-[10px]">{tests.length} testes</Badge>
+        </div>
+        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
+      </button>
 
-        return (
-          <div key={cat} className="clinical-card border">
-            <button
-              className="w-full flex items-center justify-between"
-              onClick={() => setExpandedCategory(isExpanded ? null : cat)}
-            >
-              <div className="flex items-center gap-2">
-                <FlaskConical className="h-4 w-4 text-primary" />
-                <span className="font-semibold text-sm">{cat}</span>
-                <Badge variant="outline" className="text-[10px]">{catTests.length} testes</Badge>
-              </div>
-              {isExpanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </button>
-
-            {isExpanded && (
-              <div className="mt-4 space-y-4 border-t pt-4">
-                {catTests.map(test => {
-                  const result = assessment.testsPerformed.find(t => t.testId === test.id);
-                  if (!result) return null;
-
-                  return (
-                    <div key={test.id} className={cn(
-                      'p-3 rounded-lg border transition-all',
-                      result.performed ? 'bg-primary/5 border-primary/30' : 'bg-muted/30'
-                    )}>
-                      <div className="flex items-start justify-between mb-2">
-                        <div className="flex items-center gap-2">
-                          <Checkbox
-                            checked={result.performed}
-                            onCheckedChange={checked => updateTest(test.id, { performed: !!checked })}
-                          />
-                          <div>
-                            <span className="font-medium text-sm">{test.name}</span>
-                            {test.optional && <Badge variant="outline" className="text-[9px] ml-2">Opcional</Badge>}
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                          <span>{test.time}</span>
-                          <span>·</span>
-                          <span>{test.difficulty}</span>
-                        </div>
-                      </div>
-
-                      {result.performed && (
-                        <div className="ml-6 space-y-2">
-                          <div className="flex items-start gap-1 text-xs text-muted-foreground mb-2">
-                            <Info className="h-3 w-3 mt-0.5 shrink-0" />
-                            <span>{test.evidence}</span>
-                          </div>
-
-                          {/* Score options */}
-                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-1.5">
-                            {test.scoring.map(opt => (
-                              <button
-                                key={opt.label}
-                                onClick={() => updateTest(test.id, {
-                                  scoreContribution: opt.value,
-                                  result: opt.label,
-                                })}
-                                className={cn(
-                                  'text-xs p-2 rounded-lg border text-left transition-all',
-                                  result.result === opt.label
-                                    ? 'bg-primary text-primary-foreground border-primary'
-                                    : 'hover:border-primary/50'
-                                )}
-                              >
-                                <div className="font-medium">{opt.label}</div>
-                                <div className="opacity-70">Score: {opt.value}</div>
-                              </button>
-                            ))}
-                          </div>
-
-                          {/* Notes */}
-                          <Textarea
-                            placeholder="Observação do teste..."
-                            value={result.notes}
-                            onChange={e => updateTest(test.id, { notes: e.target.value })}
-                            className="text-xs resize-none h-16"
-                          />
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
-          </div>
-        );
-      })}
-
-      {/* Affected Structures */}
-      <div className="clinical-card">
-        <Label className="font-semibold text-sm mb-3 block">Estruturas Acometidas</Label>
-        <div className="space-y-3">
-          {([
-            { key: 'muscles' as const, label: 'Músculos', icon: '💪', color: 'text-blue-600' },
-            { key: 'joints' as const, label: 'Articulações', icon: '🦴', color: 'text-amber-600' },
-            { key: 'ligaments' as const, label: 'Ligamentos', icon: '🔗', color: 'text-green-600' },
-            { key: 'nerves' as const, label: 'Nervos', icon: '⚡', color: 'text-red-600' },
-            { key: 'viscera' as const, label: 'Vísceras', icon: '🫀', color: 'text-purple-600' },
-          ]).map(({ key, label, icon, color }) => (
-            unitConfig.structures[key].length > 0 && (
-              <div key={key}>
-                <div className="flex items-center gap-1 mb-1.5">
-                  <span className="text-xs">{icon}</span>
-                  <span className={cn('text-xs font-semibold', color)}>{label}</span>
+      {expandedSection === 'tests' && (
+        <div className="clinical-card space-y-3 animate-slide-in">
+          {tests.map(test => {
+            const result = assessment.testsPerformed.find(t => t.testId === test.id);
+            return (
+              <div key={test.id} className="p-3 rounded-lg border bg-muted/20 space-y-2">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <span className="text-sm font-medium">{test.name}</span>
+                    {test.optional && <Badge variant="outline" className="text-[9px] ml-2">Opcional</Badge>}
+                  </div>
+                  <span className="text-[10px] text-muted-foreground">{test.time} · {test.difficulty}</span>
                 </div>
-                <div className="flex flex-wrap gap-1.5">
-                  {unitConfig.structures[key].map(name => {
+                <p className="text-[10px] text-muted-foreground">{test.evidence}</p>
+                <Textarea
+                  placeholder={`Resultado / achados do ${test.name}...`}
+                  value={result?.notes || ''}
+                  onChange={e => updateTestNotes(test.id, e.target.value)}
+                  className="text-xs resize-none h-14"
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Estruturas Acometidas ── */}
+      <button
+        onClick={() => toggle('structures')}
+        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
+      >
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-semibold">Estruturas Acometidas</span>
+          {Object.values(assessment.affectedStructures).flat().length > 0 && (
+            <Badge variant="outline" className="text-[10px]">
+              {Object.values(assessment.affectedStructures).flat().length} selecionadas
+            </Badge>
+          )}
+        </div>
+        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
+      </button>
+
+      {expandedSection === 'structures' && (
+        <div className="clinical-card space-y-4 animate-slide-in">
+          {structureCategories.map(({ key, label, icon, color, borderColor }) => {
+            const structures = unitConfig.structures[key];
+            if (structures.length === 0) return null;
+
+            return (
+              <div key={key} className={cn('p-3 rounded-lg border', borderColor, 'bg-muted/10')}>
+                <div className="flex items-center gap-1.5 mb-2">
+                  <span className="text-sm">{icon}</span>
+                  <span className={cn('text-xs font-bold', color)}>{label}</span>
+                </div>
+
+                {/* Selectable structure pills */}
+                <div className="flex flex-wrap gap-1.5 mb-2">
+                  {structures.map(name => {
                     const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
                     return (
                       <button
                         key={name}
                         onClick={() => toggleStructure(key, name)}
                         className={cn(
-                          'text-xs px-2.5 py-1 rounded-full border transition-all',
+                          'text-[11px] px-2.5 py-1 rounded-full border transition-all',
                           isSelected
                             ? 'bg-primary text-primary-foreground border-primary'
-                            : 'hover:border-primary/50 bg-muted/50'
+                            : 'hover:border-primary/50 bg-background'
                         )}
                       >
                         {name}
@@ -209,20 +192,35 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
                     );
                   })}
                 </div>
-              </div>
-            )
-          ))}
-        </div>
-      </div>
 
-      {/* Observações */}
+                {/* Free text for additional structures */}
+                <Input
+                  placeholder={`Outros ${label.toLowerCase()}...`}
+                  className="text-xs h-8"
+                  onKeyDown={e => {
+                    if (e.key === 'Enter') {
+                      const val = (e.target as HTMLInputElement).value.trim();
+                      if (val) {
+                        toggleStructure(key, val);
+                        (e.target as HTMLInputElement).value = '';
+                      }
+                    }
+                  }}
+                />
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {/* ── Observações ── */}
       <div className="clinical-card">
-        <Label className="font-semibold text-sm">Observações Clínicas - {unitConfig.id}</Label>
+        <Label className="font-semibold text-sm">Observações Clínicas</Label>
         <Textarea
           value={assessment.observacoes}
           onChange={e => onChange({ ...assessment, observacoes: e.target.value })}
           placeholder={`Achados específicos para ${unitConfig.shortName}...`}
-          className="mt-2 resize-none"
+          className="mt-2 resize-none text-xs"
           rows={2}
         />
       </div>
