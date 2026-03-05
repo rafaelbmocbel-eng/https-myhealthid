@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,9 @@ import StructuralResultsSummary from '../structural/StructuralResultsSummary';
 import StructuralConnectionMap from '../structural/StructuralConnectionMap';
 import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
+import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
+import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
+import StudioNotasTab from '@/components/studio/StudioNotasTab';
 
 interface Paciente {
   id: string;
@@ -398,7 +401,34 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         </TabsList>
 
         <TabsContent value="integrada" className="mt-4">
-          <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+          <Tabs defaultValue="avaliacao" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60 mb-4">
+              <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
+                <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+              </TabsTrigger>
+              <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
+                <Dumbbell className="h-3.5 w-3.5" /> Treinos
+              </TabsTrigger>
+              <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
+                <BarChart3 className="h-3.5 w-3.5" /> Evolução
+              </TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
+                <StickyNote className="h-3.5 w-3.5" /> Notas
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="avaliacao" className="mt-0">
+              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+            </TabsContent>
+            <TabsContent value="treinos" className="mt-0">
+              <StudioTreinosTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+            </TabsContent>
+            <TabsContent value="evolucao" className="mt-0">
+              <StudioEvolucaoTab pacienteId={paciente.id} />
+            </TabsContent>
+            <TabsContent value="notas" className="mt-0">
+              <StudioNotasTab pacienteId={paciente.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         <TabsContent value="myid" className="mt-4">

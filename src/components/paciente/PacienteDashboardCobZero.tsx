@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation } from 'lucide-react';
+import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,6 +23,9 @@ import IndicesRiscoComprometimento from './IndicesRiscoComprometimento';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import PatientIntegratedDashboard from './PatientIntegratedDashboard';
 import { CobZeroWizard } from '../cobzero/CobZeroWizard';
+import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
+import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
+import StudioNotasTab from '@/components/studio/StudioNotasTab';
 
 interface Paciente {
   id: string;
@@ -260,7 +263,34 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         </TabsList>
 
         <TabsContent value="integrada" className="mt-4">
-          <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
+          <Tabs defaultValue="avaliacao" className="w-full">
+            <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60 mb-4">
+              <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+              </TabsTrigger>
+              <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                <Dumbbell className="h-3.5 w-3.5" /> Treinos
+              </TabsTrigger>
+              <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                <BarChart3 className="h-3.5 w-3.5" /> Evolução
+              </TabsTrigger>
+              <TabsTrigger value="notas" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+                <StickyNote className="h-3.5 w-3.5" /> Notas
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="avaliacao" className="mt-0">
+              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
+            </TabsContent>
+            <TabsContent value="treinos" className="mt-0">
+              <StudioTreinosTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+            </TabsContent>
+            <TabsContent value="evolucao" className="mt-0">
+              <StudioEvolucaoTab pacienteId={paciente.id} />
+            </TabsContent>
+            <TabsContent value="notas" className="mt-0">
+              <StudioNotasTab pacienteId={paciente.id} />
+            </TabsContent>
+          </Tabs>
         </TabsContent>
 
         {/* Aba: Avaliação Remota */}
