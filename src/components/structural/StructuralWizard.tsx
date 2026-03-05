@@ -16,6 +16,7 @@ import StructuralPreferencesStep from './StructuralPreferencesStep';
 import StructuralUnitStep from './StructuralUnitStep';
 import StructuralResultsSummary from './StructuralResultsSummary';
 import BodyMapSelector from './BodyMapSelector';
+import StructuralConnectionMap from './StructuralConnectionMap';
 
 interface Props {
   initialData?: StructuralAssessmentData;
@@ -147,6 +148,13 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
         units={data.units}
         activeUnitId={selectedUnit || undefined}
         onSelectUnit={handleSelectUnit}
+      />
+
+      {/* Connection Map — below body map, editable by therapist */}
+      <StructuralConnectionMap
+        data={data}
+        editable={true}
+        onDataChange={setData}
       />
 
       {/* Unit evaluation form — appears BELOW the map when a unit is selected */}
