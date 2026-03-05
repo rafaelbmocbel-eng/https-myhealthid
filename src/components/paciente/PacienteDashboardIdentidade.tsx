@@ -281,7 +281,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         .from('avaliacoes_identidade')
         .select('*')
         .eq('paciente_id', paciente.id)
-        .not('dados_estruturais', 'is', null)
+        .not('score_e', 'is', null)
+        .is('myid_score', null)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return data || [];
@@ -409,12 +410,14 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   setShowStructural(false);
                   setLastSavedData(sData); // Show results immediately from memory
                   // Salvar no Supabase
-                  const { error } = await supabase.from('avaliacoes_identidade').insert({
+                  const { error } = await (supabase as any).from('avaliacoes_identidade').insert({
                     paciente_id: paciente.id,
                     terapeuta_id: user?.id,
-                    dados_estruturais: sData as any,
+                    dados_avaliacao: { _type: 'structural', ...sData } as any,
+                    paciente_nome: `${paciente.nome} ${paciente.sobrenome}`,
                     score_e: sData.scoreStructuralGeneral,
                     data_avaliacao: new Date().toLocaleDateString('pt-BR'),
+                    classificacao: sData.classification || null,
                   });
                   if (error) {
                     console.error('Erro ao salvar avaliação estrutural:', error);
@@ -476,9 +479,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 {structuralAvaliacoes.length > 0 ? (
                   <div className="space-y-3">
                     {structuralAvaliacoes.slice(0, 3).map((av: any) => {
-                      const dados = av.dados_estruturais as StructuralAssessmentData | null;
+                      const dados = av.dados_avaliacao as any as StructuralAssessmentData | null;
                       if (!dados) return null;
-                      const score = dados.scoreStructuralGeneral || Number(av.score_e) || 0;
+                      const score = dados?.scoreStructuralGeneral ?? Number(av.score_e) ?? 0;
                       const isExpanded = expandedStructuralId === av.id;
                       return (
                         <div key={av.id} className="rounded-lg border bg-muted/20">

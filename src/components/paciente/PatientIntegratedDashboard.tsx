@@ -11,6 +11,7 @@ import {
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
@@ -91,11 +92,12 @@ export default function PatientIntegratedDashboard({
   const { data: structuralAvaliacoes = [] } = useQuery({
     queryKey: ['integrated-structural', pacienteId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('avaliacoes_identidade')
         .select('*')
         .eq('paciente_id', pacienteId)
-        .not('dados_estruturais', 'is', null)
+        .not('score_e', 'is', null)
+        .is('myid_score', null)
         .order('created_at', { ascending: false })
         .limit(1);
       if (error) throw error;
@@ -103,7 +105,7 @@ export default function PatientIntegratedDashboard({
     },
   });
 
-  const structuralData = structuralAvaliacoes[0]?.dados_estruturais as StructuralAssessmentData | null;
+  const structuralData = structuralAvaliacoes[0]?.dados_avaliacao as any as StructuralAssessmentData | null;
 
   const lastServiceEntry = serviceData[0] as any;
 
@@ -279,18 +281,18 @@ export default function PatientIntegratedDashboard({
                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">8 Unidades Funcionais</p>
               </div>
               <div className="ml-auto text-right">
-                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral))}>
-                  {structuralData.scoreStructuralGeneral.toFixed(1)}
+                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral ?? 0))}>
+                  {(structuralData.scoreStructuralGeneral ?? 0).toFixed(1)}
                 </div>
-                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral)}</div>
+                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral ?? 0)}</div>
               </div>
             </div>
 
             {/* Unit scores grid */}
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4">
               {UNIT_CONFIGS.map(cfg => {
-                const unit = structuralData.units[cfg.id];
-                const score = unit?.score || 0;
+                const unit = structuralData.units?.[cfg.id];
+                const score = unit?.score ?? 0;
                 return (
                   <div key={cfg.id} className="text-center p-1.5 rounded-lg bg-muted/40">
                     <div className="text-xs">{cfg.emoji}</div>
@@ -531,12 +533,12 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
     lines.push(`  Método Identidade · ${date}`);
     lines.push('═══════════════════════════════════════');
     lines.push('');
-    lines.push(`Score Geral: ${data.scoreStructuralGeneral.toFixed(1)}/10 — ${data.classification}`);
+    lines.push(`Score Geral: ${(data.scoreStructuralGeneral ?? 0).toFixed(1)}/10 — ${data.classification || 'N/A'}`);
     lines.push('');
 
     if (data.primaryDriver) {
       const cfg = UNIT_CONFIGS.find(u => u.id === data.primaryDriver);
-      const unit = data.units[data.primaryDriver];
+      const unit = data.units?.[data.primaryDriver];
       if (cfg && unit) {
         lines.push(`⚠️ DRIVER: ${cfg.id} (${cfg.name}) — Score ${unit.score.toFixed(1)}`);
         lines.push('   Foco inicial obrigatório.');
@@ -544,7 +546,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
       }
     }
 
-    if (data.clinicalPriorities.length > 0) {
+    if (data.clinicalPriorities?.length > 0) {
       lines.push('─── PRIORIDADES CLÍNICAS ───');
       data.clinicalPriorities.forEach(p => {
         const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
@@ -554,7 +556,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
       lines.push('');
     }
 
-    if (data.relationships.direct.length > 0) {
+    if (data.relationships?.direct?.length > 0) {
       lines.push('─── CONEXÕES ───');
       data.relationships.direct.forEach(rel => {
         const tissue = rel.affectedStructures[0]?.startsWith('TISSUE:')
@@ -600,8 +602,8 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
     if (data.preferences) {
       lines.push('');
       lines.push('─── PREFERÊNCIAS ───');
-      if (data.preferences.goals?.length) lines.push(`  Metas: ${data.preferences.goals.join(', ')}`);
-      if (data.preferences.limitations?.length) lines.push(`  Limitações: ${data.preferences.limitations.join(', ')}`);
+      if (data.preferences.techniquePreference?.length) lines.push(`  Preferências: ${data.preferences.techniquePreference.join(', ')}`);
+      if (data.preferences.techniqueAversion?.length) lines.push(`  Aversões: ${data.preferences.techniqueAversion.join(', ')}`);
     }
 
     setGuidelines(lines.join('\n'));
