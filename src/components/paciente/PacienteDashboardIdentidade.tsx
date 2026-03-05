@@ -271,6 +271,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
+  const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
 
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
@@ -406,18 +407,17 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 onComplete={async (sData) => {
                   setStructuralData(sData);
                   setShowStructural(false);
-                  // Salvar no Supabase
+                  setLastSavedData(sData); // Show results immediately from memory
+                  // Salvar no Supabase (background)
                   try {
-                    const { data: inserted } = await supabase.from('avaliacoes_identidade').insert({
+                    await supabase.from('avaliacoes_identidade').insert({
                       paciente_id: paciente.id,
                       terapeuta_id: user?.id,
                       dados_estruturais: sData as any,
                       score_e: sData.scoreStructuralGeneral,
                       data_avaliacao: new Date().toLocaleDateString('pt-BR'),
-                    }).select().single();
-                    await refetchStructural();
-                    // Auto-expand the just-saved evaluation
-                    if (inserted) setExpandedStructuralId(inserted.id);
+                    });
+                    refetchStructural();
                     toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${sData.scoreStructuralGeneral.toFixed(1)}` });
                   } catch (e: any) {
                     toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
@@ -425,6 +425,32 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 }}
                 onBack={() => setShowStructural(false)}
               />
+            ) : lastSavedData ? (
+              /* Show results directly from memory after saving */
+              <div className="space-y-4">
+                <div className="clinical-card bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-xl bg-emerald-500 flex items-center justify-center">
+                        <CheckCircle2 className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-sm text-emerald-800">Avaliação Estrutural Salva</h3>
+                        <p className="text-xs text-emerald-600">Resultados completos e Cardápio de Técnicas</p>
+                      </div>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setLastSavedData(null); setShowStructural(true); }}>
+                        <Activity className="h-3 w-3" /> Nova Avaliação
+                      </Button>
+                      <Button size="sm" variant="outline" className="text-xs" onClick={() => setLastSavedData(null)}>
+                        Fechar
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+                <StructuralResultsSummary data={lastSavedData} />
+              </div>
             ) : (
               <div className="clinical-card">
                 <div className="flex items-center justify-between mb-4">
