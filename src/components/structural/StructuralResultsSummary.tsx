@@ -121,15 +121,15 @@ export default function StructuralResultsSummary({ data }: Props) {
 
   const phases = buildPhases(data);
 
-  // Selection state
+  // Selection state — starts empty, therapist picks what they want
   const [selectedTecnicas, setSelectedTecnicas] = useState<Record<number, Set<number>>>(() => {
     const init: Record<number, Set<number>> = {};
-    phases.forEach((p, i) => { init[i] = new Set(p.tecnicas.map((_, j) => j)); });
+    phases.forEach((_, i) => { init[i] = new Set(); });
     return init;
   });
   const [selectedExercicios, setSelectedExercicios] = useState<Record<number, Set<number>>>(() => {
     const init: Record<number, Set<number>> = {};
-    phases.forEach((p, i) => { init[i] = new Set(p.exercicios.map((_, j) => j)); });
+    phases.forEach((_, i) => { init[i] = new Set(); });
     return init;
   });
 
