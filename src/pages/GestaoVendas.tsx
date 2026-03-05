@@ -13,6 +13,7 @@ import {
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
     StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
+    ChevronLeft, ChevronRight, History,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -20,7 +21,7 @@ import {
     sharePacoteInfo, sharePropostaComercial,
     MESSAGE_TEMPLATES, PACOTES_PREDEFINIDOS, type Pacote,
 } from '@/utils/whatsapp';
-import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO } from 'date-fns';
+import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, addDays, isSameDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -40,7 +41,12 @@ export default function GestaoVendas() {
     const [vipSearch, setVipSearch] = useState('');
     const [newNote, setNewNote] = useState('');
 
-    // Persisted VIP list, notes, attendance checks, and patient notes (localStorage)
+    // Attendance specific state
+    const [currentDate, setCurrentDate] = useState<Date>(new Date());
+    const [controleTabModo, setControleTabModo] = useState<'diario' | 'historico'>('diario');
+    const [historicoPatientId, setHistoricoPatientId] = useState<string>('');
+
+    // Persisted VIP list, notes, and attendance checks (localStorage)
     const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
     const todayKey = format(new Date(), 'yyyy-MM-dd');
     const [vipIds, setVipIds] = useState<string[]>(() => {
@@ -51,16 +57,16 @@ export default function GestaoVendas() {
     });
     // Attendance status: { 'agendamento-id': 'atendido' | 'faltou' | 'pendente' }
     const [checkedIds, setCheckedIds] = useState<Record<string, string>>(() => {
-        try { return JSON.parse(localStorage.getItem(`${storageKey}-checks-${todayKey}`) || '{}'); } catch { return {}; }
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-checks-all`) || '{}'); } catch { return {}; }
     });
-    // Per-patient quick notes (for today)
+    // Per-patient quick notes linked to appointments
     const [patientNotes, setPatientNotes] = useState<Record<string, string>>(() => {
-        try { return JSON.parse(localStorage.getItem(`${storageKey}-pnotes-${todayKey}`) || '{}'); } catch { return {}; }
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-pnotes-all`) || '{}'); } catch { return {}; }
     });
     const saveVip = (ids: string[]) => { setVipIds(ids); localStorage.setItem(`${storageKey}-vip`, JSON.stringify(ids)); };
     const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
-    const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-${todayKey}`, JSON.stringify(c)); };
-    const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-${todayKey}`, JSON.stringify(pn)); };
+    const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-all`, JSON.stringify(c)); };
+    const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-all`, JSON.stringify(pn)); };
 
     // ── Queries ──────────────────────────────────────────────────────
     const { data: patients = [] } = useQuery({
@@ -99,9 +105,8 @@ export default function GestaoVendas() {
     const { data: agendamentos = [] } = useQuery({
         queryKey: ['crm-agendamentos', user?.id],
         queryFn: async () => {
-            const startOfMonth = new Date(); startOfMonth.setDate(1); startOfMonth.setHours(0, 0, 0, 0);
             const { data } = await supabase.from('agendamentos').select('*')
-                .eq('terapeuta_id', user!.id).gte('data_inicio', startOfMonth.toISOString())
+                .eq('terapeuta_id', user!.id)
                 .order('data_inicio', { ascending: false });
             return data || [];
         },
@@ -535,14 +540,15 @@ export default function GestaoVendas() {
 
                 {/* ══════════════════ CONTROLE DE ATENDIMENTO TAB ══════════════════ */}
                 {activeTab === 'notas' && (() => {
-                    // Today's appointments sorted by time
-                    const todayAgs = agendamentos
-                        .filter((ag: any) => isToday(parseISO(ag.data_inicio)) && ag.status !== 'cancelado')
+                    // Current day appointments
+                    const dailyAgs = agendamentos
+                        .filter((ag: any) => isSameDay(parseISO(ag.data_inicio), currentDate) && ag.status !== 'cancelado')
                         .sort((a: any, b: any) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
-                    const atendidos = todayAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
-                    const faltaram = todayAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
-                    const pendentesHoje = todayAgs.length - atendidos - faltaram;
-                    const pctDone = todayAgs.length > 0 ? Math.round((atendidos / todayAgs.length) * 100) : 0;
+
+                    const atendidos = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
+                    const faltaram = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                    const pendentes = dailyAgs.length - atendidos - faltaram;
+                    const pctDone = dailyAgs.length > 0 ? Math.round((atendidos / dailyAgs.length) * 100) : 0;
 
                     const cycleStatus = (agId: string) => {
                         const current = checkedIds[agId] || 'pendente';
@@ -550,127 +556,242 @@ export default function GestaoVendas() {
                         saveChecks({ ...checkedIds, [agId]: next });
                     };
 
+                    const statusStyles = {
+                        pendente: 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10',
+                        atendido: 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10',
+                        faltou: 'border-red-300 bg-red-50/50 dark:bg-red-950/10 opacity-60',
+                    };
+                    const statusIcons = {
+                        pendente: <Clock className="h-4 w-4 text-amber-500" />,
+                        atendido: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+                        faltou: <XCircle className="h-4 w-4 text-red-400" />,
+                    };
+                    const statusLabels = { pendente: 'Pendente', atendido: 'Atendido', faltou: 'Faltou' };
+
                     return (
                         <div className="space-y-5">
-                            {/* ── Daily Progress ── */}
-                            <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
-                                <CardContent className="p-4">
-                                    <div className="flex items-center justify-between mb-3">
-                                        <div className="flex items-center gap-2">
-                                            <ClipboardCheck className="h-5 w-5 text-primary" />
-                                            <h3 className="text-sm font-black">Controle do Dia</h3>
-                                        </div>
-                                        <Badge variant="outline" className="text-xs font-bold">
-                                            {format(new Date(), "EEEE, dd/MM", { locale: ptBR })}
-                                        </Badge>
-                                    </div>
-                                    {/* Progress bar */}
-                                    <div className="flex items-center gap-3 mb-3">
-                                        <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
-                                        </div>
-                                        <span className="text-xs font-black text-primary">{pctDone}%</span>
-                                    </div>
-                                    <div className="grid grid-cols-3 gap-2 text-center">
-                                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
-                                            <div className="text-lg font-black text-amber-600">{pendentesHoje}</div>
-                                            <div className="text-[9px] font-bold text-amber-600/70 uppercase">Pendentes</div>
-                                        </div>
-                                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
-                                            <div className="text-lg font-black text-emerald-600">{atendidos}</div>
-                                            <div className="text-[9px] font-bold text-emerald-600/70 uppercase">Atendidos</div>
-                                        </div>
-                                        <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
-                                            <div className="text-lg font-black text-red-500">{faltaram}</div>
-                                            <div className="text-[9px] font-bold text-red-500/70 uppercase">Faltaram</div>
-                                        </div>
-                                    </div>
-                                </CardContent>
-                            </Card>
+                            {/* Header Tabs (Diario / Histórico) */}
+                            <div className="flex bg-muted/50 p-1 rounded-xl w-fit">
+                                <button
+                                    onClick={() => setControleTabModo('diario')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${controleTabModo === 'diario' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    <ClipboardCheck className="h-4 w-4" /> Checklist do Dia
+                                </button>
+                                <button
+                                    onClick={() => setControleTabModo('historico')}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold transition-all ${controleTabModo === 'historico' ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                                >
+                                    <History className="h-4 w-4" /> Histórico Completo
+                                </button>
+                            </div>
 
-                            {/* ── Today's Checklist ── */}
-                            <Card className="border">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                        <CalendarDays className="h-4 w-4 text-blue-500" /> Atendimentos de Hoje
-                                    </CardTitle>
-                                    <p className="text-xs text-muted-foreground">Toque para marcar: pendente → atendido → faltou</p>
-                                </CardHeader>
-                                <CardContent className="space-y-2">
-                                    {todayAgs.length > 0 ? todayAgs.map((ag: any) => {
-                                        const status = checkedIds[ag.id] || 'pendente';
-                                        const pac = patients.find((p: any) => p.id === ag.paciente_id);
-                                        const name = ag.titulo || (pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Agendamento');
-                                        const hora = format(parseISO(ag.data_inicio), 'HH:mm');
-                                        const horaFim = format(parseISO(ag.data_fim), 'HH:mm');
-
-                                        const statusStyles = {
-                                            pendente: 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10',
-                                            atendido: 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10',
-                                            faltou: 'border-red-300 bg-red-50/50 dark:bg-red-950/10 opacity-60',
-                                        };
-                                        const statusIcons = {
-                                            pendente: <Clock className="h-4 w-4 text-amber-500" />,
-                                            atendido: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
-                                            faltou: <XCircle className="h-4 w-4 text-red-400" />,
-                                        };
-                                        const statusLabels = { pendente: 'Pendente', atendido: 'Atendido', faltou: 'Faltou' };
-
-                                        return (
-                                            <div key={ag.id} className={`rounded-xl border-2 p-3 transition-all ${(statusStyles as any)[status]}`}>
-                                                <div className="flex items-center gap-3">
-                                                    {/* Status button */}
-                                                    <button
-                                                        onClick={() => cycleStatus(ag.id)}
-                                                        className="shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
-                                                        title="Alternar status"
-                                                    >
-                                                        {(statusIcons as any)[status]}
-                                                    </button>
-                                                    {/* Info */}
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className={`text-xs font-black ${status === 'faltou' ? 'line-through text-muted-foreground' : ''}`}>{name}</span>
-                                                            <Badge variant="outline" className="text-[8px] shrink-0">{(statusLabels as any)[status]}</Badge>
-                                                        </div>
-                                                        <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
-                                                            <span className="font-bold">{hora} – {horaFim}</span>
-                                                            {ag.tipo_atendimento && <span>• {ag.tipo_atendimento === 'primeira_consulta' ? '1ª Consulta' : ag.tipo_atendimento === 'retorno' ? 'Retorno' : ag.tipo_atendimento === 'reavaliacao' ? 'Reavaliação' : ag.tipo_atendimento}</span>}
-                                                        </div>
-                                                    </div>
-                                                    {/* WhatsApp */}
-                                                    {pac?.telefone && (
-                                                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0"
-                                                            onClick={() => {
-                                                                const tel = pac.telefone.replace(/\D/g, '');
-                                                                window.open(`https://wa.me/55${tel}`, '_blank');
-                                                            }}>
-                                                            <Phone className="h-3.5 w-3.5" />
-                                                        </Button>
-                                                    )}
+                            {controleTabModo === 'diario' ? (
+                                <>
+                                    {/* ── Daily Progress ── */}
+                                    <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
+                                        <CardContent className="p-4">
+                                            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-4 gap-3">
+                                                <div className="flex items-center gap-2">
+                                                    <ClipboardCheck className="h-5 w-5 text-primary" />
+                                                    <h3 className="text-sm font-black">Progresso do Dia</h3>
                                                 </div>
-                                                {/* Per-patient note */}
-                                                <div className="mt-2">
-                                                    <Input
-                                                        placeholder="Anotação rápida sobre este atendimento..."
-                                                        value={patientNotes[ag.id] || ''}
-                                                        onChange={e => savePatientNotes({ ...patientNotes, [ag.id]: e.target.value })}
-                                                        className="h-7 text-[10px] bg-transparent border-dashed"
-                                                    />
+
+                                                {/* Date Navigation */}
+                                                <div className="flex items-center gap-1 bg-background border rounded-lg p-1 shadow-sm">
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(addDays(currentDate, -1))}>
+                                                        <ChevronLeft className="h-4 w-4" />
+                                                    </Button>
+                                                    <div className="text-xs font-bold w-24 text-center cursor-pointer hover:text-primary transition-colors" onClick={() => setCurrentDate(new Date())} title="Voltar para hoje">
+                                                        {isToday(currentDate) ? 'Hoje' : format(currentDate, "dd MMM yyyy", { locale: ptBR })}
+                                                    </div>
+                                                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentDate(addDays(currentDate, 1))}>
+                                                        <ChevronRight className="h-4 w-4" />
+                                                    </Button>
                                                 </div>
                                             </div>
-                                        );
-                                    }) : (
-                                        <div className="text-center py-6">
-                                            <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
-                                            <p className="text-xs text-muted-foreground">Nenhum atendimento agendado para hoje</p>
-                                        </div>
-                                    )}
-                                </CardContent>
-                            </Card>
 
-                            {/* ── VIP / Active Patients ── */}
-                            <Card className="border">
+                                            {/* Progress bar */}
+                                            <div className="flex items-center gap-3 mb-4">
+                                                <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
+                                                </div>
+                                                <span className="text-xs font-black text-primary">{pctDone}%</span>
+                                            </div>
+
+                                            <div className="grid grid-cols-3 gap-2 text-center">
+                                                <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                                                    <div className="text-lg font-black text-amber-600">{pendentes}</div>
+                                                    <div className="text-[9px] font-bold text-amber-600/70 uppercase">Pendentes</div>
+                                                </div>
+                                                <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                                                    <div className="text-lg font-black text-emerald-600">{atendidos}</div>
+                                                    <div className="text-[9px] font-bold text-emerald-600/70 uppercase">Atendidos</div>
+                                                </div>
+                                                <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
+                                                    <div className="text-lg font-black text-red-500">{faltaram}</div>
+                                                    <div className="text-[9px] font-bold text-red-500/70 uppercase">Faltaram</div>
+                                                </div>
+                                            </div>
+                                        </CardContent>
+                                    </Card>
+
+                                    {/* ── Daily Checklist ── */}
+                                    <div className="space-y-2">
+                                        <div className="flex items-center gap-2 mb-1 px-1 mt-4">
+                                            <CalendarDays className="h-4 w-4 text-blue-500" />
+                                            <span className="text-sm font-bold">Atendimentos</span>
+                                            <span className="text-xs text-muted-foreground ml-auto max-sm:hidden">(Toque no ícone para alterar status)</span>
+                                        </div>
+
+                                        {dailyAgs.length > 0 ? dailyAgs.map((ag: any) => {
+                                            const status = checkedIds[ag.id] || 'pendente';
+                                            const pac = patients.find((p: any) => p.id === ag.paciente_id);
+                                            const name = ag.titulo || (pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Agendamento');
+                                            const hora = format(parseISO(ag.data_inicio), 'HH:mm');
+                                            const horaFim = format(parseISO(ag.data_fim), 'HH:mm');
+
+                                            return (
+                                                <div key={ag.id} className={`rounded-xl border-2 p-3 transition-all ${(statusStyles as any)[status]}`}>
+                                                    <div className="flex items-center gap-3">
+                                                        <button onClick={() => cycleStatus(ag.id)} className="shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors" title="Alternar status">
+                                                            {(statusIcons as any)[status]}
+                                                        </button>
+                                                        <div className="flex-1 min-w-0">
+                                                            <div className="flex items-center gap-2">
+                                                                <span className={`text-xs font-black ${status === 'faltou' ? 'line-through text-muted-foreground' : ''}`}>{name}</span>
+                                                                <Badge variant="outline" className="text-[8px] shrink-0">{(statusLabels as any)[status]}</Badge>
+                                                            </div>
+                                                            <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                                                <span className="font-bold">{hora} – {horaFim}</span>
+                                                                {ag.tipo_atendimento && <span>• {ag.tipo_atendimento.replace('_', ' ')}</span>}
+                                                            </div>
+                                                        </div>
+                                                        {pac?.telefone && (
+                                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0" onClick={() => { window.open(`https://wa.me/55${pac.telefone.replace(/\D/g, '')}`, '_blank'); }}>
+                                                                <Phone className="h-3.5 w-3.5" />
+                                                            </Button>
+                                                        )}
+                                                    </div>
+                                                    <div className="mt-2 pl-[38px]">
+                                                        <Input
+                                                            placeholder="Anotação rápida sobre a sessão..."
+                                                            value={patientNotes[ag.id] || ''}
+                                                            onChange={e => savePatientNotes({ ...patientNotes, [ag.id]: e.target.value })}
+                                                            className="h-7 text-[10px] bg-transparent border-dashed"
+                                                        />
+                                                    </div>
+                                                </div>
+                                            );
+                                        }) : (
+                                            <div className="text-center py-8 border rounded-xl border-dashed">
+                                                <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                                <p className="text-xs text-muted-foreground">Nenhum atendimento para {isToday(currentDate) ? 'hoje' : 'esta data'}</p>
+                                            </div>
+                                        )}
+                                    </div>
+                                </>
+                            ) : (
+                                /* ── Per-Patient History ── */
+                                <Card className="border">
+                                    <CardHeader className="pb-3 border-b">
+                                        <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                            <History className="h-4 w-4 text-primary" /> Histórico do Paciente
+                                        </CardTitle>
+                                        <p className="text-xs text-muted-foreground mt-1 mb-2">Visão geral de todas as sessões e anotações.</p>
+                                        <div className="mt-1">
+                                            <select
+                                                className="w-full text-sm flex h-9 rounded-md border border-input bg-transparent px-3 py-1 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                                                value={historicoPatientId}
+                                                onChange={(e) => setHistoricoPatientId(e.target.value)}
+                                            >
+                                                <option value="" disabled>Selecione um paciente...</option>
+                                                {patients.map((p: any) => (
+                                                    <option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+                                    </CardHeader>
+                                    <CardContent className="pt-4">
+                                        {!historicoPatientId ? (
+                                            <div className="text-center py-8">
+                                                <Users className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                                <p className="text-xs text-muted-foreground">Selecione um paciente acima para ver todo o histórico de presenças e anotações.</p>
+                                            </div>
+                                        ) : (() => {
+                                            const patientAgs = agendamentos
+                                                .filter((ag: any) => ag.paciente_id === historicoPatientId && ag.status !== 'cancelado')
+                                                .sort((a: any, b: any) => parseISO(b.data_inicio).getTime() - parseISO(a.data_inicio).getTime()); // Newest first
+
+                                            const statsAtendidos = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
+                                            const statsFaltas = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+
+                                            return (
+                                                <div className="space-y-4">
+                                                    {/* Patient Stats */}
+                                                    <div className="flex gap-4 p-3 bg-muted/40 rounded-lg">
+                                                        <div className="flex-1 text-center border-r border-border/50">
+                                                            <div className="text-xl font-black">{patientAgs.length}</div>
+                                                            <div className="text-[9px] uppercase font-bold text-muted-foreground">Sessões</div>
+                                                        </div>
+                                                        <div className="flex-1 text-center border-r border-border/50">
+                                                            <div className="text-xl font-black text-emerald-600">{statsAtendidos}</div>
+                                                            <div className="text-[9px] uppercase font-bold text-emerald-600/70">Presenças</div>
+                                                        </div>
+                                                        <div className="flex-1 text-center">
+                                                            <div className="text-xl font-black text-red-500">{statsFaltas}</div>
+                                                            <div className="text-[9px] uppercase font-bold text-red-500/70">Faltas</div>
+                                                        </div>
+                                                    </div>
+
+                                                    {/* Timeline */}
+                                                    <div className="relative border-l-2 border-muted ml-3 pl-4 space-y-4 py-2 mt-2">
+                                                        {patientAgs.length > 0 ? patientAgs.map((ag: any) => {
+                                                            const status = checkedIds[ag.id] || 'pendente';
+                                                            const isPast = parseISO(ag.data_inicio).getTime() < new Date().getTime();
+                                                            // auto visually mark past un-checked as red (optional)
+                                                            // For now we keep the actual state
+
+                                                            return (
+                                                                <div key={ag.id} className="relative">
+                                                                    {/* Timeline dot */}
+                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`} />
+
+                                                                    <div className={`p-2 rounded-lg border text-xs ${status === 'atendido' ? 'bg-emerald-50/30 border-emerald-100 dark:border-emerald-900' : status === 'faltou' ? 'bg-red-50/30 border-red-100 dark:border-red-900 opacity-70' : 'bg-card'}`}>
+                                                                        <div className="flex justify-between items-start mb-1">
+                                                                            <span className="font-bold flex items-center gap-1.5">
+                                                                                {format(parseISO(ag.data_inicio), 'dd/MM/yyyy')}
+                                                                                <span className="font-normal text-muted-foreground">· {format(parseISO(ag.data_inicio), 'HH:mm')}</span>
+                                                                            </span>
+                                                                            <button onClick={() => cycleStatus(ag.id)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                                                                                <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 border-current ${status === 'atendido' ? 'text-emerald-600' : status === 'faltou' ? 'text-red-500' : 'text-amber-600'}`}>
+                                                                                    {(statusLabels as any)[status]}
+                                                                                </Badge>
+                                                                            </button>
+                                                                        </div>
+                                                                        {ag.tipo_atendimento && <p className="text-[10px] text-muted-foreground mb-1">{ag.tipo_atendimento.replace('_', ' ')}</p>}
+
+                                                                        <Input
+                                                                            placeholder="Adicionar nota para esta sessão..."
+                                                                            value={patientNotes[ag.id] || ''}
+                                                                            onChange={e => savePatientNotes({ ...patientNotes, [ag.id]: e.target.value })}
+                                                                            className="h-6 text-[10px] bg-background/50 border-dashed px-2 mt-1"
+                                                                        />
+                                                                    </div>
+                                                                </div>
+                                                            );
+                                                        }) : (
+                                                            <p className="text-xs text-muted-foreground italic">Nenhum agendamento encontrado.</p>
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })()}
+                                    </CardContent>
+                                </Card>
+                            )}
+                            {/* ── General VIP and Notes sections (Common to both modes) ── */}
+                            <Card className="border mt-8">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm font-bold flex items-center gap-2">
                                         <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> Pacientes VIP
@@ -679,7 +800,7 @@ export default function GestaoVendas() {
                                 <CardContent className="space-y-2">
                                     <div className="relative">
                                         <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                        <Input placeholder="Buscar..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-8 h-8 text-xs" />
+                                        <Input placeholder="Buscar para marcar VIP..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-8 h-8 text-xs" />
                                     </div>
                                     {vipIds.length > 0 && (
                                         <div className="space-y-1">
@@ -696,17 +817,19 @@ export default function GestaoVendas() {
                                             })}
                                         </div>
                                     )}
-                                    <div className="space-y-0.5 max-h-40 overflow-y-auto">
-                                        {patients
-                                            .filter((p: any) => !vipIds.includes(p.id))
-                                            .filter((p: any) => !vipSearch.trim() || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(vipSearch.toLowerCase()))
-                                            .map((p: any) => (
-                                                <div key={p.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/40">
-                                                    <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/20 hover:text-amber-500"><Star className="h-3 w-3" /></button>
-                                                    <span className="text-[11px] truncate">{p.nome} {p.sobrenome}</span>
-                                                </div>
-                                            ))}
-                                    </div>
+                                    {vipSearch.trim() && (
+                                        <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                                            {patients
+                                                .filter((p: any) => !vipIds.includes(p.id))
+                                                .filter((p: any) => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(vipSearch.toLowerCase()))
+                                                .map((p: any) => (
+                                                    <div key={p.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/40">
+                                                        <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/20 hover:text-amber-500"><Star className="h-3 w-3" /></button>
+                                                        <span className="text-[11px] truncate">{p.nome} {p.sobrenome}</span>
+                                                    </div>
+                                                ))}
+                                        </div>
+                                    )}
                                 </CardContent>
                             </Card>
 
@@ -714,12 +837,12 @@ export default function GestaoVendas() {
                             <Card className="border">
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                        <StickyNote className="h-4 w-4 text-blue-500" /> Anotações
+                                        <StickyNote className="h-4 w-4 text-blue-500" /> Anotações Rápidas Gerais
                                     </CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     <div className="flex gap-2">
-                                        <Textarea placeholder="Lembrete..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2} />
+                                        <Textarea placeholder="Lembretes, afazeres da clínica..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2} />
                                         <Button size="sm" className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0" disabled={!newNote.trim()}
                                             onClick={() => { saveNotes([{ id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() }, ...notes].slice(0, 50)); setNewNote(''); toast({ title: '📝 Salvo!' }); }}>
                                             <Plus className="h-4 w-4" />
@@ -744,7 +867,7 @@ export default function GestaoVendas() {
                     );
                 })()}
             </div>
-        </AppLayout>
+        </AppLayout >
     );
 }
 
