@@ -22,6 +22,7 @@ import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Area
 } from 'recharts';
+import { useNavigate } from 'react-router-dom';
 
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
@@ -321,7 +322,7 @@ export default function PatientIntegratedDashboard({
             <StructuralConnectionMap data={structuralData} />
 
             {/* Gerar Diretriz de Tratamento */}
-            <StructuralDiretrizButton data={structuralData} />
+            <StructuralDiretrizButton data={structuralData} pacienteId={pacienteId} />
           </CardContent>
         </Card>
       )}
@@ -534,142 +535,22 @@ export default function PatientIntegratedDashboard({
 }
 
 // ── Structural Treatment Guideline Generator ──────────────────────────
-function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) {
-  const [guidelines, setGuidelines] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
-
-  const generate = () => {
-    const lines: string[] = [];
-    const date = new Date().toLocaleDateString('pt-BR');
-
-    lines.push('═══════════════════════════════════════');
-    lines.push('  DIRETRIZ DE TRATAMENTO ESTRUTURAL');
-    lines.push(`  Método Identidade · ${date}`);
-    lines.push('═══════════════════════════════════════');
-    lines.push('');
-    lines.push(`Score Geral: ${(data.scoreStructuralGeneral ?? 0).toFixed(1)}/10 — ${data.classification || 'N/A'}`);
-    lines.push('');
-
-    if (data.primaryDriver) {
-      const cfg = UNIT_CONFIGS.find(u => u.id === data.primaryDriver);
-      const unit = data.units?.[data.primaryDriver];
-      if (cfg && unit) {
-        lines.push(`⚠️ DRIVER: ${cfg.id} (${cfg.name}) — Score ${unit.score.toFixed(1)}`);
-        lines.push('   Foco inicial obrigatório.');
-        lines.push('');
-      }
-    }
-
-    if (data.clinicalPriorities?.length > 0) {
-      lines.push('─── PRIORIDADES CLÍNICAS ───');
-      data.clinicalPriorities.forEach(p => {
-        const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
-        lines.push(`  ${p.priority}. ${cfg?.emoji || ''} ${p.unitId} (${p.score.toFixed(1)})`);
-        lines.push(`     ${p.action} · ${p.durationWeeks} sem · Meta: ${p.expectedImprovement}`);
-      });
-      lines.push('');
-    }
-
-    if (data.relationships?.direct?.length > 0) {
-      lines.push('─── CONEXÕES ───');
-      data.relationships.direct.forEach(rel => {
-        const tissue = rel.affectedStructures[0]?.startsWith('TISSUE:')
-          ? rel.affectedStructures[0].replace('TISSUE:', '').toUpperCase()
-          : '';
-        lines.push(`  ${rel.source} → ${rel.target} [${rel.severity}] ${tissue ? `(${tissue})` : ''}`);
-        lines.push(`    ${rel.mechanism}`);
-      });
-      lines.push('');
-    }
-
-    const critical = data.clinicalPriorities.filter(p => p.score >= 8);
-    const moderate = data.clinicalPriorities.filter(p => p.score >= 5 && p.score < 8);
-
-    lines.push('─── PROTOCOLO BASEADO EM EVIDÊNCIA ───');
-    lines.push('');
-
-    if (critical.length > 0) {
-      lines.push('FASE 1 — AGUDA (Sem 1-3)');
-      lines.push('  Objetivo: Redução de dor e inflamação');
-      critical.forEach(p => {
-        const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
-        lines.push(`  ${cfg?.emoji || ''} ${p.unitId}: Liberação miofascial + mob. grau I-II`);
-        lines.push('    TENS, crioterapia, isométricos · 2-3x/sem');
-      });
-      lines.push('');
-    }
-
-    if (moderate.length > 0) {
-      lines.push('FASE 2 — SUBAGUDA (Sem 3-6)');
-      lines.push('  Objetivo: Restauração de mobilidade');
-      moderate.forEach(p => {
-        const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
-        lines.push(`  ${cfg?.emoji || ''} ${p.unitId}: Mob. grau III-IV + estabilização`);
-        lines.push('    Fortalecimento excêntrico + controle motor · 2-3x/sem');
-      });
-      lines.push('');
-    }
-
-    lines.push('FASE 3 — MANUTENÇÃO (Sem 6-8)');
-    lines.push('  Exercícios funcionais + reeducação postural · 1-2x/sem');
-
-    if (data.preferences) {
-      lines.push('');
-      lines.push('─── PREFERÊNCIAS ───');
-      if (data.preferences.techniquePreference?.length) lines.push(`  Preferências: ${data.preferences.techniquePreference.join(', ')}`);
-      if (data.preferences.techniqueAversion?.length) lines.push(`  Aversões: ${data.preferences.techniqueAversion.join(', ')}`);
-    }
-
-    setGuidelines(lines.join('\n'));
-  };
-
-  const handleCopy = () => {
-    if (guidelines) {
-      navigator.clipboard.writeText(guidelines);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    }
-  };
-
-  const handlePrint = () => {
-    if (!guidelines) return;
-    const w = window.open('', '_blank');
-    if (w) {
-      w.document.write(`<pre style="font-family:monospace;font-size:12px;padding:20px;white-space:pre-wrap;">${guidelines}</pre>`);
-      w.document.close();
-      w.print();
-    }
-  };
-
-  if (!guidelines) {
-    return (
-      <div className="mt-4 pt-4 border-t">
-        <Button className="w-full bg-gradient-primary text-white gap-2" onClick={generate}>
-          <Sparkles className="h-4 w-4" />
-          Gerar Diretriz de Tratamento Estrutural
-        </Button>
-      </div>
-    );
-  }
+function StructuralDiretrizButton({ data, pacienteId }: { data: StructuralAssessmentData, pacienteId: string }) {
+  const navigate = useNavigate();
 
   return (
-    <div className="mt-4 pt-4 border-t space-y-3">
-      <div className="flex items-center justify-between">
-        <h4 className="font-bold text-sm flex items-center gap-2">
-          <Sparkles className="h-4 w-4 text-primary" /> Diretriz de Tratamento
-        </h4>
-        <div className="flex gap-2">
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handleCopy}>
-            <Copy className="h-3 w-3" /> {copied ? 'Copiado!' : 'Copiar'}
-          </Button>
-          <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={handlePrint}>
-            <Printer className="h-3 w-3" /> Imprimir
-          </Button>
-        </div>
+    <div className="mt-4 pt-4 border-t">
+      <div className="bg-primary/5 border border-primary/20 p-3 rounded-lg mb-4 text-xs text-primary">
+        💡 O sistema mapeou as restrições primárias e o score de dor.
+        Para mesclar os dados de Identidade Estrutural nesta sessão e gerar prescrições por fases em uma nova diretriz, acesse o painel.
       </div>
-      <pre className="text-[10px] bg-muted/50 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">
-        {guidelines}
-      </pre>
+      <Button
+        className="w-full bg-gradient-primary text-white gap-2"
+        onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
+      >
+        <Sparkles className="h-4 w-4" />
+        Montar Diretriz de Tratamento (Painel)
+      </Button>
     </div>
   );
 }

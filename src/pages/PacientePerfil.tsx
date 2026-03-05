@@ -240,6 +240,56 @@ export default function PacientePerfil() {
   const agendamentosFuturos = agendamentos.filter((ag: any) => isAfter(parseISO(ag.data_inicio), hoje) || format(parseISO(ag.data_inicio), 'yyyy-MM-dd') === format(hoje, 'yyyy-MM-dd'));
   const agendamentosPassados = agendamentos.filter((ag: any) => isBefore(parseISO(ag.data_inicio), hoje) && format(parseISO(ag.data_inicio), 'yyyy-MM-dd') !== format(hoje, 'yyyy-MM-dd'));
 
+  // Calculate session metrics
+  const sessionMetrics = useMemo(() => {
+    let checks: Record<string, string> = {};
+    try {
+      checks = JSON.parse(localStorage.getItem('checks-all') || '{}');
+    } catch { }
+
+    const atendidas = agendamentos.filter((ag: any) => checks[ag.id] === 'atendido').length;
+    const faltas = agendamentos.filter((ag: any) => checks[ag.id] === 'faltou').length;
+    return {
+      total: agendamentos.length,
+      atendidas,
+      faltas
+    };
+  }, [agendamentos]);
+
+  const handleDeletePaciente = async () => {
+    if (!confirm(`EXCLUIR DEFINITIVAMENTE ${paciente.nome} ${paciente.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
+
+    try {
+      const pId = paciente.id;
+      // Deleção em Cascata
+      await supabase.from('links_avaliacao').delete().eq('paciente_id', pId);
+      await supabase.from('links_agenda_paciente').delete().eq('paciente_id', pId);
+
+      const { data: protos } = await supabase.from('protocolos').select('id').eq('paciente_id', pId);
+      if (protos && protos.length > 0) {
+        const pIds = protos.map(x => x.id);
+        await supabase.from('protocolo_tratamentos').delete().in('protocolo_id', pIds);
+        await supabase.from('protocolos').delete().eq('paciente_id', pId);
+      }
+
+      await supabase.from('respostas_avaliacao_paciente').delete().eq('paciente_id', pId);
+      await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', pId);
+      await supabase.from('avaliacoes_cob_zero').delete().eq('paciente_id', pId);
+      await supabase.from('studio_medidas').delete().eq('paciente_id', pId);
+      await supabase.from('myid_avaliacoes').delete().eq('paciente_id', pId);
+      await supabase.from('agendamentos').delete().eq('paciente_id', pId);
+      await supabase.from('paciente_servicos').delete().eq('paciente_id', pId);
+
+      const { error } = await supabase.from('pacientes').delete().eq('id', pId);
+      if (error) throw error;
+
+      toast({ title: 'Paciente excluído definitivamente' });
+      navigate('/pacientes');
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    }
+  };
+
   // Quick schedule
   const agendarRapido = async () => {
     navigate(`/agenda`);
@@ -265,6 +315,10 @@ export default function PacientePerfil() {
                   <MessageCircle className="h-4 w-4" />
                 </Button>
               )}
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
+                onClick={handleDeletePaciente}>
+                <Trash2 className="h-4 w-4" />
+              </Button>
             </div>
             <div className="flex items-center gap-2 mt-1 flex-wrap">
               {(paciente._servicos as string[]).map((s: string) => {
@@ -283,7 +337,7 @@ export default function PacientePerfil() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
           {/* Idade */}
           <div className="clinical-card !p-3">
             <div className="flex items-center gap-2 mb-1.5">
@@ -344,6 +398,21 @@ export default function PacientePerfil() {
             ) : (
               <div className="text-lg font-bold text-muted-foreground">—</div>
             )}
+          </div>
+
+          {/* Controle de Sessões */}
+          <div className="clinical-card !p-3">
+            <div className="flex items-center gap-2 mb-1.5">
+              <Activity className="h-3.5 w-3.5 text-muted-foreground" />
+              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Sessões</span>
+            </div>
+            <div className="text-lg font-bold">
+              {sessionMetrics.total > 0 ? `${sessionMetrics.atendidas}/${sessionMetrics.total}` : '—'}
+            </div>
+            <div className="flex gap-2">
+              <span className="text-[10px] text-emerald-600 font-medium">{sessionMetrics.atendidas} ✓</span>
+              <span className="text-[10px] text-red-600 font-medium">{sessionMetrics.faltas} ✗</span>
+            </div>
           </div>
         </div>
 
