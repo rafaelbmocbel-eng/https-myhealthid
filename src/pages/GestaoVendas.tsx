@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -7,6 +7,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Select, SelectTrigger, SelectValue, SelectContent, SelectItem } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import {
     Users, MessageSquare, DollarSign, Clock, ArrowRight, AlertCircle,
     ClipboardList, TrendingUp, Send, Package, Zap, Heart, Star, Gift,
@@ -45,6 +48,17 @@ export default function GestaoVendas() {
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
     const [controleTabModo, setControleTabModo] = useState<'diario' | 'historico'>('diario');
     const [historicoPatientId, setHistoricoPatientId] = useState<string>('');
+    const queryClient = useQueryClient();
+
+    // Modal de Adição Diária
+    const [addPacienteModal, setAddPacienteModal] = useState(false);
+    const [addingPaciente, setAddingPaciente] = useState(false);
+    const [addPacienteForm, setAddPacienteForm] = useState({
+        pacienteId: '',
+        horaInicio: '08:00',
+        horaFim: '09:00',
+        status: 'pendente'
+    });
 
     // Persisted VIP list, notes, and attendance checks (localStorage)
     const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
@@ -586,6 +600,109 @@ export default function GestaoVendas() {
                                 </button>
                             </div>
 
+                            {/* Modal de Adição Diária de Paciente */}
+                            <Dialog open={addPacienteModal} onOpenChange={setAddPacienteModal}>
+                                <DialogContent className="sm:max-w-[425px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Adicionar Paciente ao Dia</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Paciente</Label>
+                                            <Select value={addPacienteForm.pacienteId} onValueChange={(val) => setAddPacienteForm({ ...addPacienteForm, pacienteId: val })}>
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Selecione o paciente" />
+                                                </SelectTrigger>
+                                                <SelectContent className="max-h-60">
+                                                    {patients.map((p: any) => (
+                                                        <SelectItem key={p.id} value={p.id}>
+                                                            {p.nome} {p.sobrenome || ''}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div className="space-y-2">
+                                                <Label>Hora Início</Label>
+                                                <Input
+                                                    type="time"
+                                                    value={addPacienteForm.horaInicio}
+                                                    onChange={(e) => setAddPacienteForm({ ...addPacienteForm, horaInicio: e.target.value })}
+                                                />
+                                            </div>
+                                            <div className="space-y-2">
+                                                <Label>Hora Fim</Label>
+                                                <Input
+                                                    type="time"
+                                                    value={addPacienteForm.horaFim}
+                                                    onChange={(e) => setAddPacienteForm({ ...addPacienteForm, horaFim: e.target.value })}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Status Inicial</Label>
+                                            <Select value={addPacienteForm.status} onValueChange={(val) => setAddPacienteForm({ ...addPacienteForm, status: val })}>
+                                                <SelectTrigger>
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="pendente">Pendente</SelectItem>
+                                                    <SelectItem value="atendido">Já Atendido</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setAddPacienteModal(false)} disabled={addingPaciente}>
+                                            Cancelar
+                                        </Button>
+                                        <Button className="bg-gradient-primary text-white" disabled={addingPaciente} onClick={async () => {
+                                            if (!addPacienteForm.pacienteId) {
+                                                toast({ title: 'Selecione um paciente', variant: 'destructive' });
+                                                return;
+                                            }
+
+                                            setAddingPaciente(true);
+                                            try {
+                                                const dateStr = format(currentDate, 'yyyy-MM-dd');
+                                                const dataInicio = new Date(`${dateStr}T${addPacienteForm.horaInicio}:00`);
+                                                const dataFim = new Date(`${dateStr}T${addPacienteForm.horaFim}:00`);
+
+                                                const pac = patients.find((p: any) => p.id === addPacienteForm.pacienteId);
+
+                                                const { data, error } = await supabase.from('agendamentos').insert({
+                                                    terapeuta_id: user!.id,
+                                                    paciente_id: addPacienteForm.pacienteId,
+                                                    data_inicio: dataInicio.toISOString(),
+                                                    data_fim: dataFim.toISOString(),
+                                                    titulo: `${pac?.nome} ${pac?.sobrenome || ''}`.trim(),
+                                                    status: 'confirmado',
+                                                    tipo_atendimento: 'sessao_regular'
+                                                }).select('id').single();
+
+                                                if (error) throw error;
+
+                                                if (data && addPacienteForm.status !== 'pendente') {
+                                                    saveChecks({ ...checkedIds, [data.id]: addPacienteForm.status });
+                                                }
+
+                                                toast({ title: 'Paciente adicionado ao dia!' });
+                                                setAddPacienteModal(false);
+                                                setAddPacienteForm({ pacienteId: '', horaInicio: '08:00', horaFim: '09:00', status: 'pendente' });
+                                                queryClient.invalidateQueries({ queryKey: ['crm-agendamentos'] });
+                                            } catch (e: any) {
+                                                toast({ title: 'Erro ao adicionar', description: e.message, variant: 'destructive' });
+                                            } finally {
+                                                setAddingPaciente(false);
+                                            }
+                                        }}>
+                                            {addingPaciente ? 'Adicionando...' : 'Adicionar'}
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
+
                             {controleTabModo === 'diario' ? (
                                 <>
                                     {/* ── Daily Progress ── */}
@@ -638,10 +755,19 @@ export default function GestaoVendas() {
 
                                     {/* ── Daily Checklist ── */}
                                     <div className="space-y-2">
-                                        <div className="flex items-center gap-2 mb-1 px-1 mt-4">
-                                            <CalendarDays className="h-4 w-4 text-blue-500" />
-                                            <span className="text-sm font-bold">Atendimentos</span>
-                                            <span className="text-xs text-muted-foreground ml-auto max-sm:hidden">(Toque no ícone para alterar status)</span>
+                                        <div className="flex items-center justify-between mb-2 px-1 mt-4">
+                                            <div className="flex items-center gap-2">
+                                                <CalendarDays className="h-4 w-4 text-blue-500" />
+                                                <span className="text-sm font-bold">Atendimentos</span>
+                                                <span className="text-[10px] text-muted-foreground hidden sm:inline-block ml-2">(Toque no ícone para alterar status)</span>
+                                            </div>
+                                            <Button
+                                                size="sm"
+                                                className="h-7 text-xs gap-1 bg-gradient-primary text-white"
+                                                onClick={() => setAddPacienteModal(true)}
+                                            >
+                                                <Plus className="h-3 w-3" /> Adicionar Paciente
+                                            </Button>
                                         </div>
 
                                         {dailyAgs.length > 0 ? dailyAgs.map((ag: any) => {
