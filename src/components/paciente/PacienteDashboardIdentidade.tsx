@@ -407,6 +407,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
               </TabsTrigger>
+              <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+                <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+              </TabsTrigger>
               <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial
               </TabsTrigger>

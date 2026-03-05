@@ -271,12 +271,12 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                 <Presentation className="h-4 w-4" /> Avaliação Presencial {avaliacoes.length > 0 && `(${avaliacoes.length})`}
               </TabsTrigger>
               {evolucaoData.length >= 2 && (
-                <TabsTrigger value="evolucao_cob" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                  <TrendingUp className="h-3.5 w-3.5" /> Cob Evolução
+                <TabsTrigger value="evolucao_cob" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+                  <TrendingUp className="h-4 w-4" /> Cob Evolução
                 </TabsTrigger>
               )}
-              <TabsTrigger value="protocolos" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-                <Target className="h-3.5 w-3.5" /> Protocolos
+              <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+                <Target className="h-4 w-4" /> Protocolos & Serviços
               </TabsTrigger>
             </TabsList>
 
