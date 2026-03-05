@@ -33,6 +33,7 @@ export default function PatientIntegratedDashboard({
   serviceType
 }: PatientIntegratedDashboardProps) {
   const [showDiretrizes, setShowDiretrizes] = useState(false);
+  const [hoveredScoreKey, setHoveredScoreKey] = useState<string | null>(null);
 
   // ── MyID data
   const { data: myidAvaliacoes = [] } = useQuery({
@@ -222,15 +223,15 @@ export default function PatientIntegratedDashboard({
               </div>
 
               <div className="flex flex-col lg:flex-row items-center gap-6">
-                {/* Fingerprint */}
-                <div className="w-full lg:w-1/2 max-w-sm">
-                  <MyIDFingerprint rings={rings} myidScore={myidScore} />
+                {/* Fingerprint - larger */}
+                <div className="w-full lg:w-3/5">
+                  <MyIDFingerprint rings={rings} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
                 </div>
 
                 {/* Score Details */}
                 <div className="flex-1 space-y-4 w-full">
                   <div className="text-center lg:text-left">
-                    <div className="text-4xl font-black tracking-tighter" style={{
+                    <div className="text-5xl font-black tracking-tighter" style={{
                       color: myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'
                     }}>
                       {myidScore.toFixed(1)}
@@ -238,14 +239,24 @@ export default function PatientIntegratedDashboard({
                     <div className="text-xs text-muted-foreground font-medium">Índice MyID Global</div>
                   </div>
 
-                  {/* Score grid */}
+                  {/* Score circles grid */}
                   <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
                     {rings.map(r => (
-                      <div key={r.scoreKey} className="flex items-center gap-1.5 p-1.5 rounded-lg bg-muted/40 hover:bg-muted/60 transition-colors">
-                        <div className="h-2.5 w-2.5 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                      <div
+                        key={r.scoreKey}
+                        className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${
+                          hoveredScoreKey === r.scoreKey
+                            ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
+                            : 'bg-muted/40 hover:bg-muted/60'
+                        }`}
+                        style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
+                        onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
+                        onMouseLeave={() => setHoveredScoreKey(null)}
+                      >
+                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
                         <div className="min-w-0">
-                          <div className="text-[8px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
-                          <div className="text-[11px] font-black">{r.value.toFixed(1)}</div>
+                          <div className="text-[9px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
+                          <div className="text-sm font-black">{r.value.toFixed(1)}</div>
                         </div>
                       </div>
                     ))}
