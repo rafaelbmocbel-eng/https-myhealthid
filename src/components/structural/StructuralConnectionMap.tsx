@@ -6,14 +6,31 @@ import { cn } from '@/lib/utils';
 import { X, Link2 } from 'lucide-react';
 import {
     StructuralAssessmentData, UNIT_CONFIGS,
-    classifyScore,
-    StructuralRelationship, IndirectRelationship,
+    StructuralRelationship,
 } from '@/types/structural';
 
 interface Props {
     data: StructuralAssessmentData;
     editable?: boolean;
     onDataChange?: (data: StructuralAssessmentData) => void;
+}
+
+// Tissue types with colors
+const TISSUE_TYPES = [
+    { key: 'muscle', label: 'Músculo', emoji: '💪', color: '#EF4444', strokeColor: '#DC2626' },
+    { key: 'nerve', label: 'Nervo', emoji: '⚡', color: '#EAB308', strokeColor: '#CA8A04' },
+    { key: 'viscera', label: 'Víscera', emoji: '🫀', color: '#22C55E', strokeColor: '#16A34A' },
+    { key: 'joint', label: 'Articulação', emoji: '🦴', color: '#3B82F6', strokeColor: '#2563EB' },
+    { key: 'ligament', label: 'Ligamento', emoji: '🔗', color: '#9CA3AF', strokeColor: '#6B7280' },
+] as const;
+
+type TissueKey = typeof TISSUE_TYPES[number]['key'];
+
+interface TissueConnection {
+    source: string;
+    target: string;
+    tissueType: TissueKey;
+    structure: string; // e.g. "Nervo mediano", "Supraespinhoso"
 }
 
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
@@ -35,39 +52,42 @@ function getNodeColor(score: number): string {
     return '#EF4444';
 }
 
-function getArrowColor(severity: string): string {
-    if (severity === 'SEVERA') return '#EF4444';
-    if (severity === 'MODERADA') return '#F97316';
-    return '#F59E0B';
+function getTissueColor(key: TissueKey): string {
+    return TISSUE_TYPES.find(t => t.key === key)?.color || '#9CA3AF';
 }
 
-function getArrowWidth(severity: string): number {
-    if (severity === 'SEVERA') return 4;
-    if (severity === 'MODERADA') return 2.5;
-    return 1.5;
+function getTissueStroke(key: TissueKey): string {
+    return TISSUE_TYPES.find(t => t.key === key)?.strokeColor || '#6B7280';
 }
 
-function getCompromisePercent(s1: number, s2: number): number {
-    return Math.min(95, Math.round(((s1 + s2) / 2) * 10));
-}
-
-function getSeverity(score: number): 'SEVERA' | 'MODERADA' | 'LEVE' {
-    if (score >= 8) return 'SEVERA';
-    if (score >= 5) return 'MODERADA';
-    return 'LEVE';
-}
-
-type ConnectStep = 'idle' | 'select-source' | 'select-target' | 'fill-details';
+type Step = 'idle' | 'select-tissue' | 'select-source' | 'select-target' | 'fill-structure';
 
 export default function StructuralConnectionMap({ data, editable = false, onDataChange }: Props) {
-    const [connectStep, setConnectStep] = useState<ConnectStep>('idle');
+    const [step, setStep] = useState<Step>('idle');
+    const [selectedTissue, setSelectedTissue] = useState<TissueKey | null>(null);
     const [source, setSource] = useState<string | null>(null);
     const [target, setTarget] = useState<string | null>(null);
-    const [mechanism, setMechanism] = useState('');
-    const [structures, setStructures] = useState('');
+    const [structureName, setStructureName] = useState('');
 
-    const relationships = useMemo(() => data.relationships, [data.relationships]);
-    const hasRelationships = relationships.direct.length > 0 || relationships.indirect.length > 0;
+    // Store tissue connections in data.relationships.direct using affectedStructures[0] for tissue type marker
+    // Parse existing connections that have tissue type info
+    const tissueConnections = useMemo((): TissueConnection[] => {
+        return data.relationships.direct
+            .filter(r => r.affectedStructures.length > 0 && r.affectedStructures[0].startsWith('TISSUE:'))
+            .map(r => ({
+                source: r.source,
+                target: r.target,
+                tissueType: r.affectedStructures[0].replace('TISSUE:', '') as TissueKey,
+                structure: r.mechanism,
+            }));
+    }, [data.relationships.direct]);
+
+    // Non-tissue connections (from auto-generated relationships)
+    const autoConnections = useMemo(() => {
+        return data.relationships.direct.filter(
+            r => r.affectedStructures.length === 0 || !r.affectedStructures[0].startsWith('TISSUE:')
+        );
+    }, [data.relationships.direct]);
 
     const createCurvedPath = (sx: number, sy: number, tx: number, ty: number, curve: number = 0) => {
         const dx = tx - sx;
@@ -76,49 +96,49 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         const my = (sy + ty) / 2;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const offset = curve * 30;
-        const cx = mx + (-dy / len * offset);
-        const cy = my + (dx / len * offset);
-        return { path: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`, cx, cy };
+        return {
+            path: `M ${sx} ${sy} Q ${mx + (-dy / len * offset)} ${my + (dx / len * offset)} ${tx} ${ty}`,
+            cx: mx + (-dy / len * offset),
+            cy: my + (dx / len * offset),
+        };
     };
 
-    // --- Node click handler for creating connections ---
     const handleNodeClick = (unitId: string) => {
-        if (!editable) return;
+        if (!editable || step === 'idle' || step === 'select-tissue' || step === 'fill-structure') return;
 
-        if (connectStep === 'idle' || connectStep === 'select-source') {
+        if (step === 'select-source') {
             setSource(unitId);
-            setTarget(null);
-            setConnectStep('select-target');
-        } else if (connectStep === 'select-target') {
-            if (unitId === source) {
-                // Tapped same node — cancel
-                cancelConnect();
-                return;
-            }
+            setStep('select-target');
+        } else if (step === 'select-target') {
+            if (unitId === source) { cancelConnect(); return; }
             setTarget(unitId);
-            setConnectStep('fill-details');
+            setStep('fill-structure');
         }
     };
 
     const cancelConnect = () => {
-        setConnectStep('idle');
+        setStep('idle');
+        setSelectedTissue(null);
         setSource(null);
         setTarget(null);
-        setMechanism('');
-        setStructures('');
+        setStructureName('');
+    };
+
+    const selectTissue = (key: TissueKey) => {
+        setSelectedTissue(key);
+        setStep('select-source');
     };
 
     const confirmConnection = () => {
-        if (!onDataChange || !source || !target) return;
-        const sourceScore = data.units[source]?.score || 0;
-        const structList = structures.split(',').map(s => s.trim()).filter(Boolean);
+        if (!onDataChange || !source || !target || !selectedTissue) return;
+        const label = structureName.trim() || TISSUE_TYPES.find(t => t.key === selectedTissue)?.label || '';
 
         const rel: StructuralRelationship = {
             source,
             target,
-            mechanism: mechanism.trim() || `Conexão ${source} → ${target}`,
-            affectedStructures: structList,
-            severity: getSeverity(sourceScore),
+            mechanism: label,
+            affectedStructures: [`TISSUE:${selectedTissue}`],
+            severity: 'MODERADA',
             interventionPriority: data.relationships.direct.length + 1,
         };
 
@@ -129,74 +149,102 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         cancelConnect();
     };
 
-    const removeDirectRel = (i: number) => {
+    const removeConnection = (index: number) => {
         if (!onDataChange) return;
         const arr = [...data.relationships.direct];
-        arr.splice(i, 1);
+        arr.splice(index, 1);
         onDataChange({ ...data, relationships: { ...data.relationships, direct: arr } });
     };
 
-    const removeIndirectRel = (i: number) => {
+    const removeIndirectRel = (index: number) => {
         if (!onDataChange) return;
         const arr = [...data.relationships.indirect];
-        arr.splice(i, 1);
+        arr.splice(index, 1);
         onDataChange({ ...data, relationships: { ...data.relationships, indirect: arr } });
     };
 
-    // Instruction text
     const getInstruction = () => {
-        if (connectStep === 'select-source') return '1️⃣ Toque na unidade de ORIGEM';
-        if (connectStep === 'select-target') return `2️⃣ Agora toque na unidade de DESTINO (origem: ${source})`;
-        if (connectStep === 'fill-details') return `Descreva a conexão ${source} → ${target}`;
-        return editable ? 'Toque num nó para iniciar uma conexão' : 'Conexões entre unidades';
+        if (step === 'select-tissue') return 'Selecione o tipo de tecido abaixo';
+        if (step === 'select-source') return `Toque na unidade de ORIGEM (${TISSUE_TYPES.find(t => t.key === selectedTissue)?.label})`;
+        if (step === 'select-target') return `Toque na unidade de DESTINO (origem: ${source})`;
+        if (step === 'fill-structure') return `Nomeie a estrutura ${source} → ${target}`;
+        return editable ? 'Toque "Conectar" para criar conexões por tecido' : 'Mapa de conexões estruturais';
     };
 
     return (
         <div className="clinical-card">
             <div className="flex items-center justify-between mb-1">
                 <h3 className="font-bold text-sm">Mapa de Comprometimento</h3>
-                {editable && connectStep === 'idle' && (
+                {editable && step === 'idle' && (
                     <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
-                        onClick={() => setConnectStep('select-source')}>
+                        onClick={() => setStep('select-tissue')}>
                         <Link2 className="h-3 w-3" /> Conectar
                     </Button>
                 )}
-                {editable && connectStep !== 'idle' && connectStep !== 'fill-details' && (
+                {editable && step !== 'idle' && (
                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-red-500" onClick={cancelConnect}>
                         <X className="h-3 w-3" /> Cancelar
                     </Button>
                 )}
             </div>
 
-            {/* Instruction bar */}
+            {/* Instruction */}
             <div className={cn(
                 'text-[11px] px-3 py-1.5 rounded-lg mb-3 text-center font-medium transition-all',
-                connectStep === 'idle' ? 'text-muted-foreground bg-muted/30' :
-                    connectStep === 'fill-details' ? 'text-primary bg-primary/10 border border-primary/30' :
-                        'text-amber-700 bg-amber-50 border border-amber-200 animate-pulse'
+                step === 'idle' ? 'text-muted-foreground bg-muted/30' :
+                    step === 'fill-structure' ? 'text-primary bg-primary/10 border border-primary/30' :
+                        'text-amber-700 bg-amber-50 border border-amber-200'
             )}>
                 {getInstruction()}
             </div>
 
-            {/* Fill details inline form */}
-            {connectStep === 'fill-details' && source && target && (
-                <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 mb-3 space-y-2 animate-slide-in">
+            {/* Tissue type selector — clickable colored buttons */}
+            {step === 'select-tissue' && (
+                <div className="flex flex-wrap gap-2 justify-center mb-3 animate-slide-in">
+                    {TISSUE_TYPES.map(t => (
+                        <button
+                            key={t.key}
+                            onClick={() => selectTissue(t.key)}
+                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 active:scale-95"
+                            style={{ borderColor: t.color, backgroundColor: `${t.color}15` }}
+                        >
+                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                            <span className="text-xs font-bold">{t.emoji} {t.label}</span>
+                        </button>
+                    ))}
+                </div>
+            )}
+
+            {/* Active tissue indicator */}
+            {selectedTissue && step !== 'idle' && step !== 'select-tissue' && (
+                <div className="flex items-center justify-center gap-2 mb-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissueColor(selectedTissue) }} />
+                    <span className="text-xs font-bold" style={{ color: getTissueStroke(selectedTissue) }}>
+                        {TISSUE_TYPES.find(t => t.key === selectedTissue)?.label}
+                    </span>
+                </div>
+            )}
+
+            {/* Name structure inline */}
+            {step === 'fill-structure' && source && target && selectedTissue && (
+                <div className="p-3 rounded-lg border mb-3 space-y-2 animate-slide-in"
+                    style={{ borderColor: getTissueColor(selectedTissue), backgroundColor: `${getTissueColor(selectedTissue)}08` }}>
                     <div className="flex items-center gap-2 text-sm font-bold">
-                        <Badge>{source}</Badge>
-                        <span>→</span>
-                        <Badge>{target}</Badge>
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissueColor(selectedTissue) }} />
+                        <Badge>{source}</Badge> <span>→</span> <Badge>{target}</Badge>
                     </div>
-                    <Input placeholder="Mecanismo (ex: Cifose → compressão radicular)" value={mechanism}
-                        onChange={e => setMechanism(e.target.value)} className="text-xs h-8" autoFocus />
-                    <Input placeholder="Tecidos afetados (vírgula)" value={structures}
-                        onChange={e => setStructures(e.target.value)} className="text-xs h-8" />
+                    <Input
+                        placeholder={`Nome da estrutura (ex: ${selectedTissue === 'muscle' ? 'Supraespinhoso' : selectedTissue === 'nerve' ? 'Nervo mediano' : selectedTissue === 'joint' ? 'SIJ' : selectedTissue === 'ligament' ? 'LCA' : 'Diafragma'})`}
+                        value={structureName}
+                        onChange={e => setStructureName(e.target.value)}
+                        className="text-xs h-8" autoFocus
+                    />
                     <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={confirmConnection}>
+                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={confirmConnection}
+                            style={{ backgroundColor: getTissueColor(selectedTissue) }}>
                             Criar Conexão
                         </Button>
-                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={cancelConnect}>
-                            Cancelar
-                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={cancelConnect}>Cancelar</Button>
                     </div>
                 </div>
             )}
@@ -204,69 +252,67 @@ export default function StructuralConnectionMap({ data, editable = false, onData
             {/* SVG Map */}
             <svg viewBox="0 0 600 540" className="w-full max-w-2xl mx-auto" style={{ minHeight: 340 }}>
                 <defs>
-                    <marker id="as" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#EF4444" />
-                    </marker>
-                    <marker id="am" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#F97316" />
-                    </marker>
-                    <marker id="al" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#F59E0B" />
+                    {TISSUE_TYPES.map(t => (
+                        <marker key={t.key} id={`arr-${t.key}`} markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                            <path d="M 0 0 L 8 3 L 0 6 Z" fill={t.color} />
+                        </marker>
+                    ))}
+                    <marker id="arr-auto" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#9CA3AF" />
                     </marker>
                     <filter id="glow">
                         <feGaussianBlur stdDeviation="4" result="b" />
                         <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
-                    {/* Selection ring pulse */}
-                    <filter id="select-glow">
-                        <feGaussianBlur stdDeviation="6" result="b" />
-                        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
-                    </filter>
                 </defs>
 
-                {/* Direct arrows */}
-                {relationships.direct.map((rel, i) => {
+                {/* Auto-generated connections (non-tissue, from UNIT_RELATIONSHIPS) */}
+                {autoConnections.map((rel, i) => {
                     const s = NODE_POSITIONS[rel.source];
                     const t = NODE_POSITIONS[rel.target];
                     if (!s || !t) return null;
-                    const ss = data.units[rel.source]?.score || 0;
-                    const ts = data.units[rel.target]?.score || 0;
-                    const pct = getCompromisePercent(ss, ts);
-                    const color = getArrowColor(rel.severity);
-                    const width = getArrowWidth(rel.severity);
-                    const mid = rel.severity === 'SEVERA' ? 'as' : rel.severity === 'MODERADA' ? 'am' : 'al';
                     const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 3) - 1);
                     return (
-                        <g key={`d-${i}`}>
-                            <path d={path} fill="none" stroke={color} strokeWidth={width} markerEnd={`url(#${mid})`} opacity={0.8} />
-                            <rect x={cx - 22} y={cy - 10} width={44} height={20} rx={6} fill="white" stroke={color} strokeWidth={1} opacity={0.9} />
-                            <text x={cx} y={cy + 4} textAnchor="middle" fontSize={9} fontWeight="bold" fill={color}>{pct}%</text>
+                        <g key={`a-${i}`} opacity={0.3}>
+                            <path d={path} fill="none" stroke="#D1D5DB" strokeWidth={1} strokeDasharray="4,4" markerEnd="url(#arr-auto)" />
                         </g>
                     );
                 })}
 
-                {/* Indirect arrows */}
-                {relationships.indirect.map((rel, i) => {
+                {/* Tissue connections — colored by type */}
+                {tissueConnections.map((tc, i) => {
+                    const s = NODE_POSITIONS[tc.source];
+                    const t = NODE_POSITIONS[tc.target];
+                    if (!s || !t) return null;
+                    const color = getTissueColor(tc.tissueType);
+                    const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 5 - 2) * 0.8);
+                    return (
+                        <g key={`tc-${i}`}>
+                            <path d={path} fill="none" stroke={color} strokeWidth={3} markerEnd={`url(#arr-${tc.tissueType})`} opacity={0.85} />
+                            {/* Label bubble */}
+                            <rect x={cx - 40} y={cy - 10} width={80} height={20} rx={8}
+                                fill="white" stroke={color} strokeWidth={1.5} opacity={0.95} />
+                            <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight="bold" fill={color}>
+                                {tc.structure.length > 12 ? tc.structure.slice(0, 12) + '…' : tc.structure}
+                            </text>
+                        </g>
+                    );
+                })}
+
+                {/* Indirect connections */}
+                {data.relationships.indirect.map((rel, i) => {
                     const s = NODE_POSITIONS[rel.source];
                     const t = NODE_POSITIONS[rel.target];
                     if (!s || !t) return null;
-                    const ss = data.units[rel.source]?.score || 0;
-                    const ts = data.units[rel.target]?.score || 0;
-                    const pct = getCompromisePercent(ss, ts);
-                    const color = getArrowColor(rel.severity);
-                    const mid = rel.severity === 'SEVERA' ? 'as' : rel.severity === 'MODERADA' ? 'am' : 'al';
-                    const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, ((i % 3) - 1) * 1.5);
+                    const { path } = createCurvedPath(s.x, s.y, t.x, t.y, ((i % 3) - 1) * 1.5);
                     return (
-                        <g key={`i-${i}`}>
-                            <path d={path} fill="none" stroke={color} strokeWidth={1.5} strokeDasharray="8,4"
-                                markerEnd={`url(#${mid})`} opacity={0.6} />
-                            <rect x={cx - 22} y={cy - 10} width={44} height={20} rx={6} fill="white" stroke={color} strokeWidth={0.5} opacity={0.8} />
-                            <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fill={color}>{pct}%</text>
+                        <g key={`i-${i}`} opacity={0.4}>
+                            <path d={path} fill="none" stroke="#D1D5DB" strokeWidth={1} strokeDasharray="6,4" markerEnd="url(#arr-auto)" />
                         </g>
                     );
                 })}
 
-                {/* Nodes — clickable for connections */}
+                {/* Nodes */}
                 {UNIT_CONFIGS.map(cfg => {
                     const pos = NODE_POSITIONS[cfg.id];
                     if (!pos) return null;
@@ -276,44 +322,39 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     const isCritical = score >= 8;
                     const isDriver = data.primaryDriver === cfg.id;
                     const isSource = source === cfg.id;
-                    const isSelecting = connectStep === 'select-source' || connectStep === 'select-target';
+                    const isSelectable = step === 'select-source' || step === 'select-target';
                     const r = isDriver ? 34 : isSource ? 32 : 28;
 
                     return (
                         <g key={cfg.id}
                             onClick={() => handleNodeClick(cfg.id)}
-                            className={isSelecting ? 'cursor-pointer' : editable ? 'cursor-pointer' : ''}
-                            style={{ transition: 'all 0.2s ease' }}
+                            className={isSelectable ? 'cursor-pointer' : ''}
                         >
                             {/* Selection ring */}
                             {isSource && (
                                 <circle cx={pos.x} cy={pos.y} r={r + 6}
-                                    fill="none" stroke="#3B82F6" strokeWidth={3} strokeDasharray="8,4"
-                                    filter="url(#select-glow)" opacity={0.8}>
+                                    fill="none" stroke={selectedTissue ? getTissueColor(selectedTissue) : '#3B82F6'}
+                                    strokeWidth={3} strokeDasharray="8,4" opacity={0.9}>
                                     <animate attributeName="stroke-dashoffset" from="0" to="24" dur="1s" repeatCount="indefinite" />
                                 </circle>
                             )}
-                            {/* Clickable area (larger hit target) */}
-                            {isSelecting && (
-                                <circle cx={pos.x} cy={pos.y} r={r + 10} fill="transparent" />
+                            {/* Hover ring when selectable */}
+                            {isSelectable && !isSource && (
+                                <circle cx={pos.x} cy={pos.y} r={r + 8} fill="transparent" stroke="transparent" />
                             )}
-                            {/* Node */}
                             <circle cx={pos.x} cy={pos.y} r={r} fill={color}
-                                stroke={isSource ? '#3B82F6' : isCritical ? '#EF4444' : 'white'}
+                                stroke={isSource ? (selectedTissue ? getTissueColor(selectedTissue) : '#3B82F6') : isCritical ? '#EF4444' : 'white'}
                                 strokeWidth={isSource ? 4 : isDriver ? 4 : 2}
                                 filter={isCritical ? 'url(#glow)' : undefined}
-                                opacity={score > 0 ? 1 : 0.3} />
-                            {/* Score */}
+                                opacity={score > 0 ? 1 : isSelectable ? 0.5 : 0.3} />
                             <text x={pos.x} y={pos.y + 5} textAnchor="middle" fontSize={isDriver ? 18 : 15}
                                 fontWeight="900" fill="white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
                                 {score.toFixed(1)}
                             </text>
-                            {/* Label */}
                             <text x={pos.x} y={pos.y + r + 14} textAnchor="middle" fontSize={10} fontWeight="700"
                                 fill="currentColor" style={{ pointerEvents: 'none' }}>{cfg.id}</text>
                             <text x={pos.x} y={pos.y + r + 25} textAnchor="middle" fontSize={8}
                                 fill="#888" style={{ pointerEvents: 'none' }}>{cfg.shortName}</text>
-                            {/* Driver */}
                             {isDriver && (
                                 <text x={pos.x} y={pos.y - r - 6} textAnchor="middle" fontSize={10}
                                     fill="#EF4444" fontWeight="bold" style={{ pointerEvents: 'none' }}>⚠️ DRIVER</text>
@@ -323,47 +364,50 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                 })}
             </svg>
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-4 justify-center mt-2 text-[10px] text-muted-foreground">
-                <div className="flex items-center gap-1">
-                    <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#EF4444" strokeWidth="3" /></svg>
-                    <span>Grave</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#F97316" strokeWidth="2" /></svg>
-                    <span>Moderada</span>
-                </div>
-                <div className="flex items-center gap-1">
-                    <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#F59E0B" strokeWidth="2" strokeDasharray="6,3" /></svg>
-                    <span>Indireta</span>
-                </div>
+            {/* Tissue Legend */}
+            <div className="flex flex-wrap gap-3 justify-center mt-2">
+                {TISSUE_TYPES.map(t => (
+                    <div key={t.key} className="flex items-center gap-1">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                        <span className="text-[10px] text-muted-foreground font-medium">{t.label}</span>
+                    </div>
+                ))}
             </div>
 
-            {/* Mechanisms list (editable) */}
-            {hasRelationships && (
+            {/* Connection list (editable) */}
+            {(tissueConnections.length > 0 || autoConnections.length > 0 || data.relationships.indirect.length > 0) && (
                 <div className="mt-3 space-y-1.5">
                     <h4 className="text-xs font-bold">Conexões</h4>
-                    {relationships.direct.map((rel, i) => (
-                        <div key={`d-${i}`} className="text-[10px] p-2 rounded border bg-muted/20 flex items-start gap-2">
-                            <span className={cn('font-black shrink-0',
-                                rel.severity === 'SEVERA' ? 'text-red-600' :
-                                    rel.severity === 'MODERADA' ? 'text-orange-600' : 'text-amber-600')}>
-                                {rel.source} → {rel.target}
-                            </span>
-                            <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
-                            {rel.affectedStructures.length > 0 && (
-                                <span className="text-primary font-medium shrink-0">[{rel.affectedStructures.join(', ')}]</span>
-                            )}
-                            {editable && (
-                                <button onClick={() => removeDirectRel(i)} className="shrink-0 text-red-400 hover:text-red-600">
-                                    <X className="h-3.5 w-3.5" />
-                                </button>
-                            )}
-                        </div>
-                    ))}
-                    {relationships.indirect.map((rel, i) => (
-                        <div key={`i-${i}`} className="text-[10px] p-2 rounded border border-dashed bg-muted/10 flex items-start gap-2">
-                            <span className="font-black text-amber-600 shrink-0">
+
+                    {/* Tissue connections */}
+                    {data.relationships.direct.map((rel, i) => {
+                        const isTissue = rel.affectedStructures.length > 0 && rel.affectedStructures[0].startsWith('TISSUE:');
+                        const tissueKey = isTissue ? rel.affectedStructures[0].replace('TISSUE:', '') as TissueKey : null;
+                        const color = tissueKey ? getTissueColor(tissueKey) : '#9CA3AF';
+                        const label = tissueKey ? TISSUE_TYPES.find(t => t.key === tissueKey)?.label : 'Auto';
+
+                        return (
+                            <div key={`c-${i}`} className="text-[10px] p-2 rounded border flex items-center gap-2"
+                                style={{ borderColor: `${color}40`, backgroundColor: `${color}08` }}>
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                <span className="font-black shrink-0">{rel.source} → {rel.target}</span>
+                                <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
+                                <Badge variant="outline" className="text-[8px] shrink-0" style={{ borderColor: color, color }}>
+                                    {label}
+                                </Badge>
+                                {editable && (
+                                    <button onClick={() => removeConnection(i)} className="shrink-0 text-red-400 hover:text-red-600">
+                                        <X className="h-3.5 w-3.5" />
+                                    </button>
+                                )}
+                            </div>
+                        );
+                    })}
+
+                    {/* Indirect */}
+                    {data.relationships.indirect.map((rel, i) => (
+                        <div key={`i-${i}`} className="text-[10px] p-2 rounded border border-dashed bg-muted/10 flex items-center gap-2">
+                            <span className="font-black text-muted-foreground shrink-0">
                                 {rel.source} ⟶ {rel.intermediate} ⟶ {rel.target}
                             </span>
                             <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
