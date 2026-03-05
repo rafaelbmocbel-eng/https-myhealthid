@@ -30,8 +30,8 @@ import { useToast } from '@/hooks/use-toast';
 type ViewMode = 'dia' | 'semana' | 'mes';
 
 // Slot duration in minutes
-const SLOT_MINUTES = 45;
-const SLOT_HEIGHT = 68; // px per 45min slot
+const SLOT_MINUTES = 60;
+const SLOT_HEIGHT = 80; // px per 60min slot
 
 const STATUS_CONFIG: Record<string, { bg: string; border: string; text: string; icon: React.ReactNode; label: string }> = {
   confirmado: { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Confirmado' },
@@ -50,7 +50,7 @@ const TIPO_LABELS: Record<string, string> = {
   outro: 'Outro',
 };
 
-// Generate 45-minute slots from start to end hour
+// Generate 60-minute slots from start to end hour
 function generateSlots(startHour: number, endHour: number) {
   const slots: { hour: number; minute: number; label: string }[] = [];
   let h = startHour, m = 0;
@@ -227,7 +227,14 @@ export default function Agenda() {
   };
   const days = getDays();
 
-  // Drag-and-drop handlers
+  // Drag-and-drop handlers — using refs to avoid stale closures
+  const draggingRef = useRef(dragging);
+  draggingRef.current = dragging;
+  const dragDeltaRef = useRef(dragDelta);
+  dragDeltaRef.current = dragDelta;
+  const daysRef = useRef(days);
+  daysRef.current = days;
+
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, ag: Agendamento, dayIdx: number) => {
     e.preventDefault();
     e.stopPropagation();
@@ -244,31 +251,38 @@ export default function Agenda() {
   useEffect(() => {
     if (!dragging) return;
     const handleMove = (e: MouseEvent | TouchEvent) => {
+      e.preventDefault(); // prevent scroll during drag
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-      setDragDelta({ dy: clientY - dragging.startY, dx: clientX - dragging.startX });
+      const dy = clientY - draggingRef.current!.startY;
+      const dx = clientX - draggingRef.current!.startX;
+      setDragDelta({ dy, dx });
     };
     const handleUp = async () => {
-      if (!dragging) return;
-      const minutesDelta = Math.round((dragDelta.dy / SLOT_HEIGHT) * SLOT_MINUTES / 15) * 15;
-      const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - dragging.durationMin, dragging.origStartMin + minutesDelta));
+      const d = draggingRef.current;
+      const delta = dragDeltaRef.current;
+      if (!d) return;
+      // Snap to 15-min increments
+      const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
+      const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
+      const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - d.durationMin, d.origStartMin + minutesDelta));
 
-      let newDayIndex = dragging.dayIndex;
+      let newDayIndex = d.dayIndex;
       if (viewMode === 'semana' && gridRef.current) {
-        const colWidth = (gridRef.current.clientWidth - 48) / days.length;
-        const dayShift = Math.round(dragDelta.dx / colWidth);
-        newDayIndex = Math.max(0, Math.min(days.length - 1, dragging.dayIndex + dayShift));
+        const colWidth = (gridRef.current.clientWidth - 48) / daysRef.current.length;
+        const dayShift = Math.round(delta.dx / colWidth);
+        newDayIndex = Math.max(0, Math.min(daysRef.current.length - 1, d.dayIndex + dayShift));
       }
 
-      const origStart = parseISO(dragging.ag.data_inicio);
-      const newDay = viewMode === 'semana' ? days[newDayIndex] : origStart;
+      const origStart = parseISO(d.ag.data_inicio);
+      const newDay = viewMode === 'semana' ? daysRef.current[newDayIndex] : origStart;
       const newH = Math.floor(newStartMin / 60);
       const newM = newStartMin % 60;
       const newStart = setMinutes(setHours(new Date(newDay), newH), newM);
-      const newEnd = new Date(newStart.getTime() + dragging.durationMin * 60000);
+      const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
 
       if (newStart.getTime() !== origStart.getTime()) {
-        await updateAgendamento(dragging.ag.id, {
+        await updateAgendamento(d.ag.id, {
           data_inicio: newStart.toISOString(),
           data_fim: newEnd.toISOString(),
         });
@@ -276,7 +290,7 @@ export default function Agenda() {
       setDragging(null);
       setDragDelta({ dy: 0, dx: 0 });
     };
-    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mousemove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleUp);
     window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('touchend', handleUp);
@@ -286,7 +300,7 @@ export default function Agenda() {
       window.removeEventListener('touchmove', handleMove);
       window.removeEventListener('touchend', handleUp);
     };
-  }, [dragging, dragDelta, days, viewMode, updateAgendamento]);
+  }, [dragging, viewMode, updateAgendamento]);
 
   const [form, setForm] = useState<FormData>({
     paciente_id: '', titulo: '',
@@ -362,36 +376,36 @@ export default function Agenda() {
       tipo_atendimento: form.tipo_atendimento,
       observacoes: form.observacoes,
     };
-    
+
     if (modal.agendamento) {
       await updateAgendamento(modal.agendamento.id, payload);
     } else {
       // Create initial appointment
       await createAgendamento(payload as Omit<Agendamento, 'id'>);
-      
+
       // Create recurring appointments if configured
       if (form.recorrencia !== 'none') {
         const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
         const totalWeeks = form.recorrencia_semanas;
         const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
-        
+
         for (let i = 1; i <= totalSlots; i++) {
           const newStart = new Date(form.data_inicio);
           newStart.setDate(newStart.getDate() + (intervalDays * i));
           const newEnd = new Date(form.data_fim);
           newEnd.setDate(newEnd.getDate() + (intervalDays * i));
-          
+
           await createAgendamento({
             ...payload,
             data_inicio: newStart.toISOString(),
             data_fim: newEnd.toISOString(),
           } as Omit<Agendamento, 'id'>);
         }
-        
+
         toast({ title: `✅ ${totalSlots + 1} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
       }
     }
-    
+
     setModal({ open: false });
     setSubmitting(false);
   };
@@ -876,10 +890,10 @@ export default function Agenda() {
               <div className="flex gap-2 mt-1.5">
                 <Select value={form.paciente_id} onValueChange={v => {
                   const pac = pacientes.find(p => p.id === v);
-                    setForm(f => ({
-                      ...f,
-                      paciente_id: v,
-                    }));
+                  setForm(f => ({
+                    ...f,
+                    paciente_id: v,
+                  }));
                 }}>
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Selecionar paciente" />
