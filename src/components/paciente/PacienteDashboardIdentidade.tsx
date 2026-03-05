@@ -481,7 +481,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     {structuralAvaliacoes.slice(0, 3).map((av: any) => {
                       const dados = av.dados_avaliacao as any as StructuralAssessmentData | null;
                       if (!dados) return null;
-                      const score = dados.scoreStructuralGeneral || Number(av.score_e) || 0;
+                      const score = dados?.scoreStructuralGeneral ?? Number(av.score_e) ?? 0;
                       const isExpanded = expandedStructuralId === av.id;
                       return (
                         <div key={av.id} className="rounded-lg border bg-muted/20">

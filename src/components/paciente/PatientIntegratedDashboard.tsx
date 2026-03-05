@@ -281,10 +281,10 @@ export default function PatientIntegratedDashboard({
                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">8 Unidades Funcionais</p>
               </div>
               <div className="ml-auto text-right">
-                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral))}>
-                  {structuralData.scoreStructuralGeneral.toFixed(1)}
+                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral ?? 0))}>
+                  {(structuralData.scoreStructuralGeneral ?? 0).toFixed(1)}
                 </div>
-                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral)}</div>
+                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral ?? 0)}</div>
               </div>
             </div>
 
@@ -292,7 +292,7 @@ export default function PatientIntegratedDashboard({
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4">
               {UNIT_CONFIGS.map(cfg => {
                 const unit = structuralData.units[cfg.id];
-                const score = unit?.score || 0;
+                const score = unit?.score ?? 0;
                 return (
                   <div key={cfg.id} className="text-center p-1.5 rounded-lg bg-muted/40">
                     <div className="text-xs">{cfg.emoji}</div>
@@ -533,7 +533,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
     lines.push(`  Método Identidade · ${date}`);
     lines.push('═══════════════════════════════════════');
     lines.push('');
-    lines.push(`Score Geral: ${data.scoreStructuralGeneral.toFixed(1)}/10 — ${data.classification}`);
+    lines.push(`Score Geral: ${(data.scoreStructuralGeneral ?? 0).toFixed(1)}/10 — ${data.classification || 'N/A'}`);
     lines.push('');
 
     if (data.primaryDriver) {
