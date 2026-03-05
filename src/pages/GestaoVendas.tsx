@@ -12,7 +12,7 @@ import {
     ClipboardList, TrendingUp, Send, Package, Zap, Heart, Star, Gift,
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
-    StickyNote, Trash2, Plus, Search,
+    StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -20,7 +20,7 @@ import {
     sharePacoteInfo, sharePropostaComercial,
     MESSAGE_TEMPLATES, PACOTES_PREDEFINIDOS, type Pacote,
 } from '@/utils/whatsapp';
-import { format, differenceInDays, differenceInCalendarDays } from 'date-fns';
+import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -40,16 +40,27 @@ export default function GestaoVendas() {
     const [vipSearch, setVipSearch] = useState('');
     const [newNote, setNewNote] = useState('');
 
-    // Persisted VIP list and notes (localStorage)
+    // Persisted VIP list, notes, attendance checks, and patient notes (localStorage)
     const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
+    const todayKey = format(new Date(), 'yyyy-MM-dd');
     const [vipIds, setVipIds] = useState<string[]>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-vip`) || '[]'); } catch { return []; }
     });
     const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-notes`) || '[]'); } catch { return []; }
     });
+    // Attendance status: { 'agendamento-id': 'atendido' | 'faltou' | 'pendente' }
+    const [checkedIds, setCheckedIds] = useState<Record<string, string>>(() => {
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-checks-${todayKey}`) || '{}'); } catch { return {}; }
+    });
+    // Per-patient quick notes (for today)
+    const [patientNotes, setPatientNotes] = useState<Record<string, string>>(() => {
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-pnotes-${todayKey}`) || '{}'); } catch { return {}; }
+    });
     const saveVip = (ids: string[]) => { setVipIds(ids); localStorage.setItem(`${storageKey}-vip`, JSON.stringify(ids)); };
     const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
+    const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-${todayKey}`, JSON.stringify(c)); };
+    const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-${todayKey}`, JSON.stringify(pn)); };
 
     // ── Queries ──────────────────────────────────────────────────────
     const { data: patients = [] } = useQuery({
@@ -165,7 +176,7 @@ export default function GestaoVendas() {
         { id: 'mensagens', label: 'Mensagens', icon: MessageSquare },
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
-        { id: 'notas', label: 'Notas', icon: StickyNote },
+        { id: 'notas', label: 'Controle', icon: ClipboardCheck },
     ];
 
     return (
@@ -522,148 +533,216 @@ export default function GestaoVendas() {
                     </div>
                 )}
 
-                {/* ══════════════════ NOTAS TAB ══════════════════ */}
-                {activeTab === 'notas' && (
-                    <div className="space-y-5">
-                        {/* VIP / Active Patients */}
-                        <Card className="border">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> Pacientes VIP / Ativos
-                                </CardTitle>
-                                <p className="text-xs text-muted-foreground">Marque pacientes importantes para acompanhar de perto</p>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {/* Search */}
-                                <div className="relative">
-                                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
-                                    <Input
-                                        placeholder="Buscar paciente..."
-                                        value={vipSearch}
-                                        onChange={e => setVipSearch(e.target.value)}
-                                        className="pl-8 h-8 text-xs"
-                                    />
-                                </div>
+                {/* ══════════════════ CONTROLE DE ATENDIMENTO TAB ══════════════════ */}
+                {activeTab === 'notas' && (() => {
+                    // Today's appointments sorted by time
+                    const todayAgs = agendamentos
+                        .filter((ag: any) => isToday(parseISO(ag.data_inicio)) && ag.status !== 'cancelado')
+                        .sort((a: any, b: any) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
+                    const atendidos = todayAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
+                    const faltaram = todayAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                    const pendentesHoje = todayAgs.length - atendidos - faltaram;
+                    const pctDone = todayAgs.length > 0 ? Math.round((atendidos / todayAgs.length) * 100) : 0;
 
-                                {/* VIP List */}
-                                {vipIds.length > 0 && (
-                                    <div className="space-y-1">
-                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Marcados ({vipIds.length})</p>
-                                        {vipIds.map(id => {
-                                            const p = patients.find((pat: any) => pat.id === id);
-                                            if (!p) return null;
-                                            return (
-                                                <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
-                                                    <button onClick={() => saveVip(vipIds.filter(v => v !== id))} className="text-amber-500 hover:text-amber-600">
-                                                        <Star className="h-4 w-4 fill-amber-500" />
-                                                    </button>
-                                                    <div className="flex-1 min-w-0">
-                                                        <div className="text-xs font-bold truncate">{(p as any).nome} {(p as any).sobrenome}</div>
-                                                        {(p as any).telefone && <div className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{(p as any).telefone}</div>}
-                                                    </div>
-                                                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-emerald-600"
-                                                        onClick={() => {
-                                                            if ((p as any).telefone) {
-                                                                const tel = (p as any).telefone.replace(/\D/g, '');
-                                                                window.open(`https://wa.me/55${tel}`, '_blank');
-                                                            }
-                                                        }}>
-                                                        <Phone className="h-3 w-3" />
-                                                    </Button>
-                                                </div>
-                                            );
-                                        })}
+                    const cycleStatus = (agId: string) => {
+                        const current = checkedIds[agId] || 'pendente';
+                        const next = current === 'pendente' ? 'atendido' : current === 'atendido' ? 'faltou' : 'pendente';
+                        saveChecks({ ...checkedIds, [agId]: next });
+                    };
+
+                    return (
+                        <div className="space-y-5">
+                            {/* ── Daily Progress ── */}
+                            <Card className="border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5">
+                                <CardContent className="p-4">
+                                    <div className="flex items-center justify-between mb-3">
+                                        <div className="flex items-center gap-2">
+                                            <ClipboardCheck className="h-5 w-5 text-primary" />
+                                            <h3 className="text-sm font-black">Controle do Dia</h3>
+                                        </div>
+                                        <Badge variant="outline" className="text-xs font-bold">
+                                            {format(new Date(), "EEEE, dd/MM", { locale: ptBR })}
+                                        </Badge>
                                     </div>
-                                )}
+                                    {/* Progress bar */}
+                                    <div className="flex items-center gap-3 mb-3">
+                                        <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
+                                            <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
+                                        </div>
+                                        <span className="text-xs font-black text-primary">{pctDone}%</span>
+                                    </div>
+                                    <div className="grid grid-cols-3 gap-2 text-center">
+                                        <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20">
+                                            <div className="text-lg font-black text-amber-600">{pendentesHoje}</div>
+                                            <div className="text-[9px] font-bold text-amber-600/70 uppercase">Pendentes</div>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/20">
+                                            <div className="text-lg font-black text-emerald-600">{atendidos}</div>
+                                            <div className="text-[9px] font-bold text-emerald-600/70 uppercase">Atendidos</div>
+                                        </div>
+                                        <div className="p-2 rounded-lg bg-red-50 dark:bg-red-950/20">
+                                            <div className="text-lg font-black text-red-500">{faltaram}</div>
+                                            <div className="text-[9px] font-bold text-red-500/70 uppercase">Faltaram</div>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
 
-                                {/* Available patients */}
-                                <div className="space-y-1 max-h-60 overflow-y-auto">
-                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Todos os Pacientes</p>
-                                    {patients
-                                        .filter((p: any) => !vipIds.includes(p.id))
-                                        .filter((p: any) => {
-                                            if (!vipSearch.trim()) return true;
-                                            const term = vipSearch.toLowerCase();
-                                            return `${p.nome} ${p.sobrenome}`.toLowerCase().includes(term);
-                                        })
-                                        .map((p: any) => (
-                                            <div key={p.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
-                                                <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/30 hover:text-amber-500">
-                                                    <Star className="h-3.5 w-3.5" />
-                                                </button>
-                                                <span className="text-xs truncate flex-1">{p.nome} {p.sobrenome}</span>
-                                                {p.telefone && <span className="text-[10px] text-muted-foreground">{p.telefone}</span>}
-                                            </div>
-                                        ))
-                                    }
-                                    {patients.length === 0 && <p className="text-xs text-muted-foreground italic py-2">Nenhum paciente cadastrado</p>}
-                                </div>
-                            </CardContent>
-                        </Card>
+                            {/* ── Today's Checklist ── */}
+                            <Card className="border">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <CalendarDays className="h-4 w-4 text-blue-500" /> Atendimentos de Hoje
+                                    </CardTitle>
+                                    <p className="text-xs text-muted-foreground">Toque para marcar: pendente → atendido → faltou</p>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    {todayAgs.length > 0 ? todayAgs.map((ag: any) => {
+                                        const status = checkedIds[ag.id] || 'pendente';
+                                        const pac = patients.find((p: any) => p.id === ag.paciente_id);
+                                        const name = ag.titulo || (pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Agendamento');
+                                        const hora = format(parseISO(ag.data_inicio), 'HH:mm');
+                                        const horaFim = format(parseISO(ag.data_fim), 'HH:mm');
 
-                        {/* Quick Notes */}
-                        <Card className="border">
-                            <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2">
-                                    <StickyNote className="h-4 w-4 text-blue-500" /> Anotações Rápidas
-                                </CardTitle>
-                                <p className="text-xs text-muted-foreground">Lembretes e anotações importantes da clínica</p>
-                            </CardHeader>
-                            <CardContent className="space-y-3">
-                                {/* New note input */}
-                                <div className="flex gap-2">
-                                    <Textarea
-                                        placeholder="Escreva uma anotação..."
-                                        value={newNote}
-                                        onChange={e => setNewNote(e.target.value)}
-                                        className="text-xs min-h-[60px] resize-none"
-                                        rows={2}
-                                    />
-                                    <Button
-                                        size="sm"
-                                        className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
-                                        disabled={!newNote.trim()}
-                                        onClick={() => {
-                                            const note = { id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() };
-                                            saveNotes([note, ...notes].slice(0, 50));
-                                            setNewNote('');
-                                            toast({ title: '📝 Anotação salva!' });
-                                        }}
-                                    >
-                                        <Plus className="h-4 w-4" />
-                                    </Button>
-                                </div>
+                                        const statusStyles = {
+                                            pendente: 'border-amber-300 bg-amber-50/50 dark:bg-amber-950/10',
+                                            atendido: 'border-emerald-400 bg-emerald-50/50 dark:bg-emerald-950/10',
+                                            faltou: 'border-red-300 bg-red-50/50 dark:bg-red-950/10 opacity-60',
+                                        };
+                                        const statusIcons = {
+                                            pendente: <Clock className="h-4 w-4 text-amber-500" />,
+                                            atendido: <CheckCircle2 className="h-4 w-4 text-emerald-500" />,
+                                            faltou: <XCircle className="h-4 w-4 text-red-400" />,
+                                        };
+                                        const statusLabels = { pendente: 'Pendente', atendido: 'Atendido', faltou: 'Faltou' };
 
-                                {/* Notes list */}
-                                {notes.length > 0 ? (
-                                    <div className="space-y-2 max-h-96 overflow-y-auto">
-                                        {notes.map(note => (
-                                            <div key={note.id} className="p-3 rounded-lg bg-muted/40 border border-border/50 group relative">
-                                                <div className="flex items-start justify-between gap-2">
-                                                    <p className="text-xs whitespace-pre-wrap flex-1">{note.text}</p>
+                                        return (
+                                            <div key={ag.id} className={`rounded-xl border-2 p-3 transition-all ${(statusStyles as any)[status]}`}>
+                                                <div className="flex items-center gap-3">
+                                                    {/* Status button */}
                                                     <button
-                                                        onClick={() => {
-                                                            saveNotes(notes.filter(n => n.id !== note.id));
-                                                            toast({ title: '🗑️ Anotação removida' });
-                                                        }}
-                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                                                        onClick={() => cycleStatus(ag.id)}
+                                                        className="shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors"
+                                                        title="Alternar status"
                                                     >
-                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                        {(statusIcons as any)[status]}
                                                     </button>
+                                                    {/* Info */}
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="flex items-center gap-2">
+                                                            <span className={`text-xs font-black ${status === 'faltou' ? 'line-through text-muted-foreground' : ''}`}>{name}</span>
+                                                            <Badge variant="outline" className="text-[8px] shrink-0">{(statusLabels as any)[status]}</Badge>
+                                                        </div>
+                                                        <div className="text-[10px] text-muted-foreground flex items-center gap-2 mt-0.5">
+                                                            <span className="font-bold">{hora} – {horaFim}</span>
+                                                            {ag.tipo_atendimento && <span>• {ag.tipo_atendimento === 'primeira_consulta' ? '1ª Consulta' : ag.tipo_atendimento === 'retorno' ? 'Retorno' : ag.tipo_atendimento === 'reavaliacao' ? 'Reavaliação' : ag.tipo_atendimento}</span>}
+                                                        </div>
+                                                    </div>
+                                                    {/* WhatsApp */}
+                                                    {pac?.telefone && (
+                                                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0"
+                                                            onClick={() => {
+                                                                const tel = pac.telefone.replace(/\D/g, '');
+                                                                window.open(`https://wa.me/55${tel}`, '_blank');
+                                                            }}>
+                                                            <Phone className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
                                                 </div>
-                                                <p className="text-[10px] text-muted-foreground mt-1">
-                                                    {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                                </p>
+                                                {/* Per-patient note */}
+                                                <div className="mt-2">
+                                                    <Input
+                                                        placeholder="Anotação rápida sobre este atendimento..."
+                                                        value={patientNotes[ag.id] || ''}
+                                                        onChange={e => savePatientNotes({ ...patientNotes, [ag.id]: e.target.value })}
+                                                        className="h-7 text-[10px] bg-transparent border-dashed"
+                                                    />
+                                                </div>
                                             </div>
-                                        ))}
+                                        );
+                                    }) : (
+                                        <div className="text-center py-6">
+                                            <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
+                                            <p className="text-xs text-muted-foreground">Nenhum atendimento agendado para hoje</p>
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+
+                            {/* ── VIP / Active Patients ── */}
+                            <Card className="border">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> Pacientes VIP
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="relative">
+                                        <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                        <Input placeholder="Buscar..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-8 h-8 text-xs" />
                                     </div>
-                                ) : (
-                                    <p className="text-xs text-muted-foreground italic text-center py-4">Nenhuma anotação ainda. Comece escrevendo acima! ✍️</p>
-                                )}
-                            </CardContent>
-                        </Card>
-                    </div>
-                )}
+                                    {vipIds.length > 0 && (
+                                        <div className="space-y-1">
+                                            {vipIds.map(id => {
+                                                const p = patients.find((pat: any) => pat.id === id);
+                                                if (!p) return null;
+                                                return (
+                                                    <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200">
+                                                        <button onClick={() => saveVip(vipIds.filter(v => v !== id))}><Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /></button>
+                                                        <span className="text-xs font-bold truncate flex-1">{(p as any).nome} {(p as any).sobrenome}</span>
+                                                        {(p as any).telefone && <button onClick={() => { const t = (p as any).telefone.replace(/\D/g, ''); window.open(`https://wa.me/55${t}`, '_blank'); }} className="text-emerald-600"><Phone className="h-3 w-3" /></button>}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                    <div className="space-y-0.5 max-h-40 overflow-y-auto">
+                                        {patients
+                                            .filter((p: any) => !vipIds.includes(p.id))
+                                            .filter((p: any) => !vipSearch.trim() || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(vipSearch.toLowerCase()))
+                                            .map((p: any) => (
+                                                <div key={p.id} className="flex items-center gap-2 p-1 rounded hover:bg-muted/40">
+                                                    <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/20 hover:text-amber-500"><Star className="h-3 w-3" /></button>
+                                                    <span className="text-[11px] truncate">{p.nome} {p.sobrenome}</span>
+                                                </div>
+                                            ))}
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            {/* ── General Notes ── */}
+                            <Card className="border">
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                        <StickyNote className="h-4 w-4 text-blue-500" /> Anotações
+                                    </CardTitle>
+                                </CardHeader>
+                                <CardContent className="space-y-2">
+                                    <div className="flex gap-2">
+                                        <Textarea placeholder="Lembrete..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2} />
+                                        <Button size="sm" className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0" disabled={!newNote.trim()}
+                                            onClick={() => { saveNotes([{ id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() }, ...notes].slice(0, 50)); setNewNote(''); toast({ title: '📝 Salvo!' }); }}>
+                                            <Plus className="h-4 w-4" />
+                                        </Button>
+                                    </div>
+                                    {notes.length > 0 && (
+                                        <div className="space-y-1.5 max-h-60 overflow-y-auto">
+                                            {notes.map(note => (
+                                                <div key={note.id} className="p-2 rounded-lg bg-muted/30 border border-border/40 group flex items-start gap-2">
+                                                    <p className="text-[11px] whitespace-pre-wrap flex-1">{note.text}</p>
+                                                    <div className="flex items-center gap-1 shrink-0">
+                                                        <span className="text-[9px] text-muted-foreground">{format(new Date(note.createdAt), 'dd/MM HH:mm')}</span>
+                                                        <button onClick={() => { saveNotes(notes.filter(n => n.id !== note.id)); }} className="opacity-0 group-hover:opacity-100 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>
+                                                    </div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                </CardContent>
+                            </Card>
+                        </div>
+                    );
+                })()}
             </div>
         </AppLayout>
     );
