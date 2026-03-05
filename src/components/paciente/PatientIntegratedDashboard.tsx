@@ -223,51 +223,49 @@ export default function PatientIntegratedDashboard({
                 <Badge className={`ml-auto border ${severityClass}`}>{classificacao}</Badge>
               </div>
 
-              <div className="flex flex-col lg:flex-row items-center gap-6">
-                {/* Fingerprint - larger */}
-                <div className="w-full lg:w-4/5 min-h-[350px]">
-                  <MyIDFingerprint rings={rings} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
+              {/* Fingerprint — large, centered */}
+              <div className="w-full max-w-lg mx-auto">
+                <MyIDFingerprint rings={rings} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
+              </div>
+
+              {/* Score + Indexes below */}
+              <div className="space-y-3 w-full">
+                <div className="text-center">
+                  <div className="text-4xl font-black tracking-tighter" style={{
+                    color: myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'
+                  }}>
+                    {myidScore.toFixed(1)}
+                  </div>
+                  <div className="text-xs text-muted-foreground font-medium">Índice MyID Global</div>
                 </div>
 
-                {/* Score Details */}
-                <div className="flex-1 space-y-4 w-full">
-                  <div className="text-center lg:text-left">
-                    <div className="text-5xl font-black tracking-tighter" style={{
-                      color: myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'
-                    }}>
-                      {myidScore.toFixed(1)}
-                    </div>
-                    <div className="text-xs text-muted-foreground font-medium">Índice MyID Global</div>
-                  </div>
-
-                  {/* Score circles grid */}
-                  <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
-                    {rings.map(r => (
-                      <div
-                        key={r.scoreKey}
-                        className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
-                          ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
-                          : 'bg-muted/40 hover:bg-muted/60'
-                          }`}
-                        style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
-                        onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
-                        onMouseLeave={() => setHoveredScoreKey(null)}
-                      >
-                        <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                        <div className="min-w-0">
-                          <div className="text-[9px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
-                          <div className="text-sm font-black">{r.value.toFixed(1)}</div>
-                        </div>
+                {/* Score circles grid */}
+                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                  {rings.map(r => (
+                    <div
+                      key={r.scoreKey}
+                      className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
+                        ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
+                        : 'bg-muted/40 hover:bg-muted/60'
+                        }`}
+                      style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
+                      onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
+                      onMouseLeave={() => setHoveredScoreKey(null)}
+                    >
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
+                      <div className="min-w-0">
+                        <div className="text-[9px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
+                        <div className="text-sm font-black">{r.value.toFixed(1)}</div>
                       </div>
-                    ))}
-                  </div>
-
-                  {painPattern && (
-                    <div className="text-xs text-muted-foreground border-t border-border/50 pt-2">
-                      <span className="font-bold">Padrão Temporal:</span> {painPattern}
                     </div>
-                  )}
+                  ))}
                 </div>
+
+                {painPattern && (
+                  <div className="text-xs text-muted-foreground border-t border-border/50 pt-2">
+                    <span className="font-bold">Padrão Temporal:</span> {painPattern}
+                  </div>
+                )}
               </div>
             </CardContent>
           </Card>
