@@ -121,8 +121,6 @@ export default function MetodoIdentidade() {
     enabled: !!user,
   });
 
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
   const selectedPaciente = pacientes.find(p => p.id === selectedPacienteId);
   const filteredPac = pacientes.filter(p =>
     `${p.nome} ${p.sobrenome}`.toLowerCase().includes(searchPac.toLowerCase())
@@ -206,6 +204,9 @@ export default function MetodoIdentidade() {
   }, []);
 
   const progresso = (blocosConcluidos.size / 6) * 100;
+
+  // React Hook rules: All hooks must be defined before any early return based on conditions
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   if (showRelatorio) {
     return (
