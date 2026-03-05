@@ -68,9 +68,35 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         const dx = tx - sx; const dy = ty - sy;
         const mx = (sx + tx) / 2; const my = (sy + ty) / 2;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const cx = mx + (-dy / len * curve * 30);
-        const cy = my + (dx / len * curve * 30);
+        const cx = mx + (-dy / len * curve * 40);
+        const cy = my + (dx / len * curve * 40);
         return { path: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`, cx, cy };
+    };
+
+    // Build curve offset map: group all connections by source-target pair key
+    const pairCounts = useMemo(() => {
+        const map = new Map<string, number>();
+        for (const rel of data.relationships.direct) {
+            const key = [rel.source, rel.target].sort().join('-');
+            map.set(key, (map.get(key) || 0) + 1);
+        }
+        return map;
+    }, [data.relationships.direct]);
+
+    const getCurveForPair = (src: string, tgt: string, globalIndex: number): number => {
+        const key = [src, tgt].sort().join('-');
+        const total = pairCounts.get(key) || 1;
+        if (total === 1) return 0;
+        // Count how many of this pair we've seen before this index
+        let pairIndex = 0;
+        for (let j = 0; j < globalIndex; j++) {
+            const r = data.relationships.direct[j];
+            const k = [r.source, r.target].sort().join('-');
+            if (k === key) pairIndex++;
+        }
+        // Spread: -1.5, -0.5, 0.5, 1.5 etc
+        const half = (total - 1) / 2;
+        return (pairIndex - half) * 1.2;
     };
 
     const handleNodeClick = (unitId: string) => {
@@ -181,7 +207,9 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                 {autoConnections.map((rel, i) => {
                     const s = NODE_POSITIONS[rel.source]; const t = NODE_POSITIONS[rel.target];
                     if (!s || !t) return null;
-                    const { path } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 3) - 1);
+                    const origIdx = data.relationships.direct.indexOf(rel);
+                    const curve = getCurveForPair(rel.source, rel.target, origIdx);
+                    const { path } = createCurvedPath(s.x, s.y, t.x, t.y, curve);
                     return <path key={`a-${i}`} d={path} fill="none" stroke="#E5E7EB" strokeWidth={1} strokeDasharray="4,4" markerEnd="url(#arr-auto)" opacity={0.25} />;
                 })}
 
@@ -191,7 +219,8 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     if (!s || !t) return null;
                     const tissueKey = tc.affectedStructures[0].replace('TISSUE:', '') as TissueKey;
                     const tissue = getTissue(tissueKey);
-                    const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 5 - 2) * 0.8);
+                    const curve = getCurveForPair(tc.source, tc.target, tc.index);
+                    const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, curve);
                     const label = tc.mechanism.length > 14 ? tc.mechanism.slice(0, 14) + '…' : tc.mechanism;
                     const w = Math.max(80, label.length * 6.5);
                     return (
