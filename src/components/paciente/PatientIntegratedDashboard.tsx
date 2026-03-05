@@ -245,17 +245,22 @@ export default function PatientIntegratedDashboard({
                     <div
                       key={r.scoreKey}
                       className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
-                        ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
-                        : 'bg-muted/40 hover:bg-muted/60'
+                        ? 'ring-2 ring-offset-1 scale-105'
+                        : 'hover:scale-102'
                         }`}
-                      style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
+                      style={{
+                        backgroundColor: hoveredScoreKey === r.scoreKey
+                          ? `${r.color}22`
+                          : `${r.color}10`,
+                        outlineColor: hoveredScoreKey === r.scoreKey ? r.color : undefined,
+                      }}
                       onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
                       onMouseLeave={() => setHoveredScoreKey(null)}
                     >
                       <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
                       <div className="min-w-0">
                         <div className="text-[9px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
-                        <div className="text-sm font-black">{r.value.toFixed(1)}</div>
+                        <div className="text-sm font-black" style={{ color: r.color }}>{r.value.toFixed(1)}</div>
                       </div>
                     </div>
                   ))}
