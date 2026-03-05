@@ -3,10 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { Plus, X, Pencil } from 'lucide-react';
+import { X, Link2 } from 'lucide-react';
 import {
-    StructuralAssessmentData, UNIT_CONFIGS, UNIT_RELATIONSHIPS,
-    classifyScore, classifyScoreColor,
+    StructuralAssessmentData, UNIT_CONFIGS,
+    classifyScore,
     StructuralRelationship, IndirectRelationship,
 } from '@/types/structural';
 
@@ -47,16 +47,24 @@ function getArrowWidth(severity: string): number {
     return 1.5;
 }
 
-function getCompromisePercent(sourceScore: number, targetScore: number): number {
-    const avg = (sourceScore + targetScore) / 2;
-    return Math.min(95, Math.round(avg * 10));
+function getCompromisePercent(s1: number, s2: number): number {
+    return Math.min(95, Math.round(((s1 + s2) / 2) * 10));
 }
 
-const UNIT_IDS = UNIT_CONFIGS.map(c => c.id);
+function getSeverity(score: number): 'SEVERA' | 'MODERADA' | 'LEVE' {
+    if (score >= 8) return 'SEVERA';
+    if (score >= 5) return 'MODERADA';
+    return 'LEVE';
+}
+
+type ConnectStep = 'idle' | 'select-source' | 'select-target' | 'fill-details';
 
 export default function StructuralConnectionMap({ data, editable = false, onDataChange }: Props) {
-    const [addingConnection, setAddingConnection] = useState(false);
-    const [newConn, setNewConn] = useState({ source: 'UC-1', target: 'UC-2', mechanism: '', structures: '', type: 'direct' as 'direct' | 'indirect', intermediate: 'UC-2' });
+    const [connectStep, setConnectStep] = useState<ConnectStep>('idle');
+    const [source, setSource] = useState<string | null>(null);
+    const [target, setTarget] = useState<string | null>(null);
+    const [mechanism, setMechanism] = useState('');
+    const [structures, setStructures] = useState('');
 
     const relationships = useMemo(() => data.relationships, [data.relationships]);
     const hasRelationships = relationships.direct.length > 0 || relationships.indirect.length > 0;
@@ -66,142 +74,152 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         const dy = ty - sy;
         const mx = (sx + tx) / 2;
         const my = (sy + ty) / 2;
-        const offset = curve * 30;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const nx = -dy / len * offset;
-        const ny = dx / len * offset;
-        const cx = mx + nx;
-        const cy = my + ny;
+        const offset = curve * 30;
+        const cx = mx + (-dy / len * offset);
+        const cy = my + (dx / len * offset);
         return { path: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`, cx, cy };
     };
 
-    const removeDirectRelationship = (index: number) => {
-        if (!onDataChange) return;
-        const newDirect = [...data.relationships.direct];
-        newDirect.splice(index, 1);
-        onDataChange({
-            ...data,
-            relationships: { ...data.relationships, direct: newDirect },
-        });
-    };
+    // --- Node click handler for creating connections ---
+    const handleNodeClick = (unitId: string) => {
+        if (!editable) return;
 
-    const removeIndirectRelationship = (index: number) => {
-        if (!onDataChange) return;
-        const newIndirect = [...data.relationships.indirect];
-        newIndirect.splice(index, 1);
-        onDataChange({
-            ...data,
-            relationships: { ...data.relationships, indirect: newIndirect },
-        });
-    };
-
-    const addConnection = () => {
-        if (!onDataChange || !newConn.mechanism.trim()) return;
-        const structures = newConn.structures.split(',').map(s => s.trim()).filter(Boolean);
-
-        if (newConn.type === 'direct') {
-            const rel: StructuralRelationship = {
-                source: newConn.source,
-                target: newConn.target,
-                mechanism: newConn.mechanism,
-                affectedStructures: structures,
-                severity: data.units[newConn.source]?.score >= 8 ? 'SEVERA' :
-                    data.units[newConn.source]?.score >= 5 ? 'MODERADA' : 'LEVE',
-                interventionPriority: data.relationships.direct.length + 1,
-            };
-            onDataChange({
-                ...data,
-                relationships: { ...data.relationships, direct: [...data.relationships.direct, rel] },
-            });
-        } else {
-            const rel: IndirectRelationship = {
-                source: newConn.source,
-                intermediate: newConn.intermediate,
-                target: newConn.target,
-                mechanism: newConn.mechanism,
-                chainLength: 3,
-                severity: data.units[newConn.source]?.score >= 8 ? 'SEVERA' :
-                    data.units[newConn.source]?.score >= 5 ? 'MODERADA' : 'LEVE',
-            };
-            onDataChange({
-                ...data,
-                relationships: { ...data.relationships, indirect: [...data.relationships.indirect, rel] },
-            });
+        if (connectStep === 'idle' || connectStep === 'select-source') {
+            setSource(unitId);
+            setTarget(null);
+            setConnectStep('select-target');
+        } else if (connectStep === 'select-target') {
+            if (unitId === source) {
+                // Tapped same node — cancel
+                cancelConnect();
+                return;
+            }
+            setTarget(unitId);
+            setConnectStep('fill-details');
         }
+    };
 
-        setNewConn({ source: 'UC-1', target: 'UC-2', mechanism: '', structures: '', type: 'direct', intermediate: 'UC-2' });
-        setAddingConnection(false);
+    const cancelConnect = () => {
+        setConnectStep('idle');
+        setSource(null);
+        setTarget(null);
+        setMechanism('');
+        setStructures('');
+    };
+
+    const confirmConnection = () => {
+        if (!onDataChange || !source || !target) return;
+        const sourceScore = data.units[source]?.score || 0;
+        const structList = structures.split(',').map(s => s.trim()).filter(Boolean);
+
+        const rel: StructuralRelationship = {
+            source,
+            target,
+            mechanism: mechanism.trim() || `Conexão ${source} → ${target}`,
+            affectedStructures: structList,
+            severity: getSeverity(sourceScore),
+            interventionPriority: data.relationships.direct.length + 1,
+        };
+
+        onDataChange({
+            ...data,
+            relationships: { ...data.relationships, direct: [...data.relationships.direct, rel] },
+        });
+        cancelConnect();
+    };
+
+    const removeDirectRel = (i: number) => {
+        if (!onDataChange) return;
+        const arr = [...data.relationships.direct];
+        arr.splice(i, 1);
+        onDataChange({ ...data, relationships: { ...data.relationships, direct: arr } });
+    };
+
+    const removeIndirectRel = (i: number) => {
+        if (!onDataChange) return;
+        const arr = [...data.relationships.indirect];
+        arr.splice(i, 1);
+        onDataChange({ ...data, relationships: { ...data.relationships, indirect: arr } });
+    };
+
+    // Instruction text
+    const getInstruction = () => {
+        if (connectStep === 'select-source') return '1️⃣ Toque na unidade de ORIGEM';
+        if (connectStep === 'select-target') return `2️⃣ Agora toque na unidade de DESTINO (origem: ${source})`;
+        if (connectStep === 'fill-details') return `Descreva a conexão ${source} → ${target}`;
+        return editable ? 'Toque num nó para iniciar uma conexão' : 'Conexões entre unidades';
     };
 
     return (
         <div className="clinical-card">
             <div className="flex items-center justify-between mb-1">
-                <h3 className="font-bold text-sm">Mapa de Comprometimento Estrutural</h3>
-                {editable && (
-                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1" onClick={() => setAddingConnection(a => !a)}>
-                        {addingConnection ? <X className="h-3 w-3" /> : <Plus className="h-3 w-3" />}
-                        {addingConnection ? 'Cancelar' : 'Conexão'}
+                <h3 className="font-bold text-sm">Mapa de Comprometimento</h3>
+                {editable && connectStep === 'idle' && (
+                    <Button variant="outline" size="sm" className="h-7 text-xs gap-1"
+                        onClick={() => setConnectStep('select-source')}>
+                        <Link2 className="h-3 w-3" /> Conectar
+                    </Button>
+                )}
+                {editable && connectStep !== 'idle' && connectStep !== 'fill-details' && (
+                    <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-red-500" onClick={cancelConnect}>
+                        <X className="h-3 w-3" /> Cancelar
                     </Button>
                 )}
             </div>
-            <p className="text-[10px] text-muted-foreground mb-3">
-                {editable ? 'Clique no ✕ para remover conexões · + para adicionar' : 'Conexões diretas e indiretas entre unidades'}
-            </p>
 
-            {/* Add connection form */}
-            {addingConnection && editable && (
-                <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 mb-3 space-y-2">
-                    <div className="flex gap-2 items-center flex-wrap">
-                        <select value={newConn.type} onChange={e => setNewConn(c => ({ ...c, type: e.target.value as any }))}
-                            className="text-xs border rounded px-2 py-1 bg-background">
-                            <option value="direct">Direta</option>
-                            <option value="indirect">Indireta</option>
-                        </select>
-                        <select value={newConn.source} onChange={e => setNewConn(c => ({ ...c, source: e.target.value }))}
-                            className="text-xs border rounded px-2 py-1 bg-background">
-                            {UNIT_IDS.map(id => <option key={id} value={id}>{id}</option>)}
-                        </select>
-                        <span className="text-xs text-muted-foreground">→</span>
-                        {newConn.type === 'indirect' && (
-                            <>
-                                <select value={newConn.intermediate} onChange={e => setNewConn(c => ({ ...c, intermediate: e.target.value }))}
-                                    className="text-xs border rounded px-2 py-1 bg-background">
-                                    {UNIT_IDS.map(id => <option key={id} value={id}>{id}</option>)}
-                                </select>
-                                <span className="text-xs text-muted-foreground">→</span>
-                            </>
-                        )}
-                        <select value={newConn.target} onChange={e => setNewConn(c => ({ ...c, target: e.target.value }))}
-                            className="text-xs border rounded px-2 py-1 bg-background">
-                            {UNIT_IDS.map(id => <option key={id} value={id}>{id}</option>)}
-                        </select>
+            {/* Instruction bar */}
+            <div className={cn(
+                'text-[11px] px-3 py-1.5 rounded-lg mb-3 text-center font-medium transition-all',
+                connectStep === 'idle' ? 'text-muted-foreground bg-muted/30' :
+                    connectStep === 'fill-details' ? 'text-primary bg-primary/10 border border-primary/30' :
+                        'text-amber-700 bg-amber-50 border border-amber-200 animate-pulse'
+            )}>
+                {getInstruction()}
+            </div>
+
+            {/* Fill details inline form */}
+            {connectStep === 'fill-details' && source && target && (
+                <div className="p-3 rounded-lg border border-primary/30 bg-primary/5 mb-3 space-y-2 animate-slide-in">
+                    <div className="flex items-center gap-2 text-sm font-bold">
+                        <Badge>{source}</Badge>
+                        <span>→</span>
+                        <Badge>{target}</Badge>
                     </div>
-                    <Input placeholder="Mecanismo (ex: Cifose → compressão radicular)" value={newConn.mechanism}
-                        onChange={e => setNewConn(c => ({ ...c, mechanism: e.target.value }))} className="text-xs h-8" />
-                    {newConn.type === 'direct' && (
-                        <Input placeholder="Tecidos afetados (separados por vírgula)" value={newConn.structures}
-                            onChange={e => setNewConn(c => ({ ...c, structures: e.target.value }))} className="text-xs h-8" />
-                    )}
-                    <Button size="sm" className="w-full h-8 text-xs" onClick={addConnection} disabled={!newConn.mechanism.trim()}>
-                        Adicionar Conexão
-                    </Button>
+                    <Input placeholder="Mecanismo (ex: Cifose → compressão radicular)" value={mechanism}
+                        onChange={e => setMechanism(e.target.value)} className="text-xs h-8" autoFocus />
+                    <Input placeholder="Tecidos afetados (vírgula)" value={structures}
+                        onChange={e => setStructures(e.target.value)} className="text-xs h-8" />
+                    <div className="flex gap-2">
+                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={confirmConnection}>
+                            Criar Conexão
+                        </Button>
+                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={cancelConnect}>
+                            Cancelar
+                        </Button>
+                    </div>
                 </div>
             )}
 
             {/* SVG Map */}
-            <svg viewBox="0 0 600 540" className="w-full max-w-2xl mx-auto" style={{ minHeight: 360 }}>
+            <svg viewBox="0 0 600 540" className="w-full max-w-2xl mx-auto" style={{ minHeight: 340 }}>
                 <defs>
-                    <marker id="arr-s" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <marker id="as" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                         <path d="M 0 0 L 8 3 L 0 6 Z" fill="#EF4444" />
                     </marker>
-                    <marker id="arr-m" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <marker id="am" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                         <path d="M 0 0 L 8 3 L 0 6 Z" fill="#F97316" />
                     </marker>
-                    <marker id="arr-l" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
+                    <marker id="al" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
                         <path d="M 0 0 L 8 3 L 0 6 Z" fill="#F59E0B" />
                     </marker>
                     <filter id="glow">
                         <feGaussianBlur stdDeviation="4" result="b" />
+                        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                    </filter>
+                    {/* Selection ring pulse */}
+                    <filter id="select-glow">
+                        <feGaussianBlur stdDeviation="6" result="b" />
                         <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
                     </filter>
                 </defs>
@@ -216,7 +234,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     const pct = getCompromisePercent(ss, ts);
                     const color = getArrowColor(rel.severity);
                     const width = getArrowWidth(rel.severity);
-                    const mid = rel.severity === 'SEVERA' ? 'arr-s' : rel.severity === 'MODERADA' ? 'arr-m' : 'arr-l';
+                    const mid = rel.severity === 'SEVERA' ? 'as' : rel.severity === 'MODERADA' ? 'am' : 'al';
                     const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 3) - 1);
                     return (
                         <g key={`d-${i}`}>
@@ -236,7 +254,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     const ts = data.units[rel.target]?.score || 0;
                     const pct = getCompromisePercent(ss, ts);
                     const color = getArrowColor(rel.severity);
-                    const mid = rel.severity === 'SEVERA' ? 'arr-s' : rel.severity === 'MODERADA' ? 'arr-m' : 'arr-l';
+                    const mid = rel.severity === 'SEVERA' ? 'as' : rel.severity === 'MODERADA' ? 'am' : 'al';
                     const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, ((i % 3) - 1) * 1.5);
                     return (
                         <g key={`i-${i}`}>
@@ -248,7 +266,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     );
                 })}
 
-                {/* Nodes */}
+                {/* Nodes — clickable for connections */}
                 {UNIT_CONFIGS.map(cfg => {
                     const pos = NODE_POSITIONS[cfg.id];
                     if (!pos) return null;
@@ -257,20 +275,48 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     const color = getNodeColor(score);
                     const isCritical = score >= 8;
                     const isDriver = data.primaryDriver === cfg.id;
-                    const r = isDriver ? 34 : 28;
+                    const isSource = source === cfg.id;
+                    const isSelecting = connectStep === 'select-source' || connectStep === 'select-target';
+                    const r = isDriver ? 34 : isSource ? 32 : 28;
+
                     return (
-                        <g key={cfg.id}>
+                        <g key={cfg.id}
+                            onClick={() => handleNodeClick(cfg.id)}
+                            className={isSelecting ? 'cursor-pointer' : editable ? 'cursor-pointer' : ''}
+                            style={{ transition: 'all 0.2s ease' }}
+                        >
+                            {/* Selection ring */}
+                            {isSource && (
+                                <circle cx={pos.x} cy={pos.y} r={r + 6}
+                                    fill="none" stroke="#3B82F6" strokeWidth={3} strokeDasharray="8,4"
+                                    filter="url(#select-glow)" opacity={0.8}>
+                                    <animate attributeName="stroke-dashoffset" from="0" to="24" dur="1s" repeatCount="indefinite" />
+                                </circle>
+                            )}
+                            {/* Clickable area (larger hit target) */}
+                            {isSelecting && (
+                                <circle cx={pos.x} cy={pos.y} r={r + 10} fill="transparent" />
+                            )}
+                            {/* Node */}
                             <circle cx={pos.x} cy={pos.y} r={r} fill={color}
-                                stroke={isCritical ? '#EF4444' : 'white'} strokeWidth={isDriver ? 4 : 2}
-                                filter={isCritical ? 'url(#glow)' : undefined} opacity={score > 0 ? 1 : 0.3} />
+                                stroke={isSource ? '#3B82F6' : isCritical ? '#EF4444' : 'white'}
+                                strokeWidth={isSource ? 4 : isDriver ? 4 : 2}
+                                filter={isCritical ? 'url(#glow)' : undefined}
+                                opacity={score > 0 ? 1 : 0.3} />
+                            {/* Score */}
                             <text x={pos.x} y={pos.y + 5} textAnchor="middle" fontSize={isDriver ? 18 : 15}
-                                fontWeight="900" fill="white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)' }}>
+                                fontWeight="900" fill="white" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
                                 {score.toFixed(1)}
                             </text>
-                            <text x={pos.x} y={pos.y + r + 14} textAnchor="middle" fontSize={10} fontWeight="700" fill="currentColor">{cfg.id}</text>
-                            <text x={pos.x} y={pos.y + r + 25} textAnchor="middle" fontSize={8} fill="#888">{cfg.shortName}</text>
+                            {/* Label */}
+                            <text x={pos.x} y={pos.y + r + 14} textAnchor="middle" fontSize={10} fontWeight="700"
+                                fill="currentColor" style={{ pointerEvents: 'none' }}>{cfg.id}</text>
+                            <text x={pos.x} y={pos.y + r + 25} textAnchor="middle" fontSize={8}
+                                fill="#888" style={{ pointerEvents: 'none' }}>{cfg.shortName}</text>
+                            {/* Driver */}
                             {isDriver && (
-                                <text x={pos.x} y={pos.y - r - 6} textAnchor="middle" fontSize={10} fill="#EF4444" fontWeight="bold">⚠️ DRIVER</text>
+                                <text x={pos.x} y={pos.y - r - 6} textAnchor="middle" fontSize={10}
+                                    fill="#EF4444" fontWeight="bold" style={{ pointerEvents: 'none' }}>⚠️ DRIVER</text>
                             )}
                         </g>
                     );
@@ -278,7 +324,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
             </svg>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-4 justify-center mt-3 text-[10px] text-muted-foreground">
+            <div className="flex flex-wrap gap-4 justify-center mt-2 text-[10px] text-muted-foreground">
                 <div className="flex items-center gap-1">
                     <svg width="24" height="8"><line x1="0" y1="4" x2="24" y2="4" stroke="#EF4444" strokeWidth="3" /></svg>
                     <span>Grave</span>
@@ -293,13 +339,15 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                 </div>
             </div>
 
-            {/* Editable Mechanism List */}
+            {/* Mechanisms list (editable) */}
             {hasRelationships && (
-                <div className="mt-4 space-y-2">
-                    <h4 className="text-xs font-bold text-foreground">Mecanismos de Conexão</h4>
+                <div className="mt-3 space-y-1.5">
+                    <h4 className="text-xs font-bold">Conexões</h4>
                     {relationships.direct.map((rel, i) => (
                         <div key={`d-${i}`} className="text-[10px] p-2 rounded border bg-muted/20 flex items-start gap-2">
-                            <span className={cn('font-black shrink-0', rel.severity === 'SEVERA' ? 'text-red-600' : rel.severity === 'MODERADA' ? 'text-orange-600' : 'text-amber-600')}>
+                            <span className={cn('font-black shrink-0',
+                                rel.severity === 'SEVERA' ? 'text-red-600' :
+                                    rel.severity === 'MODERADA' ? 'text-orange-600' : 'text-amber-600')}>
                                 {rel.source} → {rel.target}
                             </span>
                             <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
@@ -307,7 +355,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                                 <span className="text-primary font-medium shrink-0">[{rel.affectedStructures.join(', ')}]</span>
                             )}
                             {editable && (
-                                <button onClick={() => removeDirectRelationship(i)} className="shrink-0 text-red-400 hover:text-red-600">
+                                <button onClick={() => removeDirectRel(i)} className="shrink-0 text-red-400 hover:text-red-600">
                                     <X className="h-3.5 w-3.5" />
                                 </button>
                             )}
@@ -320,7 +368,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                             </span>
                             <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
                             {editable && (
-                                <button onClick={() => removeIndirectRelationship(i)} className="shrink-0 text-red-400 hover:text-red-600">
+                                <button onClick={() => removeIndirectRel(i)} className="shrink-0 text-red-400 hover:text-red-600">
                                     <X className="h-3.5 w-3.5" />
                                 </button>
                             )}
