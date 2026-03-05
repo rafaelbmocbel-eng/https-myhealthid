@@ -281,6 +281,19 @@ export default function Agenda() {
       const newStart = setMinutes(setHours(new Date(newDay), newH), newM);
       const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
 
+      // Bloqueio rigoroso de limite de vagas
+      const overlapping = countOverlapping(newStart.toISOString(), newEnd.toISOString(), d.ag.id);
+      if (overlapping >= config.vagas_por_horario) {
+        toast({
+          title: '⚠️ Horário lotado!',
+          description: `Máximo de ${config.vagas_por_horario} pacientes neste horário. Arrastar bloqueado.`,
+          variant: 'destructive'
+        });
+        setDragging(null);
+        setDragDelta({ dy: 0, dx: 0 });
+        return;
+      }
+
       if (newStart.getTime() !== origStart.getTime()) {
         await updateAgendamento(d.ag.id, {
           data_inicio: newStart.toISOString(),
@@ -425,6 +438,13 @@ export default function Agenda() {
     };
 
     if (modal.agendamento) {
+      // Editar existente: Validar limite checando overlaps excluindo o ID atual
+      const overlapping = countOverlapping(payload.data_inicio, payload.data_fim, modal.agendamento.id);
+      if (overlapping >= config.vagas_por_horario) {
+        toast({ title: '⚠️ Horário lotado!', description: `Limites de ${config.vagas_por_horario} excedidos para nova hora.`, variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
       await updateAgendamento(modal.agendamento.id, payload);
     } else {
       // Check capacity before creating

@@ -157,11 +157,10 @@ export default function AgendaPublica() {
 
         const vagasMax = config.vagas_por_horario || 1;
         const ocupadas = agendamentos.filter(ag => {
-          const agStart = parseISO(ag.data_inicio);
-          return isSameDay(agStart, dia) &&
-            agStart.getHours() === h &&
-            agStart.getMinutes() === m &&
-            ag.status !== 'cancelado';
+          if (ag.status === 'cancelado') return false;
+          const agStart = parseISO(ag.data_inicio).getTime();
+          const agEnd = parseISO(ag.data_fim).getTime();
+          return slotInicio.getTime() < agEnd && slotFim.getTime() > agStart;
         }).length;
 
         slots.push({ hora: horaStr, disponivel: ocupadas < vagasMax, dataInicio: slotInicio, dataFim: slotFim });
@@ -220,7 +219,33 @@ export default function AgendaPublica() {
         }
       }
 
-      // 3. Criar agendamento
+      // 3. Checagem de concorrência antes de inserir
+      const vagasMax = config.vagas_por_horario || 1;
+      const { data: agsAtuais } = await supabase
+        .from('agendamentos')
+        .select('data_inicio, data_fim, status')
+        .eq('terapeuta_id', linkInfo.terapeuta_id)
+        .neq('status', 'cancelado')
+        .lt('data_inicio', selectedSlot.dataFim.toISOString())
+        .gt('data_fim', selectedSlot.dataInicio.toISOString());
+
+      const sobreposicoes = agsAtuais ? agsAtuais.length : 0;
+      if (sobreposicoes >= vagasMax) {
+        setErroBooking('Oops! Outro paciente acabou de reservar esse horário. Por favor, escolha outro.');
+        setConfirmando(false);
+        // Atualizar lista de agendamentos localmente para sumir a vaga
+        const { data: agsRefresh } = await supabase
+          .from('agendamentos')
+          .select('data_inicio, data_fim, status')
+          .eq('terapeuta_id', linkInfo.terapeuta_id)
+          .gte('data_inicio', new Date().toISOString())
+          .lte('data_inicio', addDays(new Date(), 42).toISOString())
+          .order('data_inicio');
+        if (agsRefresh) setAgendamentos(agsRefresh as Slot[]);
+        return;
+      }
+
+      // 4. Criar agendamento
       const { error } = await supabase.from('agendamentos').insert({
         terapeuta_id: linkInfo.terapeuta_id,
         paciente_id: patientId,
