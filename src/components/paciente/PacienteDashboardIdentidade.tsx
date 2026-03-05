@@ -19,6 +19,8 @@ import { MyIDWizard } from '../myid/MyIDWizard';
 import PatientIntegratedDashboard from './PatientIntegratedDashboard';
 import { MyIDResult } from '../myid/MyIDResult';
 import StructuralWizard from '../structural/StructuralWizard';
+import StructuralResultsSummary from '../structural/StructuralResultsSummary';
+import StructuralConnectionMap from '../structural/StructuralConnectionMap';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 
 interface Paciente {
@@ -268,6 +270,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
+  const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
 
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
@@ -443,35 +446,52 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
                 {structuralAvaliacoes.length > 0 ? (
                   <div className="space-y-3">
-                    {structuralAvaliacoes.slice(0, 2).map((av: any, idx: number) => {
+                    {structuralAvaliacoes.slice(0, 3).map((av: any) => {
                       const dados = av.dados_estruturais as StructuralAssessmentData | null;
                       if (!dados) return null;
                       const score = dados.scoreStructuralGeneral || Number(av.score_e) || 0;
+                      const isExpanded = expandedStructuralId === av.id;
                       return (
-                        <div key={av.id} className="flex items-center gap-3 p-3 rounded-lg bg-muted/40 border">
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                            <div className="min-w-0">
-                              <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação'}</span>
-                              <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
-                                {dados.units && Object.entries(dados.units).slice(0, 4).map(([unitId, unit]: [string, any]) => {
-                                  const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
-                                  return (
-                                    <span key={unitId} className="flex items-center gap-0.5">
-                                      {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{unit.score.toFixed(1)}</span>
-                                    </span>
-                                  );
-                                })}
-                                {dados.units && Object.keys(dados.units).length > 4 && (
-                                  <span className="text-muted-foreground">+{Object.keys(dados.units).length - 4}</span>
-                                )}
+                        <div key={av.id} className="rounded-lg border bg-muted/20">
+                          <div className="flex items-center gap-3 p-3">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação'}</span>
+                                <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
+                                  {dados.units && Object.entries(dados.units).slice(0, 4).map(([unitId, unit]: [string, any]) => {
+                                    const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
+                                    return (
+                                      <span key={unitId} className="flex items-center gap-0.5">
+                                        {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{unit.score.toFixed(1)}</span>
+                                      </span>
+                                    );
+                                  })}
+                                  {dados.units && Object.keys(dados.units).length > 4 && (
+                                    <span className="text-muted-foreground">+{Object.keys(dados.units).length - 4}</span>
+                                  )}
+                                </div>
                               </div>
                             </div>
+                            <div className="text-right shrink-0 mr-2">
+                              <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{score.toFixed(1)}</div>
+                              <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={isExpanded ? 'outline' : 'default'}
+                              className={isExpanded ? 'gap-1 text-xs' : 'bg-identidade hover:bg-identidade/90 text-white gap-1 text-xs'}
+                              onClick={() => setExpandedStructuralId(isExpanded ? null : av.id)}
+                            >
+                              <FileText className="h-3 w-3" />
+                              {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
+                            </Button>
                           </div>
-                          <div className="text-right shrink-0">
-                            <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{score.toFixed(1)}</div>
-                            <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
-                          </div>
+                          {isExpanded && (
+                            <div className="p-3 pt-0">
+                              <StructuralResultsSummary data={dados} />
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -540,59 +560,108 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
         {/* Aba: Avaliações de Serviços */}
         <TabsContent value="avaliacoes" className="mt-4">
-          {(ultimaCob || ultimaMedidaStudio) ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {ultimaCob && (
-                <div className="clinical-card border-l-4 border-l-blue-500 bg-blue-50/30">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
-                      <AlignCenter className="h-4 w-4 text-white" />
-                    </div>
-                    <h4 className="font-bold text-xs text-blue-900">Exame COB° ZERO</h4>
-                    <Badge variant="outline" className="ml-auto text-[10px] bg-white">{ultimaCob.data_avaliacao}</Badge>
+          {(ultimaCob || ultimaMedidaStudio || structuralAvaliacoes.length > 0) ? (
+            <div className="space-y-4">
+              {/* Structural evaluations */}
+              {structuralAvaliacoes.length > 0 && (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2">
+                    <Activity className="h-4 w-4 text-orange-500" />
+                    <h3 className="font-semibold text-sm">Avaliações Estruturais</h3>
+                    <Badge className="bg-orange-100 text-orange-700 border-0 text-xs">{structuralAvaliacoes.length}</Badge>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
-                      <div className="text-xs font-black text-blue-700">{ultimaCob.cobb_angle}°</div>
-                      <div className="text-[10px] text-muted-foreground">Ângulo</div>
-                    </div>
-                    <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
-                      <div className="text-xs font-black text-blue-700">{ultimaCob.risco_percentage}%</div>
-                      <div className="text-[10px] text-muted-foreground">Risco</div>
-                    </div>
-                    <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
-                      <div className="text-xs font-black text-blue-700">{ultimaCob.score_e || '—'}</div>
-                      <div className="text-[10px] text-muted-foreground">Score E</div>
-                    </div>
-                  </div>
+                  {structuralAvaliacoes.slice(0, 3).map((av: any) => {
+                    const dados = av.dados_estruturais as StructuralAssessmentData | null;
+                    if (!dados) return null;
+                    const score = dados.scoreStructuralGeneral || 0;
+                    const isOpen = expandedStructuralId === `proto-${av.id}`;
+                    return (
+                      <div key={av.id} className="clinical-card border-l-4 border-orange-400">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 rounded-lg bg-orange-100 flex items-center justify-center shrink-0">
+                            <Activity className="h-4 w-4 text-orange-600" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação Estrutural'}</span>
+                            <div className="text-[10px] text-muted-foreground">
+                              Score: <span className={classifyScoreColor(score)}>{score.toFixed(1)}</span> · {classifyScore(score)}
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant={isOpen ? 'outline' : 'default'}
+                            className={isOpen ? 'gap-1 text-xs' : 'bg-identidade hover:bg-identidade/90 text-white gap-1 text-xs'}
+                            onClick={() => setExpandedStructuralId(isOpen ? null : `proto-${av.id}`)}
+                          >
+                            <FileText className="h-3 w-3" />
+                            {isOpen ? 'Fechar' : 'Resultados & Diretriz'}
+                          </Button>
+                        </div>
+                        {isOpen && (
+                          <div className="mt-3 pt-3 border-t">
+                            <StructuralResultsSummary data={dados} />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
                 </div>
               )}
 
-              {ultimaMedidaStudio && (
-                <div className="clinical-card border-l-4 border-l-studio bg-studio-light/10">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-7 w-7 rounded-lg bg-studio flex items-center justify-center">
-                      <Dumbbell className="h-4 w-4 text-white" />
+              {/* COB + Studio cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {ultimaCob && (
+                  <div className="clinical-card border-l-4 border-l-blue-500 bg-blue-50/30">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-7 w-7 rounded-lg bg-blue-600 flex items-center justify-center">
+                        <AlignCenter className="h-4 w-4 text-white" />
+                      </div>
+                      <h4 className="font-bold text-xs text-blue-900">Exame COB° ZERO</h4>
+                      <Badge variant="outline" className="ml-auto text-[10px] bg-white">{ultimaCob.data_avaliacao}</Badge>
                     </div>
-                    <h4 className="font-bold text-xs text-studio-foreground">Studio Personal ID</h4>
-                    <Badge variant="outline" className="ml-auto text-[10px] bg-white">{format(new Date(ultimaMedidaStudio.data_medida), 'dd/MM/yy')}</Badge>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                        <div className="text-xs font-black text-blue-700">{ultimaCob.cobb_angle}°</div>
+                        <div className="text-[10px] text-muted-foreground">Ângulo</div>
+                      </div>
+                      <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                        <div className="text-xs font-black text-blue-700">{ultimaCob.risco_percentage}%</div>
+                        <div className="text-[10px] text-muted-foreground">Risco</div>
+                      </div>
+                      <div className="bg-white/60 rounded-lg p-2 border border-blue-100">
+                        <div className="text-xs font-black text-blue-700">{ultimaCob.score_e || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground">Score E</div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="grid grid-cols-3 gap-2 text-center">
-                    <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
-                      <div className="text-xs font-black text-studio">{ultimaMedidaStudio.peso}kg</div>
-                      <div className="text-[10px] text-muted-foreground">Peso</div>
+                )}
+
+                {ultimaMedidaStudio && (
+                  <div className="clinical-card border-l-4 border-l-studio bg-studio-light/10">
+                    <div className="flex items-center gap-2 mb-3">
+                      <div className="h-7 w-7 rounded-lg bg-studio flex items-center justify-center">
+                        <Dumbbell className="h-4 w-4 text-white" />
+                      </div>
+                      <h4 className="font-bold text-xs text-studio-foreground">Studio Personal ID</h4>
+                      <Badge variant="outline" className="ml-auto text-[10px] bg-white">{format(new Date(ultimaMedidaStudio.data_medida), 'dd/MM/yy')}</Badge>
                     </div>
-                    <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
-                      <div className="text-xs font-black text-studio">{ultimaMedidaStudio.percentual_gordura}%</div>
-                      <div className="text-[10px] text-muted-foreground">% Gord.</div>
-                    </div>
-                    <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
-                      <div className="text-xs font-black text-studio">{ultimaMedidaStudio.imc || '—'}</div>
-                      <div className="text-[10px] text-muted-foreground">IMC</div>
+                    <div className="grid grid-cols-3 gap-2 text-center">
+                      <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                        <div className="text-xs font-black text-studio">{ultimaMedidaStudio.peso}kg</div>
+                        <div className="text-[10px] text-muted-foreground">Peso</div>
+                      </div>
+                      <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                        <div className="text-xs font-black text-studio">{ultimaMedidaStudio.percentual_gordura}%</div>
+                        <div className="text-[10px] text-muted-foreground">% Gord.</div>
+                      </div>
+                      <div className="bg-white/60 rounded-lg p-2 border border-studio/10">
+                        <div className="text-xs font-black text-studio">{ultimaMedidaStudio.imc || '—'}</div>
+                        <div className="text-[10px] text-muted-foreground">IMC</div>
+                      </div>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           ) : (
             <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
