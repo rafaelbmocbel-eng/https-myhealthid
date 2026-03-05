@@ -478,21 +478,6 @@ export default function Protocolos() {
     enabled: !!user,
   });
 
-  // Structural evaluations with data
-  const { data: structuralAvals = [] } = useQuery({
-    queryKey: ['structural-sem-diretriz', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('avaliacoes_identidade')
-        .select('id, paciente_id, created_at, dados_estruturais')
-        .eq('terapeuta_id', user!.id)
-        .not('dados_estruturais', 'is', null)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-names', user?.id],
@@ -780,30 +765,7 @@ export default function Protocolos() {
           </div>
         )}
 
-        {/* Structural evaluations */}
-        {structuralAvals.length > 0 && (
-          <div className="mb-6">
-            <div className="flex items-center gap-2 mb-3">
-              <Activity className="h-4 w-4 text-orange-500" />
-              <h2 className="font-semibold text-sm text-foreground">Avaliações Estruturais</h2>
-              <Badge className="bg-orange-100 text-orange-700 border-0">{structuralAvals.length}</Badge>
-            </div>
-            <div className="space-y-2">
-              {structuralAvals.slice(0, 5).map((av: any) => {
-                const sData = av.dados_estruturais as StructuralAssessmentData | null;
-                if (!sData) return null;
-                return (
-                  <StructuralDiretrizCard
-                    key={av.id}
-                    pacienteNome={getPacienteNome(av.paciente_id)}
-                    date={av.created_at}
-                    data={sData}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        )}
+
 
         {/* Busca */}
         <div className="relative mb-6 max-w-sm">
