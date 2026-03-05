@@ -1,3 +1,6 @@
+// ── WhatsApp Integration Utils ────────────────────────────────────────
+// Core sharing function and message templates for patient communication
+
 export function shareViaWhatsApp(phoneNumber: string, message: string, url?: string) {
   if (!phoneNumber || phoneNumber.trim() === '') {
     console.warn('WhatsApp: telefone não informado');
@@ -20,10 +23,7 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
   const encodedMessage = encodeURIComponent(fullMessage);
   const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
 
-  // Try window.open first (works on published app, may fail in iframe preview)
   const win = window.open(whatsappUrl, '_blank', 'noopener,noreferrer');
-
-  // If window.open was blocked (returns null), try the link click fallback
   if (!win) {
     const link = document.createElement('a');
     link.href = whatsappUrl;
@@ -34,6 +34,8 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
     document.body.removeChild(link);
   }
 }
+
+// ── Existing templates ────────────────────────────────────────────────
 
 export function shareAgendaLink(patientName: string, patientPhone: string, agendaUrl: string) {
   const message = `Olá ${patientName}! 👋\n\n📅 Aqui está seu link personalizado para agendar suas sessões de fisioterapia.`;
@@ -53,14 +55,12 @@ export function shareRelatorioLink(patientName: string, patientPhone: string, re
 export function shareMyIDResults(patientName: string, patientPhone: string, result: any) {
   const score = result.myidScore?.toFixed(1) || '0.0';
   const status = result.classificacao || 'LEVE';
-
   const message = `*RESUMO CLÍNICO - MyID Sistêmico*\n\n` +
     `Olá! 👋 Aqui estão os resultados da minha avaliação:\n\n` +
     `👤 *Paciente:* ${patientName}\n` +
     `📊 *MyID Score:* ${score}\n` +
     `🔴 *Status:* ${status}\n\n` +
     `Esta "Impressão Digital" reflete o equilíbrio entre minhas demandas e minha capacidade de suporte atual.`;
-
   shareViaWhatsApp(patientPhone, message);
 }
 
@@ -92,9 +92,93 @@ export function sharePropostaComercial(patientName: string, patientPhone: string
     `${diffsText}\n\n` +
     `💰 *Investimento:* ${value}\n\n` +
     `Vamos começar sua jornada de transformação?`;
-
   shareViaWhatsApp(patientPhone, message);
 }
+
+// ── NEW: Funnel stage templates ───────────────────────────────────────
+
+export function shareBoasVindas(patientName: string, patientPhone: string, terapeutaName: string) {
+  const message =
+    `Olá ${patientName}! 👋\n\n` +
+    `Sou *${terapeutaName}* e estou muito feliz em recebê-lo(a) na nossa equipe!\n\n` +
+    `🏥 A partir de agora começamos sua jornada de saúde personalizada com o *Método Identidade*.\n\n` +
+    `📋 Em breve enviarei seu questionário de avaliação para começarmos a mapear seu perfil.\n\n` +
+    `Qualquer dúvida, estou aqui! 😊`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function sharePosAvaliacao(patientName: string, patientPhone: string, achados: string) {
+  const message =
+    `Olá ${patientName}! 👋\n\n` +
+    `Concluímos sua avaliação e quero compartilhar os principais achados:\n\n` +
+    `${achados}\n\n` +
+    `📌 Com base nesses resultados, preparei uma *diretriz de tratamento personalizada* para você.\n\n` +
+    `Na próxima sessão, vamos discutir o plano terapêutico completo. Até lá! 💪`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function sharePosDiretriz(patientName: string, patientPhone: string, diretriz: string) {
+  const message =
+    `Olá ${patientName}! 📋\n\n` +
+    `Aqui está o resumo da sua *Diretriz de Tratamento*:\n\n` +
+    `${diretriz}\n\n` +
+    `Lembre-se: a constância é o segredo! Nos vemos na próxima sessão. 🙌`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function shareLembreteRetorno(patientName: string, patientPhone: string, dataRetorno: string) {
+  const message =
+    `Olá ${patientName}! ⏰\n\n` +
+    `Lembrete gentil: sua *reavaliação* está prevista para *${dataRetorno}*.\n\n` +
+    `É muito importante para medirmos seu progresso e ajustarmos o tratamento conforme necessário.\n\n` +
+    `📅 Precisa reagendar? Me avise que encontramos o melhor horário para você!`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function sharePosAlta(patientName: string, patientPhone: string) {
+  const message =
+    `Olá ${patientName}! 🌟\n\n` +
+    `Como está se sentindo após o tratamento? Espero que muito bem!\n\n` +
+    `Lembre-se de manter os exercícios do seu programa domiciliar (HEP) para consolidar os ganhos.\n\n` +
+    `📋 Recomendo uma reavaliação preventiva em *4 semanas* para garantir a manutenção dos resultados.\n\n` +
+    `Estou aqui sempre que precisar! 💙`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function shareStructuralResults(patientName: string, patientPhone: string, score: number, classification: string, driver: string) {
+  const message =
+    `*RESULTADOS — Avaliação Estrutural*\n` +
+    `*Método Identidade · MyHealth ID*\n\n` +
+    `👤 *Paciente:* ${patientName}\n` +
+    `📊 *Score Geral:* ${score.toFixed(1)}/10\n` +
+    `📋 *Classificação:* ${classification}\n` +
+    `${driver ? `⚠️ *Driver Primário:* ${driver}` : ''}\n\n` +
+    `Esses resultados mapeiam suas unidades funcionais e identificam as áreas que precisam de mais atenção.\n\n` +
+    `Na próxima sessão, vamos discutir o protocolo de tratamento personalizado! 💪`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function shareAniversario(patientName: string, patientPhone: string) {
+  const message =
+    `🎂 Feliz Aniversário, ${patientName}!\n\n` +
+    `Neste dia especial, desejo muita saúde, bem-estar e conquistas!\n\n` +
+    `É uma honra fazer parte da sua jornada de saúde. Continue cuidando de você! 🌟\n\n` +
+    `Um grande abraço! 🤗`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+export function sharePacoteInfo(patientName: string, patientPhone: string, pacoteName: string, details: string, value: string) {
+  const message =
+    `Olá ${patientName}! 👋\n\n` +
+    `Preparei uma proposta especial para você:\n\n` +
+    `📦 *${pacoteName}*\n\n` +
+    `${details}\n\n` +
+    `💰 *Investimento:* ${value}\n\n` +
+    `Este pacote foi pensado especialmente para o seu perfil. Quer saber mais detalhes? 😊`;
+  shareViaWhatsApp(patientPhone, message);
+}
+
+// ── Utility functions ─────────────────────────────────────────────────
 
 export function formatPhoneNumber(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
@@ -111,3 +195,105 @@ export function validateBrazilianPhone(phone: string): boolean {
   const cleaned = phone.replace(/\D/g, '');
   return cleaned.length === 10 || cleaned.length === 11;
 }
+
+// ── Message template definitions (for editable templates UI) ──────────
+export interface MessageTemplate {
+  id: string;
+  label: string;
+  icon: string;
+  category: 'funil' | 'clinico' | 'comercial';
+  defaultMessage: string;
+  variables: string[];
+}
+
+export const MESSAGE_TEMPLATES: MessageTemplate[] = [
+  {
+    id: 'boas-vindas', label: 'Boas-vindas', icon: '👋', category: 'funil',
+    defaultMessage: 'Olá {nome}! Sou {terapeuta} e estou muito feliz em recebê-lo(a)! 🏥 A partir de agora começamos sua jornada de saúde personalizada com o Método Identidade.',
+    variables: ['nome', 'terapeuta'],
+  },
+  {
+    id: 'lembrete-questionario', label: 'Lembrete Questionário', icon: '📋', category: 'funil',
+    defaultMessage: 'Olá {nome}! Notei que ainda não preencheu o questionário. É bem rápido e super importante para seu tratamento! O link ainda está ativo 😊',
+    variables: ['nome'],
+  },
+  {
+    id: 'pos-avaliacao', label: 'Pós-Avaliação', icon: '📊', category: 'clinico',
+    defaultMessage: 'Olá {nome}! Concluímos sua avaliação. Preparei uma diretriz personalizada. Na próxima sessão discutimos o plano! 💪',
+    variables: ['nome'],
+  },
+  {
+    id: 'pos-diretriz', label: 'Enviar Diretriz', icon: '📋', category: 'clinico',
+    defaultMessage: 'Olá {nome}! Aqui está o resumo da sua Diretriz de Tratamento. Lembre-se: constância é o segredo! 🙌',
+    variables: ['nome'],
+  },
+  {
+    id: 'lembrete-retorno', label: 'Lembrete de Retorno', icon: '⏰', category: 'clinico',
+    defaultMessage: 'Olá {nome}! Sua reavaliação está prevista para {data}. Muito importante para medirmos seu progresso!',
+    variables: ['nome', 'data'],
+  },
+  {
+    id: 'pos-alta', label: 'Pós-Alta', icon: '🌟', category: 'clinico',
+    defaultMessage: 'Olá {nome}! Como está se sentindo? Mantenha os exercícios do HEP. Recomendo reavaliação em 4 semanas. Estou aqui! 💙',
+    variables: ['nome'],
+  },
+  {
+    id: 'aniversario', label: 'Aniversário', icon: '🎂', category: 'funil',
+    defaultMessage: '🎂 Feliz Aniversário, {nome}! Desejo muita saúde e bem-estar! É uma honra fazer parte da sua jornada. 🌟',
+    variables: ['nome'],
+  },
+  {
+    id: 'proposta', label: 'Proposta Comercial', icon: '💰', category: 'comercial',
+    defaultMessage: 'Olá {nome}! Preparei uma proposta: {servico} · Investimento: {valor}. Vamos começar sua transformação?',
+    variables: ['nome', 'servico', 'valor'],
+  },
+  {
+    id: 'resultados-estruturais', label: 'Resultados Estruturais', icon: '🔬', category: 'clinico',
+    defaultMessage: 'Olá {nome}! Seus resultados: Score {score}/10 · {classificacao}. Na próxima sessão discutimos o protocolo! 💪',
+    variables: ['nome', 'score', 'classificacao'],
+  },
+];
+
+// ── Pre-defined packages ──────────────────────────────────────────────
+export interface Pacote {
+  id: string;
+  nome: string;
+  servico: string;
+  sessoes: number;
+  duracao: string;
+  diferenciais: string[];
+  valorSugerido: string;
+}
+
+export const PACOTES_PREDEFINIDOS: Pacote[] = [
+  {
+    id: 'id-avaliacao', nome: 'Avaliação Completa', servico: 'Método Identidade',
+    sessoes: 1, duracao: '1 sessão', valorSugerido: '350',
+    diferenciais: ['Avaliação MyID completa', 'Mapeamento estrutural', 'Diretriz personalizada'],
+  },
+  {
+    id: 'id-8sess', nome: 'Pacote Tratamento', servico: 'Método Identidade',
+    sessoes: 8, duracao: '2 meses', valorSugerido: '2.400',
+    diferenciais: ['Avaliação + 8 sessões', 'Reavaliação inclusa', 'HEP personalizado', 'Suporte via WhatsApp'],
+  },
+  {
+    id: 'id-12sess', nome: 'Pacote Premium', servico: 'Método Identidade',
+    sessoes: 12, duracao: '3 meses', valorSugerido: '3.200',
+    diferenciais: ['Avaliação + 12 sessões', '2 reavaliações', 'HEP + vídeos', 'Suporte prioritário'],
+  },
+  {
+    id: 'cob-8sess', nome: 'Pacote COB°', servico: 'COB° ZERO',
+    sessoes: 8, duracao: '2 meses', valorSugerido: '2.800',
+    diferenciais: ['Avaliação postural completa', '8 sessões corretivas', 'Acompanhamento radiográfico'],
+  },
+  {
+    id: 'studio-mensal', nome: 'Studio Mensal', servico: 'Studio Personal ID',
+    sessoes: 12, duracao: '1 mês', valorSugerido: '1.800',
+    diferenciais: ['12 sessões/mês (3x sem)', 'Treino baseado no MyID', 'Avaliação de composição corporal'],
+  },
+  {
+    id: 'studio-trimestral', nome: 'Studio Trimestral', servico: 'Studio Personal ID',
+    sessoes: 36, duracao: '3 meses', valorSugerido: '4.500',
+    diferenciais: ['36 sessões (3x sem)', 'Reavaliações mensais', 'Suporte nutricional básico', '10% desconto'],
+  },
+];
