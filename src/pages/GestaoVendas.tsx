@@ -12,6 +12,7 @@ import {
     ClipboardList, TrendingUp, Send, Package, Zap, Heart, Star, Gift,
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
+    StickyNote, Trash2, Plus, Search,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -25,7 +26,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Navigate } from 'react-router-dom';
 
-type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas';
+type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
 export default function GestaoVendas() {
     const { user, loading: authLoading } = useAuth();
@@ -36,6 +37,19 @@ export default function GestaoVendas() {
     const [customMessages, setCustomMessages] = useState<Record<string, string>>({});
     const [selectedPacote, setSelectedPacote] = useState<string | null>(null);
     const [customValue, setCustomValue] = useState('');
+    const [vipSearch, setVipSearch] = useState('');
+    const [newNote, setNewNote] = useState('');
+
+    // Persisted VIP list and notes (localStorage)
+    const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
+    const [vipIds, setVipIds] = useState<string[]>(() => {
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-vip`) || '[]'); } catch { return []; }
+    });
+    const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>(() => {
+        try { return JSON.parse(localStorage.getItem(`${storageKey}-notes`) || '[]'); } catch { return []; }
+    });
+    const saveVip = (ids: string[]) => { setVipIds(ids); localStorage.setItem(`${storageKey}-vip`, JSON.stringify(ids)); };
+    const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
 
     // ── Queries ──────────────────────────────────────────────────────
     const { data: patients = [] } = useQuery({
@@ -151,6 +165,7 @@ export default function GestaoVendas() {
         { id: 'mensagens', label: 'Mensagens', icon: MessageSquare },
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
+        { id: 'notas', label: 'Notas', icon: StickyNote },
     ];
 
     return (
@@ -504,6 +519,149 @@ export default function GestaoVendas() {
                                 </CardContent>
                             </Card>
                         </div>
+                    </div>
+                )}
+
+                {/* ══════════════════ NOTAS TAB ══════════════════ */}
+                {activeTab === 'notas' && (
+                    <div className="space-y-5">
+                        {/* VIP / Active Patients */}
+                        <Card className="border">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Star className="h-4 w-4 text-amber-500 fill-amber-500" /> Pacientes VIP / Ativos
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Marque pacientes importantes para acompanhar de perto</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {/* Search */}
+                                <div className="relative">
+                                    <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+                                    <Input
+                                        placeholder="Buscar paciente..."
+                                        value={vipSearch}
+                                        onChange={e => setVipSearch(e.target.value)}
+                                        className="pl-8 h-8 text-xs"
+                                    />
+                                </div>
+
+                                {/* VIP List */}
+                                {vipIds.length > 0 && (
+                                    <div className="space-y-1">
+                                        <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Marcados ({vipIds.length})</p>
+                                        {vipIds.map(id => {
+                                            const p = patients.find((pat: any) => pat.id === id);
+                                            if (!p) return null;
+                                            return (
+                                                <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800">
+                                                    <button onClick={() => saveVip(vipIds.filter(v => v !== id))} className="text-amber-500 hover:text-amber-600">
+                                                        <Star className="h-4 w-4 fill-amber-500" />
+                                                    </button>
+                                                    <div className="flex-1 min-w-0">
+                                                        <div className="text-xs font-bold truncate">{(p as any).nome} {(p as any).sobrenome}</div>
+                                                        {(p as any).telefone && <div className="text-[10px] text-muted-foreground flex items-center gap-1"><Phone className="h-2.5 w-2.5" />{(p as any).telefone}</div>}
+                                                    </div>
+                                                    <Button size="sm" variant="ghost" className="h-6 text-[10px] px-2 text-emerald-600"
+                                                        onClick={() => {
+                                                            if ((p as any).telefone) {
+                                                                const tel = (p as any).telefone.replace(/\D/g, '');
+                                                                window.open(`https://wa.me/55${tel}`, '_blank');
+                                                            }
+                                                        }}>
+                                                        <Phone className="h-3 w-3" />
+                                                    </Button>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                )}
+
+                                {/* Available patients */}
+                                <div className="space-y-1 max-h-60 overflow-y-auto">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider">Todos os Pacientes</p>
+                                    {patients
+                                        .filter((p: any) => !vipIds.includes(p.id))
+                                        .filter((p: any) => {
+                                            if (!vipSearch.trim()) return true;
+                                            const term = vipSearch.toLowerCase();
+                                            return `${p.nome} ${p.sobrenome}`.toLowerCase().includes(term);
+                                        })
+                                        .map((p: any) => (
+                                            <div key={p.id} className="flex items-center gap-2 p-1.5 rounded-lg hover:bg-muted/50 transition-colors">
+                                                <button onClick={() => saveVip([...vipIds, p.id])} className="text-muted-foreground/30 hover:text-amber-500">
+                                                    <Star className="h-3.5 w-3.5" />
+                                                </button>
+                                                <span className="text-xs truncate flex-1">{p.nome} {p.sobrenome}</span>
+                                                {p.telefone && <span className="text-[10px] text-muted-foreground">{p.telefone}</span>}
+                                            </div>
+                                        ))
+                                    }
+                                    {patients.length === 0 && <p className="text-xs text-muted-foreground italic py-2">Nenhum paciente cadastrado</p>}
+                                </div>
+                            </CardContent>
+                        </Card>
+
+                        {/* Quick Notes */}
+                        <Card className="border">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <StickyNote className="h-4 w-4 text-blue-500" /> Anotações Rápidas
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">Lembretes e anotações importantes da clínica</p>
+                            </CardHeader>
+                            <CardContent className="space-y-3">
+                                {/* New note input */}
+                                <div className="flex gap-2">
+                                    <Textarea
+                                        placeholder="Escreva uma anotação..."
+                                        value={newNote}
+                                        onChange={e => setNewNote(e.target.value)}
+                                        className="text-xs min-h-[60px] resize-none"
+                                        rows={2}
+                                    />
+                                    <Button
+                                        size="sm"
+                                        className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+                                        disabled={!newNote.trim()}
+                                        onClick={() => {
+                                            const note = { id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() };
+                                            saveNotes([note, ...notes].slice(0, 50));
+                                            setNewNote('');
+                                            toast({ title: '📝 Anotação salva!' });
+                                        }}
+                                    >
+                                        <Plus className="h-4 w-4" />
+                                    </Button>
+                                </div>
+
+                                {/* Notes list */}
+                                {notes.length > 0 ? (
+                                    <div className="space-y-2 max-h-96 overflow-y-auto">
+                                        {notes.map(note => (
+                                            <div key={note.id} className="p-3 rounded-lg bg-muted/40 border border-border/50 group relative">
+                                                <div className="flex items-start justify-between gap-2">
+                                                    <p className="text-xs whitespace-pre-wrap flex-1">{note.text}</p>
+                                                    <button
+                                                        onClick={() => {
+                                                            saveNotes(notes.filter(n => n.id !== note.id));
+                                                            toast({ title: '🗑️ Anotação removida' });
+                                                        }}
+                                                        className="opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive shrink-0"
+                                                    >
+                                                        <Trash2 className="h-3.5 w-3.5" />
+                                                    </button>
+                                                </div>
+                                                <p className="text-[10px] text-muted-foreground mt-1">
+                                                    {format(new Date(note.createdAt), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                                </p>
+                                            </div>
+                                        ))}
+                                    </div>
+                                ) : (
+                                    <p className="text-xs text-muted-foreground italic text-center py-4">Nenhuma anotação ainda. Comece escrevendo acima! ✍️</p>
+                                )}
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
             </div>
