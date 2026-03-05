@@ -1,6 +1,5 @@
 import { useState, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 import { X, Link2 } from 'lucide-react';
@@ -15,22 +14,74 @@ interface Props {
     onDataChange?: (data: StructuralAssessmentData) => void;
 }
 
-// Tissue types with colors
 const TISSUE_TYPES = [
-    { key: 'muscle', label: 'Músculo', emoji: '💪', color: '#EF4444', strokeColor: '#DC2626' },
-    { key: 'nerve', label: 'Nervo', emoji: '⚡', color: '#EAB308', strokeColor: '#CA8A04' },
-    { key: 'viscera', label: 'Víscera', emoji: '🫀', color: '#22C55E', strokeColor: '#16A34A' },
-    { key: 'joint', label: 'Articulação', emoji: '🦴', color: '#3B82F6', strokeColor: '#2563EB' },
-    { key: 'ligament', label: 'Ligamento', emoji: '🔗', color: '#9CA3AF', strokeColor: '#6B7280' },
+    { key: 'muscle', label: 'Músculo', emoji: '💪', color: '#EF4444', stroke: '#DC2626' },
+    { key: 'nerve', label: 'Nervo', emoji: '⚡', color: '#EAB308', stroke: '#CA8A04' },
+    { key: 'viscera', label: 'Víscera', emoji: '🫀', color: '#22C55E', stroke: '#16A34A' },
+    { key: 'joint', label: 'Articulação', emoji: '🦴', color: '#3B82F6', stroke: '#2563EB' },
+    { key: 'ligament', label: 'Ligamento', emoji: '🔗', color: '#9CA3AF', stroke: '#6B7280' },
 ] as const;
 
 type TissueKey = typeof TISSUE_TYPES[number]['key'];
+
+// Predefined structures per tissue type — all clickable
+const STRUCTURES: Record<TissueKey, string[]> = {
+    muscle: [
+        'Trapézio', 'ECM', 'Escalenos', 'Peitoral maior', 'Peitoral menor',
+        'Deltóide', 'Supraespinhoso', 'Infraespinhoso', 'Subescapular', 'Redondo menor',
+        'Bíceps', 'Tríceps', 'Serrátil anterior', 'Rombóides', 'Latíssimo do dorso',
+        'Eretor da espinha', 'Multífido', 'Quadrado lombar', 'Psoas', 'Ilíaco',
+        'Transverso abdominal', 'Oblíquos', 'Reto abdominal', 'Diafragma',
+        'Glúteo máximo', 'Glúteo médio', 'Glúteo mínimo', 'Piriforme',
+        'Quadríceps', 'Isquiotibiais', 'Adutores', 'TFL/ITB',
+        'Gastrocnêmio', 'Sóleo', 'Tibial anterior', 'Fibulares',
+    ],
+    nerve: [
+        'Nervo mediano', 'Nervo ulnar', 'Nervo radial', 'Plexo braquial',
+        'Nervo axilar', 'Nervo musculocutâneo', 'Nervo supraescapular',
+        'Nervo ciático', 'Nervo femoral', 'Nervo fibular', 'Nervo tibial',
+        'Raiz C5-C6', 'Raiz C6-C7', 'Raiz C7-T1',
+        'Raiz L4', 'Raiz L5', 'Raiz S1',
+        'N. occipital maior', 'N. trigêmeo', 'N. vago',
+    ],
+    viscera: [
+        'Diafragma', 'Pulmão D', 'Pulmão E', 'Coração/Pericárdio',
+        'Fígado', 'Estômago', 'Baço', 'Vesícula biliar',
+        'Intestino delgado', 'Cólon ascendente', 'Cólon transverso', 'Cólon descendente',
+        'Rim D', 'Rim E', 'Bexiga', 'Útero/Próstata',
+        'Assoalho pélvico', 'Peritônio',
+    ],
+    joint: [
+        'ATM', 'C0-C1', 'C1-C2', 'Cervical C3-C7',
+        'Ombro D', 'Ombro E', 'Acromioclavicular D', 'Acromioclavicular E',
+        'Esternoclavicular', 'Costovertebrais',
+        'Cotovelo D', 'Cotovelo E', 'Punho D', 'Punho E',
+        'Torácica T1-T6', 'Torácica T7-T12', 'Costocondrais',
+        'L1-L2', 'L2-L3', 'L3-L4', 'L4-L5', 'L5-S1',
+        'SIJ D', 'SIJ E', 'Sínfise púbica',
+        'Quadril D', 'Quadril E', 'Joelho D', 'Joelho E',
+        'Tornozelo D', 'Tornozelo E', 'Subtalar D', 'Subtalar E',
+    ],
+    ligament: [
+        'LCA D', 'LCA E', 'LCP D', 'LCP E',
+        'LCM D', 'LCM E', 'LCL D', 'LCL E',
+        'Lig. sacroilíaco', 'Lig. sacrotuberoso', 'Lig. iliolombares',
+        'Lig. longitudinal anterior', 'Lig. longitudinal posterior',
+        'Lig. amarelo', 'Lig. interespinhoso',
+        'Lig. coracoacromial D', 'Lig. coracoacromial E',
+        'Lig. glenoumeral D', 'Lig. glenoumeral E',
+        'Lig. talofibular ant. D', 'Lig. talofibular ant. E',
+        'Lig. calcaneofibular D', 'Lig. calcaneofibular E',
+        'Menisco medial D', 'Menisco medial E',
+        'Menisco lateral D', 'Menisco lateral E',
+    ],
+};
 
 interface TissueConnection {
     source: string;
     target: string;
     tissueType: TissueKey;
-    structure: string; // e.g. "Nervo mediano", "Supraespinhoso"
+    structure: string;
 }
 
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
@@ -52,25 +103,18 @@ function getNodeColor(score: number): string {
     return '#EF4444';
 }
 
-function getTissueColor(key: TissueKey): string {
-    return TISSUE_TYPES.find(t => t.key === key)?.color || '#9CA3AF';
+function getTissue(key: TissueKey) {
+    return TISSUE_TYPES.find(t => t.key === key)!;
 }
 
-function getTissueStroke(key: TissueKey): string {
-    return TISSUE_TYPES.find(t => t.key === key)?.strokeColor || '#6B7280';
-}
-
-type Step = 'idle' | 'select-tissue' | 'select-source' | 'select-target' | 'fill-structure';
+type Step = 'idle' | 'select-tissue' | 'select-source' | 'select-target' | 'select-structure';
 
 export default function StructuralConnectionMap({ data, editable = false, onDataChange }: Props) {
     const [step, setStep] = useState<Step>('idle');
     const [selectedTissue, setSelectedTissue] = useState<TissueKey | null>(null);
     const [source, setSource] = useState<string | null>(null);
     const [target, setTarget] = useState<string | null>(null);
-    const [structureName, setStructureName] = useState('');
 
-    // Store tissue connections in data.relationships.direct using affectedStructures[0] for tissue type marker
-    // Parse existing connections that have tissue type info
     const tissueConnections = useMemo((): TissueConnection[] => {
         return data.relationships.direct
             .filter(r => r.affectedStructures.length > 0 && r.affectedStructures[0].startsWith('TISSUE:'))
@@ -82,7 +126,6 @@ export default function StructuralConnectionMap({ data, editable = false, onData
             }));
     }, [data.relationships.direct]);
 
-    // Non-tissue connections (from auto-generated relationships)
     const autoConnections = useMemo(() => {
         return data.relationships.direct.filter(
             r => r.affectedStructures.length === 0 || !r.affectedStructures[0].startsWith('TISSUE:')
@@ -90,58 +133,41 @@ export default function StructuralConnectionMap({ data, editable = false, onData
     }, [data.relationships.direct]);
 
     const createCurvedPath = (sx: number, sy: number, tx: number, ty: number, curve: number = 0) => {
-        const dx = tx - sx;
-        const dy = ty - sy;
-        const mx = (sx + tx) / 2;
-        const my = (sy + ty) / 2;
+        const dx = tx - sx; const dy = ty - sy;
+        const mx = (sx + tx) / 2; const my = (sy + ty) / 2;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
         const offset = curve * 30;
-        return {
-            path: `M ${sx} ${sy} Q ${mx + (-dy / len * offset)} ${my + (dx / len * offset)} ${tx} ${ty}`,
-            cx: mx + (-dy / len * offset),
-            cy: my + (dx / len * offset),
-        };
+        const cx = mx + (-dy / len * offset);
+        const cy = my + (dx / len * offset);
+        return { path: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`, cx, cy };
     };
 
     const handleNodeClick = (unitId: string) => {
-        if (!editable || step === 'idle' || step === 'select-tissue' || step === 'fill-structure') return;
-
+        if (!editable) return;
         if (step === 'select-source') {
             setSource(unitId);
             setStep('select-target');
         } else if (step === 'select-target') {
             if (unitId === source) { cancelConnect(); return; }
             setTarget(unitId);
-            setStep('fill-structure');
+            setStep('select-structure');
         }
     };
 
     const cancelConnect = () => {
-        setStep('idle');
-        setSelectedTissue(null);
-        setSource(null);
-        setTarget(null);
-        setStructureName('');
+        setStep('idle'); setSelectedTissue(null); setSource(null); setTarget(null);
     };
 
-    const selectTissue = (key: TissueKey) => {
-        setSelectedTissue(key);
-        setStep('select-source');
-    };
-
-    const confirmConnection = () => {
+    const selectStructure = (structName: string) => {
         if (!onDataChange || !source || !target || !selectedTissue) return;
-        const label = structureName.trim() || TISSUE_TYPES.find(t => t.key === selectedTissue)?.label || '';
-
         const rel: StructuralRelationship = {
-            source,
-            target,
-            mechanism: label,
+            source, target,
+            mechanism: structName,
             affectedStructures: [`TISSUE:${selectedTissue}`],
-            severity: 'MODERADA',
+            severity: (data.units[source]?.score || 0) >= 8 ? 'SEVERA' :
+                (data.units[source]?.score || 0) >= 5 ? 'MODERADA' : 'LEVE',
             interventionPriority: data.relationships.direct.length + 1,
         };
-
         onDataChange({
             ...data,
             relationships: { ...data.relationships, direct: [...data.relationships.direct, rel] },
@@ -149,26 +175,24 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         cancelConnect();
     };
 
-    const removeConnection = (index: number) => {
+    const removeConnection = (i: number) => {
         if (!onDataChange) return;
-        const arr = [...data.relationships.direct];
-        arr.splice(index, 1);
+        const arr = [...data.relationships.direct]; arr.splice(i, 1);
         onDataChange({ ...data, relationships: { ...data.relationships, direct: arr } });
     };
 
-    const removeIndirectRel = (index: number) => {
+    const removeIndirectRel = (i: number) => {
         if (!onDataChange) return;
-        const arr = [...data.relationships.indirect];
-        arr.splice(index, 1);
+        const arr = [...data.relationships.indirect]; arr.splice(i, 1);
         onDataChange({ ...data, relationships: { ...data.relationships, indirect: arr } });
     };
 
     const getInstruction = () => {
-        if (step === 'select-tissue') return 'Selecione o tipo de tecido abaixo';
-        if (step === 'select-source') return `Toque na unidade de ORIGEM (${TISSUE_TYPES.find(t => t.key === selectedTissue)?.label})`;
-        if (step === 'select-target') return `Toque na unidade de DESTINO (origem: ${source})`;
-        if (step === 'fill-structure') return `Nomeie a estrutura ${source} → ${target}`;
-        return editable ? 'Toque "Conectar" para criar conexões por tecido' : 'Mapa de conexões estruturais';
+        if (step === 'select-tissue') return '① Selecione o tipo de tecido';
+        if (step === 'select-source') return `② Toque na unidade de ORIGEM`;
+        if (step === 'select-target') return `③ Toque na unidade de DESTINO (origem: ${source})`;
+        if (step === 'select-structure') return `④ Selecione a estrutura comprometida`;
+        return editable ? 'Toque "Conectar" para mapear tecidos comprometidos' : 'Mapa de conexões estruturais';
     };
 
     return (
@@ -188,27 +212,25 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                 )}
             </div>
 
-            {/* Instruction */}
+            {/* Instruction bar */}
             <div className={cn(
                 'text-[11px] px-3 py-1.5 rounded-lg mb-3 text-center font-medium transition-all',
                 step === 'idle' ? 'text-muted-foreground bg-muted/30' :
-                    step === 'fill-structure' ? 'text-primary bg-primary/10 border border-primary/30' :
+                    step === 'select-structure' ? 'text-primary bg-primary/10 border border-primary/30' :
                         'text-amber-700 bg-amber-50 border border-amber-200'
             )}>
                 {getInstruction()}
             </div>
 
-            {/* Tissue type selector — clickable colored buttons */}
+            {/* ① Tissue type selector — clickable colored buttons */}
             {step === 'select-tissue' && (
                 <div className="flex flex-wrap gap-2 justify-center mb-3 animate-slide-in">
                     {TISSUE_TYPES.map(t => (
-                        <button
-                            key={t.key}
-                            onClick={() => selectTissue(t.key)}
-                            className="flex items-center gap-1.5 px-3 py-2 rounded-lg border-2 transition-all hover:scale-105 active:scale-95"
-                            style={{ borderColor: t.color, backgroundColor: `${t.color}15` }}
-                        >
-                            <div className="w-3 h-3 rounded-full" style={{ backgroundColor: t.color }} />
+                        <button key={t.key}
+                            onClick={() => { setSelectedTissue(t.key); setStep('select-source'); }}
+                            className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border-2 transition-all hover:scale-105 active:scale-95 shadow-sm"
+                            style={{ borderColor: t.color, backgroundColor: `${t.color}15` }}>
+                            <div className="w-4 h-4 rounded-full" style={{ backgroundColor: t.color }} />
                             <span className="text-xs font-bold">{t.emoji} {t.label}</span>
                         </button>
                     ))}
@@ -218,33 +240,34 @@ export default function StructuralConnectionMap({ data, editable = false, onData
             {/* Active tissue indicator */}
             {selectedTissue && step !== 'idle' && step !== 'select-tissue' && (
                 <div className="flex items-center justify-center gap-2 mb-2">
-                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissueColor(selectedTissue) }} />
-                    <span className="text-xs font-bold" style={{ color: getTissueStroke(selectedTissue) }}>
-                        {TISSUE_TYPES.find(t => t.key === selectedTissue)?.label}
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissue(selectedTissue).color }} />
+                    <span className="text-xs font-bold" style={{ color: getTissue(selectedTissue).stroke }}>
+                        {getTissue(selectedTissue).label}
                     </span>
                 </div>
             )}
 
-            {/* Name structure inline */}
-            {step === 'fill-structure' && source && target && selectedTissue && (
-                <div className="p-3 rounded-lg border mb-3 space-y-2 animate-slide-in"
-                    style={{ borderColor: getTissueColor(selectedTissue), backgroundColor: `${getTissueColor(selectedTissue)}08` }}>
-                    <div className="flex items-center gap-2 text-sm font-bold">
-                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissueColor(selectedTissue) }} />
-                        <Badge>{source}</Badge> <span>→</span> <Badge>{target}</Badge>
+            {/* ④ Structure selector — all clickable buttons */}
+            {step === 'select-structure' && selectedTissue && source && target && (
+                <div className="p-3 rounded-xl border mb-3 animate-slide-in"
+                    style={{ borderColor: getTissue(selectedTissue).color, backgroundColor: `${getTissue(selectedTissue).color}08` }}>
+                    <div className="flex items-center gap-2 mb-2">
+                        <div className="w-3 h-3 rounded-full" style={{ backgroundColor: getTissue(selectedTissue).color }} />
+                        <Badge>{source}</Badge> <span className="text-xs">→</span> <Badge>{target}</Badge>
                     </div>
-                    <Input
-                        placeholder={`Nome da estrutura (ex: ${selectedTissue === 'muscle' ? 'Supraespinhoso' : selectedTissue === 'nerve' ? 'Nervo mediano' : selectedTissue === 'joint' ? 'SIJ' : selectedTissue === 'ligament' ? 'LCA' : 'Diafragma'})`}
-                        value={structureName}
-                        onChange={e => setStructureName(e.target.value)}
-                        className="text-xs h-8" autoFocus
-                    />
-                    <div className="flex gap-2">
-                        <Button size="sm" className="flex-1 h-8 text-xs" onClick={confirmConnection}
-                            style={{ backgroundColor: getTissueColor(selectedTissue) }}>
-                            Criar Conexão
-                        </Button>
-                        <Button variant="outline" size="sm" className="h-8 text-xs" onClick={cancelConnect}>Cancelar</Button>
+                    <div className="flex flex-wrap gap-1.5 max-h-48 overflow-y-auto">
+                        {STRUCTURES[selectedTissue].map(name => (
+                            <button key={name}
+                                onClick={() => selectStructure(name)}
+                                className="px-2.5 py-1.5 rounded-lg text-[11px] font-medium border transition-all hover:scale-105 active:scale-95"
+                                style={{
+                                    borderColor: `${getTissue(selectedTissue).color}60`,
+                                    color: getTissue(selectedTissue).stroke,
+                                    backgroundColor: `${getTissue(selectedTissue).color}10`,
+                                }}>
+                                {name}
+                            </button>
+                        ))}
                     </div>
                 </div>
             )}
@@ -258,7 +281,7 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                         </marker>
                     ))}
                     <marker id="arr-auto" markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">
-                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#9CA3AF" />
+                        <path d="M 0 0 L 8 3 L 0 6 Z" fill="#D1D5DB" />
                     </marker>
                     <filter id="glow">
                         <feGaussianBlur stdDeviation="4" result="b" />
@@ -266,56 +289,43 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     </filter>
                 </defs>
 
-                {/* Auto-generated connections (non-tissue, from UNIT_RELATIONSHIPS) */}
+                {/* Auto connections (faded background) */}
                 {autoConnections.map((rel, i) => {
-                    const s = NODE_POSITIONS[rel.source];
-                    const t = NODE_POSITIONS[rel.target];
+                    const s = NODE_POSITIONS[rel.source]; const t = NODE_POSITIONS[rel.target];
                     if (!s || !t) return null;
-                    const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 3) - 1);
-                    return (
-                        <g key={`a-${i}`} opacity={0.3}>
-                            <path d={path} fill="none" stroke="#D1D5DB" strokeWidth={1} strokeDasharray="4,4" markerEnd="url(#arr-auto)" />
-                        </g>
-                    );
+                    const { path } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 3) - 1);
+                    return <path key={`a-${i}`} d={path} fill="none" stroke="#E5E7EB" strokeWidth={1} strokeDasharray="4,4" markerEnd="url(#arr-auto)" opacity={0.3} />;
                 })}
 
-                {/* Tissue connections — colored by type */}
+                {/* Tissue connections */}
                 {tissueConnections.map((tc, i) => {
-                    const s = NODE_POSITIONS[tc.source];
-                    const t = NODE_POSITIONS[tc.target];
+                    const s = NODE_POSITIONS[tc.source]; const t = NODE_POSITIONS[tc.target];
                     if (!s || !t) return null;
-                    const color = getTissueColor(tc.tissueType);
+                    const tissue = getTissue(tc.tissueType);
                     const { path, cx, cy } = createCurvedPath(s.x, s.y, t.x, t.y, (i % 5 - 2) * 0.8);
+                    const label = tc.structure.length > 14 ? tc.structure.slice(0, 14) + '…' : tc.structure;
+                    const w = Math.max(80, label.length * 6.5);
                     return (
                         <g key={`tc-${i}`}>
-                            <path d={path} fill="none" stroke={color} strokeWidth={3} markerEnd={`url(#arr-${tc.tissueType})`} opacity={0.85} />
-                            {/* Label bubble */}
-                            <rect x={cx - 40} y={cy - 10} width={80} height={20} rx={8}
-                                fill="white" stroke={color} strokeWidth={1.5} opacity={0.95} />
-                            <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight="bold" fill={color}>
-                                {tc.structure.length > 12 ? tc.structure.slice(0, 12) + '…' : tc.structure}
-                            </text>
+                            <path d={path} fill="none" stroke={tissue.color} strokeWidth={3} markerEnd={`url(#arr-${tc.tissueType})`} opacity={0.85} />
+                            <rect x={cx - w / 2} y={cy - 10} width={w} height={20} rx={8}
+                                fill="white" stroke={tissue.color} strokeWidth={1.5} opacity={0.95} />
+                            <text x={cx} y={cy + 4} textAnchor="middle" fontSize={8} fontWeight="bold" fill={tissue.stroke}>{label}</text>
                         </g>
                     );
                 })}
 
-                {/* Indirect connections */}
+                {/* Indirect */}
                 {data.relationships.indirect.map((rel, i) => {
-                    const s = NODE_POSITIONS[rel.source];
-                    const t = NODE_POSITIONS[rel.target];
+                    const s = NODE_POSITIONS[rel.source]; const t = NODE_POSITIONS[rel.target];
                     if (!s || !t) return null;
                     const { path } = createCurvedPath(s.x, s.y, t.x, t.y, ((i % 3) - 1) * 1.5);
-                    return (
-                        <g key={`i-${i}`} opacity={0.4}>
-                            <path d={path} fill="none" stroke="#D1D5DB" strokeWidth={1} strokeDasharray="6,4" markerEnd="url(#arr-auto)" />
-                        </g>
-                    );
+                    return <path key={`i-${i}`} d={path} fill="none" stroke="#D1D5DB" strokeWidth={1} strokeDasharray="6,4" markerEnd="url(#arr-auto)" opacity={0.4} />;
                 })}
 
                 {/* Nodes */}
                 {UNIT_CONFIGS.map(cfg => {
-                    const pos = NODE_POSITIONS[cfg.id];
-                    if (!pos) return null;
+                    const pos = NODE_POSITIONS[cfg.id]; if (!pos) return null;
                     const unit = data.units[cfg.id];
                     const score = unit?.score || 0;
                     const color = getNodeColor(score);
@@ -324,26 +334,21 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                     const isSource = source === cfg.id;
                     const isSelectable = step === 'select-source' || step === 'select-target';
                     const r = isDriver ? 34 : isSource ? 32 : 28;
-
+                    const ringColor = selectedTissue ? getTissue(selectedTissue).color : '#3B82F6';
                     return (
-                        <g key={cfg.id}
-                            onClick={() => handleNodeClick(cfg.id)}
-                            className={isSelectable ? 'cursor-pointer' : ''}
-                        >
-                            {/* Selection ring */}
+                        <g key={cfg.id} onClick={() => handleNodeClick(cfg.id)}
+                            className={isSelectable ? 'cursor-pointer' : ''}>
                             {isSource && (
-                                <circle cx={pos.x} cy={pos.y} r={r + 6}
-                                    fill="none" stroke={selectedTissue ? getTissueColor(selectedTissue) : '#3B82F6'}
+                                <circle cx={pos.x} cy={pos.y} r={r + 6} fill="none" stroke={ringColor}
                                     strokeWidth={3} strokeDasharray="8,4" opacity={0.9}>
                                     <animate attributeName="stroke-dashoffset" from="0" to="24" dur="1s" repeatCount="indefinite" />
                                 </circle>
                             )}
-                            {/* Hover ring when selectable */}
                             {isSelectable && !isSource && (
-                                <circle cx={pos.x} cy={pos.y} r={r + 8} fill="transparent" stroke="transparent" />
+                                <circle cx={pos.x} cy={pos.y} r={r + 8} fill="transparent" />
                             )}
                             <circle cx={pos.x} cy={pos.y} r={r} fill={color}
-                                stroke={isSource ? (selectedTissue ? getTissueColor(selectedTissue) : '#3B82F6') : isCritical ? '#EF4444' : 'white'}
+                                stroke={isSource ? ringColor : isCritical ? '#EF4444' : 'white'}
                                 strokeWidth={isSource ? 4 : isDriver ? 4 : 2}
                                 filter={isCritical ? 'url(#glow)' : undefined}
                                 opacity={score > 0 ? 1 : isSelectable ? 0.5 : 0.3} />
@@ -374,27 +379,27 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                 ))}
             </div>
 
-            {/* Connection list (editable) */}
+            {/* Connection list */}
             {(tissueConnections.length > 0 || autoConnections.length > 0 || data.relationships.indirect.length > 0) && (
                 <div className="mt-3 space-y-1.5">
                     <h4 className="text-xs font-bold">Conexões</h4>
-
-                    {/* Tissue connections */}
                     {data.relationships.direct.map((rel, i) => {
-                        const isTissue = rel.affectedStructures.length > 0 && rel.affectedStructures[0].startsWith('TISSUE:');
+                        const isTissue = rel.affectedStructures[0]?.startsWith('TISSUE:');
                         const tissueKey = isTissue ? rel.affectedStructures[0].replace('TISSUE:', '') as TissueKey : null;
-                        const color = tissueKey ? getTissueColor(tissueKey) : '#9CA3AF';
-                        const label = tissueKey ? TISSUE_TYPES.find(t => t.key === tissueKey)?.label : 'Auto';
-
+                        const tissue = tissueKey ? getTissue(tissueKey) : null;
                         return (
-                            <div key={`c-${i}`} className="text-[10px] p-2 rounded border flex items-center gap-2"
-                                style={{ borderColor: `${color}40`, backgroundColor: `${color}08` }}>
-                                <div className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                            <div key={`c-${i}`} className="text-[10px] p-2 rounded-lg border flex items-center gap-2"
+                                style={{ borderColor: tissue ? `${tissue.color}40` : '#E5E7EB', backgroundColor: tissue ? `${tissue.color}08` : 'transparent' }}>
+                                <div className="w-2.5 h-2.5 rounded-full shrink-0"
+                                    style={{ backgroundColor: tissue?.color || '#D1D5DB' }} />
                                 <span className="font-black shrink-0">{rel.source} → {rel.target}</span>
                                 <span className="text-muted-foreground flex-1">{rel.mechanism}</span>
-                                <Badge variant="outline" className="text-[8px] shrink-0" style={{ borderColor: color, color }}>
-                                    {label}
-                                </Badge>
+                                {tissue && (
+                                    <Badge variant="outline" className="text-[8px] shrink-0"
+                                        style={{ borderColor: tissue.color, color: tissue.stroke }}>
+                                        {tissue.label}
+                                    </Badge>
+                                )}
                                 {editable && (
                                     <button onClick={() => removeConnection(i)} className="shrink-0 text-red-400 hover:text-red-600">
                                         <X className="h-3.5 w-3.5" />
@@ -403,10 +408,8 @@ export default function StructuralConnectionMap({ data, editable = false, onData
                             </div>
                         );
                     })}
-
-                    {/* Indirect */}
                     {data.relationships.indirect.map((rel, i) => (
-                        <div key={`i-${i}`} className="text-[10px] p-2 rounded border border-dashed bg-muted/10 flex items-center gap-2">
+                        <div key={`i-${i}`} className="text-[10px] p-2 rounded-lg border border-dashed bg-muted/10 flex items-center gap-2">
                             <span className="font-black text-muted-foreground shrink-0">
                                 {rel.source} ⟶ {rel.intermediate} ⟶ {rel.target}
                             </span>
