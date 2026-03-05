@@ -38,7 +38,7 @@ export interface ConfigAgenda {
 const DEFAULT_CONFIG: ConfigAgenda = {
   horario_inicio: '06:00:00',
   horario_fim: '20:00:00',
-  duracao_padrao: 45,
+  duracao_padrao: 60,
   dias_semana: { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false },
   intervalo_entre_sessoes: 0,
   vagas_por_horario: 1,
