@@ -291,7 +291,7 @@ export default function PatientIntegratedDashboard({
             {/* Unit scores grid */}
             <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4">
               {UNIT_CONFIGS.map(cfg => {
-                const unit = structuralData.units[cfg.id];
+                const unit = structuralData.units?.[cfg.id];
                 const score = unit?.score ?? 0;
                 return (
                   <div key={cfg.id} className="text-center p-1.5 rounded-lg bg-muted/40">
@@ -538,7 +538,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
 
     if (data.primaryDriver) {
       const cfg = UNIT_CONFIGS.find(u => u.id === data.primaryDriver);
-      const unit = data.units[data.primaryDriver];
+      const unit = data.units?.[data.primaryDriver];
       if (cfg && unit) {
         lines.push(`⚠️ DRIVER: ${cfg.id} (${cfg.name}) — Score ${unit.score.toFixed(1)}`);
         lines.push('   Foco inicial obrigatório.');
@@ -546,7 +546,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
       }
     }
 
-    if (data.clinicalPriorities.length > 0) {
+    if (data.clinicalPriorities?.length > 0) {
       lines.push('─── PRIORIDADES CLÍNICAS ───');
       data.clinicalPriorities.forEach(p => {
         const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
@@ -556,7 +556,7 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
       lines.push('');
     }
 
-    if (data.relationships.direct.length > 0) {
+    if (data.relationships?.direct?.length > 0) {
       lines.push('─── CONEXÕES ───');
       data.relationships.direct.forEach(rel => {
         const tissue = rel.affectedStructures[0]?.startsWith('TISSUE:')
