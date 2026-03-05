@@ -27,6 +27,7 @@ import {
   FaseProtocolo,
   ProtocoloAnalise
 } from '@/utils/demandasAnalyzer';
+import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 
 interface Protocolo {
   id: string;
@@ -316,34 +317,34 @@ function AnaliseAutomatica({
                           {fase.exercicios.map((ex, i) => {
                             const isSelected = selectedExercicios[idx]?.has(i);
                             return (
-                            <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleExercicio(idx, i)}>
-                              <div className="flex items-start gap-2">
-                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
-                                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm">{ex.nome}</div>
-                                  <Badge variant="outline" className="text-[10px] mt-0.5">{ex.categoria}</Badge>
-                                  <p className="text-xs text-muted-foreground mt-1">{ex.descricao}</p>
-                                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                    <span className="flex items-center gap-1">
-                                      <RotateCcw className="h-2.5 w-2.5" />
-                                      {ex.series}× {ex.repeticoes}
-                                    </span>
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-2.5 w-2.5" />
-                                      {ex.duracao}
-                                    </span>
+                              <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleExercicio(idx, i)}>
+                                <div className="flex items-start gap-2">
+                                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                    {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                                   </div>
-                                  <div className="mt-1.5 p-1.5 rounded bg-amber-50 border border-amber-100">
-                                    <p className="text-[10px] text-amber-700">
-                                      <Lightbulb className="h-2.5 w-2.5 inline mr-1" />
-                                      {ex.motivo}
-                                    </p>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">{ex.nome}</div>
+                                    <Badge variant="outline" className="text-[10px] mt-0.5">{ex.categoria}</Badge>
+                                    <p className="text-xs text-muted-foreground mt-1">{ex.descricao}</p>
+                                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        <RotateCcw className="h-2.5 w-2.5" />
+                                        {ex.series}× {ex.repeticoes}
+                                      </span>
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-2.5 w-2.5" />
+                                        {ex.duracao}
+                                      </span>
+                                    </div>
+                                    <div className="mt-1.5 p-1.5 rounded bg-amber-50 border border-amber-100">
+                                      <p className="text-[10px] text-amber-700">
+                                        <Lightbulb className="h-2.5 w-2.5 inline mr-1" />
+                                        {ex.motivo}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
                             );
                           })}
                         </div>
@@ -359,29 +360,29 @@ function AnaliseAutomatica({
                           {fase.tecnicas.map((tec, i) => {
                             const isSelected = selectedTecnicas[idx]?.has(i);
                             return (
-                            <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleTecnica(idx, i)}>
-                              <div className="flex items-start gap-2">
-                                <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
-                                  {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-sm">{tec.nome}</div>
-                                  <p className="text-xs text-muted-foreground mt-1">{tec.descricao}</p>
-                                  <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
-                                    <span className="flex items-center gap-1">
-                                      <Clock className="h-2.5 w-2.5" /> {tec.duracao}
-                                    </span>
-                                    <span>{tec.frequencia}</span>
+                              <div key={i} className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50'}`} onClick={() => toggleTecnica(idx, i)}>
+                                <div className="flex items-start gap-2">
+                                  <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 mt-0.5 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'}`}>
+                                    {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
                                   </div>
-                                  <div className="mt-1.5 p-1.5 rounded bg-blue-50 border border-blue-100">
-                                    <p className="text-[10px] text-blue-700">
-                                      <Info className="h-2.5 w-2.5 inline mr-1" />
-                                      {tec.motivo}
-                                    </p>
+                                  <div className="flex-1 min-w-0">
+                                    <div className="font-medium text-sm">{tec.nome}</div>
+                                    <p className="text-xs text-muted-foreground mt-1">{tec.descricao}</p>
+                                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                                      <span className="flex items-center gap-1">
+                                        <Clock className="h-2.5 w-2.5" /> {tec.duracao}
+                                      </span>
+                                      <span>{tec.frequencia}</span>
+                                    </div>
+                                    <div className="mt-1.5 p-1.5 rounded bg-blue-50 border border-blue-100">
+                                      <p className="text-[10px] text-blue-700">
+                                        <Info className="h-2.5 w-2.5 inline mr-1" />
+                                        {tec.motivo}
+                                      </p>
+                                    </div>
                                   </div>
                                 </div>
                               </div>
-                            </div>
                             );
                           })}
                         </div>
@@ -408,8 +409,8 @@ function AnaliseAutomatica({
             <strong className="text-foreground">{totalTecSelecionados}</strong>/{totalTec} técnicas
           </span>
         </div>
-         <p className="text-xs text-muted-foreground mb-3">
-           Clique nos exercícios e técnicas acima para selecionar ou remover os tratamentos mais adequados para este paciente. Apenas os itens selecionados serão incluídos na diretriz final.
+        <p className="text-xs text-muted-foreground mb-3">
+          Clique nos exercícios e técnicas acima para selecionar ou remover os tratamentos mais adequados para este paciente. Apenas os itens selecionados serão incluídos na diretriz final.
         </p>
         <div className="flex flex-wrap gap-3">
           <Button
@@ -473,6 +474,22 @@ export default function Protocolos() {
       // Filtrar avaliações que já tem protocolo
       const avalIds = (protocolos as any[]).map((p: any) => p.avaliacao_id).filter(Boolean);
       return (data || []).filter((a: any) => !avalIds.includes(a.id)) as Avaliacao[];
+    },
+    enabled: !!user,
+  });
+
+  // Structural evaluations with data
+  const { data: structuralAvals = [] } = useQuery({
+    queryKey: ['structural-sem-diretriz', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_identidade')
+        .select('id, paciente_id, created_at, dados_estruturais')
+        .eq('terapeuta_id', user!.id)
+        .not('dados_estruturais', 'is', null)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
     },
     enabled: !!user,
   });
@@ -660,8 +677,8 @@ export default function Protocolos() {
               Voltar
             </Button>
             <div>
-               <h1 className="text-xl font-bold text-foreground">Análise Automática de Diretriz</h1>
-               <p className="text-sm text-muted-foreground">Baseada nos scores da avaliação · {getPacienteNome(analiseAvaliacao.paciente_id)}</p>
+              <h1 className="text-xl font-bold text-foreground">Análise Automática de Diretriz</h1>
+              <p className="text-sm text-muted-foreground">Baseada nos scores da avaliação · {getPacienteNome(analiseAvaliacao.paciente_id)}</p>
             </div>
           </div>
           <AnaliseAutomatica
@@ -703,10 +720,10 @@ export default function Protocolos() {
               <ClipboardList className="h-6 w-6 text-white" />
             </div>
             <div>
-               <h1 className="text-2xl font-bold text-foreground">Diretrizes de Tratamento</h1>
-               <p className="text-muted-foreground text-sm">
-                 {protocolos.length} diretriz{protocolos.length !== 1 ? 'es' : ''} · {avaliacoesSemProtocolo.length} avaliação{avaliacoesSemProtocolo.length !== 1 ? 'ões' : ''} pendente{avaliacoesSemProtocolo.length !== 1 ? 's' : ''}
-               </p>
+              <h1 className="text-2xl font-bold text-foreground">Diretrizes de Tratamento</h1>
+              <p className="text-muted-foreground text-sm">
+                {protocolos.length} diretriz{protocolos.length !== 1 ? 'es' : ''} · {avaliacoesSemProtocolo.length} avaliação{avaliacoesSemProtocolo.length !== 1 ? 'ões' : ''} pendente{avaliacoesSemProtocolo.length !== 1 ? 's' : ''}
+              </p>
             </div>
           </div>
           <Button
@@ -753,10 +770,35 @@ export default function Protocolos() {
                       size="sm"
                       onClick={() => setAnaliseAvaliacao(av)}
                     >
-                       <Zap className="h-3.5 w-3.5" />
-                       Gerar Diretriz
+                      <Zap className="h-3.5 w-3.5" />
+                      Gerar Diretriz
                     </Button>
                   </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* Structural evaluations */}
+        {structuralAvals.length > 0 && (
+          <div className="mb-6">
+            <div className="flex items-center gap-2 mb-3">
+              <Activity className="h-4 w-4 text-orange-500" />
+              <h2 className="font-semibold text-sm text-foreground">Avaliações Estruturais</h2>
+              <Badge className="bg-orange-100 text-orange-700 border-0">{structuralAvals.length}</Badge>
+            </div>
+            <div className="space-y-2">
+              {structuralAvals.slice(0, 5).map((av: any) => {
+                const sData = av.dados_estruturais as StructuralAssessmentData | null;
+                if (!sData) return null;
+                return (
+                  <StructuralDiretrizCard
+                    key={av.id}
+                    pacienteNome={getPacienteNome(av.paciente_id)}
+                    date={av.created_at}
+                    data={sData}
+                  />
                 );
               })}
             </div>
@@ -782,10 +824,10 @@ export default function Protocolos() {
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
-             <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma diretriz encontrada</h3>
-             <p className="text-muted-foreground mb-6">
-               Conclua uma avaliação do Método Identidade para gerar uma diretriz automaticamente.
-             </p>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma diretriz encontrada</h3>
+            <p className="text-muted-foreground mb-6">
+              Conclua uma avaliação do Método Identidade para gerar uma diretriz automaticamente.
+            </p>
             <Button onClick={() => navigate('/metodo-identidade')} className="bg-gradient-primary text-white">
               <Plus className="h-4 w-4 mr-2" />
               Iniciar Avaliação
@@ -893,5 +935,108 @@ export default function Protocolos() {
         )}
       </div>
     </AppLayout>
+  );
+}
+
+// ── Structural evaluation card with inline diretriz generation ────────
+function StructuralDiretrizCard({ pacienteNome, date, data }: { pacienteNome: string; date: string; data: StructuralAssessmentData }) {
+  const [guidelines, setGuidelines] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const generate = () => {
+    const lines: string[] = [];
+    const d = new Date().toLocaleDateString('pt-BR');
+    lines.push('═══════════════════════════════════════');
+    lines.push('  DIRETRIZ ESTRUTURAL · Método Identidade');
+    lines.push(`  Paciente: ${pacienteNome} · ${d}`);
+    lines.push('═══════════════════════════════════════');
+    lines.push('');
+    lines.push(`Score Geral: ${data.scoreStructuralGeneral.toFixed(1)}/10 — ${data.classification}`);
+    lines.push('');
+    if (data.primaryDriver) {
+      const cfg = UNIT_CONFIGS.find(u => u.id === data.primaryDriver);
+      const unit = data.units[data.primaryDriver];
+      if (cfg && unit) {
+        lines.push(`⚠️ DRIVER: ${cfg.id} (${cfg.name}) — ${unit.score.toFixed(1)}`);
+        lines.push('');
+      }
+    }
+    if (data.clinicalPriorities.length > 0) {
+      lines.push('─── PRIORIDADES ───');
+      data.clinicalPriorities.forEach(p => {
+        const cfg = UNIT_CONFIGS.find(u => u.id === p.unitId);
+        lines.push(`  ${p.priority}. ${cfg?.emoji || ''} ${p.unitId} (${p.score.toFixed(1)}) · ${p.action}`);
+      });
+      lines.push('');
+    }
+    if (data.relationships.direct.length > 0) {
+      lines.push('─── CONEXÕES ───');
+      data.relationships.direct.forEach(rel => {
+        lines.push(`  ${rel.source} → ${rel.target} · ${rel.mechanism}`);
+      });
+      lines.push('');
+    }
+    const critical = data.clinicalPriorities.filter(p => p.score >= 8);
+    const moderate = data.clinicalPriorities.filter(p => p.score >= 5 && p.score < 8);
+    lines.push('─── PROTOCOLO ───');
+    if (critical.length > 0) {
+      lines.push('FASE 1 — AGUDA (Sem 1-3): Liberação miofascial, TENS, isométricos');
+    }
+    if (moderate.length > 0) {
+      lines.push('FASE 2 — SUBAGUDA (Sem 3-6): Mob. grau III-IV, estabilização');
+    }
+    lines.push('FASE 3 — MANUTENÇÃO (Sem 6-8): Exercícios funcionais, reeducação');
+    setGuidelines(lines.join('\n'));
+  };
+
+  const handleCopy = () => {
+    if (guidelines) { navigator.clipboard.writeText(guidelines); setCopied(true); setTimeout(() => setCopied(false), 2000); }
+  };
+
+  return (
+    <div className="clinical-card border-l-4 border-orange-400 py-3">
+      <div className="flex items-center gap-4">
+        <div className="h-10 w-10 rounded-xl bg-orange-100 flex items-center justify-center shrink-0">
+          <Activity className="h-5 w-5 text-orange-600" />
+        </div>
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="font-semibold text-sm">{pacienteNome}</span>
+            <Badge variant="outline" className="text-xs">
+              <span className={classifyScoreColor(data.scoreStructuralGeneral)}>{data.scoreStructuralGeneral.toFixed(1)}</span>
+            </Badge>
+            <Badge className="bg-orange-100 text-orange-700 border-0 text-xs">{data.classification}</Badge>
+          </div>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Avaliação Estrutural · {format(new Date(date), "dd 'de' MMM, yyyy", { locale: ptBR })}
+          </p>
+        </div>
+        {!guidelines && (
+          <Button className="bg-gradient-primary text-white gap-2 shrink-0" size="sm" onClick={generate}>
+            <Zap className="h-3.5 w-3.5" /> Gerar Diretriz
+          </Button>
+        )}
+      </div>
+
+      {guidelines && (
+        <div className="mt-3 pt-3 border-t space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-xs font-bold flex items-center gap-1">
+              <Zap className="h-3 w-3 text-primary" /> Diretriz Gerada
+            </span>
+            <div className="flex gap-1">
+              <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 px-2" onClick={handleCopy}>
+                {copied ? '✓' : 'Copiar'}
+              </Button>
+              <Button variant="outline" size="sm" className="h-6 text-[10px] gap-1 px-2"
+                onClick={() => { const w = window.open('', '_blank'); if (w) { w.document.write(`<pre style="font-family:monospace;font-size:12px;padding:20px;white-space:pre-wrap;">${guidelines}</pre>`); w.document.close(); w.print(); } }}>
+                Imprimir
+              </Button>
+            </div>
+          </div>
+          <pre className="text-[9px] bg-muted/50 p-2 rounded-lg whitespace-pre-wrap font-mono max-h-60 overflow-y-auto">{guidelines}</pre>
+        </div>
+      )}
+    </div>
   );
 }
