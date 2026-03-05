@@ -408,19 +408,20 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   setStructuralData(sData);
                   setShowStructural(false);
                   setLastSavedData(sData); // Show results immediately from memory
-                  // Salvar no Supabase (background)
-                  try {
-                    await supabase.from('avaliacoes_identidade').insert({
-                      paciente_id: paciente.id,
-                      terapeuta_id: user?.id,
-                      dados_estruturais: sData as any,
-                      score_e: sData.scoreStructuralGeneral,
-                      data_avaliacao: new Date().toLocaleDateString('pt-BR'),
-                    });
+                  // Salvar no Supabase
+                  const { error } = await supabase.from('avaliacoes_identidade').insert({
+                    paciente_id: paciente.id,
+                    terapeuta_id: user?.id,
+                    dados_estruturais: sData as any,
+                    score_e: sData.scoreStructuralGeneral,
+                    data_avaliacao: new Date().toLocaleDateString('pt-BR'),
+                  });
+                  if (error) {
+                    console.error('Erro ao salvar avaliação estrutural:', error);
+                    toast({ title: 'Erro ao salvar no banco', description: error.message, variant: 'destructive' });
+                  } else {
                     refetchStructural();
                     toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${sData.scoreStructuralGeneral.toFixed(1)}` });
-                  } catch (e: any) {
-                    toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
                   }
                 }}
                 onBack={() => setShowStructural(false)}
