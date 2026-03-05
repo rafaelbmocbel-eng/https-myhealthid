@@ -11,6 +11,7 @@ import {
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
@@ -91,11 +92,12 @@ export default function PatientIntegratedDashboard({
   const { data: structuralAvaliacoes = [] } = useQuery({
     queryKey: ['integrated-structural', pacienteId],
     queryFn: async () => {
-      const { data, error } = await supabase
+      const { data, error } = await (supabase as any)
         .from('avaliacoes_identidade')
         .select('*')
         .eq('paciente_id', pacienteId)
-        .not('dados_estruturais', 'is', null)
+        .not('score_e', 'is', null)
+        .is('myid_score', null)
         .order('created_at', { ascending: false })
         .limit(1);
       if (error) throw error;
@@ -103,7 +105,7 @@ export default function PatientIntegratedDashboard({
     },
   });
 
-  const structuralData = structuralAvaliacoes[0]?.dados_estruturais as StructuralAssessmentData | null;
+  const structuralData = structuralAvaliacoes[0]?.dados_avaliacao as any as StructuralAssessmentData | null;
 
   const lastServiceEntry = serviceData[0] as any;
 
@@ -600,8 +602,8 @@ function StructuralDiretrizButton({ data }: { data: StructuralAssessmentData }) 
     if (data.preferences) {
       lines.push('');
       lines.push('─── PREFERÊNCIAS ───');
-      if (data.preferences.goals?.length) lines.push(`  Metas: ${data.preferences.goals.join(', ')}`);
-      if (data.preferences.limitations?.length) lines.push(`  Limitações: ${data.preferences.limitations.join(', ')}`);
+      if (data.preferences.techniquePreference?.length) lines.push(`  Preferências: ${data.preferences.techniquePreference.join(', ')}`);
+      if (data.preferences.techniqueAversion?.length) lines.push(`  Aversões: ${data.preferences.techniqueAversion.join(', ')}`);
     }
 
     setGuidelines(lines.join('\n'));
