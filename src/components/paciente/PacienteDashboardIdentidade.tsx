@@ -21,6 +21,7 @@ import { MyIDResult } from '../myid/MyIDResult';
 import StructuralWizard from '../structural/StructuralWizard';
 import StructuralResultsSummary from '../structural/StructuralResultsSummary';
 import StructuralConnectionMap from '../structural/StructuralConnectionMap';
+import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 
 interface Paciente {
@@ -272,6 +273,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
+  const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
 
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
@@ -444,6 +446,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                       </div>
                     </div>
                     <div className="flex gap-2">
+                      <Button size="sm" variant="outline" className="text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => setShowReport({ structural: lastSavedData, myid: myidAvaliacoes[0]?.resultado_processado })}>
+                        <FileText className="h-3 w-3" /> Gerar PDF
+                      </Button>
                       <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setLastSavedData(null); setShowStructural(true); }}>
                         <Activity className="h-3 w-3" /> Nova Avaliação
                       </Button>
@@ -704,6 +709,18 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           )}
         </TabsContent>
       </Tabs>
+
+      {/* PDF Report Modal */}
+      {showReport && (
+        <TreatmentReportPDF
+          pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+          terapeutaNome={user?.user_metadata?.nome || 'Terapeuta'}
+          dataAvaliacao={new Date().toLocaleDateString('pt-BR')}
+          myidResult={showReport.myid}
+          structuralData={showReport.structural}
+          onClose={() => setShowReport(null)}
+        />
+      )}
     </div>
   );
 }
