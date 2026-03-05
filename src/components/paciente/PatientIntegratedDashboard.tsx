@@ -89,7 +89,7 @@ export default function PatientIntegratedDashboard({
     },
   });
 
-  // ── Structural assessment data
+  // ── Structural assessment data (only for Método Identidade)
   const { data: structuralAvaliacoes = [] } = useQuery({
     queryKey: ['integrated-structural', pacienteId],
     queryFn: async () => {
@@ -104,6 +104,7 @@ export default function PatientIntegratedDashboard({
       if (error) throw error;
       return data || [];
     },
+    enabled: serviceType === 'identidade',
   });
 
   const structuralData = structuralAvaliacoes[0]?.dados_avaliacao as any as StructuralAssessmentData | null;
@@ -244,11 +245,10 @@ export default function PatientIntegratedDashboard({
                     {rings.map(r => (
                       <div
                         key={r.scoreKey}
-                        className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${
-                          hoveredScoreKey === r.scoreKey
+                        className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
                             ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
                             : 'bg-muted/40 hover:bg-muted/60'
-                        }`}
+                          }`}
                         style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
                         onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
                         onMouseLeave={() => setHoveredScoreKey(null)}
@@ -279,8 +279,8 @@ export default function PatientIntegratedDashboard({
         </>
       )}
 
-      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL ─── */}
-      {structuralData && (
+      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL (only Método Identidade) ─── */}
+      {serviceType === 'identidade' && structuralData && (
         <Card className="shadow-sm overflow-hidden">
           <CardContent className="p-5">
             <div className="flex items-center gap-3 mb-4">
