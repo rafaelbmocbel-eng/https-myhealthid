@@ -68,8 +68,8 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         const dx = tx - sx; const dy = ty - sy;
         const mx = (sx + tx) / 2; const my = (sy + ty) / 2;
         const len = Math.sqrt(dx * dx + dy * dy) || 1;
-        const cx = mx + (-dy / len * curve * 40);
-        const cy = my + (dx / len * curve * 40);
+        const cx = mx + (-dy / len * curve * 60);
+        const cy = my + (dx / len * curve * 60);
         return { path: `M ${sx} ${sy} Q ${cx} ${cy} ${tx} ${ty}`, cx, cy };
     };
 
@@ -87,16 +87,18 @@ export default function StructuralConnectionMap({ data, editable = false, onData
         const key = [src, tgt].sort().join('-');
         const total = pairCounts.get(key) || 1;
         if (total === 1) return 0;
-        // Count how many of this pair we've seen before this index
         let pairIndex = 0;
         for (let j = 0; j < globalIndex; j++) {
             const r = data.relationships.direct[j];
             const k = [r.source, r.target].sort().join('-');
             if (k === key) pairIndex++;
         }
-        // Spread: -1.5, -0.5, 0.5, 1.5 etc
-        const half = (total - 1) / 2;
-        return (pairIndex - half) * 1.2;
+        // Alternating spread: 0, -1, 1, -2, 2, -3, 3...
+        // This pushes each arrow to a different side
+        if (pairIndex === 0) return 0;
+        const side = pairIndex % 2 === 1 ? 1 : -1;
+        const magnitude = Math.ceil(pairIndex / 2);
+        return side * magnitude * 1.5;
     };
 
     const handleNodeClick = (unitId: string) => {
