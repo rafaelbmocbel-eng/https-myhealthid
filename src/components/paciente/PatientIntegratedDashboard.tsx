@@ -225,7 +225,7 @@ export default function PatientIntegratedDashboard({
 
               <div className="flex flex-col lg:flex-row items-center gap-6">
                 {/* Fingerprint - larger */}
-                <div className="w-full lg:w-3/5">
+                <div className="w-full lg:w-4/5 min-h-[350px]">
                   <MyIDFingerprint rings={rings} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
                 </div>
 
@@ -246,8 +246,8 @@ export default function PatientIntegratedDashboard({
                       <div
                         key={r.scoreKey}
                         className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
-                            ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
-                            : 'bg-muted/40 hover:bg-muted/60'
+                          ? 'bg-muted/80 ring-2 ring-offset-1 scale-105'
+                          : 'bg-muted/40 hover:bg-muted/60'
                           }`}
                         style={hoveredScoreKey === r.scoreKey ? { outlineColor: r.color } : undefined}
                         onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
