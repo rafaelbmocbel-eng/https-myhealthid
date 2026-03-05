@@ -335,6 +335,53 @@ export default function Agenda() {
     return { top, height };
   };
 
+  // Calculate side-by-side columns for overlapping appointments
+  const getOverlapLayout = (dayAgs: Agendamento[]) => {
+    const activeAgs = dayAgs.filter(ag => ag.status !== 'cancelado');
+    const layout: Record<string, { col: number; totalCols: number }> = {};
+    // Sort by start time
+    const sorted = [...activeAgs].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
+    // Group overlapping appointments
+    const groups: Agendamento[][] = [];
+    sorted.forEach(ag => {
+      const agStart = parseISO(ag.data_inicio).getTime();
+      const agEnd = parseISO(ag.data_fim).getTime();
+      let placed = false;
+      for (const group of groups) {
+        const groupOverlaps = group.some(g => {
+          const gStart = parseISO(g.data_inicio).getTime();
+          const gEnd = parseISO(g.data_fim).getTime();
+          return agStart < gEnd && agEnd > gStart;
+        });
+        if (groupOverlaps) {
+          group.push(ag);
+          placed = true;
+          break;
+        }
+      }
+      if (!placed) groups.push([ag]);
+    });
+    groups.forEach(group => {
+      group.forEach((ag, i) => {
+        layout[ag.id] = { col: i, totalCols: group.length };
+      });
+    });
+    return layout;
+  };
+
+  // Count how many active appointments overlap with a given time range
+  const countOverlapping = (startISO: string, endISO: string, excludeId?: string) => {
+    const s = new Date(startISO).getTime();
+    const e = new Date(endISO).getTime();
+    return agendamentos.filter(ag => {
+      if (ag.id === excludeId) return false;
+      if (ag.status === 'cancelado') return false;
+      const as = parseISO(ag.data_inicio).getTime();
+      const ae = parseISO(ag.data_fim).getTime();
+      return s < ae && e > as;
+    }).length;
+  };
+
   const openNew = (date?: Date) => {
     const base = date || new Date();
     const end = new Date(base.getTime() + config.duracao_padrao * 60000);
@@ -380,6 +427,13 @@ export default function Agenda() {
     if (modal.agendamento) {
       await updateAgendamento(modal.agendamento.id, payload);
     } else {
+      // Check capacity before creating
+      const overlapping = countOverlapping(payload.data_inicio, payload.data_fim);
+      if (overlapping >= config.vagas_por_horario) {
+        toast({ title: '⚠️ Horário lotado!', description: `Máximo de ${config.vagas_por_horario} pacientes neste horário. Já há ${overlapping} agendados.`, variant: 'destructive' });
+        setSubmitting(false);
+        return;
+      }
       // Create initial appointment
       await createAgendamento(payload as Omit<Agendamento, 'id'>);
 
@@ -760,13 +814,16 @@ export default function Agenda() {
                   {days.map((day, di) => {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
+                    const overlapLayout = getOverlapLayout(dayAgs);
                     return (
                       <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
                         {dayAgs.map(ag => {
                           const pos = getAgPos(ag);
                           const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
-                          const pac = ag.pacientes;
                           const isDraggingThis = dragging?.ag.id === ag.id;
+                          const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
+                          const colWidth = 100 / layout.totalCols;
+                          const leftPct = layout.col * colWidth;
                           return (
                             <div
                               key={ag.id}
@@ -774,30 +831,37 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute left-0.5 right-0.5 rounded-md border-l-4 px-1.5 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
+                                'absolute rounded-md border-l-4 px-1 py-0.5 overflow-hidden cursor-grab select-none pointer-events-auto',
                                 'hover:brightness-95 transition-shadow z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 sc.bg, sc.border, sc.text
                               )}
                               style={{
                                 top: pos.top,
-                                height: pos.height - 4,
+                                height: pos.height - 2,
+                                left: `${leftPct}%`,
+                                width: `${colWidth - 1}%`,
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
                             >
-                              <div className="flex items-center gap-1 text-[10px] font-semibold truncate">
+                              <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate">
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
-                                  {ag.titulo
-                                    || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
-                                    || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
-                                    || 'Agendamento'
+                                  {layout.totalCols > 2
+                                    ? (ag.pacientes?.nome || ag.titulo || 'Ag.')
+                                    : (ag.titulo
+                                      || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
+                                      || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
+                                      || 'Agendamento')
                                   }
                                 </span>
+                                {layout.totalCols > 1 && (
+                                  <span className="ml-auto text-[8px] opacity-60 shrink-0">{layout.col + 1}/{layout.totalCols}</span>
+                                )}
                               </div>
-                              {pos.height > 40 && (
-                                <div className="text-[9px] opacity-70 truncate mt-0.5">
+                              {pos.height > 40 && layout.totalCols <= 3 && (
+                                <div className="text-[8px] opacity-70 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
                               )}
