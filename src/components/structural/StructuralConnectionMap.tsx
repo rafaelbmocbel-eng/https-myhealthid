@@ -47,7 +47,15 @@ function getTissue(key: TissueKey) {
     return TISSUE_TYPES.find(t => t.key === key)!;
 }
 
-export default function StructuralConnectionMap({ data, editable = false, onDataChange }: Props) {
+export default function StructuralConnectionMap({ data: rawData, editable = false, onDataChange }: Props) {
+    const data = useMemo(() => ({
+        ...rawData,
+        units: rawData.units || {},
+        relationships: {
+            direct: rawData.relationships?.direct || [],
+            indirect: rawData.relationships?.indirect || [],
+        },
+    }), [rawData]);
     const [selectedTissue, setSelectedTissue] = useState<TissueKey>('muscle');
     const [source, setSource] = useState<string | null>(null);
     const [editingIndex, setEditingIndex] = useState<number | null>(null);
