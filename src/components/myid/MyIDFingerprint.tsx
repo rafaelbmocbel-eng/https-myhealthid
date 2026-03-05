@@ -21,7 +21,7 @@ function valueToColor(value: number): string {
 }
 
 function valueToOpacity(value: number): number {
-  return 0.4 + (value / 10) * 0.6;
+  return 0.45 + (value / 10) * 0.55;
 }
 
 function scoreStatusLabel(score: number): string {
@@ -40,38 +40,39 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  // Higher resolution viewBox
-  const vw = 1200;
-  const vh = 1200;
+  const vw = 1000;
+  const vh = 1000;
   const cx = vw / 2;
-  const cy = 540;
+  const cy = 460;
 
   const ridgeData = useMemo(() => {
-    const baseRx = 55;
-    const baseRy = 70;
-    const spacing = 28;
+    const baseR = 60;
+    const spacing = 26;
 
     return allRings.map((ring, i) => {
-      const rx = baseRx + i * spacing;
-      const ry = baseRy + i * spacing * 1.12;
+      const r = baseR + i * spacing;
+      // Slight elliptical ratio for fingerprint aesthetic, but much less than before
+      const rx = r;
+      const ry = r * 1.05;
       const valuePct = Math.max(ring.value / 10, 0.08);
       const color = valueToColor(ring.value);
       const opacity = valueToOpacity(ring.value);
 
-      const openingAngle = Math.max(20 - i * 0.9, 5);
+      // Opening at top of fingerprint
+      const openingAngle = Math.max(18 - i * 0.8, 4);
       const startAngle = 90 + openingAngle;
       const availableSweep = 360 - openingAngle * 2;
-      const filledSweep = availableSweep * Math.max(valuePct, 0.25);
+      const filledSweep = availableSweep * Math.max(valuePct, 0.2);
 
-      // Natural gap pattern
-      const numGaps = i % 3 === 0 ? 1 : 2;
+      // Clean gap pattern — fewer gaps, consistent sizes
+      const numGaps = i < 3 ? 0 : i < 6 ? 1 : 2;
       const gapPositions: number[] = [];
       for (let g = 0; g < numGaps; g++) {
         const basePos = (g + 1) / (numGaps + 1);
-        const jitter = ((i * 13 + g * 19) % 14 - 7) / 100;
-        gapPositions.push(Math.max(0.15, Math.min(0.85, basePos + jitter)));
+        const jitter = ((i * 7 + g * 11) % 10 - 5) / 100;
+        gapPositions.push(Math.max(0.2, Math.min(0.8, basePos + jitter)));
       }
-      const gapSize = 5 + i * 0.4;
+      const gapSize = 4;
 
       return {
         ...ring,
@@ -79,22 +80,25 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
         gapPositions, gapSize,
         isInner: ring.type === 'inner',
         index: i,
-        strokeWidth: Math.max(18 - i * 0.7, 9),
+        strokeWidth: Math.max(14 - i * 0.5, 8),
         computedColor: color,
         computedOpacity: opacity,
       };
     });
   }, [allRings]);
 
+  // Clean arc path using elliptical arcs
   const arcPath = useCallback((rx: number, ry: number, startDeg: number, sweepDeg: number) => {
     if (sweepDeg < 0.5) return '';
-    const s = (startDeg * Math.PI) / 180;
-    const e = ((startDeg + sweepDeg) * Math.PI) / 180;
+    const toRad = (d: number) => (d * Math.PI) / 180;
+    const s = toRad(startDeg);
+    const e = toRad(startDeg + sweepDeg);
     const x1 = cx + rx * Math.cos(s);
     const y1 = cy + ry * Math.sin(s);
     const x2 = cx + rx * Math.cos(e);
     const y2 = cy + ry * Math.sin(e);
-    return `M ${x1} ${y1} A ${rx} ${ry} 0 ${sweepDeg > 180 ? 1 : 0} 1 ${x2} ${y2}`;
+    const largeArc = sweepDeg > 180 ? 1 : 0;
+    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
   }, [cx, cy]);
 
   const centerColor = valueToColor(myidScore);
@@ -105,7 +109,6 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
     if (onRingClick) onRingClick(ridge);
   };
 
-  // Determine which ridge is active (external highlight takes priority)
   const highlightedIdx = highlightedKey
     ? ridgeData.findIndex(r => r.scoreKey === highlightedKey)
     : null;
@@ -123,61 +126,62 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
       <svg
         viewBox={`0 0 ${vw} ${vh}`}
         className="w-full mx-auto"
-        style={{ filter: 'drop-shadow(0 6px 30px rgba(0,0,0,0.06))' }}
+        style={{ filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.05))' }}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
           <filter id="fp-glow-hi">
-            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-glow-med">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-core-glow">
-            <feGaussianBlur stdDeviation="20" result="blur" />
+            <feGaussianBlur stdDeviation="15" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-highlight-glow">
-            <feGaussianBlur stdDeviation="10" result="blur" />
+            <feGaussianBlur stdDeviation="6" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
-          <filter id="ridge-tex">
-            <feTurbulence type="fractalNoise" baseFrequency="0.35" numOctaves="4" result="noise" />
-            <feDisplacementMap in="SourceGraphic" in2="noise" scale="1.2" xChannelSelector="R" yChannelSelector="G" />
-          </filter>
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%" stopColor={centerColor} stopOpacity="0.25" />
+            <stop offset="0%" stopColor={centerColor} stopOpacity="0.2" />
             <stop offset="100%" stopColor={centerColor} stopOpacity="0" />
           </radialGradient>
-          <radialGradient id="fp-bg-g" cx="50%" cy="45%" r="50%">
-            <stop offset="0%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0.04" />
+          <radialGradient id="fp-bg-g" cx="50%" cy="46%" r="50%">
+            <stop offset="0%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0.03" />
             <stop offset="100%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0" />
           </radialGradient>
         </defs>
 
         {/* Background */}
-        <ellipse cx={cx} cy={cy} rx={500} ry={520} fill="url(#fp-bg-g)" />
-        <ellipse cx={cx} cy={cy} rx={80} ry={95} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+        <ellipse cx={cx} cy={cy} rx={420} ry={440} fill="url(#fp-bg-g)" />
+        <ellipse cx={cx} cy={cy} rx={65} ry={68} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
 
         {/* RIDGES */}
         {ridgeData.map((ridge, ridgeIdx) => {
+          // Build segments with gaps
           const segments: { start: number; sweep: number }[] = [];
           const gaps = [...ridge.gapPositions].sort();
-          let lastEnd = 0;
 
-          gaps.forEach((gapPos) => {
-            const segEnd = gapPos * ridge.availableSweep;
-            const segSweep = segEnd - lastEnd;
-            if (segSweep > 3) {
-              segments.push({ start: ridge.startAngle + lastEnd, sweep: segSweep - ridge.gapSize / 2 });
+          if (gaps.length === 0) {
+            segments.push({ start: ridge.startAngle, sweep: ridge.availableSweep });
+          } else {
+            let lastEnd = 0;
+            gaps.forEach((gapPos) => {
+              const segEnd = gapPos * ridge.availableSweep;
+              const segSweep = segEnd - lastEnd;
+              if (segSweep > 2) {
+                segments.push({ start: ridge.startAngle + lastEnd, sweep: segSweep - ridge.gapSize / 2 });
+              }
+              lastEnd = segEnd + ridge.gapSize / 2;
+            });
+            const lastSweep = ridge.availableSweep - lastEnd;
+            if (lastSweep > 2) {
+              segments.push({ start: ridge.startAngle + lastEnd, sweep: lastSweep });
             }
-            lastEnd = segEnd + ridge.gapSize / 2;
-          });
-          const lastSweep = ridge.availableSweep - lastEnd;
-          if (lastSweep > 3) {
-            segments.push({ start: ridge.startAngle + lastEnd, sweep: lastSweep });
           }
 
           const isActive = activeIdx === ridgeIdx;
@@ -190,56 +194,55 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
               onClick={() => handleRidgeClick(ridge, ridgeIdx)}
               style={{ cursor: 'pointer' }}
             >
-              {/* Background track */}
+              {/* Background track — full arc */}
               {segments.map((seg, si) => {
                 const path = arcPath(ridge.rx, ridge.ry, seg.start, seg.sweep);
                 if (!path) return null;
                 return (
                   <path key={`bg-${si}`} d={path} fill="none"
-                    stroke={ridge.computedColor} strokeWidth={ridge.strokeWidth}
-                    strokeLinecap="round" opacity={isDimmed ? 0.04 : 0.1}
+                    stroke={ridge.computedColor}
+                    strokeWidth={ridge.strokeWidth}
+                    strokeLinecap="round"
+                    opacity={isDimmed ? 0.04 : 0.12}
                     style={{ transition: 'opacity 0.3s ease' }}
                   />
                 );
               })}
 
-              {/* Filled ridge */}
+              {/* Filled portion */}
               {segments.map((seg, si) => {
                 const segStart = seg.start - ridge.startAngle;
                 const fillEnd = ridge.filledSweep;
                 if (segStart >= fillEnd) return null;
                 const filledPortion = Math.min(seg.sweep, fillEnd - segStart);
+                if (filledPortion < 1) return null;
                 const path = arcPath(ridge.rx, ridge.ry, seg.start, filledPortion);
                 if (!path) return null;
                 return (
                   <path key={`fill-${si}`} d={path} fill="none"
                     stroke={ridge.computedColor}
-                    strokeWidth={isActive ? ridge.strokeWidth + 8 : ridge.strokeWidth}
+                    strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth}
                     strokeLinecap="round"
-                    opacity={isActive ? 1 : isDimmed ? 0.15 : ridge.computedOpacity}
-                    filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : ''}
+                    opacity={isActive ? 1 : isDimmed ? 0.12 : ridge.computedOpacity}
+                    filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                     style={{ transition: 'all 0.3s ease' }}
                   />
                 );
               })}
 
-              {/* Label on the ridge when active */}
+              {/* Tooltip label on hover */}
               {isActive && (() => {
                 const labelAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
                 const labelRad = (labelAngleDeg * Math.PI) / 180;
-                const lx = cx + (ridge.rx + 35) * Math.cos(labelRad);
-                const ly = cy + (ridge.ry + 35) * Math.sin(labelRad);
+                const lx = cx + (ridge.rx + 30) * Math.cos(labelRad);
+                const ly = cy + (ridge.ry + 30) * Math.sin(labelRad);
                 return (
                   <g style={{ transition: 'opacity 0.3s ease' }}>
-                    <rect x={lx - 45} y={ly - 16} width={90} height={32} rx={8}
-                      fill={ridge.computedColor} opacity={0.95} />
-                    <text x={lx} y={ly + 1} textAnchor="middle" fontSize="13" fontWeight="900"
-                      fill="white" letterSpacing="0.5">
+                    <rect x={lx - 42} y={ly - 14} width={84} height={28} rx={8}
+                      fill={ridge.computedColor} opacity={0.92} />
+                    <text x={lx} y={ly} textAnchor="middle" fontSize="12" fontWeight="900"
+                      fill="white" letterSpacing="0.5" dominantBaseline="central">
                       {ridge.scoreKey}: {ridge.value.toFixed(1)}
-                    </text>
-                    <text x={lx} y={ly + 14} textAnchor="middle" fontSize="9" fontWeight="600"
-                      fill="rgba(255,255,255,0.8)">
-                      {ridge.value <= 3 ? 'Bom' : ridge.value <= 6 ? 'Atenção' : 'Crítico'}
                     </text>
                   </g>
                 );
@@ -249,39 +252,39 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
         })}
 
         {/* CENTER SCORE */}
-        <text x={cx} y={cy - 20} textAnchor="middle" fontSize="64" fontWeight="900"
+        <text x={cx} y={cy - 18} textAnchor="middle" fontSize="56" fontWeight="900"
           fill={centerColor} filter="url(#fp-core-glow)" letterSpacing="-2">
           {myidScore.toFixed(1)}
         </text>
-        <text x={cx} y={cy + 12} textAnchor="middle" className="fill-muted-foreground"
-          fontSize="14" fontWeight="700" letterSpacing="5">MyID SCORE</text>
-        <rect x={cx - 48} y={cy + 22} width={96} height={28} rx={14}
+        <text x={cx} y={cy + 10} textAnchor="middle" className="fill-muted-foreground"
+          fontSize="12" fontWeight="700" letterSpacing="4">MyID SCORE</text>
+        <rect x={cx - 40} y={cy + 18} width={80} height={24} rx={12}
           fill={centerColor} opacity={0.15} />
-        <text x={cx} y={cy + 41} textAnchor="middle" fill={centerColor}
-          fontSize="12" fontWeight="800" letterSpacing="2.5">{label}</text>
+        <text x={cx} y={cy + 34} textAnchor="middle" fill={centerColor}
+          fontSize="11" fontWeight="800" letterSpacing="2" dominantBaseline="central">{label}</text>
 
         {/* LEGEND */}
-        <g transform={`translate(60, ${vh - 60})`}>
-          <text x={0} y={9} fontSize="11" fontWeight="700" className="fill-foreground" letterSpacing="1.5">ESCALA DE CORES:</text>
+        <g transform={`translate(60, ${vh - 50})`}>
+          <text x={0} y={9} fontSize="10" fontWeight="700" className="fill-foreground" letterSpacing="1.5">ESCALA DE CORES:</text>
           {[
-            { color: 'hsl(270, 60%, 75%)', x: 150 },
-            { color: 'hsl(230, 70%, 60%)', x: 172 },
-            { color: 'hsl(210, 75%, 55%)', x: 194 },
-            { color: 'hsl(35, 85%, 55%)', x: 216 },
-            { color: 'hsl(0, 85%, 50%)', x: 238 },
+            { color: 'hsl(270, 60%, 75%)', x: 130 },
+            { color: 'hsl(230, 70%, 60%)', x: 150 },
+            { color: 'hsl(210, 75%, 55%)', x: 170 },
+            { color: 'hsl(35, 85%, 55%)', x: 190 },
+            { color: 'hsl(0, 85%, 50%)', x: 210 },
           ].map((c, i) => (
-            <rect key={i} x={c.x} y={0} width={20} height={16} rx={4} fill={c.color} opacity={0.85} />
+            <rect key={i} x={c.x} y={0} width={18} height={14} rx={4} fill={c.color} opacity={0.85} />
           ))}
-          <text x={150} y={30} fontSize="9" className="fill-muted-foreground">Ótimo</text>
-          <text x={248} y={30} fontSize="9" className="fill-muted-foreground">Crítico</text>
+          <text x={130} y={26} fontSize="8" className="fill-muted-foreground">Ótimo</text>
+          <text x={218} y={26} fontSize="8" className="fill-muted-foreground">Crítico</text>
 
-          <circle cx={330} cy={9} r={6} fill="hsl(0, 85%, 50%)" opacity={0.8} />
-          <text x={342} y={12} fontSize="10" fontWeight="600" className="fill-foreground">Demanda</text>
-          <text x={342} y={26} fontSize="9" className="fill-muted-foreground">Cristas internas</text>
+          <circle cx={280} cy={7} r={5} fill="hsl(0, 85%, 50%)" opacity={0.8} />
+          <text x={290} y={10} fontSize="9" fontWeight="600" className="fill-foreground">Demanda</text>
+          <text x={290} y={22} fontSize="8" className="fill-muted-foreground">Cristas internas</text>
 
-          <circle cx={440} cy={9} r={6} fill="hsl(210, 75%, 55%)" opacity={0.8} />
-          <text x={452} y={12} fontSize="10" fontWeight="600" className="fill-foreground">Capacidade</text>
-          <text x={452} y={26} fontSize="9" className="fill-muted-foreground">Cristas externas</text>
+          <circle cx={380} cy={7} r={5} fill="hsl(210, 75%, 55%)" opacity={0.8} />
+          <text x={390} y={10} fontSize="9" fontWeight="600" className="fill-foreground">Capacidade</text>
+          <text x={390} y={22} fontSize="8" className="fill-muted-foreground">Cristas externas</text>
         </g>
       </svg>
     </div>
