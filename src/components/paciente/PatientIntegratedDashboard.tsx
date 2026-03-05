@@ -29,6 +29,38 @@ interface PatientIntegratedDashboardProps {
   serviceType: 'identidade' | 'cob_zero' | 'studio';
 }
 
+// ─── Componentes Gráficos Auxiliares ──────────────────────────────────────────
+const MiniGauge = ({ value, color }: { value: number; color: string }) => {
+  const radius = 9;
+  const circ = 2 * Math.PI * radius;
+  const maxVal = Math.max(0.01, value); // fallback math
+  const dashoffset = circ - (maxVal / 10) * circ;
+  return (
+    <svg width="24" height="24" viewBox="0 0 24 24" className="shrink-0 -rotate-90">
+      <circle cx="12" cy="12" r={radius} fill="none" stroke="currentColor" strokeWidth="4" opacity="0.15" style={{ color }} />
+      <circle cx="12" cy="12" r={radius} fill="none" stroke="currentColor" strokeWidth="4" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 0.6s ease-out' }} />
+    </svg>
+  );
+};
+
+const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
+  const radius = 38;
+  const circ = Math.PI * radius;
+  const maxVal = Math.max(0.01, score);
+  const dashoffset = circ - (maxVal / 10) * circ;
+  return (
+    <div className="relative flex flex-col items-center justify-center w-full max-w-[200px] h-[100px] mx-auto overflow-hidden">
+      <svg width="100%" height="100%" viewBox="0 0 100 55" className="overflow-visible mt-2">
+        <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.12" strokeLinecap="round" style={{ color }} />
+        <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 1s cubic-bezier(0.25, 1, 0.5, 1)' }} />
+      </svg>
+      <div className="absolute bottom-0 flex flex-col items-center leading-none">
+        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{score.toFixed(1)}</span>
+      </div>
+    </div>
+  );
+};
+
 export default function PatientIntegratedDashboard({
   pacienteId,
   serviceType
@@ -226,42 +258,44 @@ export default function PatientIntegratedDashboard({
 
               {/* Fingerprint — large, centered */}
               <div className="w-full max-w-lg mx-auto">
-                <MyIDFingerprint rings={rings} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
+                <MyIDFingerprint
+                  rings={rings}
+                  myidScore={myidScore}
+                  highlightedKey={hoveredScoreKey}
+                  onRingHover={setHoveredScoreKey}
+                />
               </div>
 
               {/* Score + Indexes below */}
-              <div className="space-y-3 w-full">
-                <div className="text-center">
-                  <div className="text-4xl font-black tracking-tighter" style={{
-                    color: myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'
-                  }}>
-                    {myidScore.toFixed(1)}
-                  </div>
-                  <div className="text-xs text-muted-foreground font-medium">Índice MyID Global</div>
+              <div className="space-y-4 w-full border-t border-border/50 pt-6 mt-4">
+                <div className="text-center group">
+                  <GlobalGauge score={myidScore} color={myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'} />
+                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-bold mt-2 group-hover:text-foreground transition-colors">Índice MyID Global</div>
                 </div>
 
                 {/* Score circles grid */}
-                <div className="grid grid-cols-4 sm:grid-cols-6 gap-2">
+                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
                   {rings.map(r => (
                     <div
                       key={r.scoreKey}
-                      className={`flex items-center gap-2 p-2 rounded-xl transition-all duration-200 cursor-pointer ${hoveredScoreKey === r.scoreKey
-                        ? 'ring-2 ring-offset-1 scale-105'
-                        : 'hover:scale-102'
+                      className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl transition-all duration-300 cursor-pointer ${hoveredScoreKey === r.scoreKey
+                        ? 'ring-2 ring-offset-2 scale-105 shadow-md bg-background'
+                        : 'hover:scale-105 border border-transparent hover:border-border/50 bg-muted/20'
                         }`}
                       style={{
-                        backgroundColor: hoveredScoreKey === r.scoreKey
-                          ? `${r.color}22`
-                          : `${r.color}10`,
                         outlineColor: hoveredScoreKey === r.scoreKey ? r.color : undefined,
                       }}
                       onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
                       onMouseLeave={() => setHoveredScoreKey(null)}
+                      onClick={() => setHoveredScoreKey(r.scoreKey === hoveredScoreKey ? null : r.scoreKey)}
                     >
-                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: r.color }} />
-                      <div className="min-w-0">
-                        <div className="text-[9px] text-muted-foreground uppercase font-bold truncate">{r.scoreKey}</div>
-                        <div className="text-sm font-black" style={{ color: r.color }}>{r.value.toFixed(1)}</div>
+                      <div className="flex w-full items-center justify-between pointer-events-none">
+                        <span className="text-[10px] text-muted-foreground uppercase font-black truncate">{r.scoreKey}</span>
+                      </div>
+
+                      <div className="flex items-center gap-2 pointer-events-none w-full justify-center mt-1">
+                        <MiniGauge value={r.value} color={r.color} />
+                        <span className="text-sm font-black tracking-tight" style={{ color: r.color }}>{r.value.toFixed(1)}</span>
                       </div>
                     </div>
                   ))}
@@ -278,7 +312,7 @@ export default function PatientIntegratedDashboard({
 
           {/* ─── EQUAÇÃO MyID ─── */}
           {scores && (
-            <MyIDFormulaDisplay scores={scores} myidScore={myidScore} />
+            <MyIDFormulaDisplay scores={scores} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
           )}
         </>
       )}

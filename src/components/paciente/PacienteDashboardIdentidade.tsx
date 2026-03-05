@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -302,84 +302,75 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-10 w-10 rounded-full bg-identidade flex items-center justify-center shrink-0 text-identidade-foreground font-bold">
+          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-identidade flex items-center justify-center text-identidade-foreground font-bold">
             {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
-            <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8">
+            <div>
+              <h2 className="text-lg md:text-xl font-bold text-foreground leading-tight">{paciente.nome} {paciente.sobrenome}</h2>
+              <p className="text-xs md:text-sm text-muted-foreground">{paciente.telefone || paciente.email || 'Sem contato'}</p>
+            </div>
+
+            {/* Botões de Ação Dinâmicos (Ao lado do nome) */}
+            <div className="flex items-center gap-4 md:gap-5 pt-1">
+              {/* MYID */}
+              <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
+                <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">MyID</span>
+                <div className="flex gap-1">
+                  {linkMyIDAtivo ? (
+                    <>
+                      <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => copiarMyIDLink(linkMyIDAtivo.token_acesso)} title="Copiar Link MyID">
+                        <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                      {paciente.telefone && (
+                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)} title="Enviar no WhatsApp">
+                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-primary/80" disabled={gerandoMyIDLink} onClick={gerarLinkMyID} title="Gerar Link MyID">
+                      {gerandoMyIDLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              {/* AGENDA */}
+              <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
+                <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
+                <div className="flex gap-1">
+                  {linkAgendaAtivo ? (
+                    <>
+                      <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)} title="Copiar Link Agenda">
+                        <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                      {paciente.telefone && (
+                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))} title="Enviar no WhatsApp">
+                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={gerandoAgenda} onClick={gerarLinkAgenda} title="Gerar Link Agenda">
+                      {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
+          {/* Outros botões como perfil e nova avaliação... */}
+          <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
             <ExternalLink className="h-4 w-4" />
             Perfil
           </Button>
-          <Button onClick={() => setIniciandoMyID(true)} className="bg-identidade hover:bg-identidade/90 text-white gap-2">
+          <Button onClick={() => setIniciandoMyID(true)} className="hidden sm:flex bg-identidade hover:bg-identidade/90 text-white gap-2">
             <AlignCenter className="h-4 w-4" /> Nova Avaliação
           </Button>
-        </div>
-      </div>
-
-      {/* Links Compactos */}
-      <div className="clinical-card !p-3">
-        <div className="flex items-center gap-3 flex-wrap">
-          {/* Link Agenda */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <CalendarDays className="h-4 w-4 text-accent shrink-0" />
-            <span className="text-xs font-semibold shrink-0">Agenda</span>
-            {linkAgendaAtivo ? (
-              <>
-                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
-                <span className="text-[10px] text-success shrink-0">{differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())}d</span>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-                {paciente.telefone && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
-                    onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
-                    <MessageCircle className="h-3 w-3" />
-                  </Button>
-                )}
-              </>
-            ) : (
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-accent" disabled={gerandoAgenda}
-                onClick={gerarLinkAgenda}>
-                {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                Gerar
-              </Button>
-            )}
-          </div>
-
-          <div className="h-6 w-px bg-border shrink-0" />
-
-          {/* Link MyID (Novo) */}
-          <div className="flex items-center gap-2 flex-1 min-w-0">
-            <Fingerprint className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs font-semibold shrink-0 text-primary">MyID (Novo)</span>
-            {linkMyIDAtivo ? (
-              <>
-                <div className="h-2 w-2 rounded-full bg-success animate-pulse shrink-0" />
-                <span className="text-[10px] text-success shrink-0">Pendente</span>
-                <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarMyIDLink(linkMyIDAtivo.token_acesso)}>
-                  <Copy className="h-3 w-3" />
-                </Button>
-                {paciente.telefone && (
-                  <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-success"
-                    onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)}>
-                    <MessageCircle className="h-3 w-3" />
-                  </Button>
-                )}
-              </>
-            ) : (
-              <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-primary" disabled={gerandoMyIDLink}
-                onClick={gerarLinkMyID}>
-                {gerandoMyIDLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                Gerar
-              </Button>
-            )}
-          </div>
         </div>
       </div>
 
@@ -507,7 +498,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         {structuralAvaliacoes.slice(0, 3).map((av: any) => {
                           const dados = av.dados_avaliacao as any as StructuralAssessmentData | null;
                           if (!dados) return null;
-                          const score = dados?.scoreStructuralGeneral ?? Number(av.score_e) ?? 0;
+                          const score = dados?.scoreStructuralGeneral ?? Number(av.score_e || 0);
                           const isExpanded = expandedStructuralId === av.id;
                           return (
                             <div key={av.id} className="rounded-lg border bg-muted/20">

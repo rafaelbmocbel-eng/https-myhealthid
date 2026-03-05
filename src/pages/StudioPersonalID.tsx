@@ -122,25 +122,53 @@ export default function StudioPersonalID() {
               <Button variant="ghost" size="icon" onClick={() => { setSelectedPacienteId(null); setShowDashboard(false); }} className="shrink-0 h-8 w-8 p-0">
                 <ArrowLeft className="h-4 w-4" />
               </Button>
-              <div className="h-10 w-10 rounded-full bg-studio flex items-center justify-center shrink-0 text-white font-bold">
+              <div className="h-10 w-10 flex-shrink-0 rounded-full bg-studio flex items-center justify-center text-white font-bold">
                 {selectedPaciente.nome[0]}{selectedPaciente.sobrenome?.[0] || ''}
               </div>
-              <div className="flex-1 min-w-0">
-                <h1 className="text-xl font-bold text-foreground truncate">
-                  {selectedPaciente.nome} {selectedPaciente.sobrenome}
-                </h1>
-                <p className="text-sm text-muted-foreground">{selectedPaciente.email || selectedPaciente.telefone || 'Sem contato'}</p>
+              <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8">
+                <div>
+                  <h1 className="text-lg md:text-xl font-bold text-foreground leading-tight truncate">
+                    {selectedPaciente.nome} {selectedPaciente.sobrenome}
+                  </h1>
+                  <p className="text-xs md:text-sm text-muted-foreground">{selectedPaciente.email || selectedPaciente.telefone || 'Sem contato'}</p>
+                </div>
+
+                {/* Botões de Ação Dinâmicos (Ao lado do nome) */}
+                <div className="flex items-center gap-4 md:gap-5 pt-1">
+                  {/* AGENDA */}
+                  <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
+                    <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
+                    <div className="flex gap-1">
+                      {getAgendaAtivo(selectedPaciente.id) ? (
+                        <>
+                          <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(getAgendaAtivo(selectedPaciente.id).token)} title="Copiar Link Agenda">
+                            <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          </Button>
+                          {selectedPaciente.telefone && (
+                            <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
+                              <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                            </Button>
+                          )}
+                        </>
+                      ) : (
+                        <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={true} title="Sem Agenda Ativa">
+                          <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
             <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" asChild>
+              <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-border hover:bg-muted" asChild>
                 <Link to={`/pacientes/${selectedPaciente.id}`}>
                   <ExternalLink className="h-4 w-4" />
                   Perfil
                 </Link>
               </Button>
-              <Button className="bg-studio hover:bg-studio/90 text-white gap-2">
+              <Button className="hidden sm:flex bg-studio hover:bg-studio/90 text-white gap-2">
                 <AlignCenter className="h-4 w-4" /> Nova Avaliação
               </Button>
             </div>

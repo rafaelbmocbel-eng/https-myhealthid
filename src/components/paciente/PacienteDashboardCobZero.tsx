@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote } from 'lucide-react';
+import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -220,21 +220,49 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
           <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div className="h-10 w-10 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shrink-0 text-white font-bold">
+          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center text-white font-bold">
             {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-foreground">{paciente.nome} {paciente.sobrenome}</h2>
-            <p className="text-sm text-muted-foreground">{paciente.email || paciente.telefone || 'Sem contato'}</p>
+          <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8">
+            <div>
+              <h2 className="text-lg md:text-xl font-bold text-foreground leading-tight">{paciente.nome} {paciente.sobrenome}</h2>
+              <p className="text-xs md:text-sm text-muted-foreground">{paciente.telefone || paciente.email || 'Sem contato'}</p>
+            </div>
+
+            {/* Botões de Ação Dinâmicos (Ao lado do nome) */}
+            <div className="flex items-center gap-4 md:gap-5 pt-1">
+              {/* MYID */}
+              <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
+                <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">MyID</span>
+                <div className="flex gap-1">
+                  {linkAtivo ? (
+                    <>
+                      <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                        <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                      {paciente.telefone && (
+                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => whatsApp(linkAtivo.token)} title="Enviar no WhatsApp">
+                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                        </Button>
+                      )}
+                    </>
+                  ) : (
+                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-blue-600/80" disabled={gerando} onClick={gerarLink} title="Gerar Link MyID">
+                      {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
+                    </Button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm" className="gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
+          <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
             <ExternalLink className="h-4 w-4" />
             Perfil
           </Button>
-          <Button onClick={() => setIniciandoAvaliacao(true)} className="bg-blue-600 hover:bg-blue-700 text-white gap-2">
+          <Button onClick={() => setIniciandoAvaliacao(true)} className="hidden sm:flex bg-blue-600 hover:bg-blue-700 text-white gap-2">
             <AlignCenter className="h-4 w-4" /> Nova Avaliação
           </Button>
         </div>
@@ -286,32 +314,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
             {/* Aba: Avaliação Remota */}
             <TabsContent value="remota" className="mt-4 space-y-4">
-              {/* Link Compacto */}
-              <div className="clinical-card !p-3">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Link2 className="h-4 w-4 text-blue-600 shrink-0" />
-                  <span className="text-xs font-semibold shrink-0">Link Avaliação (MyID)</span>
-                  {linkAtivo ? (
-                    <>
-                      <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                      <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAtivo.data_expiracao!), new Date())}d</span>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAtivo.token)}>
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      {paciente.telefone && (
-                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]" onClick={() => whatsApp(linkAtivo.token)}>
-                          <MessageCircle className="h-3 w-3" />
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600" disabled={gerando} onClick={gerarLink}>
-                      {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                      Gerar (30d)
-                    </Button>
-                  )}
-                </div>
-              </div>
+
 
               <QuestionariosComparacao linksAvPaciente={linksAv} respostas={respostas} />
             </TabsContent>

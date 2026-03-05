@@ -6,6 +6,7 @@ interface Props {
   myidScore: number;
   className?: string;
   onRingClick?: (ring: FingerprintRing) => void;
+  onRingHover?: (ringKey: string | null) => void;
   highlightedKey?: string | null;
 }
 
@@ -32,7 +33,7 @@ function scoreStatusLabel(score: number): string {
   return 'EXTREMO';
 }
 
-export default function MyIDFingerprint({ rings, myidScore, className = '', onRingClick, highlightedKey }: Props) {
+export default function MyIDFingerprint({ rings, myidScore, className = '', onRingClick, onRingHover, highlightedKey }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -189,8 +190,14 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
 
           return (
             <g key={ridge.scoreKey}
-              onMouseEnter={() => setHoveredIdx(ridgeIdx)}
-              onMouseLeave={() => setHoveredIdx(null)}
+              onMouseEnter={() => {
+                setHoveredIdx(ridgeIdx);
+                if (onRingHover) onRingHover(ridge.scoreKey);
+              }}
+              onMouseLeave={() => {
+                setHoveredIdx(null);
+                if (onRingHover) onRingHover(null);
+              }}
               onClick={() => handleRidgeClick(ridge, ridgeIdx)}
               style={{ cursor: 'pointer' }}
             >
