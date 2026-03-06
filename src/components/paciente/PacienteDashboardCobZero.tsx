@@ -345,8 +345,17 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   />
                 </div>
               ) : (
-                {/* Aba: Diretrizes e Serviços (Repositório) */ }
-                < TabsContent value="protocolos" className="mt-4">
+                <div className="text-center py-8 text-muted-foreground">
+                  <p>Nenhuma avaliação presencial registrada.</p>
+                  <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIniciandoAvaliacao(true)}>
+                    <Plus className="h-4 w-4 mr-2" /> Iniciar Avaliação
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Aba: Diretrizes e Serviços (Repositório) */}
+            <TabsContent value="protocolos" className="mt-4">
               <PacienteProtocolosTab
                 pacienteId={paciente.id}
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
