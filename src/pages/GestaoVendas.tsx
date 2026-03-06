@@ -240,7 +240,7 @@ export default function GestaoVendas() {
         <AppLayout title="Gestão & CRM">
             <div className="space-y-6">
                 {/* ── KPI Cards ── */}
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                     <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-none">
                         <CardContent className="p-3 flex items-center gap-3">
                             <div className="p-2 bg-white/20 rounded-lg"><Users className="h-5 w-5" /></div>
@@ -265,7 +265,59 @@ export default function GestaoVendas() {
                             <div><p className="text-[10px] text-muted-foreground uppercase font-bold">Avaliações/Mês</p><h3 className="text-2xl font-black">{avaliacoesMes}</h3></div>
                         </CardContent>
                     </Card>
+                    <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
+                        <CardContent className="p-3 flex items-center gap-3">
+                            <div className="p-2 bg-white/20 rounded-lg"><DollarSign className="h-5 w-5" /></div>
+                            <div><p className="text-[10px] opacity-80 uppercase font-bold">Receita/Mês</p><h3 className="text-xl font-black">R$ {receitaMes.toLocaleString('pt-BR')}</h3></div>
+                        </CardContent>
+                    </Card>
+                    <Card className={`border ${taxaFaltas > 15 ? 'bg-gradient-to-br from-red-500 to-red-600 text-white border-none' : 'bg-card'}`}>
+                        <CardContent className="p-3 flex items-center gap-3">
+                            <div className={`p-2 rounded-lg ${taxaFaltas > 15 ? 'bg-white/20' : 'bg-muted text-muted-foreground'}`}><XCircle className="h-5 w-5" /></div>
+                            <div><p className={`text-[10px] uppercase font-bold ${taxaFaltas > 15 ? 'opacity-80' : 'text-muted-foreground'}`}>Faltas/Mês</p><h3 className="text-2xl font-black">{taxaFaltas}%</h3></div>
+                        </CardContent>
+                    </Card>
                 </div>
+
+                {/* Aniversariantes */}
+                {aniversariantes.length > 0 && (
+                    <Card className="border border-pink-200 bg-gradient-to-r from-pink-50 to-rose-50 dark:from-pink-950/20 dark:to-rose-950/20">
+                        <CardContent className="p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                                <Gift className="h-4 w-4 text-pink-500" />
+                                <span className="text-sm font-bold text-pink-700 dark:text-pink-300">🎂 Aniversariantes Próximos</span>
+                            </div>
+                            <div className="flex gap-3 overflow-x-auto pb-1">
+                                {aniversariantes.slice(0, 6).map((p: any) => {
+                                    const nascimento = new Date(p.data_nascimento);
+                                    const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+                                    if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
+                                    const diasAte = differenceInCalendarDays(anivEsteAno, now);
+                                    const isHoje = diasAte === 0;
+                                    return (
+                                        <div key={p.id} className={`flex items-center gap-2 px-3 py-2 rounded-xl border shrink-0 ${isHoje ? 'bg-pink-100 border-pink-300 dark:bg-pink-900/30' : 'bg-white/80 dark:bg-card border-border'}`}>
+                                            <div className={`h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold ${isHoje ? 'bg-pink-500 text-white' : 'bg-pink-100 text-pink-700'}`}>
+                                                {p.nome?.[0]}
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-semibold">{p.nome} {p.sobrenome}</p>
+                                                <p className="text-[10px] text-muted-foreground">
+                                                    {isHoje ? '🎉 Hoje!' : `em ${diasAte} dia${diasAte > 1 ? 's' : ''}`} · {format(nascimento, 'dd/MM')}
+                                                </p>
+                                            </div>
+                                            {p.telefone && (
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-pink-500 hover:text-pink-700 shrink-0"
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph))}>
+                                                    <Send className="h-3 w-3" />
+                                                </Button>
+                                            )}
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </CardContent>
+                    </Card>
+                )}
 
                 {/* ── Tab Selector ── */}
                 <div className="flex gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto">
