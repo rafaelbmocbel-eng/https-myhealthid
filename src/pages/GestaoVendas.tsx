@@ -137,6 +137,17 @@ export default function GestaoVendas() {
         enabled: !!user,
     });
 
+    // Controle de sessões (receita)
+    const { data: sessoes = [] } = useQuery({
+        queryKey: ['crm-sessoes', user?.id],
+        queryFn: async () => {
+            const { data } = await supabase.from('controle_sessoes').select('*')
+                .eq('terapeuta_id', user!.id).order('data_sessao', { ascending: false });
+            return data || [];
+        },
+        enabled: !!user,
+    });
+
     if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
     // ── Computed metrics ─────────────────────────────────────────────
