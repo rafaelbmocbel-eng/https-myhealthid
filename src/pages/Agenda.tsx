@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { getPatientColor } from '@/utils/agendaUtils';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
@@ -542,17 +543,17 @@ export default function Agenda() {
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={navNext}><ChevronRight className="h-4 w-4" /></Button>
             <span className="font-semibold text-sm ml-1 capitalize hidden sm:block">{headerLabel()}</span>
           </div>
-          <div className="flex items-center gap-2">
-            <div className="flex rounded-lg border overflow-hidden text-xs">
+          <div className="flex items-center gap-1.5 sm:gap-2">
+            <div className="flex rounded-xl border overflow-hidden text-[10px] sm:text-xs shadow-sm">
               {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
-                  className={cn('px-3 py-1.5 font-medium transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30')}>
+                  className={cn('px-2 sm:px-3 py-2 font-bold transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30 bg-card')}>
                   {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : 'Mês'}
                 </button>
               ))}
             </div>
-            <Button size="sm" className="bg-gradient-primary text-white gap-1 h-8" onClick={() => openNew()}>
-              <Plus className="h-3.5 w-3.5" /> Agendar
+            <Button size="sm" className="bg-gradient-primary text-white gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
+              <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
             </Button>
           </div>
         </div>
@@ -839,11 +840,8 @@ export default function Agenda() {
                       <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
                         {dayAgs.map(ag => {
                           const pos = getAgPos(ag);
-                          const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
-                          const isDraggingThis = dragging?.ag.id === ag.id;
-                          const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
-                          const colWidth = 100 / layout.totalCols;
-                          const leftPct = layout.col * colWidth;
+                          const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+
                           return (
                             <div
                               key={ag.id}
@@ -851,16 +849,22 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute rounded-md border-l-4 px-1 py-0.5 overflow-hidden cursor-grab select-none pointer-events-auto',
-                                'hover:brightness-95 transition-shadow z-10',
+                                'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
+                                'hover:brightness-95 hover:shadow-md transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
-                                sc.bg, sc.border, sc.text
+                                !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
-                                top: pos.top,
-                                height: pos.height - 2,
+                                top: pos.top + 2,
+                                height: pos.height - 4,
                                 left: `${leftPct}%`,
                                 width: `${colWidth - 1}%`,
+                                ...(patientColor ? {
+                                  backgroundColor: patientColor.backgroundColor,
+                                  borderColor: patientColor.borderColor,
+                                  color: patientColor.color,
+                                  borderLeftColor: patientColor.borderLeftColor,
+                                } : {}),
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
                             >

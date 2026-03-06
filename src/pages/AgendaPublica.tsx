@@ -163,7 +163,15 @@ export default function AgendaPublica() {
           return slotInicio.getTime() < agEnd && slotFim.getTime() > agStart;
         }).length;
 
-        slots.push({ hora: horaStr, disponivel: ocupadas < vagasMax, dataInicio: slotInicio, dataFim: slotFim });
+        const disponivel = ocupadas < vagasMax;
+
+        slots.push({
+          hora: horaStr,
+          disponivel,
+          dataInicio: slotInicio,
+          dataFim: slotFim,
+          vagasRestantes: vagasMax - ocupadas
+        });
         minutoAtual += duracao + intervalo;
       }
 
@@ -570,9 +578,9 @@ export default function AgendaPublica() {
                       <button
                         key={slot.hora}
                         disabled={!slot.disponivel}
-                        className={`flex items-center justify-center gap-1 px-2 py-2.5 rounded-lg text-xs font-medium transition-all border ${slot.disponivel
-                          ? 'border-primary/30 bg-primary/5 text-primary hover:bg-primary hover:text-primary-foreground cursor-pointer active:scale-95'
-                          : 'border-muted bg-muted/30 text-muted-foreground cursor-not-allowed line-through opacity-50'
+                        className={`group relative flex flex-col items-center justify-center gap-0.5 px-2 py-3 rounded-xl text-xs font-bold transition-all border shadow-sm ${slot.disponivel
+                          ? 'border-primary/20 bg-card text-foreground hover:border-primary hover:bg-primary/5 hover:shadow-md cursor-pointer active:scale-95'
+                          : 'border-muted bg-muted/20 text-muted-foreground/50 cursor-not-allowed opacity-60'
                           }`}
                         onClick={() => {
                           if (!slot.disponivel) return;
@@ -584,8 +592,18 @@ export default function AgendaPublica() {
                           });
                         }}
                       >
-                        <Clock className="h-2.5 w-2.5 shrink-0" />
-                        {slot.hora}
+                        <div className="flex items-center gap-1">
+                          <Clock className={cn("h-3 w-3 shrink-0", slot.disponivel ? "text-primary" : "text-muted-foreground/30")} />
+                          {slot.hora}
+                        </div>
+                        {!slot.disponivel && (
+                          <span className="text-[8px] font-black uppercase text-destructive tracking-tight">Lotado</span>
+                        )}
+                        {slot.disponivel && (config?.vagas_por_horario || 1) > 1 && (
+                          <span className="text-[8px] font-medium text-emerald-600">
+                            {slot.vagasRestantes} vaga{slot.vagasRestantes > 1 ? 's' : ''}
+                          </span>
+                        )}
                       </button>
                     ))}
                   </div>
