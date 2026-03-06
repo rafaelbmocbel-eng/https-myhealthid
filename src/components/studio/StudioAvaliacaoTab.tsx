@@ -17,6 +17,7 @@ import {
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import QuestionariosComparacao from '../paciente/QuestionariosComparacao';
 import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
+import PacienteProtocolosTab from '../paciente/PacienteProtocolosTab';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import RelatorioIdentidade from '../identidade/RelatorioIdentidade';
 import { AvaliacaoMyID } from '@/types/myid';
@@ -457,6 +458,15 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium opacity-60">
             * As métricas premium são baseadas em algoritmos de saúde integrativa e regulação autonômica.
           </p>
+        </TabsContent>
+
+        {/* Tab: Diretrizes e Serviços (Repositório) */}
+        <TabsContent value="protocolos" className="mt-4">
+          <PacienteProtocolosTab
+            pacienteId={pacienteId}
+            pacienteNome={pacienteNome}
+            tipo="studio"
+          />
         </TabsContent>
 
         {/* Modal Relatório Premium */}

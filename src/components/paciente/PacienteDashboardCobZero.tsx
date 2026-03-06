@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -345,15 +346,39 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   />
                 </div>
               ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <p>Nenhuma avaliação presencial registrada.</p>
-                  <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setIniciandoAvaliacao(true)}>
-                    <Plus className="h-4 w-4 mr-2" /> Iniciar Avaliação
-                  </Button>
-                </div>
+                <IndicesRiscoComprometimento
+                  avaliacoes={avaliacoes}
+                  ultimaIdentidade={ultimaIdentidade}
+                  pacienteId={paciente.id}
+                  onVerRelatorio={onVerRelatorio}
+                  onDeletar={deletar}
+                />
               )}
             </TabsContent>
 
+            {evolucaoData.length >= 2 && (
+              <TabsContent value="evolucao_cob" className="mt-4">
+                <Card className="p-4">
+                  <h3 className="font-bold text-sm mb-4 text-center uppercase tracking-wider text-muted-foreground">Evolução Clínica</h3>
+                  <div className="h-[300px] w-full mt-4">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <LineChart data={evolucaoData}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
+                        <XAxis dataKey="data" fontSize={10} tickFormatter={(val) => format(parseISO(val), 'dd/MM', { locale: ptBR })} axisLine={false} tickLine={false} />
+                        <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                        <Tooltip
+                          labelFormatter={(val) => format(parseISO(val as string), 'dd/MM/yyyy', { locale: ptBR })}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                        />
+                        <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
+                        <Line type="monotone" dataKey="Cobb" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: '#2563eb' }} activeDot={{ r: 6 }} name="Ângulo Cobb" />
+                        <Line type="monotone" dataKey="Risco" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b' }} activeDot={{ r: 6 }} name="% Risco" />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </div>
+                </Card>
+              </TabsContent>
+            )}
             {/* Aba: Diretrizes e Serviços (Repositório) */}
             <TabsContent value="protocolos" className="mt-4">
               <PacienteProtocolosTab
@@ -371,7 +396,26 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         </TabsContent>
 
         {/* --- Aba 3: EVOLUÇÃO --- */}
-        <TabsContent value="evolucao" className="mt-4">
+        <TabsContent value="evolucao" className="mt-4 space-y-6">
+          <Card className="border-blue-200 overflow-hidden shadow-sm">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-lg bg-blue-50 flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-blue-600" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Evolução MyID — Questionários</h4>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Comparação de Scores e Perfil Sistêmico</p>
+                </div>
+              </div>
+
+              <QuestionariosComparacao
+                linksAvPaciente={linksAv}
+                respostas={respostas}
+              />
+            </CardContent>
+          </Card>
+
           <StudioEvolucaoTab pacienteId={paciente.id} />
         </TabsContent>
 

@@ -23,7 +23,7 @@ import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
 interface Props {
   pacienteId: string;
   pacienteNome: string;
-  tipo: 'identidade' | 'cob_zero';
+  tipo: 'identidade' | 'cob_zero' | 'studio';
 }
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
@@ -44,30 +44,22 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const { data: protocolos = [], isLoading } = useQuery({
     queryKey: ['protocolos-paciente', pacienteId, tipo],
     queryFn: async () => {
-      if (tipo === 'identidade') {
-        const { data, error } = await supabase
-          .from('protocolos' as any)
-          .select('*')
-          .eq('paciente_id', pacienteId)
-          .eq('terapeuta_id', user!.id)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        return (data || []) as any[];
-      } else {
-        const { data, error } = await supabase
-          .from('protocolos_cob_zero' as any)
-          .select('*')
-          .eq('paciente_id', pacienteId)
-          .eq('terapeuta_id', user!.id)
-          .order('created_at', { ascending: false });
-        if (error) throw error;
-        return (data || []) as any[];
-      }
+      const table = (tipo === 'identidade' || tipo === 'studio') ? 'protocolos' : 'protocolos_cob_zero';
+
+      const { data, error } = await supabase
+        .from(table as any)
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      return (data || []) as any[];
     },
     enabled: !!user,
   });
 
-  // Avaliações concluídas sem protocolo (identidade)
+  // Avaliações concluídas sem protocolo (identidade/studio)
   const { data: avaliacoesSemProtocolo = [] } = useQuery({
     queryKey: ['avaliacoes-sem-protocolo-paciente', pacienteId],
     queryFn: async () => {
@@ -79,10 +71,13 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         .eq('status', 'concluida')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const avalIds = protocolos.filter((p: any) => tipo === 'identidade').map((p: any) => p.avaliacao_id).filter(Boolean);
+      const avalIds = protocolos
+        .filter((p: any) => tipo === 'identidade' || tipo === 'studio')
+        .map((p: any) => p.avaliacao_id)
+        .filter(Boolean);
       return (data || []).filter((a: any) => !avalIds.includes(a.id));
     },
-    enabled: !!user && tipo === 'identidade',
+    enabled: !!user && (tipo === 'identidade' || tipo === 'studio'),
   });
 
   // Avaliações CobZero sem protocolo
@@ -105,6 +100,32 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     },
     enabled: !!user && tipo === 'cob_zero',
   });
+
+  const handleNovaDiretrizManual = () => {
+    const pendentes = tipo === 'cob_zero' ? avaliacoesCobZeroSemProtocolo : avaliacoesSemProtocolo;
+
+    if (pendentes.length === 0) {
+      toast({
+        title: "Nenhuma avaliação disponível",
+        description: `Conclua uma avaliação ${tipo === 'cob_zero' ? 'COB° ZERO' : 'Identidade'} para gerar uma diretriz.`,
+        variant: "destructive"
+      });
+      return;
+    }
+
+    if (pendentes.length === 1) {
+      if (tipo === 'cob_zero') handleGerarDiretrizCobZero(pendentes[0]);
+      else setAnalisandoAvaliacao(pendentes[0]);
+      return;
+    }
+
+    // Se houver múltiplas, rolar para a seção de pendências
+    const element = document.getElementById('secao-pendencias');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      toast({ title: "Selecione uma avaliação", description: "Escolha qual avaliação deseja usar para a nova diretriz." });
+    }
+  };
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
@@ -263,9 +284,24 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
 
   return (
     <div className="space-y-4">
+      {/* Cabeçalho de Ações Superiores */}
+      <div className="flex justify-between items-center bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
+        <div>
+          <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Serviços</h3>
+          <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">Repositório de Condutas</p>
+        </div>
+        <Button
+          size="sm"
+          className="bg-gradient-primary text-white gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
+          onClick={handleNovaDiretrizManual}
+        >
+          <Plus className="h-4 w-4" /> Nova Diretriz
+        </Button>
+      </div>
+
       {/* Avaliações prontas para protocolo (identidade) */}
-      {tipo === 'identidade' && avaliacoesSemProtocolo.length > 0 && (
-        <div className="space-y-2">
+      {(tipo === 'identidade' || tipo === 'studio') && avaliacoesSemProtocolo.length > 0 && (
+        <div className="space-y-2" id="secao-pendencias">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="h-4 w-4 text-amber-500" />
             <span className="text-xs font-semibold text-muted-foreground uppercase">Prontas para Diretriz</span>
@@ -300,7 +336,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
 
       {/* Avaliações prontas para protocolo (cob_zero) */}
       {tipo === 'cob_zero' && avaliacoesCobZeroSemProtocolo.length > 0 && (
-        <div className="space-y-2">
+        <div className="space-y-2" id="secao-pendencias">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="h-4 w-4 text-blue-500" />
             <span className="text-xs font-semibold text-muted-foreground uppercase">Avaliações CobZero Disponíveis</span>

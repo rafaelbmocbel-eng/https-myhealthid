@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -625,7 +626,26 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         </TabsContent>
 
         {/* --- Aba 3: EVOLUÇÃO --- */}
-        <TabsContent value="evolucao" className="mt-4">
+        <TabsContent value="evolucao" className="mt-4 space-y-6">
+          <Card className="border-identidade/20 overflow-hidden shadow-sm">
+            <CardContent className="pt-4 pb-3">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="h-8 w-8 rounded-lg bg-identidade/10 flex items-center justify-center">
+                  <BarChart3 className="h-4 w-4 text-identidade" />
+                </div>
+                <div>
+                  <h4 className="font-bold text-sm">Evolução MyID — Questionários</h4>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Comparação de Scores e Perfil Sistêmico</p>
+                </div>
+              </div>
+
+              <QuestionariosComparacao
+                linksAvPaciente={linksAvPaciente}
+                respostas={respostas}
+              />
+            </CardContent>
+          </Card>
+
           <StudioEvolucaoTab pacienteId={paciente.id} />
         </TabsContent>
 

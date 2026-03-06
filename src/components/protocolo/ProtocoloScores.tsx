@@ -115,59 +115,42 @@ export default function ProtocoloScores({ scores }: Props) {
         </div>
       </div>
 
-      {/* Row 2: Bar chart + Top 3 */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="clinical-card md:col-span-2 bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg">
-          <h3 className="font-bold text-sm mb-4 flex items-center gap-2">
-            <span className="h-6 w-6 rounded-lg bg-primary/10 flex items-center justify-center text-xs">📊</span>
-            Scores por Dimensão
-          </h3>
-          <ResponsiveContainer width="100%" height={230}>
-            <BarChart data={barData} layout="vertical" margin={{ left: 10, right: 20 }}>
-              <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(210, 12%, 92%)" />
-              <XAxis type="number" domain={[0, 10]} tick={{ fontSize: 10 }} />
-              <YAxis type="category" dataKey="name" tick={{ fontSize: 11, fontWeight: 600 }} width={80} />
-              <Tooltip
-                formatter={(val: number) => [`${val}/10`, 'Score']}
-                contentStyle={{ borderRadius: 12, fontSize: 12, boxShadow: '0 8px 30px rgba(0,0,0,0.12)', border: 'none' }}
-              />
-              <Bar dataKey="value" radius={[0, 8, 8, 0]} barSize={18}>
-                {barData.map((entry, idx) => (
-                  <Cell key={idx} fill={entry.color} />
-                ))}
-              </Bar>
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
-
-        <div className="clinical-card flex flex-col bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg">
-          <h3 className="font-bold text-sm mb-4 flex items-center gap-2">
-            <span className="h-6 w-6 rounded-lg bg-destructive/10 flex items-center justify-center text-xs">⚠️</span>
-            Top 3 Alertas Clínicos
-          </h3>
-          <div className="space-y-3 flex-1">
-            {top3.map((item, i) => {
-              const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MODERADO';
-              const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
-              const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
-              return (
-                <div key={item.name} className="flex items-center gap-3 p-3 rounded-xl bg-muted/40 border border-border/50">
-                  <div className={`text-xl font-black w-8 h-8 rounded-lg flex items-center justify-center ${rankColors[i]}`}>
-                    {i + 1}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="font-semibold text-sm">{item.name}</div>
-                    <div className="flex items-center gap-2 mt-1.5">
-                      <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-                        <div className="h-2.5 rounded-full" style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.color }} />
+      {/* Row 2: Top 3 Alertas */}
+      <div className="grid grid-cols-1 gap-4">
+        <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg p-5">
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex-1 w-full">
+              <h3 className="font-bold text-sm mb-4 flex items-center gap-2">
+                <span className="h-6 w-6 rounded-lg bg-destructive/10 flex items-center justify-center text-xs">⚠️</span>
+                Top 3 Alertas Clínicos
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
+                {top3.map((item, i) => {
+                  const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MODERADO';
+                  const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
+                  const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
+                  return (
+                    <div key={item.name} className="flex flex-col gap-3 p-3 rounded-xl bg-muted/20 border border-border/40">
+                      <div className="flex items-center justify-between">
+                        <div className={`text-lg font-black w-8 h-8 rounded-lg flex items-center justify-center ${rankColors[i]}`}>
+                          {i + 1}
+                        </div>
+                        <Badge className={`text-[10px] ${sevColor} shadow-sm`}>{severity}</Badge>
                       </div>
-                      <span className="text-xs font-bold shrink-0" style={{ color: item.color }}>{item.value}/10</span>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-semibold text-sm">{item.name}</div>
+                        <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                            <div className="h-2 rounded-full" style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.color }} />
+                          </div>
+                          <span className="text-xs font-bold shrink-0" style={{ color: item.color }}>{item.value}/10</span>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                  <Badge className={`text-[10px] ${sevColor} shadow-sm`}>{severity}</Badge>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            </div>
           </div>
         </div>
       </div>

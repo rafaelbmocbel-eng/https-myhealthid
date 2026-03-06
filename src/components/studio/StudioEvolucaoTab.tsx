@@ -92,6 +92,9 @@ export default function StudioEvolucaoTab({ pacienteId }: Props) {
         ))}
       </div>
 
+
+      {/* Aderência Calendar */}
+
       {/* Aderência Calendar */}
       <Card>
         <CardContent className="pt-4 pb-3">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Scale, Zap, ShieldCheck } from 'lucide-react';
+import { getThermalColor } from '@/utils/myidCalculations';
 
 interface ScoreValues {
   D: number;
@@ -24,28 +25,8 @@ interface Props {
   className?: string;
 }
 
-function severityColor(val: number): string {
-  if (val <= 2) return 'hsl(142, 70%, 45%)';   // green
-  if (val <= 4) return 'hsl(48, 90%, 50%)';     // yellow
-  if (val <= 6) return 'hsl(25, 90%, 50%)';     // orange
-  if (val <= 8) return 'hsl(0, 80%, 50%)';      // red
-  return 'hsl(0, 85%, 40%)';                     // dark red
-}
-
-function capacityColor(val: number): string {
-  // Inverted: high = good (green), low = bad (red)
-  if (val >= 8) return 'hsl(142, 70%, 45%)';
-  if (val >= 6) return 'hsl(142, 50%, 55%)';
-  if (val >= 4) return 'hsl(48, 90%, 50%)';
-  if (val >= 2) return 'hsl(25, 90%, 50%)';
-  return 'hsl(0, 80%, 50%)';
-}
-
 function scoreColor(myid: number): string {
-  if (myid < 3) return 'hsl(142, 70%, 45%)';
-  if (myid < 6) return 'hsl(48, 90%, 50%)';
-  if (myid < 8) return 'hsl(25, 90%, 50%)';
-  return 'hsl(0, 85%, 45%)';
+  return getThermalColor(myid);
 }
 
 function scoreStatus(myid: number): string {
@@ -56,25 +37,27 @@ function scoreStatus(myid: number): string {
 }
 
 const ScoreBar = ({ label, value, max = 10, type, isHighlighted }: { label: string; value: number; max?: number; type: 'demand' | 'capacity' | 'noise'; isHighlighted: boolean }) => {
-  const color = type === 'demand' ? severityColor(value) : type === 'capacity' ? capacityColor(value) : severityColor(value);
+  // Demand: High = Hot (Red)
+  // Capacity: High = Cold (Violet)
+  const color = type === 'demand' ? getThermalColor(value) : type === 'capacity' ? getThermalColor(10 - value) : getThermalColor(value);
   const percentage = (value / max) * 100;
 
   return (
     <div className={cn(
-      "relative flex flex-col gap-1 transition-all duration-300 py-1 px-2 rounded-lg",
-      isHighlighted ? "bg-muted shadow-sm scale-[1.02] ring-1 ring-border" : "opacity-80 hover:opacity-100"
+      "relative flex flex-col gap-1.5 transition-all duration-300 py-1.5 px-2 rounded-xl",
+      isHighlighted ? "bg-muted shadow-sm scale-[1.02] ring-1 ring-border" : "opacity-90 hover:opacity-100"
     )}>
       <div className="flex justify-between items-center px-0.5">
-        <span className="text-[10px] uppercase font-black tracking-wider" style={{ color }}>{label}</span>
+        <span className="text-[10px] uppercase font-black tracking-widest" style={{ color }}>{label}</span>
         <span className="text-[10px] font-black" style={{ color }}>{value.toFixed(1)}</span>
       </div>
-      <div className="h-1.5 w-full bg-muted-foreground/10 rounded-full overflow-hidden">
+      <div className="h-2 w-full bg-muted rounded-full overflow-hidden shadow-inner">
         <div
           className="h-full rounded-full transition-all duration-1000 ease-out"
           style={{
             width: `${percentage}%`,
             backgroundColor: color,
-            boxShadow: isHighlighted ? `0 0 8px ${color}60` : 'none'
+            boxShadow: isHighlighted ? `0 0 10px ${color}40` : 'none'
           }}
         />
       </div>
@@ -96,49 +79,48 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
   const capacityPct = (denominator / totalSum) * 100;
 
   return (
-    <div className={cn("rounded-3xl border-2 bg-card overflow-hidden shadow-xl transition-all duration-500", className)} style={{ borderColor: `${myidColor}30` }}>
-      {/* Visual Header */}
-      <div className="bg-gradient-to-r from-muted/50 via-card to-muted/50 p-6 text-center border-b border-border/50 relative">
-        <Scale className="absolute right-6 top-6 w-8 h-8 text-muted-foreground/10" />
-        <div className="inline-flex flex-col items-center">
-          <div className="flex items-center gap-3">
-            <div className="text-6xl font-black tracking-tighter" style={{ color: myidColor }}>
-              {myidScore.toFixed(1)}
-            </div>
-            <div className="flex flex-col items-start leading-none">
-              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground">MyID Index</span>
-              <span className="text-sm font-bold mt-1" style={{ color: myidColor }}>{status}</span>
-            </div>
+    <div className={cn("rounded-3xl border border-border bg-white overflow-hidden shadow-sm transition-all duration-500", className)}>
+      {/* Visual Header - Minimalist & Premium */}
+      <div className="p-8 pb-4 text-center relative">
+        <div className="flex flex-col items-center">
+          <div className="text-6xl font-black tracking-tighter" style={{ color: myidColor }}>
+            {myidScore.toFixed(1)}
+          </div>
+          <div className="flex flex-col items-center mt-1">
+            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-60">MyID Index</span>
+            <span className="text-xs font-black mt-2 px-3 py-1 rounded-full text-white uppercase tracking-wider" style={{ backgroundColor: myidColor }}>
+              {status}
+            </span>
           </div>
         </div>
       </div>
 
-      <div className="p-6 space-y-8">
-        {/* The Balance Bar */}
+      <div className="p-8 pt-4 space-y-10">
+        {/* The Balance Bar - Premium Style */}
         <div className="space-y-4">
-          <div className="flex justify-between items-end px-1">
+          <div className="flex justify-between items-end px-1 mb-2">
             <div className="flex flex-col items-start gap-1">
-              <span className="text-[10px] font-black uppercase text-red-500 tracking-widest">Demanda</span>
-              <span className="text-2xl font-black text-foreground">{numerator.toFixed(1)}</span>
+              <span className="text-[10px] font-black uppercase text-red-500 tracking-[0.2em]">Demanda</span>
+              <span className="text-3xl font-black text-foreground">{numerator.toFixed(1)}</span>
             </div>
             <div className="flex flex-col items-end gap-1">
-              <span className="text-[10px] font-black uppercase text-emerald-500 tracking-widest">Capacidade</span>
-              <span className="text-2xl font-black text-foreground">{denominator.toFixed(1)}</span>
+              <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.2em]">Capacidade</span>
+              <span className="text-3xl font-black text-foreground">{denominator.toFixed(1)}</span>
             </div>
           </div>
 
-          <div className="h-4 w-full flex rounded-full overflow-hidden shadow-inner bg-muted/30 p-1">
+          <div className="h-3 w-full flex rounded-full overflow-hidden bg-muted/40">
             <div
-              className="h-full rounded-l-full transition-all duration-1000 ease-in-out bg-gradient-to-r from-red-600 to-red-400"
+              className="h-full transition-all duration-1000 ease-in-out bg-red-500"
               style={{ width: `${demandPct}%` }}
             />
             <div
-              className="h-full rounded-r-full transition-all duration-1000 ease-in-out bg-gradient-to-r from-emerald-400 to-emerald-600"
+              className="h-full transition-all duration-1000 ease-in-out bg-emerald-500"
               style={{ width: `${capacityPct}%` }}
             />
           </div>
 
-          <div className="flex justify-between text-[8px] font-bold text-muted-foreground uppercase tracking-tighter px-1">
+          <div className="flex justify-between text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.1em] px-1">
             <span>↑ Carga / Desgaste</span>
             <span>Resiliência / Recuperação ↑</span>
           </div>

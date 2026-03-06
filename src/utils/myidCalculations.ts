@@ -154,12 +154,12 @@ export function calcularMyID(
 // Color scale: violet (good) → blue → orange → red (bad)
 // High value = Hot/Bad for Demands
 export function getThermalColor(v: number): string {
-  if (v <= 1) return '#a78bfa';      // violet-400
-  if (v <= 2.5) return '#8b5cf6';    // violet-500
-  if (v <= 4) return '#6366f1';      // indigo-500
-  if (v <= 5.5) return '#3b82f6';    // blue-500
-  if (v <= 7) return '#f59e0b';      // amber-500
-  if (v <= 8.5) return '#f97316';    // orange-500
+  if (v <= 1) return '#10b981';      // emerald-500 (Safe)
+  if (v <= 2) return '#22c55e';      // green-500
+  if (v <= 3) return '#8b5cf6';      // violet-500
+  if (v <= 4.5) return '#6366f1';    // indigo-500
+  if (v <= 6) return '#f59e0b';      // amber-500
+  if (v <= 8) return '#f97316';      // orange-500
   return '#ef4444';                   // red-500
 }
 

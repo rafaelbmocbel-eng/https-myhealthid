@@ -18,12 +18,14 @@ import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
+import { Progress } from '@/components/ui/progress';
 import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Area
 } from 'recharts';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
@@ -66,8 +68,9 @@ export default function PatientIntegratedDashboard({
   pacienteId,
   serviceType
 }: PatientIntegratedDashboardProps) {
-  const [showDiretrizes, setShowDiretrizes] = useState(false);
+  const { user } = useAuth();
   const [hoveredScoreKey, setHoveredScoreKey] = useState<string | null>(null);
+  const [showDiretrizes, setShowDiretrizes] = useState(false);
 
   // ── MyID data
   const { data: myidAvaliacoes = [] } = useQuery({
@@ -267,19 +270,31 @@ export default function PatientIntegratedDashboard({
                 />
               </div>
 
-              {/* Análise Detalhada (Radares e Scores) */}
-              <div className="border-t border-border/50 pt-6">
-                <ProtocoloScores scores={scores} />
+              {/* Detalhamento da Fórmula MyID (Demand vs Capacity) */}
+              <div className="mt-8">
+                <MyIDFormulaDisplay
+                  scores={scores!}
+                  myidScore={myidScore}
+                  highlightedKey={hoveredScoreKey}
+                />
               </div>
 
               {painPattern && (
-                <div className="text-xs text-muted-foreground border-t border-border/50 pt-4 mt-2">
-                  <span className="font-bold">Padrão Temporal:</span> {painPattern}
+                <div className="text-[10px] text-muted-foreground border-t border-border/50 pt-4 mt-8 uppercase font-bold tracking-tight">
+                  <span className="text-primary mr-1">●</span> Padrão Temporal da Dor: <span className="text-foreground">{painPattern}</span>
                 </div>
               )}
             </CardContent>
           </Card>
 
+          {/* Alertas Clínicos e Perfil (Substituindo Evolução) */}
+          <div className="mt-8 mb-10">
+            <div className="flex items-center gap-2 mb-4 px-2">
+              <div className="h-2 w-2 rounded-full bg-primary" />
+              <h4 className="font-black text-sm uppercase tracking-widest">Alertas Clínicos e Perfil de Saúde</h4>
+            </div>
+            <ProtocoloScores scores={scores} />
+          </div>
         </>
       )}
 
