@@ -222,6 +222,42 @@ export default function PacientePerfil() {
   const linkAvAtivo = linksAvaliacao.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
   const linkAgendaAtivo = linksAgenda.find((l: any) => l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
 
+  const gerarLinkAgenda = async () => {
+    if (!user) return;
+    setGerandoAgenda(true);
+    try {
+      await supabase
+        .from('links_agenda_paciente')
+        .update({ status: 'cancelado' })
+        .eq('paciente_id', id!)
+        .eq('terapeuta_id', user.id)
+        .eq('status', 'ativo');
+      const dataExpiracao = new Date();
+      dataExpiracao.setDate(dataExpiracao.getDate() + 90);
+      const { error } = await supabase.from('links_agenda_paciente').insert({
+        paciente_id: id!,
+        terapeuta_id: user.id,
+        data_expiracao: dataExpiracao.toISOString(),
+      });
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['links-agenda-perfil'] });
+      toast({ title: 'Link de agenda gerado! ✅', description: 'Válido por 90 dias.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoAgenda(false);
+    }
+  };
+
+  const copiarAgendaLink = (token: string) => {
+    navigator.clipboard.writeText(getAgendaUrl(token));
+    toast({ title: 'Link de agenda copiado! 📋' });
+  };
+
+  const hoje = startOfToday();
+  const agendamentosFuturos = agendamentos.filter((ag: any) => isAfter(parseISO(ag.data_inicio), hoje) || format(parseISO(ag.data_inicio), 'yyyy-MM-dd') === format(hoje, 'yyyy-MM-dd'));
+  const agendamentosPassados = agendamentos.filter((ag: any) => isBefore(parseISO(ag.data_inicio), hoje) && format(parseISO(ag.data_inicio), 'yyyy-MM-dd') !== format(hoje, 'yyyy-MM-dd'));
+
   const handleDeletePaciente = async () => {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${paciente.nome} ${paciente.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
 
