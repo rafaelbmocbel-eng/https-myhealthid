@@ -1,7 +1,7 @@
 import { Badge } from '@/components/ui/badge';
 import {
   Target, CheckCircle2, Dumbbell, Clock, RotateCcw,
-  ChevronDown, ChevronUp, Brain, Zap, BookOpen, Shield
+  ChevronDown, ChevronUp, Brain, Zap, BookOpen, Shield, Check
 } from 'lucide-react';
 
 const FASE_CORES = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500'];
@@ -27,13 +27,18 @@ interface Props {
   idx: number;
   prescricoes: any[];
   tecnicas: any[];
+  selectedTecnicaIds?: Set<string>;
+  onToggleTecnica?: (id: string, faseNum: number) => void;
   isOpen: boolean;
   onToggle: () => void;
   isAtual: boolean;
   isConcluida: boolean;
 }
 
-export default function ProtocoloFaseCard({ fase, idx, prescricoes, tecnicas, isOpen, onToggle, isAtual, isConcluida }: Props) {
+export default function ProtocoloFaseCard({
+  fase, idx, prescricoes, tecnicas, selectedTecnicaIds, onToggleTecnica,
+  isOpen, onToggle, isAtual, isConcluida
+}: Props) {
   return (
     <div className={`rounded-xl border-2 ${FASE_BORDE[idx % 4]} overflow-hidden ${isAtual ? 'ring-2 ring-primary shadow-lg' : ''}`}>
       {/* Header */}
@@ -63,7 +68,9 @@ export default function ProtocoloFaseCard({ fase, idx, prescricoes, tecnicas, is
               {tecnicas.length > 0 && (
                 <>
                   <span>·</span>
-                  <span>{tecnicas.length} técnica{tecnicas.length !== 1 ? 's' : ''}</span>
+                  <span className={tecnicas.filter(t => selectedTecnicaIds?.has(t.id)).length > 0 ? 'text-primary font-medium' : ''}>
+                    {tecnicas.filter(t => selectedTecnicaIds?.has(t.id)).length}/{tecnicas.length} técnica{tecnicas.length !== 1 ? 's' : ''}
+                  </span>
                 </>
               )}
             </div>
@@ -153,45 +160,49 @@ export default function ProtocoloFaseCard({ fase, idx, prescricoes, tecnicas, is
                   {tecnicas.map((tec: any) => {
                     const evBadge = EVIDENCIA_BADGE[tec.nivel_evidencia] || EVIDENCIA_BADGE.B;
                     const compBadge = COMPLEXIDADE_BADGE[tec.complexidade] || COMPLEXIDADE_BADGE.basica;
+                    const isSelected = selectedTecnicaIds?.has(tec.id);
+
                     return (
-                      <div key={tec.id} className="bg-muted/40 rounded-lg p-3 hover:bg-muted/60 transition-colors">
+                      <div
+                        key={tec.id}
+                        className={`p-3 rounded-lg border transition-all cursor-pointer ${isSelected
+                          ? 'bg-primary/10 border-primary/40 shadow-sm'
+                          : 'bg-muted/40 hover:bg-muted/60 border-transparent'
+                          }`}
+                        onClick={() => onToggleTecnica?.(tec.id, fase.numero_fase)}
+                      >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex items-center gap-2">
-                            <Zap className="h-3 w-3 text-primary shrink-0" />
+                            <div className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors ${isSelected ? 'bg-primary border-primary' : 'border-muted-foreground/30'
+                              }`}>
+                              {isSelected && <Check className="h-3 w-3 text-primary-foreground" />}
+                            </div>
                             <span className="text-sm font-medium">{tec.nome}</span>
                           </div>
                           <div className="flex gap-1 shrink-0">
-                            <Badge className={`${evBadge.class} border-0 text-[9px] h-4 px-1`}>
+                            <Badge className={`${evBadge.class} border-0 text-[8px] h-4 px-1`}>
                               <BookOpen className="h-2 w-2 mr-0.5" />
                               {evBadge.label}
                             </Badge>
-                            <Badge className={`${compBadge.class} border-0 text-[9px] h-4 px-1`}>
+                            <Badge className={`${compBadge.class} border-0 text-[8px] h-4 px-1`}>
                               {compBadge.label}
                             </Badge>
                           </div>
                         </div>
-                        <p className="text-xs text-muted-foreground mt-1 ml-5">{tec.descricao}</p>
+                        <p className="text-xs text-muted-foreground mt-1 ml-7">{tec.descricao}</p>
                         {tec.indicacoes && (
-                          <p className="text-[10px] text-emerald-600 mt-1 ml-5">✓ {tec.indicacoes}</p>
+                          <p className="text-[10px] text-emerald-600 mt-1 ml-7">✓ {tec.indicacoes}</p>
                         )}
                         {tec.contraindicacoes && (
-                          <p className="text-[10px] text-destructive mt-0.5 ml-5">⚠ {tec.contraindicacoes}</p>
+                          <p className="text-[10px] text-destructive mt-0.5 ml-7">⚠ {tec.contraindicacoes}</p>
                         )}
                         {tec.parametros && typeof tec.parametros === 'object' && (
-                          <div className="flex flex-wrap gap-1 mt-1.5 ml-5">
-                            {Object.entries(tec.parametros).slice(0, 4).map(([k, v]) => (
+                          <div className="flex flex-wrap gap-1 mt-1.5 ml-7">
+                            {Object.entries(tec.parametros).slice(0, 3).map(([k, v]) => (
                               <Badge key={k} variant="outline" className="text-[9px] py-0 h-4">
                                 {k}: {String(v)}
                               </Badge>
                             ))}
-                          </div>
-                        )}
-                        {tec.prerequisitos?.length > 0 && (
-                          <div className="flex items-center gap-1 mt-1 ml-5">
-                            <Shield className="h-2.5 w-2.5 text-amber-500" />
-                            <span className="text-[10px] text-amber-600">
-                              Pré-req: {tec.prerequisitos.join(', ')}
-                            </span>
                           </div>
                         )}
                       </div>

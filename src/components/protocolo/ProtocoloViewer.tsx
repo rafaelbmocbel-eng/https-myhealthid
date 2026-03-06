@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { toast } from '@/hooks/use-toast';
 import ProtocoloFaseCard from './ProtocoloFaseCard';
 import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTecnicas from './ProtocoloTecnicas';
@@ -92,6 +93,52 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
     },
   });
 
+  const qc = useQueryClient();
+  const [salvando, setSalvando] = useState(false);
+
+  // Fetch already selected techniques for this protocol
+  const { data: tratamentos = [] } = useQuery({
+    queryKey: ['protocolo-tratamentos', protocoloId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('protocolo_tratamentos')
+        .select('*')
+        .eq('protocolo_id', protocoloId);
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const selectedTecnicaIds = new Set(tratamentos.filter((t: any) => t.ativo).map((t: any) => t.tecnica_id));
+
+  const toggleTecnica = async (tecnicaId: string, faseNum: number) => {
+    setSalvando(true);
+    try {
+      const existing = tratamentos.find((t: any) => t.tecnica_id === tecnicaId);
+      if (existing) {
+        await (supabase as any)
+          .from('protocolo_tratamentos')
+          .update({ ativo: !existing.ativo })
+          .eq('id', existing.id);
+      } else {
+        await (supabase as any)
+          .from('protocolo_tratamentos')
+          .insert({
+            protocolo_id: protocoloId,
+            tecnica_id: tecnicaId,
+            fase_numero: faseNum,
+            ativo: true,
+          });
+      }
+      qc.invalidateQueries({ queryKey: ['protocolo-tratamentos', protocoloId] });
+      toast({ title: 'Diretriz atualizada' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao atualizar técnica', description: err.message, variant: 'destructive' });
+    } finally {
+      setSalvando(false);
+    }
+  };
+
   const toggleFase = (idx: number) => {
     setFasesAbertas(prev => {
       const s = new Set(prev);
@@ -163,10 +210,9 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
             const isConcluida = faseAtual > i + 1;
             return (
               <div key={i} className="flex-1 flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${
-                  isAtual ? 'bg-white text-primary ring-2 ring-white/50 scale-110' :
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center mb-1 transition-all ${isAtual ? 'bg-white text-primary ring-2 ring-white/50 scale-110' :
                   isConcluida ? 'bg-white/30 text-white' : 'bg-white/10 text-white/50'
-                }`}>
+                  }`}>
                   {isConcluida ? <CheckCircle2 className="h-5 w-5" /> : <Icon className="h-4 w-4" />}
                 </div>
                 <span className={`text-[10px] text-center leading-tight ${isAtual ? 'font-bold text-white' : 'text-white/60'}`}>
@@ -220,11 +266,10 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
       )}
 
       {/* Tabs */}
-      <div className="grid grid-cols-4 gap-1 mb-4 sm:mb-6 bg-muted rounded-xl p-1">
+      <div className="grid grid-cols-3 gap-1 mb-4 sm:mb-6 bg-muted rounded-xl p-1">
         {[
-          { key: 'fases' as const, label: 'Fases', fullLabel: 'Fases da Diretriz', icon: Layers },
-          { key: 'tecnicas' as const, label: 'Técnicas', fullLabel: 'Cardápio de Técnicas', icon: Brain },
-          { key: 'tratamento' as const, label: 'Trat.', fullLabel: 'Tratamento', icon: CheckCircle2 },
+          { key: 'fases' as const, label: 'Diretriz', fullLabel: 'Montagem da Diretriz', icon: Layers },
+          { key: 'tratamento' as const, label: 'Trat.', fullLabel: 'Tratamento Atual', icon: CheckCircle2 },
           { key: 'progressao' as const, label: 'Prog.', fullLabel: 'Progressão', icon: TrendingUp },
         ].map(tab => {
           const Icon = tab.icon;
@@ -232,11 +277,10 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
             <button
               key={tab.key}
               onClick={() => setTabAtiva(tab.key)}
-              className={`flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 sm:px-3 rounded-lg text-[10px] sm:text-sm font-medium transition-all ${
-                tabAtiva === tab.key
-                  ? 'bg-background shadow-sm text-foreground'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              className={`flex items-center justify-center gap-1 sm:gap-2 py-2 sm:py-2.5 px-1 sm:px-3 rounded-lg text-[10px] sm:text-sm font-medium transition-all ${tabAtiva === tab.key
+                ? 'bg-background shadow-sm text-foreground'
+                : 'text-muted-foreground hover:text-foreground'
+                }`}
             >
               <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
               <span className="sm:hidden">{tab.label}</span>
@@ -256,6 +300,8 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
               idx={idx}
               prescricoes={prescricoes.filter((p: any) => p.fase_id === fase.id)}
               tecnicas={tecnicasDB.filter((t: any) => t.fase_ideal === idx + 1)}
+              selectedTecnicaIds={selectedTecnicaIds}
+              onToggleTecnica={toggleTecnica}
               isOpen={fasesAbertas.has(idx)}
               onToggle={() => toggleFase(idx)}
               isAtual={faseAtual === idx + 1}
@@ -265,9 +311,13 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
         </div>
       )}
 
-      {tabAtiva === 'tecnicas' && (
-        <ProtocoloTecnicas tecnicas={tecnicasDB} faseAtual={faseAtual} protocoloId={protocoloId} />
+      {salvando && (
+        <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm z-50 animate-in fade-in slide-in-from-bottom-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Atualizando Diretriz...
+        </div>
       )}
+
+
 
       {tabAtiva === 'tratamento' && (
         <ProtocoloTratamento protocoloId={protocoloId} faseAtual={faseAtual} />
