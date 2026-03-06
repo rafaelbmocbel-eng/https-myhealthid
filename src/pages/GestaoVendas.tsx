@@ -172,6 +172,33 @@ export default function GestaoVendas() {
     // Taxa conversão
     const taxaConversao = totalPacientes > 0 ? Math.round((avaliados.length / totalPacientes) * 100) : 0;
 
+    // Receita mensal (controle_sessoes)
+    const receitaMes = sessoes
+        .filter((s: any) => new Date(s.data_sessao) >= startOfMonth && s.status === 'realizada')
+        .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
+
+    // Taxa de faltas
+    const agendamentosMes = agendamentos.filter((a: any) => new Date(a.data_inicio) >= startOfMonth);
+    const faltasMes = agendamentosMes.filter((a: any) => a.status === 'faltou').length;
+    const taxaFaltas = agendamentosMes.length > 0 ? Math.round((faltasMes / agendamentosMes.length) * 100) : 0;
+
+    // Aniversariantes próximos (próximos 30 dias)
+    const aniversariantes = patients.filter((p: any) => {
+        if (!p.data_nascimento) return false;
+        const nascimento = new Date(p.data_nascimento);
+        const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+        if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
+        return differenceInCalendarDays(anivEsteAno, now) <= 30 && differenceInCalendarDays(anivEsteAno, now) >= 0;
+    }).sort((a: any, b: any) => {
+        const dA = new Date(a.data_nascimento);
+        const dB = new Date(b.data_nascimento);
+        const anivA = new Date(now.getFullYear(), dA.getMonth(), dA.getDate());
+        const anivB = new Date(now.getFullYear(), dB.getMonth(), dB.getDate());
+        if (anivA < now) anivA.setFullYear(now.getFullYear() + 1);
+        if (anivB < now) anivB.setFullYear(now.getFullYear() + 1);
+        return anivA.getTime() - anivB.getTime();
+    });
+
     const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void) => {
         const p = patients.find((pat: any) => pat.id === patientId);
         if (!p?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
