@@ -590,11 +590,13 @@ export default function GestaoVendas() {
                 {/* ══════════════════ MÉTRICAS TAB ══════════════════ */}
                 {activeTab === 'metricas' && (
                     <div className="space-y-4">
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             <MetricCard label="Taxa de Conversão" value={`${taxaConversao}%`} desc="Leads → Avaliados" icon={TrendingUp} color="primary" />
                             <MetricCard label="Leads" value={leads.length.toString()} desc="Sem avaliação" icon={UserPlus} color="blue" />
                             <MetricCard label="Follow-up" value={inativos.length.toString()} desc="Sem sessão recente" icon={AlertCircle} color="red" />
                             <MetricCard label="Ativos" value={(avaliados.length - inativos.length).toString()} desc="Com sessões" icon={CheckCircle2} color="emerald" />
+                            <MetricCard label="Receita/Mês" value={`R$ ${receitaMes.toLocaleString('pt-BR')}`} desc="Sessões realizadas" icon={DollarSign} color="emerald" />
+                            <MetricCard label="Taxa de Faltas" value={`${taxaFaltas}%`} desc={`${faltasMes} falta(s) no mês`} icon={XCircle} color="red" />
                         </div>
 
                         {/* Funnel Visual */}
