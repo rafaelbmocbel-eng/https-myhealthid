@@ -165,6 +165,22 @@ export default function PacientePerfil() {
     enabled: protocolos.length > 0,
   });
 
+  // Calculate session metrics (must be before early returns)
+  const sessionMetrics = useMemo(() => {
+    let checks: Record<string, string> = {};
+    try {
+      checks = JSON.parse(localStorage.getItem('checks-all') || '{}');
+    } catch { }
+
+    const atendidas = agendamentos.filter((ag: any) => checks[ag.id] === 'atendido').length;
+    const faltas = agendamentos.filter((ag: any) => checks[ag.id] === 'faltou').length;
+    return {
+      total: agendamentos.length,
+      atendidas,
+      faltas
+    };
+  }, [agendamentos]);
+
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   if (loadingPac) {
@@ -238,26 +254,9 @@ export default function PacientePerfil() {
     toast({ title: 'Link de agenda copiado! 📋' });
   };
 
-  // Agenda: separar passadas e futuras
   const hoje = startOfToday();
   const agendamentosFuturos = agendamentos.filter((ag: any) => isAfter(parseISO(ag.data_inicio), hoje) || format(parseISO(ag.data_inicio), 'yyyy-MM-dd') === format(hoje, 'yyyy-MM-dd'));
   const agendamentosPassados = agendamentos.filter((ag: any) => isBefore(parseISO(ag.data_inicio), hoje) && format(parseISO(ag.data_inicio), 'yyyy-MM-dd') !== format(hoje, 'yyyy-MM-dd'));
-
-  // Calculate session metrics
-  const sessionMetrics = useMemo(() => {
-    let checks: Record<string, string> = {};
-    try {
-      checks = JSON.parse(localStorage.getItem('checks-all') || '{}');
-    } catch { }
-
-    const atendidas = agendamentos.filter((ag: any) => checks[ag.id] === 'atendido').length;
-    const faltas = agendamentos.filter((ag: any) => checks[ag.id] === 'faltou').length;
-    return {
-      total: agendamentos.length,
-      atendidas,
-      faltas
-    };
-  }, [agendamentos]);
 
   const handleDeletePaciente = async () => {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${paciente.nome} ${paciente.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
