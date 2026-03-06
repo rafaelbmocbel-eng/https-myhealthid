@@ -885,6 +885,23 @@ export default function Agenda() {
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
                               )}
+                              {/* Quick status actions for past confirmed appointments */}
+                              {pos.height > 55 && ag.status === 'confirmado' && parseISO(ag.data_fim) < new Date() && (
+                                <div className="flex gap-0.5 mt-0.5">
+                                  <button
+                                    className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-bold"
+                                    onClick={(e) => { e.stopPropagation(); updateAgendamento(ag.id, { status: 'concluido' }); }}
+                                  >
+                                    ✓ Concluído
+                                  </button>
+                                  <button
+                                    className="text-[8px] px-1.5 py-0.5 rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors font-bold"
+                                    onClick={(e) => { e.stopPropagation(); updateAgendamento(ag.id, { status: 'faltou' }); }}
+                                  >
+                                    ✗ Faltou
+                                  </button>
+                                </div>
+                              )}
                             </div>
                           );
                         })}
