@@ -18,6 +18,7 @@ import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
+import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Area
@@ -243,21 +244,21 @@ export default function PatientIntegratedDashboard({
       ) : (
         <>
           {/* MyID Fingerprint + Score */}
-          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card via-card to-violet-50/30 dark:to-violet-950/10">
+          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card via-card to-violet-50/30 dark:to-violet-950/10 mb-6">
             <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-6">
                 <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
                   <Fingerprint className="h-5 w-5 text-violet-600" />
                 </div>
                 <div>
-                  <h3 className="font-black text-lg text-foreground leading-none">Impressão Digital Sistêmica</h3>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">MyID Score</p>
+                  <h3 className="font-black text-lg text-foreground leading-none">Mapa da Impressão Digital</h3>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Interação Sistêmica Global</p>
                 </div>
                 <Badge className={`ml-auto border ${severityClass}`}>{classificacao}</Badge>
               </div>
 
-              {/* Fingerprint — large, centered */}
-              <div className="w-full max-w-lg mx-auto">
+              {/* Fingerprint — Mapa Principal */}
+              <div className="w-full max-w-lg mx-auto mb-8">
                 <MyIDFingerprint
                   rings={rings}
                   myidScore={myidScore}
@@ -266,54 +267,19 @@ export default function PatientIntegratedDashboard({
                 />
               </div>
 
-              {/* Score + Indexes below */}
-              <div className="space-y-4 w-full border-t border-border/50 pt-6 mt-4">
-                <div className="text-center group">
-                  <GlobalGauge score={myidScore} color={myidScore <= 2 ? 'hsl(270,60%,65%)' : myidScore <= 4 ? 'hsl(210,75%,55%)' : myidScore <= 6 ? 'hsl(35,85%,55%)' : 'hsl(0,85%,50%)'} />
-                  <div className="text-[11px] uppercase tracking-widest text-muted-foreground font-bold mt-2 group-hover:text-foreground transition-colors">Índice MyID Global</div>
-                </div>
-
-                {/* Score circles grid */}
-                <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 gap-2">
-                  {rings.map(r => (
-                    <div
-                      key={r.scoreKey}
-                      className={`flex flex-col items-center justify-center gap-1.5 p-2.5 rounded-2xl transition-all duration-300 cursor-pointer ${hoveredScoreKey === r.scoreKey
-                        ? 'ring-2 ring-offset-2 scale-105 shadow-md bg-background'
-                        : 'hover:scale-105 border border-transparent hover:border-border/50 bg-muted/20'
-                        }`}
-                      style={{
-                        outlineColor: hoveredScoreKey === r.scoreKey ? r.color : undefined,
-                      }}
-                      onMouseEnter={() => setHoveredScoreKey(r.scoreKey)}
-                      onMouseLeave={() => setHoveredScoreKey(null)}
-                      onClick={() => setHoveredScoreKey(r.scoreKey === hoveredScoreKey ? null : r.scoreKey)}
-                    >
-                      <div className="flex w-full items-center justify-between pointer-events-none">
-                        <span className="text-[10px] text-muted-foreground uppercase font-black truncate">{r.scoreKey}</span>
-                      </div>
-
-                      <div className="flex items-center gap-2 pointer-events-none w-full justify-center mt-1">
-                        <MiniGauge value={r.value} color={r.color} />
-                        <span className="text-sm font-black tracking-tight" style={{ color: r.color }}>{r.value.toFixed(1)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-
-                {painPattern && (
-                  <div className="text-xs text-muted-foreground border-t border-border/50 pt-2">
-                    <span className="font-bold">Padrão Temporal:</span> {painPattern}
-                  </div>
-                )}
+              {/* Análise Detalhada (Radares e Scores) */}
+              <div className="border-t border-border/50 pt-6">
+                <ProtocoloScores scores={scores} />
               </div>
+
+              {painPattern && (
+                <div className="text-xs text-muted-foreground border-t border-border/50 pt-4 mt-2">
+                  <span className="font-bold">Padrão Temporal:</span> {painPattern}
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* ─── EQUAÇÃO MyID ─── */}
-          {scores && (
-            <MyIDFormulaDisplay scores={scores} myidScore={myidScore} highlightedKey={hoveredScoreKey} />
-          )}
         </>
       )}
 
@@ -482,7 +448,7 @@ export default function PatientIntegratedDashboard({
             >
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-violet-600" />
-                <span className="font-bold text-sm">Diretrizes de Tratamento</span>
+                <span className="font-bold text-sm">Diretrizes e Serviços</span>
               </div>
               {showDiretrizes ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -583,7 +549,7 @@ function StructuralDiretrizButton({ data, pacienteId }: { data: StructuralAssess
         onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
       >
         <Sparkles className="h-4 w-4" />
-        Montar Diretriz de Tratamento (Painel)
+        Montar Diretrizes e Serviços (Painel)
       </Button>
     </div>
   );

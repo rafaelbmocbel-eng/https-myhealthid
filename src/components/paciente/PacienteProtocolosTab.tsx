@@ -18,6 +18,7 @@ import {
   gerarProtocoloAutomatico,
   ProtocoloAnalise
 } from '@/utils/demandasAnalyzer';
+import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
 
 interface Props {
   pacienteId: string;
@@ -37,6 +38,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const qc = useQueryClient();
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
+  const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
 
   // Protocolos do paciente
   const { data: protocolos = [], isLoading } = useQuery({
@@ -65,7 +67,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     enabled: !!user,
   });
 
-  // Avaliações concluídas sem protocolo (só identidade)
+  // Avaliações concluídas sem protocolo (identidade)
   const { data: avaliacoesSemProtocolo = [] } = useQuery({
     queryKey: ['avaliacoes-sem-protocolo-paciente', pacienteId],
     queryFn: async () => {
@@ -77,10 +79,31 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         .eq('status', 'concluida')
         .order('created_at', { ascending: false });
       if (error) throw error;
-      const avalIds = protocolos.map((p: any) => p.avaliacao_id).filter(Boolean);
+      const avalIds = protocolos.filter((p: any) => tipo === 'identidade').map((p: any) => p.avaliacao_id).filter(Boolean);
       return (data || []).filter((a: any) => !avalIds.includes(a.id));
     },
     enabled: !!user && tipo === 'identidade',
+  });
+
+  // Avaliações CobZero sem protocolo
+  const { data: avaliacoesCobZeroSemProtocolo = [] } = useQuery({
+    queryKey: ['avaliacoes-cob-zero-sem-protocolo-paciente', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_cob_zero')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+
+      // Simplificação: por enquanto, mostrar todas as avaliações CobZero concluídas
+      // que ainda não tem um protocolo associado (baseado na data ou id se houver relação clara)
+      // Atualmente não há uma FK explícita em protocolos_cob_zero para a avaliação,
+      // mas podemos assumir que se houver um protocolo recente, não precisa de outro.
+      return data || [];
+    },
+    enabled: !!user && tipo === 'cob_zero',
   });
 
   const deleteMutation = useMutation({
@@ -162,6 +185,29 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     }
   };
 
+  const handleGerarDiretrizCobZero = async (av: any) => {
+    try {
+      const { error } = await supabase
+        .from('protocolos_cob_zero' as any)
+        .insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user!.id,
+          classificacao_lenke: av.lenke_type,
+          cobb_angle: av.cobb_angle,
+          risco_progressao: av.risco_percentage,
+          status: 'ativo',
+          dados_protocolo: av.dados_avaliacao
+        });
+
+      if (error) throw error;
+      toast({ title: 'Diretriz CobZero gerada!' });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao gerar diretriz', variant: 'destructive' });
+    }
+  };
+
   // Viewing a protocol
   if (viewingId && tipo === 'identidade') {
     return (
@@ -178,6 +224,21 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     );
   }
 
+  if (analisandoAvaliacao && tipo === 'identidade') {
+    return (
+      <ProtocoloEditor
+        avaliacao={analisandoAvaliacao}
+        pacienteNome={pacienteNome}
+        onSave={() => {
+          setAnalisandoAvaliacao(null);
+          qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+          qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo-paciente'] });
+        }}
+        onCancel={() => setAnalisandoAvaliacao(null)}
+      />
+    );
+  }
+
   if (isLoading) {
     return (
       <div className="flex justify-center py-8">
@@ -186,7 +247,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     );
   }
 
-  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0) {
+  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
@@ -216,7 +277,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
               F: av.score_f || 0, D: av.score_d || 0, R: av.score_r || 0, EFI: av.score_efi || 0,
             }).length;
             return (
-              <div key={av.id} className="border-l-4 border-amber-400 rounded-lg p-3 bg-amber-50/50 flex items-center gap-3">
+              <div key={av.id} className="border-l-4 border-amber-400 rounded-lg p-3 bg-amber-50/50 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
                 <Activity className="h-4 w-4 text-amber-600 shrink-0" />
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
@@ -227,16 +288,42 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                     <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{demandasCount} demandas</Badge>
                   </div>
                 </div>
-                <Button size="sm" className="bg-amber-500 hover:bg-amber-600 text-white gap-1 h-7 text-xs"
-                  onClick={() => {
-                    // Navigate to protocolos page with this assessment
-                    window.location.href = `/protocolos?avaliacao=${av.id}`;
-                  }}>
+                <Button size="sm" className="bg-gradient-primary text-white gap-1 h-7 text-xs shadow-sm"
+                  onClick={() => setAnalisandoAvaliacao(av)}>
                   <Zap className="h-3 w-3" /> Gerar
                 </Button>
               </div>
             );
           })}
+        </div>
+      )}
+
+      {/* Avaliações prontas para protocolo (cob_zero) */}
+      {tipo === 'cob_zero' && avaliacoesCobZeroSemProtocolo.length > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 mb-2">
+            <Zap className="h-4 w-4 text-blue-500" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Avaliações CobZero Disponíveis</span>
+            <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px]">{avaliacoesCobZeroSemProtocolo.length}</Badge>
+          </div>
+          {avaliacoesCobZeroSemProtocolo.map((av: any) => (
+            <div key={av.id} className="border-l-4 border-blue-400 rounded-lg p-3 bg-blue-50/50 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
+              <Activity className="h-4 w-4 text-blue-600 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-sm font-medium">
+                    {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                  </span>
+                  <Badge variant="outline" className="text-[10px] h-4">Cobb {av.cobb_angle}°</Badge>
+                  <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px]">Lenke {av.lenke_type}</Badge>
+                </div>
+              </div>
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1 h-7 text-xs"
+                onClick={() => handleGerarDiretrizCobZero(av)}>
+                <Zap className="h-3 w-3" /> Gerar
+              </Button>
+            </div>
+          ))}
         </div>
       )}
 

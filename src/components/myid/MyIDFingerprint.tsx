@@ -51,37 +51,30 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
     const spacing = 26;
 
     return allRings.map((ring, i) => {
-      const r = baseR + i * spacing;
-      // Slight elliptical ratio for fingerprint aesthetic, but much less than before
-      const rx = r;
-      const ry = r * 1.05;
+      const r = baseR + i * (spacing + 2); // Increased spacing slightly
+      // More circular shape for clarity
+      const rx = r * 1.02;
+      const ry = r * 1.02;
       const valuePct = Math.max(ring.value / 10, 0.08);
-      const color = valueToColor(ring.value);
-      const opacity = valueToOpacity(ring.value);
+
+      // Use the color passed from the utility which follows the correct thermal logic
+      const color = ring.color || valueToColor(ring.value);
+      const opacity = 0.5 + (ring.value / 10) * 0.5;
 
       // Opening at top of fingerprint
-      const openingAngle = Math.max(18 - i * 0.8, 4);
+      const openingAngle = Math.max(16 - i * 0.7, 3);
       const startAngle = 90 + openingAngle;
       const availableSweep = 360 - openingAngle * 2;
-      const filledSweep = availableSweep * Math.max(valuePct, 0.2);
-
-      // Clean gap pattern — fewer gaps, consistent sizes
-      const numGaps = i < 3 ? 0 : i < 6 ? 1 : 2;
-      const gapPositions: number[] = [];
-      for (let g = 0; g < numGaps; g++) {
-        const basePos = (g + 1) / (numGaps + 1);
-        const jitter = ((i * 7 + g * 11) % 10 - 5) / 100;
-        gapPositions.push(Math.max(0.2, Math.min(0.8, basePos + jitter)));
-      }
-      const gapSize = 4;
+      const filledSweep = availableSweep * Math.max(valuePct, 0.15);
 
       return {
         ...ring,
         rx, ry, startAngle, availableSweep, filledSweep,
-        gapPositions, gapSize,
+        gapPositions: i < 3 ? [] : [0.3, 0.7], // Simplified gaps for better definition
+        gapSize: 3,
         isInner: ring.type === 'inner',
         index: i,
-        strokeWidth: Math.max(14 - i * 0.5, 8),
+        strokeWidth: Math.max(16 - i * 0.4, 10), // Thicker strokes for better definition
         computedColor: color,
         computedOpacity: opacity,
       };
@@ -105,7 +98,7 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
   const centerColor = valueToColor(myidScore);
   const label = scoreStatusLabel(myidScore);
 
-  const handleRidgeClick = (ridge: typeof ridgeData[0], idx: number) => {
+  const handleRidgeClick = (ridge: any, idx: number) => {
     setSelectedIdx(selectedIdx === idx ? null : idx);
     if (onRingClick) onRingClick(ridge);
   };
@@ -120,46 +113,44 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
       ? selectedIdx
       : hoveredIdx;
 
-  const activeRidge = activeIdx !== null ? ridgeData[activeIdx] : null;
-
   return (
     <div className={`relative ${className}`}>
       <svg
         viewBox={`0 0 ${vw} ${vh}`}
         className="w-full mx-auto"
-        style={{ filter: 'drop-shadow(0 4px 20px rgba(0,0,0,0.05))' }}
+        style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.08))' }}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          <filter id="fp-glow-hi">
-            <feGaussianBlur stdDeviation="4" result="blur" />
+          <filter id="fp-glow-hi" x="-20%" y="-20%" width="140%" height="140%">
+            <feGaussianBlur stdDeviation="3" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
-          <filter id="fp-glow-med">
-            <feGaussianBlur stdDeviation="2" result="blur" />
+          <filter id="fp-glow-med" x="-10%" y="-10%" width="120%" height="120%">
+            <feGaussianBlur stdDeviation="1.5" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-core-glow">
-            <feGaussianBlur stdDeviation="15" result="blur" />
+            <feGaussianBlur stdDeviation="12" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-highlight-glow">
-            <feGaussianBlur stdDeviation="6" result="blur" />
+            <feGaussianBlur stdDeviation="5" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%" stopColor={centerColor} stopOpacity="0.2" />
+            <stop offset="0%" stopColor={centerColor} stopOpacity="0.25" />
             <stop offset="100%" stopColor={centerColor} stopOpacity="0" />
           </radialGradient>
           <radialGradient id="fp-bg-g" cx="50%" cy="46%" r="50%">
-            <stop offset="0%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0.03" />
+            <stop offset="0%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0.04" />
             <stop offset="100%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0" />
           </radialGradient>
         </defs>
 
         {/* Background */}
-        <ellipse cx={cx} cy={cy} rx={420} ry={440} fill="url(#fp-bg-g)" />
-        <ellipse cx={cx} cy={cy} rx={65} ry={68} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+        <ellipse cx={cx} cy={cy} rx={440} ry={460} fill="url(#fp-bg-g)" />
+        <circle cx={cx} cy={cy} r={70} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
 
         {/* RIDGES */}
         {ridgeData.map((ridge, ridgeIdx) => {
@@ -210,7 +201,7 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
                     stroke={ridge.computedColor}
                     strokeWidth={ridge.strokeWidth}
                     strokeLinecap="round"
-                    opacity={isDimmed ? 0.04 : 0.12}
+                    opacity={isDimmed ? 0.03 : 0.1}
                     style={{ transition: 'opacity 0.3s ease' }}
                   />
                 );
@@ -230,7 +221,7 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
                     stroke={ridge.computedColor}
                     strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth}
                     strokeLinecap="round"
-                    opacity={isActive ? 1 : isDimmed ? 0.12 : ridge.computedOpacity}
+                    opacity={isActive ? 1 : isDimmed ? 0.08 : ridge.computedOpacity}
                     filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                     style={{ transition: 'all 0.3s ease' }}
                   />
@@ -241,15 +232,21 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
               {isActive && (() => {
                 const labelAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
                 const labelRad = (labelAngleDeg * Math.PI) / 180;
-                const lx = cx + (ridge.rx + 30) * Math.cos(labelRad);
-                const ly = cy + (ridge.ry + 30) * Math.sin(labelRad);
+                const dist = ridge.rx + 45;
+                const lx = cx + dist * Math.cos(labelRad);
+                const ly = cy + dist * Math.sin(labelRad);
+
+                // Show full label + value
+                const displayText = `${ridge.label}: ${ridge.value.toFixed(1)}`;
+                const textWidth = displayText.length * 7.5 + 20;
+
                 return (
-                  <g style={{ transition: 'opacity 0.3s ease' }}>
-                    <rect x={lx - 42} y={ly - 14} width={84} height={28} rx={8}
-                      fill={ridge.computedColor} opacity={0.92} />
-                    <text x={lx} y={ly} textAnchor="middle" fontSize="12" fontWeight="900"
-                      fill="white" letterSpacing="0.5" dominantBaseline="central">
-                      {ridge.scoreKey}: {ridge.value.toFixed(1)}
+                  <g style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}>
+                    <rect x={lx - textWidth / 2} y={ly - 18} width={textWidth} height={36} rx={12}
+                      fill={ridge.computedColor} opacity={0.95} stroke="white" strokeWidth="2" />
+                    <text x={lx} y={ly + 2} textAnchor="middle" fontSize="13" fontWeight="900"
+                      fill="white" letterSpacing="0.2" dominantBaseline="central">
+                      {displayText}
                     </text>
                   </g>
                 );

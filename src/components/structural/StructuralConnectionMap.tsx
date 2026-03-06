@@ -7,6 +7,7 @@ import {
     StructuralAssessmentData, UNIT_CONFIGS,
     StructuralRelationship,
 } from '@/types/structural';
+import { getThermalColor } from '@/utils/myidCalculations';
 
 interface Props {
     data: StructuralAssessmentData;
@@ -36,11 +37,7 @@ const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
 };
 
 function getNodeColor(score: number): string {
-    if (score <= 2) return '#22C55E';
-    if (score <= 4) return '#84CC16';
-    if (score <= 6) return '#F59E0B';
-    if (score <= 8) return '#F97316';
-    return '#EF4444';
+    return getThermalColor(score);
 }
 
 function getTissue(key: TissueKey) {

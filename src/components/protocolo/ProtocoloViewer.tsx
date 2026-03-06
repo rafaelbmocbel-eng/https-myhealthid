@@ -14,7 +14,6 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from '@/hooks/use-toast';
 import ProtocoloFaseCard from './ProtocoloFaseCard';
 import ProtocoloScores from './ProtocoloScores';
-import ProtocoloTecnicas from './ProtocoloTecnicas';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 

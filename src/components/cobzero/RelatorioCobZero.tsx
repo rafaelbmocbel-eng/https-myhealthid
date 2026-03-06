@@ -1,9 +1,10 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { AvaliacaoCobZero } from '@/types/cobzero';
 import { getCobbClassification } from '@/utils/calculations';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Download, Share2, Plus, Save, Loader2 } from 'lucide-react';
+import { ArrowLeft, Download, Share2, Plus, Save, Loader2, Sparkles } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 
@@ -14,6 +15,7 @@ interface Props {
 }
 
 export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Props) {
+  const navigate = useNavigate();
   const { etapaLenke, etapaRisco, unidades, scoreE } = avaliacao;
   const cobbClass = getCobbClassification(etapaLenke.cobbAngle);
   const { salvar, salvando } = useAvaliacoesCobZero();
@@ -44,6 +46,12 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
             <Button variant="outline" size="sm" className="gap-2" onClick={handleSalvar} disabled={salvando || salvo}>
               {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               {salvo ? 'Salvo ✓' : 'Salvar avaliação'}
+            </Button>
+          )}
+          {pacienteId && (
+            <Button className="bg-gradient-primary text-white gap-2" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
+              <Sparkles className="h-4 w-4" />
+              Gerar Diretriz
             </Button>
           )}
           <Button variant="outline" size="sm" className="gap-2"><Share2 className="h-4 w-4" />Compartilhar</Button>
@@ -79,10 +87,9 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
       </div>
 
       {/* Risco */}
-      <div className={`clinical-card border-2 mb-6 ${
-        etapaRisco.riskLevel === 'ALTO' ? 'border-destructive bg-red-50' :
+      <div className={`clinical-card border-2 mb-6 ${etapaRisco.riskLevel === 'ALTO' ? 'border-destructive bg-red-50' :
         etapaRisco.riskLevel === 'MODERADO' ? 'border-warning bg-amber-50' : 'border-success bg-green-50'
-      }`}>
+        }`}>
         <div className="flex items-center justify-between">
           <div>
             <div className="font-semibold">Risco de Progressão (Lonstein & Carlson)</div>
@@ -91,8 +98,8 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
             </div>
             <div className="text-sm mt-2">
               {etapaLenke.risserStage <= 2 ? '⚠️ Paciente em crescimento – risco aumentado' :
-               etapaLenke.risserStage >= 4 ? '✅ Maturidade esquelética – estabilização esperada' :
-               '⚠️ Quasi-maturidade – monitorar progressão'}
+                etapaLenke.risserStage >= 4 ? '✅ Maturidade esquelética – estabilização esperada' :
+                  '⚠️ Quasi-maturidade – monitorar progressão'}
             </div>
           </div>
           <div className="text-right">
@@ -112,9 +119,9 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
             <BarChart data={unidadeData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0,10]} tick={{ fontSize: 11 }} />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
               <Tooltip />
-              <Bar dataKey="score" fill="hsl(187 76% 32%)" radius={[4,4,0,0]} />
+              <Bar dataKey="score" fill="hsl(187 76% 32%)" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-2 text-right text-sm text-muted-foreground">Score E médio: <strong className="text-primary">{scoreE.toFixed(1)}/10</strong></div>

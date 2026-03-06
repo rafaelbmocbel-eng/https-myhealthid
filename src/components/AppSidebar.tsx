@@ -16,7 +16,6 @@ const NAV_ITEMS = [
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
-  { label: 'Relatórios e Links', href: '/relatorios', icon: FileText },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];

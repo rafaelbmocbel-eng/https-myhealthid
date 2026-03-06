@@ -26,6 +26,7 @@ import QuestionariosComparacao from '@/components/paciente/QuestionariosComparac
 import EvolucaoDashboard from '@/components/paciente/EvolucaoDashboard';
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
+import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -38,6 +39,8 @@ const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.R
 export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
+  const defaultTab = searchParams.get('tab') || 'avaliacoes';
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -454,7 +457,7 @@ export default function PacientePerfil() {
         </div>
 
         {/* ==== 4 TABS ==== */}
-        <Tabs defaultValue="avaliacoes">
+        <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
           <TabsList className="bg-secondary p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
@@ -781,189 +784,12 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB 3: PROTOCOLOS
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="protocolos" className="mt-4 space-y-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Dumbbell className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Diretrizes de Tratamento</h3>
-              </div>
-              <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={() => navigate(`/protocolos?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Nova Diretriz
-              </Button>
-            </div>
-
-            {/* Info: baseado em dados atuais */}
-            {(avaliacoesId.length > 0 || avaliacoesCob.length > 0) && (
-              <div className="bg-primary/5 border border-primary/20 rounded-xl p-3">
-                <p className="text-xs text-primary">
-                  💡 A nova diretriz será gerada com base na avaliação mais recente
-                  {avaliacoesId.length > 0 && ` (Identidade: ${avaliacoesId[0]?.data_avaliacao})`}
-                  {avaliacoesCob.length > 0 && ` (COB° ZERO: ${avaliacoesCob[0]?.data_avaliacao})`}
-                  {respostasPaciente.length > 0 && ` e ${respostasPaciente.length} questionário(s) remoto(s)`}.
-                </p>
-              </div>
-            )}
-
-            {loadingProto ? (
-              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
-            ) : protocolos.length === 0 ? (
-              <EmptyState icon={<ClipboardList />} title="Nenhuma diretriz" subtitle="Crie uma diretriz de tratamento baseada nas avaliações e questionários atuais." />
-            ) : (
-              <div className="space-y-3">
-                {protocolos.map((proto: any) => {
-                  const tratamentos = (tratamentosMap as Record<string, any[]>)[proto.id] || [];
-
-                  const isExpanded = tratamentoAberto === proto.id;
-                  const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
-                  const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
-                  const FASE_CORES_TEXT = ['text-indigo-700', 'text-amber-700', 'text-emerald-700', 'text-red-700'];
-                  const FASE_CORES_BADGE = ['bg-indigo-500', 'bg-amber-500', 'bg-emerald-500', 'bg-red-500'];
-                  const CAT_LABELS: Record<string, { icon: string; label: string }> = {
-                    terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
-                    eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
-                    exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
-                    tracao: { icon: '🔗', label: 'Tração' },
-                    outros: { icon: '🧊', label: 'Outras Técnicas' },
-                  };
-                  const EVIDENCIA_BADGE: Record<string, { label: string; cls: string }> = {
-                    A: { label: 'Evidência A', cls: 'bg-emerald-100 text-emerald-700' },
-                    B: { label: 'Evidência B', cls: 'bg-blue-100 text-blue-700' },
-                    C: { label: 'Evidência C', cls: 'bg-amber-100 text-amber-700' },
-                  };
-                  const COMPLEXIDADE_BADGE: Record<string, { label: string; cls: string }> = {
-                    basica: { label: 'Básica', cls: 'bg-emerald-100 text-emerald-700' },
-                    intermediaria: { label: 'Intermediária', cls: 'bg-amber-100 text-amber-700' },
-                    avancada: { label: 'Avançada', cls: 'bg-red-100 text-red-700' },
-                  };
-
-                  // Group by fase
-                  const porFase: Record<number, any[]> = {};
-                  tratamentos.forEach((t: any) => {
-                    const f = t.fase_numero || 1;
-                    if (!porFase[f]) porFase[f] = [];
-                    porFase[f].push(t);
-                  });
-
-                  return (
-                    <div key={proto.id} className="clinical-card !p-4">
-                      <div className="flex items-center gap-3">
-                        <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                          <ClipboardList className="h-4 w-4 text-primary" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-sm font-semibold">{proto.titulo}</span>
-                            <Badge variant="outline" className={cn('text-[10px] h-4', proto.status === 'ativo' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : 'bg-muted text-muted-foreground')}>{proto.status}</Badge>
-                          </div>
-                          <div className="text-xs text-muted-foreground mt-0.5">
-                            {proto.duracao_total} · {proto.frequencia}
-                            {proto.created_at && ` · Criado em ${format(parseISO(proto.created_at), 'dd/MM/yyyy', { locale: ptBR })}`}
-                          </div>
-                        </div>
-                        <div className="flex gap-1.5 shrink-0">
-                          {tratamentos.length > 0 && (
-                            <Button
-                              size="sm"
-                              variant={isExpanded ? 'default' : 'outline'}
-                              className={cn('h-7 text-xs gap-1', isExpanded && 'bg-gradient-primary text-white')}
-                              onClick={() => setTratamentoAberto(isExpanded ? null : proto.id)}
-                            >
-                              <Dumbbell className="h-3 w-3" /> Tratamento ({tratamentos.length})
-                            </Button>
-                          )}
-                          <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => navigate(`/protocolos`)}>
-                            <ExternalLink className="h-3 w-3" /> Ver Completo
-                          </Button>
-                        </div>
-                      </div>
-                      {proto.objetivo_geral && (
-                        <p className="text-xs text-muted-foreground mt-2 border-t pt-2">{proto.objetivo_geral}</p>
-                      )}
-
-                      {/* Tratamento expandido inline */}
-                      {isExpanded && tratamentos.length > 0 && (
-                        <div className="mt-3 border-t pt-3 space-y-3">
-                          {[1, 2, 3, 4].map(faseNum => {
-                            const tecsFase = porFase[faseNum] || [];
-                            if (tecsFase.length === 0) return null;
-                            const idx = faseNum - 1;
-
-                            // Group by category
-                            const porCategoria: Record<string, any[]> = {};
-                            tecsFase.forEach((t: any) => {
-                              const cat = t.tecnica?.categoria || 'outros';
-                              if (!porCategoria[cat]) porCategoria[cat] = [];
-                              porCategoria[cat].push(t);
-                            });
-
-                            return (
-                              <div key={faseNum} className="rounded-xl border overflow-hidden">
-                                <div className={`flex items-center gap-2 px-3 py-2 ${FASE_CORES_BG[idx]}`}>
-                                  <div className={`w-6 h-6 rounded-full ${FASE_CORES_BADGE[idx]} flex items-center justify-center text-white text-[10px] font-bold`}>
-                                    {faseNum}
-                                  </div>
-                                  <span className={`text-xs font-semibold ${FASE_CORES_TEXT[idx]}`}>
-                                    Fase {faseNum}: {FASE_NOMES[idx]}
-                                  </span>
-                                  <span className="text-[10px] text-muted-foreground ml-auto">{tecsFase.length} técnica{tecsFase.length !== 1 ? 's' : ''}</span>
-                                </div>
-                                <div className="p-3">
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                    {Object.entries(porCategoria).map(([cat, items]) => {
-                                      const catInfo = CAT_LABELS[cat] || { icon: '🔧', label: cat };
-                                      return (
-                                        <div key={cat} className="border rounded-lg p-2.5">
-                                          <h4 className="font-semibold text-xs mb-1.5">{catInfo.icon} {catInfo.label}</h4>
-                                          <div className="space-y-1.5">
-                                            {items.map((item: any) => {
-                                              const tec = item.tecnica;
-                                              if (!tec) return null;
-                                              const evBadge = EVIDENCIA_BADGE[tec.nivel_evidencia] || EVIDENCIA_BADGE.B;
-                                              const compBadge = COMPLEXIDADE_BADGE[tec.complexidade] || COMPLEXIDADE_BADGE.basica;
-                                              return (
-                                                <div key={item.id} className="p-2 rounded-md bg-primary/5 border border-primary/20">
-                                                  <div className="flex items-start justify-between gap-1">
-                                                    <span className="text-xs font-medium">{tec.nome}</span>
-                                                    <div className="flex gap-0.5 shrink-0">
-                                                      <Badge className={`${evBadge.cls} border-0 text-[8px] h-3.5 px-1`}>{evBadge.label}</Badge>
-                                                      <Badge className={`${compBadge.cls} border-0 text-[8px] h-3.5 px-1`}>{compBadge.label}</Badge>
-                                                    </div>
-                                                  </div>
-                                                  {tec.descricao && <p className="text-[10px] text-muted-foreground mt-0.5">{tec.descricao}</p>}
-                                                  {tec.indicacoes && <p className="text-[10px] text-emerald-600 mt-0.5">✓ {tec.indicacoes}</p>}
-                                                  {tec.contraindicacoes && <p className="text-[10px] text-destructive mt-0.5">⚠ {tec.contraindicacoes}</p>}
-                                                  {tec.parametros && typeof tec.parametros === 'object' && Object.keys(tec.parametros).length > 0 && (
-                                                    <div className="flex flex-wrap gap-0.5 mt-1">
-                                                      {Object.entries(tec.parametros).slice(0, 4).map(([k, v]) => (
-                                                        <Badge key={k} variant="outline" className="text-[8px] py-0 h-3.5">{k}: {String(v)}</Badge>
-                                                      ))}
-                                                    </div>
-                                                  )}
-                                                  {item.observacoes && (
-                                                    <p className="text-[10px] text-amber-600 mt-1 italic">💡 {item.observacoes}</p>
-                                                  )}
-                                                </div>
-                                              );
-                                            })}
-                                          </div>
-                                        </div>
-                                      );
-                                    })}
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+          <TabsContent value="protocolos" className="mt-4">
+            <PacienteProtocolosTab
+              pacienteId={id!}
+              pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+              tipo="identidade"
+            />
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
@@ -1059,7 +885,7 @@ export default function PacientePerfil() {
           </TabsContent>
         </Tabs>
       </div>
-    </AppLayout>
+    </AppLayout >
   );
 }
 

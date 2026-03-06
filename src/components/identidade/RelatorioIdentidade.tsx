@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AvaliacaoMyID } from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles } from 'lucide-react';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
@@ -69,8 +69,14 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               {salvo ? 'Salvo ✓' : 'Salvar no Prontuário'}
             </Button>
           )}
+          {pacienteId && (
+            <Button className="bg-gradient-primary text-white gap-1.5" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
+              <Sparkles className="h-3.5 w-3.5" />
+              Gerar Diretriz
+            </Button>
+          )}
           <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
-            toast({ title: 'PDF do Relatório', description: 'Função de PDF está em adaptação para o novo MyID.'});
+            toast({ title: 'PDF do Relatório', description: 'Função de PDF está em adaptação para o novo MyID.' });
           }}>
             <Download className="h-3.5 w-3.5" />
             PDF (Breve)
@@ -84,7 +90,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           <div className="clinical-card border-none bg-gradient-to-br from-card to-primary/5 shadow-sm">
             <div className="flex flex-col items-center py-6 text-center">
               <h2 className="text-xl font-bold mb-4">Índice MyID Final</h2>
-              
+
               <div className={`px-8 py-6 rounded-2xl border-2 shadow-sm mb-6 ${getMyIDSeverityColor(resultado.classificacao)}`}>
                 <div className="text-5xl font-black">{resultado.myidScore.toFixed(1)}</div>
                 <div className="text-base font-bold mt-2">{resultado.myidStatus}</div>
@@ -94,7 +100,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               <div className="w-full max-w-sm mx-auto">
                 <MyIDFingerprint rings={fpData} myidScore={resultado.myidScore} />
               </div>
-              
+
               <p className="text-xs text-muted-foreground mt-4 px-4">
                 A balança entre sua <strong>Demanda Sistêmica</strong> (cores quentes) e sua <strong>Capacidade de Regulação</strong> (cores frias).
               </p>
@@ -110,32 +116,32 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           </h3>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <ScoreCard 
+            <ScoreCard
               icon={Activity} label="D: Nível de Dor" value={resultado.componentScores.D.toFixed(1)} color="#FF6B6B"
               description="A dor experiencial atual e máxima relatada."
             />
-            <ScoreCard 
+            <ScoreCard
               icon={Dumbbell} label="EFI: Funcionalidade" value={resultado.componentScores.EFI.toFixed(1)} color="#FFA500"
               description="Capacidade para o trabalho, tarefas domésticas, etc."
             />
-            <ScoreCard 
+            <ScoreCard
               icon={Brain} label="P: Modulador P" value={resultado.componentScores.P.toFixed(1)} color="#FFB84D"
               description="Comportamento da dor, crenças, autoeficácia e medo."
             />
-            <ScoreCard 
+            <ScoreCard
               icon={ClipboardList} label="I: Inércia / Gatilho" value={resultado.componentScores.I.toFixed(1)} color="#FF8C42"
               description="Fatores desencadeantes, novos equipamentos ou mudança brutal na rotina."
             />
-            <ScoreCard 
+            <ScoreCard
               icon={Bed} label="R: Regulação" value={resultado.componentScores.R.toFixed(1)} color="#87CEEB"
               description="Sono, fadiga, energia, estado psicológico base e estresse."
             />
-            <ScoreCard 
+            <ScoreCard
               icon={ShieldAlert} label="C: Contexto" value={resultado.componentScores.C.toFixed(1)} color="#50C878"
               description="Avaliação do ambiente externo."
             />
             <div className="sm:col-span-2">
-              <ScoreCard 
+              <ScoreCard
                 icon={Activity} label="N: Ruído Sistêmico" value={resultado.componentScores.N.toFixed(1)} color="#4A90E2"
                 description="Presença de outros problemas sistêmicos que 'roubam' suporte de outras partes."
               />

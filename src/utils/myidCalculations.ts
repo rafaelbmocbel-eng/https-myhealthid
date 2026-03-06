@@ -150,35 +150,36 @@ export function calcularMyID(
   };
 }
 
-// ── Fingerprint visualization data ──
-export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
-  // Color scale: violet (good) → blue → orange → red (bad)
-  const valueToColor = (v: number): string => {
-    if (v <= 1) return '#a78bfa';      // violet-400
-    if (v <= 2.5) return '#8b5cf6';    // violet-500
-    if (v <= 4) return '#6366f1';      // indigo-500
-    if (v <= 5.5) return '#3b82f6';    // blue-500
-    if (v <= 7) return '#f59e0b';      // amber-500
-    if (v <= 8.5) return '#f97316';    // orange-500
-    return '#ef4444';                   // red-500
-  };
+// ── Thermal Color Scale Helper ──
+// Color scale: violet (good) → blue → orange → red (bad)
+// High value = Hot/Bad for Demands
+export function getThermalColor(v: number): string {
+  if (v <= 1) return '#a78bfa';      // violet-400
+  if (v <= 2.5) return '#8b5cf6';    // violet-500
+  if (v <= 4) return '#6366f1';      // indigo-500
+  if (v <= 5.5) return '#3b82f6';    // blue-500
+  if (v <= 7) return '#f59e0b';      // amber-500
+  if (v <= 8.5) return '#f97316';    // orange-500
+  return '#ef4444';                   // red-500
+}
 
+export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
   return [
     // Inner rings (demand)
-    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: valueToColor(scores.D || 0), scoreKey: 'D' },
-    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: valueToColor(scores.EFI || 0), scoreKey: 'EFI' },
-    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: valueToColor(scores.P || 0), scoreKey: 'P' },
-    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: valueToColor(scores.I || 0), scoreKey: 'I' },
+    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
+    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: getThermalColor(scores.EFI || 0), scoreKey: 'EFI' },
+    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
+    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
 
     // Outer rings (capacity) — inverted: low value = bad
-    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: valueToColor(10 - (scores.R || 0)), scoreKey: 'R' },
-    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: valueToColor(10 - (scores.C || 0)), scoreKey: 'C' },
-    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: valueToColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
-    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: valueToColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
-    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: valueToColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
-    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: valueToColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
-    { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: valueToColor(scores.N || 0), scoreKey: 'N' },
-    { label: 'MED (Medicação)', value: scores.MED || 0, type: 'outer', color: valueToColor(scores.MED || 0), scoreKey: 'MED' },
+    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: getThermalColor(10 - (scores.R || 0)), scoreKey: 'R' },
+    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: getThermalColor(10 - (scores.C || 0)), scoreKey: 'C' },
+    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: getThermalColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
+    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: getThermalColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
+    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
+    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
+    { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },
+    { label: 'MED (Medicação)', value: scores.MED || 0, type: 'outer', color: getThermalColor(scores.MED || 0), scoreKey: 'MED' },
   ];
 }
 
@@ -189,7 +190,7 @@ export function getMyIDSeverityColor(classificacao: string): string {
     case 'MODERADO': return 'text-amber-600 bg-amber-50 border-amber-200';
     case 'SEVERO': return 'text-orange-600 bg-orange-50 border-orange-200';
     case 'CRÍTICO': return 'text-red-600 bg-red-50 border-red-200';
-    case 'EXTREMO': return 'text-purple-700 bg-purple-50 border-purple-200';
+    case 'EXTREMO': return 'text-red-950 bg-red-50 border-red-900';
     default: return 'text-muted-foreground bg-muted border-border';
   }
 }

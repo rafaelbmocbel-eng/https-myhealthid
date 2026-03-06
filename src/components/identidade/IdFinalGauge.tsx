@@ -14,7 +14,7 @@ const FAIXAS = [
   { label: 'Moderado', min: 10, max: 20, color: 'hsl(40, 95%, 52%)', gradient: ['hsl(45,95%,55%)', 'hsl(35,90%,42%)'] },
   { label: 'Severo', min: 20, max: 30, color: 'hsl(25, 90%, 52%)', gradient: ['hsl(25,95%,58%)', 'hsl(15,85%,42%)'] },
   { label: 'Crítico', min: 30, max: 40, color: 'hsl(0, 80%, 55%)', gradient: ['hsl(0,72%,55%)', 'hsl(0,72%,40%)'] },
-  { label: 'Extremo', min: 40, max: 50, color: 'hsl(280, 70%, 45%)', gradient: ['hsl(280,70%,50%)', 'hsl(280,70%,35%)'] },
+  { label: 'Extremo', min: 40, max: 50, color: 'hsl(0, 95%, 35%)', gradient: ['hsl(0,100%,40%)', 'hsl(0,100%,25%)'] },
 ];
 
 const FAIXA_DESCS: Record<string, string> = {
@@ -77,7 +77,7 @@ export default function IdFinalGauge({ value, maxValue = 50, compact = false }: 
       case 'Moderado': return 'bg-amber-100 text-amber-800 border-amber-300';
       case 'Severo': return 'bg-orange-100 text-orange-800 border-orange-300';
       case 'Crítico': return 'bg-red-100 text-red-800 border-red-300';
-      case 'Extremo': return 'bg-red-600 text-white border-red-700';
+      case 'Extremo': return 'bg-red-950 text-white border-red-900';
       default: return 'bg-muted text-muted-foreground border-border';
     }
   };
@@ -95,10 +95,10 @@ export default function IdFinalGauge({ value, maxValue = 50, compact = false }: 
               <stop offset="100%" stopColor={faixaAtual.gradient[1]} />
             </linearGradient>
             <filter id={`glow-${gradId}`}>
-              <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+              <feGaussianBlur stdDeviation="3" result="coloredBlur" />
               <feMerge>
-                <feMergeNode in="coloredBlur"/>
-                <feMergeNode in="SourceGraphic"/>
+                <feMergeNode in="coloredBlur" />
+                <feMergeNode in="SourceGraphic" />
               </feMerge>
             </filter>
           </defs>
@@ -216,11 +216,10 @@ export default function IdFinalGauge({ value, maxValue = 50, compact = false }: 
             return (
               <div
                 key={f.label}
-                className={`flex items-start gap-2.5 rounded-lg px-3 py-2 text-xs transition-all ${
-                  isActive
+                className={`flex items-start gap-2.5 rounded-lg px-3 py-2 text-xs transition-all ${isActive
                     ? 'bg-card border-2 shadow-sm'
                     : 'opacity-50'
-                }`}
+                  }`}
                 style={isActive ? { borderColor: f.color } : undefined}
               >
                 <div
