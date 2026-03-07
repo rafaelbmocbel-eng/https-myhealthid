@@ -154,8 +154,6 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
@@ -336,6 +334,8 @@ export default function Pacientes() {
       return 0;
     });
   }, [pacientes, search, filterServico, sortBy, ultimosAgendamentos]);
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   if (isLoading) {
     return (
