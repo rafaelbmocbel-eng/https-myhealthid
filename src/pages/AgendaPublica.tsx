@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, XCircle, CalendarDays, Clock, CheckCircle2, Phone, ArrowLeft } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { shareViaWhatsApp } from '@/utils/whatsapp';
 import { Button } from '@/components/ui/button';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
