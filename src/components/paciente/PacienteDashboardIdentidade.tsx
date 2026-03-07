@@ -273,6 +273,31 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     enabled: !!user,
   });
 
+  // Realtime: auto-refresh when myid_avaliacoes changes for this patient
+  useEffect(() => {
+    const channel = supabase
+      .channel(`myid-realtime-${paciente.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'myid_avaliacoes',
+          filter: `paciente_id=eq.${paciente.id}`,
+        },
+        () => {
+          refetchMyID();
+          refetchLinksMyID();
+          qc.invalidateQueries({ queryKey: ['integrated-myid-link', paciente.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [paciente.id, refetchMyID, refetchLinksMyID, qc]);
+
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
