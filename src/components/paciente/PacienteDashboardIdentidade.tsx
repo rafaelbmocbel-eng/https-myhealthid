@@ -623,6 +623,31 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           <StudioTreinosTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
         </TabsContent>
 
+  // Realtime: auto-refresh when myid_avaliacoes changes for this patient
+  useEffect(() => {
+    const channel = supabase
+      .channel(`myid-realtime-${paciente.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'myid_avaliacoes',
+          filter: `paciente_id=eq.${paciente.id}`,
+        },
+        () => {
+          refetchMyID();
+          refetchLinksMyID();
+          qc.invalidateQueries({ queryKey: ['integrated-myid-link', paciente.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [paciente.id, refetchMyID, refetchLinksMyID, qc]);
+
 
         {/* --- Aba 4: EVOLUÇÕES E PRONTUÁRIO --- */}
         <TabsContent value="prontuario" className="mt-4">
