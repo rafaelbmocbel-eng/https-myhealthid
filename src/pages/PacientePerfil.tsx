@@ -28,6 +28,8 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
+import StudioNotasTab from '@/components/studio/StudioNotasTab';
+
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
@@ -470,6 +472,10 @@ export default function PacientePerfil() {
             <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
             </TabsTrigger>
+            <TabsTrigger value="prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evoluções e Prontuário</span><span className="sm:hidden">Pront.</span>
+            </TabsTrigger>
+
           </TabsList>
 
           {/* ══════════════════════════════════════════════════════════════════
@@ -882,6 +888,11 @@ export default function PacientePerfil() {
               <EmptyState icon={<CalendarDays />} title="Nenhum agendamento" subtitle="Este paciente não possui sessões agendadas." />
             )}
           </TabsContent>
+
+          <TabsContent value="prontuario" className="mt-4">
+            <StudioNotasTab pacienteId={id!} showSummary={true} />
+          </TabsContent>
+
         </Tabs>
       </div>
     </AppLayout >

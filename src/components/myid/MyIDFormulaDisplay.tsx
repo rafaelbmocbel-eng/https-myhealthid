@@ -1,7 +1,9 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Scale, Zap, ShieldCheck } from 'lucide-react';
-import { getThermalColor } from '@/utils/myidCalculations';
+import { Zap, ShieldCheck, Info } from 'lucide-react';
+import { getThermalColor, getMyIDInterpretation } from '@/utils/myidCalculations';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Progress } from "@/components/ui/progress";
 
 interface ScoreValues {
   D: number;
@@ -25,31 +27,36 @@ interface Props {
   className?: string;
 }
 
-function scoreColor(myid: number): string {
-  return getThermalColor(myid);
-}
-
-function scoreStatus(myid: number): string {
-  if (myid < 3) return 'RECUPERAÇÃO FAVORÁVEL';
-  if (myid < 6) return 'SOBRECARGA MODERADA';
-  if (myid < 8) return 'SOBRECARGA CRÍTICA';
-  return 'RISCO DE CRONIFICAÇÃO';
-}
-
-const ScoreBar = ({ label, value, max = 10, type, isHighlighted }: { label: string; value: number; max?: number; type: 'demand' | 'capacity' | 'noise'; isHighlighted: boolean }) => {
+const ScoreIndicator = ({
+  label,
+  value,
+  max = 10,
+  type,
+  isHighlighted
+}: {
+  label: string;
+  value: number;
+  max?: number;
+  type: 'demand' | 'capacity' | 'noise';
+  isHighlighted: boolean
+}) => {
   // Demand: High = Hot (Red)
   // Capacity: High = Cold (Violet)
-  const color = type === 'demand' ? getThermalColor(value) : type === 'capacity' ? getThermalColor(10 - value) : getThermalColor(value);
+  // Noise: High = Bad
+  const color = type === 'demand' || type === 'noise'
+    ? getThermalColor(value)
+    : getThermalColor(10 - value);
+
   const percentage = (value / max) * 100;
 
   return (
     <div className={cn(
-      "relative flex flex-col gap-1.5 transition-all duration-300 py-1.5 px-2 rounded-xl",
-      isHighlighted ? "bg-muted shadow-sm scale-[1.02] ring-1 ring-border" : "opacity-90 hover:opacity-100"
+      "space-y-1.5 transition-all duration-300 p-1.5 rounded-lg border border-transparent",
+      isHighlighted ? "bg-muted/50 border-border shadow-sm scale-[1.01]" : ""
     )}>
       <div className="flex justify-between items-center px-0.5">
-        <span className="text-[10px] uppercase font-black tracking-widest" style={{ color }}>{label}</span>
-        <span className="text-[10px] font-black" style={{ color }}>{value.toFixed(1)}</span>
+        <span className="text-[11px] font-bold text-gray-700">{label}</span>
+        <span className="text-[11px] font-black" style={{ color }}>{value.toFixed(1)}/10</span>
       </div>
       <div className="h-2 w-full bg-muted rounded-full overflow-hidden shadow-inner">
         <div
@@ -57,7 +64,7 @@ const ScoreBar = ({ label, value, max = 10, type, isHighlighted }: { label: stri
           style={{
             width: `${percentage}%`,
             backgroundColor: color,
-            boxShadow: isHighlighted ? `0 0 10px ${color}40` : 'none'
+            boxShadow: isHighlighted ? `0 0 8px ${color}40` : 'none'
           }}
         />
       </div>
@@ -67,109 +74,147 @@ const ScoreBar = ({ label, value, max = 10, type, isHighlighted }: { label: stri
 
 export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, className = '' }: Props) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
+  const interp = getMyIDInterpretation(myidScore);
+  const myidColor = interp.color;
+  const status = interp.label;
 
-  const numerator = ((D + EFI) * (1 + P / 10)) + I;
+  // Hybrid Formula: ((D + EFI) * (1 + P / 10)) + P + I
+  const numerator = ((D + EFI) * (1 + P / 10)) + P + I;
   const denominator = Math.max(0.5, (R + C + AF + HID + NUT + ERG) - N - MED);
-  const myidColor = scoreColor(myidScore);
-  const status = scoreStatus(myidScore);
 
-  // Calculate percentages for demand and capacity for a relative balance bar
   const totalSum = numerator + denominator;
   const demandPct = (numerator / totalSum) * 100;
   const capacityPct = (denominator / totalSum) * 100;
 
   return (
-    <div className={cn("rounded-3xl border border-border bg-white overflow-hidden shadow-sm transition-all duration-500", className)}>
-      {/* Visual Header - Minimalist & Premium */}
-      <div className="p-8 pb-4 text-center relative">
-        <div className="flex flex-col items-center">
-          <div className="text-6xl font-black tracking-tighter" style={{ color: myidColor }}>
-            {myidScore.toFixed(1)}
+    <div className={cn("space-y-6", className)}>
+      {/* Visual Header - Summary */}
+      <Card className="border-0 shadow-lg bg-white overflow-hidden rounded-3xl">
+        <CardContent className="p-8 space-y-8">
+          <div className="flex flex-col items-center">
+            <div className="text-6xl font-black tracking-tighter" style={{ color: myidColor }}>
+              {myidScore.toFixed(1)}
+            </div>
+            <div className="flex flex-col items-center mt-1">
+              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-60">MyID Index</span>
+              <span className="text-xs font-black mt-2 px-4 py-1.5 rounded-full text-white uppercase tracking-wider shadow-sm" style={{ backgroundColor: myidColor }}>
+                {status}
+              </span>
+
+              {/* Severity Legend */}
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-6 pt-4 border-t border-border/40 w-full max-w-lg">
+                {[
+                  { icon: '✨', range: '< 3', label: 'RECUPERAÇÃO FAVORÁVEL', color: 'text-violet-600' },
+                  { icon: '🔹', range: '3-6', label: 'SOBRECARGA MODERADA', color: 'text-blue-600' },
+                  { icon: '🔶', range: '6-8', label: 'SOBRECARGA CRÍTICA', color: 'text-amber-600' },
+                  { icon: '🚨', range: '> 8', label: 'RISCO CRONIFICAÇÃO', color: 'text-red-600' },
+                ].map((item) => (
+                  <div key={item.label} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
+                    <span className="text-xs">{item.icon}</span>
+                    <span className={cn("text-[9px] font-black uppercase tracking-wider", item.color)}>{item.range}</span>
+                    <span className="text-[9px] font-bold text-muted-foreground/80 uppercase tracking-tighter">{item.label}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
-          <div className="flex flex-col items-center mt-1">
-            <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-60">MyID Index</span>
-            <span className="text-xs font-black mt-2 px-3 py-1 rounded-full text-white uppercase tracking-wider" style={{ backgroundColor: myidColor }}>
-              {status}
-            </span>
+
+          {/* Balance Bar */}
+          <div className="space-y-4 max-w-2xl mx-auto w-full">
+            <div className="flex justify-between items-start px-1 mb-1">
+              <div className="flex flex-col items-start gap-0.5">
+                <span className="text-[10px] font-black uppercase text-red-500 tracking-[0.2em]">Demanda</span>
+                <span className="text-3xl font-black text-foreground">{numerator.toFixed(1)}</span>
+                <span className="text-[10px] text-red-700/60 font-medium leading-tight max-w-[140px]">Carga de dor, inércia e fatores psicossociais</span>
+              </div>
+              <div className="flex flex-col items-end gap-0.5 text-right">
+                <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.2em]">Capacidade</span>
+                <span className="text-3xl font-black text-foreground">{denominator.toFixed(1)}</span>
+                <span className="text-[10px] text-emerald-700/60 font-medium leading-tight max-w-[140px]">Sua resiliência, hábitos e suporte de saúde</span>
+              </div>
+            </div>
+
+            <div className="h-3 w-full flex rounded-full overflow-hidden bg-muted/40 shadow-inner">
+              <div
+                className="h-full transition-all duration-1000 ease-in-out bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
+                style={{ width: `${demandPct}%` }}
+              />
+              <div
+                className="h-full transition-all duration-1000 ease-in-out bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.3)]"
+                style={{ width: `${capacityPct}%` }}
+              />
+            </div>
+
+            <div className="flex justify-between text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.1em] px-1">
+              <span>↑ Carga / Desgaste</span>
+              <span>Resiliência / Recuperação ↑</span>
+            </div>
           </div>
-        </div>
+        </CardContent>
+      </Card>
+
+      {/* Factor Breakdown Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        {/* Numerador Card */}
+        <Card className="border-red-200 shadow-sm flex flex-col overflow-hidden rounded-2xl">
+          <CardHeader className="bg-red-50/50 pb-4 border-b border-red-100">
+            <CardTitle className="text-red-700 flex items-center gap-2 text-base font-black">
+              <Zap className="w-5 h-5" />
+              O QUE ESTÁ SOBRECARREGANDO <span className="opacity-60 font-medium ml-1">(Numerador)</span>
+            </CardTitle>
+            <CardDescription className="text-red-700/60 font-medium text-xs">Fatores que aumentam sua carga sistêmica</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-5 pb-6">
+            <ScoreIndicator label="Dor (D)" value={D} type="demand" isHighlighted={highlightedKey === 'D'} />
+            <ScoreIndicator label="Funcionalidade (EFI)" value={EFI} type="demand" isHighlighted={highlightedKey === 'EFI'} />
+            <ScoreIndicator label="Psicológico (P)" value={P} type="demand" isHighlighted={highlightedKey === 'P'} />
+            <ScoreIndicator label="Inércia (I)" value={I} type="demand" isHighlighted={highlightedKey === 'I'} />
+            <div className="pt-2 mt-2 border-t border-red-100/50 flex justify-between items-center">
+              <span className="text-[10px] uppercase font-black text-red-700/40 tracking-widest">Total Numerador</span>
+              <span className="text-lg font-black text-red-700">{numerator.toFixed(1)}</span>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Denominador Card */}
+        <Card className="border-emerald-200 shadow-sm flex flex-col overflow-hidden rounded-2xl">
+          <CardHeader className="bg-emerald-50/50 pb-4 border-b border-emerald-100">
+            <CardTitle className="text-emerald-700 flex items-center gap-2 text-base font-black">
+              <ShieldCheck className="w-5 h-5" />
+              O QUE ESTÁ AJUDANDO <span className="opacity-60 font-medium ml-1">(Denominador)</span>
+            </CardTitle>
+            <CardDescription className="text-emerald-700/60 font-medium text-xs">Fatores de recuperação do seu sistema</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4 pt-5 pb-6">
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+              <ScoreIndicator label="Regulação (R)" value={R} type="capacity" isHighlighted={highlightedKey === 'R'} />
+              <ScoreIndicator label="Contexto (C)" value={C} type="capacity" isHighlighted={highlightedKey === 'C'} />
+              <ScoreIndicator label="Atividade (AF)" value={AF} type="capacity" isHighlighted={highlightedKey === 'AF'} />
+              <ScoreIndicator label="Hidratação (HID)" value={HID} type="capacity" isHighlighted={highlightedKey === 'HID'} />
+              <ScoreIndicator label="Nutrição (NUT)" value={NUT} type="capacity" isHighlighted={highlightedKey === 'NUT'} />
+              <ScoreIndicator label="Ergonomia (ERG)" value={ERG} type="capacity" isHighlighted={highlightedKey === 'ERG'} />
+            </div>
+
+            <div className="pt-2 mt-2 border-t border-emerald-100/50 space-y-2">
+              <div className="grid grid-cols-2 gap-x-4 opacity-60">
+                <ScoreIndicator label="Ruído (N)" value={N} type="noise" isHighlighted={highlightedKey === 'N'} />
+                <ScoreIndicator label="Medicação (MED)" value={MED} type="noise" isHighlighted={highlightedKey === 'MED'} />
+              </div>
+              <div className="flex justify-between items-center pt-2">
+                <span className="text-[10px] uppercase font-black text-emerald-700/40 tracking-widest">Total Denominador</span>
+                <span className="text-lg font-black text-emerald-700">{denominator.toFixed(1)}</span>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="p-8 pt-4 space-y-10">
-        {/* The Balance Bar - Premium Style */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-end px-1 mb-2">
-            <div className="flex flex-col items-start gap-1">
-              <span className="text-[10px] font-black uppercase text-red-500 tracking-[0.2em]">Demanda</span>
-              <span className="text-3xl font-black text-foreground">{numerator.toFixed(1)}</span>
-            </div>
-            <div className="flex flex-col items-end gap-1">
-              <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.2em]">Capacidade</span>
-              <span className="text-3xl font-black text-foreground">{denominator.toFixed(1)}</span>
-            </div>
-          </div>
-
-          <div className="h-3 w-full flex rounded-full overflow-hidden bg-muted/40">
-            <div
-              className="h-full transition-all duration-1000 ease-in-out bg-red-500"
-              style={{ width: `${demandPct}%` }}
-            />
-            <div
-              className="h-full transition-all duration-1000 ease-in-out bg-emerald-500"
-              style={{ width: `${capacityPct}%` }}
-            />
-          </div>
-
-          <div className="flex justify-between text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.1em] px-1">
-            <span>↑ Carga / Desgaste</span>
-            <span>Resiliência / Recuperação ↑</span>
-          </div>
-        </div>
-
-        {/* Breakdown Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-2">
-          {/* Demand Column */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-red-100 dark:border-red-900/30">
-              <Zap className="w-4 h-4 text-red-500" />
-              <h4 className="text-xs font-black uppercase tracking-widest text-red-600">Fatores de Estresse</h4>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              <ScoreBar label="D (Sintoma)" value={D} type="demand" isHighlighted={highlightedKey === 'D'} />
-              <ScoreBar label="EFI (Disfunção)" value={EFI} type="demand" isHighlighted={highlightedKey === 'EFI'} />
-              <ScoreBar label="P (Severidade)" value={P} type="demand" isHighlighted={highlightedKey === 'P'} />
-              <ScoreBar label="I (Incapacidade)" value={I} type="demand" isHighlighted={highlightedKey === 'I'} />
-            </div>
-          </div>
-
-          {/* Capacity Column */}
-          <div className="space-y-4">
-            <div className="flex items-center gap-2 pb-2 border-b border-emerald-100 dark:border-emerald-900/30">
-              <ShieldCheck className="w-4 h-4 text-emerald-500" />
-              <h4 className="text-xs font-black uppercase tracking-widest text-emerald-600">Fatores de Reserva</h4>
-            </div>
-            <div className="grid grid-cols-1 gap-2">
-              <div className="grid grid-cols-2 gap-2">
-                <ScoreBar label="R (Respirar)" value={R} type="capacity" isHighlighted={highlightedKey === 'R'} />
-                <ScoreBar label="C (Circular)" value={C} type="capacity" isHighlighted={highlightedKey === 'C'} />
-                <ScoreBar label="AF (Atividade)" value={AF} type="capacity" isHighlighted={highlightedKey === 'AF'} />
-                <ScoreBar label="HID (Hidratar)" value={HID} type="capacity" isHighlighted={highlightedKey === 'HID'} />
-                <ScoreBar label="NUT (Nutrir)" value={NUT} type="capacity" isHighlighted={highlightedKey === 'NUT'} />
-                <ScoreBar label="ERG (Energia)" value={ERG} type="capacity" isHighlighted={highlightedKey === 'ERG'} />
-              </div>
-              <div className="pt-2 mt-2 border-t border-muted border-dashed grid grid-cols-2 gap-2 opacity-60">
-                <ScoreBar label="N (Ruído)" value={N} type="noise" isHighlighted={highlightedKey === 'N'} />
-                <ScoreBar label="MED (Medic.)" value={MED} type="noise" isHighlighted={highlightedKey === 'MED'} />
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Footer Concept */}
-        <div className="pt-6 border-t border-border/50 text-center">
-          <p className="text-[10px] text-muted-foreground leading-relaxed max-w-sm mx-auto">
-            O <strong>Índice MyID</strong> representa a relação entre a demanda do sistema e sua capacidade de resposta.
-            Uma pontuação alta indica que os fatores de reserva estão sobrecarregados.
+      {/* Footer Concept */}
+      <div className="pt-2 text-center">
+        <div className="inline-flex items-center gap-2 bg-muted/30 px-4 py-2 rounded-full border border-border/50">
+          <Info className="w-3 h-3 text-muted-foreground" />
+          <p className="text-[10px] text-muted-foreground font-medium leading-none">
+            O Índice MyID é a relação entre a <strong>Carga Sistêmica</strong> e a <strong>Capacidade de Resposta</strong>.
           </p>
         </div>
       </div>

@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { AvaliacaoMyID } from '@/types/myid';
-import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
+import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles } from 'lucide-react';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
@@ -48,6 +48,9 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   };
 
   const resultado = avaliacao.resultado;
+  const interp = getMyIDInterpretation(resultado.myidScore ?? 0);
+  const myidStatus = interp.label;
+  const classificacao = interp.status;
   const fpData = getMyIDFingerprintData(resultado.componentScores);
 
   return (
@@ -91,10 +94,10 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             <div className="flex flex-col items-center py-6 text-center">
               <h2 className="text-xl font-bold mb-4">Índice MyID Final</h2>
 
-              <div className={`px-8 py-6 rounded-2xl border-2 shadow-sm mb-6 ${getMyIDSeverityColor(resultado.classificacao)}`}>
+              <div className={`px-8 py-6 rounded-2xl border-2 shadow-sm mb-6 ${getMyIDSeverityColor(classificacao)}`}>
                 <div className="text-5xl font-black">{resultado.myidScore.toFixed(1)}</div>
-                <div className="text-base font-bold mt-2">{resultado.myidStatus}</div>
-                <div className="text-xs uppercase tracking-widest mt-1 opacity-80">{resultado.classificacao}</div>
+                <div className="text-base font-bold mt-2">{myidStatus}</div>
+                <div className="text-xs uppercase tracking-widest mt-1 opacity-80">{classificacao}</div>
               </div>
 
               <div className="w-full max-w-sm mx-auto">

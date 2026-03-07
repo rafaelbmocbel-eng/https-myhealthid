@@ -378,19 +378,17 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
       {/* Nível 1: Barra Principal de Ferramentas (Studio Mode) */}
       <Tabs defaultValue="avaliacao" className="w-full">
-        <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60 mb-6">
+        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/60 mb-6">
           <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
             <ClipboardList className="h-3.5 w-3.5" /> Avaliação
           </TabsTrigger>
           <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
             <Dumbbell className="h-3.5 w-3.5" /> Treinos
           </TabsTrigger>
-          <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
-            <BarChart3 className="h-3.5 w-3.5" /> Evolução
+          <TabsTrigger value="prontuario" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
+            <StickyNote className="h-3.5 w-3.5" /> Evoluções e Prontuário
           </TabsTrigger>
-          <TabsTrigger value="notas" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
-            <StickyNote className="h-3.5 w-3.5" /> Notas
-          </TabsTrigger>
+
         </TabsList>
 
         {/* --- Aba 1: AVALIAÇÃO (Contém a interface antiga Inteira) --- */}
@@ -625,34 +623,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           <StudioTreinosTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
         </TabsContent>
 
-        {/* --- Aba 3: EVOLUÇÃO --- */}
-        <TabsContent value="evolucao" className="mt-4 space-y-6">
-          <Card className="border-identidade/20 overflow-hidden shadow-sm">
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center gap-2 mb-4">
-                <div className="h-8 w-8 rounded-lg bg-identidade/10 flex items-center justify-center">
-                  <BarChart3 className="h-4 w-4 text-identidade" />
-                </div>
-                <div>
-                  <h4 className="font-bold text-sm">Evolução MyID — Questionários</h4>
-                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Comparação de Scores e Perfil Sistêmico</p>
-                </div>
-              </div>
 
-              <QuestionariosComparacao
-                linksAvPaciente={linksAvPaciente}
-                respostas={respostas}
-              />
-            </CardContent>
-          </Card>
-
-          <StudioEvolucaoTab pacienteId={paciente.id} />
+        {/* --- Aba 4: EVOLUÇÕES E PRONTUÁRIO --- */}
+        <TabsContent value="prontuario" className="mt-4">
+          <StudioNotasTab pacienteId={paciente.id} showSummary={true} />
         </TabsContent>
 
-        {/* --- Aba 4: NOTAS --- */}
-        <TabsContent value="notas" className="mt-4">
-          <StudioNotasTab pacienteId={paciente.id} />
-        </TabsContent>
       </Tabs>
 
       {/* PDF Report Modal */}

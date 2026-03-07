@@ -263,9 +263,9 @@ export default function Agenda() {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
-      // Snap to 30-min increments
+      // Snap to 15-min increments
       const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
-      const minutesDelta = Math.round(delta.dy / pxPerMin / 30) * 30;
+      const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
       const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - d.durationMin, d.origStartMin + minutesDelta));
 
       let newDayIndex = d.dayIndex;
@@ -352,34 +352,66 @@ export default function Agenda() {
   // Calculate side-by-side columns for overlapping appointments
   const getOverlapLayout = (dayAgs: Agendamento[]) => {
     const activeAgs = dayAgs.filter(ag => ag.status !== 'cancelado');
-    const layout: Record<string, { col: number; totalCols: number }> = {};
-    // Sort by start time
+    if (activeAgs.length === 0) return {};
+
     const sorted = [...activeAgs].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
-    // Group overlapping appointments
-    const groups: Agendamento[][] = [];
+    const layout: Record<string, { col: number; totalCols: number }> = {};
+
+    // 1. Group into Clusters (Connected Components)
+    const clusters: Agendamento[][] = [];
     sorted.forEach(ag => {
       const agStart = parseISO(ag.data_inicio).getTime();
       const agEnd = parseISO(ag.data_fim).getTime();
-      let placed = false;
-      for (const group of groups) {
-        const groupOverlaps = group.some(g => {
-          const gStart = parseISO(g.data_inicio).getTime();
-          const gEnd = parseISO(g.data_fim).getTime();
-          return agStart < gEnd && agEnd > gStart;
-        });
-        if (groupOverlaps) {
-          group.push(ag);
-          placed = true;
-          break;
+
+      const overlappingClusterIndices = clusters.reduce((acc, cluster, idx) => {
+        if (cluster.some(c => {
+          const cS = parseISO(c.data_inicio).getTime();
+          const cE = parseISO(c.data_fim).getTime();
+          return agStart < cE && agEnd > cS;
+        })) acc.push(idx);
+        return acc;
+      }, [] as number[]);
+
+      if (overlappingClusterIndices.length === 0) {
+        clusters.push([ag]);
+      } else {
+        const firstIdx = overlappingClusterIndices[0];
+        clusters[firstIdx].push(ag);
+        // Merge multiple clusters if ag connects them
+        for (let i = overlappingClusterIndices.length - 1; i > 0; i--) {
+          const otherIdx = overlappingClusterIndices[i];
+          clusters[firstIdx].push(...clusters[otherIdx]);
+          clusters.splice(otherIdx, 1);
         }
       }
-      if (!placed) groups.push([ag]);
     });
-    groups.forEach(group => {
-      group.forEach((ag, i) => {
-        layout[ag.id] = { col: i, totalCols: group.length };
+
+    // 2. Assign columns within each cluster (Greedy Column Packing)
+    clusters.forEach(cluster => {
+      const columns: string[][] = [];
+      cluster.forEach(ag => {
+        const agStart = parseISO(ag.data_inicio).getTime();
+        const agEnd = parseISO(ag.data_fim).getTime();
+
+        let colIdx = -1;
+        for (let i = 0; i < columns.length; i++) {
+          const overlapsInCol = columns[i].some(id => {
+            const other = cluster.find(c => c.id === id)!;
+            return agStart < parseISO(other.data_fim).getTime() && agEnd > parseISO(other.data_inicio).getTime();
+          });
+          if (!overlapsInCol) { colIdx = i; break; }
+        }
+
+        if (colIdx >= 0) columns[colIdx].push(ag.id);
+        else columns.push([ag.id]);
+      });
+
+      cluster.forEach(ag => {
+        const colIndex = columns.findIndex(col => col.includes(ag.id));
+        layout[ag.id] = { col: colIndex, totalCols: columns.length };
       });
     });
+
     return layout;
   };
 
@@ -511,7 +543,31 @@ export default function Agenda() {
   const pendentes = agendamentos.filter(ag => ag.status === 'pendente');
 
   const handleConfirmar = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'confirmado' });
+
+    // Automação: Adicionar conduta automática se houver paciente
+    if (ag?.paciente_id) {
+      const { data: prot } = await supabase
+        .from('protocolos')
+        .select('objetivo_geral')
+        .eq('paciente_id', ag.paciente_id)
+        .eq('status', 'ativo')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (prot?.objetivo_geral) {
+        await supabase.from('studio_notas').insert({
+          paciente_id: ag.paciente_id,
+          terapeuta_id: user?.id,
+          conteudo: `Presença Confirmada - Conduta: ${prot.objetivo_geral}`,
+          tipo: 'observacao',
+          data_nota: new Date().toISOString()
+        });
+      }
+    }
+
     refetchNotifications();
     toast({ title: '✅ Agendamento confirmado!' });
   };
@@ -838,9 +894,14 @@ export default function Agenda() {
                     const overlapLayout = getOverlapLayout(dayAgs);
                     return (
                       <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
-                        {dayAgs.map(ag => {
+                        {dayAgs.filter(ag => ag.status !== 'cancelado').map(ag => {
                           const pos = getAgPos(ag);
                           const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                          const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
+                          const colWidth = 100 / layout.totalCols;
+                          const leftPct = layout.col * colWidth;
+                          const isDraggingThis = dragging?.ag.id === ag.id;
+                          const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
 
                           return (
                             <div
@@ -884,6 +945,11 @@ export default function Agenda() {
                                   <span className="ml-auto text-[8px] opacity-60 shrink-0">{layout.col + 1}/{layout.totalCols}</span>
                                 )}
                               </div>
+                              {layout.totalCols > 1 && (
+                                <div className="absolute top-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-white/40 text-[10px] font-black border border-black/5 shadow-sm">
+                                  {layout.col + 1}
+                                </div>
+                              )}
                               {pos.height > 40 && layout.totalCols <= 3 && (
                                 <div className="text-[8px] opacity-70 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}

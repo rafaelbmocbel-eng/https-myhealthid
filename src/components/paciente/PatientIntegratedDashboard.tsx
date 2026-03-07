@@ -432,17 +432,17 @@ export default function PatientIntegratedDashboard({
                   <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 10 }} domain={[0, 10]} />
                   <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Line yAxisId="right" type="monotone" dataKey="myidScore" name="MyID" stroke="hsl(270,60%,55%)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
+                  <Line yAxisId="right" type="monotone" dataKey="myidScore" name="MyID" stroke="hsl(260, 65%, 65%)" strokeWidth={2.5} dot={{ r: 4 }} connectNulls />
                   {serviceType === 'cob_zero' && (
                     <>
-                      <Bar yAxisId="left" dataKey="cobb" name="Cobb°" fill="hsl(210,70%,55%)" radius={[4, 4, 0, 0]} barSize={20} />
-                      <Line yAxisId="left" type="monotone" dataKey="risco" name="Risco%" stroke="#f97316" strokeWidth={1.5} dot={{ r: 3 }} connectNulls />
+                      <Bar yAxisId="left" dataKey="cobb" name="Cobb°" fill="hsl(230, 70%, 60%)" radius={[4, 4, 0, 0]} barSize={20} />
+                      <Line yAxisId="left" type="monotone" dataKey="risco" name="Risco%" stroke="hsl(15, 90%, 50%)" strokeWidth={1.5} dot={{ r: 3 }} connectNulls />
                     </>
                   )}
                   {serviceType === 'studio' && (
                     <>
-                      <Bar yAxisId="left" dataKey="gordura" name="Gordura%" fill="hsl(150,60%,45%)" radius={[4, 4, 0, 0]} barSize={20} />
-                      <Line yAxisId="left" type="monotone" dataKey="peso" name="Peso" stroke="#6366f1" strokeWidth={1.5} dot={{ r: 3 }} connectNulls />
+                      <Bar yAxisId="left" dataKey="gordura" name="Gordura%" fill="hsl(210, 75%, 55%)" radius={[4, 4, 0, 0]} barSize={20} />
+                      <Line yAxisId="left" type="monotone" dataKey="peso" name="Peso" stroke="hsl(230, 70%, 60%)" strokeWidth={1.5} dot={{ r: 3 }} connectNulls />
                     </>
                   )}
                 </ComposedChart>

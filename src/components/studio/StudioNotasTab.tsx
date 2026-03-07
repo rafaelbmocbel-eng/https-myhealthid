@@ -10,11 +10,14 @@ import { ptBR } from 'date-fns/locale';
 import { Plus, StickyNote, Trash2, Save, Loader2, Target, ClipboardList } from 'lucide-react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
+import ResumoProntuario from '@/components/paciente/ResumoProntuario';
+
 interface Props {
   pacienteId: string;
+  showSummary?: boolean;
 }
 
-export default function StudioNotasTab({ pacienteId }: Props) {
+export default function StudioNotasTab({ pacienteId, showSummary = false }: Props) {
   const { notas, isLoading, adicionarNota, deletarNota } = useStudioNotas(pacienteId);
   const [showForm, setShowForm] = useState(false);
   const [conteudo, setConteudo] = useState('');
@@ -34,7 +37,9 @@ export default function StudioNotasTab({ pacienteId }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
+      {showSummary && <ResumoProntuario pacienteId={pacienteId} />}
+
       <div className="flex items-center justify-between">
         <h3 className="font-bold text-foreground">Anotações do Educador</h3>
         <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowForm(!showForm)}>

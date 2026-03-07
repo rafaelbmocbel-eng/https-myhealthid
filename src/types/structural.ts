@@ -478,16 +478,16 @@ export function classifyScore(score: number): string {
 }
 
 export function classifyScoreColor(score: number): string {
-  if (score <= 2) return 'text-emerald-600';
-  if (score <= 4) return 'text-green-500';
-  if (score <= 6) return 'text-amber-600';
+  if (score <= 2) return 'text-violet-500';
+  if (score <= 4) return 'text-indigo-500';
+  if (score <= 6) return 'text-amber-500';
   if (score <= 8) return 'text-orange-600';
   return 'text-red-600';
 }
 
 export function classifyScoreBg(score: number): string {
-  if (score <= 2) return 'bg-emerald-50 border-emerald-200';
-  if (score <= 4) return 'bg-green-50 border-green-200';
+  if (score <= 2) return 'bg-violet-50 border-violet-200';
+  if (score <= 4) return 'bg-indigo-50 border-indigo-200';
   if (score <= 6) return 'bg-amber-50 border-amber-200';
   if (score <= 8) return 'bg-orange-50 border-orange-200';
   return 'bg-red-50 border-red-200';

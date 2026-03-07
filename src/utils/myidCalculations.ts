@@ -1,6 +1,6 @@
 // ═══════════════════════════════════════════════════════════
 // Motor de Cálculo MyID v2
-// Fórmula: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
+// Fórmula: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
 
 import type {
@@ -117,36 +117,78 @@ export function calcularScoreN(bloco6: MyIDBloco6Data): number {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
+// FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
+// ── Interpretation Utility (Central Source of Truth) ──
+export interface Interpretation {
+  status: string;
+  label: string;
+  color: string;
+  recommendation: string;
+}
+
+export function getMyIDInterpretation(score: number): Interpretation {
+  const val = score ?? 0;
+
+  if (val < 3) {
+    return {
+      status: 'LEVE',
+      label: 'RECUPERAÇÃO FAVORÁVEL',
+      color: '#8b5cf6', // Violet
+      recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.'
+    };
+  }
+  if (val < 6) {
+    return {
+      status: 'MODERADO',
+      label: 'SOBRECARGA MODERADA',
+      color: '#3b82f6', // Blue
+      recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.'
+    };
+  }
+  if (val < 8) {
+    return {
+      status: 'SEVERO',
+      label: 'SOBRECARGA CRÍTICA',
+      color: '#f59e0b', // Amber/Orange
+      recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.'
+    };
+  }
+  if (val < 9.5) {
+    return {
+      status: 'CRÍTICO',
+      label: 'RISCO DE CRONIFICAÇÃO',
+      color: '#ef4444', // Red
+      recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.'
+    };
+  }
+  return {
+    status: 'EXTREMO',
+    label: 'RISCO DE COLAPSO',
+    color: '#7f1d1d', // Deep Red
+    recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
+  };
+}
+
 export function calcularMyID(
   d: number, efi: number, p: number, i: number,
   r: number, c: number, n: number,
   af: number = 5, hid: number = 7, nut: number = 7, erg: number = 7, med: number = 0
 ): MyIDResult {
-  // Numerador: Demanda
-  const numerador = ((d + efi) * (1 + p / 10)) + i;
-
-  // Denominador: Capacidade (mínimo 0.5 para evitar divisão por 0)
+  const numerador = ((d + efi) * (1 + p / 10)) + p + i;
   const denominador = Math.max(0.5, (r + c + af + hid + nut + erg) - n - med);
-
   const myidRaw = numerador / denominador;
   const myidScore = Math.min(10, Math.max(0, Math.round(myidRaw * 10) / 10));
 
-  // Status baseado nas 4 zonas clínicas
-  let myidStatus = 'Recuperação Favorável';
-  let classificacao = 'LEVE';
-  if (myidScore >= 8) { myidStatus = 'Risco de Cronificação'; classificacao = 'EXTREMO'; }
-  else if (myidScore >= 6) { myidStatus = 'Sobrecarga Crítica'; classificacao = 'CRÍTICO'; }
-  else if (myidScore >= 3) { myidStatus = 'Sobrecarga Moderada'; classificacao = 'MODERADO'; }
+  const interp = getMyIDInterpretation(myidScore);
 
   return {
     myidScore,
-    myidStatus,
+    myidStatus: interp.label,
     componentScores: { D: d, EFI: efi, P: p, I: i, R: r, C: c, N: n, AF: af, HID: hid, NUT: nut, ERG: erg },
     redFlagsDetected: false,
     redFlagAlerts: [],
-    classificacao,
+    classificacao: interp.status,
   };
 }
 
@@ -154,13 +196,15 @@ export function calcularMyID(
 // Color scale: violet (good) → blue → orange → red (bad)
 // High value = Hot/Bad for Demands
 export function getThermalColor(v: number): string {
-  if (v <= 1) return '#10b981';      // emerald-500 (Safe)
-  if (v <= 2) return '#22c55e';      // green-500
-  if (v <= 3) return '#8b5cf6';      // violet-500
-  if (v <= 4.5) return '#6366f1';    // indigo-500
-  if (v <= 6) return '#f59e0b';      // amber-500
-  if (v <= 8) return '#f97316';      // orange-500
-  return '#ef4444';                   // red-500
+  const val = Math.max(0, Math.min(10, v));
+  // Same scale as MyIDFingerprint to ensure consistency
+  if (val <= 1) return 'hsl(270, 60%, 75%)';   // Light Violet (Safe)
+  if (val <= 2.5) return 'hsl(260, 65%, 65%)'; // Violet
+  if (v <= 4) return 'hsl(230, 70%, 60%)';     // Indigo
+  if (v <= 5.5) return 'hsl(210, 75%, 55%)';   // Blue
+  if (v <= 7) return 'hsl(35, 85%, 55%)';      // Amber
+  if (v <= 8.5) return 'hsl(15, 90%, 50%)';    // Orange
+  return 'hsl(0, 85%, 50%)';                   // Red (Critical)
 }
 
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
@@ -185,10 +229,17 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
 
 // ── Classification color helpers ──
 export function getMyIDSeverityColor(classificacao: string): string {
+  const interp = getMyIDInterpretation(
+    classificacao === 'LEVE' ? 0 :
+      classificacao === 'MODERADO' ? 4 :
+        classificacao === 'SEVERO' ? 7 :
+          classificacao === 'CRÍTICO' ? 9 : 10
+  );
+
   switch (classificacao) {
-    case 'LEVE': return 'text-green-600 bg-green-50 border-green-200';
-    case 'MODERADO': return 'text-amber-600 bg-amber-50 border-amber-200';
-    case 'SEVERO': return 'text-orange-600 bg-orange-50 border-orange-200';
+    case 'LEVE': return 'text-violet-600 bg-violet-50 border-violet-200';
+    case 'MODERADO': return 'text-blue-600 bg-blue-50 border-blue-200';
+    case 'SEVERO': return 'text-amber-600 bg-amber-50 border-amber-200';
     case 'CRÍTICO': return 'text-red-600 bg-red-50 border-red-200';
     case 'EXTREMO': return 'text-red-950 bg-red-50 border-red-900';
     default: return 'text-muted-foreground bg-muted border-border';

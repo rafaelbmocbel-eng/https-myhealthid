@@ -10,16 +10,7 @@ interface Props {
   highlightedKey?: string | null;
 }
 
-function valueToColor(value: number): string {
-  const v = Math.max(0, Math.min(10, value));
-  if (v <= 1) return 'hsl(270, 60%, 75%)';
-  if (v <= 2.5) return 'hsl(260, 65%, 65%)';
-  if (v <= 4) return 'hsl(230, 70%, 60%)';
-  if (v <= 5.5) return 'hsl(210, 75%, 55%)';
-  if (v <= 7) return 'hsl(35, 85%, 55%)';
-  if (v <= 8.5) return 'hsl(15, 90%, 50%)';
-  return 'hsl(0, 85%, 50%)';
-}
+import { getThermalColor } from '@/utils/myidCalculations';
 
 function valueToOpacity(value: number): number {
   return 0.45 + (value / 10) * 0.55;
@@ -58,7 +49,7 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
       const valuePct = Math.max(ring.value / 10, 0.08);
 
       // Use the color passed from the utility which follows the correct thermal logic
-      const color = ring.color || valueToColor(ring.value);
+      const color = ring.color || getThermalColor(ring.value);
       const opacity = 0.5 + (ring.value / 10) * 0.5;
 
       // Opening at top of fingerprint
@@ -95,7 +86,7 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
     return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${rx.toFixed(2)} ${ry.toFixed(2)} 0 ${largeArc} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
   }, [cx, cy]);
 
-  const centerColor = valueToColor(myidScore);
+  const centerColor = getThermalColor(myidScore);
   const label = scoreStatusLabel(myidScore);
 
   const handleRidgeClick = (ridge: any, idx: number) => {

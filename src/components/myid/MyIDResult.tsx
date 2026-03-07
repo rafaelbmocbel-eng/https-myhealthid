@@ -4,7 +4,7 @@ import { Progress } from "@/components/ui/progress";
 import MyIDFingerprint from './MyIDFingerprint';
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
-import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
+import { getMyIDFingerprintData, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { shareMyIDResults } from '@/utils/whatsapp';
 
 interface MyIDResultProps {
@@ -92,8 +92,8 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
 
     const {
         MyID_score,
-        status,
-        color,
+        status: _status,
+        color: _color,
         component_scores,
         red_flags_detected,
         red_flags_details,
@@ -102,8 +102,13 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
         focus_areas,
         healing_history,
         medications,
-        recommendation
+        recommendation: _recommendation // captured but overridden
     } = result;
+
+    const interp = getMyIDInterpretation(MyID_score ?? 0);
+    const status = interp.label;
+    const color = interp.color;
+    const recommendation = interp.recommendation;
 
     const scores = component_scores || {};
     const D = scores.D ?? scores.D_pain ?? 0;
@@ -135,61 +140,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 <CardContent className="p-8 text-center space-y-6">
                     <div className="space-y-4">
                         <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">ÍNDICE MyID</h2>
-                        <div className="flex justify-center items-center gap-4">
-                            <span className="text-6xl sm:text-8xl font-black" style={{ color: color }}>{MyID_score?.toFixed(1)}</span>
-                            <span className="text-3xl sm:text-5xl text-muted-foreground/50">/ 10</span>
-                        </div>
-
-                        {/* Severity gauge bar - inspired by reference */}
-                        <div className="max-w-md mx-auto mt-4 space-y-2">
-                            <div className="relative h-5 rounded-full overflow-hidden shadow-inner"
-                                style={{ background: 'linear-gradient(to right, hsl(142,70%,45%), hsl(48,90%,50%), hsl(25,90%,50%), hsl(0,85%,45%))' }}>
-                                <div
-                                    className="absolute top-0 w-1 h-full bg-white shadow-lg border border-foreground/20 rounded-full transition-all duration-700"
-                                    style={{ left: `${Math.min(Math.max(MyID_score / 10 * 100, 2), 98)}%`, transform: 'translateX(-50%)' }}
-                                />
-                                {/* Marker triangle */}
-                                <div
-                                    className="absolute -top-2 transition-all duration-700"
-                                    style={{ left: `${Math.min(Math.max(MyID_score / 10 * 100, 2), 98)}%`, transform: 'translateX(-50%)' }}
-                                >
-                                    <div className="w-0 h-0 border-l-[6px] border-r-[6px] border-t-[8px] border-l-transparent border-r-transparent border-t-foreground/60" />
-                                </div>
-                            </div>
-                            <div className="flex justify-between text-[10px] text-muted-foreground font-bold">
-                                <span>0</span>
-                                <span>3</span>
-                                <span>6</span>
-                                <span>8</span>
-                                <span>10</span>
-                            </div>
-                        </div>
-
-                        {/* Severity categories */}
-                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-lg mx-auto mt-4">
-                            {[
-                                { range: '< 3', label: 'RECUPERAÇÃO FAVORÁVEL', bg: 'bg-green-50', border: 'border-green-300', text: 'text-green-800', icon: '✅' },
-                                { range: '3-6', label: 'SOBRECARGA MODERADA', bg: 'bg-yellow-50', border: 'border-yellow-300', text: 'text-yellow-800', icon: '⚠️' },
-                                { range: '6-8', label: 'SOBRECARGA CRÍTICA', bg: 'bg-orange-50', border: 'border-orange-300', text: 'text-orange-800', icon: '🔶' },
-                                { range: '> 8', label: 'RISCO CRONIFICAÇÃO', bg: 'bg-red-50', border: 'border-red-300', text: 'text-red-800', icon: '🚨' },
-                            ].map(cat => (
-                                <div key={cat.range} className={`p-2 rounded-lg border ${cat.bg} ${cat.border} ${
-                                    (MyID_score < 3 && cat.range === '< 3') ||
-                                    (MyID_score >= 3 && MyID_score < 6 && cat.range === '3-6') ||
-                                    (MyID_score >= 6 && MyID_score < 8 && cat.range === '6-8') ||
-                                    (MyID_score >= 8 && cat.range === '> 8')
-                                        ? 'ring-2 ring-offset-1 ring-current shadow-md' : 'opacity-50'
-                                }`}>
-                                    <div className="text-xs font-black">{cat.icon} {cat.range}</div>
-                                    <div className={`text-[9px] font-bold ${cat.text} leading-tight mt-0.5`}>{cat.label}</div>
-                                </div>
-                            ))}
-                        </div>
-
-                        <div className="inline-block mt-4 px-6 py-2 rounded-full font-bold text-lg text-white shadow-md"
-                            style={{ backgroundColor: color }}>
-                            {status}
-                        </div>
+                        {/* Old visual representation removed - now using MyIDFormulaDisplay below */}
 
                         <div className="bg-muted/30 p-6 rounded-xl border mt-6 shadow-sm text-left">
                             <h3 className="font-bold text-lg mb-2">🎯 INTERPRETAÇÃO GERAL:</h3>
@@ -324,54 +275,52 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
             <Card className="bg-blue-50 border-blue-200 shadow-sm border-l-4 border-l-blue-500 pt-2">
                 <CardHeader className="pb-2">
                     <CardTitle className="text-blue-900 text-xl font-bold flex items-center gap-2">
-                        <span>🚀</span> PLANO DE AÇÃO MULTIDISCIPLINAR
+                        <span>🚀</span> DICAS PARA SEU BIO-ALINHAMENTO
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6 pt-2">
 
                     <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
-                        <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> PARA O MÉDICO:</h4>
+                        <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> SUA SAÚDE E SISTEMA:</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            Paciente apresenta Score MyID de <strong>{MyID_score.toFixed(1)}</strong>, com predomínio de dor <strong>{pain_pattern}</strong>.
-                            Sinal de Alerta (Red Flags) <strong>{red_flags_detected ? 'PRESENTE' : 'AUSENTE'}</strong>.
-                            Medicações em uso: <strong>{medications?.length > 0 ? medications.join(', ') : 'Nenhuma contínua relatada'}</strong>.
+                            Seu Score MyID é de <strong>{MyID_score.toFixed(1)}</strong>, o que reflete um padrão de dor <strong>{pain_pattern}</strong>.
+                            {red_flags_detected ? ' Identificamos sinais que precisam de uma conversa cuidadosa com seu profissional de saúde.' : ' Seu sistema não apresenta sinais de alerta imediatos.'}
+                            Continue observando como seu corpo reage às medicações {medications?.length > 0 ? `que você já utiliza (${medications.join(', ')})` : 'caso venha a utilizar alguma'}.
                         </p>
                     </div>
 
                     <div className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm">
-                        <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> PARA O ERGONOMISTA:</h4>
+                        <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> SEU AMBIENTE E POSTURA:</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            Score ERG de <strong>{ERG.toFixed(1)}/10</strong>. Usa setup <strong>{translateWorkspace(rawData.bloco_5h_workspace || 'não informado')}</strong>,
-                            passa <strong>{rawData.bloco_5h_sitting_continuous || 0} minutos</strong> sentado continuamente.
-                            Hábitos prejudiciais: <strong>{rawData.bloco_5h_bad_habits?.length > 0 ? rawData.bloco_5h_bad_habits.join(', ') : 'Nenhum relatado'}</strong>.
+                            Com um score de ergonomia de <strong>{ERG.toFixed(1)}/10</strong>, vale olhar para o seu setup <strong>{translateWorkspace(rawData.bloco_5h_workspace || 'atual')}</strong>.
+                            Como você costuma passar <strong>{rawData.bloco_5h_sitting_continuous || 0} minutos</strong> sentado(a) sem interrupção, tente fazer micro-pausas a cada 50 minutos para "resetar" sua postura.
+                            {rawData.bloco_5h_bad_habits?.length > 0 ? ` Atenção especial aos hábitos de ${rawData.bloco_5h_bad_habits.join(', ')}.` : ''}
                         </p>
                     </div>
 
                     <div className="bg-white p-4 rounded-lg border border-orange-100 shadow-sm">
-                        <h4 className="font-bold text-orange-700 flex items-center gap-2 mb-2"><span className="text-lg">💪</span> PARA O PERSONAL TRAINER:</h4>
+                        <h4 className="font-bold text-orange-700 flex items-center gap-2 mb-2"><span className="text-lg">💪</span> SEU CORPO E MOVIMENTO:</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            Score AF de <strong>{AF.toFixed(1)}/10</strong>. Nível de vida <strong>{translateLifestyle(rawData.bloco_5e_lifestyle || 'não informado')}</strong>,
-                            intensidade habitual <strong>{translateIntensity(rawData.bloco_5e_intensity || 'nenhuma')}</strong>.
-                            Dor padrão: <strong>{pain_pattern}</strong>.
+                            Sua atividade física recebeu um score de <strong>{AF.toFixed(1)}/10</strong>. Para alguém com estilo de vida <strong>{translateLifestyle(rawData.bloco_5e_lifestyle || 'atual')}</strong>,
+                            o foco deve ser manter a constância {rawData.bloco_5e_intensity !== 'none' ? `na intensidade ${translateIntensity(rawData.bloco_5e_intensity)}` : ''} sem ultrapassar o limite da sua dor <strong>{pain_pattern}</strong>.
+                            O movimento é seu melhor aliado na regulação da dor.
                         </p>
                     </div>
 
                     <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                        <h4 className="font-bold text-green-700 flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> PARA O NUTRICIONISTA:</h4>
+                        <h4 className="font-bold text-green-700 flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> SUA NUTRIÇÃO E HIDRATAÇÃO:</h4>
                         <p className="text-gray-700 text-sm leading-relaxed">
-                            Score NUT de <strong>{NUT.toFixed(1)}/10</strong>. Consumo de água: <strong>{rawData.bloco_5f_water_liters || 0}L</strong>.
-                            Score Hidratação: <strong>{HID.toFixed(1)}/10</strong>.
-                            Frequência de inflamatórios: <strong>{translateInflammatory(rawData.bloco_5g_inflammatory || 'não informado')}</strong>.
+                            Sua nota de nutrição foi <strong>{NUT.toFixed(1)}/10</strong>. Você relatou beber cerca de <strong>{rawData.bloco_5f_water_liters || 0}L</strong> de água por dia.
+                            Manter sua hidratação (Score: <strong>{HID.toFixed(1)}/10</strong>) é fundamental para a saúde dos seus tecidos e para reduzir o ruído inflamatório no seu sistema.
                         </p>
                     </div>
 
                     {hasWomenHealth && (
                         <div className="bg-pink-50 p-4 rounded-lg border border-pink-200 shadow-sm">
-                            <h4 className="font-bold text-pink-700 flex items-center gap-2 mb-2"><span className="text-lg">👩</span> PARA O GINECOLOGISTA:</h4>
+                            <h4 className="font-bold text-pink-700 flex items-center gap-2 mb-2"><span className="text-lg">👩</span> SAÚDE FEMININA E CICLO:</h4>
                             <p className="text-gray-700 text-sm leading-relaxed">
-                                Score de Ruído Sistêmico: <strong>{N.toFixed(1)}/10</strong>.
-                                Piora a dor no ciclo? <strong>{rawData.bloco_6_cycle_affects_pain ? 'SIM' : 'NÃO'}</strong>.
-                                Uso hormonal: <strong>{translateHormonal(rawData.bloco_6_hormonal_use || 'none')}</strong>.
+                                Percebemos que seu ciclo menstrual <strong>{rawData.bloco_6_cycle_affects_pain ? 'influencia' : 'tem pouca influência'}</strong> na sua percepção de dor.
+                                Esse "ruído" sistêmico (Score: <strong>{N.toFixed(1)}/10</strong>) é um fator importante para ajustarmos suas atividades em diferentes fases do mês.
                             </p>
                         </div>
                     )}

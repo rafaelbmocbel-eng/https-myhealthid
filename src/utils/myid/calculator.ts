@@ -3,6 +3,7 @@ import {
     MyIDBloco4Data, MyIDBloco5Data, MyIDBloco6Data,
     MyIDResult as MyIDResultType, FingerprintRing
 } from '@/types/myid';
+import { getMyIDInterpretation } from '@/utils/myidCalculations';
 
 export interface MyIDResponses extends Record<string, any> {
     session_id?: string;
@@ -317,31 +318,31 @@ export class MyIDCalculator {
         const medications: string[] = [];
 
         const b6 = this.responses.bloco6;
-        
+
         // AINE diário
         if (this.responses.bloco_6_daily_nsaid ?? b6?.bloco_6_daily_nsaid) {
             medPenalty += 2;
             medications.push('AINE diário');
         }
-        
+
         // Antidepressivo
         if (this.responses.bloco_6_antidepressant ?? b6?.bloco_6_antidepressant) {
             medPenalty += 1.5;
             medications.push(`Antidepressivo${b6?.bloco_6_antidepressant_type ? ` (${b6.bloco_6_antidepressant_type})` : ''}`);
         }
-        
+
         // Relaxante muscular
         if (this.responses.bloco_6_muscle_relaxant ?? b6?.bloco_6_muscle_relaxant) {
             medPenalty += 1.5;
             medications.push('Relaxante muscular');
         }
-        
+
         // Corticóide
         if (this.responses.bloco_6_corticoid ?? b6?.bloco_6_corticoid) {
             medPenalty += 2;
             medications.push('Corticóide');
         }
-        
+
         // Suplementação (positivo = -0.5 penalty, ou seja, melhora capacidade)
         if (this.responses.bloco_6_supplementation ?? b6?.bloco_6_supplementation) {
             medPenalty -= 0.5;
@@ -393,7 +394,9 @@ export class MyIDCalculator {
         const N = this.scores['N'] || 0;
         const MedPenalty = (this.result.med_penalty || 0) + (this.result.hormonal_impact || 0);
 
-        const numerator = ((D + EFI) * (1 + (P / 10))) + I;
+        // O fator P (Psicológico) atua como um multiplicador (amplificador) dos sintomas físicos (D + EFI)
+        // E também como uma demanda base aditiva, garantindo que o score reflita carga mesmo sem dor física.
+        const numerator = ((D + EFI) * (1 + (P / 10))) + P + I;
         const denominator = (R + C + AF + HID + NUT + ERG) - N - MedPenalty;
 
         let myid = 10;
@@ -412,37 +415,11 @@ export class MyIDCalculator {
 
     // ==================== INTERPRETAÇÃO ====================
     interpretStatus(): string {
-        const myid = this.result.MyID || 5;
-        let status = '';
-        let color = '';
-        let recommendation = '';
-
-        if (myid < 2) {
-            status = 'LEVE';
-            color = '#10B981';
-            recommendation = 'Seu corpo está em excelente estado de recuperação';
-        } else if (myid < 4) {
-            status = 'MODERADO';
-            color = '#3B82F6';
-            recommendation = 'Sistema balanceado, recuperação progressiva';
-        } else if (myid < 6) {
-            status = 'SEVERO';
-            color = '#F59E0B';
-            recommendation = 'Demanda começando a exceder capacidade';
-        } else if (myid < 8) {
-            status = 'CRÍTICO';
-            color = '#EF4444';
-            recommendation = 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar necessária';
-        } else {
-            status = 'EXTREMO';
-            color = '#7F1D1D';
-            recommendation = 'SISTEMA EM COLAPSO - Ação urgente necessária';
-        }
-
-        this.result.status = status;
-        this.result.color = color;
-        this.result.recommendation = recommendation;
-        return status;
+        const interp = getMyIDInterpretation(this.result.MyID ?? 0);
+        this.result.status = interp.status;
+        this.result.color = interp.color;
+        this.result.recommendation = interp.recommendation;
+        return interp.status;
     }
 
     // ==================== PRIORIDADE CLÍNICA ====================

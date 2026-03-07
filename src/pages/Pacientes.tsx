@@ -451,10 +451,15 @@ export default function Pacientes() {
                           <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
                       )}
+                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-primary" title="Evoluções e Prontuário"
+                        onClick={() => navigate(`/pacientes/${p.id}?tab=prontuario`)}>
+                        <FileText className="h-3.5 w-3.5" />
+                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Nova Avaliação"
                         onClick={() => navigate(`/pacientes/${p.id}`)}>
                         <ClipboardList className="h-3.5 w-3.5" />
                       </Button>
+
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>

@@ -137,7 +137,7 @@ export default function AgendaPublica() {
       const [hFim] = (config.horario_fim || '18:00:00').split(':').map(Number);
       const duracao = config.duracao_padrao || 45;
       const intervalo = config.intervalo_entre_sessoes || 0;
-      const slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date }[] = [];
+      const slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date; vagasRestantes: number }[] = [];
       let minutoAtual = hIni * 60;
 
       while (minutoAtual + duracao <= hFim * 60) {
