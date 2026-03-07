@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -272,6 +272,31 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     },
     enabled: !!user,
   });
+
+  // Realtime: auto-refresh when myid_avaliacoes changes for this patient
+  useEffect(() => {
+    const channel = supabase
+      .channel(`myid-realtime-${paciente.id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'myid_avaliacoes',
+          filter: `paciente_id=eq.${paciente.id}`,
+        },
+        () => {
+          refetchMyID();
+          refetchLinksMyID();
+          qc.invalidateQueries({ queryKey: ['integrated-myid-link', paciente.id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [paciente.id, refetchMyID, refetchLinksMyID, qc]);
 
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
   const [showStructural, setShowStructural] = useState(false);
