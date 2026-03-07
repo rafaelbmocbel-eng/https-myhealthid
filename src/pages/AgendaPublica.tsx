@@ -123,7 +123,7 @@ export default function AgendaPublica() {
     if (!config) return [];
     const hoje = new Date();
     const inicioSemana = startOfWeek(addDays(hoje, semanaOffset * 7), { weekStartsOn: 1 });
-    const dias: { data: Date; slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date }[] }[] = [];
+    const dias: { data: Date; slots: { hora: string; disponivel: boolean; dataInicio: Date; dataFim: Date; vagasRestantes: number }[] }[] = [];
     const diasSemanaMap: Record<string, number> = { seg: 1, ter: 2, qua: 3, qui: 4, sex: 5, sab: 6, dom: 0 };
     const diasAtivos = Object.entries(config.dias_semana as Record<string, boolean>)
       .filter(([, ativo]) => ativo)
