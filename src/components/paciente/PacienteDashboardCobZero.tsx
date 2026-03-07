@@ -344,13 +344,36 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   />
                 </div>
               ) : (
-                <IndicesRiscoComprometimento
-                  avaliacoes={avaliacoes}
-                  ultimaIdentidade={ultimaIdentidade}
-                  pacienteId={paciente.id}
-                  onVerRelatorio={onVerRelatorio}
-                  onDeletar={deletar}
-                />
+                <div className="space-y-4">
+                  {avaliacoes.length === 0 ? (
+                    <div className="text-center py-8 text-muted-foreground">
+                      <p>Nenhuma avaliação presencial registrada.</p>
+                      <Button variant="outline" className="mt-3" onClick={() => setIniciandoAvaliacao(true)}>Iniciar Avaliação</Button>
+                    </div>
+                  ) : (
+                    avaliacoes.map((av: any, i: number) => (
+                      <Card key={av.id} className="p-4">
+                        <div className="flex items-center justify-between">
+                          <div>
+                            <p className="font-semibold text-sm">Avaliação {avaliacoes.length - i}</p>
+                            <p className="text-xs text-muted-foreground">{format(parseISO(av.data_avaliacao), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                            {av.cobb_angle && <Badge variant="outline" className="mt-1">Cobb: {av.cobb_angle}°</Badge>}
+                            {av.lenke_type && <Badge variant="secondary" className="ml-1 mt-1">Lenke {av.lenke_type}</Badge>}
+                            {av.risco_level && <Badge className={`ml-1 mt-1 ${RISCO_COLOR[av.risco_level] || ''}`}>{av.risco_level}</Badge>}
+                          </div>
+                          <div className="flex gap-2">
+                            <Button size="sm" variant="outline" onClick={() => onVerRelatorio(av)}>
+                              <FileText className="h-3.5 w-3.5 mr-1" /> Relatório
+                            </Button>
+                            <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deletar(av.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
+                </div>
               )}
             </TabsContent>
 
