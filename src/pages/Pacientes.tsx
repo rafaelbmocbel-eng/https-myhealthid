@@ -154,8 +154,6 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
 
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
