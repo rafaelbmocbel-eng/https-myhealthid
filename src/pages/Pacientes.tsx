@@ -335,6 +335,8 @@ export default function Pacientes() {
     });
   }, [pacientes, search, filterServico, sortBy, ultimosAgendamentos]);
 
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
+
   if (isLoading) {
     return (
       <AppLayout>
