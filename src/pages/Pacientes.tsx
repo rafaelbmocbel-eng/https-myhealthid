@@ -16,12 +16,24 @@ import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
    Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
-   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText,
+   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
+import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
+
+// ── Classificação automática de pacientes ───────────────────────────────────
+type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
+
+const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string }[] = [
+  { key: 'lead',          label: 'Lead',          emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
+  { key: 'novo',          label: 'Cliente Novo',  emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
+  { key: 'recorrente',    label: 'Recorrente',    emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+  { key: 'inadimplente',  label: 'Inadimplente',  emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
+  { key: 'a_pagar',       label: 'A Pagar',       emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
+];
 
 // ── Utilitários de máscara ──────────────────────────────────────────────────
 const maskPhone = (v: string) => {
