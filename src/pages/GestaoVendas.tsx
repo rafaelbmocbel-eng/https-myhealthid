@@ -474,7 +474,7 @@ export default function GestaoVendas() {
                         {/* Leads */}
                         <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
                             {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
-                                filteredLeads.slice(0, 10).map((p: any) => (
+                                filteredLeads.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
