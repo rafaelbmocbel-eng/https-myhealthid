@@ -391,6 +391,31 @@ type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
                     ))}
                 </div>
 
+                {/* ── Classification Filter Chips ── */}
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setFilterTag('todos')}
+                        className={cn(
+                            'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                            filterTag === 'todos' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                        )}
+                    >
+                        Todos ({patients.length})
+                    </button>
+                    {CLASSIFICACOES.map(c => (
+                        <button
+                            key={c.key}
+                            onClick={() => setFilterTag(filterTag === c.key ? 'todos' : c.key)}
+                            className={cn(
+                                'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                                filterTag === c.key ? cn(c.bgColor, c.color) : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                            )}
+                        >
+                            {c.emoji} {c.label} ({classificationCounts[c.key] || 0})
+                        </button>
+                    ))}
+                </div>
+
                 {/* ══════════════════ PIPELINE TAB ══════════════════ */}
                 {activeTab === 'pipeline' && (
                     <div className="space-y-4">
