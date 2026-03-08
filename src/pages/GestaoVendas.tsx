@@ -552,7 +552,7 @@ export default function GestaoVendas() {
                         {/* A Pagar 🟠 */}
                         {aPagar.length > 0 && (
                             <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
-                                {aPagar.slice(0, 10).map((p: any) => (
+                                {aPagar.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
