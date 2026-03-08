@@ -264,19 +264,19 @@ export default function GestaoVendas() {
         return anivA.getTime() - anivB.getTime();
     });
 
-    const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>) => {
+    const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>, templateId: string = 'acao-rapida') => {
         const p = patients.find((pat: any) => pat.id === patientId);
         if (!p?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
 
-        toast({ title: 'Enviando WhatsApp...', description: 'Aguarde um momento.' });
+        toast({ title: 'Abrindo o WhatsApp...', description: 'Aguarde um momento.' });
 
         try {
             const result = await callback(`${p.nome} ${p.sobrenome || ''}`.trim(), p.telefone);
             if (result.success) {
-                toast({ title: '✅ WhatsApp Enviado!', description: `Mensagem enviada com sucesso para ${p.nome}.` });
-                logMensagem.mutate({ paciente_id: patientId, mensagem: "Mensagem automatizada enviada via Z-API", tipo: 'sistema' });
+                toast({ title: '✅ WhatsApp Aberto!', description: `Mensagem pronta para enviar para ${p.nome}.` });
+                logMensagem.mutate({ paciente_id: patientId, mensagem: `[Ação Rápida de Funil] → ${templateId}`, tipo: 'template', template_id: templateId });
             } else {
-                toast({ title: 'Erro ao Enviar', description: result.error || 'Falha na comunicação com o Z-API', variant: 'destructive' });
+                toast({ title: 'Erro ao Enviar', description: result.error || 'Falha na comunicação', variant: 'destructive' });
             }
         } catch (err: any) {
             toast({ title: 'Erro Crítico', description: err.message || 'Erro inesperado', variant: 'destructive' });
@@ -296,8 +296,8 @@ export default function GestaoVendas() {
         try {
             const result = await shareViaWhatsApp(tel, msg);
             if (result.success) {
-                toast({ title: '✅ Lembrete enviado!' });
-                logMensagem.mutate({ paciente_id: pac.id, mensagem: msg, tipo: 'sistema' });
+                toast({ title: '✅ Lembrete aberto no WhatsApp!' });
+                logMensagem.mutate({ paciente_id: pac.id, mensagem: msg, tipo: 'template', template_id: 'lembrete-questionario' });
             } else {
                 toast({ title: 'Erro ao Enviar', description: result.error, variant: 'destructive' });
             }
@@ -311,13 +311,14 @@ export default function GestaoVendas() {
         const details = pacote.diferenciais.map(d => `✅ ${d}`).join('\n');
         const valor = customValue || `R$ ${pacote.valorSugerido}`;
         sharePacoteInfo(`${selectedPatient.nome} ${selectedPatient.sobrenome || ''}`, selectedPatient.telefone, pacote.nome, details, valor);
-        toast({ title: '📩 Pacote enviado via WhatsApp!' });
+        logMensagem.mutate({ paciente_id: selectedPatient.id, mensagem: `[Proposta de Pacote] 📦 ${pacote.nome} - Valor sugerido: ${valor}`, tipo: 'template', template_id: 'proposta-pacote' });
+        toast({ title: '📩 Pacote aberto no WhatsApp!' });
     };
 
     // ── Tabs ─────────────────────────────────────────────────────────
     const TABS: { id: TabId; label: string; icon: any }[] = [
         { id: 'pipeline', label: 'Pipeline', icon: Target },
-        { id: 'mensagens', label: 'Mensagens', icon: MessageSquare },
+        { id: 'mensagens', label: 'Conversas', icon: MessageSquare },
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
@@ -394,7 +395,7 @@ export default function GestaoVendas() {
                                             </div>
                                             {p.telefone && (
                                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-pink-500 hover:text-pink-700 shrink-0"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph))}>
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph), 'aniversario')}>
                                                     <Send className="h-3 w-3" />
                                                 </Button>
                                             )}
@@ -495,7 +496,7 @@ export default function GestaoVendas() {
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
-                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareBoasVindas(n, ph, user?.user_metadata?.nome || 'Terapeuta'))}>
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareBoasVindas(n, ph, user?.user_metadata?.nome || 'Terapeuta'), 'boas-vindas')}>
                                                         <Send className="h-3 w-3" /> Boas-vindas
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
@@ -551,7 +552,7 @@ export default function GestaoVendas() {
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
-                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`))}>
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`), 'cobranca-inadimplente')}>
                                                         <DollarSign className="h-3 w-3" /> Cobrar
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
@@ -573,7 +574,7 @@ export default function GestaoVendas() {
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
-                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`))}>
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`), 'lembrete-pagamento')}>
                                                         <DollarSign className="h-3 w-3" /> Lembrar
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
@@ -594,11 +595,11 @@ export default function GestaoVendas() {
                                         p.telefone ? (
                                             <>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePosAvaliacao(n, ph, '📊 Seus resultados estão prontos!'))}>
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePosAvaliacao(n, ph, '📊 Seus resultados estão prontos!'), 'pos-avaliacao')}>
                                                     <FileText className="h-3 w-3" /> Pós-Avaliação
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-green-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePropostaComercial(n, ph, 'Método Identidade', 'consulte'))}>
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePropostaComercial(n, ph, 'Método Identidade', 'consulte'), 'proposta-comercial')}>
                                                     <Package className="h-3 w-3" /> Proposta
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
@@ -619,11 +620,11 @@ export default function GestaoVendas() {
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
-                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareLembreteRetorno(n, ph, 'em breve'))}>
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareLembreteRetorno(n, ph, 'em breve'), 'lembrete-retorno')}>
                                                         <CalendarDays className="h-3 w-3" /> Retorno
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
-                                                        onClick={() => sendToPatient(p.id, (n, ph) => sharePosAlta(n, ph))}>
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => sharePosAlta(n, ph), 'pos-alta')}>
                                                         <Heart className="h-3 w-3" /> Pós-Alta
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
