@@ -669,6 +669,50 @@ export type Database = {
           },
         ]
       }
+      mensagens_whatsapp: {
+        Row: {
+          canal: string
+          created_at: string
+          id: string
+          mensagem: string
+          paciente_id: string
+          status: string
+          template_id: string | null
+          terapeuta_id: string
+          tipo: string
+        }
+        Insert: {
+          canal?: string
+          created_at?: string
+          id?: string
+          mensagem: string
+          paciente_id: string
+          status?: string
+          template_id?: string | null
+          terapeuta_id: string
+          tipo?: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          id?: string
+          mensagem?: string
+          paciente_id?: string
+          status?: string
+          template_id?: string | null
+          terapeuta_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_whatsapp_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       myid_avaliacoes: {
         Row: {
           created_at: string
