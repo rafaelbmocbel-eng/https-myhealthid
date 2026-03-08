@@ -1172,7 +1172,41 @@ type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
                     );
                 })()}
             </div>
-        </AppLayout >
+
+            {/* ── Floating Action Buttons (FAB) ── */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+                <button
+                    onClick={() => setFabOpen(!fabOpen)}
+                    className={cn(
+                        'h-14 w-14 rounded-full bg-gradient-primary text-white shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95',
+                        fabOpen && 'rotate-45'
+                    )}
+                >
+                    <Plus className="h-6 w-6" />
+                </button>
+                {fabOpen && (
+                    <>
+                        <button onClick={() => { setFabOpen(false); navigate('/pacientes'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <UserPlus className="h-4 w-4 text-emerald-600" /><span>Pacientes</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); navigate('/metodo-identidade'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <ClipboardList className="h-4 w-4 text-primary" /><span>Nova Avaliação</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); navigate('/agenda'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <CalendarDays className="h-4 w-4 text-amber-600" /><span>Agenda</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); setActiveTab('mensagens'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <MessageCircle className="h-4 w-4 text-green-600" /><span>WhatsApp</span>
+                        </button>
+                    </>
+                )}
+            </div>
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
+        </AppLayout>
     );
 }
 
