@@ -530,7 +530,7 @@ export default function GestaoVendas() {
                         {/* Inadimplentes 🔴 */}
                         {inadimplentes.length > 0 && (
                             <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
-                                {inadimplentes.slice(0, 10).map((p: any) => (
+                                {inadimplentes.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
