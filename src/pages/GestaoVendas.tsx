@@ -474,7 +474,7 @@ export default function GestaoVendas() {
                         {/* Leads */}
                         <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
                             {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
-                                filteredLeads.slice(0, 10).map((p: any) => (
+                                filteredLeads.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
@@ -530,7 +530,7 @@ export default function GestaoVendas() {
                         {/* Inadimplentes 🔴 */}
                         {inadimplentes.length > 0 && (
                             <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
-                                {inadimplentes.slice(0, 10).map((p: any) => (
+                                {inadimplentes.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
@@ -552,7 +552,7 @@ export default function GestaoVendas() {
                         {/* A Pagar 🟠 */}
                         {aPagar.length > 0 && (
                             <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
-                                {aPagar.slice(0, 10).map((p: any) => (
+                                {aPagar.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
@@ -573,7 +573,7 @@ export default function GestaoVendas() {
 
                         {/* Avaliados (Ativos) */}
                         <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
-                            {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
+                            {filteredAvaliados.filter(p => !inativos.includes(p)).map((p: any) => (
                                 <PatientRow key={p.id} p={p} actions={
                                     p.telefone ? (
                                         <>
@@ -598,7 +598,7 @@ export default function GestaoVendas() {
                         {/* Follow-up Necessário */}
                         <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
                             {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
-                                filteredInativos.slice(0, 10).map((p: any) => (
+                                filteredInativos.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
