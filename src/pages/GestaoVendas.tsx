@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -16,7 +16,7 @@ import {
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
     StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
-    ChevronLeft, ChevronRight, History,
+    ChevronLeft, ChevronRight, History, MessageCircle,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -28,7 +28,19 @@ import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, 
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+// ── Classificação automática (shared with Pacientes) ──────────────────────
+type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
+
+const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string }[] = [
+    { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
+    { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
+    { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+    { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
+    { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
+];
 
 type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
