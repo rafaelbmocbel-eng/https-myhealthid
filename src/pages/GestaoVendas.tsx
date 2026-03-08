@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -16,7 +16,7 @@ import {
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
     StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
-    ChevronLeft, ChevronRight, History, MessageCircle,
+    ChevronLeft, ChevronRight, History, MessageCircle, ExternalLink,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -24,12 +24,13 @@ import {
     sharePacoteInfo, sharePropostaComercial,
     MESSAGE_TEMPLATES, PACOTES_PREDEFINIDOS, type Pacote,
 } from '@/utils/whatsapp';
-import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, addDays, isSameDay } from 'date-fns';
+import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, addDays, isSameDay, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
 
 // ── Classificação automática (shared with Pacientes) ──────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
@@ -42,7 +43,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
+type TabId = 'pipeline' | 'conversas' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -96,6 +97,22 @@ export default function GestaoVendas() {
     const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
     const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-all`, JSON.stringify(c)); };
     const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-all`, JSON.stringify(pn)); };
+
+    // ── WhatsApp Message Logging ─────────────────────────────────────
+    const { mensagens, conversas, logMensagem } = useMensagensWhatsApp();
+    const [chatPatientId, setChatPatientId] = useState<string | null>(null);
+    const [chatInput, setChatInput] = useState('');
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [mensagens, chatPatientId]);
+
+    // Wrapper: sends via WhatsApp AND auto-logs to DB
+    const sendAndLog = (patientId: string, phone: string, message: string, templateId?: string) => {
+        shareViaWhatsApp(phone, message);
+        logMensagem.mutate({ paciente_id: patientId, mensagem: message, tipo: templateId ? 'template' : 'manual', template_id: templateId });
+    };
 
     // ── Queries ──────────────────────────────────────────────────────
     const { data: patients = [] } = useQuery({
@@ -262,38 +279,39 @@ export default function GestaoVendas() {
         return anivA.getTime() - anivB.getTime();
     });
 
-    const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void) => {
+    const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void, templateId?: string) => {
         const p = patients.find((pat: any) => pat.id === patientId);
         if (!p?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
-        callback(`${p.nome} ${p.sobrenome || ''}`.trim(), p.telefone);
-        toast({ title: '📩 Mensagem aberta no WhatsApp!' });
+        const fullName = `${p.nome} ${p.sobrenome || ''}`.trim();
+        callback(fullName, p.telefone);
+        logMensagem.mutate({ paciente_id: patientId, mensagem: `[${templateId || 'ação rápida'}] → ${fullName}`, tipo: 'template', template_id: templateId });
+        toast({ title: '📩 Mensagem aberta e registrada!' });
     };
 
     const handleRelembrar = (link: any) => {
         const pac = link.pacientes;
         if (!pac?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
         const tel = pac.telefone.replace(/\D/g, '');
-        const msg = encodeURIComponent(
-            `Olá ${pac.nome}! 👋\n\nNotei que ainda não preencheu o questionário que enviei. ` +
-            `É bem rápido e super importante para o seu tratamento personalizado.\n\n` +
-            `Pode preencher quando tiver um tempinho? O link ainda está ativo! 😊`
-        );
-        window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
-        toast({ title: '📩 Lembrete enviado!' });
+        const msg = `Olá ${pac.nome}! 👋\n\nNotei que ainda não preencheu o questionário que enviei. É bem rápido e super importante para o seu tratamento personalizado.\n\nPode preencher quando tiver um tempinho? O link ainda está ativo! 😊`;
+        shareViaWhatsApp(pac.telefone, msg);
+        if (link.paciente_id) logMensagem.mutate({ paciente_id: link.paciente_id, mensagem: msg, tipo: 'template', template_id: 'lembrete-questionario' });
+        toast({ title: '📩 Lembrete enviado e registrado!' });
     };
 
     const handleSendPacote = (pacote: Pacote) => {
         if (!selectedPatient?.telefone) { toast({ title: 'Selecione um paciente com telefone', variant: 'destructive' }); return; }
         const details = pacote.diferenciais.map(d => `✅ ${d}`).join('\n');
         const valor = customValue || `R$ ${pacote.valorSugerido}`;
-        sharePacoteInfo(`${selectedPatient.nome} ${selectedPatient.sobrenome || ''}`, selectedPatient.telefone, pacote.nome, details, valor);
-        toast({ title: '📩 Pacote enviado via WhatsApp!' });
+        const msg = `Olá ${selectedPatient.nome}! 👋\n\nPreparei uma proposta especial:\n\n📦 *${pacote.nome}*\n\n${details}\n\n💰 *Investimento:* ${valor}\n\nEste pacote foi pensado para seu perfil. Quer saber mais? 😊`;
+        sendAndLog(selectedPatient.id, selectedPatient.telefone, msg, 'pacote');
+        toast({ title: '📩 Pacote enviado e registrado!' });
     };
 
     // ── Tabs ─────────────────────────────────────────────────────────
     const TABS: { id: TabId; label: string; icon: any }[] = [
         { id: 'pipeline', label: 'Pipeline', icon: Target },
-        { id: 'mensagens', label: 'Mensagens', icon: MessageSquare },
+        { id: 'conversas', label: 'Conversas', icon: MessageCircle },
+        { id: 'mensagens', label: 'Templates', icon: MessageSquare },
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
@@ -604,6 +622,158 @@ export default function GestaoVendas() {
                     );
                 })()}
 
+                {/* ══════════════════ CONVERSAS TAB (Chat-style) ══════════════════ */}
+                {activeTab === 'conversas' && (() => {
+                    const chatPatient = chatPatientId ? patients.find((p: any) => p.id === chatPatientId) : null;
+                    const chatMsgs = chatPatientId
+                        ? mensagens.filter(m => m.paciente_id === chatPatientId).sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+                        : [];
+
+                    const handleSendChat = () => {
+                        if (!chatInput.trim() || !chatPatient?.telefone || !chatPatientId) return;
+                        sendAndLog(chatPatientId, chatPatient.telefone, chatInput.trim());
+                        setChatInput('');
+                    };
+
+                    return (
+                    <div className="flex gap-4 h-[calc(100vh-380px)] min-h-[400px]">
+                        {/* Left: Conversation list */}
+                        <div className="w-72 shrink-0 border rounded-xl overflow-hidden flex flex-col bg-card">
+                            <div className="p-3 border-b bg-muted/30">
+                                <h3 className="text-xs font-black uppercase text-muted-foreground flex items-center gap-1.5">
+                                    <MessageCircle className="h-3.5 w-3.5" /> Conversas
+                                </h3>
+                            </div>
+                            <div className="flex-1 overflow-y-auto">
+                                {conversas.length === 0 ? (
+                                    <div className="p-4 text-center">
+                                        <MessageCircle className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                                        <p className="text-xs text-muted-foreground">Nenhuma conversa ainda</p>
+                                        <p className="text-[10px] text-muted-foreground mt-1">Envie uma mensagem pelo Pipeline ou Templates para iniciar</p>
+                                    </div>
+                                ) : conversas.map(c => {
+                                    const p = patients.find((pat: any) => pat.id === c.paciente_id);
+                                    if (!p) return null;
+                                    const isActive = chatPatientId === c.paciente_id;
+                                    return (
+                                        <button key={c.paciente_id} onClick={() => setChatPatientId(c.paciente_id)}
+                                            className={cn('w-full text-left p-3 border-b transition-colors', isActive ? 'bg-primary/10' : 'hover:bg-muted/50')}>
+                                            <div className="flex items-center gap-2">
+                                                <div className={cn('h-8 w-8 rounded-full flex items-center justify-center text-xs font-bold shrink-0', isActive ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground')}>
+                                                    {p.nome?.[0]}
+                                                </div>
+                                                <div className="min-w-0 flex-1">
+                                                    <div className="flex items-center justify-between">
+                                                        <span className="text-xs font-bold truncate">{p.nome} {p.sobrenome}</span>
+                                                        <span className="text-[9px] text-muted-foreground shrink-0">{formatDistanceToNow(new Date(c.lastDate), { locale: ptBR, addSuffix: false })}</span>
+                                                    </div>
+                                                    <p className="text-[10px] text-muted-foreground truncate">{c.lastMessage.slice(0, 50)}...</p>
+                                                </div>
+                                                <Badge variant="secondary" className="text-[8px] h-4 shrink-0">{c.count}</Badge>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                                {/* Show all patients without conversations too */}
+                                {patients.filter((p: any) => !conversas.find(c => c.paciente_id === p.id) && p.telefone).length > 0 && (
+                                    <>
+                                        <div className="px-3 py-2 bg-muted/20 text-[9px] font-bold uppercase text-muted-foreground">Iniciar conversa</div>
+                                        {patients.filter((p: any) => !conversas.find(c => c.paciente_id === p.id) && p.telefone).slice(0, 10).map((p: any) => (
+                                            <button key={p.id} onClick={() => setChatPatientId(p.id)}
+                                                className={cn('w-full text-left p-3 border-b hover:bg-muted/50 transition-colors', chatPatientId === p.id && 'bg-primary/10')}>
+                                                <div className="flex items-center gap-2">
+                                                    <div className="h-8 w-8 rounded-full bg-muted/50 flex items-center justify-center text-xs text-muted-foreground">{p.nome?.[0]}</div>
+                                                    <span className="text-xs truncate">{p.nome} {p.sobrenome}</span>
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </>
+                                )}
+                            </div>
+                        </div>
+
+                        {/* Right: Chat panel */}
+                        <div className="flex-1 border rounded-xl overflow-hidden flex flex-col bg-card">
+                            {!chatPatientId ? (
+                                <div className="flex-1 flex items-center justify-center">
+                                    <div className="text-center">
+                                        <MessageCircle className="h-12 w-12 text-muted-foreground/20 mx-auto mb-3" />
+                                        <p className="text-sm font-bold text-muted-foreground">Selecione uma conversa</p>
+                                        <p className="text-xs text-muted-foreground mt-1">Escolha um paciente na lista ao lado</p>
+                                    </div>
+                                </div>
+                            ) : (
+                                <>
+                                    {/* Chat Header */}
+                                    <div className="p-3 border-b bg-muted/30 flex items-center justify-between">
+                                        <div className="flex items-center gap-2">
+                                            <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground text-xs font-bold">
+                                                {chatPatient?.nome?.[0]}
+                                            </div>
+                                            <div>
+                                                <span className="text-sm font-bold">{chatPatient?.nome} {chatPatient?.sobrenome}</span>
+                                                <p className="text-[10px] text-muted-foreground">{chatPatient?.telefone || 'Sem telefone'}</p>
+                                            </div>
+                                        </div>
+                                        <div className="flex gap-1">
+                                            {chatPatient?.telefone && (
+                                                <Button size="sm" variant="outline" className="h-7 text-[10px] gap-1"
+                                                    onClick={() => window.open(`https://wa.me/55${chatPatient.telefone!.replace(/\D/g, '')}`, '_blank')}>
+                                                    <ExternalLink className="h-3 w-3" /> Abrir WhatsApp
+                                                </Button>
+                                            )}
+                                        </div>
+                                    </div>
+
+                                    {/* Messages */}
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-muted/10">
+                                        {chatMsgs.length === 0 && (
+                                            <div className="text-center py-8">
+                                                <p className="text-xs text-muted-foreground">Nenhuma mensagem registrada</p>
+                                                <p className="text-[10px] text-muted-foreground mt-1">Envie uma mensagem abaixo para iniciar o histórico</p>
+                                            </div>
+                                        )}
+                                        {chatMsgs.map(msg => (
+                                            <div key={msg.id} className="flex justify-end">
+                                                <div className="max-w-[80%] bg-emerald-600 text-white rounded-2xl rounded-br-sm px-4 py-2 shadow-sm">
+                                                    <p className="text-xs whitespace-pre-wrap">{msg.mensagem}</p>
+                                                    <div className="flex items-center justify-end gap-1.5 mt-1">
+                                                        <span className="text-[9px] opacity-70">{format(new Date(msg.created_at), 'dd/MM HH:mm')}</span>
+                                                        <CheckCircle2 className="h-2.5 w-2.5 opacity-70" />
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                        <div ref={chatEndRef} />
+                                    </div>
+
+                                    {/* Input */}
+                                    <div className="p-3 border-t bg-background">
+                                        <div className="flex gap-2">
+                                            <Input
+                                                placeholder="Digite uma mensagem..."
+                                                value={chatInput}
+                                                onChange={e => setChatInput(e.target.value)}
+                                                onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSendChat(); } }}
+                                                className="flex-1"
+                                            />
+                                            <Button
+                                                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                                                disabled={!chatInput.trim() || !chatPatient?.telefone}
+                                                onClick={handleSendChat}
+                                            >
+                                                <Send className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <p className="text-[9px] text-muted-foreground mt-1">A mensagem será aberta no WhatsApp e registrada automaticamente no histórico</p>
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </div>
+                    );
+                })()}
+
                 {/* ══════════════════ MENSAGENS TAB ══════════════════ */}
                 {activeTab === 'mensagens' && (
                     <div className="space-y-4">
@@ -664,8 +834,8 @@ export default function GestaoVendas() {
                                                                         .replace('{valor}', 'consulte')
                                                                         .replace('{score}', '—')
                                                                         .replace('{classificacao}', '—');
-                                                                    shareViaWhatsApp(selectedPatient.telefone, finalMsg);
-                                                                    toast({ title: '📩 Mensagem aberta no WhatsApp!' });
+                                                                    sendAndLog(selectedPatient.id, selectedPatient.telefone, finalMsg, tpl.id);
+                                                                    toast({ title: '📩 Mensagem enviada e registrada!' });
                                                                 }}>
                                                                 <Send className="h-3 w-3" /> Enviar
                                                             </Button>
