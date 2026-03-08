@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AmostraEpidemiologica from '@/components/dashboard/AmostraEpidemiologica';
+import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
@@ -114,9 +114,35 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao, paciente_id, created_at')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao, paciente_id, created_at, red_flags, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
         .order('created_at', { ascending: true });
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: avaliacoesCobZero = [] } = useQuery({
+    queryKey: ['avaliacoes-cob-zero-epidemio', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_cob_zero')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: true });
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const { data: medidasStudio = [] } = useQuery({
+    queryKey: ['studio-medidas-epidemio', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('studio_medidas')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .order('data_medida', { ascending: true });
       return data || [];
     },
     enabled: !!user,
@@ -137,6 +163,8 @@ export default function Index() {
         F: avg('score_f'), D: avg('score_d'), R: avg('score_r'),
         EFI: avg('score_efi'), ID: avg('id_final'),
       };
+
+      const totalRedFlags = avaliacoes.filter(a => a.red_flags || (a.dados_avaliacao as any)?.resultado?.redFlagsDetected).length;
 
       const regioesDor: Record<string, { count: number; intensidadeTotal: number }> = {};
       const unidadesCorporais: Record<string, { count: number; scoreTotal: number }> = {};
@@ -251,6 +279,8 @@ export default function Index() {
 
       return {
         scores, n,
+        totalRedFlags,
+        percentRedFlags: n > 0 ? Math.round((totalRedFlags / n) * 100) : 0,
         topRegioes, topUnidades,
         topComorbidades: toRanked(comorbidades),
         topClassificacoes: toRanked(classificacoes, 5),
@@ -352,6 +382,16 @@ export default function Index() {
   const cobZeroPacientes = pacienteServicos.filter(s => s.servico === 'cob_zero').length;
   const studioPacientes = pacienteServicos.filter(s => s.servico === 'studio_personal_id').length;
 
+  // Filtra avaliações recentes com red flags (últimos 30 dias)
+  const recentAlerts = avaliacoesRaw
+    .filter(a => {
+      const isRed = a.red_flags || (a.dados_avaliacao as any)?.resultado?.redFlagsDetected;
+      const isRecent = new Date(a.created_at) > new Date(Date.now() - 30 * 86400000);
+      return isRed && isRecent;
+    })
+    .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+    .slice(0, 3);
+
   const hora = new Date().getHours();
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 
@@ -413,7 +453,7 @@ export default function Index() {
               </div>
               <div>
                 <h2 className="font-bold text-foreground">Método Identidade</h2>
-                <p className="text-xs text-muted-foreground">Avaliação Multidimensional da Dor</p>
+                <p className="text-xs text-muted-foreground">Radar de Valências e Alertas Clínicos</p>
               </div>
             </div>
             <div className="flex-1 space-y-2 mb-4">
@@ -422,8 +462,8 @@ export default function Index() {
                 <span className="font-semibold text-primary">{metodoIdentidadePacientes}</span>
               </div>
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">6 Blocos de Avaliação</span>
-                <span className="text-muted-foreground">Scores E, P, C, F, D, R</span>
+                <span className="text-muted-foreground">Gamificação</span>
+                <span className="text-muted-foreground">Fórmula e Herói Silencioso</span>
               </div>
             </div>
             <div className="flex gap-2">
@@ -566,6 +606,34 @@ export default function Index() {
                   </div>
                 );
               })}
+            </div>
+          </div>
+        )}
+
+        {/* Alertas Clínicos Críticos (Red Flags) */}
+        {recentAlerts.length > 0 && (
+          <div className="clinical-card mb-6 border-red-200/50">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 rounded-xl bg-red-100 flex items-center justify-center shadow-sm">
+                  <Shield className="h-4.5 w-4.5 text-red-600" />
+                </div>
+                <div>
+                  <h2 className="font-bold text-red-800">Alertas Clínicos Ativos</h2>
+                  <p className="text-[10px] text-red-600/80">Pacientes que acionaram Red Flags recentemente</p>
+                </div>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-3">
+              {recentAlerts.map(alert => (
+                <div key={alert.id_final || alert.created_at} className="p-3 rounded-lg border border-red-100 bg-red-50/30 flex flex-col gap-1 cursor-pointer hover:bg-red-50/60 transition-colors" onClick={() => alert.paciente_id && navigate(`/pacientes/${alert.paciente_id}`)}>
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm font-bold text-red-900 truncate">{(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}</span>
+                    <span className="text-[10px] text-red-500 font-medium">{formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}</span>
+                  </div>
+                  <div className="text-[11px] text-red-700/80 font-medium">Perímetro de Alerta MyID acionado</div>
+                </div>
+              ))}
             </div>
           </div>
         )}
@@ -719,6 +787,22 @@ export default function Index() {
                       </div>
                     );
                   })}
+                  {/* Card Red Flags Epidemiologia */}
+                  <div className="rounded-xl p-3 bg-red-50 dark:bg-red-950/30 col-span-2 sm:col-span-4 border border-red-100/50 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-8 w-8 rounded-lg bg-red-100 flex items-center justify-center">
+                        <Shield className="h-4 w-4 text-red-600" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-bold text-red-900">Incidência de Alertas Críticos (Red Flags)</div>
+                        <div className="text-[10px] text-red-700/70">Proporção da amostra com perímetro de alerta acionado</div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <div className="text-lg font-black text-red-700">{amostraClinica.percentRedFlags}%</div>
+                      <div className="text-[10px] text-red-600/60">{amostraClinica.totalRedFlags} pacientes</div>
+                    </div>
+                  </div>
                 </div>
                 {/* Classificações + Funcionalidade */}
                 <div className="grid md:grid-cols-2 gap-5">
@@ -892,13 +976,17 @@ export default function Index() {
                 <TrendingUp className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="font-bold text-foreground">Análise Epidemiológica</h2>
+                <h2 className="font-bold text-foreground">Central de Inteligência Epidemiológica</h2>
                 <p className="text-xs text-muted-foreground">
-                  Correlações e relações cruzadas · {avaliacoesRaw.length} avaliações · Base para estudos científicos
+                  Integração Multi-Serviço (MyID, COB° ZERO, Studio) · Base Científica
                 </p>
               </div>
             </div>
-            <AmostraEpidemiologica avaliacoes={avaliacoesRaw as any} />
+            <AmostraIntegrada
+              avaliacoesIdentidade={avaliacoesRaw as any}
+              avaliacoesCobZero={avaliacoesCobZero as any}
+              medidasStudio={medidasStudio as any}
+            />
           </div>
         )}
 

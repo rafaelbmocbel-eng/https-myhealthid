@@ -9,10 +9,11 @@ import { Button } from '@/components/ui/button';
 import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
-  Sparkles, Printer, Copy
+  Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
+  AlertTriangle, CheckCircle2, Target, Award
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
+import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
@@ -57,12 +58,32 @@ const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
         <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.12" strokeLinecap="round" style={{ color }} />
         <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 1s cubic-bezier(0.25, 1, 0.5, 1)' }} />
       </svg>
-      <div className="absolute bottom-0 flex flex-col items-center leading-none">
+      <div className="absolute bottom-1 flex flex-col items-center leading-none">
         <span className="text-4xl font-black tracking-tighter" style={{ color }}>{score.toFixed(1)}</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">MyID Score</span>
       </div>
     </div>
   );
 };
+
+// ── Novas Interfaces de Engajamento ───────────────────────────────────────────
+interface PowerZone {
+  id: string;
+  title: string;
+  level: number; // 0-100
+  color: string;
+  icon: any;
+  description: string;
+  factors: string[];
+}
+
+interface Mission {
+  id: string;
+  title: string;
+  description: string;
+  icon: any;
+  completed: boolean;
+}
 
 export default function PatientIntegratedDashboard({
   pacienteId,
@@ -186,11 +207,102 @@ export default function PatientIntegratedDashboard({
   };
 
   const scores = getScores();
+
+  // ── Cálculo das Zonas de Poder ─────────────────────────────────────────────
+  const getPowerZones = (sc: any): PowerZone[] => {
+    if (!sc) return [];
+
+    // Biológica: R, HID, NUT (Higher is better)
+    const bioLevel = ((sc.R + sc.HID + sc.NUT) / 30) * 100;
+
+    // Comportamental: I, AF, ERG (I: lower is better, others: higher is better)
+    const compLevel = (((10 - sc.I) + sc.AF + sc.ERG) / 30) * 100;
+
+    // Emocional: P, C (P: lower is better, C: higher is better)
+    const emoLevel = (((10 - sc.P) + sc.C) / 20) * 100;
+
+    // Sistêmica/Ambiental: N, D, EFI (Lower is better)
+    const sistLevel = (((10 - sc.N) + (10 - sc.D) + (10 - sc.EFI)) / 30) * 100;
+
+    return [
+      {
+        id: 'bio',
+        title: 'Biológica',
+        level: bioLevel,
+        color: 'text-emerald-600',
+        icon: Heart,
+        description: 'Vitalidade e regulação interna.',
+        factors: ['Sono', 'Hidratação', 'Nutrição']
+      },
+      {
+        id: 'comp',
+        title: 'Comportamental',
+        level: compLevel,
+        color: 'text-blue-600',
+        icon: Zap,
+        description: 'Seu estilo de vida e movimento.',
+        factors: ['Atividade', 'Inércia', 'Ergonomia']
+      },
+      {
+        id: 'emo',
+        title: 'Emocional',
+        level: emoLevel,
+        color: 'text-violet-600',
+        icon: Smile,
+        description: 'Sua resiliência e suporte mental.',
+        factors: ['Coping', 'Contexto']
+      },
+      {
+        id: 'sist',
+        title: 'Sistêmica',
+        level: sistLevel,
+        color: 'text-amber-600',
+        icon: Shield,
+        description: 'Proteção contra dor e ruído.',
+        factors: ['Dor', 'Ruído', 'Função']
+      }
+    ];
+  };
+
+  const powerZones = getPowerZones(scores);
+
+  // ── Lógica de Missões e Insights ───────────────────────────────────────────
+  const getInsights = (sc: any) => {
+    if (!sc) return null;
+    const factors = [
+      { key: 'R', label: 'Melhorar o Sono', potential: 10 - sc.R, mission: 'Tentar dormir 30min mais cedo hoje.' },
+      { key: 'HID', label: 'Beber mais Água', potential: 10 - sc.HID, mission: 'Beber 2 litros de água durante o dia.' },
+      { key: 'AF', label: 'Mais Movimento', potential: 10 - sc.AF, mission: 'Fazer uma caminhada leve de 15 min.' },
+      { key: 'NUT', label: 'Ajustar Nutrição', potential: 10 - sc.NUT, mission: 'Evitar ultraprocessados nas próximas 3 refeições.' },
+      { key: 'P', label: 'Reduzir Ansiedade', potential: sc.P, mission: 'Praticar 5 min de respiração consciente.' },
+      { key: 'I', label: 'Vencer a Inércia', potential: sc.I, mission: 'Realizar uma tarefa pendente que te gera estresse.' },
+    ];
+
+    const sorted = [...factors].sort((a, b) => b.potential - a.potential);
+    return {
+      opportunity: sorted[0],
+      limitation: sorted[sorted.length - 1],
+      missions: sorted.slice(0, 3).map(f => ({
+        id: f.key,
+        title: f.label,
+        description: f.mission,
+        icon: Target,
+        completed: false
+      }))
+    };
+  };
+
+  const insights = getInsights(scores);
   const myidScore = myidLinkResult?.MyID_score ?? Number(ultimaMyID?.myid_score) ?? 0;
-  const classificacao = myidLinkResult?.status ?? ultimaMyID?.classificacao ?? 'LEVE';
-  const recommendation = myidLinkResult?.recommendation ?? '';
+  const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? !!ultimaMyID?.red_flags ?? false;
+
+  const interpretation = getMyIDInterpretation(myidScore, hasRedFlags);
+  const classificacao = interpretation.status;
+  const label = interpretation.label;
+  const recommendation = interpretation.recommendation || myidLinkResult?.recommendation || '';
   const painPattern = myidLinkResult?.pain_pattern ?? '';
   const focusAreas = myidLinkResult?.focus_areas ?? [];
+  const redFlagsDetected = hasRedFlags;
 
   const rings = scores ? getMyIDFingerprintData(scores) : [];
   const severityClass = getMyIDSeverityColor(classificacao);
@@ -247,51 +359,240 @@ export default function PatientIntegratedDashboard({
       ) : (
         <>
           {/* MyID Fingerprint + Score */}
-          <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card via-card to-violet-50/30 dark:to-violet-950/10 mb-6">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-6">
-                <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-violet-100 dark:bg-violet-900/30 shrink-0">
-                  <Fingerprint className="h-5 w-5 text-violet-600" />
+          <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card via-card to-violet-50/40 dark:to-violet-950/20 mb-6">
+            <CardContent className="p-6">
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-violet-600 shadow-lg shadow-violet-200 dark:shadow-none shrink-0">
+                    <Fingerprint className="h-6 w-6 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-black text-xl text-foreground leading-tight">Painel de Impacto MyID</h3>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Sua Biologia em Tempo Real</p>
+                  </div>
                 </div>
-                <div>
-                  <h3 className="font-black text-lg text-foreground leading-none">Mapa da Impressão Digital</h3>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Interação Sistêmica Global</p>
+
+                <div className="flex items-center gap-4 bg-white/50 dark:bg-black/20 p-2 pr-4 rounded-2xl border border-white dark:border-white/10">
+                  <GlobalGauge score={myidScore} color={severityClass.split(' ')[0].replace('text-', '') === 'violet-600' ? '#8b5cf6' :
+                    severityClass.includes('blue') ? '#3b82f6' :
+                      severityClass.includes('amber') ? '#f59e0b' : '#ef4444'} />
+                  <div className="flex flex-col">
+                    <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0 border-current mb-1", severityClass)}>{classificacao}</Badge>
+                    <span className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[100px] uppercase">Estado de Saúde Atual</span>
+                  </div>
                 </div>
-                <Badge className={`ml-auto border ${severityClass}`}>{classificacao}</Badge>
               </div>
 
-              {/* Fingerprint — Mapa Principal */}
-              <div className="w-full max-w-lg mx-auto mb-8">
-                <MyIDFingerprint
-                  rings={rings}
-                  myidScore={myidScore}
-                  highlightedKey={hoveredScoreKey}
-                  onRingHover={setHoveredScoreKey}
-                />
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+                {/* Fingerprint — Mapa Principal */}
+                <div className="relative group p-4 bg-white/30 dark:bg-black/10 rounded-3xl border border-white/50 dark:border-white/5 backdrop-blur-sm">
+                  <div className="absolute top-4 left-4 p-2 bg-white/80 dark:bg-black/50 rounded-lg shadow-sm z-10">
+                    <Sparkles className="h-3 w-3 text-violet-600 animate-pulse" />
+                  </div>
+                  <MyIDFingerprint
+                    rings={rings}
+                    myidScore={myidScore}
+                    highlightedKey={hoveredScoreKey}
+                    onRingHover={setHoveredScoreKey}
+                  />
+                  <div className="mt-4 text-center">
+                    <p className="text-[10px] text-muted-foreground font-medium italic">Passe o mouse nos anéis para detalhar cada índice</p>
+                  </div>
+                </div>
+
+                <div className="space-y-5">
+                  {insights && (
+                    <>
+                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem] group transition-all hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 hover:translate-x-1 duration-300">
+                        <div className="flex items-start gap-5">
+                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-600 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
+                            <TrendingUp className="h-6 w-6" />
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest opacity-80">Maior Oportunidade</span>
+                              <div className="h-1 w-1 rounded-full bg-emerald-400 animate-ping" />
+                            </div>
+                            <h4 className="font-bold text-lg text-emerald-950 dark:text-emerald-100">{insights.opportunity.label}</h4>
+                            <p className="text-[13px] text-emerald-900/60 dark:text-emerald-400/60 mt-1.5 leading-relaxed font-medium">
+                              Reduzir este índice trará o maior retorno direto para sua saúde global agora.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-5 rounded-[2rem] group transition-all hover:bg-amber-500/10 dark:hover:bg-amber-500/15 hover:translate-x-1 duration-300">
+                        <div className="flex items-start gap-5">
+                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-amber-500/20 text-amber-600 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 shadow-sm">
+                            <AlertTriangle className="h-6 w-6" />
+                          </div>
+                          <div className="flex-1">
+                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80">Ponto de Atenção</span>
+                            <h4 className="font-bold text-lg text-amber-950 dark:text-amber-100">{insights.limitation.label}</h4>
+                            <p className="text-[13px] text-amber-900/60 dark:text-amber-400/60 mt-1.5 leading-relaxed font-medium">
+                              Sua base de sustentação. Este fator está equilibrado, mantenha como está.
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="p-6 bg-muted/30 dark:bg-muted/10 rounded-[2rem] border border-border/50 backdrop-blur-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                          <Award className="h-12 w-12" />
+                        </div>
+                        <div className="flex items-center gap-3 mb-4 relative z-10">
+                          <Award className="h-5 w-5 text-primary" />
+                          <h5 className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground">Bio-ConquistasAtivas</h5>
+                        </div>
+                        <div className="flex flex-wrap gap-2.5 relative z-10">
+                          {scores && (
+                            <>
+                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.HID > 7 ? "bg-blue-100 text-blue-700 border-blue-200 shadow-sm shadow-blue-100" : "opacity-20 grayscale cursor-not-allowed")}>
+                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Hidratado
+                              </Badge>
+                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.R > 7 ? "bg-violet-100 text-violet-700 border-violet-200 shadow-sm shadow-violet-100" : "opacity-20 grayscale cursor-not-allowed")}>
+                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Sono VIP
+                              </Badge>
+                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.AF > 6 ? "bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100" : "opacity-20 grayscale cursor-not-allowed")}>
+                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Ativo
+                              </Badge>
+                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.P < 4 ? "bg-orange-100 text-orange-700 border-orange-200 shadow-sm shadow-orange-100" : "opacity-20 grayscale cursor-not-allowed")}>
+                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Equilíbrio
+                              </Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
 
               {/* Detalhamento da Fórmula MyID (Demand vs Capacity) */}
-              <div className="mt-8">
+              <div className="mt-10 pt-6 border-t border-violet-100 dark:border-violet-900/30">
                 <MyIDFormulaDisplay
                   scores={scores!}
                   myidScore={myidScore}
                   highlightedKey={hoveredScoreKey}
+                  hasRedFlags={redFlagsDetected}
                 />
               </div>
-
-              {painPattern && (
-                <div className="text-[10px] text-muted-foreground border-t border-border/50 pt-4 mt-8 uppercase font-bold tracking-tight">
-                  <span className="text-primary mr-1">●</span> Padrão Temporal da Dor: <span className="text-foreground">{painPattern}</span>
-                </div>
-              )}
             </CardContent>
           </Card>
+
+          {/* ─── ZONAS DE PODER (Agrupamento Didático) ─── */}
+          <div className="mb-10 lg:px-2">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <h4 className="font-black text-sm uppercase tracking-widest text-foreground">Sua Zonas de Poder</h4>
+                </div>
+                <p className="text-xs text-muted-foreground">O potencial de saúde em cada área da sua vida</p>
+              </div>
+
+              <div className="flex items-center gap-4 bg-muted/40 p-2 px-3 rounded-lg border border-border/50">
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">Oportunidade</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-amber-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">Atenção</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="h-2 w-2 rounded-full bg-red-500" />
+                  <span className="text-[10px] font-bold uppercase tracking-tighter">Alavanca</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {powerZones.map((zone) => (
+                <Card key={zone.id} className="overflow-hidden group hover:shadow-md transition-all border-violet-100/30 dark:border-violet-900/20">
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-4">
+                      <div className={cn("p-2 rounded-xl transition-colors", zone.color.replace('text-', 'bg-').replace('600', '100'), `dark:${zone.color.replace('text-', 'bg-').replace('600', '900/30')}`)}>
+                        <zone.icon className={cn("h-4 w-4", zone.color)} />
+                      </div>
+                      <div className="text-right leading-none">
+                        <span className={cn("text-xl font-black", zone.color)}>{zone.level.toFixed(0)}%</span>
+                        <p className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">Potencial</p>
+                      </div>
+                    </div>
+
+                    <h5 className="font-bold text-sm mb-1">{zone.title}</h5>
+                    <p className="text-[10px] text-muted-foreground mb-4 line-clamp-2 leading-relaxed">{zone.description}</p>
+
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-tight mb-1">
+                          <span className="text-muted-foreground">Ganho de Saúde</span>
+                          <span className={zone.color}>{zone.level.toFixed(0)}%</span>
+                        </div>
+                        <Progress value={zone.level} className="h-1.5" />
+                      </div>
+
+                      <div className="flex flex-wrap gap-1">
+                        {zone.factors.map(f => (
+                          <span key={f} className="text-[8px] font-bold px-1.5 py-0.5 bg-muted rounded uppercase border border-border/50 text-muted-foreground">
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* ─── MISSÕES DIÁRIAS (Interativo) ─── */}
+          {insights && (
+            <div className="mb-10 lg:px-2">
+              <div className="bg-violet-600 rounded-3xl p-6 shadow-xl shadow-violet-200 dark:shadow-none overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+                <div className="absolute bottom-0 left-0 w-24 h-24 bg-violet-400/20 rounded-full -ml-12 -mb-12 blur-xl" />
+
+                <div className="relative z-10">
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
+                      <Zap className="h-5 w-5 text-white animate-pulse" />
+                    </div>
+                    <div>
+                      <h4 className="font-black text-lg text-white leading-none">Missões para Você</h4>
+                      <p className="text-xs text-violet-100/70 mt-1 uppercase tracking-tighter font-bold">Baseadas no seu MyID de {classificacao}</p>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    {insights.missions.map((mission, idx) => (
+                      <div key={idx} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 hover:bg-white/15 transition-all cursor-pointer group">
+                        <div className="flex items-start gap-3">
+                          <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/20 group-hover:scale-110 transition-transform">
+                            <mission.icon className="h-4 w-4 text-white" />
+                          </div>
+                          <div className="flex-1">
+                            <h5 className="font-bold text-sm text-white">{mission.title}</h5>
+                            <p className="text-[11px] text-white/80 mt-1 leading-snug">{mission.description}</p>
+                          </div>
+                          <div className="h-5 w-5 rounded-full border border-white/40 flex items-center justify-center group-hover:bg-white/20 transition-all">
+                            <CheckCircle2 className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Alertas Clínicos e Perfil (Substituindo Evolução) */}
           <div className="mt-8 mb-10">
             <div className="flex items-center gap-2 mb-4 px-2">
               <div className="h-2 w-2 rounded-full bg-primary" />
-              <h4 className="font-black text-sm uppercase tracking-widest">Alertas Clínicos e Perfil de Saúde</h4>
+              <h4 className="font-black text-sm uppercase tracking-widest text-foreground">Alertas Clínicos e Perfil de Saúde</h4>
             </div>
             <ProtocoloScores scores={scores} />
           </div>

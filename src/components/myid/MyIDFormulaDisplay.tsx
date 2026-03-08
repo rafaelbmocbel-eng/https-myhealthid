@@ -72,9 +72,9 @@ const ScoreIndicator = ({
   );
 };
 
-export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, className = '' }: Props) {
+export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, hasRedFlags = false, className = '' }: Props & { hasRedFlags?: boolean }) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
-  const interp = getMyIDInterpretation(myidScore);
+  const interp = getMyIDInterpretation(myidScore, hasRedFlags);
   const myidColor = interp.color;
   const status = interp.label;
 
@@ -85,6 +85,18 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
   const totalSum = numerator + denominator;
   const demandPct = (numerator / totalSum) * 100;
   const capacityPct = (denominator / totalSum) * 100;
+
+  // Silent Hero Logic
+  const hasHiddenDrains = D > 6 || EFI > 6 || P > 6 || I > 6 || N > 6;
+  const isSilentHero = myidScore <= 4 && hasHiddenDrains;
+
+  const hiddenFactors = [];
+  if (D > 6) hiddenFactors.push('Dor');
+  if (EFI > 6) hiddenFactors.push('Perda Funcional');
+  if (P > 6) hiddenFactors.push('Sobrecarga Psicológica');
+  if (I > 6) hiddenFactors.push('Gatilhos/Inércia');
+  if (N > 6) hiddenFactors.push('Ruído Sistêmico');
+  const hiddenNames = hiddenFactors.join(', ');
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -150,6 +162,24 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
               <span>Resiliência / Recuperação ↑</span>
             </div>
           </div>
+
+          {/* Navigating the Silent Hero Narrative */}
+          {isSilentHero && (
+            <div className="mx-auto max-w-2xl mt-8 pt-6 border-t border-indigo-100/50">
+              <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
+                <h4 className="flex items-center gap-2 text-indigo-800 font-black mb-2 text-sm uppercase tracking-wider">
+                  <ShieldCheck className="w-5 h-5 text-indigo-500" />
+                  Seu Escudo Protetor (Herói Silencioso)
+                </h4>
+                <p className="text-xs text-indigo-900/80 leading-relaxed font-semibold">
+                  Seu Índice MyID final está favorável ({myidScore.toFixed(1)}) <strong>NÃO</strong> porque não há problemas sistêmicos (detectamos indicadores elevados de <span className="text-red-600 uppercase font-black">{hiddenNames}</span>), mas porque <strong>sua Base de Recuperação (Hábitos) está tão forte que age como um escudo impenetrável</strong>.
+                </p>
+                <p className="text-[11px] text-indigo-900/70 leading-relaxed font-medium mt-3 bg-indigo-100/30 p-3 rounded-xl">
+                  💡 <strong>Insight:</strong> Essa é uma ótima notícia. Seus bons hábitos estão vencendo a carga negativa. O foco ideal agora é investigar e lapidar esses "Ralos de Energia Ocultos" antes que sua resiliência diminua.
+                </p>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
 
@@ -158,9 +188,16 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
         {/* Numerador Card */}
         <Card className="border-red-200 shadow-sm flex flex-col overflow-hidden rounded-2xl">
           <CardHeader className="bg-red-50/50 pb-4 border-b border-red-100">
-            <CardTitle className="text-red-700 flex items-center gap-2 text-base font-black">
-              <Zap className="w-5 h-5" />
-              O QUE ESTÁ SOBRECARREGANDO <span className="opacity-60 font-medium ml-1">(Numerador)</span>
+            <CardTitle className="text-red-700 flex flex-col gap-1.5 text-base font-black">
+              <div className="flex items-center gap-2">
+                <Zap className="w-5 h-5" />
+                O QUE ESTÁ SOBRECARREGANDO <span className="opacity-60 font-medium ml-1">(Numerador)</span>
+              </div>
+              {hasHiddenDrains && isSilentHero && (
+                <span className="inline-flex items-center bg-red-100/80 text-red-800 text-[9px] px-2 py-0.5 rounded-full uppercase tracking-wider font-bold w-fit border border-red-200">
+                  ⚠️ Fator Oculto Ativo
+                </span>
+              )}
             </CardTitle>
             <CardDescription className="text-red-700/60 font-medium text-xs">Fatores que aumentam sua carga sistêmica</CardDescription>
           </CardHeader>
@@ -195,12 +232,17 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
               <ScoreIndicator label="Ergonomia (ERG)" value={ERG} type="capacity" isHighlighted={highlightedKey === 'ERG'} />
             </div>
 
-            <div className="pt-2 mt-2 border-t border-emerald-100/50 space-y-2">
-              <div className="grid grid-cols-2 gap-x-4 opacity-60">
+            <div className="pt-3 mt-4 border-t border-emerald-100/80 space-y-2">
+              <div className="mb-2">
+                <span className="text-[10px] uppercase font-black text-red-700/70 tracking-widest bg-red-50 px-2 py-0.5 rounded-md">
+                  Ralos de Energia (Subtraem da Capacidade)
+                </span>
+              </div>
+              <div className="grid grid-cols-2 gap-x-4">
                 <ScoreIndicator label="Ruído (N)" value={N} type="noise" isHighlighted={highlightedKey === 'N'} />
                 <ScoreIndicator label="Medicação (MED)" value={MED} type="noise" isHighlighted={highlightedKey === 'MED'} />
               </div>
-              <div className="flex justify-between items-center pt-2">
+              <div className="flex justify-between items-center pt-3 mt-2 border-t border-emerald-100/50">
                 <span className="text-[10px] uppercase font-black text-emerald-700/40 tracking-widest">Total Denominador</span>
                 <span className="text-lg font-black text-emerald-700">{denominator.toFixed(1)}</span>
               </div>

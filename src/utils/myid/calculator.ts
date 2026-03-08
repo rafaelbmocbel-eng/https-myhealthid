@@ -415,7 +415,7 @@ export class MyIDCalculator {
 
     // ==================== INTERPRETAÇÃO ====================
     interpretStatus(): string {
-        const interp = getMyIDInterpretation(this.result.MyID ?? 0);
+        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false);
         this.result.status = interp.status;
         this.result.color = interp.color;
         this.result.recommendation = interp.recommendation;

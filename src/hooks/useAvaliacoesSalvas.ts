@@ -39,19 +39,21 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
         data_avaliacao: avaliacao.dataAvaliacao,
         dados_avaliacao: avaliacao as any,
         classificacao: avaliacao.resultado?.classificacao || 'N/A',
-        
+
         // Novos campos MyID
         myid_score: avaliacao.resultado?.myidScore || 0,
         score_i: avaliacao.resultado?.componentScores.I || 0,
         score_n: avaliacao.resultado?.componentScores.N || 0,
-        
+        red_flags: avaliacao.resultado?.redFlagsDetected || false,
+        red_flags_details: avaliacao.resultado?.redFlagAlerts || [],
+
         // Campos compartilhados (mapeados a partir do resultado MyID)
         score_p: avaliacao.resultado?.componentScores.P || 0,
         score_c: avaliacao.resultado?.componentScores.C || 0,
         score_d: avaliacao.resultado?.componentScores.D || 0,
         score_r: avaliacao.resultado?.componentScores.R || 0,
         score_efi: avaliacao.resultado?.componentScores.EFI || 0,
-        
+
         // Campos que não existem mais (anulados)
         score_e: null,
         score_f: null,
@@ -101,17 +103,17 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
 
         const deltas = prev
           ? {
-              delta_e: (data.score_e ?? 0) - (prev.score_e ?? 0),
-              delta_p: (data.score_p ?? 0) - (prev.score_p ?? 0),
-              delta_c: (data.score_c ?? 0) - (prev.score_c ?? 0),
-              delta_f: (data.score_f ?? 0) - (prev.score_f ?? 0),
-              delta_d: (data.score_d ?? 0) - (prev.score_d ?? 0),
-              delta_r: (data.score_r ?? 0) - (prev.score_r ?? 0),
-              delta_efi: (data.score_efi ?? 0) - (prev.score_efi ?? 0),
-              delta_i: (data.score_i ?? 0) - (prev.score_i ?? 0),
-              delta_n: (data.score_n ?? 0) - (prev.score_n ?? 0),
-              delta_id_final: (data.myid_score ?? data.id_final ?? 0) - (prev.myid_score ?? prev.id_final ?? 0),
-            }
+            delta_e: (data.score_e ?? 0) - (prev.score_e ?? 0),
+            delta_p: (data.score_p ?? 0) - (prev.score_p ?? 0),
+            delta_c: (data.score_c ?? 0) - (prev.score_c ?? 0),
+            delta_f: (data.score_f ?? 0) - (prev.score_f ?? 0),
+            delta_d: (data.score_d ?? 0) - (prev.score_d ?? 0),
+            delta_r: (data.score_r ?? 0) - (prev.score_r ?? 0),
+            delta_efi: (data.score_efi ?? 0) - (prev.score_efi ?? 0),
+            delta_i: (data.score_i ?? 0) - (prev.score_i ?? 0),
+            delta_n: (data.score_n ?? 0) - (prev.score_n ?? 0),
+            delta_id_final: (data.myid_score ?? data.id_final ?? 0) - (prev.myid_score ?? prev.id_final ?? 0),
+          }
           : { delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_i: 0, delta_n: 0, delta_id_final: 0 };
 
         const diasDesdeAnterior = prev

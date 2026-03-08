@@ -15,8 +15,8 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
-   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
-   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus,
+  Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
+  ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -28,11 +28,11 @@ import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/wha
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
 
 const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string }[] = [
-  { key: 'lead',          label: 'Lead',          emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
-  { key: 'novo',          label: 'Cliente Novo',  emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
-  { key: 'recorrente',    label: 'Recorrente',    emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
-  { key: 'inadimplente',  label: 'Inadimplente',  emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
-  { key: 'a_pagar',       label: 'A Pagar',       emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
+  { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
+  { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
+  { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+  { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
+  { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
 // ── Utilitários de máscara ──────────────────────────────────────────────────
@@ -573,9 +573,12 @@ export default function Pacientes() {
                     {/* Actions — visible on hover */}
                     <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                       {p.telefone && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-emerald-600" title="WhatsApp"
-                          onClick={() => window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}`, '_blank')}>
-                          <MessageCircle className="h-3.5 w-3.5" />
+                        <Button variant="default" size="sm" className="h-8 gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white" title="WhatsApp"
+                          onClick={() => {
+                            const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
+                            window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                          }}>
+                          <MessageCircle className="h-3.5 w-3.5" /> <span className="hidden sm:inline text-xs">Chamar</span>
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-primary" title="Evoluções e Prontuário"

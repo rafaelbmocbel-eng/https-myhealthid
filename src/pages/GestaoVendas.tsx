@@ -44,6 +44,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
 
 type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
+export default function GestaoVendas() {
     const navigate = useNavigate();
     const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
     const [fabOpen, setFabOpen] = useState(false);
@@ -443,79 +444,138 @@ type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
                                         <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
                                     </div>
                                 </div>
-                                <div className="flex gap-1 shrink-0">{actions}</div>
+                                <div className="flex gap-1 shrink-0">
+                                    {p.telefone && (
+                                        <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
+                                                window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                            }}>
+                                            <MessageCircle className="h-3 w-3" /> Chamar
+                                        </Button>
+                                    )}
+                                    {actions}
+                                </div>
                             </div>
                         );
                     };
 
                     return (
-                    <div className="space-y-4">
-                        {/* Leads */}
-                        <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
-                            {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
-                                filteredLeads.slice(0, 10).map((p: any) => (
-                                    <PatientRow key={p.id} p={p} actions={
-                                        p.telefone ? (
-                                            <>
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareBoasVindas(n, ph, user?.user_metadata?.nome || 'Terapeuta'))}>
-                                                    <Send className="h-3 w-3" /> Boas-vindas
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
-                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                    <MessageCircle className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </>
-                                        ) : null
-                                    } />
-                                ))
-                            )}
-                        </FunnelStage>
-
-                        {/* Questionário Pendente */}
-                        <FunnelStage title="Questionário Pendente" icon={<Clock className="h-4 w-4 text-amber-600" />} count={pendingLinks.length} color="amber" defaultOpen={pendingLinks.length > 0}>
-                            {pendingLinks.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Nenhum pendente 🎉</p> : (
-                                pendingLinks.slice(0, 10).map((link: any) => {
-                                    const days = differenceInDays(now, new Date(link.created_at));
-                                    const urgent = days >= 3;
-                                    return (
-                                        <div key={link.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30">
-                                            <div className="flex items-center gap-2">
-                                                <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${urgent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
-                                                    {link.pacientes?.nome?.[0]}
-                                                </div>
-                                                <div>
-                                                    <span className="text-sm font-medium">{link.pacientes?.nome} {link.pacientes?.sobrenome}</span>
-                                                    <div className="text-[10px] text-muted-foreground">{days}d atrás {urgent && '⚠️'}</div>
-                                                </div>
-                                            </div>
-                                            <div className="flex gap-1">
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" onClick={() => handleRelembrar(link)}>
-                                                    <MessageSquare className="h-3 w-3" /> Relembrar
-                                                </Button>
-                                                {link.pacientes?.telefone && (
+                        <div className="space-y-4">
+                            {/* Leads */}
+                            <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
+                                {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
+                                    filteredLeads.slice(0, 10).map((p: any) => (
+                                        <PatientRow key={p.id} p={p} actions={
+                                            p.telefone ? (
+                                                <>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareBoasVindas(n, ph, user?.user_metadata?.nome || 'Terapeuta'))}>
+                                                        <Send className="h-3 w-3" /> Boas-vindas
+                                                    </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
-                                                        onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                        onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
                                                         <MessageCircle className="h-3.5 w-3.5" />
                                                     </Button>
-                                                )}
+                                                </>
+                                            ) : null
+                                        } />
+                                    ))
+                                )}
+                            </FunnelStage>
+
+                            {/* Questionário Pendente */}
+                            <FunnelStage title="Questionário Pendente" icon={<Clock className="h-4 w-4 text-amber-600" />} count={pendingLinks.length} color="amber" defaultOpen={pendingLinks.length > 0}>
+                                {pendingLinks.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Nenhum pendente 🎉</p> : (
+                                    pendingLinks.slice(0, 10).map((link: any) => {
+                                        const days = differenceInDays(now, new Date(link.created_at));
+                                        const urgent = days >= 3;
+                                        return (
+                                            <div key={link.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30">
+                                                <div className="flex items-center gap-2">
+                                                    <div className={`h-7 w-7 rounded-full flex items-center justify-center text-xs font-bold ${urgent ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'}`}>
+                                                        {link.pacientes?.nome?.[0]}
+                                                    </div>
+                                                    <div>
+                                                        <span className="text-sm font-medium">{link.pacientes?.nome} {link.pacientes?.sobrenome}</span>
+                                                        <div className="text-[10px] text-muted-foreground">{days}d atrás {urgent && '⚠️'}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="flex gap-1">
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" onClick={() => handleRelembrar(link)}>
+                                                        <MessageSquare className="h-3 w-3" /> Relembrar
+                                                    </Button>
+                                                    {link.pacientes?.telefone && (
+                                                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                            onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                            <MessageCircle className="h-3.5 w-3.5" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </div>
-                                        </div>
-                                    );
-                                })
-                            )}
-                        </FunnelStage>
+                                        );
+                                    })
+                                )}
+                            </FunnelStage>
 
-                        {/* Inadimplentes 🔴 */}
-                        {inadimplentes.length > 0 && (
-                            <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
-                                {inadimplentes.slice(0, 10).map((p: any) => (
+                            {/* Inadimplentes 🔴 */}
+                            {inadimplentes.length > 0 && (
+                                <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
+                                    {inadimplentes.slice(0, 10).map((p: any) => (
+                                        <PatientRow key={p.id} p={p} actions={
+                                            p.telefone ? (
+                                                <>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`))}>
+                                                        <DollarSign className="h-3 w-3" /> Cobrar
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                        onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
+                                            ) : null
+                                        } />
+                                    ))}
+                                </FunnelStage>
+                            )}
+
+                            {/* A Pagar 🟠 */}
+                            {aPagar.length > 0 && (
+                                <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
+                                    {aPagar.slice(0, 10).map((p: any) => (
+                                        <PatientRow key={p.id} p={p} actions={
+                                            p.telefone ? (
+                                                <>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`))}>
+                                                        <DollarSign className="h-3 w-3" /> Lembrar
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                        onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
+                                            ) : null
+                                        } />
+                                    ))}
+                                </FunnelStage>
+                            )}
+
+                            {/* Avaliados (Ativos) */}
+                            <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
+                                {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`))}>
-                                                    <DollarSign className="h-3 w-3" /> Cobrar
+                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePosAvaliacao(n, ph, '📊 Seus resultados estão prontos!'))}>
+                                                    <FileText className="h-3 w-3" /> Pós-Avaliação
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-green-600"
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePropostaComercial(n, ph, 'Método Identidade', 'consulte'))}>
+                                                    <Package className="h-3 w-3" /> Proposta
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                     onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
@@ -526,80 +586,33 @@ type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
                                     } />
                                 ))}
                             </FunnelStage>
-                        )}
 
-                        {/* A Pagar 🟠 */}
-                        {aPagar.length > 0 && (
-                            <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
-                                {aPagar.slice(0, 10).map((p: any) => (
-                                    <PatientRow key={p.id} p={p} actions={
-                                        p.telefone ? (
-                                            <>
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`))}>
-                                                    <DollarSign className="h-3 w-3" /> Lembrar
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
-                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                    <MessageCircle className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </>
-                                        ) : null
-                                    } />
-                                ))}
+                            {/* Follow-up Necessário */}
+                            <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
+                                {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
+                                    filteredInativos.slice(0, 10).map((p: any) => (
+                                        <PatientRow key={p.id} p={p} actions={
+                                            p.telefone ? (
+                                                <>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => shareLembreteRetorno(n, ph, 'em breve'))}>
+                                                        <CalendarDays className="h-3 w-3" /> Retorno
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
+                                                        onClick={() => sendToPatient(p.id, (n, ph) => sharePosAlta(n, ph))}>
+                                                        <Heart className="h-3 w-3" /> Pós-Alta
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                        onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                </>
+                                            ) : null
+                                        } />
+                                    ))
+                                )}
                             </FunnelStage>
-                        )}
-
-                        {/* Avaliados (Ativos) */}
-                        <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
-                            {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
-                                <PatientRow key={p.id} p={p} actions={
-                                    p.telefone ? (
-                                        <>
-                                            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
-                                                onClick={() => sendToPatient(p.id, (n, ph) => sharePosAvaliacao(n, ph, '📊 Seus resultados estão prontos!'))}>
-                                                <FileText className="h-3 w-3" /> Pós-Avaliação
-                                            </Button>
-                                            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-green-600"
-                                                onClick={() => sendToPatient(p.id, (n, ph) => sharePropostaComercial(n, ph, 'Método Identidade', 'consulte'))}>
-                                                <Package className="h-3 w-3" /> Proposta
-                                            </Button>
-                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
-                                                onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                <MessageCircle className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </>
-                                    ) : null
-                                } />
-                            ))}
-                        </FunnelStage>
-
-                        {/* Follow-up Necessário */}
-                        <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
-                            {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
-                                filteredInativos.slice(0, 10).map((p: any) => (
-                                    <PatientRow key={p.id} p={p} actions={
-                                        p.telefone ? (
-                                            <>
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareLembreteRetorno(n, ph, 'em breve'))}>
-                                                    <CalendarDays className="h-3 w-3" /> Retorno
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
-                                                    onClick={() => sendToPatient(p.id, (n, ph) => sharePosAlta(n, ph))}>
-                                                    <Heart className="h-3 w-3" /> Pós-Alta
-                                                </Button>
-                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
-                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                    <MessageCircle className="h-3.5 w-3.5" />
-                                                </Button>
-                                            </>
-                                        ) : null
-                                    } />
-                                ))
-                            )}
-                        </FunnelStage>
-                    </div>
+                        </div>
                     );
                 })()}
 

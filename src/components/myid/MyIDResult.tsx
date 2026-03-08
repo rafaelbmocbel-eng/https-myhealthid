@@ -105,7 +105,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
         recommendation: _recommendation // captured but overridden
     } = result;
 
-    const interp = getMyIDInterpretation(MyID_score ?? 0);
+    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected);
     const status = interp.label;
     const color = interp.color;
     const recommendation = interp.recommendation;
@@ -159,6 +159,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
             <MyIDFormulaDisplay
                 scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
                 myidScore={MyID_score ?? 0}
+                hasRedFlags={red_flags_detected}
             />
 
             {/* ── FINGERPRINT VISUALIZATION ── */}

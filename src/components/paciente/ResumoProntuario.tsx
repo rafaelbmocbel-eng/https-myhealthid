@@ -78,7 +78,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
     });
 
     const myidInterp = myidResult?.myid_score !== undefined
-        ? getMyIDInterpretation(myidResult.myid_score)
+        ? getMyIDInterpretation(myidResult.myid_score, !!myidResult.red_flags || (myidResult.dados_avaliacao as any)?.resultado?.redFlagsDetected)
         : null;
 
     if (loadingPac || loadingProt || loadingExec) {

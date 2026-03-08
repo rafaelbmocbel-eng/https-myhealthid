@@ -8,6 +8,7 @@ interface Props {
   onRingClick?: (ring: FingerprintRing) => void;
   onRingHover?: (ringKey: string | null) => void;
   highlightedKey?: string | null;
+  hasRedFlags?: boolean;
 }
 
 import { getThermalColor } from '@/utils/myidCalculations';
@@ -24,7 +25,7 @@ function scoreStatusLabel(score: number): string {
   return 'EXTREMO';
 }
 
-export default function MyIDFingerprint({ rings, myidScore, className = '', onRingClick, onRingHover, highlightedKey }: Props) {
+export default function MyIDFingerprint({ rings, myidScore, className = '', onRingClick, onRingHover, highlightedKey, hasRedFlags = false }: Props) {
   const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
 
@@ -137,6 +138,10 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
             <stop offset="0%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0.04" />
             <stop offset="100%" stopColor="hsl(270, 40%, 60%)" stopOpacity="0" />
           </radialGradient>
+          <filter id="fp-pulse-glow">
+            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feComposite in="SourceGraphic" in2="blur" operator="over" />
+          </filter>
         </defs>
 
         {/* Background */}
@@ -246,17 +251,22 @@ export default function MyIDFingerprint({ rings, myidScore, className = '', onRi
           );
         })}
 
-        {/* CENTER SCORE */}
-        <text x={cx} y={cy - 18} textAnchor="middle" fontSize="56" fontWeight="900"
-          fill={centerColor} filter="url(#fp-core-glow)" letterSpacing="-2">
-          {myidScore.toFixed(1)}
-        </text>
-        <text x={cx} y={cy + 10} textAnchor="middle" className="fill-muted-foreground"
-          fontSize="12" fontWeight="700" letterSpacing="4">MyID SCORE</text>
-        <rect x={cx - 40} y={cy + 18} width={80} height={24} rx={12}
-          fill={centerColor} opacity={0.15} />
-        <text x={cx} y={cy + 34} textAnchor="middle" fill={centerColor}
-          fontSize="11" fontWeight="800" letterSpacing="2" dominantBaseline="central">{label}</text>
+        {/* RED FLAGS EXTERNAL RING */}
+        {hasRedFlags && (
+          <g style={{ animation: 'pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
+            <circle cx={cx} cy={cy} r={410} fill="none" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 8" opacity="0.6" />
+            <circle cx={cx} cy={cy} r={420} fill="none" stroke="#ef4444" strokeWidth="8" opacity="0.15" filter="url(#fp-pulse-glow)" />
+            <circle cx={cx} cy={cy} r={400} fill="none" stroke="#ef4444" strokeWidth="4" opacity="0.25" />
+            <text x={cx} y={cy - 435} textAnchor="middle" fill="#ef4444" fontSize="14" fontWeight="900" letterSpacing="2">SINAIS DE ALERTA DETECTADOS</text>
+          </g>
+        )}
+
+        <style>{`
+          @keyframes pulse {
+            0%, 100% { fill-opacity: 0.15; stroke-opacity: 0.2; transform: scale(1); transform-origin: 50% 50%; }
+            50% { fill-opacity: 0.3; stroke-opacity: 0.8; transform: scale(1.02); transform-origin: 50% 50%; }
+          }
+        `}</style>
 
         {/* LEGEND */}
         <g transform={`translate(60, ${vh - 50})`}>

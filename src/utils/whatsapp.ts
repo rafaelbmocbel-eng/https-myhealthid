@@ -1,16 +1,18 @@
 // ── WhatsApp Integration Utils ────────────────────────────────────────
 // Core sharing function and message templates for patient communication
 
-export function shareViaWhatsApp(phoneNumber: string, message: string, url?: string) {
+import { supabase } from '@/integrations/supabase/client';
+
+export async function shareViaWhatsApp(phoneNumber: string, message: string, url?: string, direct: boolean = false): Promise<{ success: boolean, error?: string }> {
   if (!phoneNumber || phoneNumber.trim() === '') {
     console.warn('WhatsApp: telefone não informado');
-    return;
+    return { success: false, error: 'Telefone não informado' };
   }
 
   const formattedPhone = phoneNumber.replace(/\D/g, '');
   if (formattedPhone.length < 10) {
     console.warn('WhatsApp: telefone inválido', formattedPhone);
-    return;
+    return { success: false, error: 'Telefone inválido' };
   }
 
   const phone = formattedPhone.startsWith('55') ? formattedPhone : `55${formattedPhone}`;
@@ -20,6 +22,22 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
     fullMessage += `\n\n🔗 Link: ${url}`;
   }
 
+  // Se o envio for direto via API (Z-API) em background
+  if (direct) {
+    try {
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: { phone, message: fullMessage }
+      });
+
+      if (error) throw error;
+      return { success: true };
+    } catch (e: any) {
+      console.error('Erro ao enviar WhatsApp direto:', e);
+      return { success: false, error: e.message || 'Erro ao comunicar com a provedora Z-API' };
+    }
+  }
+
+  // Fallback tradicional abrindo aba/app web
   const encodedMessage = encodeURIComponent(fullMessage);
   const whatsappUrl = `https://wa.me/${phone}?text=${encodedMessage}`;
 
@@ -33,6 +51,8 @@ export function shareViaWhatsApp(phoneNumber: string, message: string, url?: str
     link.click();
     document.body.removeChild(link);
   }
+
+  return { success: true };
 }
 
 // ── Existing templates ────────────────────────────────────────────────

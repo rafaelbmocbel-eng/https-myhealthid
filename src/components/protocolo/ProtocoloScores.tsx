@@ -71,44 +71,66 @@ export default function ProtocoloScores({ scores }: Props) {
       {/* Row 1: Unified Gauge + Radar */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg">
-          <h3 className="font-bold text-xs mb-3 flex items-center gap-2 text-red-600">
-            <span className="h-5 w-5 rounded-lg bg-red-100 flex items-center justify-center text-[10px]">🔥</span>
-            Perfil: Estressores (Demanda)
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={radarDemand} outerRadius="70%">
+          <div className="mb-4">
+            <h3 className="font-bold text-sm flex items-center gap-2 text-red-600">
+              <span className="h-6 w-6 rounded-lg bg-red-100 flex items-center justify-center text-xs shadow-sm">🔥</span>
+              Perfil: Estressores (Demanda)
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-tight pr-4">
+              <strong>Como ler:</strong> Quanto mais o gráfico se expande para as bordas externas, <strong>maior</strong> é a sobrecarga naquele fator. Ideal: o mais próximo do centro (0).
+            </p>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <RadarChart data={radarDemand} outerRadius="65%" margin={{ top: 10, right: 25, bottom: 10, left: 25 }}>
               <PolarGrid stroke="hsl(210, 18%, 87%)" strokeDasharray="3 3" />
               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: 'hsl(215, 12%, 42%)', fontWeight: 600 }} />
-              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 7 }} axisLine={false} />
+              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 8 }} angle={30} axisLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', fontSize: '11px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                formatter={(value: number) => [`${value.toFixed(1)}/10`, 'Sobrecarga']}
+              />
               <Radar
+                name="Estressores"
                 dataKey="value"
                 stroke="hsl(0, 84%, 60%)"
                 fill="hsl(0, 84%, 60%)"
-                fillOpacity={0.15}
+                fillOpacity={0.25}
                 strokeWidth={2}
-                dot={{ r: 2.5, fill: 'hsl(0, 84%, 60%)', stroke: 'white', strokeWidth: 1 }}
+                dot={{ r: 3, fill: 'hsl(0, 84%, 60%)', stroke: 'white', strokeWidth: 1.5 }}
+                activeDot={{ r: 5, stroke: 'white' }}
               />
             </RadarChart>
           </ResponsiveContainer>
         </div>
 
         <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg">
-          <h3 className="font-bold text-xs mb-3 flex items-center gap-2 text-emerald-600">
-            <span className="h-5 w-5 rounded-lg bg-emerald-100 flex items-center justify-center text-[10px]">🛡️</span>
-            Perfil: Capacidades (Reserva)
-          </h3>
-          <ResponsiveContainer width="100%" height={200}>
-            <RadarChart data={radarCapacity} outerRadius="70%">
+          <div className="mb-4">
+            <h3 className="font-bold text-sm flex items-center gap-2 text-emerald-600">
+              <span className="h-6 w-6 rounded-lg bg-emerald-100 flex items-center justify-center text-xs shadow-sm">🛡️</span>
+              Perfil: Capacidades (Reserva)
+            </h3>
+            <p className="text-[10px] text-muted-foreground mt-1.5 leading-tight pr-4">
+              <strong>Como ler:</strong> Quanto mais o gráfico se expande para as bordas externas, <strong>mais forte e resiliente</strong> é o seu sistema. Ideal: preencher todo o mapa (10).
+            </p>
+          </div>
+          <ResponsiveContainer width="100%" height={220}>
+            <RadarChart data={radarCapacity} outerRadius="65%" margin={{ top: 10, right: 30, bottom: 10, left: 30 }}>
               <PolarGrid stroke="hsl(210, 18%, 87%)" strokeDasharray="3 3" />
               <PolarAngleAxis dataKey="subject" tick={{ fontSize: 9, fill: 'hsl(215, 12%, 42%)', fontWeight: 600 }} />
-              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 7 }} axisLine={false} />
+              <PolarRadiusAxis domain={[0, 10]} tick={{ fontSize: 8 }} angle={30} axisLine={false} />
+              <Tooltip
+                contentStyle={{ borderRadius: '8px', fontSize: '11px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                formatter={(value: number) => [`${value.toFixed(1)}/10`, 'Reserva']}
+              />
               <Radar
+                name="Capacidades"
                 dataKey="value"
                 stroke="hsl(173, 58%, 39%)"
                 fill="hsl(173, 58%, 39%)"
-                fillOpacity={0.15}
+                fillOpacity={0.25}
                 strokeWidth={2}
-                dot={{ r: 2.5, fill: 'hsl(173, 58%, 39%)', stroke: 'white', strokeWidth: 1 }}
+                dot={{ r: 3, fill: 'hsl(173, 58%, 39%)', stroke: 'white', strokeWidth: 1.5 }}
+                activeDot={{ r: 5, stroke: 'white' }}
               />
             </RadarChart>
           </ResponsiveContainer>
@@ -120,10 +142,15 @@ export default function ProtocoloScores({ scores }: Props) {
         <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg p-5">
           <div className="flex flex-col md:flex-row items-center gap-6">
             <div className="flex-1 w-full">
-              <h3 className="font-bold text-sm mb-4 flex items-center gap-2">
-                <span className="h-6 w-6 rounded-lg bg-destructive/10 flex items-center justify-center text-xs">⚠️</span>
-                Top 3 Alertas Clínicos
-              </h3>
+              <div className="mb-4">
+                <h3 className="font-bold text-sm flex items-center gap-2">
+                  <span className="h-6 w-6 rounded-lg bg-destructive/10 flex items-center justify-center text-xs">⚠️</span>
+                  Top 3 Alertas Clínicos
+                </h3>
+                <p className="text-[10px] text-muted-foreground mt-1.5 leading-tight">
+                  Estes são os três fatores que mais exigem atenção imediata. Eles representam áreas de maior vulnerabilidade ou menor capacidade de resposta do seu corpo.
+                </p>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
                 {top3.map((item, i) => {
                   const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MODERADO';

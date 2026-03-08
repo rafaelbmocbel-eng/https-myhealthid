@@ -125,49 +125,69 @@ export interface Interpretation {
   label: string;
   color: string;
   recommendation: string;
+  isRedFlagElevated?: boolean;
 }
 
-export function getMyIDInterpretation(score: number): Interpretation {
+export function getMyIDInterpretation(score: number, hasRedFlags: boolean = false): Interpretation {
   const val = score ?? 0;
+  let interp: Interpretation;
 
   if (val < 3) {
-    return {
+    interp = {
       status: 'LEVE',
       label: 'RECUPERAÇÃO FAVORÁVEL',
       color: '#8b5cf6', // Violet
       recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.'
     };
-  }
-  if (val < 6) {
-    return {
+  } else if (val < 6) {
+    interp = {
       status: 'MODERADO',
       label: 'SOBRECARGA MODERADA',
       color: '#3b82f6', // Blue
       recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.'
     };
-  }
-  if (val < 8) {
-    return {
+  } else if (val < 8) {
+    interp = {
       status: 'SEVERO',
       label: 'SOBRECARGA CRÍTICA',
       color: '#f59e0b', // Amber/Orange
       recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.'
     };
-  }
-  if (val < 9.5) {
-    return {
+  } else if (val < 9.5) {
+    interp = {
       status: 'CRÍTICO',
       label: 'RISCO DE CRONIFICAÇÃO',
       color: '#ef4444', // Red
       recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.'
     };
+  } else {
+    interp = {
+      status: 'EXTREMO',
+      label: 'RISCO DE COLAPSO',
+      color: '#7f1d1d', // Deep Red
+      recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
+    };
   }
-  return {
-    status: 'EXTREMO',
-    label: 'RISCO DE COLAPSO',
-    color: '#7f1d1d', // Deep Red
-    recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
-  };
+
+  // --- ELEVAÇÃO POR RED FLAGS ---
+  // Se houver Red Flags, o status mínimo é SEVERO, independente do score.
+  if (hasRedFlags) {
+    const severityOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
+    const currentIdx = severityOrder.indexOf(interp.status);
+    const minIdx = severityOrder.indexOf('SEVERO');
+
+    if (currentIdx < minIdx) {
+      return {
+        status: 'SEVERO',
+        label: 'SOBRECARGA CRÍTICA (ALERTA)',
+        color: '#f59e0b',
+        recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional imediata.',
+        isRedFlagElevated: true
+      };
+    }
+  }
+
+  return interp;
 }
 
 export function calcularMyID(
