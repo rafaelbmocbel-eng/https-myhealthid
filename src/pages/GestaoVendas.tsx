@@ -573,7 +573,7 @@ export default function GestaoVendas() {
 
                         {/* Avaliados (Ativos) */}
                         <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
-                            {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
+                            {filteredAvaliados.filter(p => !inativos.includes(p)).map((p: any) => (
                                 <PatientRow key={p.id} p={p} actions={
                                     p.telefone ? (
                                         <>
