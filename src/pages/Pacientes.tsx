@@ -160,11 +160,13 @@ export default function Pacientes() {
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
+  const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
+  const [fabOpen, setFabOpen] = useState(false);
 
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
