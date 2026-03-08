@@ -834,8 +834,8 @@ export default function GestaoVendas() {
                                                                         .replace('{valor}', 'consulte')
                                                                         .replace('{score}', '—')
                                                                         .replace('{classificacao}', '—');
-                                                                    shareViaWhatsApp(selectedPatient.telefone, finalMsg);
-                                                                    toast({ title: '📩 Mensagem aberta no WhatsApp!' });
+                                                                    sendAndLog(selectedPatient.id, selectedPatient.telefone, finalMsg, tpl.id);
+                                                                    toast({ title: '📩 Mensagem enviada e registrada!' });
                                                                 }}>
                                                                 <Send className="h-3 w-3" /> Enviar
                                                             </Button>
