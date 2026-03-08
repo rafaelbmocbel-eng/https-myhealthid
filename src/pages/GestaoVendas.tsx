@@ -279,32 +279,32 @@ export default function GestaoVendas() {
         return anivA.getTime() - anivB.getTime();
     });
 
-    const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void) => {
+    const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void, templateId?: string) => {
         const p = patients.find((pat: any) => pat.id === patientId);
         if (!p?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
-        callback(`${p.nome} ${p.sobrenome || ''}`.trim(), p.telefone);
-        toast({ title: '📩 Mensagem aberta no WhatsApp!' });
+        const fullName = `${p.nome} ${p.sobrenome || ''}`.trim();
+        callback(fullName, p.telefone);
+        logMensagem.mutate({ paciente_id: patientId, mensagem: `[${templateId || 'ação rápida'}] → ${fullName}`, tipo: 'template', template_id: templateId });
+        toast({ title: '📩 Mensagem aberta e registrada!' });
     };
 
     const handleRelembrar = (link: any) => {
         const pac = link.pacientes;
         if (!pac?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
         const tel = pac.telefone.replace(/\D/g, '');
-        const msg = encodeURIComponent(
-            `Olá ${pac.nome}! 👋\n\nNotei que ainda não preencheu o questionário que enviei. ` +
-            `É bem rápido e super importante para o seu tratamento personalizado.\n\n` +
-            `Pode preencher quando tiver um tempinho? O link ainda está ativo! 😊`
-        );
-        window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
-        toast({ title: '📩 Lembrete enviado!' });
+        const msg = `Olá ${pac.nome}! 👋\n\nNotei que ainda não preencheu o questionário que enviei. É bem rápido e super importante para o seu tratamento personalizado.\n\nPode preencher quando tiver um tempinho? O link ainda está ativo! 😊`;
+        shareViaWhatsApp(pac.telefone, msg);
+        if (link.paciente_id) logMensagem.mutate({ paciente_id: link.paciente_id, mensagem: msg, tipo: 'template', template_id: 'lembrete-questionario' });
+        toast({ title: '📩 Lembrete enviado e registrado!' });
     };
 
     const handleSendPacote = (pacote: Pacote) => {
         if (!selectedPatient?.telefone) { toast({ title: 'Selecione um paciente com telefone', variant: 'destructive' }); return; }
         const details = pacote.diferenciais.map(d => `✅ ${d}`).join('\n');
         const valor = customValue || `R$ ${pacote.valorSugerido}`;
-        sharePacoteInfo(`${selectedPatient.nome} ${selectedPatient.sobrenome || ''}`, selectedPatient.telefone, pacote.nome, details, valor);
-        toast({ title: '📩 Pacote enviado via WhatsApp!' });
+        const msg = `Olá ${selectedPatient.nome}! 👋\n\nPreparei uma proposta especial:\n\n📦 *${pacote.nome}*\n\n${details}\n\n💰 *Investimento:* ${valor}\n\nEste pacote foi pensado para seu perfil. Quer saber mais? 😊`;
+        sendAndLog(selectedPatient.id, selectedPatient.telefone, msg, 'pacote');
+        toast({ title: '📩 Pacote enviado e registrado!' });
     };
 
     // ── Tabs ─────────────────────────────────────────────────────────
