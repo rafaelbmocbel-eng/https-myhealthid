@@ -19,6 +19,7 @@ import Relatorios from "./pages/Relatorios";
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import MyIDResponder from "./pages/MyIDResponder";
+import FunilPublico from "./pages/FunilPublico";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
@@ -44,6 +45,7 @@ const App = () => (
             <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
             <Route path="/agenda/:token" element={<AgendaPublica />} />
             <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+            <Route path="/funil/:slug" element={<FunilPublico />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/crm" element={<GestaoVendas />} />
             <Route path="/configuracoes" element={<Configuracoes />} />

@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
+import FunilConfigPanel from '@/components/funil/FunilConfigPanel';
 
 // ── Classificação automática (shared with Pacientes) ──────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
@@ -43,7 +44,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'conversas' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
+type TabId = 'pipeline' | 'conversas' | 'mensagens' | 'pacotes' | 'metricas' | 'notas' | 'funil';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -315,6 +316,7 @@ export default function GestaoVendas() {
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
+        { id: 'funil', label: 'Funil', icon: Zap },
     ];
 
     return (
@@ -1427,6 +1429,11 @@ export default function GestaoVendas() {
                         </div>
                     );
                 })()}
+
+                {/* ══════════════════ FUNIL TAB ══════════════════ */}
+                {activeTab === 'funil' && (
+                    <FunilConfigPanel />
+                )}
             </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
