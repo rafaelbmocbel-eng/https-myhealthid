@@ -2,21 +2,29 @@ import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { useFunilPublico, ServicoFunil } from '@/hooks/useFunilConfig';
 import { supabase } from '@/integrations/supabase/client';
-import { Loader2, MessageCircle, Send, CheckCircle2, Calendar, CreditCard, Star, ArrowRight, Phone, Mail, User } from 'lucide-react';
+import { Loader2, MessageCircle, Send, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { format, addDays, isBefore, startOfDay, parseISO, setHours, setMinutes, addMinutes, isAfter } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { gerarPixQrCodeDataUrl, gerarPixPayload } from '@/utils/pixQrCode';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
 
 type Etapa = 'boas_vindas' | 'coleta_dados' | 'diferenciais' | 'servicos' | 'agendamento' | 'pagamento' | 'confirmacao';
 
 interface ChatMessage {
   id: string;
-  tipo: 'bot' | 'user' | 'options' | 'input';
+  tipo: 'bot' | 'user' | 'options' | 'input' | 'calendar' | 'timeslots' | 'qrcode';
   texto?: string;
-  opcoes?: { label: string; value: string; icon?: React.ReactNode }[];
-  inputType?: 'nome' | 'telefone' | 'email';
+  opcoes?: { label: string; value: string }[];
+  dates?: Date[];
+  slots?: { label: string; inicio: string; fim: string }[];
+  qrCodeUrl?: string;
+  pixPayload?: string;
 }
+
+const DAY_MAP: Record<number, string> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
 export default function FunilPublico() {
   const { slug } = useParams<{ slug: string }>();
@@ -29,13 +37,14 @@ export default function FunilPublico() {
   const [inputValue, setInputValue] = useState('');
   const [inputStep, setInputStep] = useState<'nome' | 'telefone' | 'email'>('nome');
   const [showInput, setShowInput] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
   const chatRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
   }, [messages]);
 
-  // Initialize chat when config loads
   useEffect(() => {
     if (config && messages.length === 0) {
       addBotMessage(config.mensagem_boas_vindas);
@@ -61,8 +70,170 @@ export default function FunilPublico() {
     setMessages(prev => [...prev, { id: crypto.randomUUID(), tipo: 'options', opcoes }]);
   };
 
+  const addCalendar = () => {
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), tipo: 'calendar' }]);
+  };
+
+  const addTimeSlots = (slots: { label: string; inicio: string; fim: string }[]) => {
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), tipo: 'timeslots', slots }]);
+  };
+
+  const addQrCode = (qrCodeUrl: string, pixPayload: string) => {
+    setMessages(prev => [...prev, { id: crypto.randomUUID(), tipo: 'qrcode', qrCodeUrl, pixPayload }]);
+  };
+
+  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+  // Fetch agenda config and available slots for a date
+  const fetchAvailableSlots = async (date: Date) => {
+    if (!config?.terapeuta_id) return [];
+
+    // Get agenda config
+    const { data: agendaConfig } = await supabase
+      .from('config_agenda')
+      .select('*')
+      .eq('terapeuta_id', config.terapeuta_id)
+      .maybeSingle();
+
+    if (!agendaConfig) return [];
+
+    const diasSemana = agendaConfig.dias_semana as Record<string, boolean>;
+    const dayKey = DAY_MAP[date.getDay()];
+    if (!diasSemana[dayKey]) return [];
+
+    const duracao = agendaConfig.duracao_padrao || 60;
+    const intervalo = agendaConfig.intervalo_entre_sessoes || 0;
+    const vagas = agendaConfig.vagas_por_horario || 1;
+
+    // Parse start/end hours
+    const [hInicio, mInicio] = (agendaConfig.horario_inicio as string).split(':').map(Number);
+    const [hFim, mFim] = (agendaConfig.horario_fim as string).split(':').map(Number);
+
+    // Get existing agendamentos for this date
+    const startOfDate = format(date, 'yyyy-MM-dd') + 'T00:00:00';
+    const endOfDate = format(date, 'yyyy-MM-dd') + 'T23:59:59';
+
+    const { data: existingAg } = await supabase
+      .from('agendamentos')
+      .select('data_inicio, data_fim, status')
+      .eq('terapeuta_id', config.terapeuta_id)
+      .gte('data_inicio', startOfDate)
+      .lte('data_inicio', endOfDate)
+      .in('status', ['confirmado', 'pendente']);
+
+    // Generate all possible slots
+    const slots: { label: string; inicio: string; fim: string }[] = [];
+    let current = setMinutes(setHours(date, hInicio), mInicio);
+    const endTime = setMinutes(setHours(date, hFim), mFim);
+    const now = new Date();
+
+    while (isBefore(current, endTime)) {
+      const slotEnd = addMinutes(current, duracao);
+      if (isAfter(slotEnd, endTime)) break;
+      if (isBefore(current, now)) {
+        current = addMinutes(current, duracao + intervalo);
+        continue;
+      }
+
+      // Count how many agendamentos overlap this slot
+      const overlaps = (existingAg || []).filter(ag => {
+        const agStart = new Date(ag.data_inicio);
+        const agEnd = new Date(ag.data_fim);
+        return isBefore(current, agEnd) && isAfter(slotEnd, agStart);
+      }).length;
+
+      if (overlaps < vagas) {
+        slots.push({
+          label: format(current, 'HH:mm') + ' - ' + format(slotEnd, 'HH:mm'),
+          inicio: current.toISOString(),
+          fim: slotEnd.toISOString(),
+        });
+      }
+
+      current = addMinutes(current, duracao + intervalo);
+    }
+
+    return slots;
+  };
+
+  const getAvailableDays = (agendaConfig: any): boolean[] => {
+    if (!agendaConfig) return Array(7).fill(false);
+    const dias = agendaConfig.dias_semana as Record<string, boolean>;
+    return [dias.dom, dias.seg, dias.ter, dias.qua, dias.qui, dias.sex, dias.sab];
+  };
+
+  const handleDateSelect = async (date: Date) => {
+    setSelectedDate(date);
+    // Remove calendar and old timeslots
+    setMessages(prev => prev.filter(m => m.tipo !== 'calendar' && m.tipo !== 'timeslots'));
+    addUserMessage(format(date, "dd 'de' MMMM (EEEE)", { locale: ptBR }));
+    await delay(500);
+    addBotMessage('Buscando horários disponíveis... ⏳');
+
+    const slots = await fetchAvailableSlots(date);
+
+    // Remove loading message
+    setMessages(prev => prev.slice(0, -1));
+
+    if (slots.length === 0) {
+      addBotMessage('😕 Não há horários disponíveis nesta data. Escolha outra:');
+      addCalendar();
+    } else {
+      addBotMessage(`📅 Horários disponíveis para ${format(date, 'dd/MM')}:`);
+      await delay(300);
+      addTimeSlots(slots);
+    }
+  };
+
+  const handleSlotSelect = async (slot: { label: string; inicio: string; fim: string }) => {
+    setMessages(prev => prev.filter(m => m.tipo !== 'timeslots'));
+    addUserMessage(`🕐 ${slot.label}`);
+    await delay(500);
+
+    // Create agendamento
+    try {
+      const { error } = await supabase.from('agendamentos').insert({
+        terapeuta_id: config!.terapeuta_id!,
+        data_inicio: slot.inicio,
+        data_fim: slot.fim,
+        status: 'pendente',
+        titulo: `Funil: ${leadData.nome}`,
+        observacoes: `Lead via funil - Serviço: ${servicoEscolhido?.nome || 'N/A'} - Tel: ${leadData.telefone}`,
+        tipo_atendimento: 'avaliacao',
+      } as any);
+
+      if (error) throw error;
+
+      // Update lead with agendamento info
+      if (leadId) {
+        await supabase.from('funil_leads').update({
+          etapa_atual: 'pagamento',
+        } as any).eq('id', leadId);
+      }
+
+      addBotMessage('✅ Horário reservado com sucesso!');
+    } catch (e) {
+      console.error('Erro ao agendar:', e);
+      addBotMessage('⚠️ Houve um erro ao reservar. Mas não se preocupe, registramos seus dados.');
+    }
+
+    await delay(600);
+    // Move to payment
+    addBotMessage(config?.mensagem_pagamento || 'Como deseja pagar?');
+    await delay(400);
+    const payOpts: { label: string; value: string }[] = [];
+    if (config?.pix_chave) payOpts.push({ label: '📱 PIX (QR Code)', value: 'pix' });
+    if (config?.link_cartao) payOpts.push({ label: '💳 Cartão de Crédito', value: 'cartao' });
+    if (payOpts.length === 0) {
+      addBotMessage('Entre em contato para combinar a forma de pagamento.');
+      addBotMessage(config?.mensagem_confirmacao || 'Registramos seu interesse! ✅');
+      setEtapa('confirmacao');
+    } else {
+      addOptions(payOpts);
+    }
+  };
+
   const handleOption = async (value: string) => {
-    // Remove the options message
     setMessages(prev => prev.filter(m => m.tipo !== 'options'));
 
     if (value === 'diferenciais') {
@@ -126,21 +297,44 @@ export default function FunilPublico() {
     } else if (value === 'pix') {
       addUserMessage('Pagar via PIX');
       await delay(500);
-      if (config?.pix_chave) {
+      if (config?.pix_chave && config?.pix_nome) {
+        addBotMessage('📱 Escaneie o QR Code abaixo para pagar:');
+        try {
+          const qrUrl = await gerarPixQrCodeDataUrl({
+            chave: config.pix_chave,
+            nome: config.pix_nome,
+            valor: servicoEscolhido?.valor,
+            descricao: servicoEscolhido?.nome?.substring(0, 25),
+          });
+          const payload = gerarPixPayload({
+            chave: config.pix_chave,
+            nome: config.pix_nome,
+            valor: servicoEscolhido?.valor,
+            descricao: servicoEscolhido?.nome?.substring(0, 25),
+          });
+          addQrCode(qrUrl, payload);
+        } catch {
+          addBotMessage(`**Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
+        }
+        await delay(500);
+        if (servicoEscolhido?.valor) {
+          addBotMessage(`💰 Valor: **R$ ${servicoEscolhido.valor.toFixed(2)}**`);
+        }
+        addBotMessage('Após o pagamento, envie o comprovante pelo WhatsApp para confirmarmos! 🙌');
+      } else if (config?.pix_chave) {
         addBotMessage(`📱 **Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
-        addBotMessage('Após o pagamento, envie o comprovante pelo WhatsApp para confirmarmos seu agendamento! 🙌');
       } else {
-        addBotMessage('Entre em contato conosco para detalhes de pagamento via PIX.');
+        addBotMessage('Entre em contato para detalhes de pagamento via PIX.');
       }
       await delay(800);
-      addBotMessage(config?.mensagem_confirmacao || 'Obrigado! Seu interesse foi registrado. Entraremos em contato em breve! ✅');
+      addBotMessage(config?.mensagem_confirmacao || 'Obrigado! Seu interesse foi registrado. ✅');
       setEtapa('confirmacao');
 
     } else if (value === 'cartao') {
       addUserMessage('Pagar via Cartão');
       await delay(500);
       if (config?.link_cartao) {
-        addBotMessage('🔗 Clique no link abaixo para realizar o pagamento com cartão:');
+        addBotMessage('🔗 Clique no link abaixo para realizar o pagamento:');
         setTimeout(() => {
           setMessages(prev => [...prev, {
             id: crypto.randomUUID(),
@@ -149,10 +343,10 @@ export default function FunilPublico() {
           }]);
         }, 400);
       } else {
-        addBotMessage('Entre em contato conosco para detalhes de pagamento com cartão.');
+        addBotMessage('Entre em contato para detalhes de pagamento com cartão.');
       }
       await delay(800);
-      addBotMessage(config?.mensagem_confirmacao || 'Obrigado! Seu interesse foi registrado. Entraremos em contato em breve! ✅');
+      addBotMessage(config?.mensagem_confirmacao || 'Obrigado! Seu interesse foi registrado. ✅');
       setEtapa('confirmacao');
     }
   };
@@ -180,7 +374,6 @@ export default function FunilPublico() {
       addUserMessage(val);
       setShowInput(false);
 
-      // Save lead
       await delay(500);
       addBotMessage('Perfeito! Registrando seus dados... ⏳');
 
@@ -193,7 +386,7 @@ export default function FunilPublico() {
           email,
           servico_escolhido: servicoEscolhido?.nome || null,
           valor_servico: servicoEscolhido?.valor || null,
-          etapa_atual: 'pagamento',
+          etapa_atual: 'agendamento',
           status: 'em_andamento',
         } as any).select().single();
 
@@ -204,21 +397,116 @@ export default function FunilPublico() {
       }
 
       await delay(600);
-      addBotMessage(config?.mensagem_pagamento || 'Como deseja pagar?');
+      addBotMessage('Agora vamos escolher o melhor horário para você! 📅');
       await delay(400);
-      const payOpts: { label: string; value: string }[] = [];
-      if (config?.pix_chave) payOpts.push({ label: '📱 PIX', value: 'pix' });
-      if (config?.link_cartao) payOpts.push({ label: '💳 Cartão de Crédito', value: 'cartao' });
-      if (payOpts.length === 0) {
-        addBotMessage('Entre em contato para combinar a forma de pagamento.');
-        addBotMessage(config?.mensagem_confirmacao || 'Registramos seu interesse! Entraremos em contato. ✅');
-      } else {
-        addOptions(payOpts);
-      }
+      addBotMessage('Selecione uma data:');
+      await delay(300);
+      addCalendar();
     }
   };
 
-  const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+  // Mini calendar component rendered inside chat
+  const renderCalendar = () => {
+    const today = startOfDay(new Date());
+    const year = calendarMonth.getFullYear();
+    const month = calendarMonth.getMonth();
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const startPad = firstDay.getDay();
+    const days: (Date | null)[] = [];
+
+    for (let i = 0; i < startPad; i++) days.push(null);
+    for (let d = 1; d <= lastDay.getDate(); d++) days.push(new Date(year, month, d));
+
+    const weekDays = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+
+    return (
+      <div className="ml-10 bg-card border border-border rounded-xl p-3 shadow-sm max-w-[300px]">
+        <div className="flex items-center justify-between mb-2">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setCalendarMonth(new Date(year, month - 1, 1))}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm font-medium capitalize">
+            {format(calendarMonth, 'MMMM yyyy', { locale: ptBR })}
+          </span>
+          <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
+            onClick={() => setCalendarMonth(new Date(year, month + 1, 1))}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="grid grid-cols-7 gap-1 text-center">
+          {weekDays.map((w, i) => (
+            <span key={i} className="text-xs text-muted-foreground font-medium py-1">{w}</span>
+          ))}
+          {days.map((day, i) => {
+            if (!day) return <span key={`empty-${i}`} />;
+            const isPast = isBefore(day, today);
+            return (
+              <button
+                key={day.toISOString()}
+                disabled={isPast}
+                onClick={() => handleDateSelect(day)}
+                className={cn(
+                  'h-8 w-8 rounded-lg text-xs font-medium transition-colors',
+                  isPast
+                    ? 'text-muted-foreground/40 cursor-not-allowed'
+                    : 'hover:bg-primary/10 text-foreground cursor-pointer',
+                  selectedDate && format(day, 'yyyy-MM-dd') === format(selectedDate, 'yyyy-MM-dd')
+                    ? 'bg-primary text-primary-foreground'
+                    : ''
+                )}
+              >
+                {day.getDate()}
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    );
+  };
+
+  const renderTimeSlots = (slots: { label: string; inicio: string; fim: string }[]) => (
+    <div className="ml-10 flex flex-wrap gap-2 max-w-[320px]">
+      {slots.map(slot => (
+        <button
+          key={slot.inicio}
+          onClick={() => handleSlotSelect(slot)}
+          className="bg-card hover:bg-primary/10 border border-border hover:border-primary rounded-lg px-3 py-2 text-sm font-medium text-foreground transition-all shadow-sm"
+        >
+          🕐 {slot.label}
+        </button>
+      ))}
+    </div>
+  );
+
+  const renderQrCode = (msg: ChatMessage) => (
+    <div className="flex gap-2 items-start">
+      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0 mt-1">
+        <MessageCircle className="h-4 w-4 text-primary" />
+      </div>
+      <div className="bg-card border border-border rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm text-center">
+        <img src={msg.qrCodeUrl} alt="QR Code PIX" className="mx-auto rounded-lg" style={{ width: 220, height: 220 }} />
+        <p className="text-xs text-muted-foreground mt-2">Escaneie com o app do seu banco</p>
+        <button
+          onClick={() => {
+            navigator.clipboard.writeText(msg.pixPayload || '');
+          }}
+          className="mt-2 text-xs text-primary hover:underline font-medium"
+        >
+          📋 Copiar código PIX
+        </button>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -299,6 +587,10 @@ export default function FunilPublico() {
                 ))}
               </div>
             )}
+
+            {msg.tipo === 'calendar' && renderCalendar()}
+            {msg.tipo === 'timeslots' && msg.slots && renderTimeSlots(msg.slots)}
+            {msg.tipo === 'qrcode' && renderQrCode(msg)}
           </div>
         ))}
       </div>
@@ -306,10 +598,7 @@ export default function FunilPublico() {
       {/* Input area */}
       {showInput && (
         <div className="border-t border-border bg-card p-4 max-w-lg mx-auto w-full">
-          <form
-            onSubmit={e => { e.preventDefault(); handleInputSubmit(); }}
-            className="flex gap-2"
-          >
+          <form onSubmit={e => { e.preventDefault(); handleInputSubmit(); }} className="flex gap-2">
             <Input
               value={inputValue}
               onChange={e => setInputValue(e.target.value)}
@@ -321,7 +610,7 @@ export default function FunilPublico() {
               className="flex-1"
               autoFocus
             />
-            <Button type="submit" size="icon" className="bg-primary hover:bg-primary/90">
+            <Button type="submit" size="icon">
               <Send className="h-4 w-4" />
             </Button>
           </form>
