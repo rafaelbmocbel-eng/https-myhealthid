@@ -44,6 +44,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
 
 type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
+export default function GestaoVendas() {
     const navigate = useNavigate();
     const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
     const [fabOpen, setFabOpen] = useState(false);
