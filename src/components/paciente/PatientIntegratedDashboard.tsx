@@ -293,8 +293,8 @@ export default function PatientIntegratedDashboard({
   };
 
   const insights = getInsights(scores);
-  const myidScore = myidLinkResult?.MyID_score ?? Number(ultimaMyID?.myid_score) ?? 0;
-  const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? !!ultimaMyID?.red_flags ?? false;
+  const myidScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
+  const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
 
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags);
   const classificacao = interpretation.status;
