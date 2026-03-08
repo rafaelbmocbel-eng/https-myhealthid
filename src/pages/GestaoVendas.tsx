@@ -162,6 +162,54 @@ type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
         enabled: !!user,
     });
 
+    // ── Classificação automática dos pacientes ──────────────────────
+    const getClassificacao = useMemo(() => {
+        const avaliadosSet = new Set(avaliacoes.map((a: any) => a.paciente_id));
+        const myidConcluidosSet = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
+
+        const sessoesPorPaciente: Record<string, any[]> = {};
+        sessoes.forEach((s: any) => {
+            if (!sessoesPorPaciente[s.paciente_id]) sessoesPorPaciente[s.paciente_id] = [];
+            sessoesPorPaciente[s.paciente_id].push(s);
+        });
+
+        return (pid: string, createdAt: string): ClassificacaoTag => {
+            const pSessoes = sessoesPorPaciente[pid] || [];
+            const hasAvaliacao = avaliadosSet.has(pid) || myidConcluidosSet.has(pid);
+            const totalSessoes = pSessoes.length;
+
+            const sessoesNaoPagas = pSessoes.filter(
+                (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+                    && differenceInDays(new Date(), new Date(s.data_sessao)) > 30
+            );
+            if (sessoesNaoPagas.length > 0) return 'inadimplente';
+
+            const sessoesAPagar = pSessoes.filter(
+                (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+                    && differenceInDays(new Date(), new Date(s.data_sessao)) <= 30
+            );
+            if (sessoesAPagar.length > 0) return 'a_pagar';
+
+            if (totalSessoes >= 3) return 'recorrente';
+
+            const diasCadastro = differenceInDays(new Date(), new Date(createdAt));
+            if (diasCadastro <= 60 && (hasAvaliacao || totalSessoes > 0)) return 'novo';
+
+            return 'lead';
+        };
+    }, [sessoes, avaliacoes, myidAvaliacoes]);
+
+    // Classification counts
+    const classificationCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        CLASSIFICACOES.forEach(c => counts[c.key] = 0);
+        patients.forEach((p: any) => {
+            const tag = getClassificacao(p.id, p.created_at);
+            counts[tag] = (counts[tag] || 0) + 1;
+        });
+        return counts;
+    }, [patients, getClassificacao]);
+
     if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
     // ── Computed metrics ─────────────────────────────────────────────
