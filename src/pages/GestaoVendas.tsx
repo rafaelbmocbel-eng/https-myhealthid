@@ -98,6 +98,22 @@ export default function GestaoVendas() {
     const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-all`, JSON.stringify(c)); };
     const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-all`, JSON.stringify(pn)); };
 
+    // ── WhatsApp Message Logging ─────────────────────────────────────
+    const { mensagens, conversas, logMensagem } = useMensagensWhatsApp();
+    const [chatPatientId, setChatPatientId] = useState<string | null>(null);
+    const [chatInput, setChatInput] = useState('');
+    const chatEndRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [mensagens, chatPatientId]);
+
+    // Wrapper: sends via WhatsApp AND auto-logs to DB
+    const sendAndLog = (patientId: string, phone: string, message: string, templateId?: string) => {
+        shareViaWhatsApp(phone, message);
+        logMensagem.mutate({ paciente_id: patientId, mensagem: message, tipo: templateId ? 'template' : 'manual', template_id: templateId });
+    };
+
     // ── Queries ──────────────────────────────────────────────────────
     const { data: patients = [] } = useQuery({
         queryKey: ['crm-patients', user?.id],
