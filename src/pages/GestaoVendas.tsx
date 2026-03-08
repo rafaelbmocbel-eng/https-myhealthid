@@ -598,7 +598,7 @@ export default function GestaoVendas() {
                         {/* Follow-up Necessário */}
                         <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
                             {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
-                                filteredInativos.slice(0, 10).map((p: any) => (
+                                filteredInativos.map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
