@@ -28,6 +28,7 @@ import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, 
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -64,6 +65,7 @@ export default function GestaoVendas() {
     const [controleTabModo, setControleTabModo] = useState<'diario' | 'historico'>('diario');
     const [historicoPatientId, setHistoricoPatientId] = useState<string>('');
     const queryClient = useQueryClient();
+    const { logMensagem, conversas, mensagens } = useMensagensWhatsApp();
 
     // Modal de Adição Diária
     const [addPacienteModal, setAddPacienteModal] = useState(false);
@@ -262,24 +264,46 @@ export default function GestaoVendas() {
         return anivA.getTime() - anivB.getTime();
     });
 
-    const sendToPatient = (patientId: string, callback: (name: string, phone: string) => void) => {
+    const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>) => {
         const p = patients.find((pat: any) => pat.id === patientId);
         if (!p?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
-        callback(`${p.nome} ${p.sobrenome || ''}`.trim(), p.telefone);
-        toast({ title: '📩 Mensagem aberta no WhatsApp!' });
+
+        toast({ title: 'Enviando WhatsApp...', description: 'Aguarde um momento.' });
+
+        try {
+            const result = await callback(`${p.nome} ${p.sobrenome || ''}`.trim(), p.telefone);
+            if (result.success) {
+                toast({ title: '✅ WhatsApp Enviado!', description: `Mensagem enviada com sucesso para ${p.nome}.` });
+                logMensagem.mutate({ paciente_id: patientId, mensagem: "Mensagem automatizada enviada via Z-API", tipo: 'sistema' });
+            } else {
+                toast({ title: 'Erro ao Enviar', description: result.error || 'Falha na comunicação com o Z-API', variant: 'destructive' });
+            }
+        } catch (err: any) {
+            toast({ title: 'Erro Crítico', description: err.message || 'Erro inesperado', variant: 'destructive' });
+        }
     };
 
-    const handleRelembrar = (link: any) => {
+    const handleRelembrar = async (link: any) => {
         const pac = link.pacientes;
         if (!pac?.telefone) { toast({ title: 'Paciente sem telefone', variant: 'destructive' }); return; }
-        const tel = pac.telefone.replace(/\D/g, '');
-        const msg = encodeURIComponent(
+        const tel = pac.telefone;
+        const msg =
             `Olá ${pac.nome}! 👋\n\nNotei que ainda não preencheu o questionário que enviei. ` +
             `É bem rápido e super importante para o seu tratamento personalizado.\n\n` +
-            `Pode preencher quando tiver um tempinho? O link ainda está ativo! 😊`
-        );
-        window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
-        toast({ title: '📩 Lembrete enviado!' });
+            `Pode preencher quando tiver um tempinho? O link ainda está ativo! 😊`;
+
+        toast({ title: 'Enviando lembrete...', description: 'Aguarde um momento.' });
+        try {
+            const result = await shareViaWhatsApp(tel, msg);
+            if (result.success) {
+                toast({ title: '✅ Lembrete enviado!' });
+                logMensagem.mutate({ paciente_id: pac.id, mensagem: msg, tipo: 'sistema' });
+            } else {
+                toast({ title: 'Erro ao Enviar', description: result.error, variant: 'destructive' });
+            }
+        } catch (err: any) {
+            toast({ title: 'Erro Crítico', description: err.message, variant: 'destructive' });
+        }
     };
 
     const handleSendPacote = (pacote: Pacote) => {
@@ -466,7 +490,7 @@ export default function GestaoVendas() {
                             {/* Leads */}
                             <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
                                 {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
-                                    filteredLeads.slice(0, 10).map((p: any) => (
+                                    filteredLeads.map((p: any) => (
                                         <PatientRow key={p.id} p={p} actions={
                                             p.telefone ? (
                                                 <>
@@ -488,7 +512,7 @@ export default function GestaoVendas() {
                             {/* Questionário Pendente */}
                             <FunnelStage title="Questionário Pendente" icon={<Clock className="h-4 w-4 text-amber-600" />} count={pendingLinks.length} color="amber" defaultOpen={pendingLinks.length > 0}>
                                 {pendingLinks.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Nenhum pendente 🎉</p> : (
-                                    pendingLinks.slice(0, 10).map((link: any) => {
+                                    pendingLinks.map((link: any) => {
                                         const days = differenceInDays(now, new Date(link.created_at));
                                         const urgent = days >= 3;
                                         return (
@@ -522,7 +546,7 @@ export default function GestaoVendas() {
                             {/* Inadimplentes 🔴 */}
                             {inadimplentes.length > 0 && (
                                 <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
-                                    {inadimplentes.slice(0, 10).map((p: any) => (
+                                    {inadimplentes.map((p: any) => (
                                         <PatientRow key={p.id} p={p} actions={
                                             p.telefone ? (
                                                 <>
@@ -544,7 +568,7 @@ export default function GestaoVendas() {
                             {/* A Pagar 🟠 */}
                             {aPagar.length > 0 && (
                                 <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
-                                    {aPagar.slice(0, 10).map((p: any) => (
+                                    {aPagar.map((p: any) => (
                                         <PatientRow key={p.id} p={p} actions={
                                             p.telefone ? (
                                                 <>
@@ -565,7 +589,7 @@ export default function GestaoVendas() {
 
                             {/* Avaliados (Ativos) */}
                             <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
-                                {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
+                                {filteredAvaliados.filter(p => !inativos.includes(p)).map((p: any) => (
                                     <PatientRow key={p.id} p={p} actions={
                                         p.telefone ? (
                                             <>
@@ -590,7 +614,7 @@ export default function GestaoVendas() {
                             {/* Follow-up Necessário */}
                             <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
                                 {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
-                                    filteredInativos.slice(0, 10).map((p: any) => (
+                                    filteredInativos.map((p: any) => (
                                         <PatientRow key={p.id} p={p} actions={
                                             p.telefone ? (
                                                 <>
@@ -618,87 +642,173 @@ export default function GestaoVendas() {
 
                 {/* ══════════════════ MENSAGENS TAB ══════════════════ */}
                 {activeTab === 'mensagens' && (
-                    <div className="space-y-4">
-                        {/* Patient Selector */}
-                        <Card className="border">
-                            <CardContent className="p-4">
-                                <label className="text-[10px] uppercase font-black text-muted-foreground mb-1 block">Selecionar Paciente</label>
-                                <select className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                                    onChange={(e) => setSelectedPatient(patients.find((p: any) => p.id === e.target.value) || null)}>
-                                    <option value="">Selecione um paciente...</option>
-                                    {patients.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.nome} {p.sobrenome} {p.telefone ? `· ${p.telefone}` : '(sem tel)'}</option>
-                                    ))}
-                                </select>
-                                {selectedPatient && !selectedPatient.telefone && (
-                                    <p className="text-xs text-destructive mt-1">⚠️ Este paciente não tem telefone cadastrado</p>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        {/* Message Categories */}
-                        {(['funil', 'clinico', 'comercial'] as const).map(cat => {
-                            const labels = { funil: '👤 Etapas do Funil', clinico: '🏥 Clínico', comercial: '💰 Comercial' };
-                            const templates = MESSAGE_TEMPLATES.filter(t => t.category === cat);
-                            return (
-                                <div key={cat}>
-                                    <h3 className="font-bold text-sm mb-2">{labels[cat]}</h3>
-                                    <div className="grid gap-2">
-                                        {templates.map(tpl => {
-                                            const isEditing = editingTemplate === tpl.id;
-                                            const msg = customMessages[tpl.id] || tpl.defaultMessage;
-                                            return (
-                                                <div key={tpl.id} className="clinical-card !p-3">
-                                                    <div className="flex items-center justify-between">
-                                                        <div className="flex items-center gap-2">
-                                                            <span className="text-lg">{tpl.icon}</span>
-                                                            <div>
-                                                                <span className="text-sm font-bold">{tpl.label}</span>
-                                                                <div className="flex gap-1 mt-0.5">
-                                                                    {tpl.variables.map(v => <Badge key={v} variant="outline" className="text-[8px]">{`{${v}}`}</Badge>)}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="flex gap-1">
-                                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0"
-                                                                onClick={() => setEditingTemplate(isEditing ? null : tpl.id)}>
-                                                                <Edit3 className="h-3 w-3" />
-                                                            </Button>
-                                                            <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-green-600 hover:bg-green-700"
-                                                                disabled={!selectedPatient?.telefone}
-                                                                onClick={() => {
-                                                                    if (!selectedPatient?.telefone) return;
-                                                                    let finalMsg = msg
-                                                                        .replace('{nome}', `${selectedPatient.nome} ${selectedPatient.sobrenome || ''}`.trim())
-                                                                        .replace('{terapeuta}', user?.user_metadata?.nome || 'Terapeuta')
-                                                                        .replace('{data}', format(new Date(), "dd 'de' MMMM", { locale: ptBR }))
-                                                                        .replace('{servico}', 'Método Identidade')
-                                                                        .replace('{valor}', 'consulte')
-                                                                        .replace('{score}', '—')
-                                                                        .replace('{classificacao}', '—');
-                                                                    shareViaWhatsApp(selectedPatient.telefone, finalMsg);
-                                                                    toast({ title: '📩 Mensagem aberta no WhatsApp!' });
-                                                                }}>
-                                                                <Send className="h-3 w-3" /> Enviar
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                    {isEditing && (
-                                                        <div className="mt-2 pt-2 border-t">
-                                                            <Textarea className="text-xs min-h-[60px]" value={msg}
-                                                                onChange={(e) => setCustomMessages(prev => ({ ...prev, [tpl.id]: e.target.value }))} />
-                                                            <p className="text-[9px] text-muted-foreground mt-1">Variáveis: {tpl.variables.map(v => `{${v}}`).join(', ')}</p>
-                                                        </div>
-                                                    )}
-                                                    {!isEditing && <p className="text-[10px] text-muted-foreground mt-1 line-clamp-2">{msg}</p>}
+                    <Card className="border overflow-hidden h-[600px] flex flex-col md:flex-row">
+                        {/* Sidebar (Left) */}
+                        <div className="w-full md:w-1/3 bg-muted/20 border-r flex flex-col">
+                            <div className="p-3 border-b flex-shrink-0 bg-card">
+                                <h3 className="font-bold text-sm mb-2 flex items-center gap-2">
+                                    <MessageSquare className="h-4 w-4 text-primary" /> Conversas Recentes
+                                </h3>
+                                <Select value={selectedPatient?.id || ''} onValueChange={(val) => setSelectedPatient(patients.find((p: any) => p.id === val) || null)}>
+                                    <SelectTrigger className="w-full text-xs h-8">
+                                        <SelectValue placeholder="Iniciar nova conversa..." />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        {patients.map((p: any) => (
+                                            <SelectItem key={p.id} value={p.id}>{p.nome} {p.sobrenome}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                            <div className="overflow-y-auto flex-1 p-2 space-y-1">
+                                {conversas.length === 0 && <p className="text-xs text-muted-foreground p-2 text-center mt-4">Nenhuma conversa registrada.</p>}
+                                {conversas.map((conv: any) => {
+                                    const pac = patients.find((p: any) => p.id === conv.paciente_id);
+                                    if (!pac) return null;
+                                    const isSel = selectedPatient?.id === pac.id;
+                                    return (
+                                        <button key={conv.paciente_id} onClick={() => setSelectedPatient(pac)}
+                                            className={`w-full text-left p-2 rounded-lg transition-colors flex items-center gap-3 ${isSel ? 'bg-primary/10 border-primary/20 shadow-sm' : 'hover:bg-muted/50'}`}>
+                                            <div className="h-9 w-9 shrink-0 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground font-bold text-xs shadow-sm">
+                                                {pac.nome[0]}{pac.sobrenome?.[0] || ''}
+                                            </div>
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex items-center justify-between mb-0.5">
+                                                    <span className="font-bold text-xs truncate">{pac.nome} {pac.sobrenome}</span>
+                                                    <span className="text-[9px] text-muted-foreground">{format(new Date(conv.lastDate), 'dd/MM')}</span>
                                                 </div>
-                                            );
-                                        })}
-                                    </div>
+                                                <p className="text-[10px] text-muted-foreground truncate opacity-80">{conv.lastMessage}</p>
+                                            </div>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                        </div>
+
+                        {/* Chat Area (Right) */}
+                        <div className="flex-1 flex flex-col bg-card relative">
+                            {!selectedPatient ? (
+                                <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground opacity-50 bg-muted/5">
+                                    <MessageSquare className="h-12 w-12 mb-3 text-muted-foreground/30" />
+                                    <p className="text-sm font-bold">Selecione uma conversa</p>
+                                    <p className="text-[10px] mt-1">O histórico de envios locais aparecerá aqui.</p>
                                 </div>
-                            );
-                        })}
-                    </div>
+                            ) : (
+                                <>
+                                    {/* Chat Header */}
+                                    <div className="p-3 border-b bg-card flex items-center justify-between shadow-sm z-10 w-full">
+                                        <div className="flex items-center gap-3">
+                                            <div className="h-9 w-9 shrink-0 bg-gradient-to-br from-primary to-primary/80 rounded-full flex items-center justify-center text-primary-foreground font-bold text-sm shadow-sm">
+                                                {selectedPatient.nome[0]}{selectedPatient.sobrenome?.[0] || ''}
+                                            </div>
+                                            <div>
+                                                <h3 className="font-bold text-sm">{selectedPatient.nome} {selectedPatient.sobrenome}</h3>
+                                                <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                                                    {selectedPatient.telefone ? (
+                                                        <><Phone className="h-2.5 w-2.5" /> {selectedPatient.telefone}</>
+                                                    ) : (
+                                                        <><AlertCircle className="h-2.5 w-2.5 text-destructive" /> Sem telefone cadastrado</>
+                                                    )}
+                                                </p>
+                                            </div>
+                                        </div>
+                                        <Button variant="outline" size="sm" className="h-8 gap-1 text-[11px] bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white border-[#25D366]/30 transition-colors"
+                                            onClick={() => window.open(`https://wa.me/55${selectedPatient.telefone?.replace(/\D/g, '')}`, '_blank')}
+                                            disabled={!selectedPatient.telefone}>
+                                            <MessageCircle className="h-3.5 w-3.5" /> Abrir WhatsApp Web
+                                        </Button>
+                                    </div>
+
+                                    {/* Message History */}
+                                    <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')] bg-repeat opacity-[0.97] dark:opacity-20 flex flex-col-reverse relative">
+                                        {/* Overlay to fade background slightly if needed */}
+                                        <div className="absolute inset-0 bg-background/80 pointer-events-none z-0" />
+
+                                        <div className="z-10 flex flex-col space-y-4">
+                                            {(() => {
+                                                const msgs = mensagens.filter((m: any) => m.paciente_id === selectedPatient.id).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+                                                if (msgs.length === 0) {
+                                                    return (
+                                                        <div className="bg-yellow-100/80 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-[10px] p-2 rounded-lg text-center mx-auto max-w-[80%] shadow-sm my-4">
+                                                            Nenhuma mensagem registrada. <br />
+                                                            Mensagens enviadas por este painel ou pelos botões do CRM aparecerão aqui.
+                                                        </div>
+                                                    );
+                                                }
+                                                return msgs.map((msg: any) => (
+                                                    <div key={msg.id} className="flex flex-col items-end animate-slide-in">
+                                                        <div className="bg-[#dcf8c6] dark:bg-primary/20 border border-[#dcf8c6]/50 dark:border-primary/30 text-[#303030] dark:text-foreground p-2.5 px-3 rounded-2xl rounded-tr-sm max-w-[85%] text-[11px] shadow-sm whitespace-pre-wrap leading-relaxed">
+                                                            {msg.mensagem}
+                                                        </div>
+                                                        <span className="text-[9px] text-muted-foreground mt-1 mr-1 flex items-center gap-1 font-medium bg-background/50 px-1 rounded-sm">
+                                                            {format(new Date(msg.created_at), "dd/MM 'às' HH:mm")}
+                                                            <CheckCircle2 className="h-2.5 w-2.5 text-[#53bdeb] drop-shadow-sm" />
+                                                        </span>
+                                                    </div>
+                                                ));
+                                            })()}
+                                        </div>
+                                    </div>
+
+                                    {/* Input Area */}
+                                    <div className="p-3 border-t bg-card/95 backdrop-blur z-10 w-full shadow-[0_-4px_10px_rgba(0,0,0,0.02)]">
+                                        <div className="flex items-center gap-2 mb-2 overflow-x-auto pb-1 scrollbar-thin scrollbar-thumb-muted">
+                                            {MESSAGE_TEMPLATES.map(tpl => (
+                                                <Badge key={tpl.id} variant="secondary" className="text-[9px] cursor-pointer whitespace-nowrap hover:bg-primary/10 border-primary/10 transition-colors shrink-0 py-1"
+                                                    onClick={() => {
+                                                        const m = tpl.defaultMessage
+                                                            .replace('{nome}', `${selectedPatient.nome} ${selectedPatient.sobrenome || ''}`.trim())
+                                                            .replace('{terapeuta}', user?.user_metadata?.nome || 'Terapeuta')
+                                                            .replace('{data}', format(new Date(), "dd 'de' MMMM", { locale: ptBR }))
+                                                            .replace('{servico}', 'Método Identidade')
+                                                            .replace('{valor}', 'consulte')
+                                                            .replace('{score}', '—')
+                                                            .replace('{classificacao}', '—');
+                                                        setCustomMessages(prev => ({ ...prev, currentInput: m }));
+                                                    }}>
+                                                    {tpl.icon} <span className="ml-1 opacity-80">{tpl.label}</span>
+                                                </Badge>
+                                            ))}
+                                        </div>
+                                        <div className="flex items-end gap-2">
+                                            <div className="relative flex-1">
+                                                <Textarea
+                                                    className="w-full min-h-[44px] max-h-[120px] text-xs resize-none rounded-xl pr-10 focus-visible:ring-primary/30 py-3"
+                                                    placeholder="Digite uma mensagem ou selecione um template acima..."
+                                                    value={customMessages['currentInput'] || ''}
+                                                    onChange={e => setCustomMessages(prev => ({ ...prev, currentInput: e.target.value }))}
+                                                />
+                                            </div>
+                                            <Button
+                                                className="h-[44px] w-[44px] p-0 shrink-0 bg-primary hover:bg-primary/90 rounded-xl shadow-md disabled:opacity-50 transition-all hover:scale-[1.02] active:scale-95"
+                                                disabled={!customMessages['currentInput'] || !selectedPatient.telefone}
+                                                onClick={async () => {
+                                                    const txt = customMessages['currentInput'];
+                                                    if (!txt || !selectedPatient.telefone) return;
+
+                                                    // 1. Log immediately
+                                                    logMensagem.mutate({ paciente_id: selectedPatient.id, mensagem: txt, tipo: 'manual' });
+
+                                                    // 2. Open WhatsApp fallback (since direct=false)
+                                                    shareViaWhatsApp(selectedPatient.telefone, txt);
+
+                                                    // 3. Clear input
+                                                    setCustomMessages(prev => ({ ...prev, currentInput: '' }));
+                                                    toast({ title: 'Ação registrada!', description: 'Abrindo o WhatsApp Web/App com a mensagem pronta.' });
+                                                }}>
+                                                <Send className="h-4 w-4 ml-0.5" />
+                                            </Button>
+                                        </div>
+                                        {!selectedPatient.telefone && (
+                                            <p className="text-[10px] text-destructive mt-2 text-center flex items-center justify-center gap-1 font-medium bg-destructive/10 py-1 rounded-md">
+                                                <AlertCircle className="h-3 w-3" /> Impossível enviar: paciente sem número de telefone.
+                                            </p>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                    </Card>
                 )}
 
                 {/* ══════════════════ PACOTES TAB ══════════════════ */}

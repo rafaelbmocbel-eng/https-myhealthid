@@ -57,22 +57,22 @@ export async function shareViaWhatsApp(phoneNumber: string, message: string, url
 
 // ── Existing templates ────────────────────────────────────────────────
 
-export function shareAgendaLink(patientName: string, patientPhone: string, agendaUrl: string) {
+export async function shareAgendaLink(patientName: string, patientPhone: string, agendaUrl: string, direct: boolean = false) {
   const message = `Olá ${patientName}! 👋\n\n📅 Aqui está seu link personalizado para agendar suas sessões de fisioterapia.`;
-  shareViaWhatsApp(patientPhone, message, agendaUrl);
+  return shareViaWhatsApp(patientPhone, message, agendaUrl, direct);
 }
 
-export function shareAvaliacaoLink(patientName: string, patientPhone: string, avaliacaoUrl: string) {
+export async function shareAvaliacaoLink(patientName: string, patientPhone: string, avaliacaoUrl: string, direct: boolean = false) {
   const message = `Olá ${patientName}! 👋\n\n📋 Seu terapeuta enviou um questionário de avaliação para você preencher antes da próxima sessão.\n\nLeva cerca de 30-40 minutos e pode ser feito de onde estiver.`;
-  shareViaWhatsApp(patientPhone, message, avaliacaoUrl);
+  return shareViaWhatsApp(patientPhone, message, avaliacaoUrl, direct);
 }
 
-export function shareRelatorioLink(patientName: string, patientPhone: string, relatorioUrl: string) {
+export async function shareRelatorioLink(patientName: string, patientPhone: string, relatorioUrl: string, direct: boolean = false) {
   const message = `Olá ${patientName}! 👋\n\n📊 Seu relatório de avaliação do *Método Identidade* está pronto!\n\nAcesse para ver seu perfil de disfunção e as recomendações terapêuticas.`;
-  shareViaWhatsApp(patientPhone, message, relatorioUrl);
+  return shareViaWhatsApp(patientPhone, message, relatorioUrl, direct);
 }
 
-export function shareMyIDResults(patientName: string, patientPhone: string, result: any) {
+export async function shareMyIDResults(patientName: string, patientPhone: string, result: any, direct: boolean = false) {
   const score = result.myidScore?.toFixed(1) || '0.0';
   const status = result.classificacao || 'LEVE';
   const message = `*RESUMO CLÍNICO - MyID Sistêmico*\n\n` +
@@ -81,10 +81,10 @@ export function shareMyIDResults(patientName: string, patientPhone: string, resu
     `📊 *MyID Score:* ${score}\n` +
     `🔴 *Status:* ${status}\n\n` +
     `Esta "Impressão Digital" reflete o equilíbrio entre minhas demandas e minha capacidade de suporte atual.`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function sharePropostaComercial(patientName: string, patientPhone: string, serviceName: string, value: string) {
+export async function sharePropostaComercial(patientName: string, patientPhone: string, serviceName: string, value: string, direct: boolean = false) {
   const differentials: Record<string, string[]> = {
     'Método Identidade': [
       'Análise da Impressão Digital Sistêmica (MyID)',
@@ -112,60 +112,60 @@ export function sharePropostaComercial(patientName: string, patientPhone: string
     `${diffsText}\n\n` +
     `💰 *Investimento:* ${value}\n\n` +
     `Vamos começar sua jornada de transformação?`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
 // ── NEW: Funnel stage templates ───────────────────────────────────────
 
-export function shareBoasVindas(patientName: string, patientPhone: string, terapeutaName: string) {
+export async function shareBoasVindas(patientName: string, patientPhone: string, terapeutaName: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 👋\n\n` +
     `Sou *${terapeutaName}* e estou muito feliz em recebê-lo(a) na nossa equipe!\n\n` +
     `🏥 A partir de agora começamos sua jornada de saúde personalizada com o *Método Identidade*.\n\n` +
     `📋 Em breve enviarei seu questionário de avaliação para começarmos a mapear seu perfil.\n\n` +
     `Qualquer dúvida, estou aqui! 😊`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function sharePosAvaliacao(patientName: string, patientPhone: string, achados: string) {
+export async function sharePosAvaliacao(patientName: string, patientPhone: string, achados: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 👋\n\n` +
     `Concluímos sua avaliação e quero compartilhar os principais achados:\n\n` +
     `${achados}\n\n` +
     `📌 Com base nesses resultados, preparei uma *diretriz de tratamento personalizada* para você.\n\n` +
     `Na próxima sessão, vamos discutir o plano terapêutico completo. Até lá! 💪`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function sharePosDiretriz(patientName: string, patientPhone: string, diretriz: string) {
+export async function sharePosDiretriz(patientName: string, patientPhone: string, diretriz: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 📋\n\n` +
     `Aqui está o resumo da sua *Diretriz de Tratamento*:\n\n` +
     `${diretriz}\n\n` +
     `Lembre-se: a constância é o segredo! Nos vemos na próxima sessão. 🙌`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function shareLembreteRetorno(patientName: string, patientPhone: string, dataRetorno: string) {
+export async function shareLembreteRetorno(patientName: string, patientPhone: string, dataRetorno: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! ⏰\n\n` +
     `Lembrete gentil: sua *reavaliação* está prevista para *${dataRetorno}*.\n\n` +
     `É muito importante para medirmos seu progresso e ajustarmos o tratamento conforme necessário.\n\n` +
     `📅 Precisa reagendar? Me avise que encontramos o melhor horário para você!`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function sharePosAlta(patientName: string, patientPhone: string) {
+export async function sharePosAlta(patientName: string, patientPhone: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 🌟\n\n` +
     `Como está se sentindo após o tratamento? Espero que muito bem!\n\n` +
     `Lembre-se de manter os exercícios do seu programa domiciliar (HEP) para consolidar os ganhos.\n\n` +
     `📋 Recomendo uma reavaliação preventiva em *4 semanas* para garantir a manutenção dos resultados.\n\n` +
     `Estou aqui sempre que precisar! 💙`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function shareStructuralResults(patientName: string, patientPhone: string, score: number, classification: string, driver: string) {
+export async function shareStructuralResults(patientName: string, patientPhone: string, score: number, classification: string, driver: string, direct: boolean = false) {
   const message =
     `*RESULTADOS — Avaliação Estrutural*\n` +
     `*Método Identidade · MyHealth ID*\n\n` +
@@ -175,19 +175,19 @@ export function shareStructuralResults(patientName: string, patientPhone: string
     `${driver ? `⚠️ *Driver Primário:* ${driver}` : ''}\n\n` +
     `Esses resultados mapeiam suas unidades funcionais e identificam as áreas que precisam de mais atenção.\n\n` +
     `Na próxima sessão, vamos discutir o protocolo de tratamento personalizado! 💪`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function shareAniversario(patientName: string, patientPhone: string) {
+export async function shareAniversario(patientName: string, patientPhone: string, direct: boolean = false) {
   const message =
     `🎂 Feliz Aniversário, ${patientName}!\n\n` +
     `Neste dia especial, desejo muita saúde, bem-estar e conquistas!\n\n` +
     `É uma honra fazer parte da sua jornada de saúde. Continue cuidando de você! 🌟\n\n` +
     `Um grande abraço! 🤗`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
-export function sharePacoteInfo(patientName: string, patientPhone: string, pacoteName: string, details: string, value: string) {
+export async function sharePacoteInfo(patientName: string, patientPhone: string, pacoteName: string, details: string, value: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 👋\n\n` +
     `Preparei uma proposta especial para você:\n\n` +
@@ -195,7 +195,7 @@ export function sharePacoteInfo(patientName: string, patientPhone: string, pacot
     `${details}\n\n` +
     `💰 *Investimento:* ${value}\n\n` +
     `Este pacote foi pensado especialmente para o seu perfil. Quer saber mais detalhes? 😊`;
-  shareViaWhatsApp(patientPhone, message);
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
 // ── Utility functions ─────────────────────────────────────────────────

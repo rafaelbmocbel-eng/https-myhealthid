@@ -339,7 +339,7 @@ export default function AgendaPublica() {
               className="w-full h-11 bg-emerald-600 hover:bg-emerald-700 text-white font-bold gap-2 shadow-lg"
               onClick={() => {
                 const msg = `Olá, ${terapeuta.nome}! Acabei de reservar um horário para ${format(selectedSlot.data, "dd/MM/yyyy")} às ${selectedSlot.hora} pela agenda online.`;
-                shareViaWhatsApp(terapeuta.telefone || '', msg);
+                shareViaWhatsApp(terapeuta.telefone || '', msg, undefined, false);
               }}
             >
               <Phone className="h-4 w-4" />
@@ -627,7 +627,7 @@ export default function AgendaPublica() {
               className="text-xs"
               onClick={() => {
                 const msg = `Olá${terapeuta ? `, ${terapeuta.nome}` : ''}! Gostaria de agendar um horário. Poderia verificar a disponibilidade?`;
-                shareViaWhatsApp(terapeuta?.telefone || '', msg);
+                shareViaWhatsApp(terapeuta?.telefone || '', msg, undefined, false);
               }}
             >
               <Phone className="h-3 w-3 mr-1" /> Contatar via WhatsApp
