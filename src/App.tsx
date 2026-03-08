@@ -45,6 +45,7 @@ const App = () => (
             <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
             <Route path="/agenda/:token" element={<AgendaPublica />} />
             <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+            <Route path="/funil/:slug" element={<FunilPublico />} />
             <Route path="/relatorios" element={<Relatorios />} />
             <Route path="/crm" element={<GestaoVendas />} />
             <Route path="/configuracoes" element={<Configuracoes />} />
