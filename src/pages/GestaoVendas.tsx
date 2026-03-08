@@ -310,7 +310,8 @@ export default function GestaoVendas() {
     // ── Tabs ─────────────────────────────────────────────────────────
     const TABS: { id: TabId; label: string; icon: any }[] = [
         { id: 'pipeline', label: 'Pipeline', icon: Target },
-        { id: 'mensagens', label: 'Mensagens', icon: MessageSquare },
+        { id: 'conversas', label: 'Conversas', icon: MessageCircle },
+        { id: 'mensagens', label: 'Templates', icon: MessageSquare },
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
