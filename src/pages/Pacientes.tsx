@@ -529,6 +529,8 @@ export default function Pacientes() {
               const diasRestantes = linkAtivo ? differenceInDays(new Date(linkAtivo.data_expiracao), new Date()) : 0;
               const status = getPatientStatus(p.id);
               const ultimoAg = ultimosAgendamentos[p.id];
+              const tag = getClassificacao(p.id, p.created_at);
+              const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
               return (
                 <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
                   <div className="flex items-center gap-3 sm:gap-4">
