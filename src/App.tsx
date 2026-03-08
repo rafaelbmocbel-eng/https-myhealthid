@@ -19,6 +19,7 @@ import Relatorios from "./pages/Relatorios";
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import MyIDResponder from "./pages/MyIDResponder";
+import FunilPublico from "./pages/FunilPublico";
 import { AuthProvider } from "./contexts/AuthContext";
 
 const queryClient = new QueryClient();
