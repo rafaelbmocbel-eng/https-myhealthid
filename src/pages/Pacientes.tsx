@@ -220,6 +220,80 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
+  // Fetch controle_sessoes for payment classification
+  const { data: sessoes = [] } = useQuery({
+    queryKey: ['pacientes-sessoes', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('controle_sessoes')
+        .select('paciente_id, status, valor_cobrado, forma_pagamento, data_sessao')
+        .eq('terapeuta_id', user!.id);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // Fetch avaliacoes_identidade to know who has been evaluated
+  const { data: avaliacoesIdentidade = [] } = useQuery({
+    queryKey: ['pacientes-avaliacoes-identidade', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_identidade')
+        .select('paciente_id')
+        .eq('terapeuta_id', user!.id);
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  // ── Compute automated classification per patient ──────────────────
+  const getClassificacao = useMemo(() => {
+    const avaliadosSet = new Set(avaliacoesIdentidade.map((a: any) => a.paciente_id));
+    const myidConcluidos = new Set(
+      Object.entries(avaliacoesPendentes)
+        .filter(([, pending]) => !pending)
+        .map(([pid]) => pid)
+    );
+
+    // Group sessoes by paciente
+    const sessoesPorPaciente: Record<string, any[]> = {};
+    sessoes.forEach((s: any) => {
+      if (!sessoesPorPaciente[s.paciente_id]) sessoesPorPaciente[s.paciente_id] = [];
+      sessoesPorPaciente[s.paciente_id].push(s);
+    });
+
+    return (pid: string, createdAt: string): ClassificacaoTag => {
+      const pSessoes = sessoesPorPaciente[pid] || [];
+      const hasAvaliacao = avaliadosSet.has(pid);
+      const hasAgendamento = !!ultimosAgendamentos[pid];
+      const totalSessoes = pSessoes.length;
+
+      // 🔴 Inadimplente: sessões realizadas sem pagamento (valor_cobrado = 0 ou null) há mais de 30 dias
+      const sessoesNaoPagas = pSessoes.filter(
+        (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+          && differenceInDays(new Date(), new Date(s.data_sessao)) > 30
+      );
+      if (sessoesNaoPagas.length > 0) return 'inadimplente';
+
+      // 🟠 A pagar: sessões realizadas sem pagamento (recentes, <= 30 dias)
+      const sessoesAPagar = pSessoes.filter(
+        (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+          && differenceInDays(new Date(), new Date(s.data_sessao)) <= 30
+      );
+      if (sessoesAPagar.length > 0) return 'a_pagar';
+
+      // 🔵 Recorrente: has 3+ sessions
+      if (totalSessoes >= 3) return 'recorrente';
+
+      // 🟢 Cliente novo: cadastrado há menos de 60 dias, tem alguma sessão ou avaliação
+      const diasCadastro = differenceInDays(new Date(), new Date(createdAt));
+      if (diasCadastro <= 60 && (hasAvaliacao || hasAgendamento || totalSessoes > 0)) return 'novo';
+
+      // 🟡 Lead: sem sessões, sem avaliação
+      return 'lead';
+    };
+  }, [sessoes, avaliacoesIdentidade, avaliacoesPendentes, ultimosAgendamentos]);
+
   const getServicosForPaciente = (pid: string): string[] => {
     const p = pacientes.find(x => x.id === pid);
     return p?._servicos || [];
@@ -280,7 +354,6 @@ export default function Pacientes() {
 
     try {
       const pId = p.id;
-      // Deleção em Cascata
       await supabase.from('links_avaliacao').delete().eq('paciente_id', pId);
       await supabase.from('links_agenda_paciente').delete().eq('paciente_id', pId);
 
@@ -329,14 +402,25 @@ export default function Pacientes() {
     return { color: 'bg-slate-300', label: `Inativo (${dias}d)` };
   };
 
+  // Classification counts for filter chips
+  const classificationCounts = useMemo(() => {
+    const counts: Record<string, number> = {};
+    CLASSIFICACOES.forEach(c => counts[c.key] = 0);
+    pacientes.forEach(p => {
+      const tag = getClassificacao(p.id, p.created_at);
+      counts[tag] = (counts[tag] || 0) + 1;
+    });
+    return counts;
+  }, [pacientes, getClassificacao]);
+
   const filtered = useMemo(() => {
     const list = pacientes.filter(p => {
       const matchSearch = `${p.nome} ${p.sobrenome} ${p.email || ''} ${p.telefone || ''}`.toLowerCase().includes(search.toLowerCase());
       if (!matchSearch) return false;
-      if (filterServico === 'todos') return true;
-      return getServicosForPaciente(p.id).includes(filterServico);
+      if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
+      if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
+      return true;
     });
-    // Sort
     return [...list].sort((a, b) => {
       if (sortBy === 'nome') return a.nome.localeCompare(b.nome);
       if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -347,7 +431,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, search, filterServico, sortBy, ultimosAgendamentos]);
+  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
