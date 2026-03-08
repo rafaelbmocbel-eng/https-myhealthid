@@ -560,6 +560,138 @@ export type Database = {
         }
         Relationships: []
       }
+      funil_config: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          diferenciais: Json
+          id: string
+          link_cartao: string | null
+          mensagem_agendamento: string | null
+          mensagem_boas_vindas: string
+          mensagem_confirmacao: string | null
+          mensagem_diferenciais: string | null
+          mensagem_pagamento: string | null
+          mensagem_servicos: string | null
+          pix_chave: string | null
+          pix_nome: string | null
+          pix_tipo: string | null
+          servicos: Json
+          slug: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          diferenciais?: Json
+          id?: string
+          link_cartao?: string | null
+          mensagem_agendamento?: string | null
+          mensagem_boas_vindas?: string
+          mensagem_confirmacao?: string | null
+          mensagem_diferenciais?: string | null
+          mensagem_pagamento?: string | null
+          mensagem_servicos?: string | null
+          pix_chave?: string | null
+          pix_nome?: string | null
+          pix_tipo?: string | null
+          servicos?: Json
+          slug?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          diferenciais?: Json
+          id?: string
+          link_cartao?: string | null
+          mensagem_agendamento?: string | null
+          mensagem_boas_vindas?: string
+          mensagem_confirmacao?: string | null
+          mensagem_diferenciais?: string | null
+          mensagem_pagamento?: string | null
+          mensagem_servicos?: string | null
+          pix_chave?: string | null
+          pix_nome?: string | null
+          pix_tipo?: string | null
+          servicos?: Json
+          slug?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      funil_leads: {
+        Row: {
+          agendamento_id: string | null
+          created_at: string
+          dados_conversa: Json | null
+          email: string | null
+          etapa_atual: string
+          forma_pagamento: string | null
+          funil_config_id: string | null
+          id: string
+          nome: string
+          servico_escolhido: string | null
+          status: string
+          telefone: string | null
+          terapeuta_id: string
+          updated_at: string
+          valor_servico: number | null
+        }
+        Insert: {
+          agendamento_id?: string | null
+          created_at?: string
+          dados_conversa?: Json | null
+          email?: string | null
+          etapa_atual?: string
+          forma_pagamento?: string | null
+          funil_config_id?: string | null
+          id?: string
+          nome: string
+          servico_escolhido?: string | null
+          status?: string
+          telefone?: string | null
+          terapeuta_id: string
+          updated_at?: string
+          valor_servico?: number | null
+        }
+        Update: {
+          agendamento_id?: string | null
+          created_at?: string
+          dados_conversa?: Json | null
+          email?: string | null
+          etapa_atual?: string
+          forma_pagamento?: string | null
+          funil_config_id?: string | null
+          id?: string
+          nome?: string
+          servico_escolhido?: string | null
+          status?: string
+          telefone?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+          valor_servico?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "funil_leads_agendamento_id_fkey"
+            columns: ["agendamento_id"]
+            isOneToOne: false
+            referencedRelation: "agendamentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "funil_leads_funil_config_id_fkey"
+            columns: ["funil_config_id"]
+            isOneToOne: false
+            referencedRelation: "funil_config"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       links_agenda_paciente: {
         Row: {
           acessos_totais: number | null
@@ -662,6 +794,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "links_avaliacao_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      mensagens_whatsapp: {
+        Row: {
+          canal: string
+          created_at: string
+          id: string
+          mensagem: string
+          paciente_id: string
+          status: string
+          template_id: string | null
+          terapeuta_id: string
+          tipo: string
+        }
+        Insert: {
+          canal?: string
+          created_at?: string
+          id?: string
+          mensagem: string
+          paciente_id: string
+          status?: string
+          template_id?: string | null
+          terapeuta_id: string
+          tipo?: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          id?: string
+          mensagem?: string
+          paciente_id?: string
+          status?: string
+          template_id?: string | null
+          terapeuta_id?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "mensagens_whatsapp_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
