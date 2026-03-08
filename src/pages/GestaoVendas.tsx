@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -16,7 +16,7 @@ import {
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
     StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
-    ChevronLeft, ChevronRight, History,
+    ChevronLeft, ChevronRight, History, MessageCircle,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -28,11 +28,25 @@ import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, 
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+// ── Classificação automática (shared with Pacientes) ──────────────────────
+type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
+
+const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; color: string; bgColor: string }[] = [
+    { key: 'lead', label: 'Lead', emoji: '🟡', color: 'text-yellow-700', bgColor: 'bg-yellow-100 border-yellow-300' },
+    { key: 'novo', label: 'Cliente Novo', emoji: '🟢', color: 'text-emerald-700', bgColor: 'bg-emerald-100 border-emerald-300' },
+    { key: 'recorrente', label: 'Recorrente', emoji: '🔵', color: 'text-blue-700', bgColor: 'bg-blue-100 border-blue-300' },
+    { key: 'inadimplente', label: 'Inadimplente', emoji: '🔴', color: 'text-red-700', bgColor: 'bg-red-100 border-red-300' },
+    { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
+];
 
 type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
 
-export default function GestaoVendas() {
+    const navigate = useNavigate();
+    const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
+    const [fabOpen, setFabOpen] = useState(false);
     const { user, loading: authLoading } = useAuth();
     const { toast } = useToast();
     const [activeTab, setActiveTab] = useState<TabId>('pipeline');
@@ -147,6 +161,54 @@ export default function GestaoVendas() {
         },
         enabled: !!user,
     });
+
+    // ── Classificação automática dos pacientes ──────────────────────
+    const getClassificacao = useMemo(() => {
+        const avaliadosSet = new Set(avaliacoes.map((a: any) => a.paciente_id));
+        const myidConcluidosSet = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
+
+        const sessoesPorPaciente: Record<string, any[]> = {};
+        sessoes.forEach((s: any) => {
+            if (!sessoesPorPaciente[s.paciente_id]) sessoesPorPaciente[s.paciente_id] = [];
+            sessoesPorPaciente[s.paciente_id].push(s);
+        });
+
+        return (pid: string, createdAt: string): ClassificacaoTag => {
+            const pSessoes = sessoesPorPaciente[pid] || [];
+            const hasAvaliacao = avaliadosSet.has(pid) || myidConcluidosSet.has(pid);
+            const totalSessoes = pSessoes.length;
+
+            const sessoesNaoPagas = pSessoes.filter(
+                (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+                    && differenceInDays(new Date(), new Date(s.data_sessao)) > 30
+            );
+            if (sessoesNaoPagas.length > 0) return 'inadimplente';
+
+            const sessoesAPagar = pSessoes.filter(
+                (s: any) => s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0)
+                    && differenceInDays(new Date(), new Date(s.data_sessao)) <= 30
+            );
+            if (sessoesAPagar.length > 0) return 'a_pagar';
+
+            if (totalSessoes >= 3) return 'recorrente';
+
+            const diasCadastro = differenceInDays(new Date(), new Date(createdAt));
+            if (diasCadastro <= 60 && (hasAvaliacao || totalSessoes > 0)) return 'novo';
+
+            return 'lead';
+        };
+    }, [sessoes, avaliacoes, myidAvaliacoes]);
+
+    // Classification counts
+    const classificationCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        CLASSIFICACOES.forEach(c => counts[c.key] = 0);
+        patients.forEach((p: any) => {
+            const tag = getClassificacao(p.id, p.created_at);
+            counts[tag] = (counts[tag] || 0) + 1;
+        });
+        return counts;
+    }, [patients, getClassificacao]);
 
     if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -329,37 +391,91 @@ export default function GestaoVendas() {
                     ))}
                 </div>
 
+                {/* ── Classification Filter Chips ── */}
+                <div className="flex flex-wrap gap-2">
+                    <button
+                        onClick={() => setFilterTag('todos')}
+                        className={cn(
+                            'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                            filterTag === 'todos' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                        )}
+                    >
+                        Todos ({patients.length})
+                    </button>
+                    {CLASSIFICACOES.map(c => (
+                        <button
+                            key={c.key}
+                            onClick={() => setFilterTag(filterTag === c.key ? 'todos' : c.key)}
+                            className={cn(
+                                'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
+                                filterTag === c.key ? cn(c.bgColor, c.color) : 'bg-muted text-muted-foreground border-border hover:bg-accent'
+                            )}
+                        >
+                            {c.emoji} {c.label} ({classificationCounts[c.key] || 0})
+                        </button>
+                    ))}
+                </div>
+
                 {/* ══════════════════ PIPELINE TAB ══════════════════ */}
-                {activeTab === 'pipeline' && (
-                    <div className="space-y-4">
-                        {/* Funnel stages */}
-                        <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={leads.length} color="blue" defaultOpen={leads.length > 0}>
-                            {leads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
-                                leads.slice(0, 5).map((p: any) => (
-                                    <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-7 w-7 rounded-full bg-blue-100 flex items-center justify-center text-blue-700 text-xs font-bold">{p.nome?.[0]}</div>
-                                            <div>
-                                                <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                                <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
-                                            </div>
+                {activeTab === 'pipeline' && (() => {
+                    // Filter patients by tag if selected
+                    const filteredPatients = filterTag === 'todos' ? patients : patients.filter((p: any) => getClassificacao(p.id, p.created_at) === filterTag);
+                    const filteredLeads = leads.filter((p: any) => filterTag === 'todos' || getClassificacao(p.id, p.created_at) === filterTag);
+                    const filteredAvaliados = avaliados.filter((p: any) => filterTag === 'todos' || getClassificacao(p.id, p.created_at) === filterTag);
+                    const filteredInativos = inativos.filter((p: any) => filterTag === 'todos' || getClassificacao(p.id, p.created_at) === filterTag);
+
+                    // Inadimplentes e A Pagar
+                    const inadimplentes = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'inadimplente');
+                    const aPagar = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'a_pagar');
+
+                    const PatientRow = ({ p, actions }: { p: any; actions: React.ReactNode }) => {
+                        const tag = getClassificacao(p.id, p.created_at);
+                        const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
+                        return (
+                            <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
+                                <div className="flex items-center gap-2 min-w-0">
+                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
+                                    <div className="min-w-0">
+                                        <div className="flex items-center gap-1.5 flex-wrap">
+                                            <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
+                                            <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
                                         </div>
-                                        {p.telefone && (
-                                            <div className="flex gap-1">
+                                        <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
+                                    </div>
+                                </div>
+                                <div className="flex gap-1 shrink-0">{actions}</div>
+                            </div>
+                        );
+                    };
+
+                    return (
+                    <div className="space-y-4">
+                        {/* Leads */}
+                        <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
+                            {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
+                                filteredLeads.slice(0, 10).map((p: any) => (
+                                    <PatientRow key={p.id} p={p} actions={
+                                        p.telefone ? (
+                                            <>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
                                                     onClick={() => sendToPatient(p.id, (n, ph) => shareBoasVindas(n, ph, user?.user_metadata?.nome || 'Terapeuta'))}>
                                                     <Send className="h-3 w-3" /> Boas-vindas
                                                 </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                    <MessageCircle className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </>
+                                        ) : null
+                                    } />
                                 ))
                             )}
                         </FunnelStage>
 
+                        {/* Questionário Pendente */}
                         <FunnelStage title="Questionário Pendente" icon={<Clock className="h-4 w-4 text-amber-600" />} count={pendingLinks.length} color="amber" defaultOpen={pendingLinks.length > 0}>
                             {pendingLinks.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Nenhum pendente 🎉</p> : (
-                                pendingLinks.slice(0, 5).map((link: any) => {
+                                pendingLinks.slice(0, 10).map((link: any) => {
                                     const days = differenceInDays(now, new Date(link.created_at));
                                     const urgent = days >= 3;
                                     return (
@@ -373,47 +489,98 @@ export default function GestaoVendas() {
                                                     <div className="text-[10px] text-muted-foreground">{days}d atrás {urgent && '⚠️'}</div>
                                                 </div>
                                             </div>
-                                            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" onClick={() => handleRelembrar(link)}>
-                                                <MessageSquare className="h-3 w-3" /> Relembrar
-                                            </Button>
+                                            <div className="flex gap-1">
+                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600" onClick={() => handleRelembrar(link)}>
+                                                    <MessageSquare className="h-3 w-3" /> Relembrar
+                                                </Button>
+                                                {link.pacientes?.telefone && (
+                                                    <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                        onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                    </Button>
+                                                )}
+                                            </div>
                                         </div>
                                     );
                                 })
                             )}
                         </FunnelStage>
 
-                        <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={avaliados.length - inativos.length} color="emerald" defaultOpen={false}>
-                            {avaliados.filter(p => !inativos.includes(p)).slice(0, 5).map((p: any) => (
-                                <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30">
-                                    <div className="flex items-center gap-2">
-                                        <div className="h-7 w-7 rounded-full bg-emerald-100 flex items-center justify-center text-emerald-700 text-xs font-bold">{p.nome?.[0]}</div>
-                                        <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                    </div>
-                                    {p.telefone && (
-                                        <div className="flex gap-1">
+                        {/* Inadimplentes 🔴 */}
+                        {inadimplentes.length > 0 && (
+                            <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
+                                {inadimplentes.slice(0, 10).map((p: any) => (
+                                    <PatientRow key={p.id} p={p} actions={
+                                        p.telefone ? (
+                                            <>
+                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`))}>
+                                                    <DollarSign className="h-3 w-3" /> Cobrar
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                    <MessageCircle className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </>
+                                        ) : null
+                                    } />
+                                ))}
+                            </FunnelStage>
+                        )}
+
+                        {/* A Pagar 🟠 */}
+                        {aPagar.length > 0 && (
+                            <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
+                                {aPagar.slice(0, 10).map((p: any) => (
+                                    <PatientRow key={p.id} p={p} actions={
+                                        p.telefone ? (
+                                            <>
+                                                <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
+                                                    onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`))}>
+                                                    <DollarSign className="h-3 w-3" /> Lembrar
+                                                </Button>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                    <MessageCircle className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </>
+                                        ) : null
+                                    } />
+                                ))}
+                            </FunnelStage>
+                        )}
+
+                        {/* Avaliados (Ativos) */}
+                        <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
+                            {filteredAvaliados.filter(p => !inativos.includes(p)).slice(0, 10).map((p: any) => (
+                                <PatientRow key={p.id} p={p} actions={
+                                    p.telefone ? (
+                                        <>
                                             <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
                                                 onClick={() => sendToPatient(p.id, (n, ph) => sharePosAvaliacao(n, ph, '📊 Seus resultados estão prontos!'))}>
                                                 <FileText className="h-3 w-3" /> Pós-Avaliação
                                             </Button>
-                                        </div>
-                                    )}
-                                </div>
+                                            <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-green-600"
+                                                onClick={() => sendToPatient(p.id, (n, ph) => sharePropostaComercial(n, ph, 'Método Identidade', 'consulte'))}>
+                                                <Package className="h-3 w-3" /> Proposta
+                                            </Button>
+                                            <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                <MessageCircle className="h-3.5 w-3.5" />
+                                            </Button>
+                                        </>
+                                    ) : null
+                                } />
                             ))}
                         </FunnelStage>
 
-                        <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inativos.length} color="red" defaultOpen={inativos.length > 0}>
-                            {inativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
-                                inativos.slice(0, 5).map((p: any) => (
-                                    <div key={p.id} className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30">
-                                        <div className="flex items-center gap-2">
-                                            <div className="h-7 w-7 rounded-full bg-red-100 flex items-center justify-center text-red-700 text-xs font-bold">{p.nome?.[0]}</div>
-                                            <div>
-                                                <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                                <div className="text-[10px] text-muted-foreground">Sem sessão recente</div>
-                                            </div>
-                                        </div>
-                                        {p.telefone && (
-                                            <div className="flex gap-1">
+                        {/* Follow-up Necessário */}
+                        <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
+                            {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
+                                filteredInativos.slice(0, 10).map((p: any) => (
+                                    <PatientRow key={p.id} p={p} actions={
+                                        p.telefone ? (
+                                            <>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
                                                     onClick={() => sendToPatient(p.id, (n, ph) => shareLembreteRetorno(n, ph, 'em breve'))}>
                                                     <CalendarDays className="h-3 w-3" /> Retorno
@@ -422,14 +589,19 @@ export default function GestaoVendas() {
                                                     onClick={() => sendToPatient(p.id, (n, ph) => sharePosAlta(n, ph))}>
                                                     <Heart className="h-3 w-3" /> Pós-Alta
                                                 </Button>
-                                            </div>
-                                        )}
-                                    </div>
+                                                <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
+                                                    onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
+                                                    <MessageCircle className="h-3.5 w-3.5" />
+                                                </Button>
+                                            </>
+                                        ) : null
+                                    } />
                                 ))
                             )}
                         </FunnelStage>
                     </div>
-                )}
+                    );
+                })()}
 
                 {/* ══════════════════ MENSAGENS TAB ══════════════════ */}
                 {activeTab === 'mensagens' && (
@@ -1085,7 +1257,41 @@ export default function GestaoVendas() {
                     );
                 })()}
             </div>
-        </AppLayout >
+
+            {/* ── Floating Action Buttons (FAB) ── */}
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+                <button
+                    onClick={() => setFabOpen(!fabOpen)}
+                    className={cn(
+                        'h-14 w-14 rounded-full bg-gradient-primary text-white shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95',
+                        fabOpen && 'rotate-45'
+                    )}
+                >
+                    <Plus className="h-6 w-6" />
+                </button>
+                {fabOpen && (
+                    <>
+                        <button onClick={() => { setFabOpen(false); navigate('/pacientes'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <UserPlus className="h-4 w-4 text-emerald-600" /><span>Pacientes</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); navigate('/metodo-identidade'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <ClipboardList className="h-4 w-4 text-primary" /><span>Nova Avaliação</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); navigate('/agenda'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <CalendarDays className="h-4 w-4 text-amber-600" /><span>Agenda</span>
+                        </button>
+                        <button onClick={() => { setFabOpen(false); setActiveTab('mensagens'); }}
+                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                            <MessageCircle className="h-4 w-4 text-green-600" /><span>WhatsApp</span>
+                        </button>
+                    </>
+                )}
+            </div>
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
+        </AppLayout>
     );
 }
 
