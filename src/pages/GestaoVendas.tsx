@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -16,7 +16,7 @@ import {
     Target, ChevronDown, ChevronUp, Copy, Phone, Edit3, BarChart3,
     UserPlus, FileText, Activity, CheckCircle2, XCircle, CalendarDays,
     StickyNote, Trash2, Plus, Search, ClipboardCheck, RotateCcw,
-    ChevronLeft, ChevronRight, History, MessageCircle,
+    ChevronLeft, ChevronRight, History, MessageCircle, ExternalLink,
 } from 'lucide-react';
 import {
     shareViaWhatsApp, shareBoasVindas, sharePosAvaliacao, sharePosDiretriz,
@@ -24,12 +24,13 @@ import {
     sharePacoteInfo, sharePropostaComercial,
     MESSAGE_TEMPLATES, PACOTES_PREDEFINIDOS, type Pacote,
 } from '@/utils/whatsapp';
-import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, addDays, isSameDay } from 'date-fns';
+import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, addDays, isSameDay, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
+import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
 
 // ── Classificação automática (shared with Pacientes) ──────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
