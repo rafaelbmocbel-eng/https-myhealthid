@@ -549,6 +549,9 @@ export default function Pacientes() {
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
                           </Badge>
                         )}
+                        <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
+                          {tagCfg.emoji} {tagCfg.label}
+                        </Badge>
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {pServicos.map(s => {
