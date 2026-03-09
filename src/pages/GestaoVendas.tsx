@@ -29,6 +29,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
+import FunilConfigPanel from '@/components/funil/FunilConfigPanel';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
