@@ -54,17 +54,12 @@ export default function MyIDResponder() {
 
     const handleComplete = async (result: any, rawData: any) => {
         try {
-            const { error } = await supabase
-                .from('myid_avaliacoes')
-                .update({
-                    status: 'concluido',
-                    respostas_brutas: rawData,
-                    resultado_processado: result,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', evalData.id);
+            const { data: resp, error } = await supabase.functions.invoke('complete-myid', {
+                body: { token, result, rawData },
+            });
 
             if (error) throw error;
+            if (resp?.error) throw new Error(resp.error);
 
             toast({
                 title: "Sucesso!",
