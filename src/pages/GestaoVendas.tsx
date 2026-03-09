@@ -322,6 +322,7 @@ export default function GestaoVendas() {
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
+        { id: 'funil', label: 'Funil', icon: Zap },
     ];
 
     return (
