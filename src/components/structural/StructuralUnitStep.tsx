@@ -64,9 +64,9 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
   ];
 
   return (
-    <div className="space-y-1 overflow-hidden select-none">
+    <div className="space-y-0.5 overflow-hidden select-none">
       {/* ── Score (Micro) ── */}
-      <div className="bg-white border rounded p-1 shadow-sm">
+      <div className="bg-white border rounded p-1 shadow-sm mb-1">
         <div className="flex items-center justify-between mb-0.5">
           <Label className="text-[7px] font-black text-primary uppercase tracking-tighter">1. Severidade</Label>
           <div className={cn('text-base font-black leading-none', classifyScoreColor(assessment.score))}>
@@ -100,53 +100,78 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
             onValueChange={([v]) => updateScore(v)}
             className="h-1.5"
           />
-          <div className="flex justify-between text-[6px] text-muted-foreground font-black mt-0.5 uppercase tracking-tighter">
-            <span>OK</span>
-            <span className={classifyScoreColor(assessment.score)}>{classifyScore(assessment.score)}</span>
-            <span>CRÍTICO</span>
+        </div>
+      </div>
+
+      {/* ── Testes (Trigger Único) ── */}
+      <div className="border rounded overflow-hidden">
+        <button
+          onClick={() => toggle('tests')}
+          className="w-full flex items-center justify-between p-1 bg-slate-50 hover:bg-slate-100 transition-colors"
+        >
+          <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">📋 Sugestões de Testes</span>
+          <ChevronDown className={cn('h-2 w-2 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
+        </button>
+        {expandedSection === 'tests' && (
+          <div className="p-1 space-y-0.5 bg-white border-t">
+            {tests.slice(0, 3).map(test => (
+              <div key={test.id} className="p-1 rounded bg-muted/5 border border-black/5 leading-none">
+                <span className="text-[8px] font-bold text-slate-700">{test.name}</span>
+                <p className="text-[7px] text-muted-foreground italic truncate">{test.evidence}</p>
+              </div>
+            ))}
           </div>
-        </div>
+        )}
       </div>
 
-      {/* ── Testes (Micro) ── */}
-      <div className="bg-slate-50 border rounded p-1">
-        <Label className="text-[7px] font-black text-muted-foreground uppercase mb-0.5 block">Guia Testes</Label>
-        <div className="space-y-0.5">
-          {tests.slice(0, 2).map(test => (
-            <div key={test.id} className="flex flex-col p-0.5 rounded bg-white/50 border border-black/5 leading-none">
-              <span className="text-[8px] font-bold text-slate-700">{test.name}</span>
-              <p className="text-[7px] text-muted-foreground italic truncate">{test.evidence}</p>
-            </div>
-          ))}
+      {/* ── Estruturas (Triggers por Categoria) ── */}
+      <div className="border rounded overflow-hidden bg-white">
+        <div className="p-1 border-b bg-slate-50">
+          <span className="text-[7px] font-black text-muted-foreground uppercase tracking-widest">🦴 Estruturas em Disfunção</span>
         </div>
-      </div>
 
-      {/* ── Estruturas (Micro) ── */}
-      <div className="bg-white border rounded p-1">
-        <Label className="text-[7px] font-black text-muted-foreground uppercase mb-0.5 block">Estruturas</Label>
-        <div className="space-y-1">
+        <div className="divide-y divide-slate-100">
           {structureCategories.map(({ key, label, icon, color }) => {
             const structures = unitConfig.structures[key];
             if (structures.length === 0) return null;
+            const isExpanded = expandedSection === key;
+            const selectedCount = assessment.affectedStructures[key].length;
+
             return (
-              <div key={key} className="flex flex-wrap gap-0.5">
-                {structures.map(name => {
-                  const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
-                  return (
-                    <button
-                      key={name}
-                      onClick={() => toggleStructure(key, name)}
-                      className={cn(
-                        'text-[8px] px-1 py-0.25 rounded border transition-all font-bold',
-                        isSelected
-                          ? 'bg-primary/20 text-primary border-primary/40'
-                          : 'bg-muted/5 text-muted-foreground border-transparent hover:border-primary/10'
-                      )}
-                    >
-                      {name}
-                    </button>
-                  );
-                })}
+              <div key={key}>
+                <button
+                  onClick={() => toggle(key)}
+                  className="w-full flex items-center justify-between p-1 hover:bg-muted/10 transition-colors"
+                >
+                  <div className="flex items-center gap-1">
+                    <span className="text-[9px]">{icon}</span>
+                    <span className={cn('text-[8px] font-bold uppercase', color)}>{label}</span>
+                    {selectedCount > 0 && <Badge variant="secondary" className="h-3 px-1 text-[7px] bg-primary/10 text-primary border-none">{selectedCount}</Badge>}
+                  </div>
+                  <ChevronDown className={cn('h-2 w-2 text-muted-foreground transition-transform', isExpanded && 'rotate-180')} />
+                </button>
+
+                {isExpanded && (
+                  <div className="p-1 flex flex-wrap gap-0.5 bg-muted/5 border-t">
+                    {structures.map(name => {
+                      const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
+                      return (
+                        <button
+                          key={name}
+                          onClick={() => toggleStructure(key, name)}
+                          className={cn(
+                            'text-[8px] px-1 py-0.25 rounded border transition-all font-bold',
+                            isSelected
+                              ? 'bg-primary/20 text-primary border-primary/40'
+                              : 'bg-white text-muted-foreground border-slate-200 hover:border-primary/20'
+                          )}
+                        >
+                          {name}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
@@ -158,8 +183,8 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
         <Textarea
           value={assessment.observacoes}
           onChange={e => onChange({ ...assessment, observacoes: e.target.value })}
-          placeholder="Notas..."
-          className="resize-none text-[9px] min-h-[40px] p-1 bg-slate-50/20 border-none focus-visible:ring-0 h-10 shadow-none"
+          placeholder="Notas clínicas..."
+          className="resize-none text-[9px] min-h-[30px] p-0.5 bg-slate-50/10 border-none focus-visible:ring-0 h-8 shadow-none"
         />
       </div>
     </div>
