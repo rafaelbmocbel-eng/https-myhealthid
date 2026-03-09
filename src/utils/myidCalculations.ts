@@ -119,7 +119,7 @@ export function calcularScoreN(bloco6: MyIDBloco6Data): number {
 // ═══════════════════════════════════════════════════════════
 // FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
-// ── Interpretation Utility (Central Source of Truth) ──
+
 export interface Interpretation {
   status: string;
   label: string;
@@ -132,45 +132,45 @@ export function getMyIDInterpretation(score: number, hasRedFlags: boolean = fals
   const val = score ?? 0;
   let interp: Interpretation;
 
-  if (val < 3) {
+  // Ajuste de thresholds para maior sensibilidade (conforme myid_fix_plan.md)
+  if (val < 1.3) {
     interp = {
       status: 'LEVE',
-      label: 'RECUPERAÇÃO FAVORÁVEL',
+      label: 'Frequência Favorável',
       color: '#8b5cf6', // Violet
-      recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.'
+      recommendation: 'Sua biologia está em excelente estado de equilíbrio. Continue com os bons hábitos.'
     };
-  } else if (val < 6) {
+  } else if (val < 3.0) {
     interp = {
       status: 'MODERADO',
-      label: 'SOBRECARGA MODERADA',
+      label: 'Sobrecarga Moderada',
       color: '#3b82f6', // Blue
-      recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.'
+      recommendation: 'Sua demanda está começando a superar sua capacidade. Ajuste o sono e a hidratação.'
     };
-  } else if (val < 8) {
+  } else if (val < 5.0) {
     interp = {
       status: 'SEVERO',
-      label: 'SOBRECARGA CRÍTICA',
+      label: 'Desequilíbrio Severo',
       color: '#f59e0b', // Amber/Orange
-      recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.'
+      recommendation: 'Alerta: Seu sistema está operando no limite. Redução imediata de carga é recomendada.'
     };
-  } else if (val < 9.5) {
+  } else if (val < 7.5) {
     interp = {
       status: 'CRÍTICO',
-      label: 'RISCO DE CRONIFICAÇÃO',
+      label: 'Risco de Cronificação',
       color: '#ef4444', // Red
       recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.'
     };
   } else {
     interp = {
       status: 'EXTREMO',
-      label: 'RISCO DE COLAPSO',
+      label: 'Probabilidade de Cronicidade',
       color: '#7f1d1d', // Deep Red
-      recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
+      recommendation: 'CRÍTICO: Alta probabilidade de falha sistêmica e dor persistente. Intervenção urgente.'
     };
   }
 
   // --- ELEVAÇÃO POR RED FLAGS ---
-  // Se houver Red Flags, o status mínimo é SEVERO, independente do score.
   if (hasRedFlags) {
     const severityOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
     const currentIdx = severityOrder.indexOf(interp.status);
@@ -179,10 +179,16 @@ export function getMyIDInterpretation(score: number, hasRedFlags: boolean = fals
     if (currentIdx < minIdx) {
       return {
         status: 'SEVERO',
-        label: 'SOBRECARGA CRÍTICA (ALERTA)',
+        label: `${interp.label} (ALERTA)`,
         color: '#f59e0b',
-        recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional imediata.',
+        recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional.',
         isRedFlagElevated: true
+      };
+    } else {
+      return {
+        ...interp,
+        label: `${interp.label} (RED FLAG)`,
+        recommendation: `ATENÇÃO: Este estado (${interp.status}) agravado por Red Flags exige avaliação médica imediata.`
       };
     }
   }
@@ -249,13 +255,6 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
 
 // ── Classification color helpers ──
 export function getMyIDSeverityColor(classificacao: string): string {
-  const interp = getMyIDInterpretation(
-    classificacao === 'LEVE' ? 0 :
-      classificacao === 'MODERADO' ? 4 :
-        classificacao === 'SEVERO' ? 7 :
-          classificacao === 'CRÍTICO' ? 9 : 10
-  );
-
   switch (classificacao) {
     case 'LEVE': return 'text-violet-600 bg-violet-50 border-violet-200';
     case 'MODERADO': return 'text-blue-600 bg-blue-50 border-blue-200';

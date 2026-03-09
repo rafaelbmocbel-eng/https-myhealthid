@@ -87,11 +87,12 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
   const capacityPct = (denominator / totalSum) * 100;
 
   // ── Perfis de Saúde MyID ──────────────────────────────────────────────────
-  const hasHiddenDrains = D > 6 || EFI > 6 || P > 6 || I > 6 || N > 6;
-  const isSilentHero = myidScore <= 4.5 && hasHiddenDrains;
-  const isPerfectStorm = myidScore >= 7 && numerator > 25 && denominator < 15;
-  const isFragileBalance = myidScore > 4.5 && denominator < 15 && !isPerfectStorm;
-  const isSolidBase = myidScore < 3 && numerator < 15;
+  // Ajuste de thresholds para perfis (alinhado com v2 mais sensível)
+  const hasHiddenDrains = D > 5 || EFI > 5 || P > 5 || I > 5 || N > 5;
+  const isSilentHero = myidScore <= 1.5 && hasHiddenDrains;
+  const isPerfectStorm = myidScore >= 5.0 && numerator > 20 && denominator < 15;
+  const isFragileBalance = myidScore > 1.3 && denominator < 12 && !isPerfectStorm;
+  const isSolidBase = myidScore < 1.3 && numerator < 10;
 
   // ── Interpretação Narrativa MyID ──────────────────────────────────────────
   const getNarrative = () => {
@@ -188,10 +189,10 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
               {/* Severity Legend */}
               <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-6 pt-4 border-t border-border/40 w-full max-w-lg">
                 {[
-                  { icon: '✨', range: '< 3', label: 'RECUPERAÇÃO FAVORÁVEL', color: 'text-violet-600' },
-                  { icon: '🔹', range: '3-6', label: 'SOBRECARGA MODERADA', color: 'text-blue-600' },
-                  { icon: '🔶', range: '6-8', label: 'SOBRECARGA CRÍTICA', color: 'text-amber-600' },
-                  { icon: '🚨', range: '> 8', label: 'RISCO CRONIFICAÇÃO', color: 'text-red-600' },
+                  { icon: '✨', range: '< 1.3', label: 'FAVORÁVEL', color: 'text-violet-600' },
+                  { icon: '🔹', range: '1.3-3', label: 'MODERADA', color: 'text-blue-600' },
+                  { icon: '🔶', range: '3-5', label: 'SEVERA', color: 'text-amber-600' },
+                  { icon: '🚨', range: '> 5', label: 'CRÍTICA', color: 'text-red-600' },
                 ].map((item) => (
                   <div key={item.label} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
                     <span className="text-xs">{item.icon}</span>

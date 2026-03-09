@@ -185,7 +185,7 @@ export default function PatientIntegratedDashboard({
         NUT: cs.NUT ?? (cs.NUT_nutrition ?? 5),
         ERG: cs.ERG ?? (cs.ERG_ergonomics ?? 5),
         N: cs.N ?? (cs.N_noise ?? 0),
-        MED: 0,
+        MED: cs.MED ?? (cs.MED_penalty ?? 0),
       };
     }
     if (ultimaMyID) {
@@ -198,9 +198,12 @@ export default function PatientIntegratedDashboard({
         I: cs.I ?? (Number(ultimaMyID.score_i) || 0),
         R: cs.R ?? (Number(ultimaMyID.score_r) || 0),
         C: cs.C ?? (Number(ultimaMyID.score_c) || 0),
-        AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
+        AF: cs.AF ?? (cs.AF_activity ?? 5),
+        HID: cs.HID ?? (cs.HID_hydration ?? 5),
+        NUT: cs.NUT ?? (cs.NUT_nutrition ?? 5),
+        ERG: cs.ERG ?? (cs.ERG_ergonomics ?? 5),
         N: cs.N ?? (Number(ultimaMyID.score_n) || 0),
-        MED: 0,
+        MED: cs.MED ?? (cs.MED_penalty ?? 0),
       };
     }
     return null;
