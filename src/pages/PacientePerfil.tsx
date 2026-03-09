@@ -185,6 +185,46 @@ export default function PacientePerfil() {
 
   const [isDeletingQuest, setIsDeletingQuest] = useState<string | null>(null);
 
+  // Real-time update for evaluations and links
+  useEffect(() => {
+    if (!id || !user) return;
+
+    const channel = supabase
+      .channel(`paciente-perfil-updates-${id}`)
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'avaliacoes_identidade',
+          filter: `paciente_id=eq.${id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['avaliacoes-identidade', user.id, id] });
+          qc.invalidateQueries({ queryKey: ['evolucao-paciente', user.id, id] });
+          qc.invalidateQueries({ queryKey: ['respostas-av-perfil', id] });
+          qc.invalidateQueries({ queryKey: ['myid-latest', id] });
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'links_avaliacao',
+          filter: `paciente_id=eq.${id}`,
+        },
+        () => {
+          qc.invalidateQueries({ queryKey: ['links-av-perfil', id] });
+        }
+      )
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [id, user, qc]);
+
   const handleDeleteQuestionario = async (questId: string, tipo: 'antigo' | 'myid') => {
     try {
       setIsDeletingQuest(questId);
