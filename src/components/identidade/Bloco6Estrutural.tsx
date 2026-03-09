@@ -145,9 +145,9 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
       </div>
 
       {/* Layout: Avatar + units */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
         {/* Left Column: Body avatar (Sticky) */}
-        <div className="lg:col-span-5 sticky top-24">
+        <div className="md:col-span-5 sticky top-24">
           <div className="clinical-card flex flex-col items-center">
             <h3 className="font-semibold text-sm mb-3 self-start">Mapa Corporal</h3>
             <p className="text-xs text-muted-foreground mb-3 self-start">
@@ -199,7 +199,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
         </div>
 
         {/* Right Column: Units panel & Editor */}
-        <div className="lg:col-span-7 space-y-4">
+        <div className="md:col-span-7 space-y-4">
           {/* Unit Selector (Mini-grid) */}
           <div className="clinical-card p-3">
             <Label className="text-[10px] font-bold text-muted-foreground uppercase mb-2 block">Navegação Rápida</Label>
@@ -209,8 +209,8 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                   key={u.id}
                   onClick={() => setExpandedUnit(u.id)}
                   className={`p-1.5 rounded-lg border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${expandedUnit === u.id
-                      ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                      : 'border-border hover:border-primary/50 bg-white'
+                    ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
+                    : 'border-border hover:border-primary/50 bg-white'
                     }`}
                 >
                   <span className="text-sm">{UNIDADES_CONFIG.find(uc => uc.id === u.id)?.emoji}</span>
