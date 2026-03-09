@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info
+  Smartphone, CreditCard, Info, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
+import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
@@ -159,7 +160,11 @@ export default function Agenda() {
   const [newPacEmail, setNewPacEmail] = useState('');
   const [newPacTel, setNewPacTel] = useState('');
   const [nowMinutes, setNowMinutes] = useState(() => getHours(new Date()) * 60 + getMinutes(new Date()));
+  const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
+    open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
+  });
   const gridRef = useRef<HTMLDivElement>(null);
+  const { refresh } = useAgenda();
 
   // Drag-and-drop state
   const [dragging, setDragging] = useState<{
@@ -578,6 +583,31 @@ export default function Agenda() {
     toast({ title: '❌ Agendamento recusado.' });
   };
 
+  const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
+    try {
+      if (status === 'pendente') {
+        const { error } = await supabase.from('controle_sessoes').delete().eq('agendamento_id', ag.id);
+        if (error) throw error;
+        await updateAgendamento(ag.id, { status: 'confirmado' });
+      } else {
+        const { error } = await supabase.from('controle_sessoes').upsert({
+          paciente_id: ag.paciente_id,
+          agendamento_id: ag.id,
+          terapeuta_id: user?.id,
+          data_sessao: ag.data_inicio,
+          status: status === 'atendido' ? 'realizada' : 'falta',
+          valor_cobrado: 0
+        }, { onConflict: 'agendamento_id' });
+        if (error) throw error;
+        await updateAgendamento(ag.id, { status: status === 'atendido' ? 'concluido' : 'faltou' });
+      }
+      toast({ title: `Status atualizado: ${status === 'atendido' ? 'Atendido ✅' : status === 'faltou' ? 'Faltou ❌' : 'Pendente ⏳'}` });
+      refresh();
+    } catch (error: any) {
+      toast({ title: 'Erro ao atualizar status', description: error.message, variant: 'destructive' });
+    }
+  };
+
   const statsToday = agendamentos.filter(ag => isToday(parseISO(ag.data_inicio)));
 
   if (loading) return (
@@ -955,20 +985,38 @@ export default function Agenda() {
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
                               )}
-                              {/* Quick status actions for past confirmed appointments */}
+                              {/* Botões de Ação Rápida */}
                               {pos.height > 55 && ag.status === 'confirmado' && parseISO(ag.data_fim) < new Date() && (
                                 <div className="flex gap-0.5 mt-0.5">
                                   <button
-                                    className="text-[8px] px-1.5 py-0.5 rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-bold"
-                                    onClick={(e) => { e.stopPropagation(); updateAgendamento(ag.id, { status: 'concluido' }); }}
+                                    title="Atendido"
+                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-bold shadow-sm"
+                                    onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'atendido'); }}
                                   >
-                                    ✓ Concluído
+                                    <CheckCircle2 className="h-3 w-3" />
                                   </button>
                                   <button
-                                    className="text-[8px] px-1.5 py-0.5 rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors font-bold"
-                                    onClick={(e) => { e.stopPropagation(); updateAgendamento(ag.id, { status: 'faltou' }); }}
+                                    title="Faltou"
+                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors font-bold shadow-sm"
+                                    onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'faltou'); }}
                                   >
-                                    ✗ Faltou
+                                    <X className="h-3 w-3" />
+                                  </button>
+                                  <button
+                                    title="Pagar"
+                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors font-bold shadow-sm"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setPaymentModal({
+                                        open: true,
+                                        patientId: ag.paciente_id || '',
+                                        agendamentoId: ag.id,
+                                        valor: '0',
+                                        data: format(new Date(), 'yyyy-MM-dd')
+                                      });
+                                    }}
+                                  >
+                                    <DollarSign className="h-3 w-3" />
                                   </button>
                                 </div>
                               )}
@@ -1059,23 +1107,17 @@ export default function Agenda() {
             <div>
               <Label>Paciente</Label>
               <div className="flex gap-2 mt-1.5">
-                <Select value={form.paciente_id} onValueChange={v => {
-                  const pac = pacientes.find(p => p.id === v);
-                  setForm(f => ({
-                    ...f,
-                    paciente_id: v,
-                  }));
-                }}>
-                  <SelectTrigger className="flex-1">
-                    <SelectValue placeholder="Selecionar paciente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="bloqueio">— Bloqueio de horário —</SelectItem>
-                    {pacientes.map(p => (
-                      <SelectItem key={p.id} value={p.id}>{p.nome} {p.sobrenome}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <PacienteSelect
+                  pacientes={pacientes}
+                  value={form.paciente_id}
+                  onValueChange={v => {
+                    setForm(f => ({
+                      ...f,
+                      paciente_id: v,
+                    }));
+                  }}
+                  allowBlock
+                />
                 <Button type="button" variant="outline" size="icon" onClick={() => setShowNewPaciente(!showNewPaciente)}>
                   <Users className="h-4 w-4" />
                 </Button>
@@ -1187,6 +1229,69 @@ export default function Agenda() {
           </div>
         </DialogContent>
       </Dialog >
-    </AppLayout >
+      {/* Modal de Pagamento Direto na Agenda */}
+      <Dialog open={paymentModal.open} onOpenChange={(o) => setPaymentModal(prev => ({ ...prev, open: o }))}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5 text-emerald-600" />
+              Baixar Pagamento
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Valor do Pagamento</Label>
+              <div className="relative">
+                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground">R$</span>
+                <Input
+                  type="number"
+                  className="pl-9"
+                  value={paymentModal.valor}
+                  onChange={e => setPaymentModal(prev => ({ ...prev, valor: e.target.value }))}
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label>Data do Recebimento</Label>
+              <Input
+                type="date"
+                value={paymentModal.data}
+                onChange={e => setPaymentModal(prev => ({ ...prev, data: e.target.value }))}
+              />
+            </div>
+            <Button
+              className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11"
+              onClick={async () => {
+                try {
+                  const { error } = await supabase.from('controle_sessoes').upsert({
+                    id: paymentModal.sessaoId,
+                    paciente_id: paymentModal.patientId,
+                    agendamento_id: paymentModal.agendamentoId,
+                    terapeuta_id: user?.id,
+                    data_sessao: new Date(paymentModal.data).toISOString(),
+                    status: 'realizada',
+                    valor_cobrado: Number(paymentModal.valor)
+                  }, { onConflict: 'agendamento_id' });
+
+                  if (error) throw error;
+
+                  if (paymentModal.agendamentoId) {
+                    await updateAgendamento(paymentModal.agendamentoId, { status: 'concluido' });
+                  }
+
+                  toast({ title: 'Pagamento registrado! 💵', description: `R$ ${paymentModal.valor} recebido com sucesso.` });
+                  setPaymentModal(prev => ({ ...prev, open: false }));
+                  refresh();
+                } catch (err: any) {
+                  toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+                }
+              }}
+            >
+              Confirmar Recebimento
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+    </AppLayout>
   );
 }

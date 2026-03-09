@@ -60,6 +60,7 @@ interface RespostaPaciente {
 interface Props {
   linksAvPaciente: LinkAvaliacao[];
   respostas: RespostaPaciente[];
+  myidAvaliacoes?: any[];
 }
 
 function extractScores(dados: any): Record<string, number> {
@@ -434,12 +435,13 @@ const BLOCO_ICONS: Record<number, any> = {
   6: AlertTriangle,
 };
 
-export default function QuestionariosComparacao({ linksAvPaciente, respostas }: Props) {
+export default function QuestionariosComparacao({ linksAvPaciente, respostas, myidAvaliacoes = [] }: Props) {
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [expandedBloco, setExpandedBloco] = useState<number | null>(null);
 
   const respostasAgrupadas = useMemo(() => {
-    return linksAvPaciente
+    // 1. Processar respostas do sistema antigo (links_avaliacao)
+    const antigas = linksAvPaciente
       .filter(l => respostas.some(r => r.link_id === l.id))
       .map(link => {
         const respostasLink = respostas.filter(r => r.link_id === link.id);
@@ -461,6 +463,8 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
         });
 
         return {
+          id: link.id,
+          tipo: 'antigo',
           link,
           blocosRecebidos,
           allScores,
@@ -470,7 +474,56 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           data: link.data_ultimo_acesso || link.created_at,
         };
       });
-  }, [linksAvPaciente, respostas]);
+
+    // 2. Processar respostas do sistema novo (myid_avaliacoes)
+    // No MyID novo, uma linha na tabela representa um questionário completo (ou em andamento)
+    const novas = myidAvaliacoes
+      .filter(av => av.status === 'concluido' && av.resultado_processado)
+      .map(av => {
+        const res = av.resultado_processado;
+        const raw = av.respostas_brutas || {};
+
+        // Mapear scores para o formato do radar/gráficos
+        const allScores: Record<string, number> = {
+          scoreI: res.componentScores?.I ?? 0,
+          scoreD: res.componentScores?.D ?? 0,
+          scoreEFI: res.componentScores?.EFI ?? 0,
+          scoreP: res.componentScores?.P ?? 0,
+          scoreR: res.componentScores?.R ?? 0,
+          scoreC: res.componentScores?.C ?? 0,
+          scoreN: res.componentScores?.N ?? 0,
+        };
+
+        // Mapear dados brutos para os blocos individuais para o BlocoDetailRenderer
+        const blocoDados: Record<number, any> = {
+          1: { ...raw.bloco1, scoreI: allScores.scoreI, scoreF: allScores.scoreI },
+          2: { ...raw.bloco2, scoreD: allScores.scoreD },
+          3: { ...raw.bloco3, scoreEFI: allScores.scoreEFI },
+          4: { ...raw.bloco4, scoreP: allScores.scoreP },
+          5: { ...raw.bloco5, scoreR: allScores.scoreR, scoreC: allScores.scoreC },
+          6: { ...raw.bloco6, scoreN: allScores.scoreN },
+        };
+
+        return {
+          id: av.id,
+          tipo: 'myid',
+          link: { id: av.id, created_at: av.created_at, status: av.status },
+          blocosRecebidos: [1, 2, 3, 4, 5, 6],
+          allScores,
+          blocoScores: {}, // Não precisamos separar por bloco aqui pois o MyID vem tudo junto
+          blocoDados,
+          completo: true,
+          data: av.created_at,
+        };
+      });
+
+    // 3. Unificar e ordenar por data decrescente
+    return [...antigas, ...novas].sort((a, b) => {
+      const dateA = a.data ? new Date(a.data).getTime() : 0;
+      const dateB = b.data ? new Date(b.data).getTime() : 0;
+      return dateB - dateA;
+    });
+  }, [linksAvPaciente, respostas, myidAvaliacoes]);
 
   if (respostasAgrupadas.length === 0) {
     return (
@@ -652,14 +705,14 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas }: 
           {respostasAgrupadas.map((group, idx) => {
             const isSelected = selectedLinkId === group.link.id;
             return (
-              <div key={group.link.id}>
+              <div key={group.id}>
                 <div
                   className={`rounded-xl border p-3 cursor-pointer transition-all ${isSelected ? 'border-primary bg-accent/30 shadow-sm' : 'hover:border-primary/30 hover:bg-accent/10'}`}
-                  onClick={() => { setSelectedLinkId(isSelected ? null : group.link.id); setExpandedBloco(null); }}
+                  onClick={() => { setSelectedLinkId(isSelected ? null : group.id); setExpandedBloco(null); }}
                 >
                   <div className="flex items-center gap-3">
                     <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                      <span className="text-sm font-bold text-primary">Q{respostasAgrupadas.length - idx}</span>
+                      <span className="text-sm font-bold text-primary">{group.tipo === 'myid' ? 'MY' : 'Q'}{respostasAgrupadas.length - idx}</span>
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">

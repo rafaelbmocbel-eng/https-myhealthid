@@ -302,6 +302,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
+  const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
 
@@ -580,7 +581,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   </div>
                 )}
 
-                {/* ── MyID Presencial ── */}
                 {!showStructural && (
                   <>
                     {iniciandoMyID ? (
@@ -599,27 +599,88 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                           toast({ title: 'MyID Salvo!', description: 'Avaliação registrada com sucesso.' });
                         }} />
                       </div>
-                    ) : myidAvaliacoes.length > 0 ? (
+                    ) : (
                       <div className="space-y-6">
                         <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
                           <div>
-                            <h3 className="font-bold text-lg text-primary">Último MyID ({format(new Date(myidAvaliacoes[0].created_at), 'dd/MM/yyyy')})</h3>
-                            <p className="text-sm text-gray-500">Resultado da impressão digital sistêmica.</p>
+                            <h3 className="font-bold text-lg text-primary">Avaliações MyID</h3>
+                            <p className="text-sm text-gray-500">Histórico da impressão digital sistêmica.</p>
                           </div>
-                          <Button onClick={() => setIniciandoMyID(true)}>Refazer Avaliação</Button>
+                          <Button onClick={() => setIniciandoMyID(true)}>Nova Avaliação</Button>
                         </div>
-                        {myidAvaliacoes[0].resultado_processado && (
-                          <div className="bg-white p-4 rounded-xl border shadow-sm">
-                            <MyIDResult result={myidAvaliacoes[0].resultado_processado} />
+
+                        {myidAvaliacoes.length > 0 ? (
+                          <div className="space-y-3">
+                            {myidAvaliacoes.map((av: any) => {
+                              const isExpanded = expandedMyIDId === av.id;
+                              const result = av.resultado_processado;
+                              return (
+                                <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                                  <div
+                                    className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-slate-50 border-b' : ''}`}
+                                    onClick={() => setExpandedMyIDId(isExpanded ? null : av.id)}
+                                  >
+                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                      <Fingerprint className="h-5 w-5 text-primary" />
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="flex items-center gap-2">
+                                        <span className="text-sm font-bold">
+                                          {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                        </span>
+                                        <Badge variant="outline" className="text-[10px] h-4">ID #{av.id.slice(0, 4)}</Badge>
+                                      </div>
+                                      <div className="flex items-center gap-2 mt-1">
+                                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${getMyIDSeverityColor(result?.classificacao || '')}`}>
+                                          {result?.myidStatus || 'Processando...'}
+                                        </div>
+                                      </div>
+                                    </div>
+                                    <div className="text-right shrink-0 mr-2">
+                                      <div className="text-2xl font-black text-primary">
+                                        {result?.myidScore?.toFixed(1) || '0.0'}
+                                      </div>
+                                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MyID Score</div>
+                                    </div>
+                                    <Button
+                                      size="sm"
+                                      variant="ghost"
+                                      className="h-8 w-8 p-0"
+                                    >
+                                      <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
+                                    </Button>
+                                  </div>
+                                  {isExpanded && result && (
+                                    <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
+                                      <MyIDResult result={result} rawData={av.respostas_brutas} />
+                                      <div className="mt-4 flex justify-end">
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          className="text-xs gap-2"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setShowReport({ myid: result });
+                                          }}
+                                        >
+                                          <FileText className="h-3.5 w-3.5" />
+                                          Gerar PDF
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
+                        ) : (
+                          <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
+                            <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
+                            <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
+                            <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
+                            <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
                           </div>
                         )}
-                      </div>
-                    ) : (
-                      <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
-                        <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
-                        <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
-                        <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
-                        <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
                       </div>
                     )}
                   </>
@@ -629,7 +690,11 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
             {/* Aba: Questionários Remotos */}
             <TabsContent value="respostas" className="mt-4">
-              <QuestionariosComparacao linksAvPaciente={linksAvPaciente} respostas={respostas} />
+              <QuestionariosComparacao
+                linksAvPaciente={linksAvPaciente}
+                respostas={respostas}
+                myidAvaliacoes={myidAvaliacoes}
+              />
             </TabsContent>
 
             {/* Aba: Diretrizes e Serviços (Repositório) */}

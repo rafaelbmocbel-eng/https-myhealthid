@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
+import { MyIDResult } from '@/components/myid/MyIDResult';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
 
@@ -119,10 +120,8 @@ export default function MyIDResponder() {
                         </div>
                         {/* If we want to show the result to the patient right away */}
                         {evalData.resultado_processado && (
-                            <div className="mt-8">
-                                {/* Re-use the Result view from Wizard but we need it exported, or just render Wizard at step=7 */}
-                                <MyIDWizard initialData={evalData.respostas_brutas} />
-                                {/* Actually the wizard will mount at step 0. Let's make Wizard accept an initialStep prop or just render MyIDResult directly. */}
+                            <div className="mt-8 bg-white p-6 rounded-xl border shadow-sm">
+                                <MyIDResult result={evalData.resultado_processado} rawData={evalData.respostas_brutas} />
                             </div>
                         )}
                     </div>

@@ -28,6 +28,7 @@ import { format, differenceInDays, differenceInCalendarDays, isToday, parseISO, 
 import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
 import FunilConfigPanel from '@/components/funil/FunilConfigPanel';
 import { Navigate, useNavigate } from 'react-router-dom';
@@ -44,7 +45,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas' | 'funil';
+type TabId = 'pipeline' | 'conversas' | 'mensagens' | 'pacotes' | 'metricas' | 'notas' | 'funil';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -60,6 +61,9 @@ export default function GestaoVendas() {
     const [customValue, setCustomValue] = useState('');
     const [vipSearch, setVipSearch] = useState('');
     const [newNote, setNewNote] = useState('');
+    const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
+        open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
+    });
 
     // Attendance specific state
     const [currentDate, setCurrentDate] = useState<Date>(new Date());
@@ -164,6 +168,30 @@ export default function GestaoVendas() {
             return data || [];
         },
         enabled: !!user,
+    });
+
+    // ── Mutations ──────────────────────────────────────────────────
+    const upsertSessao = useMutation({
+        mutationFn: async (sessao: any) => {
+            const { error } = await supabase.from('controle_sessoes').upsert({
+                ...sessao,
+                terapeuta_id: user!.id,
+            }, { onConflict: 'agendamento_id' });
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['crm-sessoes'] });
+        }
+    });
+
+    const deleteSessao = useMutation({
+        mutationFn: async (agendamentoId: string) => {
+            const { error } = await supabase.from('controle_sessoes').delete().eq('agendamento_id', agendamentoId);
+            if (error) throw error;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({ queryKey: ['crm-sessoes'] });
+        }
     });
 
     // ── Classificação automática dos pacientes ──────────────────────
@@ -557,6 +585,20 @@ export default function GestaoVendas() {
                                                         onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nIdentificamos uma pendência financeira em sua conta. Podemos conversar sobre a regularização? Estamos à disposição para facilitar! 😊`), 'cobranca-inadimplente')}>
                                                         <DollarSign className="h-3 w-3" /> Cobrar
                                                     </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-emerald-600"
+                                                        onClick={() => {
+                                                            const pessao = (sessoes as any[]).find((s: any) => s.paciente_id === p.id && s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0));
+                                                            setPaymentModal({
+                                                                open: true,
+                                                                patientId: p.id,
+                                                                sessaoId: pessao?.id,
+                                                                agendamentoId: pessao?.agendamento_id,
+                                                                valor: '0',
+                                                                data: pessao ? format(new Date(pessao.data_sessao), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                                                            });
+                                                        }}>
+                                                        <CheckCircle2 className="h-3 w-3" /> Baixar
+                                                    </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
                                                         <MessageCircle className="h-3.5 w-3.5" />
@@ -578,6 +620,20 @@ export default function GestaoVendas() {
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
                                                         onClick={() => sendToPatient(p.id, (n, ph) => shareViaWhatsApp(ph, `Olá ${n}! 👋\n\nLembrete gentil sobre o pagamento da sua última sessão. Qualquer dúvida estou à disposição! 😊`), 'lembrete-pagamento')}>
                                                         <DollarSign className="h-3 w-3" /> Lembrar
+                                                    </Button>
+                                                    <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-emerald-600"
+                                                        onClick={() => {
+                                                            const pessao = (sessoes as any[]).find((s: any) => s.paciente_id === p.id && s.status === 'realizada' && (!s.valor_cobrado || Number(s.valor_cobrado) === 0));
+                                                            setPaymentModal({
+                                                                open: true,
+                                                                patientId: p.id,
+                                                                sessaoId: pessao?.id,
+                                                                agendamentoId: pessao?.agendamento_id,
+                                                                valor: '0',
+                                                                data: pessao ? format(new Date(pessao.data_sessao), 'yyyy-MM-dd') : format(new Date(), 'yyyy-MM-dd')
+                                                            });
+                                                        }}>
+                                                        <CheckCircle2 className="h-3 w-3" /> Baixar
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
@@ -639,6 +695,55 @@ export default function GestaoVendas() {
                                     ))
                                 )}
                             </FunnelStage>
+
+                            {/* Modal de Pagamento */}
+                            <Dialog open={paymentModal.open} onOpenChange={o => setPaymentModal(prev => ({ ...prev, open: o }))}>
+                                <DialogContent className="sm:max-w-[400px]">
+                                    <DialogHeader>
+                                        <DialogTitle>Registrar Pagamento</DialogTitle>
+                                    </DialogHeader>
+                                    <div className="space-y-4 py-4">
+                                        <div className="space-y-2">
+                                            <Label>Valor Recebido (R$)</Label>
+                                            <Input
+                                                type="number"
+                                                value={paymentModal.valor}
+                                                onChange={e => setPaymentModal(prev => ({ ...prev, valor: e.target.value }))}
+                                                placeholder="0.00"
+                                            />
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Label>Data do Pagamento</Label>
+                                            <Input
+                                                type="date"
+                                                value={paymentModal.data}
+                                                onChange={e => setPaymentModal(prev => ({ ...prev, data: e.target.value }))}
+                                            />
+                                        </div>
+                                    </div>
+                                    <DialogFooter>
+                                        <Button variant="outline" onClick={() => setPaymentModal(prev => ({ ...prev, open: false }))}>Cancelar</Button>
+                                        <Button
+                                            className="bg-gradient-primary text-white"
+                                            disabled={upsertSessao.isPending}
+                                            onClick={() => {
+                                                upsertSessao.mutate({
+                                                    id: paymentModal.sessaoId,
+                                                    paciente_id: paymentModal.patientId,
+                                                    agendamento_id: paymentModal.agendamentoId,
+                                                    valor_cobrado: Number(paymentModal.valor),
+                                                    data_sessao: paymentModal.data,
+                                                    status: 'realizada'
+                                                });
+                                                setPaymentModal(prev => ({ ...prev, open: false }));
+                                                toast({ title: '✅ Pagamento registrado!' });
+                                            }}
+                                        >
+                                            Confirmar Pagamento
+                                        </Button>
+                                    </DialogFooter>
+                                </DialogContent>
+                            </Dialog>
                         </div>
                     );
                 })()}
@@ -954,10 +1059,33 @@ export default function GestaoVendas() {
                     const pendentes = dailyAgs.length - atendidos - faltaram;
                     const pctDone = dailyAgs.length > 0 ? Math.round((atendidos / dailyAgs.length) * 100) : 0;
 
-                    const cycleStatus = (agId: string) => {
+                    const cycleStatus = async (ag: any) => {
+                        const agId = ag.id;
                         const current = checkedIds[agId] || 'pendente';
                         const next = current === 'pendente' ? 'atendido' : current === 'atendido' ? 'faltou' : 'pendente';
+
                         saveChecks({ ...checkedIds, [agId]: next });
+
+                        // Sincronizar com banco de dados
+                        if (next === 'atendido') {
+                            upsertSessao.mutate({
+                                paciente_id: ag.paciente_id,
+                                agendamento_id: agId,
+                                data_sessao: ag.data_inicio,
+                                status: 'realizada',
+                                valor_cobrado: 0 // Inicia como a pagar
+                            });
+                        } else if (next === 'faltou') {
+                            upsertSessao.mutate({
+                                paciente_id: ag.paciente_id,
+                                agendamento_id: agId,
+                                data_sessao: ag.data_inicio,
+                                status: 'falta',
+                                valor_cobrado: 0
+                            });
+                        } else {
+                            deleteSessao.mutate(agId);
+                        }
                     };
 
                     const statusStyles = {
@@ -999,18 +1127,11 @@ export default function GestaoVendas() {
                                     <div className="space-y-4 py-4">
                                         <div className="space-y-2">
                                             <Label>Paciente</Label>
-                                            <Select value={addPacienteForm.pacienteId} onValueChange={(val) => setAddPacienteForm({ ...addPacienteForm, pacienteId: val })}>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder="Selecione o paciente" />
-                                                </SelectTrigger>
-                                                <SelectContent className="max-h-60">
-                                                    {patients.map((p: any) => (
-                                                        <SelectItem key={p.id} value={p.id}>
-                                                            {p.nome} {p.sobrenome || ''}
-                                                        </SelectItem>
-                                                    ))}
-                                                </SelectContent>
-                                            </Select>
+                                            <PacienteSelect
+                                                pacientes={patients}
+                                                value={addPacienteForm.pacienteId}
+                                                onValueChange={(val) => setAddPacienteForm({ ...addPacienteForm, pacienteId: val })}
+                                            />
                                         </div>
                                         <div className="grid grid-cols-2 gap-4">
                                             <div className="space-y-2">
@@ -1170,7 +1291,12 @@ export default function GestaoVendas() {
                                             return (
                                                 <div key={ag.id} className={`rounded-xl border-2 p-3 transition-all ${(statusStyles as any)[status]}`}>
                                                     <div className="flex items-center gap-3">
-                                                        <button onClick={() => cycleStatus(ag.id)} className="shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors" title="Alternar status">
+                                                        <button
+                                                            onClick={() => cycleStatus(ag)}
+                                                            disabled={upsertSessao.isPending || deleteSessao.isPending}
+                                                            className="shrink-0 p-1.5 rounded-lg hover:bg-muted/50 transition-colors disabled:opacity-50"
+                                                            title="Alternar status"
+                                                        >
                                                             {(statusIcons as any)[status]}
                                                         </button>
                                                         <div className="flex-1 min-w-0">
@@ -1279,7 +1405,7 @@ export default function GestaoVendas() {
                                                                                 {format(parseISO(ag.data_inicio), 'dd/MM/yyyy')}
                                                                                 <span className="font-normal text-muted-foreground">· {format(parseISO(ag.data_inicio), 'HH:mm')}</span>
                                                                             </span>
-                                                                            <button onClick={() => cycleStatus(ag.id)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
+                                                                            <button onClick={() => cycleStatus(ag)} className="flex items-center gap-1 hover:opacity-80 transition-opacity">
                                                                                 <Badge variant="outline" className={`text-[9px] px-1.5 py-0 h-4 border-current ${status === 'atendido' ? 'text-emerald-600' : status === 'faltou' ? 'text-red-500' : 'text-amber-600'}`}>
                                                                                     {(statusLabels as any)[status]}
                                                                                 </Badge>
@@ -1384,13 +1510,11 @@ export default function GestaoVendas() {
                 })()}
 
                 {/* ══════════════════ FUNIL TAB ══════════════════ */}
-                {activeTab === 'funil' && (
-                    <FunilConfigPanel />
-                )}
-            </div>
+                {activeTab === 'funil' && <FunilConfigPanel />}
+            </div >
 
             {/* ── Floating Action Buttons (FAB) ── */}
-            <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
+            < div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3" >
                 <button
                     onClick={() => setFabOpen(!fabOpen)}
                     className={cn(
@@ -1400,29 +1524,32 @@ export default function GestaoVendas() {
                 >
                     <Plus className="h-6 w-6" />
                 </button>
-                {fabOpen && (
-                    <>
-                        <button onClick={() => { setFabOpen(false); navigate('/pacientes'); }}
-                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
-                            <UserPlus className="h-4 w-4 text-emerald-600" /><span>Pacientes</span>
-                        </button>
-                        <button onClick={() => { setFabOpen(false); navigate('/metodo-identidade'); }}
-                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
-                            <ClipboardList className="h-4 w-4 text-primary" /><span>Nova Avaliação</span>
-                        </button>
-                        <button onClick={() => { setFabOpen(false); navigate('/agenda'); }}
-                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
-                            <CalendarDays className="h-4 w-4 text-amber-600" /><span>Agenda</span>
-                        </button>
-                        <button onClick={() => { setFabOpen(false); setActiveTab('mensagens'); }}
-                            className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
-                            <MessageCircle className="h-4 w-4 text-green-600" /><span>WhatsApp</span>
-                        </button>
-                    </>
-                )}
-            </div>
-            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
-        </AppLayout>
+                {
+                    fabOpen && (
+                        <>
+                            <button onClick={() => { setFabOpen(false); navigate('/pacientes'); }}
+                                className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                                <UserPlus className="h-4 w-4 text-emerald-600" /><span>Pacientes</span>
+                            </button>
+                            <button onClick={() => { setFabOpen(false); navigate('/metodo-identidade'); }}
+                                className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                                <ClipboardList className="h-4 w-4 text-primary" /><span>Nova Avaliação</span>
+                            </button>
+                            <button onClick={() => { setFabOpen(false); navigate('/agenda'); }}
+                                className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                                <CalendarDays className="h-4 w-4 text-amber-600" /><span>Agenda</span>
+                            </button>
+                            <button onClick={() => { setFabOpen(false); setActiveTab('mensagens'); }}
+                                className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors">
+                                <MessageCircle className="h-4 w-4 text-green-600" /><span>WhatsApp</span>
+                            </button>
+                        </>
+                    )
+                }
+            </div >
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />
+            }
+        </AppLayout >
     );
 }
 
