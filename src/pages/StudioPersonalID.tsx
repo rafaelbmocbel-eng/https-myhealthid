@@ -183,10 +183,16 @@ export default function StudioPersonalID() {
               <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
                 <Dumbbell className="h-3.5 w-3.5" /> Treinos
               </TabsTrigger>
-              <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+              <TabsTrigger
+                value="evolucao"
+                className="text-xs gap-1 border-2 border-blue-500/40 bg-blue-50/50 data-[state=active]:bg-blue-600 data-[state=active]:text-white data-[state=active]:border-blue-600 font-bold transition-all"
+              >
                 <BarChart3 className="h-3.5 w-3.5" /> Evolução
               </TabsTrigger>
-              <TabsTrigger value="notas" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+              <TabsTrigger
+                value="notas"
+                className="text-xs gap-1 border-2 border-emerald-500/40 bg-emerald-50/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:border-emerald-600 font-bold transition-all"
+              >
                 <StickyNote className="h-3.5 w-3.5" /> Notas
               </TabsTrigger>
             </TabsList>
