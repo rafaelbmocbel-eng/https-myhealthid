@@ -10,6 +10,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
