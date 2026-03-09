@@ -1382,6 +1382,11 @@ export default function GestaoVendas() {
                         </div>
                     );
                 })()}
+
+                {/* ══════════════════ FUNIL TAB ══════════════════ */}
+                {activeTab === 'funil' && (
+                    <FunilConfigPanel />
+                )}
             </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
