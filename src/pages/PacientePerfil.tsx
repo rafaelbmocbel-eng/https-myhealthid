@@ -459,21 +459,35 @@ export default function PacientePerfil() {
 
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-secondary p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
+          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-5 h-auto gap-1.5 w-full border shadow-sm">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
-              <BarChart3 className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evolução</span><span className="sm:hidden">Evol.</span>
+
+            <TabsTrigger
+              value="prontuario"
+              className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2 border border-emerald-200/50 bg-emerald-50/30 data-[state=active]:border-emerald-500 data-[state=active]:text-emerald-700 font-bold"
+            >
+              <FileText className="h-3.5 w-3.5 shrink-0 text-emerald-600" />
+              <span className="hidden sm:inline">Evoluções e Prontuário</span>
+              <span className="sm:hidden text-emerald-700">Pront.</span>
             </TabsTrigger>
+
+            <TabsTrigger
+              value="evolucao"
+              className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2 border border-blue-200/50 bg-blue-50/30 data-[state=active]:border-blue-500 data-[state=active]:text-blue-700 font-bold"
+            >
+              <BarChart3 className="h-3.5 w-3.5 shrink-0 text-blue-600" />
+              <span className="hidden sm:inline">Evolução</span>
+              <span className="sm:hidden text-blue-700">Evol.</span>
+            </TabsTrigger>
+
             <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
             </TabsTrigger>
+
             <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
-            </TabsTrigger>
-            <TabsTrigger value="prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
-              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evoluções e Prontuário</span><span className="sm:hidden">Pront.</span>
             </TabsTrigger>
 
           </TabsList>
