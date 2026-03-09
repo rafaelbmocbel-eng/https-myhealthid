@@ -170,8 +170,8 @@ export default function AvaliacaoPublica() {
         </div>
 
         {/* Fingerprint */}
-        <div className="w-full max-w-md">
-          <MyIDFingerprint rings={fpData} myidScore={resultado.MyID_score} />
+        <div className="w-full max-w-2xl">
+          <MyIDFingerprint rings={fpData} myidScore={resultado.MyID_score} className="w-full" />
         </div>
 
         <p className="text-[10px] text-muted-foreground text-center max-w-sm italic">
