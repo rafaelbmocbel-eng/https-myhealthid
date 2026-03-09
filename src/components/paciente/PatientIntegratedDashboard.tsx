@@ -10,7 +10,7 @@ import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award
+  AlertTriangle, CheckCircle2, Target, Award, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -478,6 +478,59 @@ export default function PatientIntegratedDashboard({
                   highlightedKey={hoveredScoreKey}
                   hasRedFlags={redFlagsDetected}
                 />
+              </div>
+
+              {/* ─── O QUE O MyID REVELA ─── */}
+              <div className="mt-8 pt-6 border-t border-violet-100 dark:border-violet-900/30">
+                <div className="flex items-center gap-3 mb-5">
+                  <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-primary/10">
+                    <CheckCircle2 className="h-4 w-4 text-primary" />
+                  </div>
+                  <div>
+                    <h4 className="font-black text-sm uppercase tracking-widest text-foreground">O que o MyID revelou</h4>
+                    <p className="text-[10px] text-muted-foreground">Cada dimensão investigada pelo questionário</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                  {[
+                    { text: 'Quanto de "demanda" seu corpo está recebendo', icon: Activity, color: 'text-red-500', scoreKey: 'D' },
+                    { text: 'Quanto de "capacidade de suporte" você tem', icon: Shield, color: 'text-emerald-500', scoreKey: 'R' },
+                    { text: 'Como suas EMOÇÕES amplificam (ou reduzem) a dor', icon: Brain, color: 'text-violet-500', scoreKey: 'P' },
+                    { text: 'Qual é seu nível de MOVIMENTO e ATIVIDADE', icon: Dumbbell, color: 'text-blue-500', scoreKey: 'AF' },
+                    { text: 'Se você está HIDRATADO o suficiente para recuperar', icon: Heart, color: 'text-cyan-500', scoreKey: 'HID' },
+                    { text: 'Se sua ALIMENTAÇÃO está alimentando a recuperação', icon: Zap, color: 'text-amber-500', scoreKey: 'NUT' },
+                    { text: 'Quais "fantasmas" do passado ainda assombram seu sistema', icon: AlertTriangle, color: 'text-orange-500', scoreKey: 'N' },
+                    { text: 'Se seu ambiente está ajudando ou prejudicando', icon: Smile, color: 'text-teal-500', scoreKey: 'C' },
+                    { text: 'Sua postura e ergonomia estão corretas', icon: Target, color: 'text-indigo-500', scoreKey: 'ERG' },
+                    { text: 'Qual é o padrão da sua dor', icon: Fingerprint, color: 'text-rose-500', scoreKey: 'I' },
+                    { text: 'Se há medicações afetando sua recuperação', icon: ShieldAlert, color: 'text-purple-500', scoreKey: 'MED' },
+                  ].map((item, idx) => {
+                    const sc = scores as any;
+                    const val = sc?.[item.scoreKey];
+                    const hasVal = val !== undefined && val !== null;
+                    return (
+                      <div
+                        key={idx}
+                        className="flex items-start gap-3 p-3 rounded-xl bg-muted/30 border border-border/40 hover:bg-muted/50 transition-colors group"
+                        onMouseEnter={() => setHoveredScoreKey(item.scoreKey)}
+                        onMouseLeave={() => setHoveredScoreKey(null)}
+                      >
+                        <div className={cn("mt-0.5 shrink-0", item.color)}>
+                          <item.icon className="h-4 w-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold text-foreground leading-snug">{item.text}</p>
+                          {hasVal && (
+                            <span className={cn("text-[10px] font-black mt-1 inline-block", item.color)}>
+                              {Number(val).toFixed(1)}/10
+                            </span>
+                          )}
+                        </div>
+                        <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0 mt-0.5" />
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             </CardContent>
           </Card>
