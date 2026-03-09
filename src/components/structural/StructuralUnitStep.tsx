@@ -64,135 +64,102 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
   ];
 
   return (
-    <div className="space-y-3">
-
-      {/* ── Score 0-10 ── */}
-      <div className="clinical-card border-l-4 border-l-primary shadow-md bg-white animate-in zoom-in-95 duration-500">
-        <div className="flex items-center justify-between mb-4">
-          <Label className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-wider">
-            1. Severidade do Comprometimento
-          </Label>
-          <div className="text-right">
-            <div className={cn('text-3xl font-black leading-none', classifyScoreColor(assessment.score))}>
-              {assessment.score.toFixed(1)}
-            </div>
+    <div className="space-y-1 overflow-hidden select-none">
+      {/* ── Score (Micro) ── */}
+      <div className="bg-white border rounded p-1 shadow-sm">
+        <div className="flex items-center justify-between mb-0.5">
+          <Label className="text-[7px] font-black text-primary uppercase tracking-tighter">1. Severidade</Label>
+          <div className={cn('text-base font-black leading-none', classifyScoreColor(assessment.score))}>
+            {assessment.score.toFixed(1)}
           </div>
         </div>
 
-        {/* Quick Selection Buttons */}
-        <div className="grid grid-cols-6 gap-1.5 mb-4">
+        <div className="grid grid-cols-6 gap-0.5 mb-1">
           {[0, 2, 4, 6, 8, 10].map(val => (
             <button
               key={val}
               type="button"
               onClick={() => updateScore(val)}
               className={cn(
-                "py-3 rounded-lg text-sm font-black transition-all border-2",
+                "h-5 rounded text-[8px] font-black transition-all border",
                 Math.round(assessment.score) === val
-                  ? "text-white shadow-md scale-105 border-transparent"
-                  : "bg-muted/30 text-muted-foreground border-transparent hover:border-primary/20"
+                  ? "text-white shadow-sm border-transparent"
+                  : "bg-muted/10 text-muted-foreground border-transparent hover:border-primary/20"
               )}
-              style={{
-                backgroundColor: Math.round(assessment.score) === val ? getSeverityColorHex(val) : undefined,
-              }}
+              style={{ backgroundColor: Math.round(assessment.score) === val ? getSeverityColorHex(val) : undefined }}
             >
               {val}
             </button>
           ))}
         </div>
 
-        <div className="space-y-2 pt-2 border-t border-dashed">
-          <div className="flex justify-between items-center mb-1">
-            <span className="text-[10px] font-bold text-muted-foreground uppercase">Ajuste Fino (Slider)</span>
-            <Badge className={cn('text-[10px] font-bold uppercase tracking-tight', classifyScoreBg(assessment.score))}>
-              {classifyScore(assessment.score)}
-            </Badge>
-          </div>
+        <div className="pt-0.5 border-t border-dashed">
           <Slider
             value={[assessment.score]}
             min={0} max={10} step={0.5}
             onValueChange={([v]) => updateScore(v)}
-            className="w-full"
+            className="h-1.5"
           />
-          <div className="flex justify-between text-[10px] text-muted-foreground font-bold px-1 mt-1 uppercase">
-            <span>Saudável</span>
-            <span>Crítico</span>
+          <div className="flex justify-between text-[6px] text-muted-foreground font-black mt-0.5 uppercase tracking-tighter">
+            <span>OK</span>
+            <span className={classifyScoreColor(assessment.score)}>{classifyScore(assessment.score)}</span>
+            <span>CRÍTICO</span>
           </div>
         </div>
       </div>
 
-      {/* ── Testes Sugeridos (Compacto) ── */}
-      <div className="clinical-card !p-3">
-        <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 block">
-          Sugestões de Testes & Evidências
-        </Label>
-        <div className="grid grid-cols-1 gap-1.5">
-          {tests.map(test => (
-            <div key={test.id} className="flex flex-col p-2 rounded-lg bg-muted/30 border border-muted-foreground/10">
-              <div className="flex items-center justify-between">
-                <span className="text-[11px] font-bold text-slate-700">{test.name}</span>
-                <span className="text-[9px] text-muted-foreground font-medium">{test.time}</span>
-              </div>
-              <p className="text-[9px] text-muted-foreground leading-tight italic mt-0.5">{test.evidence}</p>
+      {/* ── Testes (Micro) ── */}
+      <div className="bg-slate-50 border rounded p-1">
+        <Label className="text-[7px] font-black text-muted-foreground uppercase mb-0.5 block">Guia Testes</Label>
+        <div className="space-y-0.5">
+          {tests.slice(0, 2).map(test => (
+            <div key={test.id} className="flex flex-col p-0.5 rounded bg-white/50 border border-black/5 leading-none">
+              <span className="text-[8px] font-bold text-slate-700">{test.name}</span>
+              <p className="text-[7px] text-muted-foreground italic truncate">{test.evidence}</p>
             </div>
           ))}
         </div>
       </div>
 
-
-      {/* ── Estruturas Acometidas (Compacto) ── */}
-      <div className="clinical-card !p-3 bg-slate-50/50">
-        <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 block">
-          Estruturas em Disfunção
-        </Label>
-
-        <div className="space-y-3">
-          {structureCategories.map(({ key, label, icon, color, borderColor }) => {
+      {/* ── Estruturas (Micro) ── */}
+      <div className="bg-white border rounded p-1">
+        <Label className="text-[7px] font-black text-muted-foreground uppercase mb-0.5 block">Estruturas</Label>
+        <div className="space-y-1">
+          {structureCategories.map(({ key, label, icon, color }) => {
             const structures = unitConfig.structures[key];
             if (structures.length === 0) return null;
-
             return (
-              <div key={key} className="space-y-1.5">
-                <div className="flex items-center gap-1">
-                  <span className="text-xs">{icon}</span>
-                  <span className={cn('text-[10px] font-bold uppercase', color)}>{label}</span>
-                </div>
-
-                <div className="flex flex-wrap gap-1">
-                  {structures.map(name => {
-                    const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
-                    return (
-                      <button
-                        key={name}
-                        onClick={() => toggleStructure(key, name)}
-                        className={cn(
-                          'text-[10px] px-2 py-0.5 rounded border transition-all font-medium',
-                          isSelected
-                            ? 'bg-primary/10 text-primary border-primary/30'
-                            : 'bg-white text-muted-foreground border-transparent hover:border-primary/20'
-                        )}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div key={key} className="flex flex-wrap gap-0.5">
+                {structures.map(name => {
+                  const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
+                  return (
+                    <button
+                      key={name}
+                      onClick={() => toggleStructure(key, name)}
+                      className={cn(
+                        'text-[8px] px-1 py-0.25 rounded border transition-all font-bold',
+                        isSelected
+                          ? 'bg-primary/20 text-primary border-primary/40'
+                          : 'bg-muted/5 text-muted-foreground border-transparent hover:border-primary/10'
+                      )}
+                    >
+                      {name}
+                    </button>
+                  );
+                })}
               </div>
             );
           })}
         </div>
       </div>
 
-      {/* ── Observações Unificadas ── */}
-      <div className="clinical-card !p-3 border-t-2 border-t-primary/20">
-        <Label className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-2 block">
-          Anotações & Achados Clínicos
-        </Label>
+      {/* ── Notas (Micro) ── */}
+      <div className="bg-white border rounded p-1">
         <Textarea
           value={assessment.observacoes}
           onChange={e => onChange({ ...assessment, observacoes: e.target.value })}
-          placeholder="Descreva achados palpatórios, testes positivos e justificativa clínica aqui..."
-          className="resize-none text-xs min-h-[100px] bg-white border-muted-foreground/20 focus:border-primary"
+          placeholder="Notas..."
+          className="resize-none text-[9px] min-h-[40px] p-1 bg-slate-50/20 border-none focus-visible:ring-0 h-10 shadow-none"
         />
       </div>
     </div>

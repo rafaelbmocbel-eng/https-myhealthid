@@ -139,10 +139,10 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
         </div>
       )}
 
-      {/* Body Section: Map + Editor */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Maps (Sticky) */}
-        <div className="md:col-span-5 space-y-4 md:sticky md:top-6">
+      {/* Body Section: Map + Editor (Condensed) */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-start">
+        {/* Left Column: Maps (WIDER) */}
+        <div className="md:col-span-8 space-y-4 md:sticky md:top-6">
           {/* Body Map — always visible */}
           <BodyMapSelector
             units={data.units}
@@ -158,8 +158,8 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
           />
         </div>
 
-        {/* Right Column: Unit evaluation form */}
-        <div className="md:col-span-7">
+        {/* Right Column: Unit evaluation form (NARROWER) */}
+        <div className="md:col-span-4">
           {selectedUnit ? (() => {
             const cfg = UNIT_CONFIGS.find(c => c.id === selectedUnit);
             if (!cfg) return null;
@@ -168,13 +168,13 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
 
             return (
               <div ref={unitFormRef} className="animate-in fade-in slide-in-from-right-4 duration-500">
-                <div className="flex items-center gap-2 mb-4 bg-background/50 p-2 rounded-lg border border-primary/10">
-                  <span className="text-2xl">{cfg.emoji}</span>
+                <div className="flex items-center gap-1.5 mb-2 bg-background/50 p-1.5 rounded-lg border border-primary/10">
+                  <span className="text-xl">{cfg.emoji}</span>
                   <div className="flex-1">
-                    <h2 className="text-lg font-bold leading-tight">{cfg.name}</h2>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{cfg.region}</p>
+                    <h2 className="text-sm font-bold leading-tight">{cfg.name}</h2>
+                    <p className="text-[8px] text-muted-foreground uppercase font-black tracking-widest">{cfg.region}</p>
                   </div>
-                  {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+                  {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
                 </div>
                 <StructuralUnitStep
                   key={cfg.id}
@@ -188,12 +188,12 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
               </div>
             );
           })() : (
-            <div className="clinical-card border-dashed flex flex-col items-center justify-center py-32 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-3xl opacity-50">🧭</div>
+            <div className="clinical-card border-dashed flex flex-col items-center justify-center py-16 text-center space-y-2 opacity-60">
+              <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center text-xl">🧭</div>
               <div>
-                <h4 className="font-bold text-muted-foreground">Selecione uma Unidade</h4>
-                <p className="text-xs text-muted-foreground max-w-[240px] mt-1 mx-auto">
-                  Toque em uma região no mapa corporal para iniciar a avaliação da severidade e estruturas.
+                <h4 className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Selecione</h4>
+                <p className="text-[9px] text-muted-foreground max-w-[120px] mt-0.5 mx-auto">
+                  Toque numa região do mapa.
                 </p>
               </div>
             </div>
