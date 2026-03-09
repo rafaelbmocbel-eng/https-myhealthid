@@ -838,7 +838,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                                 {scoreEntries.map(([k, v]) => (
                                   <div key={k} className="bg-muted rounded-md px-2 py-0.5 flex items-center gap-1">
                                     <span className="text-[9px] text-muted-foreground font-medium">{k.replace('score', '').toUpperCase()}</span>
-                                    <span className="text-xs font-bold text-primary">{v.toFixed(1)}</span>
+                                    <span className="text-xs font-bold text-primary">{Number(v).toFixed(1)}</span>
                                   </div>
                                 ))}
                               </div>
