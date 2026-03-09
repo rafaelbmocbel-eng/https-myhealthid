@@ -121,75 +121,44 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
         </div>
       </div>
 
-      {/* ── Testes Clínicos ── */}
-      <button
-        onClick={() => toggle('tests')}
-        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Testes Clínicos</span>
-          <Badge variant="outline" className="text-[10px]">{tests.length} testes</Badge>
-        </div>
-        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
-      </button>
-
-      {expandedSection === 'tests' && (
-        <div className="clinical-card space-y-3 animate-slide-in">
-          {tests.map(test => {
-            const result = assessment.testsPerformed.find(t => t.testId === test.id);
-            return (
-              <div key={test.id} className="p-3 rounded-lg border bg-muted/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium">{test.name}</span>
-                    {test.optional && <Badge variant="outline" className="text-[9px] ml-2">Opcional</Badge>}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{test.time} · {test.difficulty}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">{test.evidence}</p>
-                <Textarea
-                  placeholder={`Resultado / achados do ${test.name}...`}
-                  value={result?.notes || ''}
-                  onChange={e => updateTestNotes(test.id, e.target.value)}
-                  className="text-xs resize-none h-14"
-                />
+      {/* ── Testes Sugeridos (Compacto) ── */}
+      <div className="clinical-card !p-3">
+        <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 block">
+          Sugestões de Testes & Evidências
+        </Label>
+        <div className="grid grid-cols-1 gap-1.5">
+          {tests.map(test => (
+            <div key={test.id} className="flex flex-col p-2 rounded-lg bg-muted/30 border border-muted-foreground/10">
+              <div className="flex items-center justify-between">
+                <span className="text-[11px] font-bold text-slate-700">{test.name}</span>
+                <span className="text-[9px] text-muted-foreground font-medium">{test.time}</span>
               </div>
-            );
-          })}
+              <p className="text-[9px] text-muted-foreground leading-tight italic mt-0.5">{test.evidence}</p>
+            </div>
+          ))}
         </div>
-      )}
+      </div>
 
-      {/* ── Estruturas Acometidas ── */}
-      <button
-        onClick={() => toggle('structures')}
-        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Estruturas Acometidas</span>
-          {Object.values(assessment.affectedStructures).flat().length > 0 && (
-            <Badge variant="outline" className="text-[10px]">
-              {Object.values(assessment.affectedStructures).flat().length} selecionadas
-            </Badge>
-          )}
-        </div>
-        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
-      </button>
 
-      {expandedSection === 'structures' && (
-        <div className="clinical-card space-y-4 animate-slide-in">
+      {/* ── Estruturas Acometidas (Compacto) ── */}
+      <div className="clinical-card !p-3 bg-slate-50/50">
+        <Label className="text-[10px] font-black text-muted-foreground uppercase tracking-widest mb-2 block">
+          Estruturas em Disfunção
+        </Label>
+
+        <div className="space-y-3">
           {structureCategories.map(({ key, label, icon, color, borderColor }) => {
             const structures = unitConfig.structures[key];
             if (structures.length === 0) return null;
 
             return (
-              <div key={key} className={cn('p-3 rounded-lg border', borderColor, 'bg-muted/10')}>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-sm">{icon}</span>
-                  <span className={cn('text-xs font-bold', color)}>{label}</span>
+              <div key={key} className="space-y-1.5">
+                <div className="flex items-center gap-1">
+                  <span className="text-xs">{icon}</span>
+                  <span className={cn('text-[10px] font-bold uppercase', color)}>{label}</span>
                 </div>
 
-                {/* Selectable structure pills */}
-                <div className="flex flex-wrap gap-1.5 mb-2">
+                <div className="flex flex-wrap gap-1">
                   {structures.map(name => {
                     const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
                     return (
@@ -197,10 +166,10 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
                         key={name}
                         onClick={() => toggleStructure(key, name)}
                         className={cn(
-                          'text-[11px] px-2.5 py-1 rounded-full border transition-all',
+                          'text-[10px] px-2 py-0.5 rounded border transition-all font-medium',
                           isSelected
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'hover:border-primary/50 bg-background'
+                            ? 'bg-primary/10 text-primary border-primary/30'
+                            : 'bg-white text-muted-foreground border-transparent hover:border-primary/20'
                         )}
                       >
                         {name}
@@ -208,36 +177,22 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
                     );
                   })}
                 </div>
-
-                {/* Free text for additional structures */}
-                <Input
-                  placeholder={`Outros ${label.toLowerCase()}...`}
-                  className="text-xs h-8"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const val = (e.target as HTMLInputElement).value.trim();
-                      if (val) {
-                        toggleStructure(key, val);
-                        (e.target as HTMLInputElement).value = '';
-                      }
-                    }
-                  }}
-                />
               </div>
             );
           })}
         </div>
-      )}
+      </div>
 
-      {/* ── Observações ── */}
-      <div className="clinical-card">
-        <Label className="font-semibold text-sm">Observações Clínicas</Label>
+      {/* ── Observações Unificadas ── */}
+      <div className="clinical-card !p-3 border-t-2 border-t-primary/20">
+        <Label className="text-[10px] font-black text-slate-800 uppercase tracking-widest mb-2 block">
+          Anotações & Achados Clínicos
+        </Label>
         <Textarea
           value={assessment.observacoes}
           onChange={e => onChange({ ...assessment, observacoes: e.target.value })}
-          placeholder={`Achados específicos para ${unitConfig.shortName}...`}
-          className="mt-2 resize-none text-xs"
-          rows={2}
+          placeholder="Descreva achados palpatórios, testes positivos e justificativa clínica aqui..."
+          className="resize-none text-xs min-h-[100px] bg-white border-muted-foreground/20 focus:border-primary"
         />
       </div>
     </div>
