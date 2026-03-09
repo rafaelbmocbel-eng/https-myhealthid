@@ -384,7 +384,7 @@ export default function PatientIntegratedDashboard({
               </div>
 
               {/* Fingerprint — Mapa Principal (full width) */}
-              <div className="relative group p-4 bg-white/30 dark:bg-black/10 rounded-3xl border border-white/50 dark:border-white/5 backdrop-blur-sm w-full max-w-2xl mx-auto">
+              <div className="relative group p-2 sm:p-4 bg-white/30 dark:bg-black/10 rounded-3xl border border-white/50 dark:border-white/5 backdrop-blur-sm w-full mx-auto">
                 <div className="absolute top-4 left-4 p-2 bg-white/80 dark:bg-black/50 rounded-lg shadow-sm z-10">
                   <Sparkles className="h-3 w-3 text-violet-600 animate-pulse" />
                 </div>
