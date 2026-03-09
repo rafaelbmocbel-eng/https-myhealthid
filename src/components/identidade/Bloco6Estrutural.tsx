@@ -246,13 +246,69 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                 </div>
 
                 <div className="space-y-8">
-                  {/* 1. Structural Sliders */}
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-bold flex items-center gap-2 text-indigo-900">
-                        1. Tecidos Envolvidos
-                        <Badge variant="secondary" className="text-[10px]">Moduladores de Dor</Badge>
+                  {/* 1. Compromisso Unit Score (PRIORITY) */}
+                  <div className="space-y-4 bg-primary/5 p-4 rounded-xl border-2 border-primary/20 shadow-sm animate-in zoom-in-95 duration-500">
+                    <div className="flex justify-between items-center">
+                      <Label className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-wider">
+                        1. Severidade da Unidade
                       </Label>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Sugestão:</span>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            const auto = autoScoreFromChecklist(unidade.checklist, config.checklist.length);
+                            updateUnidade(unidade.id, u => ({ ...u, score: auto }));
+                          }}
+                          className="text-[10px] bg-white border border-primary/30 text-primary px-2 py-0.5 rounded hover:bg-primary/5 transition-colors font-bold"
+                        >
+                          Checklist ({autoScoreFromChecklist(unidade.checklist, config.checklist.length)})
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* Quick Selection Buttons */}
+                    <div className="grid grid-cols-6 gap-1">
+                      {[0, 2, 4, 6, 8, 10].map(val => (
+                        <button
+                          key={val}
+                          onClick={() => updateUnidade(unidade.id, u => ({ ...u, score: val }))}
+                          className={cn(
+                            "py-2 rounded-lg text-xs font-black transition-all border-2",
+                            unidade.score === val
+                              ? "bg-primary text-white border-primary shadow-md scale-105"
+                              : "bg-white text-muted-foreground border-transparent hover:border-primary/30"
+                          )}
+                          style={{
+                            backgroundColor: unidade.score === val ? getSeverityColorHex(val) : undefined,
+                            borderColor: unidade.score === val ? getSeverityColorHex(val) : undefined
+                          }}
+                        >
+                          {val}
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="pt-2">
+                      <Slider
+                        value={[unidade.score]}
+                        min={0} max={10} step={0.5}
+                        onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, score: v }))}
+                      />
+                      <div className="flex justify-between text-[10px] text-muted-foreground font-bold px-1 mt-2 uppercase tracking-tight">
+                        <span>Sem Alteração</span>
+                        <span>Comprometimento Crítico</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* 2. Structural Sliders */}
+                  <div className="space-y-4 pt-2">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-sm font-bold flex items-center gap-2 text-indigo-900 uppercase tracking-wider">
+                        2. Tecidos Envolvidos
+                      </Label>
+                      <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700">Moduladores</Badge>
                     </div>
                     <div className="grid gap-4 bg-muted/20 p-4 rounded-xl border border-dashed border-muted-foreground/30">
                       {TIPOS_ESTRUTURAIS.map(tipo => {
@@ -278,45 +334,17 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                     </div>
                   </div>
 
-                  {/* 2. Compromisso Unit Score */}
-                  <div className="space-y-4 bg-primary/5 p-4 rounded-xl border border-primary/20">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-sm font-bold flex items-center gap-2 text-primary">
-                        2. Comprometimento da Unidade
-                      </Label>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          const auto = autoScoreFromChecklist(unidade.checklist, config.checklist.length);
-                          updateUnidade(unidade.id, u => ({ ...u, score: auto }));
-                        }}
-                        className="text-[10px] bg-primary/10 text-primary px-2 py-1 rounded hover:bg-primary/20 transition-colors font-bold uppercase"
-                      >
-                        Auto-Score do Checklist
-                      </button>
-                    </div>
-                    <Slider
-                      value={[unidade.score]}
-                      min={0} max={10} step={0.5}
-                      onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, score: v }))}
-                    />
-                    <div className="flex justify-between text-[10px] text-muted-foreground font-medium px-1">
-                      <span>Mínimo (Saudável)</span>
-                      <span>Crítico (Disfuncional)</span>
-                    </div>
-                  </div>
-
                   {/* 3. Clinical Findings */}
                   <div className="space-y-3">
-                    <Label className="text-sm font-bold flex items-center gap-2 text-slate-800">
-                      3. Achados Clínicos (Checklist)
+                    <Label className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-wider">
+                      3. Achados Clínicos
                     </Label>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white border rounded-xl p-4 shadow-sm">
                       {config.checklist.map(item => (
                         <div key={item}
                           className={cn(
-                            "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer",
-                            unidade.checklist[item] ? "bg-primary/5" : "hover:bg-muted/30"
+                            "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer border border-transparent",
+                            unidade.checklist[item] ? "bg-primary/5 border-primary/10" : "hover:bg-muted/30"
                           )}
                           onClick={() => {
                             const newChecklist = { ...unidade.checklist, [item]: !unidade.checklist[item] };
@@ -328,7 +356,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                             checked={!!unidade.checklist[item]}
                             className="pointer-events-none"
                           />
-                          <Label className="text-xs font-medium cursor-pointer flex-1 line-clamp-1">
+                          <Label className="text-xs font-semibold cursor-pointer flex-1 line-clamp-1">
                             {item}
                           </Label>
                         </div>
@@ -337,18 +365,18 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
                   </div>
 
                   {/* 4. Observations */}
-                  <div className="space-y-2">
-                    <Label className="text-sm font-bold text-slate-800">4. Observações Específicas</Label>
+                  <div className="space-y-2 pb-4">
+                    <Label className="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Observações Clínicas</Label>
                     <Textarea
                       placeholder="Achados de palpação, mobilidade segmentar, testes provocativos..."
                       value={unidade.observacoes}
                       onChange={e => updateUnidade(unidade.id, u => ({ ...u, observacoes: e.target.value }))}
-                      className="resize-none bg-white text-xs min-h-[80px]"
+                      className="resize-none bg-white text-xs min-h-[80px] border-muted-foreground/20 focus:border-primary"
                       maxLength={200}
                     />
                     <div className="flex justify-between items-center px-1">
-                      <p className="text-[10px] text-muted-foreground italic">Seja conciso na descrição clínica</p>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">{unidade.observacoes.length}/200</span>
+                      <p className="text-[10px] text-muted-foreground italic">Relate padrões específicos observados</p>
+                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-bold">{unidade.observacoes.length}/200</span>
                     </div>
                   </div>
                 </div>
