@@ -29,6 +29,7 @@ import { ptBR } from 'date-fns/locale';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
+import FunilConfigPanel from '@/components/funil/FunilConfigPanel';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
@@ -43,7 +44,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas';
+type TabId = 'pipeline' | 'mensagens' | 'pacotes' | 'metricas' | 'notas' | 'funil';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -322,6 +323,7 @@ export default function GestaoVendas() {
         { id: 'pacotes', label: 'Pacotes', icon: Package },
         { id: 'metricas', label: 'Métricas', icon: BarChart3 },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck },
+        { id: 'funil', label: 'Funil', icon: Zap },
     ];
 
     return (
@@ -1380,6 +1382,11 @@ export default function GestaoVendas() {
                         </div>
                     );
                 })()}
+
+                {/* ══════════════════ FUNIL TAB ══════════════════ */}
+                {activeTab === 'funil' && (
+                    <FunilConfigPanel />
+                )}
             </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
