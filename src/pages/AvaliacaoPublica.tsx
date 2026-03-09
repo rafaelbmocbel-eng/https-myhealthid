@@ -126,9 +126,39 @@ export default function AvaliacaoPublica() {
   };
 
   const handleFinalizar = async () => {
-    await salvarBloco(6, data);
-    setBlocosConcluidos(prev => new Set([...prev, 6]));
-    setConcluido(true);
+    setSalvando(true);
+    try {
+      if (!linkInfo) return;
+
+      // 1. Calcular resultado final
+      const calculator = new MyIDCalculator(data);
+      const resultado = calculator.getFullResult();
+
+      // Incluir os dados completos para salvar no campo dados_avaliacao
+      const resultadoComDados = {
+        ...resultado,
+        dados_completos: data
+      };
+
+      // 2. Salvar via edge function com flag de finalização
+      await supabase.functions.invoke('salvar-bloco-avaliacao', {
+        body: {
+          link_id: linkInfo.id,
+          paciente_id: linkInfo.paciente_id,
+          bloco_numero: 6,
+          dados_respostas: data,
+          finalizar: true,
+          resultado_final: resultadoComDados,
+        },
+      });
+
+      setBlocosConcluidos(prev => new Set([...prev, 6]));
+      setConcluido(true);
+    } catch (e) {
+      console.error('Erro ao finalizar avaliação:', e);
+    } finally {
+      setSalvando(false);
+    }
   };
 
   // ── Cálculo final para tela de conclusão ──

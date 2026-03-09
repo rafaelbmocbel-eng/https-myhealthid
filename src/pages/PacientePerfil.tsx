@@ -47,8 +47,8 @@ export default function PacientePerfil() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
-  const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
-  const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
+  const { avaliacoes: avaliacoesId, isLoading: loadingId, deletar: deletarId } = useAvaliacoesIdentidade(id);
+  const { avaliacoes: avaliacoesCob, isLoading: loadingCob, deletar: deletarCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
@@ -182,6 +182,34 @@ export default function PacientePerfil() {
       faltas
     };
   }, [agendamentos]);
+
+  const [isDeletingQuest, setIsDeletingQuest] = useState<string | null>(null);
+
+  const handleDeleteQuestionario = async (questId: string, tipo: 'antigo' | 'myid') => {
+    try {
+      setIsDeletingQuest(questId);
+      if (tipo === 'antigo') {
+        const { error } = await supabase
+          .from('respostas_avaliacao_paciente')
+          .delete()
+          .eq('link_id', questId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('myid_avaliacoes')
+          .delete()
+          .eq('id', questId);
+        if (error) throw error;
+      }
+      toast({ title: 'Questionário excluído com sucesso' });
+      qc.invalidateQueries({ queryKey: ['respostas-av-perfil', id] });
+      qc.invalidateQueries({ queryKey: ['avaliacoes-identidade', user?.id, id] });
+    } catch (error: any) {
+      toast({ title: 'Erro ao excluir questionário', description: error.message, variant: 'destructive' });
+    } finally {
+      setIsDeletingQuest(null);
+    }
+  };
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -719,6 +747,19 @@ export default function PacientePerfil() {
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Tem certeza que deseja excluir esta avaliação do histórico? Esta ação não pode ser desfeita.')) {
+                                deletarId(av.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -748,6 +789,19 @@ export default function PacientePerfil() {
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Tem certeza que deseja excluir esta avaliação COB° ZERO do histórico?')) {
+                                deletarCob(av.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -766,7 +820,12 @@ export default function PacientePerfil() {
                 <FileText className="h-4 w-4 text-primary" />
                 <h3 className="font-semibold text-sm">Questionários Remotos Recebidos</h3>
               </div>
-              <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+              <QuestionariosComparacao
+                linksAvPaciente={linksAvaliacao}
+                respostas={respostasPaciente}
+                onDelete={handleDeleteQuestionario}
+                isDeleting={isDeletingQuest}
+              />
             </div>
           </TabsContent>
 
@@ -794,7 +853,12 @@ export default function PacientePerfil() {
                   <FileText className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Questionários Remotos</h3>
                 </div>
-                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+                <QuestionariosComparacao
+                  linksAvPaciente={linksAvaliacao}
+                  respostas={respostasPaciente}
+                  onDelete={handleDeleteQuestionario}
+                  isDeleting={isDeletingQuest}
+                />
               </div>
             )}
 

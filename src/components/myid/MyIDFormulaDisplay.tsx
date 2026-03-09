@@ -1,6 +1,6 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
-import { Zap, ShieldCheck, Info } from 'lucide-react';
+import { Zap, ShieldCheck, Info, AlertTriangle } from 'lucide-react';
 import { getThermalColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
@@ -86,17 +86,89 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
   const demandPct = (numerator / totalSum) * 100;
   const capacityPct = (denominator / totalSum) * 100;
 
-  // Silent Hero Logic
+  // ── Perfis de Saúde MyID ──────────────────────────────────────────────────
   const hasHiddenDrains = D > 6 || EFI > 6 || P > 6 || I > 6 || N > 6;
-  const isSilentHero = myidScore <= 4 && hasHiddenDrains;
+  const isSilentHero = myidScore <= 4.5 && hasHiddenDrains;
+  const isPerfectStorm = myidScore >= 7 && numerator > 25 && denominator < 15;
+  const isFragileBalance = myidScore > 4.5 && denominator < 15 && !isPerfectStorm;
+  const isSolidBase = myidScore < 3 && numerator < 15;
 
-  const hiddenFactors = [];
-  if (D > 6) hiddenFactors.push('Dor');
-  if (EFI > 6) hiddenFactors.push('Perda Funcional');
-  if (P > 6) hiddenFactors.push('Sobrecarga Psicológica');
-  if (I > 6) hiddenFactors.push('Gatilhos/Inércia');
-  if (N > 6) hiddenFactors.push('Ruído Sistêmico');
-  const hiddenNames = hiddenFactors.join(', ');
+  // ── Interpretação Narrativa MyID ──────────────────────────────────────────
+  const getNarrative = () => {
+    // 1. Herói Silencioso (Já estava lá, mas vamos refinar)
+    // 2. Tempestade Perfeita (Score alto + Demanda alta + Capacidade baixa)
+    // 3. Equilíbrio Tênue (Score moderado/alto + Baixa Capacidade)
+    // 4. Base Sólida (Score baixo + Baixa Demanda + Alta Capacidade)
+
+    if (isPerfectStorm) {
+      return {
+        title: "TEMPESTADE PERFEITA",
+        icon: <AlertTriangle className="w-5 h-5 text-red-600" />,
+        color: "border-red-200 bg-gradient-to-br from-red-50 to-white",
+        textColor: "text-red-900",
+        accentColor: "text-red-600",
+        description: `Seu sistema está operando em um nível de sobrecarga crítico (${myidScore.toFixed(1)}). Sua Demanda (${numerator.toFixed(1)}) está muito alta e sua Capacidade de Recuperação (${denominator.toFixed(1)}) está insuficiente para compensar o desgaste.`,
+        insight: `💡 **Insight:** Atenção Urgente! Este é o momento de priorizar o repouso e estratégias de alívio imediato. Tentar "forçar" o sistema agora pode levar a uma crise de dor ou lesão.`
+      };
+    }
+
+    if (isSilentHero) {
+      const hiddenFactors = [];
+      if (D > 6) hiddenFactors.push('Dor');
+      if (EFI > 6) hiddenFactors.push('Perda Funcional');
+      if (P > 6) hiddenFactors.push('Sobrecarga Psicológica');
+      if (I > 6) hiddenFactors.push('Gatilhos/Inércia');
+      if (N > 6) hiddenFactors.push('Ruído Sistêmico');
+      const hiddenNames = hiddenFactors.join(', ');
+
+      return {
+        title: "SEU ESCUDO PROTETOR (HERÓI SILENCIOSO)",
+        icon: <ShieldCheck className="w-5 h-5 text-indigo-500" />,
+        color: "border-indigo-200 bg-gradient-to-br from-indigo-50 to-white",
+        textColor: "text-indigo-900",
+        accentColor: "text-red-600",
+        description: `Seu Índice MyID final está favorável (${myidScore.toFixed(1)}) **NÃO** porque não há problemas sistêmicos (detectamos indicadores elevados de ${hiddenNames}), mas porque **sua Base de Recuperação (Hábitos) está tão forte que age como um escudo impenetrável**.`,
+        insight: `💡 **Insight:** Essa é uma ótima notícia. Seus bons hábitos estão vencendo a carga negativa. O foco ideal agora é investigar e lapidar esses "Ralos de Energia Ocultos" antes que sua resiliência diminua.`
+      };
+    }
+
+    if (isFragileBalance) {
+      return {
+        title: "EQUILÍBRIO TÊNUE",
+        icon: <Zap className="w-5 h-5 text-amber-500" />,
+        color: "border-amber-200 bg-gradient-to-br from-amber-50 to-white",
+        textColor: "text-amber-900",
+        accentColor: "text-amber-600",
+        description: `Seu sistema está em um estado de alerta (${myidScore.toFixed(1)}). Embora a demanda não seja extrema, sua **Capacidade de Reserva está baixa (${denominator.toFixed(1)})**. Isso significa que qualquer novo estresse ou esforço pode desequilibrar seu sistema rapidamente.`,
+        insight: `💡 **Insight:** Foco total em reconstruir suas defesas. Melhorar o sono e a hidratação são os passos mais rápidos para aumentar sua régua de tolerância e evitar crises.`
+      };
+    }
+
+    if (isSolidBase) {
+      return {
+        title: "BASE SÓLIDA E RESILIENTE",
+        icon: <ShieldCheck className="w-5 h-5 text-emerald-500" />,
+        color: "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white",
+        textColor: "text-emerald-900",
+        accentColor: "text-emerald-600",
+        description: `Parabéns! Seu sistema apresenta um equilíbrio excelente (${myidScore.toFixed(1)}). Com baixa demanda e uma capacidade robusta, você possui uma margem de segurança alta para lidar com os desafios do dia a dia.`,
+        insight: `💡 **Insight:** Momento ideal para progressão de performance. Sua base sólida permite que você explore novos limites e intensifique seus treinos ou atividades com segurança.`
+      };
+    }
+
+    // Default interpretation if no special profile matches
+    return {
+      title: "PERFIL DE SAÚDE MyID",
+      icon: <Info className="w-5 h-5 text-blue-500" />,
+      color: "border-blue-100 bg-gradient-to-br from-blue-50/50 to-white",
+      textColor: "text-slate-900",
+      accentColor: "text-blue-600",
+      description: `Seu Índice MyID de ${myidScore.toFixed(1)} aponta para um estado de ${status.toLowerCase()}. A relação entre o que você consome de energia (Demanda) e o que você repõe (Capacidade) está dentro do esperado para este perfil.`,
+      insight: `💡 **Insight:** Continue acompanhando seus índices. Pequenos ajustes nos hábitos diários (Capacidade) são sempre a forma mais sustentável de reduzir seu score global.`
+    };
+  };
+
+  const narrative = getNarrative();
 
   return (
     <div className={cn("space-y-6", className)}>
@@ -163,23 +235,20 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
             </div>
           </div>
 
-          {/* Navigating the Silent Hero Narrative */}
-          {isSilentHero && (
-            <div className="mx-auto max-w-2xl mt-8 pt-6 border-t border-indigo-100/50">
-              <div className="rounded-2xl border-2 border-indigo-200 bg-gradient-to-br from-indigo-50 to-white p-5 shadow-sm">
-                <h4 className="flex items-center gap-2 text-indigo-800 font-black mb-2 text-sm uppercase tracking-wider">
-                  <ShieldCheck className="w-5 h-5 text-indigo-500" />
-                  Seu Escudo Protetor (Herói Silencioso)
-                </h4>
-                <p className="text-xs text-indigo-900/80 leading-relaxed font-semibold">
-                  Seu Índice MyID final está favorável ({myidScore.toFixed(1)}) <strong>NÃO</strong> porque não há problemas sistêmicos (detectamos indicadores elevados de <span className="text-red-600 uppercase font-black">{hiddenNames}</span>), mas porque <strong>sua Base de Recuperação (Hábitos) está tão forte que age como um escudo impenetrável</strong>.
-                </p>
-                <p className="text-[11px] text-indigo-900/70 leading-relaxed font-medium mt-3 bg-indigo-100/30 p-3 rounded-xl">
-                  💡 <strong>Insight:</strong> Essa é uma ótima notícia. Seus bons hábitos estão vencendo a carga negativa. O foco ideal agora é investigar e lapidar esses "Ralos de Energia Ocultos" antes que sua resiliência diminua.
-                </p>
-              </div>
+          {/* Navigating the Narrative Box */}
+          <div className="mx-auto max-w-2xl mt-8 pt-6 border-t border-indigo-100/30">
+            <div className={cn("rounded-2xl border-2 p-5 shadow-sm transition-all duration-500", narrative.color)}>
+              <h4 className={cn("flex items-center gap-2 font-black mb-2 text-sm uppercase tracking-wider", narrative.textColor)}>
+                {narrative.icon}
+                {narrative.title}
+              </h4>
+              <p className={cn("text-xs leading-relaxed font-semibold", narrative.textColor)}
+                dangerouslySetInnerHTML={{ __html: narrative.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/<span class="text-red-600 uppercase font-black">(.*?)<\/span>/g, '<span class="text-red-600 uppercase font-black">$1</span>') }} />
+
+              <div className={cn("text-[11px] leading-relaxed font-medium mt-3 p-3 rounded-xl bg-white/40 border border-white/20", narrative.textColor)}
+                dangerouslySetInnerHTML={{ __html: narrative.insight.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
 
