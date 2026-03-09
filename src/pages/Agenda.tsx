@@ -269,9 +269,9 @@ export default function Agenda() {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
-      // Snap to 15-min increments
+      // Snap to 30-min increments (full hour and half hour)
       const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
-      const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
+      const minutesDelta = Math.round(delta.dy / pxPerMin / 30) * 30;
       const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - d.durationMin, d.origStartMin + minutesDelta));
 
       let newDayIndex = d.dayIndex;
