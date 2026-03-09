@@ -8,7 +8,7 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
-  Lock, LockOpen, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
+  Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
   Smartphone, CreditCard, Info, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -174,7 +174,6 @@ export default function Agenda() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
-  const [isLocked, setIsLocked] = useState(true);
   const [confirmMove, setConfirmMove] = useState<{
     open: boolean;
     ag: Agendamento;
@@ -260,14 +259,6 @@ export default function Agenda() {
   daysRef.current = days;
 
   const handleDragStart = useCallback((e: React.MouseEvent | React.TouchEvent, ag: Agendamento, dayIdx: number) => {
-    if (isLocked) {
-      toast({
-        title: "Agenda Travada",
-        description: "Clique no cadeado para liberar a edição por arrastar.",
-        variant: "default",
-      });
-      return;
-    }
     e.preventDefault();
     e.stopPropagation();
     const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
@@ -658,16 +649,6 @@ export default function Agenda() {
             <span className="font-semibold text-sm ml-1 capitalize hidden sm:block">{headerLabel()}</span>
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
-            <Button
-              variant={isLocked ? "secondary" : "destructive"}
-              size="sm"
-              className={cn("h-9 gap-2 rounded-xl shadow-sm px-3", !isLocked && "animate-pulse")}
-              onClick={() => setIsLocked(!isLocked)}
-              title={isLocked ? "Agenda Bloqueada (clique para destravar)" : "Agenda Destravada (clique para bloquear)"}
-            >
-              {isLocked ? <Lock className="h-4 w-4" /> : <LockOpen className="h-4 w-4" />}
-              <span className="hidden xs:inline">{isLocked ? "Travado" : "Destravado"}</span>
-            </Button>
             <div className="flex rounded-xl border overflow-hidden text-[10px] sm:text-xs shadow-sm">
               {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
