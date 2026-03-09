@@ -10,7 +10,7 @@ import {
   StructuralAssessmentData, UNIT_CONFIGS,
   createDefaultAssessment, calculateGeneralScore, classifyScore,
   mapRelationships, identifyPrimaryDriver, generateClinicalPriorities,
-  classifyScoreColor,
+  classifyScoreColor, getSeverityColorHex,
 } from '@/types/structural';
 import StructuralPreferencesStep from './StructuralPreferencesStep';
 import StructuralUnitStep from './StructuralUnitStep';
@@ -48,10 +48,6 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
   const handleSelectUnit = useCallback((unitId: string) => {
     setSelectedUnit(prev => prev === unitId ? null : unitId);
     setViewMode('map');
-    // Scroll to form after state update
-    setTimeout(() => {
-      unitFormRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
   }, []);
 
   const handleFinalize = useCallback(() => {
@@ -143,51 +139,67 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
         </div>
       )}
 
-      {/* Body Map — always visible */}
-      <BodyMapSelector
-        units={data.units}
-        activeUnitId={selectedUnit || undefined}
-        onSelectUnit={handleSelectUnit}
-      />
+      {/* Body Section: Map + Editor */}
+      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
+        {/* Left Column: Maps (Sticky) */}
+        <div className="md:col-span-5 space-y-4 md:sticky md:top-6">
+          {/* Body Map — always visible */}
+          <BodyMapSelector
+            units={data.units}
+            activeUnitId={selectedUnit || undefined}
+            onSelectUnit={handleSelectUnit}
+          />
 
-      {/* Connection Map — below body map, editable by therapist */}
-      <StructuralConnectionMap
-        data={data}
-        editable={true}
-        onDataChange={setData}
-      />
+          {/* Connection Map — below body map, editable by therapist */}
+          <StructuralConnectionMap
+            data={data}
+            editable={true}
+            onDataChange={setData}
+          />
+        </div>
 
-      {/* Unit evaluation form — appears BELOW the map when a unit is selected */}
-      {selectedUnit && (() => {
-        const cfg = UNIT_CONFIGS.find(c => c.id === selectedUnit);
-        if (!cfg) return null;
-        const assessment = data.units[cfg.id];
-        const isCompleted = completedUnits.includes(cfg.id);
+        {/* Right Column: Unit evaluation form */}
+        <div className="md:col-span-7">
+          {selectedUnit ? (() => {
+            const cfg = UNIT_CONFIGS.find(c => c.id === selectedUnit);
+            if (!cfg) return null;
+            const assessment = data.units[cfg.id];
+            const isCompleted = completedUnits.includes(cfg.id);
 
-        return (
-          <div ref={unitFormRef} className="animate-slide-in">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-lg">{cfg.emoji}</span>
-              <h2 className="text-lg font-bold">{cfg.name}</h2>
-              {isCompleted && <CheckCircle2 className="h-4 w-4 text-emerald-600" />}
-              {assessment.score > 0 && (
-                <Badge className={cn('text-xs', classifyScoreColor(assessment.score))}>
-                  {assessment.score.toFixed(1)} — {classifyScore(assessment.score)}
-                </Badge>
-              )}
+            return (
+              <div ref={unitFormRef} className="animate-in fade-in slide-in-from-right-4 duration-500">
+                <div className="flex items-center gap-2 mb-4 bg-background/50 p-2 rounded-lg border border-primary/10">
+                  <span className="text-2xl">{cfg.emoji}</span>
+                  <div className="flex-1">
+                    <h2 className="text-lg font-bold leading-tight">{cfg.name}</h2>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{cfg.region}</p>
+                  </div>
+                  {isCompleted && <CheckCircle2 className="h-5 w-5 text-emerald-600" />}
+                </div>
+                <StructuralUnitStep
+                  key={cfg.id}
+                  unitConfig={cfg}
+                  assessment={assessment}
+                  onChange={updated => setData(d => ({
+                    ...d,
+                    units: { ...d.units, [cfg.id]: updated },
+                  }))}
+                />
+              </div>
+            );
+          })() : (
+            <div className="clinical-card border-dashed flex flex-col items-center justify-center py-32 text-center space-y-4">
+              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-3xl opacity-50">🧭</div>
+              <div>
+                <h4 className="font-bold text-muted-foreground">Selecione uma Unidade</h4>
+                <p className="text-xs text-muted-foreground max-w-[240px] mt-1 mx-auto">
+                  Toque em uma região no mapa corporal para iniciar a avaliação da severidade e estruturas.
+                </p>
+              </div>
             </div>
-            <StructuralUnitStep
-              key={cfg.id}
-              unitConfig={cfg}
-              assessment={assessment}
-              onChange={updated => setData(d => ({
-                ...d,
-                units: { ...d.units, [cfg.id]: updated },
-              }))}
-            />
-          </div>
-        );
-      })()}
+          )}
+        </div>
+      </div>
 
       {/* Actions */}
       <div className="flex justify-between items-center bg-card p-4 rounded-xl shadow-sm border">

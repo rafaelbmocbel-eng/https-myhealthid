@@ -9,7 +9,7 @@ import { cn } from '@/lib/utils';
 import {
   UnitAssessment, UnitConfig, EVIDENCE_TESTS,
   classifyScore, classifyScoreColor, classifyScoreBg,
-  AffectedStructure,
+  AffectedStructure, getSeverityColorHex,
 } from '@/types/structural';
 
 interface Props {
@@ -67,29 +67,46 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
     <div className="space-y-3">
 
       {/* ── Score 0-10 ── */}
-      <div className="clinical-card">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="text-xl">{unitConfig.emoji}</span>
-            <div>
-              <h3 className="font-bold text-sm">{unitConfig.id}: {unitConfig.name}</h3>
-              <p className="text-[10px] text-muted-foreground">{unitConfig.region}</p>
-            </div>
-          </div>
+      <div className="clinical-card border-l-4 border-l-primary shadow-md bg-white animate-in zoom-in-95 duration-500">
+        <div className="flex items-center justify-between mb-4">
+          <Label className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-wider">
+            1. Severidade do Comprometimento
+          </Label>
           <div className="text-right">
-            <div className={cn('text-3xl font-black', classifyScoreColor(assessment.score))}>
+            <div className={cn('text-3xl font-black leading-none', classifyScoreColor(assessment.score))}>
               {assessment.score.toFixed(1)}
             </div>
-            <Badge className={cn('text-[10px]', classifyScoreBg(assessment.score))}>
-              {classifyScore(assessment.score)}
-            </Badge>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <div className="flex justify-between text-xs text-muted-foreground">
-            <span>Avaliação da Unidade</span>
-            <span className="font-medium">{assessment.score.toFixed(1)} / 10</span>
+        {/* Quick Selection Buttons */}
+        <div className="grid grid-cols-6 gap-1.5 mb-4">
+          {[0, 2, 4, 6, 8, 10].map(val => (
+            <button
+              key={val}
+              type="button"
+              onClick={() => updateScore(val)}
+              className={cn(
+                "py-3 rounded-lg text-sm font-black transition-all border-2",
+                Math.round(assessment.score) === val
+                  ? "text-white shadow-md scale-105 border-transparent"
+                  : "bg-muted/30 text-muted-foreground border-transparent hover:border-primary/20"
+              )}
+              style={{
+                backgroundColor: Math.round(assessment.score) === val ? getSeverityColorHex(val) : undefined,
+              }}
+            >
+              {val}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-2 pt-2 border-t border-dashed">
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-[10px] font-bold text-muted-foreground uppercase">Ajuste Fino (Slider)</span>
+            <Badge className={cn('text-[10px] font-bold uppercase tracking-tight', classifyScoreBg(assessment.score))}>
+              {classifyScore(assessment.score)}
+            </Badge>
           </div>
           <Slider
             value={[assessment.score]}
@@ -97,10 +114,9 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
             onValueChange={([v]) => updateScore(v)}
             className="w-full"
           />
-          <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>0 = Sem Alteração</span>
-            <span>5 = Moderado</span>
-            <span>10 = Crítico</span>
+          <div className="flex justify-between text-[10px] text-muted-foreground font-bold px-1 mt-1 uppercase">
+            <span>Saudável</span>
+            <span>Crítico</span>
           </div>
         </div>
       </div>

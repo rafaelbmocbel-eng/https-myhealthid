@@ -485,6 +485,14 @@ export function classifyScoreColor(score: number): string {
   return 'text-red-600';
 }
 
+export function getSeverityColorHex(score: number): string {
+  if (score <= 2) return '#8b5cf6'; // violet-500
+  if (score <= 4) return '#6366f1'; // indigo-500
+  if (score <= 6) return '#f59e0b'; // amber-500
+  if (score <= 8) return '#ea580c'; // orange-600
+  return '#dc2626'; // red-600
+}
+
 export function classifyScoreBg(score: number): string {
   if (score <= 2) return 'bg-violet-50 border-violet-200';
   if (score <= 4) return 'bg-indigo-50 border-indigo-200';
