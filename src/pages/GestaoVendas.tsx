@@ -1511,10 +1511,10 @@ export default function GestaoVendas() {
 
                 {/* ══════════════════ FUNIL TAB ══════════════════ */}
                 {activeTab === 'funil' && <FunilConfigPanel />}
-            </div >
+            </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
-            < div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3" >
+            <div className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-3">
                 <button
                     onClick={() => setFabOpen(!fabOpen)}
                     className={cn(
@@ -1546,10 +1546,10 @@ export default function GestaoVendas() {
                         </>
                     )
                 }
-            </div >
+            </div>
             {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />
             }
-        </AppLayout >
+        </AppLayout>
     );
 }
 
