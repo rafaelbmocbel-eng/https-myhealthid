@@ -421,48 +421,48 @@ export default function PatientIntegratedDashboard({
 
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
 
-                <div className="space-y-5">
+                <div className="space-y-3">
                   {insights && (
                     <>
-                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem] group transition-all hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 hover:translate-x-1 duration-300">
-                        <div className="flex items-start gap-5">
-                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-600 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
-                            <TrendingUp className="h-6 w-6" />
+                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-3.5 rounded-2xl group transition-all hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 hover:translate-x-1 duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm shrink-0">
+                            <TrendingUp className="h-5 w-5" />
                           </div>
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
+                            <div className="flex items-center gap-2 mb-0.5">
                               <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest opacity-80">Maior Oportunidade</span>
-                              <div className="h-1 w-1 rounded-full bg-emerald-400 animate-ping" />
+                              <div className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-ping" />
                             </div>
-                            <h4 className="font-bold text-lg text-emerald-950 dark:text-emerald-100">{insights.opportunity.label}</h4>
-                            <p className="text-[13px] text-emerald-900/60 dark:text-emerald-400/60 mt-1.5 leading-relaxed font-medium">
+                            <h4 className="font-bold text-base text-emerald-950 dark:text-emerald-100 leading-tight">{insights.opportunity.label}</h4>
+                            <p className="text-xs text-emerald-900/60 dark:text-emerald-400/60 mt-0.5 leading-snug font-medium">
                               Reduzir este índice trará o maior retorno direto para sua saúde global agora.
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-5 rounded-[2rem] group transition-all hover:bg-amber-500/10 dark:hover:bg-amber-500/15 hover:translate-x-1 duration-300">
-                        <div className="flex items-start gap-5">
-                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-amber-500/20 text-amber-600 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 shadow-sm">
-                            <AlertTriangle className="h-6 w-6" />
+                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3.5 rounded-2xl group transition-all hover:bg-amber-500/10 dark:hover:bg-amber-500/15 hover:translate-x-1 duration-300">
+                        <div className="flex items-start gap-4">
+                          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 shadow-sm shrink-0">
+                            <AlertTriangle className="h-5 w-5" />
                           </div>
                           <div className="flex-1">
-                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80">Ponto de Atenção</span>
-                            <h4 className="font-bold text-lg text-amber-950 dark:text-amber-100">{insights.limitation.label}</h4>
-                            <p className="text-[13px] text-amber-900/60 dark:text-amber-400/60 mt-1.5 leading-relaxed font-medium">
+                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80 mb-0.5 block">Ponto de Atenção</span>
+                            <h4 className="font-bold text-base text-amber-950 dark:text-amber-100 leading-tight">{insights.limitation.label}</h4>
+                            <p className="text-xs text-amber-900/60 dark:text-amber-400/60 mt-0.5 leading-snug font-medium">
                               Sua base de sustentação. Este fator está equilibrado, mantenha como está.
                             </p>
                           </div>
                         </div>
                       </div>
 
-                      <div className="p-6 bg-muted/30 dark:bg-muted/10 rounded-[2rem] border border-border/50 backdrop-blur-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                          <Award className="h-12 w-12" />
+                      <div className="p-4 bg-muted/30 dark:bg-muted/10 rounded-2xl border border-border/50 backdrop-blur-sm relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-3 opacity-10 group-hover:rotate-12 transition-transform duration-500">
+                          <Award className="h-10 w-10" />
                         </div>
-                        <div className="flex items-center gap-3 mb-4 relative z-10">
-                          <Award className="h-5 w-5 text-primary" />
+                        <div className="flex items-center gap-2 mb-3 relative z-10">
+                          <Award className="h-4 w-4 text-primary" />
                           <h5 className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground">Bio-ConquistasAtivas</h5>
                         </div>
                         <div className="flex flex-wrap gap-2.5 relative z-10">
