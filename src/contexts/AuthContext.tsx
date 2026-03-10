@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState, ReactNode } from 'react
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
 
-interface Profile {
+export interface Profile {
   id: string;
   user_id: string;
   nome: string;
@@ -12,6 +12,14 @@ interface Profile {
   crefito?: string;
   especialidade?: string;
   avatar_url?: string;
+  role: 'admin' | 'professional' | 'patient';
+  session_credits?: number;
+  total_points?: number;
+  current_level?: string;
+  plan?: string;
+  fitbit_access_token?: string;
+  fitbit_refresh_token?: string;
+  wearable_device?: string;
 }
 
 interface AuthContextType {
@@ -22,6 +30,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  fetchProfile: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -38,7 +47,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+          fetchProfile(session.user.id);
         } else {
           setProfile(null);
         }
@@ -61,8 +70,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .from('profiles')
       .select('*')
       .eq('user_id', userId)
-      .single();
-    setProfile(data);
+      .maybeSingle();
+
+    if (data) {
+      setProfile(data as any as Profile);
+    }
     setLoading(false);
   };
 
@@ -85,7 +97,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut, fetchProfile }}>
       {children}
     </AuthContext.Provider>
   );
