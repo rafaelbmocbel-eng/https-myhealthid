@@ -44,8 +44,7 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
         myid_score: avaliacao.resultado?.myidScore || 0,
         score_i: avaliacao.resultado?.componentScores.I || 0,
         score_n: avaliacao.resultado?.componentScores.N || 0,
-        red_flags: avaliacao.resultado?.redFlagsDetected || false,
-        red_flags_details: avaliacao.resultado?.redFlagAlerts || [],
+        red_flags: avaliacao.resultado?.redFlagAlerts || [],
 
         // Campos compartilhados (mapeados a partir do resultado MyID)
         score_p: avaliacao.resultado?.componentScores.P || 0,

@@ -2,3 +2,18 @@ project_id = "rbzmojurvypksubeigbt"
 
 [functions.enviar-link-email]
 verify_jwt = true
+
+[functions.complete-myid]
+verify_jwt = false
+
+[functions.myid-analysis]
+verify_jwt = false
+
+[functions.salvar-bloco-avaliacao]
+verify_jwt = false
+
+[functions.validar-token-avaliacao]
+verify_jwt = false
+
+[functions.send-whatsapp]
+verify_jwt = true
