@@ -47,24 +47,6 @@ const MiniGauge = ({ value, color }: { value: number; color: string }) => {
   );
 };
 
-const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
-  const radius = 38;
-  const circ = Math.PI * radius;
-  const maxVal = Math.max(0.01, score);
-  const dashoffset = circ - (maxVal / 10) * circ;
-  return (
-    <div className="relative flex flex-col items-center justify-center w-full max-w-[200px] h-[100px] mx-auto overflow-hidden">
-      <svg width="100%" height="100%" viewBox="0 0 100 55" className="overflow-visible mt-2">
-        <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.12" strokeLinecap="round" style={{ color }} />
-        <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 1s cubic-bezier(0.25, 1, 0.5, 1)' }} />
-      </svg>
-      <div className="absolute bottom-1 flex flex-col items-center leading-none">
-        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{score.toFixed(1)}</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">MyID Score</span>
-      </div>
-    </div>
-  );
-};
 
 // ── Novas Interfaces de Engajamento ───────────────────────────────────────────
 interface PowerZone {
@@ -365,40 +347,20 @@ export default function PatientIntegratedDashboard({
           {/* MyID Fingerprint + Score */}
           <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card via-card to-violet-50/40 dark:to-violet-950/20 mb-6">
             <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-violet-600 shadow-lg shadow-violet-200 dark:shadow-none shrink-0">
-                    <Fingerprint className="h-6 w-6 text-white" />
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
+                <div className="flex items-center gap-3">
+                  <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-violet-600 shadow-sm shrink-0">
+                    <Fingerprint className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <h3 className="font-black text-xl text-foreground leading-tight">Painel de Impacto MyID</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Sua Biologia em Tempo Real</p>
+                    <h3 className="font-black text-lg text-foreground leading-tight">Painel de Impacto MyID</h3>
+                    <p className="text-[9px] text-muted-foreground uppercase font-bold tracking-widest mt-0.5">Sua Biologia em Tempo Real</p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-white/50 dark:bg-black/20 p-2 pr-4 rounded-2xl border border-white dark:border-white/10">
-                  <GlobalGauge score={myidScore} color={severityClass.split(' ')[0].replace('text-', '') === 'violet-600' ? '#8b5cf6' :
-                    severityClass.includes('blue') ? '#3b82f6' :
-                      severityClass.includes('amber') ? '#f59e0b' : '#ef4444'} />
-                  <div className="flex flex-col">
-                    <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0 border-current mb-1", severityClass)}>{classificacao}</Badge>
-                    <span className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[100px] uppercase">Estado de Saúde Atual</span>
-                  </div>
-                </div>
-
-                {/* 4-Line Narrative Summary */}
-                <div className="flex-1 max-w-md bg-white/40 dark:bg-black/10 rounded-2xl p-4 border border-white dark:border-white/5">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Sparkles className="h-3 w-3 text-violet-600" />
-                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-400">Resumo Sistêmico</span>
-                  </div>
-                  <div className="space-y-1.5">
-                    {narrative.map((line, i) => (
-                      <p key={i} className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
-                        <span className="text-violet-500 mr-1.5">•</span>{line}
-                      </p>
-                    ))}
-                  </div>
+                <div className="flex items-center gap-3 bg-white/50 dark:bg-black/20 px-3 py-1.5 rounded-xl border border-white dark:border-white/10">
+                  <Badge variant="outline" className={cn("text-[9px] font-black px-2 py-0.5 border-current", severityClass)}>{classificacao}</Badge>
+                  <span className="text-[9px] text-muted-foreground font-bold uppercase">Estado de Saúde Atual</span>
                 </div>
               </div>
 
@@ -490,13 +452,28 @@ export default function PatientIntegratedDashboard({
               </div>
 
               {/* Detalhamento da Fórmula MyID (Demand vs Capacity) */}
-              <div className="mt-10 pt-6 border-t border-violet-100 dark:border-violet-900/30">
+              <div className="mt-8 pt-6 border-t border-violet-100 dark:border-violet-900/30">
                 <MyIDFormulaDisplay
                   scores={scores!}
                   myidScore={myidScore}
                   highlightedKey={hoveredScoreKey}
                   hasRedFlags={redFlagsDetected}
                 />
+              </div>
+
+              {/* 4-Line Narrative Summary - Movido para debaixo do Index */}
+              <div className="mt-4 max-w-2xl mx-auto bg-violet-50/50 dark:bg-violet-900/10 rounded-2xl p-5 border border-violet-100 dark:border-violet-900/20">
+                <div className="flex items-center gap-2 mb-3">
+                  <Sparkles className="h-4 w-4 text-violet-600" />
+                  <span className="text-[11px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-400">Resumo Sistêmico</span>
+                </div>
+                <div className="space-y-2">
+                  {narrative.map((line, i) => (
+                    <p key={i} className="text-[11px] leading-relaxed text-slate-700 dark:text-slate-300 font-medium">
+                      <span className="text-violet-500 mr-1.5">•</span>{line}
+                    </p>
+                  ))}
+                </div>
               </div>
 
               {/* ─── O QUE O MyID REVELA ─── */}

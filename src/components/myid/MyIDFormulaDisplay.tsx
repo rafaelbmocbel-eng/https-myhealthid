@@ -174,20 +174,20 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
   return (
     <div className={cn("space-y-6", className)}>
       {/* Visual Header - Summary */}
-      <Card className="border-0 shadow-lg bg-white overflow-hidden rounded-3xl">
-        <CardContent className="p-8 space-y-8">
+      <Card className="border-0 shadow-lg bg-white overflow-hidden rounded-[2rem]">
+        <CardContent className="p-5 sm:p-6 space-y-6">
           <div className="flex flex-col items-center">
-            <div className="text-6xl font-black tracking-tighter" style={{ color: myidColor }}>
+            <div className="text-5xl font-black tracking-tighter" style={{ color: myidColor }}>
               {myidScore.toFixed(1)}
             </div>
             <div className="flex flex-col items-center mt-1">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground opacity-60">MyID Index</span>
-              <span className="text-xs font-black mt-2 px-4 py-1.5 rounded-full text-white uppercase tracking-wider shadow-sm" style={{ backgroundColor: myidColor }}>
+              <span className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground opacity-60">MyID Index</span>
+              <span className="text-[11px] font-black mt-2 px-4 py-1 rounded-full text-white uppercase tracking-wider shadow-sm" style={{ backgroundColor: myidColor }}>
                 {status}
               </span>
 
               {/* Severity Legend */}
-              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-6 pt-4 border-t border-border/40 w-full max-w-lg">
+              <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-4">
                 {[
                   { icon: '✨', range: '< 1.3', label: 'FAVORÁVEL', color: 'text-violet-600' },
                   { icon: '🔹', range: '1.3-3', label: 'MODERADA', color: 'text-blue-600' },
@@ -205,21 +205,21 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
           </div>
 
           {/* Balance Bar */}
-          <div className="space-y-4 max-w-2xl mx-auto w-full">
+          <div className="space-y-2.5 max-w-2xl mx-auto w-full pt-2 border-t border-border/40">
             <div className="flex justify-between items-start px-1 mb-1">
               <div className="flex flex-col items-start gap-0.5">
                 <span className="text-[10px] font-black uppercase text-red-500 tracking-[0.2em]">Demanda</span>
-                <span className="text-3xl font-black text-foreground">{numerator.toFixed(1)}</span>
-                <span className="text-[10px] text-red-700/60 font-medium leading-tight max-w-[140px]">Carga de dor, inércia e fatores psicossociais</span>
+                <span className="text-2xl font-black text-foreground">{numerator.toFixed(1)}</span>
+                <span className="text-[9px] text-red-700/60 font-medium leading-tight max-w-[130px]">Carga de dor, inércia e fatores psicossociais</span>
               </div>
               <div className="flex flex-col items-end gap-0.5 text-right">
                 <span className="text-[10px] font-black uppercase text-emerald-500 tracking-[0.2em]">Capacidade</span>
-                <span className="text-3xl font-black text-foreground">{denominator.toFixed(1)}</span>
-                <span className="text-[10px] text-emerald-700/60 font-medium leading-tight max-w-[140px]">Sua resiliência, hábitos e suporte de saúde</span>
+                <span className="text-2xl font-black text-foreground">{denominator.toFixed(1)}</span>
+                <span className="text-[9px] text-emerald-700/60 font-medium leading-tight max-w-[130px]">Sua resiliência, hábitos e suporte de saúde</span>
               </div>
             </div>
 
-            <div className="h-3 w-full flex rounded-full overflow-hidden bg-muted/40 shadow-inner">
+            <div className="h-2.5 w-full flex rounded-full overflow-hidden bg-muted/40 shadow-inner">
               <div
                 className="h-full transition-all duration-1000 ease-in-out bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.3)]"
                 style={{ width: `${demandPct}%` }}
@@ -230,23 +230,23 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
               />
             </div>
 
-            <div className="flex justify-between text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.1em] px-1">
+            <div className="flex justify-between text-[8px] font-black text-muted-foreground/50 uppercase tracking-[0.1em] px-1 mt-1">
               <span>↑ Carga / Desgaste</span>
               <span>Resiliência / Recuperação ↑</span>
             </div>
           </div>
 
           {/* Navigating the Narrative Box */}
-          <div className="mx-auto max-w-2xl mt-8 pt-6 border-t border-indigo-100/30">
-            <div className={cn("rounded-2xl border-2 p-5 shadow-sm transition-all duration-500", narrative.color)}>
-              <h4 className={cn("flex items-center gap-2 font-black mb-2 text-sm uppercase tracking-wider", narrative.textColor)}>
+          <div className="mx-auto max-w-2xl mt-5">
+            <div className={cn("rounded-2xl border p-4 shadow-sm transition-all duration-500", narrative.color)}>
+              <h4 className={cn("flex items-center gap-2 font-black mb-1.5 text-xs uppercase tracking-wider", narrative.textColor)}>
                 {narrative.icon}
                 {narrative.title}
               </h4>
-              <p className={cn("text-xs leading-relaxed font-semibold", narrative.textColor)}
+              <p className={cn("text-[11px] leading-relaxed font-semibold", narrative.textColor)}
                 dangerouslySetInnerHTML={{ __html: narrative.description.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>').replace(/<span class="text-red-600 uppercase font-black">(.*?)<\/span>/g, '<span class="text-red-600 uppercase font-black">$1</span>') }} />
 
-              <div className={cn("text-[11px] leading-relaxed font-medium mt-3 p-3 rounded-xl bg-white/40 border border-white/20", narrative.textColor)}
+              <div className={cn("text-[10px] leading-relaxed font-medium mt-2.5 p-2.5 rounded-xl bg-white/40 border border-white/20", narrative.textColor)}
                 dangerouslySetInnerHTML={{ __html: narrative.insight.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>') }} />
             </div>
           </div>
