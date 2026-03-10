@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -1007,7 +1007,24 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          <TabsContent value="prontuario" className="mt-4">
+          <TabsContent value="prontuario" className="mt-4 space-y-6">
+            {/* Controle de Atendimentos */}
+            {agendamentos.length > 0 && (
+              <div className="clinical-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Controle de Atendimentos ({agendamentos.length})</h3>
+                </div>
+                <div className="space-y-2">
+                  {agendamentos.slice(0, 15).map((ag: any) => (
+                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted={isBefore(parseISO(ag.data_inicio), startOfToday())} />
+                  ))}
+                  {agendamentos.length > 15 && (
+                    <p className="text-xs text-muted-foreground text-center">+{agendamentos.length - 15} atendimentos anteriores</p>
+                  )}
+                </div>
+              </div>
+            )}
             <StudioNotasTab pacienteId={id!} showSummary={true} />
           </TabsContent>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Trash2, TrendingUp } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -29,6 +29,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import EvolucaoDashboard from './EvolucaoDashboard';
 
 interface Paciente {
   id: string;
@@ -307,6 +308,22 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
 
+  // Agendamentos do paciente
+  const { data: agendamentosPaciente = [] } = useQuery({
+    queryKey: ['agendamentos-paciente-identidade', paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .eq('terapeuta_id', user!.id)
+        .order('data_inicio', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
     queryKey: ['structural-avaliacoes', paciente.id],
@@ -429,7 +446,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
               </TabsTrigger>
               <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+                <TrendingUp className="h-4 w-4" /> Evolução Gráfica
               </TabsTrigger>
               <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial
@@ -565,6 +582,23 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <FileText className="h-3 w-3" />
                                   {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
                                 </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('Excluir esta avaliação estrutural? Esta ação não pode ser desfeita.')) {
+                                      (async () => {
+                                        await supabase.from('avaliacoes_identidade').delete().eq('id', av.id);
+                                        refetchStructural();
+                                        toast({ title: 'Avaliação estrutural excluída' });
+                                      })();
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                               {isExpanded && (
                                 <div className="p-3 pt-0">
@@ -653,6 +687,27 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                     >
                                       <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
                                     </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('Excluir esta avaliação MyID do histórico? Esta ação não pode ser desfeita.')) {
+                                          (async () => {
+                                            await supabase.from('myid_avaliacoes').delete().eq('id', av.id);
+                                            // Also delete from avaliacoes_identidade if linked
+                                            await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', paciente.id).eq('myid_score', result?.myidScore);
+                                            refetchMyID();
+                                            qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+                                            qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+                                            toast({ title: 'Avaliação MyID excluída' });
+                                          })();
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
                                   {isExpanded && result && (
                                     <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
@@ -692,8 +747,58 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               </div>
             </TabsContent>
 
-            {/* Aba: Questionários Remotos */}
-            <TabsContent value="respostas" className="mt-4">
+            {/* Aba: Evolução Gráfica */}
+            <TabsContent value="respostas" className="mt-4 space-y-6">
+              {/* Evolution Dashboard */}
+              {(() => {
+                const avaliacoesSorted = [...(structuralAvaliacoes || []), ...(myidAvaliacoes || [])].sort(
+                  (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+                
+                // Build evolution records from all evaluations
+                const evolRecords = avaliacoesSorted.map((av: any, idx: number) => {
+                  const isMyID = !!av.resultado_processado;
+                  const result = av.resultado_processado;
+                  const dados = av.dados_avaliacao;
+                  return {
+                    id: av.id,
+                    paciente_id: paciente.id,
+                    terapeuta_id: user?.id || '',
+                    avaliacao_atual_id: av.id,
+                    avaliacao_anterior_id: null,
+                    numero_avaliacao: idx + 1,
+                    data_registro: av.created_at,
+                    classificacao: isMyID ? (result?.classificacao || result?.myidStatus || null) : (av.classificacao || null),
+                    id_final: isMyID ? (result?.myidScore || 0) : (av.score_e || 0),
+                    score_e: isMyID ? 0 : (av.score_e || 0),
+                    score_p: isMyID ? (result?.componentScores?.P || 0) : 0,
+                    score_c: isMyID ? (result?.componentScores?.C || 0) : 0,
+                    score_f: 0,
+                    score_d: isMyID ? (result?.componentScores?.D || 0) : 0,
+                    score_r: isMyID ? (result?.componentScores?.R || 0) : 0,
+                    score_efi: isMyID ? (result?.componentScores?.EFI || 0) : 0,
+                    delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_id_final: 0,
+                    dias_desde_anterior: null,
+                    observacoes: null,
+                    created_at: av.created_at,
+                  };
+                });
+
+                return evolRecords.length >= 2 ? (
+                  <EvolucaoDashboard
+                    evolucoes={evolRecords as any}
+                    pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  />
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
+                    <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium text-lg">Dados insuficientes para evolução</p>
+                    <p className="text-sm mt-1">São necessárias pelo menos 2 avaliações (MyID ou Estrutural) para gerar o comparativo evolutivo.</p>
+                  </div>
+                );
+              })()}
+              
+              {/* Questionários Remotos */}
               <QuestionariosComparacao
                 linksAvPaciente={linksAvPaciente}
                 respostas={respostas}
@@ -719,7 +824,45 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
 
         {/* --- Aba 4: EVOLUÇÕES E PRONTUÁRIO --- */}
-        <TabsContent value="prontuario" className="mt-4">
+        <TabsContent value="prontuario" className="mt-4 space-y-6">
+          {/* Histórico de Atendimentos/Agendamentos */}
+          {agendamentosPaciente.length > 0 && (
+            <div className="clinical-card">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">Controle de Atendimentos ({agendamentosPaciente.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {agendamentosPaciente.slice(0, 10).map((ag: any) => (
+                  <div key={ag.id} className="rounded-lg border p-3 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: ag.cor || 'hsl(var(--primary))' }}>
+                      <Calendar className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold">
+                          {format(new Date(ag.data_inicio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <Badge variant="outline" className={`text-[10px] h-4 ${
+                          ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          ag.status === 'cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-muted text-muted-foreground'
+                        }`}>{ag.status}</Badge>
+                        {ag.tipo_atendimento && (
+                          <Badge variant="outline" className="text-[10px] h-4">{ag.tipo_atendimento}</Badge>
+                        )}
+                      </div>
+                      {ag.observacoes && <p className="text-xs text-muted-foreground mt-0.5 truncate">{ag.observacoes}</p>}
+                    </div>
+                  </div>
+                ))}
+                {agendamentosPaciente.length > 10 && (
+                  <p className="text-xs text-muted-foreground text-center">+{agendamentosPaciente.length - 10} atendimentos anteriores</p>
+                )}
+              </div>
+            </div>
+          )}
           <StudioNotasTab pacienteId={paciente.id} showSummary={true} />
         </TabsContent>
 
