@@ -254,6 +254,7 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
 }
 
 // ── Classification color helpers ──
+// ── Classification color helpers ──
 export function getMyIDSeverityColor(classificacao: string): string {
   switch (classificacao) {
     case 'LEVE': return 'text-violet-600 bg-violet-50 border-violet-200';
@@ -263,4 +264,63 @@ export function getMyIDSeverityColor(classificacao: string): string {
     case 'EXTREMO': return 'text-red-950 bg-red-50 border-red-900';
     default: return 'text-muted-foreground bg-muted border-border';
   }
+}
+
+// ── Narrativas de 4 Linhas para MyID e Diretrizes ──
+
+/**
+ * Gera um resumo de 4 linhas para o resultado MyID
+ */
+export function generateMyIDNarrative4Lines(score: number, components: Record<string, number>, hasRedFlags: boolean = false): string[] {
+  const interp = getMyIDInterpretation(score, hasRedFlags);
+
+  // Linha 1: Status Geral e Score
+  const line1 = `O Índice MyID de ${score.toFixed(1)} aponta para um estado de ${interp.label.toLowerCase()} (${interp.status}).`;
+
+  // Linha 2: Demanda vs Capacidade (O que pesa mais)
+  const D = components.D || 0;
+  const EFI = components.EFI || 0;
+  const P = components.P || 0;
+  const demandSource = D > 6 ? 'dor persistente' : EFI > 6 ? 'baixa funcionalidade' : P > 6 ? 'fatores emocionais' : 'carga sistêmica';
+  const line2 = `Identificamos uma sobrecarga vinda principalmente de ${demandSource}, elevando sua demanda biológica.`;
+
+  // Linha 3: Capacidade de Recuperação
+  const R = components.R || 0;
+  const capacityState = R > 7 ? 'está robusta' : R > 4 ? 'necessita de atenção' : 'está crítica';
+  const line3 = `Sua capacidade de autorregulação (sono e energia) ${capacityState}, sendo o pilar central para sua recuperação.`;
+
+  // Linha 4: Insight / Ação recomendada
+  const line4 = hasRedFlags
+    ? "Atenção: Sinais de alerta (Red Flags) detectados exigem acompanhamento profissional próximo."
+    : `Recomendamos focar em ${R < 6 ? 'melhorar o sono' : 'progressão gradual'} para equilibrar seu sistema e reduzir o score.`;
+
+  return [line1, line2, line3, line4];
+}
+
+/**
+ * Gera um resumo de 4 linhas para as Diretrizes de Tratamento
+ */
+export function generateGuidelineExplanation4Lines(protocol: any): string[] {
+  if (!protocol) return ["Nenhuma diretriz ativa no momento.", "", "", ""];
+
+  const objetivo = protocol.objetivo_geral || "Melhoria funcional global.";
+  const frequencia = protocol.frequencia || "2-3x por semana";
+  const duracao = protocol.duracao_total || "12 semanas";
+
+  // Linha 1: Objetivo Principal
+  const line1 = `Objetivo central: ${objetivo}`;
+
+  // Linha 2: Frequência e Duração
+  const line2 = `O plano está estruturado para ser executado ${frequencia} durante ${duracao}.`;
+
+  // Linha 3: Foco Terapêutico (Hierarquia)
+  const hierarquia = Array.isArray(protocol.hierarquia_terapeutica)
+    ? protocol.hierarquia_terapeutica.map((h: any) => h.foco).slice(0, 2).join(' e ')
+    : "reajuste biocomportamental";
+  const line3 = `A prioridade inicial será o controle de ${hierarquia.toLowerCase()}.`;
+
+  // Linha 4: Expectativa de Evolução
+  const line4 = "Buscaremos a redução da carga sistêmica e o aumento da sua régua de tolerância ao esforço.";
+
+  return [line1, line2, line3, line4];
 }

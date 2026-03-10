@@ -136,10 +136,10 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
     if (isFragileBalance) {
       return {
         title: "EQUILÍBRIO TÊNUE",
-        icon: <Zap className="w-5 h-5 text-amber-500" />,
-        color: "border-amber-200 bg-gradient-to-br from-amber-50 to-white",
-        textColor: "text-amber-900",
-        accentColor: "text-amber-600",
+        icon: <Zap className="w-5 h-5 text-blue-500" />,
+        color: "border-blue-200 bg-gradient-to-br from-blue-50 to-white",
+        textColor: "text-blue-900",
+        accentColor: "text-blue-600",
         description: `Seu sistema está em um estado de alerta (${myidScore.toFixed(1)}). Embora a demanda não seja extrema, sua **Capacidade de Reserva está baixa (${denominator.toFixed(1)})**. Isso significa que qualquer novo estresse ou esforço pode desequilibrar seu sistema rapidamente.`,
         insight: `💡 **Insight:** Foco total em reconstruir suas defesas. Melhorar o sono e a hidratação são os passos mais rápidos para aumentar sua régua de tolerância e evitar crises.`
       };
@@ -148,10 +148,10 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
     if (isSolidBase) {
       return {
         title: "BASE SÓLIDA E RESILIENTE",
-        icon: <ShieldCheck className="w-5 h-5 text-emerald-500" />,
-        color: "border-emerald-200 bg-gradient-to-br from-emerald-50 to-white",
-        textColor: "text-emerald-900",
-        accentColor: "text-emerald-600",
+        icon: <ShieldCheck className="w-5 h-5 text-violet-500" />,
+        color: "border-violet-200 bg-gradient-to-br from-violet-50 to-white",
+        textColor: "text-violet-900",
+        accentColor: "text-violet-600",
         description: `Parabéns! Seu sistema apresenta um equilíbrio excelente (${myidScore.toFixed(1)}). Com baixa demanda e uma capacidade robusta, você possui uma margem de segurança alta para lidar com os desafios do dia a dia.`,
         insight: `💡 **Insight:** Momento ideal para progressão de performance. Sua base sólida permite que você explore novos limites e intensifique seus treinos ou atividades com segurança.`
       };

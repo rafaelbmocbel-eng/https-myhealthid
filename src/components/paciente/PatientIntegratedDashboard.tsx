@@ -13,7 +13,7 @@ import {
   AlertTriangle, CheckCircle2, Target, Award, ShieldAlert
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
+import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation, generateMyIDNarrative4Lines } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
@@ -300,6 +300,7 @@ export default function PatientIntegratedDashboard({
   const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
 
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags);
+  const narrative = generateMyIDNarrative4Lines(myidScore, scores || {}, hasRedFlags);
   const classificacao = interpretation.status;
   const label = interpretation.label;
   const recommendation = interpretation.recommendation || myidLinkResult?.recommendation || '';
@@ -382,6 +383,21 @@ export default function PatientIntegratedDashboard({
                   <div className="flex flex-col">
                     <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0 border-current mb-1", severityClass)}>{classificacao}</Badge>
                     <span className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[100px] uppercase">Estado de Saúde Atual</span>
+                  </div>
+                </div>
+
+                {/* 4-Line Narrative Summary */}
+                <div className="flex-1 max-w-md bg-white/40 dark:bg-black/10 rounded-2xl p-4 border border-white dark:border-white/5">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Sparkles className="h-3 w-3 text-violet-600" />
+                    <span className="text-[10px] font-black uppercase tracking-wider text-violet-700 dark:text-violet-400">Resumo Sistêmico</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {narrative.map((line, i) => (
+                      <p key={i} className="text-[11px] leading-relaxed text-slate-600 dark:text-slate-400 font-medium">
+                        <span className="text-violet-500 mr-1.5">•</span>{line}
+                      </p>
+                    ))}
                   </div>
                 </div>
               </div>
