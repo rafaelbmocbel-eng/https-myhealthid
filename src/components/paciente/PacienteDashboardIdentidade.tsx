@@ -692,8 +692,58 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               </div>
             </TabsContent>
 
-            {/* Aba: Questionários Remotos */}
-            <TabsContent value="respostas" className="mt-4">
+            {/* Aba: Evolução Gráfica */}
+            <TabsContent value="respostas" className="mt-4 space-y-6">
+              {/* Evolution Dashboard */}
+              {(() => {
+                const avaliacoesSorted = [...(structuralAvaliacoes || []), ...(myidAvaliacoes || [])].sort(
+                  (a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+                );
+                
+                // Build evolution records from all evaluations
+                const evolRecords = avaliacoesSorted.map((av: any, idx: number) => {
+                  const isMyID = !!av.resultado_processado;
+                  const result = av.resultado_processado;
+                  const dados = av.dados_avaliacao;
+                  return {
+                    id: av.id,
+                    paciente_id: paciente.id,
+                    terapeuta_id: user?.id || '',
+                    avaliacao_atual_id: av.id,
+                    avaliacao_anterior_id: null,
+                    numero_avaliacao: idx + 1,
+                    data_registro: av.created_at,
+                    classificacao: isMyID ? (result?.classificacao || result?.myidStatus || null) : (av.classificacao || null),
+                    id_final: isMyID ? (result?.myidScore || 0) : (av.score_e || 0),
+                    score_e: isMyID ? 0 : (av.score_e || 0),
+                    score_p: isMyID ? (result?.componentScores?.P || 0) : 0,
+                    score_c: isMyID ? (result?.componentScores?.C || 0) : 0,
+                    score_f: 0,
+                    score_d: isMyID ? (result?.componentScores?.D || 0) : 0,
+                    score_r: isMyID ? (result?.componentScores?.R || 0) : 0,
+                    score_efi: isMyID ? (result?.componentScores?.EFI || 0) : 0,
+                    delta_e: 0, delta_p: 0, delta_c: 0, delta_f: 0, delta_d: 0, delta_r: 0, delta_efi: 0, delta_id_final: 0,
+                    dias_desde_anterior: null,
+                    observacoes: null,
+                    created_at: av.created_at,
+                  };
+                });
+
+                return evolRecords.length >= 2 ? (
+                  <EvolucaoDashboard
+                    evolucoes={evolRecords as any}
+                    pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  />
+                ) : (
+                  <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
+                    <BarChart3 className="h-10 w-10 mx-auto mb-3 opacity-30" />
+                    <p className="font-medium text-lg">Dados insuficientes para evolução</p>
+                    <p className="text-sm mt-1">São necessárias pelo menos 2 avaliações (MyID ou Estrutural) para gerar o comparativo evolutivo.</p>
+                  </div>
+                );
+              })()}
+              
+              {/* Questionários Remotos */}
               <QuestionariosComparacao
                 linksAvPaciente={linksAvPaciente}
                 respostas={respostas}
