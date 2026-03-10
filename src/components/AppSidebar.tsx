@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare
+  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, Award
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,6 +11,7 @@ import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications
 
 const PROFISSIONAL_NAV_ITEMS = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard, hasBadge: false },
+  { label: 'Hub do Paciente', href: '/hub-paciente', icon: Award, hasBadge: false },
   { label: 'Pacientes', href: '/pacientes', icon: Users, hasBadge: false },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, hasBadge: false },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, hasBadge: false },
