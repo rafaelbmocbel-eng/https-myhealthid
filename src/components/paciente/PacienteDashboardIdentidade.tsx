@@ -824,7 +824,45 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
 
         {/* --- Aba 4: EVOLUÇÕES E PRONTUÁRIO --- */}
-        <TabsContent value="prontuario" className="mt-4">
+        <TabsContent value="prontuario" className="mt-4 space-y-6">
+          {/* Histórico de Atendimentos/Agendamentos */}
+          {agendamentosPaciente.length > 0 && (
+            <div className="clinical-card">
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">Controle de Atendimentos ({agendamentosPaciente.length})</h3>
+              </div>
+              <div className="space-y-2">
+                {agendamentosPaciente.slice(0, 10).map((ag: any) => (
+                  <div key={ag.id} className="rounded-lg border p-3 flex items-center gap-3">
+                    <div className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0" style={{ background: ag.cor || 'hsl(var(--primary))' }}>
+                      <Calendar className="h-3.5 w-3.5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm font-semibold">
+                          {format(new Date(ag.data_inicio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </span>
+                        <Badge variant="outline" className={`text-[10px] h-4 ${
+                          ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
+                          ag.status === 'pendente' ? 'bg-amber-50 text-amber-700 border-amber-200' :
+                          ag.status === 'cancelado' ? 'bg-red-50 text-red-700 border-red-200' :
+                          'bg-muted text-muted-foreground'
+                        }`}>{ag.status}</Badge>
+                        {ag.tipo_atendimento && (
+                          <Badge variant="outline" className="text-[10px] h-4">{ag.tipo_atendimento}</Badge>
+                        )}
+                      </div>
+                      {ag.observacoes && <p className="text-xs text-muted-foreground mt-0.5 truncate">{ag.observacoes}</p>}
+                    </div>
+                  </div>
+                ))}
+                {agendamentosPaciente.length > 10 && (
+                  <p className="text-xs text-muted-foreground text-center">+{agendamentosPaciente.length - 10} atendimentos anteriores</p>
+                )}
+              </div>
+            </div>
+          )}
           <StudioNotasTab pacienteId={paciente.id} showSummary={true} />
         </TabsContent>
 
