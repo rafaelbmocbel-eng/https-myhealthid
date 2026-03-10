@@ -308,6 +308,22 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
 
+  // Agendamentos do paciente
+  const { data: agendamentosPaciente = [] } = useQuery({
+    queryKey: ['agendamentos-paciente-identidade', paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('agendamentos')
+        .select('*')
+        .eq('paciente_id', paciente.id)
+        .eq('terapeuta_id', user!.id)
+        .order('data_inicio', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
     queryKey: ['structural-avaliacoes', paciente.id],
