@@ -671,6 +671,27 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                     >
                                       <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
                                     </Button>
+                                    <Button
+                                      size="icon"
+                                      variant="ghost"
+                                      className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        if (window.confirm('Excluir esta avaliação MyID do histórico? Esta ação não pode ser desfeita.')) {
+                                          (async () => {
+                                            await supabase.from('myid_avaliacoes').delete().eq('id', av.id);
+                                            // Also delete from avaliacoes_identidade if linked
+                                            await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', paciente.id).eq('myid_score', result?.myidScore);
+                                            refetchMyID();
+                                            qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+                                            qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+                                            toast({ title: 'Avaliação MyID excluída' });
+                                          })();
+                                        }
+                                      }}
+                                    >
+                                      <Trash2 className="h-3.5 w-3.5" />
+                                    </Button>
                                   </div>
                                   {isExpanded && result && (
                                     <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
