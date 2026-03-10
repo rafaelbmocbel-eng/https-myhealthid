@@ -72,6 +72,11 @@ export async function shareRelatorioLink(patientName: string, patientPhone: stri
   return shareViaWhatsApp(patientPhone, message, relatorioUrl, direct);
 }
 
+export async function sharePortalInvite(patientName: string, patientPhone: string, registerUrl: string, direct: boolean = false) {
+  const message = `Olá ${patientName}! 👋\n\n🚀 Preparei um espaço exclusivo para acompanharmos sua jornada de saúde: o *Portal do Paciente MyID*.\n\nLá você terá acesso ao seu diário de saúde, programas de exercícios, gamificação e poderá conectar seus dispositivos inteligentes (Apple Watch/Fitbit).\n\nVamos começar?`;
+  return shareViaWhatsApp(patientPhone, message, registerUrl, direct);
+}
+
 export async function shareMyIDResults(patientName: string, patientPhone: string, result: any, direct: boolean = false) {
   const score = result.myidScore?.toFixed(1) || '0.0';
   const status = result.classificacao || 'LEVE';
@@ -271,6 +276,11 @@ export const MESSAGE_TEMPLATES: MessageTemplate[] = [
     id: 'resultados-estruturais', label: 'Resultados Estruturais', icon: '🔬', category: 'clinico',
     defaultMessage: 'Olá {nome}! Seus resultados: Score {score}/10 · {classificacao}. Na próxima sessão discutimos o protocolo! 💪',
     variables: ['nome', 'score', 'classificacao'],
+  },
+  {
+    id: 'convite-portal', label: 'Convite Portal MyID', icon: '🚀', category: 'funil',
+    defaultMessage: 'Olá {nome}! 👋 Preparei um espaço exclusivo para acompanharmos sua jornada: o Portal do Paciente MyID. Lá você terá diário de saúde, exercícios e gamificação! Vamos começar? {url}',
+    variables: ['nome', 'url'],
   },
 ];
 

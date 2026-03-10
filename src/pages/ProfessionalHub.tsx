@@ -15,11 +15,35 @@ import { useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { format, parseISO, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { sharePortalInvite } from '@/utils/whatsapp';
+import { useToast } from '@/hooks/use-toast';
+import { Share2, Send } from 'lucide-react';
 
 export default function ProfessionalHub() {
     const { user } = useAuth();
     const navigate = useNavigate();
+    const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
+
+    const handleInvite = async (paciente?: Profile) => {
+        const registerUrl = `${window.location.origin}/paciente/cadastro`;
+
+        if (paciente) {
+            await sharePortalInvite(paciente.nome, paciente.telefone || '', registerUrl);
+            toast({ title: "Convite enviado!", description: `O link foi preparado para ${paciente.nome}.` });
+        } else {
+            // General invite
+            const message = `Olá! 👋 Conheça o novo Portal do Paciente MyID: ${registerUrl}`;
+            const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message)}`;
+            window.open(whatsappUrl, '_blank');
+        }
+    };
+
+    const copyInviteLink = () => {
+        const registerUrl = `${window.location.origin}/paciente/cadastro`;
+        navigator.clipboard.writeText(registerUrl);
+        toast({ title: "Link copiado!", description: "O link de cadastro foi copiado para sua área de transferência." });
+    };
 
     const { data: engajamentoData = [], isLoading } = useQuery({
         queryKey: ['professional-hub-engagement', user?.id],
@@ -60,9 +84,24 @@ export default function ProfessionalHub() {
                                 onChange={(e) => setSearchTerm(e.target.value)}
                             />
                         </div>
-                        <Button variant="outline" size="icon" className="shrink-0 bg-white">
-                            <Filter className="h-4 w-4" />
-                        </Button>
+                        <div className="flex items-center gap-2">
+                            <Button
+                                variant="outline"
+                                className="bg-white border-slate-200 hidden sm:flex text-[10px] font-black uppercase tracking-widest h-10 px-4"
+                                onClick={copyInviteLink}
+                            >
+                                <Share2 className="h-3.5 w-3.5 mr-2" /> Copiar Link
+                            </Button>
+                            <Button
+                                className="bg-indigo-600 hover:bg-indigo-700 text-white text-[10px] font-black uppercase tracking-widest h-10 px-4"
+                                onClick={() => handleInvite()}
+                            >
+                                <Send className="h-3.5 w-3.5 mr-2" /> Convidar Portal
+                            </Button>
+                            <Button variant="outline" size="icon" className="shrink-0 bg-white h-10 w-10">
+                                <Filter className="h-4 w-4" />
+                            </Button>
+                        </div>
                     </div>
                 </div>
 
@@ -180,7 +219,19 @@ export default function ProfessionalHub() {
                                     </div>
 
                                     {/* Action */}
-                                    <div className="shrink-0 flex items-center justify-end">
+                                    <div className="shrink-0 flex items-center gap-2">
+                                        <Button
+                                            variant="ghost"
+                                            size="icon"
+                                            className="hover:bg-indigo-50 text-slate-400 hover:text-indigo-600 transition-all"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                handleInvite(paciente);
+                                            }}
+                                            title="Enviar convite por WhatsApp"
+                                        >
+                                            <Send className="h-4 w-4" />
+                                        </Button>
                                         <Button variant="ghost" size="icon" className="group-hover:bg-indigo-50 text-indigo-600 transition-all">
                                             <ChevronRight className="h-5 w-5" />
                                         </Button>
