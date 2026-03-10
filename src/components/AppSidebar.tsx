@@ -9,15 +9,26 @@ import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 
-const NAV_ITEMS = [
-  { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
-  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles },
+const PROFISSIONAL_NAV_ITEMS = [
+  { label: 'Dashboard', href: '/', icon: LayoutDashboard, hasBadge: false },
+  { label: 'Pacientes', href: '/pacientes', icon: Users, hasBadge: false },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, hasBadge: false },
+  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, hasBadge: false },
+  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, hasBadge: false },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
-  { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
-  { label: 'Configurações', href: '/configuracoes', icon: Settings },
+  { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare, hasBadge: false },
+  { label: 'Configurações', href: '/configuracoes', icon: Settings, hasBadge: false },
+];
+
+const PACIENTE_NAV_ITEMS = [
+  { label: 'Dashboard', href: '/paciente/dashboard', icon: LayoutDashboard, hasBadge: false },
+  { label: 'Minha Agenda', href: '/paciente/agenda', icon: CalendarDays, hasBadge: false },
+  { label: 'Diário de Saúde', href: '/paciente/diario', icon: FileText, hasBadge: false },
+  { label: 'Questionários', href: '/paciente/questionarios', icon: ClipboardList, hasBadge: false },
+  { label: 'Atividades e XP', href: '/paciente/atividades', icon: Sparkles, hasBadge: false },
+  { label: 'Meus Dispositivos', href: '/paciente/dispositivo', icon: Settings, hasBadge: false },
+  { label: 'Meu Plano', href: '/paciente/planos', icon: User, hasBadge: false },
+  { label: 'Configurações', href: '/paciente/perfil', icon: Settings, hasBadge: false },
 ];
 
 interface AppSidebarProps {
@@ -32,8 +43,12 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const { user, profile, signOut } = useAuth();
   const { pendingCount, clearCount } = useAgendamentoNotifications();
 
+  const navItems = profile?.role === 'patient' ? PACIENTE_NAV_ITEMS : PROFISSIONAL_NAV_ITEMS;
+
   const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+    href === '/' || href === '/paciente/dashboard'
+      ? location.pathname === href
+      : location.pathname.startsWith(href);
 
   const handleSignOut = async () => {
     await signOut();
@@ -53,7 +68,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
     >
       {/* Logo */}
       <div className="flex items-center justify-center h-24 shrink-0 px-4">
-        <Link to="/" className="flex items-center gap-4 min-w-0 group">
+        <Link to={profile?.role === 'patient' ? '/paciente/dashboard' : '/'} className="flex items-center gap-4 min-w-0 group">
           <LogoIcon size={collapsed ? 44 : 52} glow />
           {!collapsed && (
             <div className="min-w-0 transition-all duration-300 group-hover:pl-1">
@@ -70,7 +85,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {NAV_ITEMS.map(item => {
+        {navItems.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
