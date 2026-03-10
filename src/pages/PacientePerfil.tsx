@@ -7,6 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
@@ -14,6 +15,7 @@ import {
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
+  Award, Watch, BookOpen,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -527,7 +529,7 @@ export default function PacientePerfil() {
 
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-5 h-auto gap-1.5 w-full border shadow-sm">
+          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-3 sm:grid-cols-6 h-auto gap-1.5 w-full border shadow-sm">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
