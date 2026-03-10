@@ -566,6 +566,23 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <FileText className="h-3 w-3" />
                                   {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
                                 </Button>
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    if (window.confirm('Excluir esta avaliação estrutural? Esta ação não pode ser desfeita.')) {
+                                      (async () => {
+                                        await supabase.from('avaliacoes_identidade').delete().eq('id', av.id);
+                                        refetchStructural();
+                                        toast({ title: 'Avaliação estrutural excluída' });
+                                      })();
+                                    }
+                                  }}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </Button>
                               </div>
                               {isExpanded && (
                                 <div className="p-3 pt-0">
