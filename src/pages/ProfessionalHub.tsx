@@ -51,8 +51,7 @@ export default function ProfessionalHub() {
             // Fetch patients 
             const { data: patients, error } = await supabase
                 .from('profiles')
-                .select('*')
-                .eq('role', 'patient');
+                .select('*') as any;
 
             if (error) throw error;
             return (patients as any as Profile[]) || [];
