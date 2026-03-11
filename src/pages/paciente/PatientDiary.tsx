@@ -305,12 +305,12 @@ const PatientDiary = () => {
                                                 </div>
                                                 <div>
                                                     <div className="flex gap-1 mb-0.5">
-                                                        {Array.from({ length: log.mood }).map((_, i) => (
-                                                            <div key={i} className="h-1.5 w-3 rounded-full bg-emerald-500" />
-                                                        ))}
-                                                    </div>
+                                                    {Array.from({ length: (log as any).mood || 0 }).map((_: any, i: number) => (
+                                                        <div key={i} className="h-1.5 w-3 rounded-full bg-emerald-500" />
+                                                    ))}
+                                                </div>
                                                     <p className="text-[10px] font-black uppercase tracking-tighter text-slate-400">
-                                                        {log.pain} Dor • {log.energy} Energia • {log.sleep_hours}h Sono
+                                                        {(log as any).pain} Dor • {(log as any).energy} Energia • {(log as any).sleep_hours}h Sono
                                                     </p>
                                                 </div>
                                             </div>

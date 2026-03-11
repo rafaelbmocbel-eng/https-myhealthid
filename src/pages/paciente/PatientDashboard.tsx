@@ -76,9 +76,8 @@ const PatientDashboard = () => {
         queryFn: async () => {
             const { data } = await supabase
                 .from("myid_avaliacoes")
-                .select("id, titulo, status")
-                .eq("email_paciente", user?.email)
-                .eq("status", "pendente");
+                .select("id, status, token_acesso")
+                .eq("status", "pendente") as any;
             return data || [];
         },
         enabled: !!user?.email
