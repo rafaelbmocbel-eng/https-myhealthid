@@ -1057,7 +1057,7 @@ export default function PacientePerfil() {
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Créditos</p>
                     <p className="text-sm font-black text-slate-900 italic tracking-tighter">
-                      {paciente.session_credits || 0} sessões
+                      {0} sessões
                     </p>
                   </div>
                   <div className="space-y-1">
