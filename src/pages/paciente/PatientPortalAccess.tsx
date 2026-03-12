@@ -43,11 +43,9 @@ export default function PatientPortalAccess() {
   useEffect(() => {
     if (!token) return;
     (async () => {
-      const { data, error } = await supabase
-        .from('pacientes')
-        .select('id, nome, sobrenome, email, telefone, user_id')
-        .eq('portal_token', token)
-        .maybeSingle() as any;
+      const { data: rows, error } = await supabase
+        .rpc('get_patient_by_portal_token', { p_token: token }) as any;
+      const data = rows?.[0] || null;
 
       if (error || !data) {
         toast({ title: 'Link inválido', description: 'Este link de portal não é válido.', variant: 'destructive' });
