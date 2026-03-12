@@ -1953,6 +1953,14 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      has_active_agenda_link: {
+        Args: { p_terapeuta_id: string }
+        Returns: boolean
+      }
+      has_active_agenda_link_for_paciente: {
+        Args: { p_paciente_id: string; p_terapeuta_id: string }
+        Returns: boolean
+      }
       link_agenda_valido_por_token: {
         Args: { p_token: string }
         Returns: {
