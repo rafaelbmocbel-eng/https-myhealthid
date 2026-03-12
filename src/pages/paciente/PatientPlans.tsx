@@ -5,46 +5,33 @@ import {
     Zap,
     Star,
     Crown,
-    Menu,
-    Activity,
-    LayoutDashboard,
-    Calendar,
-    ClipboardCheck,
-    Award,
-    BookOpen,
-    Watch,
-    User,
-    LogOut,
     Info,
-    ArrowRight
+    ArrowRight,
+    Sparkles,
+    ShieldCheck,
+    Gem
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
+import PatientLayout from "@/components/paciente/PatientLayout";
 
 const PatientPlans = () => {
-    const { profile, signOut } = useAuth();
+    const { profile } = useAuth();
     const navigate = useNavigate();
-    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-
-    const handleLogout = async () => {
-        await signOut();
-        navigate("/paciente/login");
-    };
 
     const plans = [
         {
             name: "Smart Básico",
             price: "R$ 0",
-            description: "Ideal para quem está começando sua jornada de saúde.",
+            description: "A porta de entrada para sua melhor versão biológica.",
             features: [
-                "Acesso ao Dashboard",
-                "Minha Agenda",
-                "Questionários MyID (Limitado)",
-                "Diário de Saúde",
+                "Dashboard de Performance",
+                "Gestão de Agendamentos",
+                "Questionários MyID",
+                "Diário de Saúde Digital",
             ],
             icon: Zap,
             color: "text-slate-400",
@@ -54,13 +41,13 @@ const PatientPlans = () => {
         {
             name: "Smart Pro",
             price: "R$ 49,90",
-            description: "Para quem quer insights profundos e acompanhamento.",
+            description: "Insights biocomportamentais profundos e precisão.",
             features: [
-                "Todos do Básico",
-                "Integração de Wearables",
+                "Todos os recursos Básico",
+                "Sincronização de Wearables",
                 "Atividades Prescritas",
-                "Ranking e Badges Pro",
-                "Relatórios Mensais"
+                "Gamificação & Ranking Pro",
+                "Relatórios de Evolução"
             ],
             icon: Star,
             color: "text-indigo-600",
@@ -71,186 +58,138 @@ const PatientPlans = () => {
         {
             name: "Smart Diamond",
             price: "R$ 149,90",
-            description: "Experiência VIP completa com seu profissional.",
+            description: "O ápice do acompanhamento clínico personalizado.",
             features: [
-                "Todos do Pro",
-                "Suporte Prioritário",
-                "Análise Bioestatística MyID",
-                "Check-ins Semanais Ilimitados",
+                "Experiência Pro Completa",
+                "Suporte Prioritário 24/7",
+                "Análise MyID Bioestatística",
+                "Check-ins Ilimitados",
                 "Integração Bluetooth Direta"
             ],
-            icon: Crown,
+            icon: Gem,
             color: "text-amber-500",
             bg: "bg-amber-50",
             current: profile?.plan === "diamond"
         }
     ];
 
-    const menuItems = [
-        { icon: LayoutDashboard, text: "Dashboard", path: "/paciente/dashboard" },
-        { icon: Calendar, text: "Minha Agenda", path: "/paciente/agenda" },
-        { icon: ClipboardCheck, text: "Questionários", path: "/paciente/questionarios" },
-        { icon: Award, text: "Atividades", path: "/paciente/atividades" },
-        { icon: BookOpen, text: "Diário de Saúde", path: "/paciente/diario" },
-        { icon: Watch, text: "Meu Dispositivo", path: "/paciente/dispositivo" },
-        { icon: CreditCard, text: "Planos", path: "/paciente/planos", active: true },
-        { icon: User, text: "Perfil", path: "/paciente/perfil" },
-    ];
-
     return (
-        <div className="min-h-screen bg-slate-50 flex">
-            <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen">
-                <div className="p-6">
-                    <div className="flex items-center gap-2 mb-8" onClick={() => navigate("/paciente/dashboard")} style={{ cursor: 'pointer' }}>
-                        <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200/50">
-                            <Activity className="h-5 w-5 text-white" />
-                        </div>
-                        <span className="text-xl font-black text-slate-900 tracking-tight">MyHealthID</span>
+        <PatientLayout>
+            <div className="max-w-6xl mx-auto space-y-12 pb-20">
+                <header className="flex flex-col items-center text-center space-y-6 pt-10">
+                    <div className="inline-flex items-center gap-2 bg-indigo-50 px-4 py-2 rounded-full border border-indigo-100 shadow-sm animate-fade-in">
+                        <Sparkles className="h-4 w-4 text-indigo-600" />
+                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] leading-none">Upgrade de Performance</span>
                     </div>
-                    <nav className="space-y-1">
-                        {menuItems.map((item, i) => (
-                            <button
-                                key={i}
-                                onClick={() => navigate(item.path)}
-                                className={cn(
-                                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
-                                    item.active
-                                        ? "bg-indigo-50 text-indigo-600"
-                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                                )}
-                            >
-                                <item.icon className="h-5 w-5" />
-                                {item.text}
-                            </button>
-                        ))}
-                    </nav>
-                </div>
-                <div className="mt-auto p-6 border-t border-slate-100">
-                    <button
-                        onClick={handleLogout}
-                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all text-left"
-                    >
-                        <LogOut className="h-5 w-5" />
-                        Sair da conta
-                    </button>
-                </div>
-            </aside>
-
-            <main className="flex-1 lg:max-w-6xl mx-auto p-4 lg:p-8 space-y-10 pb-20">
-                <header className="flex flex-col items-center text-center space-y-4 pt-10">
-                    <Badge className="bg-indigo-50 text-indigo-600 border-none px-4 py-1 font-black text-[10px] uppercase tracking-widest leading-none">
-                        Planos Smart MyHealth
-                    </Badge>
-                    <h1 className="text-4xl lg:text-5xl font-black text-slate-900 leading-tight tracking-tighter max-w-2xl italic">
-                        A biologia evolui, e o seu plano também.
+                    <h1 className="text-4xl lg:text-6xl font-black text-slate-900 leading-tight tracking-tighter max-w-3xl italic uppercase">
+                        Sua evolução biológica <br /> começa com a escolha certa.
                     </h1>
-                    <p className="text-slate-500 text-lg font-medium max-w-xl">
-                        Escolha a experiência ideal para potencializar seus resultados através de dados e acompanhamento de precisão.
+                    <p className="text-slate-500 text-lg font-medium max-w-2xl leading-relaxed">
+                        Selecione o nível de suporte que sua saúde merece. De dados básicos a insights de alta performance.
                     </p>
                 </header>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-8 lg:gap-10 pt-10">
                     {plans.map((plan, i) => (
                         <Card
                             key={i}
                             className={cn(
-                                "border-none shadow-sm flex flex-col items-stretch overflow-hidden relative transition-all duration-300 hover:shadow-2xl hover:-translate-y-2",
-                                plan.popular ? "bg-white scale-105 z-10 ring-4 ring-indigo-500/10" : "bg-white"
+                                "border-none shadow-2xl flex flex-col items-stretch overflow-hidden relative transition-all duration-500 group rounded-[3rem] border-2",
+                                plan.popular
+                                    ? "bg-white scale-105 z-10 border-indigo-600/20 shadow-indigo-200/50"
+                                    : "bg-white border-transparent hover:border-slate-100 hover:-translate-y-2"
                             )}
                         >
                             {plan.popular && (
-                                <div className="absolute top-0 right-0 p-0 m-0">
-                                    <div className="bg-indigo-600 text-white text-[10px] font-black uppercase px-6 py-2 rotate-45 transform translate-x-4 -translate-y-0.5 shadow-lg">
-                                        Popular
+                                <div className="absolute top-0 right-0 p-0 m-0 overflow-hidden h-32 w-32">
+                                    <div className="bg-indigo-600 text-white text-[9px] font-black uppercase px-12 py-2 rotate-45 transform translate-x-8 translate-y-4 shadow-xl tracking-widest text-center">
+                                        Recomendado
                                     </div>
                                 </div>
                             )}
 
-                            <CardHeader className="p-8 space-y-2">
-                                <div className={cn("h-12 w-12 rounded-2xl flex items-center justify-center mb-4 transition-transform group-hover:rotate-12", plan.bg)}>
-                                    <plan.icon className={cn("h-6 w-6", plan.color)} />
+                            <CardHeader className="p-10 space-y-4 pb-0">
+                                <div className={cn("h-16 w-16 rounded-[1.5rem] flex items-center justify-center mb-4 transition-transform group-hover:rotate-12 group-hover:scale-110 shadow-inner", plan.bg)}>
+                                    <plan.icon className={cn("h-8 w-8", plan.color)} />
                                 </div>
-                                <CardTitle className="text-2xl font-black text-slate-900 tracking-tight">{plan.name}</CardTitle>
-                                <CardDescription className="text-slate-500 font-medium leading-relaxed">{plan.description}</CardDescription>
+                                <CardTitle className="text-3xl font-black text-slate-900 tracking-tighter uppercase italic">{plan.name}</CardTitle>
+                                <CardDescription className="text-slate-400 font-medium leading-relaxed min-h-[48px]">{plan.description}</CardDescription>
                             </CardHeader>
 
-                            <CardContent className="p-8 flex-1 space-y-6">
-                                <div className="flex items-baseline gap-1">
-                                    <span className="text-4xl font-black text-slate-900">{plan.price}</span>
-                                    <span className="text-slate-400 font-bold text-sm">/mês</span>
+                            <CardContent className="p-10 flex-1 space-y-10">
+                                <div className="flex items-baseline gap-2">
+                                    <span className="text-5xl font-black text-slate-900 tracking-tighter">{plan.price}</span>
+                                    <span className="text-slate-300 font-black text-[10px] uppercase tracking-widest">/ mensal</span>
                                 </div>
 
-                                <div className="space-y-3">
+                                <div className="space-y-4">
                                     {plan.features.map((feature, j) => (
-                                        <div key={j} className="flex items-start gap-3 text-sm font-bold text-slate-600">
-                                            <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0 mt-0.5" />
-                                            {feature}
+                                        <div key={j} className="flex items-start gap-4 text-xs font-black text-slate-600 uppercase tracking-tight group/item">
+                                            <div className="h-5 w-5 rounded-full bg-slate-50 flex items-center justify-center shrink-0 border border-slate-100 group-hover/item:border-emerald-200 transition-colors">
+                                                <CheckCircle2 className="h-3 w-3 text-emerald-500" />
+                                            </div>
+                                            <span className="pt-0.5">{feature}</span>
                                         </div>
                                     ))}
                                 </div>
                             </CardContent>
 
-                            <CardFooter className="p-8 pt-0">
+                            <CardFooter className="p-10 pt-0">
                                 <Button
                                     className={cn(
-                                        "w-full h-14 rounded-2xl font-black text-lg shadow-xl transition-all",
+                                        "w-full h-16 rounded-[2rem] font-black text-sm uppercase italic tracking-widest shadow-2xl transition-all active:scale-95",
                                         plan.current
-                                            ? "bg-slate-100 text-slate-400 hover:bg-slate-100 cursor-default"
+                                            ? "bg-slate-100 text-slate-400 hover:bg-slate-100 cursor-default border border-slate-200"
                                             : plan.popular
-                                                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-200"
-                                                : "bg-slate-900 text-white hover:bg-slate-800"
+                                                ? "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-300/40"
+                                                : "bg-slate-900 text-white hover:bg-black"
                                     )}
                                     disabled={plan.current}
+                                    onClick={() => !plan.current && navigate("/paciente/financeiro")}
                                 >
-                                    {plan.current ? "Seu plano atual" : "Selecionar Plano"}
+                                    {plan.current ? (
+                                        <span className="flex items-center gap-2"><ShieldCheck className="h-5 w-5" /> Ativo agora</span>
+                                    ) : (
+                                        <span className="flex items-center gap-2">Fazer Upgrade <ArrowRight className="h-5 w-5" /></span>
+                                    )}
                                 </Button>
                             </CardFooter>
                         </Card>
                     ))}
                 </div>
 
-                {/* Security / Info */}
-                <div className="flex flex-col md:flex-row items-center justify-center gap-10 opacity-60">
-                    <div className="flex items-center gap-3 text-slate-500">
-                        <CreditCard className="h-6 w-6" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Pagamento Seguro Stripe</span>
-                    </div>
-                    <div className="flex items-center gap-3 text-slate-500">
-                        <Info className="h-6 w-6" />
-                        <span className="text-xs font-bold uppercase tracking-widest">Cancele quando quiser</span>
-                    </div>
-                </div>
-            </main>
-
-            {/* Mobile Sidebar Overlay */}
-            {isSidebarOpen && (
-                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)}>
-                    <div className="w-72 h-full bg-white p-6 shadow-2xl animate-in slide-in-from-left duration-300" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-2 mb-10 justify-between">
-                            <div className="flex items-center gap-2" onClick={() => { navigate("/paciente/dashboard"); setIsSidebarOpen(false); }} style={{ cursor: 'pointer' }}>
-                                <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white"><Activity className="h-5 w-5" /></div>
-                                <span className="text-xl font-black text-slate-900 tracking-tight">MyHealthID</span>
-                            </div>
+                {/* Trust / Security */}
+                <div className="flex flex-col md:flex-row items-center justify-center gap-12 pt-10 border-t border-slate-100 mt-20 opacity-40 grayscale group hover:opacity-100 hover:grayscale-0 transition-all duration-500">
+                    <div className="flex items-center gap-4 group/trust">
+                        <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover/trust:border-indigo-200 transition-colors">
+                            <CreditCard className="h-6 w-6 text-slate-400 group-hover/trust:text-indigo-600" />
                         </div>
-                        <nav className="space-y-2">
-                            {menuItems.map((item, i) => (
-                                <button
-                                    key={i}
-                                    onClick={() => { navigate(item.path); setIsSidebarOpen(false); }}
-                                    className={cn(
-                                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all",
-                                        item.active ? "bg-indigo-50 text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                                    )}
-                                >
-                                    <item.icon className="h-5 w-5" />
-                                    {item.text}
-                                </button>
-                            ))}
-                        </nav>
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Pagamento Seguro</p>
+                            <p className="text-[9px] font-medium text-slate-500">Checkout Stripe Criptografado</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4 group/trust">
+                        <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover/trust:border-emerald-200 transition-colors">
+                            <ShieldCheck className="h-6 w-6 text-slate-400 group-hover/trust:text-emerald-600" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Cancelamento Livre</p>
+                            <p className="text-[9px] font-medium text-slate-500">Sem carência ou multas rescisórias</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4 group/trust">
+                        <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center border border-slate-100 shadow-inner group-hover/trust:border-amber-200 transition-colors">
+                            <Info className="h-6 w-6 text-slate-400 group-hover/trust:text-amber-600" />
+                        </div>
+                        <div className="space-y-0.5">
+                            <p className="text-[10px] font-black text-slate-900 uppercase tracking-widest leading-none">Dúvidas Frequentes</p>
+                            <p className="text-[9px] font-medium text-slate-500">Fale com nosso suporte VIP</p>
+                        </div>
                     </div>
                 </div>
-            )}
-        </div>
+            </div>
+        </PatientLayout>
     );
 };
 

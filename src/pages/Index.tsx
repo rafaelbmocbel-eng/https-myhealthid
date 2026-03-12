@@ -16,12 +16,24 @@ import {
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
+import { getPortalUrl } from '@/utils/linkUrls';
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const handleCopiarLinkPortal = () => {
+    if (!user) return;
+    const url = getPortalUrl(user.id);
+    navigator.clipboard.writeText(url);
+    toast({
+      title: "Link do Portal Copiado! 🚀",
+      description: "Envie para seus pacientes para que eles se cadastrem sozinhos.",
+    });
+  };
 
   useEffect(() => {
     if (!loading && profile?.role === 'patient') {
@@ -1004,6 +1016,7 @@ export default function Index() {
           <div className="flex flex-col gap-2 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
             {[
               { label: 'Novo Paciente', icon: UserPlus, to: '/pacientes', gradient: 'from-primary to-rose-500' },
+              { label: 'Link do Portal', icon: LinkIcon, action: handleCopiarLinkPortal, gradient: 'from-blue-600 to-indigo-600' },
               { label: 'Agendar', icon: CalendarDays, to: '/agenda', gradient: 'from-amber-500 to-orange-500' },
               { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
               { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },

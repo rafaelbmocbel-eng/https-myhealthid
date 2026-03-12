@@ -4,9 +4,9 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { useToast } from "@/hooks/use-toast";
-import { Heart, Loader2, ArrowRight, Sparkles } from "lucide-react";
+import { Activity, Loader2, ArrowRight, UserCheck, Lock, ShieldCheck } from "lucide-react";
 
 const PatientLogin = () => {
     const [email, setEmail] = useState("");
@@ -47,87 +47,105 @@ const PatientLogin = () => {
     };
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-indigo-50 via-white to-emerald-50 flex items-center justify-center p-4">
-            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-indigo-500 via-purple-500 to-emerald-500" />
+        <div className="min-h-screen bg-gradient-to-br from-indigo-50 to-violet-50 flex items-center justify-center p-4 font-sans">
+            <div className="max-w-md w-full space-y-6">
+                {/* Branding */}
+                <div className="flex items-center justify-center gap-2 mb-8">
+                    <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200/50">
+                        <Activity className="h-5 w-5 text-white" />
+                    </div>
+                    <span className="text-xl font-black text-slate-900 tracking-tight">MyHealthID</span>
+                </div>
 
-            <Card className="w-full max-w-md border-none shadow-2xl bg-white/80 backdrop-blur-sm">
-                <CardHeader className="space-y-1 text-center pb-8">
-                    <div className="flex justify-center mb-4">
-                        <div className="h-16 w-16 bg-gradient-to-tr from-indigo-600 to-violet-600 rounded-2xl flex items-center justify-center shadow-lg transform -rotate-6">
-                            <Heart className="h-8 w-8 text-white" />
+                <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden bg-white/90 backdrop-blur-md">
+                    <div className="bg-gradient-to-tr from-indigo-600 to-violet-600 p-8 text-white text-center">
+                        <div className="h-20 w-20 rounded-full bg-white/20 border-2 border-white/30 flex items-center justify-center mx-auto mb-4 shadow-inner">
+                            <UserCheck className="h-10 w-10 text-white" />
                         </div>
+                        <h1 className="text-2xl font-black mb-1">Acesso ao Portal</h1>
+                        <p className="text-indigo-100 text-xs font-medium uppercase tracking-widest opacity-80">
+                            Central de Engajamento MyID
+                        </p>
                     </div>
-                    <CardTitle className="text-3xl font-black tracking-tight text-slate-900">
-                        Bem-vindo ao <span className="bg-clip-text text-transparent bg-gradient-to-r from-indigo-600 to-violet-600">MyID</span>
-                    </CardTitle>
-                    <CardDescription className="text-slate-500 font-medium">
-                        Sua jornada de saúde personalizada começa aqui.
-                    </CardDescription>
-                </CardHeader>
-                <CardContent>
-                    <form onSubmit={handleSubmit} className="space-y-5">
-                        <div className="space-y-2">
-                            <Label htmlFor="email">E-mail</Label>
-                            <Input
-                                id="email"
-                                type="email"
-                                placeholder="seu@email.com"
-                                required
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="bg-white/50 border-slate-200 focus:ring-indigo-500"
-                            />
-                        </div>
-                        <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                                <Label htmlFor="password">Senha</Label>
-                                <Link
-                                    to="/recuperar-senha"
-                                    className="text-xs font-semibold text-indigo-600 hover:text-indigo-500"
-                                >
-                                    Esqueceu a senha?
-                                </Link>
+
+                    <CardContent className="p-8 space-y-6">
+                        <form onSubmit={handleSubmit} className="space-y-6">
+                            <div className="space-y-4">
+                                <div className="space-y-2">
+                                    <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Seu E-mail</Label>
+                                    <div className="relative">
+                                        <UserCheck className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            type="email"
+                                            placeholder="seu@email.com"
+                                            className="rounded-xl border-slate-200 pl-11 py-6 focus:ring-indigo-500"
+                                            value={email}
+                                            onChange={(e) => setEmail(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
+
+                                <div className="space-y-2">
+                                    <div className="flex items-center justify-between">
+                                        <Label className="text-[10px] font-black uppercase text-slate-400 ml-1">Sua Senha</Label>
+                                        <Link
+                                            to="/recuperar-senha"
+                                            className="text-[9px] font-black text-indigo-600 hover:text-indigo-500 uppercase tracking-tighter"
+                                        >
+                                            Esqueceu a senha?
+                                        </Link>
+                                    </div>
+                                    <div className="relative">
+                                        <Lock className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                        <Input
+                                            type="password"
+                                            placeholder="Sua senha"
+                                            className="rounded-xl border-slate-200 pl-11 py-6 focus:ring-indigo-500"
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                        />
+                                    </div>
+                                </div>
                             </div>
-                            <Input
-                                id="password"
-                                type="password"
-                                required
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="bg-white/50 border-slate-200 focus:ring-indigo-500"
-                            />
+
+                            <Button
+                                type="submit"
+                                className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl py-8 shadow-xl shadow-indigo-200 transition-all flex items-center justify-center gap-2 text-lg active:scale-95"
+                                disabled={isLoading}
+                            >
+                                {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <>Entrar no Portal <ArrowRight className="h-5 w-5" /></>}
+                            </Button>
+                        </form>
+
+                        <div className="p-4 rounded-2xl bg-indigo-50 border border-indigo-100 space-y-2">
+                            <div className="flex items-center gap-2 text-indigo-900 font-bold text-[10px] uppercase tracking-tighter">
+                                <ShieldCheck className="h-3.5 w-3.5" /> Dica de Acesso
+                            </div>
+                            <p className="text-[10px] text-indigo-700/70 font-medium">
+                                Por padrão, sua senha é seu **primeiro nome** (minúsculo) + os **4 últimos dígitos** do seu celular. Ex: <span className="font-bold">rafael4321</span>
+                            </p>
                         </div>
-                        <Button
-                            type="submit"
-                            className="w-full bg-gradient-to-r from-indigo-600 to-violet-600 hover:from-indigo-700 hover:to-violet-700 text-white font-bold h-12 rounded-xl transition-all shadow-md active:scale-[0.98]"
-                            disabled={isLoading}
-                        >
-                            {isLoading ? (
-                                <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                            ) : (
-                                <>
-                                    Entrar no Portal <ArrowRight className="ml-2 h-5 w-5" />
-                                </>
-                            )}
-                        </Button>
-                    </form>
-                </CardContent>
-                <CardFooter className="flex flex-col space-y-4 pt-4 border-t border-slate-100">
-                    <div className="text-sm text-center text-slate-600">
-                        Não tem uma conta?{" "}
-                        <Link
-                            to="/paciente/cadastro"
-                            className="font-black text-indigo-600 hover:underline underline-offset-4"
-                        >
-                            Cadastre-se agora
-                        </Link>
-                    </div>
-                    <div className="flex items-center gap-2 justify-center py-2 opacity-50">
-                        <Sparkles className="h-3 w-3 text-emerald-500" />
-                        <span className="text-[10px] font-bold uppercase tracking-widest text-slate-400">Powered by Antigravity</span>
-                    </div>
-                </CardFooter>
-            </Card>
+
+                        <div className="text-center pt-2">
+                            <p className="text-xs text-slate-400 font-medium">
+                                Não tem uma conta?{" "}
+                                <Link
+                                    to="/paciente/cadastro"
+                                    className="font-black text-indigo-600 hover:underline"
+                                >
+                                    Cadastre-se agora
+                                </Link>
+                            </p>
+                        </div>
+
+                        <p className="text-center text-[9px] text-slate-400 font-bold uppercase tracking-[0.2em] opacity-50 pt-4">
+                            Sistema de Saúde MyHealthID • Digital Care
+                        </p>
+                    </CardContent>
+                </Card>
+            </div>
         </div>
     );
 };

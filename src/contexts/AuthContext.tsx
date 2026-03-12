@@ -28,7 +28,7 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, nome: string, role?: string, professionalId?: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
   fetchProfile: (userId: string) => Promise<void>;
 }
@@ -83,11 +83,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
-  const signUp = async (email: string, password: string, nome: string) => {
+  const signUp = async (email: string, password: string, nome: string, role: string = 'patient', professionalId?: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: { data: { nome } },
+      options: {
+        data: {
+          nome,
+          role,
+          professional_id: professionalId
+        }
+      },
     });
     return { error };
   };

@@ -2,6 +2,8 @@ import { useState, useLayoutEffect } from 'react';
 import AppSidebar from './AppSidebar';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useAuth } from '@/contexts/AuthContext';
+import { Navigate } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -9,8 +11,13 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
+  const { profile, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+
+  if (!loading && profile?.role === 'patient') {
+    return <Navigate to="/paciente/dashboard" replace />;
+  }
 
   useLayoutEffect(() => {
     const check = () => {

@@ -27,6 +27,7 @@ export default function MyIDResponder() {
                 .maybeSingle();
 
             if (error || !data) {
+                console.error('Evaluation not found or error:', error, token);
                 toast({ title: "Erro", description: "Avaliação não encontrada ou já concluída/inválida.", variant: "destructive" });
                 setLoading(false);
                 return;
@@ -54,12 +55,20 @@ export default function MyIDResponder() {
 
     const handleComplete = async (result: any, rawData: any) => {
         try {
+            console.log('Submitting MyID with token:', token);
             const { data: resp, error } = await supabase.functions.invoke('complete-myid', {
                 body: { token, result, rawData },
             });
 
-            if (error) throw error;
-            if (resp?.error) throw new Error(resp.error);
+            if (error) {
+                console.error('Supabase function error:', error);
+                throw error;
+            }
+            if (resp?.error) {
+                console.error('Function response error:', resp.error);
+                throw new Error(resp.error);
+            }
+            console.log('MyID submission success:', resp);
 
             toast({
                 title: "Sucesso!",

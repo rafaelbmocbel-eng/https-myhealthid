@@ -15,7 +15,7 @@ import {
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
-  Award, Watch, BookOpen,
+  Award, Watch, BookOpen, Send,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1046,6 +1046,17 @@ export default function PacientePerfil() {
                   <h3 className="font-bold text-slate-900 flex items-center gap-2">
                     <Shield className="h-5 w-5 text-indigo-600" /> Status do Portal do Paciente
                   </h3>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-[10px] font-black uppercase tracking-widest border-indigo-200 text-indigo-600 hover:bg-indigo-50"
+                    onClick={() => {
+                      const url = getPersonalPortalUrl(paciente.portal_token);
+                      window.open(url, '_blank');
+                    }}
+                  >
+                    <ExternalLink className="h-3 w-3 mr-1" /> Simular Visão do Paciente
+                  </Button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="space-y-1">

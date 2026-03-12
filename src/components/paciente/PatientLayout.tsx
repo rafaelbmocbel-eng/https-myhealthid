@@ -1,183 +1,166 @@
-import { useAuth } from "@/contexts/AuthContext";
 import { useState, ReactNode } from "react";
-import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import PatientSidebar from "./PatientSidebar";
 import {
-  Activity,
-  LayoutDashboard,
-  Calendar,
-  ClipboardCheck,
-  Award,
-  BookOpen,
-  Watch,
-  CreditCard,
-  User,
-  LogOut,
   Menu,
+  X,
+  Bell,
+  Search,
+  User,
+  LifeBuoy,
+  ShieldCheck,
+  ArrowLeft,
+  ChevronRight,
+  LogOut,
+  Settings
 } from "lucide-react";
-
-export type PatientSection =
-  | "dashboard"
-  | "agenda"
-  | "questionarios"
-  | "atividades"
-  | "diario"
-  | "dispositivo"
-  | "planos"
-  | "perfil";
-
-const menuItems: { icon: any; text: string; section: PatientSection }[] = [
-  { icon: LayoutDashboard, text: "Dashboard", section: "dashboard" },
-  { icon: Calendar, text: "Minha Agenda", section: "agenda" },
-  { icon: ClipboardCheck, text: "Questionários", section: "questionarios" },
-  { icon: Award, text: "Atividades", section: "atividades" },
-  { icon: BookOpen, text: "Diário de Saúde", section: "diario" },
-  { icon: Watch, text: "Meu Dispositivo", section: "dispositivo" },
-  { icon: CreditCard, text: "Planos", section: "planos" },
-  { icon: User, text: "Perfil", section: "perfil" },
-];
+import { Button } from "@/components/ui/button";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { useNavigate, useLocation } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Badge } from "@/components/ui/badge";
 
 interface PatientLayoutProps {
-  activeSection: PatientSection;
-  onSectionChange: (section: PatientSection) => void;
   children: ReactNode;
+  showBackButton?: boolean;
 }
 
-export default function PatientLayout({ activeSection, onSectionChange, children }: PatientLayoutProps) {
-  const { signOut } = useAuth();
+const PatientLayout = ({ children, showBackButton = false }: PatientLayoutProps) => {
+  const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-  const handleLogout = async () => {
-    await signOut();
-    navigate("/paciente/login");
+  // Mapeamento de títulos baseado na rota
+  const pageTitles: Record<string, string> = {
+    "/paciente/dashboard": "Meu Painel",
+    "/paciente/agenda": "Meus Agendamentos",
+    "/paciente/financeiro": "Meu Financeiro",
+    "/paciente/questionarios": "Meus Questionários",
+    "/paciente/atividades": "Minhas Métricas",
+    "/paciente/diario": "Diário Clínico",
+    "/paciente/dispositivo": "Metricas de Dispositivos",
+    "/paciente/planos": "Meus Planos de Cuidado",
+    "/paciente/perfil": "Meus Dados",
   };
 
+  const currentTitle = pageTitles[location.pathname] || "Minha Saúde";
+
   return (
-    <div className="min-h-screen bg-slate-50 flex">
-      {/* Sidebar Desktop */}
-      <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen z-30">
-        <div className="p-6">
-          <div className="flex items-center gap-2 mb-8 cursor-pointer" onClick={() => onSectionChange("dashboard")}>
-            <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200/50">
-              <Activity className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-xl font-black text-slate-900 tracking-tight">Central ID</span>
-          </div>
-          <nav className="space-y-1">
-            {menuItems.map((item) => (
-              <button
-                key={item.section}
-                onClick={() => onSectionChange(item.section)}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
-                  activeSection === item.section
-                    ? "bg-indigo-50 text-indigo-600"
-                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.text}
-              </button>
-            ))}
-          </nav>
-        </div>
-        <div className="mt-auto p-6 border-t border-slate-100">
-          <button
-            onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all text-left"
-          >
-            <LogOut className="h-5 w-5" />
-            Sair da conta
-          </button>
-        </div>
+    <div className="min-h-screen bg-slate-50/50 flex">
+      {/* Desktop Sidebar */}
+      <aside className="hidden lg:block w-72 sticky top-0 h-screen shrink-0">
+        <PatientSidebar />
       </aside>
 
-      {/* Main Content */}
-      <div className="flex-1 flex flex-col">
-        {/* Mobile Header */}
-        <header className="lg:hidden sticky top-0 z-20 bg-white/80 backdrop-blur-xl border-b border-slate-100 px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2 cursor-pointer" onClick={() => onSectionChange("dashboard")}>
-            <div className="h-7 w-7 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Activity className="h-4 w-4 text-white" />
+      {/* Mobile Sidebar */}
+      <Sheet open={isSidebarOpen} onOpenChange={setIsSidebarOpen}>
+        <SheetContent side="left" className="p-0 w-72 border-none">
+          <PatientSidebar onClose={() => setIsSidebarOpen(false)} />
+        </SheetContent>
+      </Sheet>
+
+      {/* Main Content Area */}
+      <main className="flex-1 flex flex-col min-w-0">
+        {/* Header */}
+        <header className="sticky top-0 z-30 bg-white/80 backdrop-blur-md border-b px-4 lg:px-8 h-16 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="lg:hidden"
+              onClick={() => setIsSidebarOpen(true)}
+            >
+              <Menu className="h-5 w-5 text-slate-500" />
+            </Button>
+
+            {showBackButton && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(-1)}
+                className="hidden sm:flex text-slate-500"
+              >
+                <ArrowLeft className="h-5 w-5" />
+              </Button>
+            )}
+
+            <div className="flex flex-col">
+              <div className="flex items-center gap-2">
+                <h1 className="text-sm font-black text-slate-900 tracking-tight">{currentTitle}</h1>
+                <Badge variant="outline" className="text-[10px] bg-indigo-50 text-indigo-700 border-indigo-200">Paciente</Badge>
+              </div>
             </div>
-            <span className="text-lg font-black text-slate-900 tracking-tight">Central ID</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(true)}>
-            <Menu className="h-5 w-5" />
-          </Button>
+
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Quick Actions Search */}
+            <div className="hidden md:flex relative group">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-indigo-600 transition-colors" />
+              <input
+                type="text"
+                placeholder="Buscar no hub..."
+                className="bg-slate-50 border-none rounded-xl pl-9 pr-4 py-2 text-xs font-bold text-slate-900 focus:ring-2 focus:ring-indigo-600 focus:bg-white w-48 transition-all"
+              />
+            </div>
+
+            {/* Notifications */}
+            <Button variant="ghost" size="icon" className="relative group">
+              <Bell className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+              <span className="absolute top-2 right-2 h-2 w-2 bg-indigo-600 rounded-full border-2 border-white animate-pulse" />
+            </Button>
+
+            {/* Profile Dropdown */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 p-1.5 rounded-full hover:bg-slate-50 transition-colors active:scale-95">
+                  <div className="h-8 w-8 rounded-full bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-100 p-[1px]">
+                    <div className="h-full w-full rounded-full bg-white flex items-center justify-center overflow-hidden">
+                      {profile?.nome ? (
+                        <span className="text-xs font-black text-indigo-900">{profile.nome[0]}{profile.sobrenome?.[0] || ''}</span>
+                      ) : (
+                        <User className="h-4 w-4 text-indigo-600" />
+                      )}
+                    </div>
+                  </div>
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-slate-100 shadow-2xl">
+                <DropdownMenuLabel className="p-4">
+                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest mb-1">Logado como</p>
+                  <p className="font-bold text-slate-900">{profile?.nome} {profile?.sobrenome}</p>
+                  <p className="text-[10px] text-slate-500 font-medium truncate">{user?.email}</p>
+                </DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => navigate("/paciente/perfil")} className="rounded-xl p-3 font-bold text-slate-600 hover:text-indigo-600 focus:text-indigo-600 gap-3">
+                  <Settings className="h-4 w-4" /> Configurações
+                </DropdownMenuItem>
+                <DropdownMenuItem className="rounded-xl p-3 font-bold text-slate-600 hover:text-indigo-600 focus:text-indigo-600 gap-3">
+                  <LifeBuoy className="h-4 w-4" /> Central de Ajuda
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => signOut()} className="rounded-xl p-3 font-bold text-red-600 hover:text-red-700 focus:text-red-700 gap-3">
+                  <LogOut className="h-4 w-4" /> Sair do Portal
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </header>
 
-        {/* Page Content */}
-        <main className="flex-1 p-4 lg:p-8 pb-24 lg:pb-8">
+        {/* Content Wrap */}
+        <div className="flex-1 p-4 lg:p-8 overflow-y-auto">
           {children}
-        </main>
-
-        {/* Mobile Bottom Nav */}
-        <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 z-20 px-2 py-1 flex justify-around">
-          {menuItems.slice(0, 5).map((item) => (
-            <button
-              key={item.section}
-              onClick={() => onSectionChange(item.section)}
-              className={cn(
-                "flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg text-[10px] font-bold transition-colors min-w-0",
-                activeSection === item.section ? "text-indigo-600" : "text-slate-400"
-              )}
-            >
-              <item.icon className="h-5 w-5" />
-              <span className="truncate">{item.text.split(" ").pop()}</span>
-            </button>
-          ))}
-          <button
-            onClick={() => setIsSidebarOpen(true)}
-            className="flex flex-col items-center gap-0.5 py-1.5 px-2 rounded-lg text-[10px] font-bold text-slate-400"
-          >
-            <Menu className="h-5 w-5" />
-            <span>Mais</span>
-          </button>
-        </nav>
-      </div>
-
-      {/* Mobile Sidebar Overlay */}
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)}>
-          <div className="w-72 h-full bg-white p-6 shadow-2xl animate-in slide-in-from-left duration-300" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-2 mb-10 cursor-pointer" onClick={() => { onSectionChange("dashboard"); setIsSidebarOpen(false); }}>
-              <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white">
-                <Activity className="h-5 w-5" />
-              </div>
-              <span className="text-xl font-black text-slate-900 tracking-tight">Central ID</span>
-            </div>
-            <nav className="space-y-2">
-              {menuItems.map((item) => (
-                <button
-                  key={item.section}
-                  onClick={() => { onSectionChange(item.section); setIsSidebarOpen(false); }}
-                  className={cn(
-                    "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all",
-                    activeSection === item.section
-                      ? "bg-indigo-50 text-indigo-600 shadow-sm"
-                      : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.text}
-                </button>
-              ))}
-            </nav>
-            <div className="absolute bottom-6 left-6 right-6 pt-6 border-t border-slate-100">
-              <button
-                onClick={handleLogout}
-                className="w-full flex items-center gap-3 px-4 py-3 rounded-2xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all text-left"
-              >
-                <LogOut className="h-5 w-5" />
-                Sair da conta
-              </button>
-            </div>
-          </div>
         </div>
-      )}
+      </main>
     </div>
   );
-}
+};
+
+export default PatientLayout;
