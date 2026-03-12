@@ -43,6 +43,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/paciente/login" element={<PatientLogin />} />
             <Route path="/paciente/cadastro" element={<PatientRegister />} />
+            <Route path="/portal/:token" element={<PatientPortalAccess />} />
 
             {/* Central ID — single patient portal page */}
             <Route path="/paciente/dashboard" element={<CentralID />} />
