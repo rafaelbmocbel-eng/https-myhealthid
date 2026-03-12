@@ -1953,6 +1953,17 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_patient_by_portal_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          id: string
+          nome: string
+          sobrenome: string
+          telefone: string
+          user_id: string
+        }[]
+      }
       has_active_agenda_link: {
         Args: { p_terapeuta_id: string }
         Returns: boolean
