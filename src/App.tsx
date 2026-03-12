@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import PatientLogin from "./pages/paciente/PatientLogin";
 import PatientRegister from "./pages/paciente/PatientRegister";
+import PatientPortalAccess from "./pages/paciente/PatientPortalAccess";
 import CentralID from "./pages/paciente/CentralID";
 import ProfessionalHub from "./pages/ProfessionalHub";
 import Agenda from "./pages/Agenda";
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/paciente/login" element={<PatientLogin />} />
             <Route path="/paciente/cadastro" element={<PatientRegister />} />
+            <Route path="/portal/:token" element={<PatientPortalAccess />} />
 
             {/* Central ID — single patient portal page */}
             <Route path="/paciente/dashboard" element={<CentralID />} />
