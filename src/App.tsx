@@ -12,6 +12,7 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import PatientLogin from "./pages/paciente/PatientLogin";
 import PatientRegister from "./pages/paciente/PatientRegister";
+import PatientPortalAccess from "./pages/paciente/PatientPortalAccess";
 import CentralID from "./pages/paciente/CentralID";
 import ProfessionalHub from "./pages/ProfessionalHub";
 import Agenda from "./pages/Agenda";
