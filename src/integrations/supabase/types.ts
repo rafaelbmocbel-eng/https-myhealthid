@@ -939,11 +939,13 @@ export type Database = {
           id: string
           nome: string
           observacoes: string | null
+          portal_token: string | null
           sexo: string | null
           sobrenome: string
           telefone: string | null
           terapeuta_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean
@@ -956,11 +958,13 @@ export type Database = {
           id?: string
           nome: string
           observacoes?: string | null
+          portal_token?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean
@@ -973,11 +977,13 @@ export type Database = {
           id?: string
           nome?: string
           observacoes?: string | null
+          portal_token?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
