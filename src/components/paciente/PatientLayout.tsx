@@ -27,8 +27,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
+export type PatientSection = "dashboard" | "agenda" | "questionarios" | "atividades" | "diario" | "dispositivo" | "planos" | "perfil";
+
 interface PatientLayoutProps {
   children: ReactNode;
+  activeSection?: PatientSection;
+  onSectionChange?: (section: PatientSection) => void;
   showBackButton?: boolean;
 }
 
