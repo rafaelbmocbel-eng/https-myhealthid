@@ -61,7 +61,7 @@ const PatientPortalAccess = () => {
         setPatient(portalPatient);
 
         const patientPortalEmail = `${portalPatient.id}@portal.myhealthid.app`;
-        if (user?.email && (user.email === patientPortalEmail || user.email === portalPatient.email)) {
+        if (user?.email && user.email === patientPortalEmail) {
           navigate("/paciente/dashboard");
         }
       } catch (err) {
