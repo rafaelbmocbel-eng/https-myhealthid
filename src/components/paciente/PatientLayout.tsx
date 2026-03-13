@@ -36,7 +36,7 @@ interface PatientLayoutProps {
   showBackButton?: boolean;
 }
 
-const PatientLayout = ({ children, showBackButton = false }: PatientLayoutProps) => {
+const PatientLayout = ({ children, activeSection, onSectionChange, showBackButton = false }: PatientLayoutProps) => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

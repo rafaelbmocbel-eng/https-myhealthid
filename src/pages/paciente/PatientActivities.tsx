@@ -12,90 +12,31 @@ import {
     Target,
     BarChart3
 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
-import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import PatientLayout from "@/components/paciente/PatientLayout";
-import { supabase } from "@/integrations/supabase/client";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+
+interface ActivityItem {
+  id: number;
+  title: string;
+  category: string;
+  icon: typeof Zap;
+  points: number;
+  completed: boolean;
+  time: string;
+}
 
 const PatientActivities = () => {
-    const { profile, user } = useAuth();
-    const navigate = useNavigate();
-    const { toast } = useToast();
-    const queryClient = useQueryClient();
+    const { profile } = useAuth();
 
-    // 1. Buscar registro do paciente clínico
-    const { data: pacienteData } = useQuery({
-        queryKey: ["patient-clinical-data", user?.id],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("pacientes")
-                .select("id")
-                .eq("user_id", user?.id)
-                .maybeSingle();
-            return data;
-        },
-        enabled: !!user?.id
-    });
-
-    // 2. Buscar Missões Reais
-    const { data: activities, isLoading } = useQuery({
-        queryKey: ["patient-tasks", pacienteData?.id],
-        queryFn: async () => {
-            if (!pacienteData?.id) return [];
-            const { data } = await supabase
-                .from("patient_tasks")
-                .select("*")
-                .eq("paciente_id", pacienteData.id)
-                .order("created_at", { ascending: false });
-            return data || [];
-        },
-        enabled: !!pacienteData?.id
-    });
-
-    // 3. Mutatação para concluir missão
-    const completeMutation = useMutation({
-        mutationFn: async (taskId: string) => {
-            const task = activities?.find(t => t.id === taskId);
-            if (!task) return;
-
-            // Marcar como concluída
-            const { error: taskError } = await supabase
-                .from("patient_tasks")
-                .update({
-                    completed: true,
-                    completed_at: new Date().toISOString()
-                })
-                .eq("id", taskId);
-
-            if (taskError) throw taskError;
-
-            // Incrementar XP no profile
-            const currentPoints = profile?.total_points || 0;
-            const taskPoints = task.points || 10;
-
-            const { error: profileError } = await supabase
-                .from("profiles")
-                .update({ total_points: currentPoints + taskPoints })
-                .eq("id", profile?.id);
-
-            if (profileError) throw profileError;
-        },
-        onSuccess: () => {
-            toast({
-                title: "Missão Concluída!",
-                description: "XP adicionado ao seu perfil.",
-                className: "bg-indigo-600 text-white border-none rounded-2xl font-bold"
-            });
-            queryClient.invalidateQueries({ queryKey: ["patient-tasks"] });
-            queryClient.invalidateQueries({ queryKey: ["profile"] });
-        }
-    });
+    const activities: ActivityItem[] = [
+        { id: 1, title: "Mobilidade de Quadril", category: "Fisioterapia", icon: Zap, points: 20, completed: false, time: "10 min" },
+        { id: 2, title: "Caminhada Leve", category: "Cardio", icon: Activity, points: 15, completed: true, time: "20 min" },
+        { id: 3, title: "Beber 2L de Água", category: "Hábito", icon: Target, points: 10, completed: false, time: "Diário" },
+    ];
 
     const badges = [
         { name: "Iniciante MyID", icon: Star, color: "text-amber-500", bg: "bg-amber-100" },
@@ -121,19 +62,19 @@ const PatientActivities = () => {
                             <div className="space-y-6 text-center lg:text-left flex-1">
                                 <div className="space-y-2">
                                     <Badge className="bg-indigo-500 text-white hover:bg-indigo-500 border-none font-black text-[10px] uppercase tracking-[0.2em] px-4 py-1 rounded-full shadow-lg shadow-indigo-500/20">
-                                        Nível {profile?.current_level || 'Iniciante'}
+                                        Nível Iniciante
                                     </Badge>
                                     <h2 className="text-4xl font-black italic tracking-tighter leading-none">A caminho da Maestria!</h2>
                                 </div>
                                 <div className="max-w-md space-y-3">
                                     <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-slate-400">
-                                        <span>{profile?.total_points || 0} XP Acumulados</span>
+                                        <span>0 XP Acumulados</span>
                                         <span className="text-indigo-400">Próximo Nível: 1000 XP</span>
                                     </div>
                                     <div className="relative h-4 bg-white/10 rounded-full overflow-hidden border border-white/5 shadow-inner">
                                         <div
                                             className="absolute inset-y-0 left-0 bg-gradient-to-r from-indigo-600 to-indigo-400 rounded-full transition-all duration-1000"
-                                            style={{ width: `${Math.min(((profile?.total_points || 0) / 1000) * 100, 100)}%` }}
+                                            style={{ width: '0%' }}
                                         />
                                     </div>
                                 </div>
@@ -159,7 +100,6 @@ const PatientActivities = () => {
                 </Card>
 
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-                    {/* Atividades Prescritas */}
                     <div className="lg:col-span-2 space-y-8">
                         <div className="flex items-center gap-3">
                             <div className="h-10 w-10 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
@@ -169,7 +109,7 @@ const PatientActivities = () => {
                         </div>
 
                         <div className="grid gap-6">
-                            {(activities || []).map(activity => (
+                            {activities.map(activity => (
                                 <Card key={activity.id} className={cn(
                                     "border-none shadow-xl transition-all overflow-hidden group rounded-[2.5rem] border border-slate-100",
                                     activity.completed ? "bg-slate-50/50 opacity-70" : "bg-white hover:border-indigo-100 hover:shadow-2xl"
@@ -180,9 +120,7 @@ const PatientActivities = () => {
                                                 "w-20 sm:w-24 flex items-center justify-center shrink-0 border-r border-slate-50 transition-colors",
                                                 activity.completed ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
                                             )}>
-                                                {activity.category === 'Fisioterapia' ? <Zap className="h-8 w-8" /> :
-                                                    activity.category === 'Cardio' ? <Activity className="h-8 w-8" /> :
-                                                        <Target className="h-8 w-8" />}
+                                                <activity.icon className="h-8 w-8" />
                                             </div>
                                             <div className="p-8 flex-1 flex flex-col sm:flex-row items-center justify-between gap-6">
                                                 <div className="text-center sm:text-left space-y-2">
@@ -193,27 +131,21 @@ const PatientActivities = () => {
                                                         {activity.title}
                                                     </h4>
                                                     <div className="flex items-center justify-center sm:justify-start gap-4">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {activity.time_estimate || '10 min'}</span>
-                                                        <span className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-indigo-50" /> +{activity.points || 10} XP</span>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {activity.time}</span>
+                                                        <span className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-indigo-50" /> +{activity.points} XP</span>
                                                     </div>
                                                 </div>
                                                 <Button
                                                     size="lg"
                                                     variant={activity.completed ? "secondary" : "default"}
-                                                    onClick={() => !activity.completed && completeMutation.mutate(activity.id)}
                                                     className={cn(
                                                         "rounded-2xl font-black text-[10px] uppercase tracking-widest px-8 shadow-lg active:scale-95 transition-all h-12",
                                                         activity.completed
                                                             ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 cursor-default"
                                                             : "bg-slate-900 text-white hover:bg-black"
                                                     )}
-                                                    disabled={completeMutation.isPending && completeMutation.variables === activity.id}
                                                 >
-                                                    {completeMutation.isPending && completeMutation.variables === activity.id ? (
-                                                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
-                                                    ) : activity.completed ? (
-                                                        <CheckCircle2 className="h-5 w-5 mr-2" />
-                                                    ) : null}
+                                                    {activity.completed ? <CheckCircle2 className="h-5 w-5 mr-2" /> : null}
                                                     {activity.completed ? "Missão Concluída" : "Concluir Missão"}
                                                 </Button>
                                             </div>
@@ -234,7 +166,6 @@ const PatientActivities = () => {
                         </div>
                     </div>
 
-                    {/* Ranking & Badges */}
                     <div className="space-y-10">
                         <section className="space-y-6">
                             <div className="flex items-center gap-3">
@@ -276,15 +207,15 @@ const PatientActivities = () => {
                                             <div key={i} className={cn("flex items-center justify-between p-6 transition-colors", i === 1 ? "bg-amber-50/30" : "hover:bg-slate-50/50")}>
                                                 <div className="flex items-center gap-4">
                                                     <span className={cn("text-2xl font-black w-6 text-center italic leading-none", i === 1 ? "text-amber-500" : "text-slate-200")}>{i}</span>
-                                                    <div className="h-10 w-10 rounded-full bg-slate-100 border-2 border-white shadow-sm flex items-center justify-center font-black text-[10px] text-slate-400">
-                                                        {i === 1 ? "VC" : `U${i}`}
+                                                    <div className={cn("h-10 w-10 rounded-full flex items-center justify-center font-black text-sm", i === 1 ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500")}>
+                                                        {i === 1 ? (profile?.nome?.[0] || "?") : String.fromCharCode(64 + i)}
                                                     </div>
-                                                    <span className="text-sm font-black text-slate-700 uppercase tracking-tight">{i === 1 ? "Você" : `Explorador ${i}`}</span>
+                                                    <div>
+                                                        <p className="font-black text-sm text-slate-900 leading-none">{i === 1 ? (profile?.nome || "Você") : `Participante ${i}`}</p>
+                                                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{i === 1 ? "Você" : "Comunidade"}</p>
+                                                    </div>
                                                 </div>
-                                                <div className="text-right">
-                                                    <span className="text-sm font-black text-slate-900 leading-none">{2000 - i * 300} XP</span>
-                                                    {i === 1 && <div className="h-1 w-full bg-amber-400 rounded-full mt-1" />}
-                                                </div>
+                                                <span className={cn("font-black text-sm", i === 1 ? "text-amber-600" : "text-slate-400")}>{(4 - i) * 120} XP</span>
                                             </div>
                                         ))}
                                     </div>

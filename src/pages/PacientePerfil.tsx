@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getPersonalPortalUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
