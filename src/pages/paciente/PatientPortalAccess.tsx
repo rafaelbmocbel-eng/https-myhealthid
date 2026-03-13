@@ -296,7 +296,7 @@ const PatientPortalAccess = () => {
                 </div>
 
                 <Button
-                  onClick={handleLogin}
+                  onClick={() => handleLogin()}
                   className="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-2xl py-8 shadow-xl shadow-indigo-200 transition-all flex items-center justify-center gap-2 text-lg active:scale-95"
                   disabled={isSubmitting || !inputName || inputDigits.length < 4}
                 >

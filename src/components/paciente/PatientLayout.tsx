@@ -27,12 +27,16 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
+export type PatientSection = "dashboard" | "agenda" | "questionarios" | "atividades" | "diario" | "dispositivo" | "planos" | "perfil";
+
 interface PatientLayoutProps {
   children: ReactNode;
+  activeSection?: PatientSection;
+  onSectionChange?: (section: PatientSection) => void;
   showBackButton?: boolean;
 }
 
-const PatientLayout = ({ children, showBackButton = false }: PatientLayoutProps) => {
+const PatientLayout = ({ children, activeSection, onSectionChange, showBackButton = false }: PatientLayoutProps) => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
