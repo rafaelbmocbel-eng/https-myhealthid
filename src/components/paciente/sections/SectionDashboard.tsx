@@ -20,33 +20,47 @@ interface Props {
 export default function SectionDashboard({ onNavigate }: Props) {
   const { profile, user } = useAuth();
 
-  const { data: nextAppointment, isLoading: loadingAppt } = useQuery({
-    queryKey: ["patient-next-appointment", user?.id],
+  // 1. Get patient record once
+  const { data: pacienteRecord } = useQuery({
+    queryKey: ["patient-record", user?.id],
     queryFn: async () => {
-      const { data: pacienteData } = await supabase
-        .from("pacientes").select("id").eq("email", user?.email).maybeSingle();
-      if (!pacienteData) return null;
       const { data } = await supabase
-        .from("agendamentos")
-        .select("*")
-        .eq("paciente_id", pacienteData.id)
-        .gte("data_inicio", new Date().toISOString())
-        .order("data_inicio", { ascending: true })
-        .limit(1)
+        .from("pacientes")
+        .select("id")
+        .eq("email", user?.email)
         .maybeSingle();
       return data;
     },
     enabled: !!user?.email,
   });
 
-  const { data: pendingQuestionnaires, isLoading: loadingQuests } = useQuery({
-    queryKey: ["patient-pending-questionnaires", user?.id],
+  const { data: nextAppointment, isLoading: loadingAppt } = useQuery({
+    queryKey: ["patient-next-appointment", pacienteRecord?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from("myid_avaliacoes").select("id, status, token_acesso").eq("status", "pendente") as any;
+        .from("agendamentos")
+        .select("*")
+        .eq("paciente_id", pacienteRecord!.id)
+        .gte("data_inicio", new Date().toISOString())
+        .order("data_inicio", { ascending: true })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!pacienteRecord?.id,
+  });
+
+  const { data: pendingQuestionnaires, isLoading: loadingQuests } = useQuery({
+    queryKey: ["patient-pending-questionnaires", pacienteRecord?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("myid_avaliacoes")
+        .select("id, status, token_acesso")
+        .eq("status", "pendente")
+        .eq("paciente_id", pacienteRecord!.id) as any;
       return data || [];
     },
-    enabled: !!user?.email,
+    enabled: !!pacienteRecord?.id,
   });
 
   return (

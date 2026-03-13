@@ -3,19 +3,16 @@ import { useAuth } from "@/contexts/AuthContext";
 import PatientSidebar from "./PatientSidebar";
 import {
   Menu,
-  X,
   Bell,
   Search,
   User,
   LifeBuoy,
-  ShieldCheck,
   ArrowLeft,
-  ChevronRight,
   LogOut,
   Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 import { useNavigate, useLocation } from "react-router-dom";
 import {
   DropdownMenu,
@@ -27,7 +24,17 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Badge } from "@/components/ui/badge";
 
-export type PatientSection = "dashboard" | "agenda" | "questionarios" | "atividades" | "diario" | "dispositivo" | "planos" | "perfil";
+export type PatientSection =
+  | "dashboard"
+  | "agenda"
+  | "questionarios"
+  | "avaliacoes"
+  | "financeiro"
+  | "atividades"
+  | "planos"
+  | "diario"
+  | "dispositivo"
+  | "perfil";
 
 interface PatientLayoutProps {
   children: ReactNode;
@@ -36,7 +43,12 @@ interface PatientLayoutProps {
   showBackButton?: boolean;
 }
 
-const PatientLayout = ({ children, activeSection, onSectionChange, showBackButton = false }: PatientLayoutProps) => {
+const PatientLayout = ({
+  children,
+  showBackButton = false,
+  activeSection,
+  onSectionChange
+}: PatientLayoutProps) => {
   const { user, profile, signOut } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();

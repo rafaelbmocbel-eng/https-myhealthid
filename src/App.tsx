@@ -41,57 +41,96 @@ import { ProtectedRoute } from "./components/ProtectedRoute";
 
 const queryClient = new QueryClient();
 
+import { Component, ErrorInfo } from "react";
+
+class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
+  constructor(props: { children: React.ReactNode }) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error("CRITICAL APP ERROR:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-100 text-center">
+          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md">
+            <h1 className="text-xl font-bold text-rose-600 mb-2">Ops! Ocorreu um erro crítico.</h1>
+            <p className="text-slate-600 mb-6 text-sm">A plataforma encontrou um problema técnico inesperado.</p>
+            <pre className="text-[10px] bg-slate-50 p-4 rounded-lg overflow-auto mb-6 text-left border border-slate-200">
+              {this.state.error?.message}
+            </pre>
+            <button
+              onClick={() => window.location.reload()}
+              className="w-full bg-indigo-600 text-white rounded-xl py-3 font-bold text-sm shadow-lg active:scale-95 transition-all"
+            >
+              Recarregar Sistema
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Routes>
-            {/* Public Routes */}
-            <Route path="/auth" element={<Auth />} />
-            <Route path="/paciente/login" element={<PatientLogin />} />
-            <Route path="/paciente/cadastro" element={<PatientRegister />} />
-            <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
-            <Route path="/agenda/:token" element={<AgendaPublica />} />
-            <Route path="/myid/responder/:token" element={<MyIDResponder />} />
-            <Route path="/funil/:slug" element={<FunilChat />} />
-            <Route path="/portal/:token" element={<PatientPortalAccess />} />
+  <ErrorBoundary>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Routes>
+              {/* Public Routes */}
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/paciente/login" element={<PatientLogin />} />
+              <Route path="/paciente/cadastro" element={<PatientRegister />} />
+              <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
+              <Route path="/agenda/:token" element={<AgendaPublica />} />
+              <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+              <Route path="/funil/:slug" element={<FunilChat />} />
+              <Route path="/portal/:token" element={<PatientPortalAccess />} />
 
-            {/* Professional Protected Routes */}
-            <Route path="/" element={<ProtectedRoute requiredRole="professional"><Index /></ProtectedRoute>} />
-            <Route path="/metodo-identidade" element={<ProtectedRoute requiredRole="professional"><MetodoIdentidade /></ProtectedRoute>} />
-            <Route path="/cob-zero" element={<ProtectedRoute requiredRole="professional"><CobZero /></ProtectedRoute>} />
-            <Route path="/studio-personal-id" element={<ProtectedRoute requiredRole="professional"><StudioPersonalID /></ProtectedRoute>} />
-            <Route path="/hub-paciente" element={<ProtectedRoute requiredRole="professional"><ProfessionalHub /></ProtectedRoute>} />
-            <Route path="/agenda" element={<ProtectedRoute requiredRole="professional"><Agenda /></ProtectedRoute>} />
-            <Route path="/pacientes" element={<ProtectedRoute requiredRole="professional"><Pacientes /></ProtectedRoute>} />
-            <Route path="/pacientes/:id" element={<ProtectedRoute requiredRole="professional"><PacientePerfil /></ProtectedRoute>} />
-            <Route path="/protocolos" element={<ProtectedRoute requiredRole="professional"><Protocolos /></ProtectedRoute>} />
-            <Route path="/relatorios" element={<ProtectedRoute requiredRole="professional"><Relatorios /></ProtectedRoute>} />
-            <Route path="/crm" element={<ProtectedRoute requiredRole="professional"><GestaoVendas /></ProtectedRoute>} />
-            <Route path="/configuracoes" element={<ProtectedRoute requiredRole="professional"><Configuracoes /></ProtectedRoute>} />
+              {/* Professional Protected Routes */}
+              <Route path="/" element={<ProtectedRoute requiredRole="professional"><Index /></ProtectedRoute>} />
+              <Route path="/metodo-identidade" element={<ProtectedRoute requiredRole="professional"><MetodoIdentidade /></ProtectedRoute>} />
+              <Route path="/cob-zero" element={<ProtectedRoute requiredRole="professional"><CobZero /></ProtectedRoute>} />
+              <Route path="/studio-personal-id" element={<ProtectedRoute requiredRole="professional"><StudioPersonalID /></ProtectedRoute>} />
+              <Route path="/hub-paciente" element={<ProtectedRoute requiredRole="professional"><ProfessionalHub /></ProtectedRoute>} />
+              <Route path="/agenda" element={<ProtectedRoute requiredRole="professional"><Agenda /></ProtectedRoute>} />
+              <Route path="/pacientes" element={<ProtectedRoute requiredRole="professional"><Pacientes /></ProtectedRoute>} />
+              <Route path="/pacientes/:id" element={<ProtectedRoute requiredRole="professional"><PacientePerfil /></ProtectedRoute>} />
+              <Route path="/protocolos" element={<ProtectedRoute requiredRole="professional"><Protocolos /></ProtectedRoute>} />
+              <Route path="/relatorios" element={<ProtectedRoute requiredRole="professional"><Relatorios /></ProtectedRoute>} />
+              <Route path="/crm" element={<ProtectedRoute requiredRole="professional"><GestaoVendas /></ProtectedRoute>} />
+              <Route path="/configuracoes" element={<ProtectedRoute requiredRole="professional"><Configuracoes /></ProtectedRoute>} />
 
-            {/* Patient Protected Routes */}
-            <Route path="/paciente/dashboard" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
-            <Route path="/paciente/agenda" element={<ProtectedRoute requiredRole="patient"><PatientAgenda /></ProtectedRoute>} />
-            <Route path="/paciente/agendar" element={<ProtectedRoute requiredRole="patient"><PatientBooking /></ProtectedRoute>} />
-            <Route path="/paciente/financeiro" element={<ProtectedRoute requiredRole="patient"><PatientFinanceiro /></ProtectedRoute>} />
-            <Route path="/paciente/questionarios" element={<ProtectedRoute requiredRole="patient"><PatientQuestionnaires /></ProtectedRoute>} />
-            <Route path="/paciente/avaliacoes" element={<ProtectedRoute requiredRole="patient"><PatientTests /></ProtectedRoute>} />
-            <Route path="/paciente/atividades" element={<ProtectedRoute requiredRole="patient"><PatientActivities /></ProtectedRoute>} />
-            <Route path="/paciente/diario" element={<ProtectedRoute requiredRole="patient"><PatientDiary /></ProtectedRoute>} />
-            <Route path="/paciente/dispositivo" element={<ProtectedRoute requiredRole="patient"><PatientWearable /></ProtectedRoute>} />
-            <Route path="/paciente/planos" element={<ProtectedRoute requiredRole="patient"><PatientPlans /></ProtectedRoute>} />
-            <Route path="/paciente/perfil" element={<ProtectedRoute requiredRole="patient"><PatientProfileSettings /></ProtectedRoute>} />
+              {/* Patient Protected Routes */}
+              <Route path="/paciente/dashboard" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
+              <Route path="/paciente/agenda" element={<ProtectedRoute requiredRole="patient"><PatientAgenda /></ProtectedRoute>} />
+              <Route path="/paciente/agendar" element={<ProtectedRoute requiredRole="patient"><PatientBooking /></ProtectedRoute>} />
+              <Route path="/paciente/financeiro" element={<ProtectedRoute requiredRole="patient"><PatientFinanceiro /></ProtectedRoute>} />
+              <Route path="/paciente/questionarios" element={<ProtectedRoute requiredRole="patient"><PatientQuestionnaires /></ProtectedRoute>} />
+              <Route path="/paciente/avaliacoes" element={<ProtectedRoute requiredRole="patient"><PatientTests /></ProtectedRoute>} />
+              <Route path="/paciente/atividades" element={<ProtectedRoute requiredRole="patient"><PatientActivities /></ProtectedRoute>} />
+              <Route path="/paciente/diario" element={<ProtectedRoute requiredRole="patient"><PatientDiary /></ProtectedRoute>} />
+              <Route path="/paciente/dispositivo" element={<ProtectedRoute requiredRole="patient"><PatientWearable /></ProtectedRoute>} />
+              <Route path="/paciente/planos" element={<ProtectedRoute requiredRole="patient"><PatientPlans /></ProtectedRoute>} />
+              <Route path="/paciente/perfil" element={<ProtectedRoute requiredRole="patient"><PatientProfileSettings /></ProtectedRoute>} />
 
-            <Route path="*" element={<NotFound />} />
-          </Routes >
-        </AuthProvider >
-      </BrowserRouter >
-    </TooltipProvider >
-  </QueryClientProvider >
+              <Route path="*" element={<NotFound />} />
+            </Routes >
+          </AuthProvider >
+        </BrowserRouter >
+      </TooltipProvider >
+    </QueryClientProvider >
+  </ErrorBoundary>
 );
 
 export default App;
