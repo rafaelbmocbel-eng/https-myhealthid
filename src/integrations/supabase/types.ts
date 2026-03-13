@@ -1980,6 +1980,7 @@ export type Database = {
         }[]
       }
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
+      link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never

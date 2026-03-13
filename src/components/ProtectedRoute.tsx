@@ -1,4 +1,4 @@
-import { ReactNode, useEffect } from "react";
+import { ReactNode } from "react";
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { Loader2 } from "lucide-react";
@@ -8,9 +8,16 @@ interface ProtectedRouteProps {
     requiredRole?: "admin" | "professional" | "patient";
 }
 
+const getMetadataRole = (role: unknown): "admin" | "professional" | "patient" | null => {
+    if (role === "admin" || role === "professional" || role === "patient") return role;
+    return null;
+};
+
 export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) => {
     const { user, profile, loading } = useAuth();
     const location = useLocation();
+
+    const resolvedRole = profile?.role ?? getMetadataRole(user?.user_metadata?.role);
 
     if (loading) {
         return (
@@ -21,39 +28,31 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     }
 
     if (!user) {
-        // Redireciona para o login correspondente
         const isPatientPath = location.pathname.startsWith("/paciente");
         return <Navigate to={isPatientPath ? "/paciente/login" : "/auth"} state={{ from: location }} replace />;
     }
 
-    // Se uma role for necessária, verifica se o perfil condiz
-    if (requiredRole && profile?.role !== requiredRole) {
-        // Se o perfil ainda não existe (mas o user sim), evitamos o redirect loop
-        if (!profile) {
+    if (requiredRole && resolvedRole !== requiredRole) {
+        if (!resolvedRole) {
             return (
                 <div className="flex flex-col items-center justify-center h-screen bg-slate-50 p-6 text-center">
                     <Loader2 className="h-8 w-8 animate-spin text-indigo-600 mb-4" />
                     <p className="text-slate-600 font-bold uppercase text-xs tracking-widest">Sincronizando Identidade...</p>
-                    <p className="text-slate-400 text-[10px] mt-2 max-w-xs">Se este processo demorar mais de 10 segundos, tente atualizar a página ou verificar sua conexão.</p>
+                    <p className="text-slate-400 text-[10px] mt-2 max-w-xs">Se este processo demorar mais de 10 segundos, tente atualizar a página.</p>
                 </div>
             );
         }
 
-        // Redirecionamento cruzado: se um paciente tenta ver algo profissional, vai pro dashboard dele
-        if (profile.role === "patient") {
+        if (resolvedRole === "patient") {
             return <Navigate to="/paciente/dashboard" replace />;
         }
 
-        // Se um profissional tenta ver algo de paciente, PERMITIMOS para facilitar testes
-        if (profile.role === "professional" && requiredRole === "patient") {
+        if (resolvedRole === "professional" && requiredRole === "patient") {
             return <>{children}</>;
         }
 
-        // Caso padrão: vai pro root (hub do profissional)
         return <Navigate to="/" replace />;
     }
-
-    return <>{children}</>;
 
     return <>{children}</>;
 };
