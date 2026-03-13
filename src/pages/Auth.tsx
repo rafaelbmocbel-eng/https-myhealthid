@@ -9,7 +9,7 @@ import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 
 export default function Auth() {
-  const { user, signIn, signUp, loading } = useAuth();
+  const { user, profile, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
