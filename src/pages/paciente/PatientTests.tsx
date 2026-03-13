@@ -102,7 +102,7 @@ const PatientTests = () => {
                                                     <Award className="h-7 w-7" />
                                                 </div>
                                                 <div className="space-y-1">
-                                                    <h3 className="text-lg font-black text-slate-900 uppercase italic leading-none">{test.titulo || 'Avaliação MyID'}</h3>
+                                                    <h3 className="text-lg font-black text-slate-900 uppercase italic leading-none">Avaliação MyID</h3>
                                                     <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                                         <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {format(new Date(test.created_at), "dd/MM/yyyy")}</span>
                                                         <span className="flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> Concluído</span>
