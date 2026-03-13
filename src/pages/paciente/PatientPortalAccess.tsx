@@ -104,13 +104,6 @@ const PatientPortalAccess = () => {
         password,
       });
 
-      if (signInResult.error && patient.email && patient.email !== portalEmail) {
-        signInResult = await supabase.auth.signInWithPassword({
-          email: patient.email,
-          password,
-        });
-      }
-
       if (signInResult.error?.message?.toLowerCase().includes("invalid login credentials")) {
         const { error: signUpError } = await supabase.auth.signUp({
           email: portalEmail,
@@ -135,6 +128,13 @@ const PatientPortalAccess = () => {
 
       if (signInResult.error || !signInResult.data.user) {
         throw signInResult.error ?? new Error("Não foi possível autenticar.");
+      }
+
+      if (token) {
+        const { error: linkError } = await supabase.rpc("link_patient_user_by_token", { p_token: token });
+        if (linkError) {
+          console.error("Falha ao vincular paciente ao usuário autenticado:", linkError);
+        }
       }
 
       await supabase.auth.updateUser({
