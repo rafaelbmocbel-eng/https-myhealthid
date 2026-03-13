@@ -100,6 +100,23 @@ const PatientDashboard = () => {
         enabled: !!pacienteData?.id
     });
 
+    // 5. Buscar tarefas totais e concluídas
+    const { data: taskStats, isLoading: loadingTasks } = useQuery({
+        queryKey: ["patient-task-stats", pacienteData?.id],
+        queryFn: async () => {
+            if (!pacienteData?.id) return { total: 0, completed: 0 };
+            const { data } = await supabase
+                .from("patient_tasks")
+                .select("completed")
+                .eq("paciente_id", pacienteData.id);
+
+            const total = data?.length || 0;
+            const completed = data?.filter(t => t.completed).length || 0;
+            return { total, completed };
+        },
+        enabled: !!pacienteData?.id
+    });
+
     return (
         <PatientLayout>
             <div className="space-y-8 max-w-7xl mx-auto">
@@ -261,7 +278,9 @@ const PatientDashboard = () => {
                                 <span className="text-[10px] font-black uppercase tracking-widest text-slate-400">Atividades</span>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-lg font-black text-slate-900 leading-tight">0 <span className="text-slate-300">/</span> 0</p>
+                                <p className="text-lg font-black text-slate-900 leading-tight">
+                                    {loadingTasks ? "..." : `${taskStats?.completed || 0} / ${taskStats?.total || 0}`}
+                                </p>
                                 <p className="text-[10px] text-slate-500 font-black uppercase tracking-wider opacity-60">Foco do Dia</p>
                             </div>
                         </CardContent>
@@ -375,7 +394,7 @@ const PatientDashboard = () => {
                     </Card>
                 </div>
             </div>
-        </PatientLayout>
+        </PatientLayout >
     );
 };
 

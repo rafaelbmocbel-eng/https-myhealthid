@@ -17,19 +17,85 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import PatientLayout from "@/components/paciente/PatientLayout";
+import { supabase } from "@/integrations/supabase/client";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 const PatientActivities = () => {
-    const { profile } = useAuth();
+    const { profile, user } = useAuth();
     const navigate = useNavigate();
+    const { toast } = useToast();
+    const queryClient = useQueryClient();
 
-    // Dados simulados para Atividades e Badges
-    const activities = [
-        { id: 1, title: "Mobilidade de Quadril", category: "Fisioterapia", icon: Zap, points: 20, completed: false, time: "10 min" },
-        { id: 2, title: "Caminhada Leve", category: "Cardio", icon: Activity, points: 15, completed: true, time: "20 min" },
-        { id: 3, title: "Beber 2L de Água", category: "Hábito", icon: Target, points: 10, completed: false, time: "Diário" },
-    ];
+    // 1. Buscar registro do paciente clínico
+    const { data: pacienteData } = useQuery({
+        queryKey: ["patient-clinical-data", user?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("pacientes")
+                .select("id")
+                .eq("user_id", user?.id)
+                .maybeSingle();
+            return data;
+        },
+        enabled: !!user?.id
+    });
+
+    // 2. Buscar Missões Reais
+    const { data: activities, isLoading } = useQuery({
+        queryKey: ["patient-tasks", pacienteData?.id],
+        queryFn: async () => {
+            if (!pacienteData?.id) return [];
+            const { data } = await supabase
+                .from("patient_tasks")
+                .select("*")
+                .eq("paciente_id", pacienteData.id)
+                .order("created_at", { ascending: false });
+            return data || [];
+        },
+        enabled: !!pacienteData?.id
+    });
+
+    // 3. Mutatação para concluir missão
+    const completeMutation = useMutation({
+        mutationFn: async (taskId: string) => {
+            const task = activities?.find(t => t.id === taskId);
+            if (!task) return;
+
+            // Marcar como concluída
+            const { error: taskError } = await supabase
+                .from("patient_tasks")
+                .update({
+                    completed: true,
+                    completed_at: new Date().toISOString()
+                })
+                .eq("id", taskId);
+
+            if (taskError) throw taskError;
+
+            // Incrementar XP no profile
+            const currentPoints = profile?.total_points || 0;
+            const taskPoints = task.points || 10;
+
+            const { error: profileError } = await supabase
+                .from("profiles")
+                .update({ total_points: currentPoints + taskPoints })
+                .eq("id", profile?.id);
+
+            if (profileError) throw profileError;
+        },
+        onSuccess: () => {
+            toast({
+                title: "Missão Concluída!",
+                description: "XP adicionado ao seu perfil.",
+                className: "bg-indigo-600 text-white border-none rounded-2xl font-bold"
+            });
+            queryClient.invalidateQueries({ queryKey: ["patient-tasks"] });
+            queryClient.invalidateQueries({ queryKey: ["profile"] });
+        }
+    });
 
     const badges = [
         { name: "Iniciante MyID", icon: Star, color: "text-amber-500", bg: "bg-amber-100" },
@@ -114,7 +180,9 @@ const PatientActivities = () => {
                                                 "w-20 sm:w-24 flex items-center justify-center shrink-0 border-r border-slate-50 transition-colors",
                                                 activity.completed ? "bg-emerald-50 text-emerald-600" : "bg-indigo-50 text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white"
                                             )}>
-                                                <activity.icon className="h-8 w-8" />
+                                                {activity.category === 'Fisioterapia' ? <Zap className="h-8 w-8" /> :
+                                                    activity.category === 'Cardio' ? <Activity className="h-8 w-8" /> :
+                                                        <Target className="h-8 w-8" />}
                                             </div>
                                             <div className="p-8 flex-1 flex flex-col sm:flex-row items-center justify-between gap-6">
                                                 <div className="text-center sm:text-left space-y-2">
@@ -125,21 +193,28 @@ const PatientActivities = () => {
                                                         {activity.title}
                                                     </h4>
                                                     <div className="flex items-center justify-center sm:justify-start gap-4">
-                                                        <span className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {activity.time}</span>
-                                                        <span className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-indigo-50" /> +{activity.points} XP</span>
+                                                        <span className="text-[10px] font-black text-slate-400 uppercase flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> {activity.time_estimate || '10 min'}</span>
+                                                        <span className="text-[10px] font-black text-indigo-500 uppercase flex items-center gap-1.5"><Star className="h-3.5 w-3.5 fill-indigo-50" /> +{activity.points || 10} XP</span>
                                                     </div>
                                                 </div>
                                                 <Button
                                                     size="lg"
                                                     variant={activity.completed ? "secondary" : "default"}
+                                                    onClick={() => !activity.completed && completeMutation.mutate(activity.id)}
                                                     className={cn(
                                                         "rounded-2xl font-black text-[10px] uppercase tracking-widest px-8 shadow-lg active:scale-95 transition-all h-12",
                                                         activity.completed
                                                             ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100 cursor-default"
                                                             : "bg-slate-900 text-white hover:bg-black"
                                                     )}
+                                                    disabled={completeMutation.isPending && completeMutation.variables === activity.id}
                                                 >
-                                                    {activity.completed ? <CheckCircle2 className="h-5 w-5 mr-2" /> : "Concluir Missão"}
+                                                    {completeMutation.isPending && completeMutation.variables === activity.id ? (
+                                                        <div className="h-5 w-5 border-2 border-white/30 border-t-white rounded-full animate-spin mr-2" />
+                                                    ) : activity.completed ? (
+                                                        <CheckCircle2 className="h-5 w-5 mr-2" />
+                                                    ) : null}
+                                                    {activity.completed ? "Missão Concluída" : "Concluir Missão"}
                                                 </Button>
                                             </div>
                                         </div>
