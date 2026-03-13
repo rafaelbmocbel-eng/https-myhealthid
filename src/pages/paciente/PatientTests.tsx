@@ -145,7 +145,7 @@ const PatientTests = () => {
                                                     <h3 className="text-lg font-black text-slate-900 uppercase italic leading-none">Avaliação COB Zero</h3>
                                                     <div className="flex items-center gap-3 text-xs font-bold text-slate-400 uppercase tracking-widest">
                                                         <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> {format(new Date(test.created_at), "dd/MM/yyyy")}</span>
-                                                        <span className="flex items-center gap-1 text-emerald-600 font-black"><span className="text-[10px] text-slate-300 mr-2">VALOR:</span> {test.score_final?.toFixed(1) || 'N/A'}</span>
+                                                        <span className="flex items-center gap-1 text-emerald-600 font-black"><span className="text-[10px] text-slate-300 mr-2">VALOR:</span> {test.score_e?.toFixed(1) || 'N/A'}</span>
                                                     </div>
                                                 </div>
                                             </div>

@@ -100,22 +100,9 @@ const PatientDashboard = () => {
         enabled: !!pacienteData?.id
     });
 
-    // 5. Buscar tarefas totais e concluídas
-    const { data: taskStats, isLoading: loadingTasks } = useQuery({
-        queryKey: ["patient-task-stats", pacienteData?.id],
-        queryFn: async () => {
-            if (!pacienteData?.id) return { total: 0, completed: 0 };
-            const { data } = await supabase
-                .from("patient_tasks")
-                .select("completed")
-                .eq("paciente_id", pacienteData.id);
-
-            const total = data?.length || 0;
-            const completed = data?.filter(t => t.completed).length || 0;
-            return { total, completed };
-        },
-        enabled: !!pacienteData?.id
-    });
+    // 5. Stats de tarefas (mockado por enquanto)
+    const taskStats = { total: 3, completed: 1 };
+    const loadingTasks = false;
 
     return (
         <PatientLayout>

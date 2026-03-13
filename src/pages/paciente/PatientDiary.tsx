@@ -45,26 +45,16 @@ const PatientDiary = () => {
     const { data: logs, isLoading } = useQuery({
         queryKey: ["patient-daily-logs", user?.id],
         queryFn: async () => {
-            // Se a tabela ainda não existir no Supabase, retornamos vazio para evitar crash
-            const { data, error } = await supabase
-                .from("daily_logs")
-                .select("*")
-                .eq("user_id", user?.id)
-                .order("created_at", { ascending: false })
-                .limit(10);
-
-            if (error) return [];
-            return data || [];
+            // Tabela daily_logs ainda não existe - retornamos vazio
+            return [] as any[];
         },
         enabled: !!user?.id
     });
 
     const mutation = useMutation({
         mutationFn: async (newLog: any) => {
-            const { error } = await supabase
-                .from("daily_logs")
-                .insert([{ ...newLog, user_id: user?.id }]);
-            if (error) throw error;
+            // Tabela daily_logs ainda não existe
+            throw new Error("Funcionalidade em desenvolvimento");
         },
         onSuccess: () => {
             toast({
