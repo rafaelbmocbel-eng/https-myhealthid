@@ -35,6 +35,16 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
+const getRoleFromMetadata = (
+  metadata?: Record<string, unknown>
+): Profile['role'] => {
+  const role = metadata?.role;
+  if (role === 'admin' || role === 'professional' || role === 'patient') {
+    return role;
+  }
+  return 'professional';
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -47,7 +57,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
         if (session?.user) {
-          await fetchProfile(session.user.id);
+          await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
         } else {
           setProfile(null);
           setLoading(false);
@@ -59,7 +69,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        await fetchProfile(session.user.id);
+        await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
       } else {
         setLoading(false);
       }
@@ -68,17 +78,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .maybeSingle();
+  const fetchProfile = async (userId: string, metadata?: Record<string, unknown>) => {
+    const metadataFallback =
+      metadata ??
+      (session?.user?.id === userId ? session.user.user_metadata as Record<string, unknown> : undefined) ??
+      (user?.id === userId ? user.user_metadata as Record<string, unknown> : undefined);
 
-    if (data) {
-      setProfile(data as any as Profile);
+    const resolvedRole = getRoleFromMetadata(metadataFallback);
+
+    try {
+      const { data } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (data) {
+        setProfile({ ...(data as any), role: resolvedRole } as Profile);
+      } else {
+        const fallbackEmail =
+          typeof metadataFallback?.email === 'string'
+            ? metadataFallback.email
+            : session?.user?.email ?? user?.email ?? '';
+
+        const fallbackName =
+          typeof metadataFallback?.nome === 'string'
+            ? metadataFallback.nome
+            : '';
+
+        setProfile({
+          id: userId,
+          user_id: userId,
+          nome: fallbackName,
+          sobrenome: '',
+          email: fallbackEmail,
+          role: resolvedRole,
+        } as Profile);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar perfil:', error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const signIn = async (email: string, password: string) => {
