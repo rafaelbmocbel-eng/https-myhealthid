@@ -8,7 +8,8 @@ import {
     ExternalLink,
     CheckCircle2,
     Activity,
-    Info
+    Info,
+    User
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";

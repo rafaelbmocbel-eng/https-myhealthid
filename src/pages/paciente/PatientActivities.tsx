@@ -169,7 +169,7 @@ const PatientActivities = () => {
                         </div>
 
                         <div className="grid gap-6">
-                            {activities.map(activity => (
+                            {(activities || []).map(activity => (
                                 <Card key={activity.id} className={cn(
                                     "border-none shadow-xl transition-all overflow-hidden group rounded-[2.5rem] border border-slate-100",
                                     activity.completed ? "bg-slate-50/50 opacity-70" : "bg-white hover:border-indigo-100 hover:shadow-2xl"
