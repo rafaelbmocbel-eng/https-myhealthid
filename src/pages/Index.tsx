@@ -312,7 +312,6 @@ export default function Index() {
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
   const fabRef = useRef<HTMLDivElement>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
