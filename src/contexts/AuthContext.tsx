@@ -102,17 +102,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const fetchProfile = async (userId: string, metadata?: Record<string, unknown>) => {
-    // Add a local timeout for this specific fetch operation
-    const fetchTimeout = setTimeout(() => {
-      setLoading(false);
-    }, 4000);
-
     const metadataFallback =
       metadata ??
       (session?.user?.id === userId ? session.user.user_metadata as Record<string, unknown> : undefined) ??
       (user?.id === userId ? user.user_metadata as Record<string, unknown> : undefined);
 
     const resolvedRole = getRoleFromMetadata(metadataFallback);
+
+    // Immediately set a preliminary profile based on metadata to prevent UI hangs
+    const fallbackProfile: Profile = {
+      id: userId,
+      user_id: userId,
+      nome: typeof metadataFallback?.nome === 'string' ? metadataFallback.nome : '',
+      sobrenome: typeof metadataFallback?.sobrenome === 'string' ? metadataFallback.sobrenome : '',
+      email: typeof metadataFallback?.email === 'string'
+        ? metadataFallback.email
+        : session?.user?.email ?? user?.email ?? '',
+      role: resolvedRole,
+    };
+
+    if (!profile) {
+      setProfile(fallbackProfile);
+    }
+
+    // Add a local timeout for this specific fetch operation
+    const fetchTimeout = setTimeout(() => {
+      console.warn('AuthContext: Profile fetch timed out (4s), using metadata fallback.');
+      setLoading(false);
+    }, 4000);
 
     try {
       const { data, error } = await supabase
@@ -126,30 +143,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (data) {
-        setProfile({ ...(data as any), role: resolvedRole } as Profile);
+        // Update with full data from database, but preserve the metadata-derived role if DB role is missing or needs expansion
+        setProfile({ ...(data as any), role: (data as any).role || resolvedRole } as Profile);
       } else {
-        // Fallback using metadata if profile doesn't exist in DB yet
-        const fallbackEmail =
-          typeof metadataFallback?.email === 'string'
-            ? metadataFallback.email
-            : session?.user?.email ?? user?.email ?? '';
-
-        const fallbackName =
-          typeof metadataFallback?.nome === 'string'
-            ? metadataFallback.nome
-            : '';
-
-        setProfile({
-          id: userId,
-          user_id: userId,
-          nome: fallbackName,
-          sobrenome: '',
-          email: fallbackEmail,
-          role: resolvedRole,
-        } as Profile);
+        // Keep the fallback profile if no record in DB
+        setProfile(fallbackProfile);
       }
     } catch (err) {
       console.error('AuthContext: Unexpected error in fetchProfile:', err);
+      if (!profile) setProfile(fallbackProfile);
     } finally {
       clearTimeout(fetchTimeout);
       setLoading(false);

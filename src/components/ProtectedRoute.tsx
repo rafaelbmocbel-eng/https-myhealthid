@@ -34,7 +34,12 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
     }
 
     if (requiredRole && resolvedRole !== requiredRole) {
-        // If we still don't have a resolved role but one is required, show the identity sync screen
+        // Redirecionamento cruzado: se um paciente tenta ver algo profissional, vai pro dashboard dele
+        if (resolvedRole === "patient") {
+            return <Navigate to="/paciente/dashboard" replace />;
+        }
+
+        // If we still don't have a resolved role but one is required, AND we are still in a fuzzy state
         if (!resolvedRole) {
             return (
                 <div className="flex flex-col items-center justify-center h-screen bg-slate-50 p-6 text-center">
@@ -43,11 +48,6 @@ export const ProtectedRoute = ({ children, requiredRole }: ProtectedRouteProps) 
                     <p className="text-slate-400 text-[10px] mt-2 max-w-xs">Se este processo demorar mais de 10 segundos, tente atualizar a página.</p>
                 </div>
             );
-        }
-
-        // Cross-redirection: if a patient tries to see professional content, go to their dashboard
-        if (resolvedRole === "patient") {
-            return <Navigate to="/paciente/dashboard" replace />;
         }
 
         // Professional can see patient content (for testing/admin purposes if needed) or neutral redirect
