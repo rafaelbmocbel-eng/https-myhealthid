@@ -182,6 +182,14 @@ export default function Agenda() {
   } | null>(null);
   const [dragDelta, setDragDelta] = useState({ dy: 0, dx: 0 });
 
+  // Drag confirmation state
+  const [pendingDrag, setPendingDrag] = useState<{
+    agId: string;
+    newStart: string;
+    newEnd: string;
+    label: string;
+  } | null>(null);
+
   // Current time indicator update
   useEffect(() => {
     const tick = () => {
