@@ -1,21 +1,43 @@
 const AUTH_LOCK_PATTERNS = [
-  'Navigator LockManager lock',
+  'navigator lockmanager lock',
+  'exclusive navigator lockmanager lock',
   'lock:sb-',
   'timed out waiting 10000ms',
+  'isacquiretimeout',
 ] as const;
 
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function extractErrorMessage(error: unknown): string {
   if (!error) return '';
   if (typeof error === 'string') return error;
-  if (error instanceof Error) return error.message;
+  if (error instanceof Error) return `${error.message} ${error.stack ?? ''}`;
+
+  if (typeof error === 'object') {
+    const maybeError = error as Record<string, unknown>;
+    const fragments = [
+      maybeError.message,
+      maybeError.details,
+      maybeError.error_description,
+      maybeError.msg,
+      maybeError.code,
+    ].filter((value): value is string => typeof value === 'string' && value.length > 0);
+
+    if (fragments.length > 0) return fragments.join(' | ');
+
+    try {
+      return JSON.stringify(maybeError);
+    } catch {
+      return String(error);
+    }
+  }
+
   return String(error);
 }
 
 export function isAuthLockTimeoutError(error: unknown): boolean {
-  const msg = extractErrorMessage(error);
-  return AUTH_LOCK_PATTERNS.some(pattern => msg.includes(pattern));
+  const msg = extractErrorMessage(error).toLowerCase();
+  return AUTH_LOCK_PATTERNS.some((pattern) => msg.includes(pattern));
 }
 
 interface RetryOptions {

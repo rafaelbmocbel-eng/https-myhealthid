@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Paciente {
   id: string;
@@ -33,14 +34,17 @@ export function usePacientes(filtroServico?: string) {
   const { data: pacientesRaw = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('pacientes')
-        .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
-        .eq('terapeuta_id', user!.id)
-        .eq('ativo', true)
-        .order('nome');
-      if (error) throw error;
-      return data || [];
+      return withAuthLockRetry(async () => {
+        const { data, error } = await supabase
+          .from('pacientes')
+          .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
+          .eq('terapeuta_id', user!.id)
+          .eq('ativo', true)
+          .order('nome');
+
+        if (error) throw error;
+        return data || [];
+      }, { maxAttempts: 4, baseDelayMs: 300 });
     },
     enabled: !!user,
   });
@@ -59,7 +63,7 @@ export function usePacientes(filtroServico?: string) {
   );
 
   const getServicosForPaciente = (pid: string): string[] => {
-    const p = allPacientes.find(x => x.id === pid);
+    const p = allPacientes.find((x) => x.id === pid);
     return p?.servicos || [];
   };
 
@@ -67,7 +71,7 @@ export function usePacientes(filtroServico?: string) {
   // mostramos todos os pacientes ativos (fluxo simplificado — terapeuta vê todos)
   const pacientes = filtroServico && filtroServico !== 'todos'
     ? (() => {
-        const comServico = allPacientes.filter(p => (p.servicos || []).includes(filtroServico));
+        const comServico = allPacientes.filter((p) => (p.servicos || []).includes(filtroServico));
         // Se não houver nenhum com o serviço específico, mostra todos (evita tela vazia)
         return comServico.length > 0 ? comServico : allPacientes;
       })()
