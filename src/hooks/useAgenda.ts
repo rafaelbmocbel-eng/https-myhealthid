@@ -112,7 +112,9 @@ export function useAgenda() {
 
   const createPaciente = async (data: Omit<Paciente, 'id' | 'ativo'>) => {
     if (!user) return null;
-    const { data: novo, error } = await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
+    const { data: novo, error } = await withAuthLockRetry(async () =>
+      await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single()
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao cadastrar paciente', description: error.message, variant: 'destructive' }); return null; }
     await fetchAll();
     return novo as Paciente;
