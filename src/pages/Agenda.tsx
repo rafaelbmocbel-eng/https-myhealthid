@@ -168,8 +168,6 @@ export default function Agenda() {
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
   const gridRef = useRef<HTMLDivElement>(null);
-  const headerRef = useRef<HTMLDivElement>(null);
-  const [headerHeight, setHeaderHeight] = useState(0);
   const { refresh } = useAgenda();
 
   // Drag-and-drop state
@@ -229,8 +227,6 @@ export default function Agenda() {
     }
   }, [viewMode]);
 
-
-
   // Force 6h-20h range as specified
   const startHour = 6;
   const endHour = 20;
@@ -249,14 +245,7 @@ export default function Agenda() {
   };
   const days = getDays();
 
-  // Measure header height for overlay alignment
-  useEffect(() => {
-    if (headerRef.current) {
-      setHeaderHeight(headerRef.current.offsetHeight);
-    }
-  }, [viewMode, days.length]);
-
-
+  // Drag-and-drop handlers — using refs to avoid stale closures
   const draggingRef = useRef(dragging);
   draggingRef.current = dragging;
   const dragDeltaRef = useRef(dragDelta);
@@ -291,9 +280,9 @@ export default function Agenda() {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
-      // Snap to 30-min increments (full hours and half hours)
+      // Snap to 15-min increments
       const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
-      const minutesDelta = Math.round(delta.dy / pxPerMin / 30) * 30;
+      const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
       const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - d.durationMin, d.origStartMin + minutesDelta));
 
       let newDayIndex = d.dayIndex;
@@ -862,7 +851,7 @@ export default function Agenda() {
             {viewMode !== 'mes' && (
               <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
                 {/* Day headers */}
-                <div ref={headerRef} className="border-b border-r bg-card/80 sticky top-0 z-10" />
+                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
                 {days.map(day => (
                   <div
                     key={day.toISOString()}
@@ -939,8 +928,8 @@ export default function Agenda() {
                     gridTemplateColumns: `48px repeat(${days.length}, 1fr)`,
                     position: 'absolute',
                     top: 0, left: 0, right: 0,
-                    // offset by measured header height
-                    marginTop: headerHeight > 0 ? `${headerHeight}px` : '0',
+                    // offset by header height
+                    marginTop: days.length > 0 ? '52px' : '0',
                   }}
                 >
                   {/* Empty time-label column */}
@@ -967,16 +956,16 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute border-l-[5px] px-2 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
+                                'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
                                 'hover:brightness-95 hover:shadow-md transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
-                                top: pos.top,
-                                height: pos.height,
+                                top: pos.top + 2,
+                                height: pos.height - 4,
                                 left: `${leftPct}%`,
-                                width: `${colWidth}%`,
+                                width: `${colWidth - 1}%`,
                                 ...(patientColor ? {
                                   backgroundColor: patientColor.backgroundColor,
                                   borderColor: patientColor.borderColor,
@@ -990,17 +979,23 @@ export default function Agenda() {
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
-                                  {ag.pacientes?.nome
-                                    || ag.titulo
-                                    || (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p?.nome; })()
-                                    || 'Agendamento'}
+                                  {layout.totalCols > 2
+                                    ? (ag.pacientes?.nome || ag.titulo || 'Ag.')
+                                    : (ag.titulo
+                                      || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
+                                      || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
+                                      || 'Agendamento')
+                                  }
                                 </span>
                                 {layout.totalCols > 1 && (
-                                  <span className="ml-auto bg-foreground/10 rounded-full h-4 w-4 flex items-center justify-center text-[9px] font-black shrink-0">
-                                    {layout.col + 1}
-                                  </span>
+                                  <span className="ml-auto text-[8px] opacity-60 shrink-0">{layout.col + 1}/{layout.totalCols}</span>
                                 )}
                               </div>
+                              {layout.totalCols > 1 && (
+                                <div className="absolute top-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-white/40 text-[10px] font-black border border-black/5 shadow-sm">
+                                  {layout.col + 1}
+                                </div>
+                              )}
                               {pos.height > 40 && layout.totalCols <= 3 && (
                                 <div className="text-[8px] opacity-70 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
