@@ -412,10 +412,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
             <Dumbbell className="h-3.5 w-3.5" /> Treinos
           </TabsTrigger>
-          <TabsTrigger
-            value="prontuario"
-            className="text-xs gap-1 border-2 border-emerald-500/40 bg-emerald-50/50 data-[state=active]:bg-emerald-600 data-[state=active]:text-white data-[state=active]:border-emerald-600 font-bold transition-all"
-          >
+          <TabsTrigger value="prontuario" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
             <StickyNote className="h-3.5 w-3.5" /> Evoluções e Prontuário
           </TabsTrigger>
 
