@@ -82,7 +82,9 @@ export function useLinksAvaliacao() {
   };
 
   const cancelarLink = async (id: string) => {
-    await supabase.from('links_avaliacao').update({ status: 'cancelado' }).eq('id', id);
+    await withAuthLockRetry(async () =>
+      await supabase.from('links_avaliacao').update({ status: 'cancelado' }).eq('id', id)
+    , 1, 250);
     qc.invalidateQueries({ queryKey: ['links_avaliacao'] });
     toast({ title: 'Link cancelado' });
   };
