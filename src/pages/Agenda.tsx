@@ -230,6 +230,13 @@ export default function Agenda() {
   }, [viewMode]);
 
 
+  // Measure header height for overlay alignment
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, [viewMode, days.length]);
+
 
   // Force 6h-20h range as specified
   const startHour = 6;
