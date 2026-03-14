@@ -402,7 +402,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                         )
                       ))}
                       {scores['idFinal'] != null && (
-                        <span className="text-primary font-bold">ID {(scores['idFinal'] as number).toFixed(1)}</span>
+                        <span className="text-primary font-bold">ID {Number(scores['idFinal'] as number).toFixed(1)}</span>
                       )}
                     </div>
                   )}

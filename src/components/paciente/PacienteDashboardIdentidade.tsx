@@ -465,7 +465,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         toast({ title: 'Erro ao salvar no banco', description: error.message, variant: 'destructive' });
                       } else {
                         refetchStructural();
-                        toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${sData.scoreStructuralGeneral.toFixed(1)}` });
+                        toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${Number(sData.scoreStructuralGeneral).toFixed(1)}` });
                       }
                     }}
                     onBack={() => setShowStructural(false)}
@@ -539,7 +539,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                         const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
                                         return (
                                           <span key={unitId} className="flex items-center gap-0.5">
-                                            {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{unit.score.toFixed(1)}</span>
+                                            {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{Number(unit.score).toFixed(1)}</span>
                                           </span>
                                         );
                                       })}
@@ -550,7 +550,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   </div>
                                 </div>
                                 <div className="text-right shrink-0 mr-2">
-                                  <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{score.toFixed(1)}</div>
+                                  <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{Number(score).toFixed(1)}</div>
                                   <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
                                 </div>
                                 <Button

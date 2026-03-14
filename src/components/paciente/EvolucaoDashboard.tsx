@@ -260,13 +260,13 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    ID: {(ev.id_final || 0).toFixed(1)}/50
+                    ID: {Number(ev.id_final || 0).toFixed(1)}/50
                     {ev.delta_id_final != null && ev.delta_id_final !== 0 && (
                       <span className={ev.delta_id_final < 0 ? 'text-emerald-600' : 'text-red-500'}>
-                        {' '}({ev.delta_id_final > 0 ? '+' : ''}{ev.delta_id_final.toFixed(1)})
+                        {' '}({ev.delta_id_final > 0 ? '+' : ''}{Number(ev.delta_id_final).toFixed(1)})
                       </span>
                     )}
-                    {' · '}E:{(ev.score_e || 0).toFixed(1)} P:{(ev.score_p || 0).toFixed(1)} D:{(ev.score_d || 0).toFixed(1)} F:{(ev.score_f || 0).toFixed(1)} R:{(ev.score_r || 0).toFixed(1)}
+                    {' · '}E:{Number(ev.score_e || 0).toFixed(1)} P:{Number(ev.score_p || 0).toFixed(1)} D:{Number(ev.score_d || 0).toFixed(1)} F:{Number(ev.score_f || 0).toFixed(1)} R:{Number(ev.score_r || 0).toFixed(1)}
                   </div>
                 </div>
               </div>
