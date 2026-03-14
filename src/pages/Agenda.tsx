@@ -168,6 +168,8 @@ export default function Agenda() {
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
   const gridRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const { refresh } = useAgenda();
 
   // Drag-and-drop state
