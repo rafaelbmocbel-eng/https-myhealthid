@@ -56,16 +56,18 @@ export function useLinksAvaliacao() {
           .eq('status', 'ativo')
       , 1, 250);
 
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .insert({
-          paciente_id: pacienteId,
-          terapeuta_id: user.id,
-          blocos_inclusos: [1, 3, 4, 5],
-          status: 'ativo',
-        })
-        .select()
-        .single();
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .insert({
+            paciente_id: pacienteId,
+            terapeuta_id: user.id,
+            blocos_inclusos: [1, 3, 4, 5],
+            status: 'ativo',
+          })
+          .select()
+          .single()
+      , 1, 250);
 
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links_avaliacao'] });
