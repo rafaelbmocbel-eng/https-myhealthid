@@ -25,7 +25,7 @@ export default function ProfessionalHub() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleInvite = async (paciente?: Profile) => {
+    const handleInvite = async (paciente?: any) => {
         const registerUrl = `${window.location.origin}/paciente/cadastro`;
 
         if (paciente) {
