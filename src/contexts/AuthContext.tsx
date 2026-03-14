@@ -74,7 +74,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const bootstrapSession = async () => {
       try {
-        const { data: { session: currentSession } } = await withAuthLockRetry(() => supabase.auth.getSession());
+        // Single attempt – don't block the UI for 30s on lock contention
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
 
@@ -84,7 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false);
         }
       } catch (error) {
-        console.error('[Auth] Falha ao restaurar sessão:', error);
+        console.warn('[Auth] Sessão não restaurada (lock timeout?). O listener vai tentar novamente.', error);
+        // Don't block the app – onAuthStateChange will fire when lock is released
         setSession(null);
         setUser(null);
         setProfile(null);
