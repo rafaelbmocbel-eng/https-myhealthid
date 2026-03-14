@@ -756,7 +756,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                             <ResponsiveContainer width="100%" height="100%">
                               <RadarChart data={Object.entries(group.allScores).map(([k, v]) => ({
                                 score: k.replace('score', '').toUpperCase(),
-                                valor: Number(v.toFixed(1)),
+                                valor: Number(Number(v).toFixed(1)),
                               }))}>
                                 <PolarGrid className="stroke-border" />
                                 <PolarAngleAxis dataKey="score" tick={{ fontSize: 10, fill: 'hsl(var(--muted-foreground))' }} />
