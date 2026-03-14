@@ -40,19 +40,45 @@ const PatientAgenda = () => {
         enabled: !!user?.id
     });
 
-    const { data: appointments, isLoading, refetch } = useQuery({
+    const { data: appointments = [], isLoading, refetch } = useQuery({
         queryKey: ["patient-all-appointments", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return [];
 
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("agendamentos")
-                .select("*, profiles!agendamentos_terapeuta_id_fkey(nome, sobrenome, especialidade, avatar_url)")
+                .select("id, data_inicio, data_fim, status, tipo_atendimento, terapeuta_id")
                 .eq("paciente_id", pacienteData.id)
                 .neq("status", "cancelado")
                 .order("data_inicio", { ascending: false });
 
-            return data || [];
+            if (error) throw error;
+
+            const rows = data || [];
+            const therapistIds = [...new Set(rows.map((row) => row.terapeuta_id).filter(Boolean))];
+
+            if (therapistIds.length === 0) {
+                return rows.map((row) => ({
+                    ...row,
+                    therapist: null,
+                }));
+            }
+
+            const { data: therapistProfiles, error: therapistError } = await supabase
+                .from("profiles")
+                .select("user_id, nome, sobrenome, especialidade, avatar_url")
+                .in("user_id", therapistIds);
+
+            if (therapistError) {
+                console.error("Erro ao carregar perfis dos terapeutas:", therapistError);
+            }
+
+            const profileByUserId = new Map((therapistProfiles || []).map((p) => [p.user_id, p]));
+
+            return rows.map((row) => ({
+                ...row,
+                therapist: profileByUserId.get(row.terapeuta_id) || null,
+            }));
         },
         enabled: !!pacienteData?.id
     });
@@ -141,7 +167,7 @@ const PatientAgenda = () => {
                                                                     <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
                                                                         <Activity className="h-4 w-4 text-indigo-600" />
                                                                     </div>
-                                                                    Dr(a). {(appt as any).profiles?.nome} {(appt as any).profiles?.sobrenome}
+                                                                    Dr(a). {appt.therapist?.nome || "Terapeuta"} {appt.therapist?.sobrenome || ""}
                                                                 </div>
                                                                 <div className="flex items-center gap-2 text-slate-500 font-bold">
                                                                     <MapPin className="h-4 w-4 text-slate-300" />
@@ -203,9 +229,9 @@ const PatientAgenda = () => {
                                                 </div>
                                                 <div>
                                                     <p className="font-black text-slate-900 text-lg uppercase italic group-hover:text-indigo-600 transition-colors">Sessão Finalizada</p>
-                                                    <p className="text-xs text-slate-400 font-bold tracking-tight mt-1 flex items-center gap-2">
-                                                        <User className="h-3 w-3" /> Dr(a). {(appt as any).profiles?.nome} • {format(new Date(appt.data_inicio), "HH:mm")}
-                                                    </p>
+                                                        <p className="text-xs text-slate-400 font-bold tracking-tight mt-1 flex items-center gap-2">
+                                                            <User className="h-3 w-3" /> Dr(a). {appt.therapist?.nome || "Terapeuta"} • {format(new Date(appt.data_inicio), "HH:mm")}
+                                                        </p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">

@@ -54,30 +54,49 @@ const PatientDashboard = () => {
         queryFn: async () => {
             if (!pacienteData?.id) return null;
 
-            const { data } = await supabase
+            const { data: appointment, error: appointmentError } = await supabase
                 .from("agendamentos")
-                .select("*, profiles!agendamentos_terapeuta_id_fkey(nome, sobrenome, especialidade)")
+                .select("id, data_inicio, data_fim, status, tipo_atendimento, terapeuta_id")
                 .eq("paciente_id", pacienteData.id)
                 .gte("data_inicio", new Date().toISOString())
                 .order("data_inicio", { ascending: true })
                 .limit(1)
                 .maybeSingle();
 
-            return data;
+            if (appointmentError) throw appointmentError;
+            if (!appointment) return null;
+
+            const { data: therapist, error: therapistError } = await supabase
+                .from("profiles")
+                .select("user_id, nome, sobrenome, especialidade, avatar_url")
+                .eq("user_id", appointment.terapeuta_id)
+                .maybeSingle();
+
+            if (therapistError) {
+                console.error("Erro ao buscar terapeuta:", therapistError);
+            }
+
+            return {
+                ...appointment,
+                therapist: therapist ?? null,
+            };
         },
         enabled: !!pacienteData?.id
     });
 
     // 3. Buscar questionários pendentes
-    const { data: pendingQuestionnaires, isLoading: loadingQuests } = useQuery({
+    const { data: pendingQuestionnaires = [], isLoading: loadingQuests } = useQuery({
         queryKey: ["patient-pending-questionnaires", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return [];
-            const { data } = await supabase
+
+            const { data, error } = await supabase
                 .from("myid_avaliacoes")
-                .select("id, titulo, status, token_acesso")
+                .select("id, status, token_acesso, created_at")
                 .eq("paciente_id", pacienteData.id)
                 .eq("status", "pendente");
+
+            if (error) throw error;
             return data || [];
         },
         enabled: !!pacienteData?.id
@@ -88,13 +107,16 @@ const PatientDashboard = () => {
         queryKey: ["patient-latest-evaluation", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return null;
-            const { data } = await supabase
+
+            const { data, error } = await supabase
                 .from("avaliacoes_identidade")
                 .select("score_e, score_p, score_c, score_f, score_d, score_r, score_efi")
                 .eq("paciente_id", pacienteData.id)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
+
+            if (error) throw error;
             return data;
         },
         enabled: !!pacienteData?.id
@@ -150,7 +172,7 @@ const PatientDashboard = () => {
                             </div>
                             <div>
                                 <p className="text-base font-black text-amber-950 uppercase italic tracking-tight">Próxima Consulta: Check-in Aberto</p>
-                                <p className="text-sm text-amber-900/70 font-medium">Prepare-se para sua consulta com Dr(a). {(nextAppointment as any).profiles?.nome}.</p>
+                                <p className="text-sm text-amber-900/70 font-medium">Prepare-se para sua consulta com Dr(a). {nextAppointment.therapist?.nome || "seu terapeuta"}.</p>
                             </div>
                         </div>
                         <Button className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl shadow-xl shadow-amber-200 px-8 h-12">
@@ -209,7 +231,7 @@ const PatientDashboard = () => {
                                         {format(new Date(nextAppointment.data_inicio), "dd 'de' MMM", { locale: ptBR })}
                                     </p>
                                     <p className="text-xs text-slate-500 font-bold truncate opacity-70">
-                                        às {format(new Date(nextAppointment.data_inicio), "HH:mm")} • Dr. {(nextAppointment as any).profiles?.nome}
+                                        às {format(new Date(nextAppointment.data_inicio), "HH:mm")} • Dr. {nextAppointment.therapist?.nome || "Terapeuta"}
                                     </p>
                                 </div>
                             ) : (
@@ -352,7 +374,7 @@ const PatientDashboard = () => {
                                         <div className="flex-1 min-w-0 py-1">
                                             <h4 className="font-black text-slate-900 text-base italic uppercase leading-tight">Consulta de Especialidade</h4>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-2">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-600" /> Dr(a). {(nextAppointment as any).profiles?.nome}
+                                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-600" /> Dr(a). {nextAppointment.therapist?.nome || "Terapeuta"}
                                             </div>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-1">
                                                 <Clock className="h-3.5 w-3.5 text-slate-400" /> {format(new Date(nextAppointment.data_inicio), "HH:mm")}

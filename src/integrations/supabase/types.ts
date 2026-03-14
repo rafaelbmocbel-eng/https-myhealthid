@@ -376,6 +376,53 @@ export type Database = {
           },
         ]
       }
+      daily_logs: {
+        Row: {
+          created_at: string
+          energy: number
+          id: string
+          mood: number
+          notes: string | null
+          paciente_id: string
+          pain: number
+          sleep_hours: number
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          energy?: number
+          id?: string
+          mood?: number
+          notes?: string | null
+          paciente_id: string
+          pain?: number
+          sleep_hours?: number
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          energy?: number
+          id?: string
+          mood?: number
+          notes?: string | null
+          paciente_id?: string
+          pain?: number
+          sleep_hours?: number
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolucao_paciente: {
         Row: {
           avaliacao_anterior_id: string | null
