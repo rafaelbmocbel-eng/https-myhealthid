@@ -118,7 +118,8 @@ export function calcularScoreN(bloco6: MyIDBloco6Data): number {
 }
 
 // ═══════════════════════════════════════════════════════════
-// FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
+// FÓRMULA FINAL v3: MyID = [ Demanda_avg × (1+P/10) × 0.50 + Déficit_avg × 0.35 + N × 0.15 ] - MED
+// Déficit = distância do ótimo (10 - valor). Sono 8 = déficit 2.
 // ═══════════════════════════════════════════════════════════
 // ── Interpretation Utility (Central Source of Truth) ──
 export interface Interpretation {
