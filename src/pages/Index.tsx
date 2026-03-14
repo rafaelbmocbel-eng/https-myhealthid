@@ -18,6 +18,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { PageTransition, StaggerContainer, StaggerItem, FadeIn } from '@/components/PageTransition';
+import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
@@ -367,9 +369,7 @@ export default function Index() {
 
   if (loading) return (
     <AppLayout>
-      <div className="flex items-center justify-center h-96">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
+      <DashboardSkeleton />
     </AppLayout>
   );
 
@@ -397,8 +397,10 @@ export default function Index() {
 
   return (
     <AppLayout>
+      <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-1 sm:px-6">
         {/* Welcome header */}
+        <FadeIn>
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-black text-foreground">
             {saudacao}, {profile?.nome || 'Terapeuta'}! 👋
@@ -407,9 +409,10 @@ export default function Index() {
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
+        </FadeIn>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Pacientes Totais', value: pacientes.length, icon: Users, color: 'text-primary' },
             { label: 'Atendimentos Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
@@ -441,7 +444,7 @@ export default function Index() {
               <div className="text-xs text-muted-foreground mt-1 leading-tight">Próximo Atendimento</div>
             )}
           </div>
-        </div>
+        </StaggerContainer>
 
         {/* Main modules */}
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
@@ -1034,6 +1037,7 @@ export default function Index() {
           {isFabOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-7 w-7 text-white" />}
         </button>
       </div>
+      </PageTransition>
     </AppLayout>
   );
 }
