@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Profile {
   id: string;
@@ -45,13 +46,6 @@ const getRoleFromMetadata = (
   return null;
 };
 
-const isAuthLockTimeoutError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') return false;
-  const message = 'message' in error ? String((error as { message?: string }).message ?? '') : '';
-  return message.includes('Navigator LockManager lock') || message.includes('lock:sb-');
-};
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -93,12 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        let result = await supabase.auth.getSession();
-
-        if (result.error && isAuthLockTimeoutError(result.error)) {
-          await sleep(250);
-          result = await supabase.auth.getSession();
-        }
+        const result = await withAuthLockRetry(async () => await supabase.auth.getSession(), 1, 250);
 
         if (result.error) throw result.error;
 
@@ -149,16 +138,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { data: profileData, error: profileError },
         { data: patientLink, error: patientError },
       ] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle(),
-        supabase
-          .from('pacientes')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle(),
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle()
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('pacientes')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle()
+        , 1, 250),
       ]);
 
       if (profileError) {
@@ -185,13 +178,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    let result = await supabase.auth.signInWithPassword({ email, password });
-
-    if (result.error && isAuthLockTimeoutError(result.error)) {
-      await sleep(250);
-      result = await supabase.auth.signInWithPassword({ email, password });
-    }
-
+    const result = await withAuthLockRetry(async () => await supabase.auth.signInWithPassword({ email, password }), 1, 250);
     return { error: result.error };
   };
 

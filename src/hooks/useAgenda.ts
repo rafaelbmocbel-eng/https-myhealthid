@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Paciente {
   id: string;
@@ -55,43 +56,61 @@ export function useAgenda() {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [agResult, pacResult, cfgResult] = await Promise.all([
-      supabase
-        .from('agendamentos')
-        .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
-        .eq('terapeuta_id', user.id)
-        .order('data_inicio'),
-      supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
-      supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle(),
-    ]);
 
-    if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
-    if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+    try {
+      const [agResult, pacResult, cfgResult] = await Promise.all([
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('agendamentos')
+            .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
+            .eq('terapeuta_id', user.id)
+            .order('data_inicio')
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome')
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle()
+        , 1, 250),
+      ]);
 
-    setAgendamentos((agResult.data as Agendamento[]) || []);
-    setPacientes((pacResult.data as Paciente[]) || []);
-    if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
-    setLoading(false);
+      if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
+      if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+
+      setAgendamentos((agResult.data as Agendamento[]) || []);
+      setPacientes((pacResult.data as Paciente[]) || []);
+      if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
+    } catch (error) {
+      console.error('[useAgenda] fetchAll failed:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
   const createAgendamento = async (data: Omit<Agendamento, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id });
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id })
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Agendamento criado! ✅' });
     await fetchAll();
   };
 
   const updateAgendamento = async (id: string, data: Partial<Agendamento>) => {
-    const { error } = await supabase.from('agendamentos').update(data).eq('id', id);
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').update(data).eq('id', id)
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
     await fetchAll();
   };
 
   const deleteAgendamento = async (id: string) => {
-    const { error } = await supabase.from('agendamentos').delete().eq('id', id);
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').delete().eq('id', id)
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Agendamento removido' });
     await fetchAll();
@@ -99,7 +118,9 @@ export function useAgenda() {
 
   const createPaciente = async (data: Omit<Paciente, 'id' | 'ativo'>) => {
     if (!user) return null;
-    const { data: novo, error } = await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
+    const { data: novo, error } = await withAuthLockRetry(async () =>
+      await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single()
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao cadastrar paciente', description: error.message, variant: 'destructive' }); return null; }
     await fetchAll();
     return novo as Paciente;
@@ -109,8 +130,8 @@ export function useAgenda() {
     if (!user) return;
     const payload = { ...cfg, terapeuta_id: user.id };
     const { error } = cfg.id
-      ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-      : await supabase.from('config_agenda').insert(payload);
+      ? await withAuthLockRetry(async () => await supabase.from('config_agenda').update(payload).eq('id', cfg.id), 1, 250)
+      : await withAuthLockRetry(async () => await supabase.from('config_agenda').insert(payload), 1, 250);
     if (error) { toast({ title: 'Erro ao salvar configuração', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Configurações salvas! ✅' });
     await fetchAll();

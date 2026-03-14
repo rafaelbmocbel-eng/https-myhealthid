@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getAvaliacaoUrl } from '@/utils/linkUrls';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface LinkAvaliacao {
   id: string;
@@ -28,11 +29,13 @@ export function useLinksAvaliacao() {
   const { data: links = [], isLoading } = useQuery({
     queryKey: ['links_avaliacao', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .select('*')
+          .eq('terapeuta_id', user!.id)
+          .order('created_at', { ascending: false })
+      , 1, 250);
       if (error) throw error;
       return data as LinkAvaliacao[];
     },
@@ -44,23 +47,27 @@ export function useLinksAvaliacao() {
     setGerando(true);
     try {
       // Cancela links ativos anteriores para este paciente
-      await supabase
-        .from('links_avaliacao')
-        .update({ status: 'cancelado' })
-        .eq('paciente_id', pacienteId)
-        .eq('terapeuta_id', user.id)
-        .eq('status', 'ativo');
+      await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .update({ status: 'cancelado' })
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user.id)
+          .eq('status', 'ativo')
+      , 1, 250);
 
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .insert({
-          paciente_id: pacienteId,
-          terapeuta_id: user.id,
-          blocos_inclusos: [1, 3, 4, 5],
-          status: 'ativo',
-        })
-        .select()
-        .single();
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .insert({
+            paciente_id: pacienteId,
+            terapeuta_id: user.id,
+            blocos_inclusos: [1, 3, 4, 5],
+            status: 'ativo',
+          })
+          .select()
+          .single()
+      , 1, 250);
 
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links_avaliacao'] });
@@ -75,7 +82,9 @@ export function useLinksAvaliacao() {
   };
 
   const cancelarLink = async (id: string) => {
-    await supabase.from('links_avaliacao').update({ status: 'cancelado' }).eq('id', id);
+    await withAuthLockRetry(async () =>
+      await supabase.from('links_avaliacao').update({ status: 'cancelado' }).eq('id', id)
+    , 1, 250);
     qc.invalidateQueries({ queryKey: ['links_avaliacao'] });
     toast({ title: 'Link cancelado' });
   };
