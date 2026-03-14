@@ -221,6 +221,14 @@ export default function Agenda() {
     return `${h}h ${m}m`;
   }, [proximaSessao, nowMinutes]);
 
+  // Measure header height for precise overlay alignment
+  useEffect(() => {
+    if (headerRef.current) {
+      const h = headerRef.current.getBoundingClientRect().height;
+      if (h > 0) setHeaderHeight(h);
+    }
+  });
+
   // Auto-scroll to current time on day/week view
   useEffect(() => {
     if (viewMode !== 'mes' && gridRef.current) {
