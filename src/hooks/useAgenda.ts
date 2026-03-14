@@ -85,7 +85,9 @@ export function useAgenda() {
 
   const createAgendamento = async (data: Omit<Agendamento, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id });
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id })
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Agendamento criado! ✅' });
     await fetchAll();
