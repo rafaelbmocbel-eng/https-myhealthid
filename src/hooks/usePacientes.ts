@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Paciente {
   id: string;

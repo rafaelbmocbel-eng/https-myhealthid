@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils';
 import { getPersonalPortalUrl } from '@/utils/linkUrls';
 import { sharePortalInvite } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 interface PacienteHub {
   id: string;

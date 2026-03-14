@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getAvaliacaoUrl } from '@/utils/linkUrls';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface LinkAvaliacao {
   id: string;

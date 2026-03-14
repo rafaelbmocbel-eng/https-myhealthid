@@ -38,8 +38,19 @@ import FunilChat from "./pages/FunilChat";
 import { AuthProvider } from "./contexts/AuthContext";
 
 import { ProtectedRoute } from "./components/ProtectedRoute";
+import { isAuthLockTimeoutError } from "./lib/authLock";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (isAuthLockTimeoutError(error)) return failureCount < 5;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex) => Math.min(300 * 2 ** attemptIndex, 2000),
+    },
+  },
+});
 
 import { Component, ErrorInfo } from "react";
 
