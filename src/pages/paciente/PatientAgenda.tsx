@@ -40,19 +40,40 @@ const PatientAgenda = () => {
         enabled: !!user?.id
     });
 
-    const { data: appointments, isLoading, refetch } = useQuery({
+    const { data: appointments = [], isLoading, refetch } = useQuery({
         queryKey: ["patient-all-appointments", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return [];
 
-            const { data } = await supabase
+            const { data, error } = await supabase
                 .from("agendamentos")
-                .select("*, profiles!agendamentos_terapeuta_id_fkey(nome, sobrenome, especialidade, avatar_url)")
+                .select("id, data_inicio, data_fim, status, tipo_atendimento, terapeuta_id")
                 .eq("paciente_id", pacienteData.id)
                 .neq("status", "cancelado")
                 .order("data_inicio", { ascending: false });
 
-            return data || [];
+            if (error) throw error;
+
+            const rows = data || [];
+            const therapistIds = [...new Set(rows.map((row) => row.terapeuta_id).filter(Boolean))];
+
+            if (therapistIds.length === 0) return rows;
+
+            const { data: therapistProfiles, error: therapistError } = await supabase
+                .from("profiles")
+                .select("user_id, nome, sobrenome, especialidade, avatar_url")
+                .in("user_id", therapistIds);
+
+            if (therapistError) {
+                console.error("Erro ao carregar perfis dos terapeutas:", therapistError);
+            }
+
+            const profileByUserId = new Map((therapistProfiles || []).map((p) => [p.user_id, p]));
+
+            return rows.map((row) => ({
+                ...row,
+                therapist: profileByUserId.get(row.terapeuta_id) || null,
+            }));
         },
         enabled: !!pacienteData?.id
     });
