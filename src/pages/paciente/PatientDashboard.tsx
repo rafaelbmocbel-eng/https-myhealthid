@@ -374,7 +374,7 @@ const PatientDashboard = () => {
                                         <div className="flex-1 min-w-0 py-1">
                                             <h4 className="font-black text-slate-900 text-base italic uppercase leading-tight">Consulta de Especialidade</h4>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-2">
-                                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-600" /> Dr(a). {(nextAppointment as any).profiles?.nome}
+                                                <div className="h-1.5 w-1.5 rounded-full bg-indigo-600" /> Dr(a). {nextAppointment.therapist?.nome || "Terapeuta"}
                                             </div>
                                             <div className="flex items-center gap-2 text-xs font-bold text-slate-500 mt-1">
                                                 <Clock className="h-3.5 w-3.5 text-slate-400" /> {format(new Date(nextAppointment.data_inicio), "HH:mm")}
