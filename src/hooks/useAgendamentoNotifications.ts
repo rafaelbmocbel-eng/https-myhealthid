@@ -12,14 +12,18 @@ export function useAgendamentoNotifications() {
   // Fetch initial count of pending auto-agendamentos
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
-    const { count } = await withAuthLockRetry(async () =>
-      await supabase
-        .from('agendamentos')
-        .select('*', { count: 'exact', head: true })
-        .eq('terapeuta_id', user.id)
-        .eq('status', 'pendente')
-    , 1, 250);
-    setPendingCount(count || 0);
+    try {
+      const { count } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('agendamentos')
+          .select('*', { count: 'exact', head: true })
+          .eq('terapeuta_id', user.id)
+          .eq('status', 'pendente')
+      , 1, 250);
+      setPendingCount(count || 0);
+    } catch (error) {
+      console.error('[useAgendamentoNotifications] fetchPendingCount failed:', error);
+    }
   }, [user]);
 
   useEffect(() => {
