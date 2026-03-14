@@ -243,7 +243,7 @@ export function calcularMyID(
   const myidRaw = numerador / denominador;
   const myidScore = Math.min(10, Math.max(0, Math.round(myidRaw * 10) / 10));
 
-  const interp = getMyIDInterpretation(myidScore);
+  const interp = getMyIDInterpretation(myidScore, false, { D: d, EFI: efi, P: p, I: i, N: n });
 
   return {
     myidScore,
