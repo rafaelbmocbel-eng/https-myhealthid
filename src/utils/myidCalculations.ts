@@ -126,63 +126,106 @@ export interface Interpretation {
   color: string;
   recommendation: string;
   isRedFlagElevated?: boolean;
+  dimensionAlerts?: DimensionAlert[];
 }
 
-export function getMyIDInterpretation(score: number, hasRedFlags: boolean = false): Interpretation {
-  const val = score ?? 0;
-  let interp: Interpretation;
+export interface DimensionAlert {
+  dimension: string;
+  label: string;
+  value: number;
+  severity: string;
+}
 
-  if (val < 3) {
-    interp = {
-      status: 'LEVE',
-      label: 'RECUPERAÇÃO FAVORÁVEL',
-      color: '#8b5cf6', // Violet
-      recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.'
-    };
-  } else if (val < 6) {
-    interp = {
-      status: 'MODERADO',
-      label: 'SOBRECARGA MODERADA',
-      color: '#3b82f6', // Blue
-      recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.'
-    };
-  } else if (val < 8) {
-    interp = {
-      status: 'SEVERO',
-      label: 'SOBRECARGA CRÍTICA',
-      color: '#f59e0b', // Amber/Orange
-      recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.'
-    };
-  } else if (val < 9.5) {
-    interp = {
-      status: 'CRÍTICO',
-      label: 'RISCO DE CRONIFICAÇÃO',
-      color: '#ef4444', // Red
-      recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.'
-    };
-  } else {
-    interp = {
-      status: 'EXTREMO',
-      label: 'RISCO DE COLAPSO',
-      color: '#7f1d1d', // Deep Red
-      recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
-    };
+function classifyValue(val: number): { status: string; index: number } {
+  if (val < 3) return { status: 'LEVE', index: 0 };
+  if (val < 6) return { status: 'MODERADO', index: 1 };
+  if (val < 8) return { status: 'SEVERO', index: 2 };
+  if (val < 9.5) return { status: 'CRÍTICO', index: 3 };
+  return { status: 'EXTREMO', index: 4 };
+}
+
+const SEVERITY_META: Record<string, { label: string; color: string; recommendation: string }> = {
+  LEVE: { label: 'RECUPERAÇÃO FAVORÁVEL', color: '#8b5cf6', recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.' },
+  MODERADO: { label: 'SOBRECARGA MODERADA', color: '#3b82f6', recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.' },
+  SEVERO: { label: 'SOBRECARGA CRÍTICA', color: '#f59e0b', recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.' },
+  CRÍTICO: { label: 'RISCO DE CRONIFICAÇÃO', color: '#ef4444', recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.' },
+  EXTREMO: { label: 'RISCO DE COLAPSO', color: '#7f1d1d', recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.' },
+};
+
+const DIMENSION_LABELS: Record<string, string> = {
+  D: 'Dor', EFI: 'Funcionalidade', P: 'Psicológico', I: 'Inércia', N: 'Ruído Sistêmico',
+};
+
+export interface DimensionScores {
+  D?: number;
+  EFI?: number;
+  P?: number;
+  I?: number;
+  N?: number;
+}
+
+/**
+ * Central interpretation function with "worst dimension governs" rule.
+ * The final classification = max(classification by MyID score, classification by worst individual demand).
+ */
+export function getMyIDInterpretation(
+  score: number,
+  hasRedFlags: boolean = false,
+  dimensionScores?: DimensionScores
+): Interpretation {
+  const val = score ?? 0;
+  const baseClassification = classifyValue(val);
+  let finalStatus = baseClassification.status;
+  let finalIndex = baseClassification.index;
+
+  const dimensionAlerts: DimensionAlert[] = [];
+
+  // "Worst dimension governs" rule
+  if (dimensionScores) {
+    const dimensions = Object.entries(dimensionScores) as [string, number | undefined][];
+    for (const [key, dimVal] of dimensions) {
+      if (dimVal === undefined || dimVal === null) continue;
+      const dimClass = classifyValue(dimVal);
+      if (dimClass.index > finalIndex) {
+        finalIndex = dimClass.index;
+        finalStatus = dimClass.status;
+      }
+      // Alert if dimension is >= SEVERO (index >= 2) and pulls classification up
+      if (dimClass.index >= 2 && dimClass.index > baseClassification.index) {
+        dimensionAlerts.push({
+          dimension: key,
+          label: DIMENSION_LABELS[key] || key,
+          value: dimVal,
+          severity: dimClass.status,
+        });
+      }
+    }
   }
 
-  // --- ELEVAÇÃO POR RED FLAGS ---
-  // Se houver Red Flags, o status mínimo é SEVERO, independente do score.
+  const meta = SEVERITY_META[finalStatus] || SEVERITY_META['LEVE'];
+  let interp: Interpretation = {
+    status: finalStatus,
+    label: meta.label,
+    color: meta.color,
+    recommendation: meta.recommendation,
+    dimensionAlerts: dimensionAlerts.length > 0 ? dimensionAlerts : undefined,
+  };
+
+  // Red flag elevation (minimum SEVERO)
   if (hasRedFlags) {
     const severityOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
     const currentIdx = severityOrder.indexOf(interp.status);
     const minIdx = severityOrder.indexOf('SEVERO');
 
     if (currentIdx < minIdx) {
+      const sevMeta = SEVERITY_META['SEVERO'];
       return {
         status: 'SEVERO',
         label: 'SOBRECARGA CRÍTICA (ALERTA)',
-        color: '#f59e0b',
+        color: sevMeta.color,
         recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional imediata.',
-        isRedFlagElevated: true
+        isRedFlagElevated: true,
+        dimensionAlerts: interp.dimensionAlerts,
       };
     }
   }
