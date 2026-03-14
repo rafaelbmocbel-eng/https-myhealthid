@@ -67,41 +67,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }, 5000);
 
+    const scheduleProfileFetch = (nextSession: Session | null) => {
+      if (nextSession?.user) {
+        const metadata = nextSession.user.user_metadata as Record<string, unknown>;
+        setTimeout(() => {
+          void fetchProfile(nextSession.user.id, metadata);
+        }, 0);
+      } else {
+        setProfile(null);
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
-        } else {
-          setProfile(null);
-          setLoading(false);
-          clearTimeout(safetyTimeout);
-        }
+      (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        scheduleProfileFetch(nextSession);
       }
     );
 
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        let result = await supabase.auth.getSession();
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
-        } else {
-          setLoading(false);
+        if (result.error && isAuthLockTimeoutError(result.error)) {
+          await sleep(250);
+          result = await supabase.auth.getSession();
         }
+
+        if (result.error) throw result.error;
+
+        const currentSession = result.data.session;
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        scheduleProfileFetch(currentSession);
       } catch (err) {
         console.error('AuthContext: Session initialization error:', err);
-        setLoading(false); // Forced progression
-      } finally {
-        clearTimeout(safetyTimeout);
+        setLoading(false);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
 
     return () => {
       subscription.unsubscribe();
