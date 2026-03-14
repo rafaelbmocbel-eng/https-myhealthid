@@ -1026,7 +1026,7 @@ export default function PacientePerfil() {
                   <div className="flex items-center justify-between">
                     <Award className="h-8 w-8 opacity-80" />
                     <Badge className="bg-white/20 text-white border-none font-black uppercase text-[10px]">
-                      Nível {paciente.current_level || '1'}
+                      Nível 1
                     </Badge>
                   </div>
                   <div>
