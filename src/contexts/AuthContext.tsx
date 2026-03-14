@@ -87,12 +87,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        let result = await supabase.auth.getSession();
-
-        if (result.error && isAuthLockTimeoutError(result.error)) {
-          await sleep(250);
-          result = await supabase.auth.getSession();
-        }
+        const result = await withAuthLockRetry(async () => await supabase.auth.getSession(), 1, 250);
 
         if (result.error) throw result.error;
 
