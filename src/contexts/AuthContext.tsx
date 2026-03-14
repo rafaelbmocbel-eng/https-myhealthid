@@ -45,6 +45,14 @@ const getRoleFromMetadata = (
   return null;
 };
 
+const isAuthLockTimeoutError = (error: unknown): boolean => {
+  if (!error || typeof error !== 'object') return false;
+  const message = 'message' in error ? String((error as { message?: string }).message ?? '') : '';
+  return message.includes('Navigator LockManager lock') || message.includes('lock:sb-');
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -53,47 +61,58 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('AuthContext: Initialization took too long (>5s). Check Supabase connection or latency.');
-        setLoading(false);
-      }
+      setLoading((wasLoading) => {
+        if (wasLoading) {
+          console.warn('AuthContext: Initialization took too long (>5s). Check Supabase connection or latency.');
+          return false;
+        }
+        return wasLoading;
+      });
     }, 5000);
 
+    const scheduleProfileFetch = (nextSession: Session | null) => {
+      if (nextSession?.user) {
+        const metadata = nextSession.user.user_metadata as Record<string, unknown>;
+        setTimeout(() => {
+          void fetchProfile(nextSession.user.id, metadata);
+        }, 0);
+      } else {
+        setProfile(null);
+        setLoading(false);
+        clearTimeout(safetyTimeout);
+      }
+    };
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
-        } else {
-          setProfile(null);
-          setLoading(false);
-          clearTimeout(safetyTimeout);
-        }
+      (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+        scheduleProfileFetch(nextSession);
       }
     );
 
     const initializeAuth = async () => {
       try {
-        const { data: { session }, error } = await supabase.auth.getSession();
-        if (error) throw error;
+        let result = await supabase.auth.getSession();
 
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          await fetchProfile(session.user.id, session.user.user_metadata as Record<string, unknown>);
-        } else {
-          setLoading(false);
+        if (result.error && isAuthLockTimeoutError(result.error)) {
+          await sleep(250);
+          result = await supabase.auth.getSession();
         }
+
+        if (result.error) throw result.error;
+
+        const currentSession = result.data.session;
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+        scheduleProfileFetch(currentSession);
       } catch (err) {
         console.error('AuthContext: Session initialization error:', err);
-        setLoading(false); // Forced progression
-      } finally {
-        clearTimeout(safetyTimeout);
+        setLoading(false);
       }
     };
 
-    initializeAuth();
+    void initializeAuth();
 
     return () => {
       subscription.unsubscribe();
@@ -166,8 +185,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    let result = await supabase.auth.signInWithPassword({ email, password });
+
+    if (result.error && isAuthLockTimeoutError(result.error)) {
+      await sleep(250);
+      result = await supabase.auth.signInWithPassword({ email, password });
+    }
+
+    return { error: result.error };
   };
 
   const signUp = async (email: string, password: string, nome: string, role: string = 'patient', professionalId?: string) => {
