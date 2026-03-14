@@ -939,7 +939,7 @@ export default function Agenda() {
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     const overlapLayout = getOverlapLayout(dayAgs);
                     return (
-                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
+                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight, overflow: 'hidden' }}>
                         {dayAgs.filter(ag => ag.status !== 'cancelado').map(ag => {
                           const pos = getAgPos(ag);
                           const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
