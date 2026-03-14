@@ -1051,7 +1051,7 @@ export default function PacientePerfil() {
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plano</p>
                     <p className="text-sm font-black text-indigo-600 uppercase italic">
-                      {paciente.plan || 'Básico'}
+                      Básico
                     </p>
                   </div>
                   <div className="space-y-1">
