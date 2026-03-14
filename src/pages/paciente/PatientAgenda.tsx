@@ -162,7 +162,7 @@ const PatientAgenda = () => {
                                                                     <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center">
                                                                         <Activity className="h-4 w-4 text-indigo-600" />
                                                                     </div>
-                                                                    Dr(a). {(appt as any).profiles?.nome} {(appt as any).profiles?.sobrenome}
+                                                                    Dr(a). {appt.therapist?.nome || "Terapeuta"} {appt.therapist?.sobrenome || ""}
                                                                 </div>
                                                                 <div className="flex items-center gap-2 text-slate-500 font-bold">
                                                                     <MapPin className="h-4 w-4 text-slate-300" />
