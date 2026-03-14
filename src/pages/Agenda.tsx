@@ -249,7 +249,14 @@ export default function Agenda() {
   };
   const days = getDays();
 
-  // Drag-and-drop handlers — using refs to avoid stale closures
+  // Measure header height for overlay alignment
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, [viewMode, days.length]);
+
+
   const draggingRef = useRef(dragging);
   draggingRef.current = dragging;
   const dragDeltaRef = useRef(dragDelta);
