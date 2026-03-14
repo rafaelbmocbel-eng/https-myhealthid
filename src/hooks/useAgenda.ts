@@ -94,7 +94,9 @@ export function useAgenda() {
   };
 
   const updateAgendamento = async (id: string, data: Partial<Agendamento>) => {
-    const { error } = await supabase.from('agendamentos').update(data).eq('id', id);
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').update(data).eq('id', id)
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
     await fetchAll();
   };
