@@ -61,10 +61,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     const safetyTimeout = setTimeout(() => {
-      if (loading) {
-        console.warn('AuthContext: Initialization took too long (>5s). Check Supabase connection or latency.');
-        setLoading(false);
-      }
+      setLoading((wasLoading) => {
+        if (wasLoading) {
+          console.warn('AuthContext: Initialization took too long (>5s). Check Supabase connection or latency.');
+          return false;
+        }
+        return wasLoading;
+      });
     }, 5000);
 
     const scheduleProfileFetch = (nextSession: Session | null) => {
