@@ -447,7 +447,7 @@ export default function Index() {
               <div className="text-xs text-muted-foreground mt-1 leading-tight">Próximo Atendimento</div>
             )}
           </div>
-        </div>
+        </StaggerContainer>
 
         {/* Main modules */}
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
