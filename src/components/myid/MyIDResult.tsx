@@ -153,6 +153,24 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                                 </div>
                             )}
                         </div>
+                        {/* Dimension Alerts */}
+                        {dimensionAlerts.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                {dimensionAlerts.map((alert: any) => (
+                                    <div key={alert.dimension} className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                                        <span className="text-lg">🔴</span>
+                                        <div>
+                                            <span className="font-bold text-amber-900">
+                                                Atenção: {alert.label} Elevado(a) ({alert.dimension} = {alert.value.toFixed(1)})
+                                            </span>
+                                            <p className="text-amber-800/80 text-xs mt-0.5">
+                                                Esta dimensão isolada elevou sua classificação para {alert.severity}, mesmo com score geral mais baixo.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )
                     </div>
                 </CardContent>
             </Card>
