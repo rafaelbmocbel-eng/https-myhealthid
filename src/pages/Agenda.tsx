@@ -931,7 +931,7 @@ export default function Agenda() {
                     position: 'absolute',
                     top: 0, left: 0, right: 0,
                     // offset by header height
-                    marginTop: days.length > 0 ? '52px' : '0',
+                    marginTop: `${headerHeight}px`,
                   }}
                 >
                   {/* Empty time-label column */}
