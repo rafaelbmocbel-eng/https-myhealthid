@@ -57,7 +57,12 @@ const PatientAgenda = () => {
             const rows = data || [];
             const therapistIds = [...new Set(rows.map((row) => row.terapeuta_id).filter(Boolean))];
 
-            if (therapistIds.length === 0) return rows;
+            if (therapistIds.length === 0) {
+                return rows.map((row) => ({
+                    ...row,
+                    therapist: null,
+                }));
+            }
 
             const { data: therapistProfiles, error: therapistError } = await supabase
                 .from("profiles")
