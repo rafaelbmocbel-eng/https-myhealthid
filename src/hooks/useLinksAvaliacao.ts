@@ -47,12 +47,14 @@ export function useLinksAvaliacao() {
     setGerando(true);
     try {
       // Cancela links ativos anteriores para este paciente
-      await supabase
-        .from('links_avaliacao')
-        .update({ status: 'cancelado' })
-        .eq('paciente_id', pacienteId)
-        .eq('terapeuta_id', user.id)
-        .eq('status', 'ativo');
+      await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .update({ status: 'cancelado' })
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user.id)
+          .eq('status', 'ativo')
+      , 1, 250);
 
       const { data, error } = await supabase
         .from('links_avaliacao')
