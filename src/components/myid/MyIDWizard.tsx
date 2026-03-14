@@ -24,6 +24,10 @@ export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {
     const totalSteps = 7; // 0=Intro, 1-6=Blocks, 7=Result
     const progressPercent = (step / (totalSteps - 1)) * 100;
 
+    React.useEffect(() => {
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, [step]);
+
     const handleNext = () => {
         if (step === 6) {
             // Calculate final result
