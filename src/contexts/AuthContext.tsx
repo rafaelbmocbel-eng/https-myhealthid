@@ -37,12 +37,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const getRoleFromMetadata = (
   metadata?: Record<string, unknown>
-): Profile['role'] => {
+): Profile['role'] | null => {
   const role = metadata?.role;
   if (role === 'admin' || role === 'professional' || role === 'patient') {
     return role;
   }
-  return 'professional';
+  return null;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
