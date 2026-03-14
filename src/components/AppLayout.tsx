@@ -11,11 +11,13 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { profile, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
+  const metadataRole = user?.user_metadata?.role;
+  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
 
-  if (!loading && profile?.role === 'patient') {
+  if (!loading && resolvedRole === 'patient') {
     return <Navigate to="/paciente/dashboard" replace />;
   }
 

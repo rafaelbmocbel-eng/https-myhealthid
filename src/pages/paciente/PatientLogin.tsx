@@ -16,15 +16,18 @@ const PatientLogin = () => {
     const navigate = useNavigate();
     const { toast } = useToast();
 
+    const metadataRole = user?.user_metadata?.role;
+    const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
+
     useEffect(() => {
-        if (user && profile) {
-            if (profile.role === 'patient') {
+        if (user && resolvedRole) {
+            if (resolvedRole === 'patient') {
                 navigate("/paciente/dashboard");
             } else {
                 navigate("/");
             }
         }
-    }, [user, profile, navigate]);
+    }, [user, resolvedRole, navigate]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
