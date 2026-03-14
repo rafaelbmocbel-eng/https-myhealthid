@@ -366,7 +366,8 @@ export class MyIDCalculator {
         return 'Moderado';
     }
 
-    // ==================== FÓRMULA PRINCIPAL ====================
+    // ==================== FÓRMULA PRINCIPAL v3: Déficit do Ótimo ====================
+    // MyID = [ Demanda_avg × Amplificador_P × 0.50 + Déficit_avg × 0.35 + N × 0.15 ] - MED_buffer
     calculateMyID(): number {
         this.calculateInertia();
         this.calculatePain();
@@ -395,21 +396,32 @@ export class MyIDCalculator {
         const N = this.scores['N'] || 0;
         const MedPenalty = (this.result.med_penalty || 0) + (this.result.hormonal_impact || 0);
 
-        // O fator P (Psicológico) atua como um multiplicador (amplificador) dos sintomas físicos (D + EFI)
-        // E também como uma demanda base aditiva, garantindo que o score reflita carga mesmo sem dor física.
-        const numerator = ((D + EFI) * (1 + (P / 10))) + P + I;
-        const denominator = (R + C + AF + HID + NUT + ERG) - N - MedPenalty;
+        // ── Demanda média (D, EFI, I) ──
+        const demandaAvg = (D + EFI + I) / 3;
 
-        let myid = 10;
-        if (denominator > 0) {
-            myid = numerator / denominator;
-        }
+        // ── Amplificador Psicológico (1.0 a 2.0) ──
+        const amplificadorP = 1 + P / 10;
 
-        myid = Math.min(Math.max(myid, 0), 10);
+        // ── Déficit do Ótimo — distância de cada capacidade ao ideal (10) ──
+        const deficitR = 10 - R;
+        const deficitC = 10 - C;
+        const deficitAF = 10 - AF;
+        const deficitHID = 10 - HID;
+        const deficitNUT = 10 - NUT;
+        const deficitERG = 10 - ERG;
+        const deficitAvg = (deficitR + deficitC + deficitAF + deficitHID + deficitNUT + deficitERG) / 6;
 
-        this.result.MyID = parseFloat(myid.toFixed(2));
-        this.result.numerator = parseFloat(numerator.toFixed(2));
-        this.result.denominator = parseFloat(denominator.toFixed(2));
+        // ── MED buffer ──
+        const medBuffer = Math.min(2, MedPenalty * 0.3);
+
+        // ── Fórmula v3: 50% demanda amplificada + 35% déficit + 15% ruído ──
+        const myidRaw = (demandaAvg * amplificadorP * 0.50) + (deficitAvg * 0.35) + (N * 0.15) - medBuffer;
+        const myid = Math.min(10, Math.max(0, parseFloat(myidRaw.toFixed(2))));
+
+        this.result.MyID = myid;
+        // Store components for display
+        this.result.numerator = parseFloat((demandaAvg * amplificadorP).toFixed(2));
+        this.result.denominator = parseFloat(deficitAvg.toFixed(2));
 
         return this.result.MyID;
     }
