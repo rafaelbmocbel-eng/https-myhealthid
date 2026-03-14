@@ -1040,6 +1040,7 @@ export default function Index() {
           {isFabOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-7 w-7 text-white" />}
         </button>
       </div>
+      </PageTransition>
     </AppLayout>
   );
 }
