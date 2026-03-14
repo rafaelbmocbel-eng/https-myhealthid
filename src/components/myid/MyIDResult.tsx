@@ -105,13 +105,6 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
         recommendation: _recommendation // captured but overridden
     } = result;
 
-    const dimScores = { D, EFI, P, I, N: scores.N ?? scores.N_noise ?? 0 };
-    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected, dimScores);
-    const status = interp.label;
-    const color = interp.color;
-    const recommendation = interp.recommendation;
-    const dimensionAlerts = interp.dimensionAlerts || result.dimension_alerts || [];
-
     const scores = component_scores || {};
     const D = scores.D ?? scores.D_pain ?? 0;
     const EFI = scores.EFI ?? scores.EFI_functionality ?? 0;
@@ -125,6 +118,13 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     const ERG = scores.ERG ?? scores.ERG_ergonomics ?? 0;
     const N = scores.N ?? scores.N_noise ?? 0;
     const MED = scores.MED ?? scores.MED_penalty ?? 0;
+
+    const dimScores = { D, EFI, P, I, N };
+    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected, dimScores);
+    const status = interp.label;
+    const color = interp.color;
+    const recommendation = interp.recommendation;
+    const dimensionAlerts = interp.dimensionAlerts || result.dimension_alerts || [];
 
     const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 

@@ -36,6 +36,7 @@ export class MyIDCalculator {
         color: string;
         recommendation: string;
         MyID: number;
+        dimension_alerts: any[];
     }> = {};
 
 
