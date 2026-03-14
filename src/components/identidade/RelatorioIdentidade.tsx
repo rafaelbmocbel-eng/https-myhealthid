@@ -47,19 +47,19 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
     setSalvo(true);
   };
 
-  const resultado = avaliacao.resultado;
-  const hasRedFlags = resultado.redFlagsDetected || false;
+  const resultado = avaliacao.resultado || {};
+  const hasRedFlags = resultado?.redFlagsDetected || false;
   const dimScores = {
-    D: resultado.componentScores?.D ?? 0,
-    EFI: resultado.componentScores?.EFI ?? 0,
-    P: resultado.componentScores?.P ?? 0,
-    I: resultado.componentScores?.I ?? 0,
-    N: resultado.componentScores?.N ?? 0,
+    D: resultado?.componentScores?.D ?? 0,
+    EFI: resultado?.componentScores?.EFI ?? 0,
+    P: resultado?.componentScores?.P ?? 0,
+    I: resultado?.componentScores?.I ?? 0,
+    N: resultado?.componentScores?.N ?? 0,
   };
-  const interp = getMyIDInterpretation(resultado.myidScore ?? 0, hasRedFlags, dimScores);
+  const interp = getMyIDInterpretation(resultado?.myidScore ?? 0, hasRedFlags, dimScores);
   const myidStatus = interp.label;
   const classificacao = interp.status;
-  const fpData = getMyIDFingerprintData(resultado.componentScores);
+  const fpData = getMyIDFingerprintData(resultado?.componentScores || {});
 
   return (
     <div className="container py-8 max-w-5xl space-y-6">
