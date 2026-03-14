@@ -1,6 +1,7 @@
 // ═══════════════════════════════════════════════════════════
-// Motor de Cálculo MyID v2
-// Fórmula: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
+// Motor de Cálculo MyID v3 — Modelo Déficit do Ótimo
+// Fórmula: MyID = [ Demanda_avg × Amplificador_P × 0.50 + Déficit_avg × 0.35 + N × 0.15 ] - MED_buffer
+// Capacidade é medida como DISTÂNCIA DO IDEAL (10), não como valor absoluto.
 // ═══════════════════════════════════════════════════════════
 
 import type {
