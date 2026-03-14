@@ -168,6 +168,8 @@ export default function Agenda() {
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
   const gridRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(52);
   const { refresh } = useAgenda();
 
   // Drag-and-drop state
@@ -218,6 +220,14 @@ export default function Agenda() {
     const m = diff % 60;
     return `${h}h ${m}m`;
   }, [proximaSessao, nowMinutes]);
+
+  // Measure header height for precise overlay alignment
+  useEffect(() => {
+    if (headerRef.current) {
+      const h = headerRef.current.getBoundingClientRect().height;
+      if (h > 0) setHeaderHeight(h);
+    }
+  });
 
   // Auto-scroll to current time on day/week view
   useEffect(() => {
@@ -851,7 +861,7 @@ export default function Agenda() {
             {viewMode !== 'mes' && (
               <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
                 {/* Day headers */}
-                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
+                <div ref={headerRef} className="border-b border-r bg-card/80 sticky top-0 z-10" />
                 {days.map(day => (
                   <div
                     key={day.toISOString()}
@@ -929,7 +939,7 @@ export default function Agenda() {
                     position: 'absolute',
                     top: 0, left: 0, right: 0,
                     // offset by header height
-                    marginTop: days.length > 0 ? '52px' : '0',
+                    marginTop: `${headerHeight}px`,
                   }}
                 >
                   {/* Empty time-label column */}
