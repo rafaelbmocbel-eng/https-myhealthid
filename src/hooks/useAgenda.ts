@@ -102,7 +102,9 @@ export function useAgenda() {
   };
 
   const deleteAgendamento = async (id: string) => {
-    const { error } = await supabase.from('agendamentos').delete().eq('id', id);
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('agendamentos').delete().eq('id', id)
+    , 1, 250);
     if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Agendamento removido' });
     await fetchAll();
