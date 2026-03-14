@@ -3,7 +3,6 @@ import { Bloco6Data, UnidadeCorporal } from '@/types/identidade';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -12,7 +11,7 @@ import { getSeverityColorHex } from '@/utils/calculations';
 import { BodyAvatarSVG, UC_TO_REGIONS } from './BodyAvatarSVG';
 
 // Structural tissue types that modulate the pain equation
-const TIPOS_ESTRUTURAIS: { id: keyof Pick<UnidadeCorporal, 'scoreMuscular' | 'scoreArticular' | 'scoreLigamentar' | 'scoreNervosa' | 'scoreVisceral'>; label: string; color: string }[] = [
+const TIPOS_ESTRUTURAIS: { id: keyof Pick<UnidadeCorporal, 'scoreMuscular'|'scoreArticular'|'scoreLigamentar'|'scoreNervosa'|'scoreVisceral'>; label: string; color: string }[] = [
   { id: 'scoreMuscular', label: 'Muscular', color: 'bg-blue-100 text-blue-700 border-blue-200' },
   { id: 'scoreArticular', label: 'Articular', color: 'bg-amber-100 text-amber-700 border-amber-200' },
   { id: 'scoreLigamentar', label: 'Ligamentar', color: 'bg-green-100 text-green-700 border-green-200' },
@@ -146,254 +145,208 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
       </div>
 
       {/* Layout: Avatar + units */}
-      <div className="grid grid-cols-1 md:grid-cols-12 gap-6 items-start">
-        {/* Left Column: Body avatar (Sticky) */}
-        <div className="md:col-span-5 sticky top-24">
-          <div className="clinical-card flex flex-col items-center">
-            <h3 className="font-semibold text-sm mb-3 self-start">Mapa Corporal</h3>
-            <p className="text-xs text-muted-foreground mb-3 self-start">
-              Clique em uma região para avaliar os tecidos e achados clínicos
-            </p>
-            <BodyAvatarSVG
-              mode="structural"
-              ucScoreMap={ucScoreMap}
-              highlightedUC={expandedUnit}
-              showBack
-              onRegionClick={(regionId) => {
-                for (const [ucId, regions] of Object.entries(UC_TO_REGIONS)) {
-                  if (regions.includes(regionId)) {
-                    setExpandedUnit(ucId);
-                    break;
-                  }
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        {/* Body avatar */}
+        <div className="clinical-card flex flex-col items-center">
+          <h3 className="font-semibold text-sm mb-3 self-start">Mapa Corporal</h3>
+          <p className="text-xs text-muted-foreground mb-3 self-start">
+            Cada unidade colorida por nível de comprometimento
+          </p>
+          <BodyAvatarSVG
+            mode="structural"
+            ucScoreMap={ucScoreMap}
+            highlightedUC={expandedUnit}
+            showBack
+            onRegionClick={(regionId) => {
+              for (const [ucId, regions] of Object.entries(UC_TO_REGIONS)) {
+                if (regions.includes(regionId)) {
+                  setExpandedUnit(ucId);
+                  break;
                 }
-              }}
-              className="w-full max-w-sm"
-            />
+              }
+            }}
+            className="w-full max-w-xs"
+          />
 
-            {/* Legend */}
-            <div className="flex flex-wrap gap-2 mt-4 text-[10px] self-start">
-              {[
-                { label: 'Normal', color: 'bg-[#e8f4f8]' },
-                { label: 'Leve', color: 'bg-[#fef3c7]' },
-                { label: 'Moderado', color: 'bg-[#f97316]' },
-                { label: 'Severo', color: 'bg-[#ef4444]' },
-              ].map(l => (
-                <div key={l.label} className="flex items-center gap-1">
-                  <div className={`w-2.5 h-2.5 rounded-full ${l.color} border border-border`}></div>
-                  <span>{l.label}</span>
-                </div>
+          {/* Legend */}
+          <div className="flex flex-wrap gap-2 mt-3 text-xs self-start">
+            {[
+              { label: 'Normal', color: 'bg-[#e8f4f8]' },
+              { label: 'Leve', color: 'bg-[#fef3c7]' },
+              { label: 'Moderado', color: 'bg-[#f97316]' },
+              { label: 'Severo', color: 'bg-[#ef4444]' },
+            ].map(l => (
+              <div key={l.label} className="flex items-center gap-1">
+                <div className={`w-3 h-3 rounded-full ${l.color} border border-border`}></div>
+                <span>{l.label}</span>
+              </div>
+            ))}
+          </div>
+
+          {/* Structural types legend */}
+          <div className="mt-4 w-full">
+            <p className="text-xs font-semibold text-muted-foreground mb-2">Estruturas moduladoras:</p>
+            <div className="flex flex-wrap gap-1">
+              {TIPOS_ESTRUTURAIS.map(t => (
+                <span key={t.id} className={`text-xs px-2 py-0.5 rounded-full border font-medium ${t.color}`}>
+                  {t.label}
+                </span>
               ))}
             </div>
-
-            {/* Structural types legend */}
-            <div className="mt-4 w-full pt-4 border-t">
-              <p className="text-[10px] font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Moduladores:</p>
-              <div className="flex flex-wrap gap-1">
-                {TIPOS_ESTRUTURAIS.map(t => (
-                  <span key={t.id} className={`text-[10px] px-2 py-0.5 rounded-full border font-medium ${t.color}`}>
-                    {t.label}
-                  </span>
-                ))}
-              </div>
-            </div>
+            <p className="text-xs text-muted-foreground mt-2">Avalie cada estrutura (0-10) na unidade expandida</p>
           </div>
         </div>
 
-        {/* Right Column: Units panel & Editor */}
-        <div className="md:col-span-7 space-y-4">
-          {/* Unit Selector (Mini-grid) */}
-          <div className="clinical-card p-3">
-            <Label className="text-[10px] font-bold text-muted-foreground uppercase mb-2 block">Navegação Rápida</Label>
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5">
-              {unidades.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => setExpandedUnit(u.id)}
-                  className={`p-1.5 rounded-lg border transition-all text-center flex flex-col items-center justify-center gap-0.5 ${expandedUnit === u.id
-                    ? 'border-primary bg-primary/10 ring-2 ring-primary/20'
-                    : 'border-border hover:border-primary/50 bg-white'
-                    }`}
-                >
-                  <span className="text-sm">{UNIDADES_CONFIG.find(uc => uc.id === u.id)?.emoji}</span>
-                  <span className={`text-[9px] font-bold ${expandedUnit === u.id ? 'text-primary' : 'text-muted-foreground'}`}>
-                    {u.score.toFixed(1)}
-                  </span>
-                </button>
-              ))}
-            </div>
+        {/* Units panel */}
+        <div className="lg:col-span-2 space-y-3">
+          {/* Score mini-grid */}
+          <div className="grid grid-cols-4 gap-2">
+            {unidades.map(u => (
+              <button
+                key={u.id}
+                onClick={() => setExpandedUnit(expandedUnit === u.id ? null : u.id)}
+                className={`p-2 rounded-xl border-2 text-center transition-all cursor-pointer ${
+                  expandedUnit === u.id ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+                }`}
+              >
+                <div className="text-base">{UNIDADES_CONFIG.find(uc => uc.id === u.id)?.emoji}</div>
+                <div className="text-xs font-medium truncate">{u.id}</div>
+                <div className="text-base font-bold" style={{ color: getSeverityColorHex(u.score) }}>
+                  {u.score.toFixed(1)}
+                </div>
+              </button>
+            ))}
           </div>
 
-          {/* Unit Editor */}
-          {expandedUnit ? (() => {
-            const unidade = unidades.find(u => u.id === expandedUnit)!;
-            const config = UNIDADES_CONFIG.find(uc => uc.id === expandedUnit)!;
+          {/* Expandable units */}
+          {unidades.map(unidade => {
+            const config = UNIDADES_CONFIG.find(uc => uc.id === unidade.id)!;
+            const isExpanded = expandedUnit === unidade.id;
 
             return (
-              <div key={unidade.id} className="clinical-card border-l-4 border-l-primary animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-between mb-6">
+              <div
+                key={unidade.id}
+                className={`clinical-card border-2 transition-all ${isExpanded ? 'border-primary' : 'border-border'}`}
+              >
+                <button
+                  className="w-full flex items-center justify-between"
+                  onClick={() => setExpandedUnit(isExpanded ? null : unidade.id)}
+                >
                   <div className="flex items-center gap-3">
-                    <span className="text-3xl p-2 bg-primary/5 rounded-xl">{config.emoji}</span>
-                    <div>
-                      <h3 className="font-bold text-lg leading-tight">{unidade.nome}</h3>
-                      <p className="text-xs text-muted-foreground">ID Unidade: {unidade.id}</p>
+                    <span className="text-xl">{config.emoji}</span>
+                    <div className="text-left">
+                      <div className="font-semibold text-sm">{unidade.nome}</div>
+                      <div className="text-xs text-muted-foreground">
+                        {Object.values(unidade.checklist).filter(Boolean).length}/{config.checklist.length} achados
+                      </div>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <div className="text-[10px] font-bold text-muted-foreground uppercase leading-none mb-1">Score Atual</div>
-                    <div className="text-3xl font-black" style={{ color: getSeverityColorHex(unidade.score) }}>
-                      {unidade.score.toFixed(1)}
+                  <div className="flex items-center gap-3">
+                    <div className="text-2xl font-bold" style={{ color: getSeverityColorHex(unidade.score) }}>
+                      {unidade.score.toFixed(1)}/10
                     </div>
+                    {isExpanded ? <ChevronUp className="h-5 w-5 text-muted-foreground" /> : <ChevronDown className="h-5 w-5 text-muted-foreground" />}
                   </div>
-                </div>
+                </button>
 
-                <div className="space-y-8">
-                  {/* 1. Compromisso Unit Score (PRIORITY) */}
-                  <div className="space-y-4 bg-primary/5 p-4 rounded-xl border-2 border-primary/20 shadow-sm animate-in zoom-in-95 duration-500">
-                    <div className="flex justify-between items-center">
-                      <Label className="text-sm font-bold flex items-center gap-2 text-primary uppercase tracking-wider">
-                        1. Severidade da Unidade
-                      </Label>
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-bold text-muted-foreground uppercase">Sugestão:</span>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            const auto = autoScoreFromChecklist(unidade.checklist, config.checklist.length);
-                            updateUnidade(unidade.id, u => ({ ...u, score: auto }));
-                          }}
-                          className="text-[10px] bg-white border border-primary/30 text-primary px-2 py-0.5 rounded hover:bg-primary/5 transition-colors font-bold"
-                        >
-                          Checklist ({autoScoreFromChecklist(unidade.checklist, config.checklist.length)})
-                        </button>
+                {isExpanded && (
+                  <div className="mt-5 space-y-5 border-t pt-5">
+                    {/* Structural tissue type sliders */}
+                    <div>
+                      <Label className="mb-3 block text-sm font-semibold">Estruturas comprometidas (0-10)</Label>
+                      <div className="space-y-3">
+                        {TIPOS_ESTRUTURAIS.map(tipo => {
+                          const val = unidade[tipo.id] ?? 0;
+                          return (
+                            <div key={tipo.id} className="flex items-center gap-3">
+                              <span className={`text-xs px-2 py-0.5 rounded-full border font-medium w-24 text-center flex-shrink-0 ${tipo.color}`}>
+                                {tipo.label}
+                              </span>
+                              <Slider
+                                value={[val]}
+                                min={0} max={10} step={0.5}
+                                className="flex-1"
+                                onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, [tipo.id]: v }))}
+                              />
+                              <span className="text-sm font-bold w-10 text-right" style={{ color: getSeverityColorHex(val) }}>
+                                {val.toFixed(1)}
+                              </span>
+                            </div>
+                          );
+                        })}
                       </div>
                     </div>
 
-                    {/* Quick Selection Buttons */}
-                    <div className="grid grid-cols-6 gap-1">
-                      {[0, 2, 4, 6, 8, 10].map(val => (
-                        <button
-                          key={val}
-                          onClick={() => updateUnidade(unidade.id, u => ({ ...u, score: val }))}
-                          className={cn(
-                            "py-2 rounded-lg text-xs font-black transition-all border-2",
-                            unidade.score === val
-                              ? "bg-primary text-white border-primary shadow-md scale-105"
-                              : "bg-white text-muted-foreground border-transparent hover:border-primary/30"
-                          )}
-                          style={{
-                            backgroundColor: unidade.score === val ? getSeverityColorHex(val) : undefined,
-                            borderColor: unidade.score === val ? getSeverityColorHex(val) : undefined
-                          }}
-                        >
-                          {val}
-                        </button>
-                      ))}
-                    </div>
-
-                    <div className="pt-2">
+                    {/* Score slider with auto-score button */}
+                    <div>
+                      <div className="flex justify-between items-center mb-2">
+                        <Label>Score de comprometimento</Label>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const auto = autoScoreFromChecklist(unidade.checklist, config.checklist.length);
+                              updateUnidade(unidade.id, u => ({ ...u, score: auto }));
+                            }}
+                            className="text-xs text-primary hover:underline"
+                          >
+                            Auto-calcular do checklist
+                          </button>
+                          <span className="font-bold text-lg" style={{ color: getSeverityColorHex(unidade.score) }}>
+                            {unidade.score.toFixed(1)}/10
+                          </span>
+                        </div>
+                      </div>
                       <Slider
                         value={[unidade.score]}
                         min={0} max={10} step={0.5}
                         onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, score: v }))}
                       />
-                      <div className="flex justify-between text-[10px] text-muted-foreground font-bold px-1 mt-2 uppercase tracking-tight">
-                        <span>Sem Alteração</span>
-                        <span>Comprometimento Crítico</span>
+                      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                        <span>0 = Sem restrição</span><span>10 = Muito comprometido</span>
                       </div>
                     </div>
-                  </div>
 
-                  {/* 2. Structural Sliders */}
-                  <div className="space-y-4 pt-2">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-sm font-bold flex items-center gap-2 text-indigo-900 uppercase tracking-wider">
-                        2. Tecidos Envolvidos
-                      </Label>
-                      <Badge variant="secondary" className="text-[9px] font-black uppercase tracking-widest bg-indigo-50 text-indigo-700">Moduladores</Badge>
-                    </div>
-                    <div className="grid gap-4 bg-muted/20 p-4 rounded-xl border border-dashed border-muted-foreground/30">
-                      {TIPOS_ESTRUTURAIS.map(tipo => {
-                        const val = unidade[tipo.id] ?? 0;
-                        return (
-                          <div key={tipo.id} className="space-y-1.5">
-                            <div className="flex justify-between items-center text-[11px]">
-                              <span className={`px-2 py-0.5 rounded-full border font-bold ${tipo.color}`}>
-                                {tipo.label}
-                              </span>
-                              <span className="font-black text-xs" style={{ color: getSeverityColorHex(val) }}>
-                                {val.toFixed(1)}/10
-                              </span>
-                            </div>
-                            <Slider
-                              value={[val]}
-                              min={0} max={10} step={0.5}
-                              onValueChange={([v]) => updateUnidade(unidade.id, u => ({ ...u, [tipo.id]: v }))}
+                    {/* Checklist */}
+                    <div>
+                      <Label className="mb-2 block">Achados clínicos</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {config.checklist.map(item => (
+                          <div key={item} className="flex items-center gap-2">
+                            <Checkbox
+                              id={`${unidade.id}-${item}`}
+                              checked={(unidade.checklist[item] as boolean) || false}
+                              onCheckedChange={checked => {
+                                const newChecklist = { ...unidade.checklist, [item]: !!checked };
+                                // Achados clínicos NÃO alteram o score de comprometimento da unidade
+                                // Eles servem apenas para direcionar o tratamento
+                                updateUnidade(unidade.id, u => ({ ...u, checklist: newChecklist }));
+                              }}
                             />
+                            <Label htmlFor={`${unidade.id}-${item}`} className="text-sm cursor-pointer">{item}</Label>
                           </div>
-                        );
-                      })}
+                        ))}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* 3. Clinical Findings */}
-                  <div className="space-y-3">
-                    <Label className="text-sm font-bold flex items-center gap-2 text-slate-800 uppercase tracking-wider">
-                      3. Achados Clínicos
-                    </Label>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 bg-white border rounded-xl p-4 shadow-sm">
-                      {config.checklist.map(item => (
-                        <div key={item}
-                          className={cn(
-                            "flex items-center gap-3 p-2 rounded-lg transition-colors cursor-pointer border border-transparent",
-                            unidade.checklist[item] ? "bg-primary/5 border-primary/10" : "hover:bg-muted/30"
-                          )}
-                          onClick={() => {
-                            const newChecklist = { ...unidade.checklist, [item]: !unidade.checklist[item] };
-                            updateUnidade(unidade.id, u => ({ ...u, checklist: newChecklist }));
-                          }}
-                        >
-                          <Checkbox
-                            id={`${unidade.id}-${item}`}
-                            checked={!!unidade.checklist[item]}
-                            className="pointer-events-none"
-                          />
-                          <Label className="text-xs font-semibold cursor-pointer flex-1 line-clamp-1">
-                            {item}
-                          </Label>
-                        </div>
-                      ))}
+                    {/* Observações */}
+                    <div>
+                      <Label>Observações clínicas</Label>
+                      <Textarea
+                        placeholder="Estruturas comprometidas, achados específicos (fáscia, articulação, ligamento, nervo, víscera)..."
+                        value={unidade.observacoes}
+                        onChange={e => updateUnidade(unidade.id, u => ({ ...u, observacoes: e.target.value }))}
+                        className="mt-1.5 resize-none"
+                        rows={2}
+                        maxLength={200}
+                      />
+                      <div className="text-xs text-muted-foreground mt-1">{unidade.observacoes.length}/200</div>
                     </div>
                   </div>
-
-                  {/* 4. Observations */}
-                  <div className="space-y-2 pb-4">
-                    <Label className="text-sm font-bold text-slate-800 uppercase tracking-wider">4. Observações Clínicas</Label>
-                    <Textarea
-                      placeholder="Achados de palpação, mobilidade segmentar, testes provocativos..."
-                      value={unidade.observacoes}
-                      onChange={e => updateUnidade(unidade.id, u => ({ ...u, observacoes: e.target.value }))}
-                      className="resize-none bg-white text-xs min-h-[80px] border-muted-foreground/20 focus:border-primary"
-                      maxLength={200}
-                    />
-                    <div className="flex justify-between items-center px-1">
-                      <p className="text-[10px] text-muted-foreground italic">Relate padrões específicos observados</p>
-                      <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded font-bold">{unidade.observacoes.length}/200</span>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
             );
-          })() : (
-            <div className="clinical-card border-dashed flex flex-col items-center justify-center py-20 text-center space-y-4">
-              <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center text-3xl opacity-50">🧭</div>
-              <div>
-                <h4 className="font-bold text-muted-foreground">Nenhuma unidade selecionada</h4>
-                <p className="text-xs text-muted-foreground max-w-[240px] mt-1 mx-auto">
-                  Toque em uma região no mapa corporal à esquerda para iniciar a avaliação.
-                </p>
-              </div>
-            </div>
-          )}
+          })}
         </div>
       </div>
 

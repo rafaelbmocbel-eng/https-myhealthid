@@ -26,14 +26,14 @@ const TISSUE_TYPES = [
 type TissueKey = typeof TISSUE_TYPES[number]['key'];
 
 const NODE_POSITIONS: Record<string, { x: number; y: number }> = {
-    'UC-1': { x: 300, y: 40 },
-    'UA-2': { x: 140, y: 110 },
-    'UA-1': { x: 460, y: 110 },
-    'UC-2': { x: 300, y: 150 },
-    'UC-3': { x: 300, y: 260 },
-    'UA-4': { x: 140, y: 310 },
-    'UA-3': { x: 460, y: 310 },
-    'UC-4': { x: 300, y: 360 },
+    'UC-1': { x: 300, y: 60 },
+    'UA-2': { x: 80, y: 160 },
+    'UA-1': { x: 520, y: 160 },
+    'UC-2': { x: 300, y: 200 },
+    'UC-3': { x: 300, y: 340 },
+    'UA-4': { x: 80, y: 400 },
+    'UA-3': { x: 520, y: 400 },
+    'UC-4': { x: 300, y: 470 },
 };
 
 function getNodeColor(score: number): string {
@@ -194,7 +194,7 @@ export default function StructuralConnectionMap({ data: rawData, editable = fals
             )}
 
             {/* SVG Map */}
-            <svg viewBox="0 0 600 420" className="w-full max-w-2xl mx-auto" style={{ minHeight: 300 }}>
+            <svg viewBox="0 0 600 540" className="w-full max-w-2xl mx-auto" style={{ minHeight: 320 }}>
                 <defs>
                     {TISSUE_TYPES.map(t => (
                         <marker key={t.key} id={`arr-${t.key}`} markerWidth="8" markerHeight="6" refX="8" refY="3" orient="auto">

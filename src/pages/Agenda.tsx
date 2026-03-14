@@ -34,7 +34,6 @@ type ViewMode = 'dia' | 'semana' | 'mes';
 // Slot duration in minutes
 const SLOT_MINUTES = 60;
 const SLOT_HEIGHT = 80; // px per 60min slot
-const HEADER_HEIGHT = 68; // Altura fixa para o cabeçalho dos dias
 
 const STATUS_CONFIG: Record<string, { bg: string; border: string; text: string; icon: React.ReactNode; label: string }> = {
   confirmado: { bg: 'bg-emerald-50', border: 'border-emerald-400', text: 'text-emerald-800', icon: <CheckCircle2 className="h-3 w-3" />, label: 'Confirmado' },
@@ -269,9 +268,9 @@ export default function Agenda() {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
-      // Snap to 30-min increments (full hour and half hour)
+      // Snap to 15-min increments
       const pxPerMin = SLOT_HEIGHT / SLOT_MINUTES;
-      const minutesDelta = Math.round(delta.dy / pxPerMin / 30) * 30;
+      const minutesDelta = Math.round(delta.dy / pxPerMin / 15) * 15;
       const newStartMin = Math.max(startHour * 60, Math.min(endHour * 60 - d.durationMin, d.origStartMin + minutesDelta));
 
       let newDayIndex = d.dayIndex;
@@ -836,10 +835,7 @@ export default function Agenda() {
             {viewMode !== 'mes' && (
               <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
                 {/* Day headers */}
-                <div
-                  className="border-b border-r bg-card/80 sticky top-0 z-10"
-                  style={{ height: HEADER_HEIGHT }}
-                />
+                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
                 {days.map(day => (
                   <div
                     key={day.toISOString()}
@@ -849,7 +845,6 @@ export default function Agenda() {
                       viewMode === 'semana' && 'cursor-pointer hover:bg-accent/20 transition-colors',
                       isToday(day) ? 'bg-primary/5' : ''
                     )}
-                    style={{ height: HEADER_HEIGHT }}
                   >
                     <div className={cn('text-[10px] font-semibold uppercase text-muted-foreground', isToday(day) && 'text-primary')}>
                       {format(day, 'EEE', { locale: ptBR })}
@@ -918,7 +913,7 @@ export default function Agenda() {
                     position: 'absolute',
                     top: 0, left: 0, right: 0,
                     // offset by header height
-                    marginTop: days.length > 0 ? `${HEADER_HEIGHT}px` : '0',
+                    marginTop: days.length > 0 ? '52px' : '0',
                   }}
                 >
                   {/* Empty time-label column */}

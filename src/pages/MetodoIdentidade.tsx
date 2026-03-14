@@ -468,10 +468,10 @@ export default function MetodoIdentidade() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 sm:gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
           {/* Sidebar - horizontal scroll on mobile, vertical on desktop */}
-          <div className="md:col-span-1">
-            <div className="clinical-card md:sticky md:top-24 !p-3 sm:!p-6">
+          <div className="lg:col-span-1">
+            <div className="clinical-card lg:sticky lg:top-24 !p-3 sm:!p-6">
               <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3 hidden lg:block">Blocos de Avaliação</h3>
               <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1 snap-x snap-mandatory lg:snap-none">
                 {blocos.map(bloco => {
@@ -557,7 +557,7 @@ export default function MetodoIdentidade() {
           </div>
 
           {/* Conteúdo principal */}
-          <div className="md:col-span-3">
+          <div className="lg:col-span-3">
             <div className="animate-slide-in">
               {avaliacao.blocoAtual === 1 && (
                 <Bloco1 data={avaliacao} updateData={updateData} />
