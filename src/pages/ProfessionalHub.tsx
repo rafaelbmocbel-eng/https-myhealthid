@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { useAuth, Profile } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
