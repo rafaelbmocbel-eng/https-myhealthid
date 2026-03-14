@@ -94,7 +94,7 @@ function TodosOsLinks() {
         paciente_id: pacienteId,
         terapeuta_id: user.id,
         data_expiracao: dataExpiracao.toISOString(),
-        blocos_inclusos: [1, 2, 3, 4, 5],
+        blocos_inclusos: [1, 2, 3, 4, 5, 6],
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links-avaliacao-relatorio'] });
