@@ -2,8 +2,6 @@ import { useState, useLayoutEffect } from 'react';
 import AppSidebar from './AppSidebar';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { useAuth } from '@/contexts/AuthContext';
-import { Navigate } from 'react-router-dom';
 
 interface AppLayoutProps {
   children: React.ReactNode;
@@ -11,11 +9,8 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { user, profile, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-  const metadataRole = user?.user_metadata?.role;
-  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
 
   useLayoutEffect(() => {
     const check = () => {
@@ -27,10 +22,6 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
-
-  if (!loading && resolvedRole === 'patient') {
-    return <Navigate to="/paciente/dashboard" replace />;
-  }
 
   // On mobile sidebar is always collapsed (icon-only 72px), on desktop user toggles
   const sidebarCollapsed = isMobile ? true : collapsed;

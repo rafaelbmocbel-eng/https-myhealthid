@@ -2,7 +2,6 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
-import { withAuthLockRetry } from '@/lib/authLock';
 
 export function useAgendamentoNotifications() {
   const { user } = useAuth();
@@ -12,18 +11,12 @@ export function useAgendamentoNotifications() {
   // Fetch initial count of pending auto-agendamentos
   const fetchPendingCount = useCallback(async () => {
     if (!user) return;
-    try {
-      const { count } = await withAuthLockRetry(async () =>
-        await supabase
-          .from('agendamentos')
-          .select('*', { count: 'exact', head: true })
-          .eq('terapeuta_id', user.id)
-          .eq('status', 'pendente')
-      , 1, 250);
-      setPendingCount(count || 0);
-    } catch (error) {
-      console.error('[useAgendamentoNotifications] fetchPendingCount failed:', error);
-    }
+    const { count } = await supabase
+      .from('agendamentos')
+      .select('*', { count: 'exact', head: true })
+      .eq('terapeuta_id', user.id)
+      .eq('status', 'pendente');
+    setPendingCount(count || 0);
   }, [user]);
 
   useEffect(() => {

@@ -9,31 +9,14 @@ import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 
 export default function Auth() {
-  const { user, profile, signIn, signUp, loading } = useAuth();
+  const { user, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
 
-  const metadataRole = user?.user_metadata?.role;
-  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
-
-  if (!loading && user) {
-    if (resolvedRole === 'patient') {
-      return <Navigate to="/paciente/dashboard" replace />;
-    }
-
-    if (resolvedRole === 'professional' || resolvedRole === 'admin') {
-      return <Navigate to="/agenda" replace />;
-    }
-
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
+  if (!loading && user) return <Navigate to="/agenda" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

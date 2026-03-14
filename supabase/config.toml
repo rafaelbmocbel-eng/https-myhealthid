@@ -15,8 +15,5 @@ verify_jwt = false
 [functions.validar-token-avaliacao]
 verify_jwt = false
 
-[functions.validar-token-agenda]
-verify_jwt = false
-
 [functions.send-whatsapp]
 verify_jwt = true

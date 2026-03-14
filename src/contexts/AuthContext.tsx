@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
-import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Profile {
   id: string;
@@ -29,23 +28,12 @@ interface AuthContextType {
   profile: Profile | null;
   loading: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
-  signUp: (email: string, password: string, nome: string, role?: string, professionalId?: string) => Promise<{ error: Error | null }>;
+  signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  fetchProfile: (userId: string, metadata?: Record<string, unknown>) => Promise<void>;
+  fetchProfile: (userId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
-const getRoleFromMetadata = (
-  metadata?: Record<string, unknown>
-): Profile['role'] | null => {
-  const role = metadata?.role;
-  if (role === 'admin' || role === 'professional' || role === 'patient') {
-    return role;
-  }
-  return null;
-};
-
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
@@ -54,145 +42,52 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const safetyTimeout = setTimeout(() => {
-      setLoading((wasLoading) => {
-        if (wasLoading) {
-          console.warn('AuthContext: Initialization took too long (>5s). Check Supabase connection or latency.');
-          return false;
-        }
-        return wasLoading;
-      });
-    }, 5000);
-
-    const scheduleProfileFetch = (nextSession: Session | null) => {
-      if (nextSession?.user) {
-        const metadata = nextSession.user.user_metadata as Record<string, unknown>;
-        setTimeout(() => {
-          void fetchProfile(nextSession.user.id, metadata);
-        }, 0);
-      } else {
-        setProfile(null);
-        setLoading(false);
-        clearTimeout(safetyTimeout);
-      }
-    };
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      (_event, nextSession) => {
-        setSession(nextSession);
-        setUser(nextSession?.user ?? null);
-        scheduleProfileFetch(nextSession);
+      async (_event, session) => {
+        setSession(session);
+        setUser(session?.user ?? null);
+        if (session?.user) {
+          fetchProfile(session.user.id);
+        } else {
+          setProfile(null);
+        }
+        setLoading(false);
       }
     );
 
-    const initializeAuth = async () => {
-      try {
-        const result = await withAuthLockRetry(async () => await supabase.auth.getSession(), 1, 250);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      if (session?.user) fetchProfile(session.user.id);
+      else setLoading(false);
+    });
 
-        if (result.error) throw result.error;
-
-        const currentSession = result.data.session;
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
-        scheduleProfileFetch(currentSession);
-      } catch (err) {
-        console.error('AuthContext: Session initialization error:', err);
-        setLoading(false);
-      }
-    };
-
-    void initializeAuth();
-
-    return () => {
-      subscription.unsubscribe();
-      clearTimeout(safetyTimeout);
-    };
+    return () => subscription.unsubscribe();
   }, []);
 
-  const fetchProfile = async (userId: string, metadata?: Record<string, unknown>) => {
-    const metadataFallback =
-      metadata ??
-      (session?.user?.id === userId ? session.user.user_metadata as Record<string, unknown> : undefined) ??
-      (user?.id === userId ? user.user_metadata as Record<string, unknown> : undefined);
+  const fetchProfile = async (userId: string) => {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('user_id', userId)
+      .maybeSingle();
 
-    const metadataRole = getRoleFromMetadata(metadataFallback);
-
-    // Preliminary profile only when metadata role is explicit
-    const fallbackProfile: Profile = {
-      id: userId,
-      user_id: userId,
-      nome: typeof metadataFallback?.nome === 'string' ? metadataFallback.nome : '',
-      sobrenome: typeof metadataFallback?.sobrenome === 'string' ? metadataFallback.sobrenome : '',
-      email: typeof metadataFallback?.email === 'string'
-        ? metadataFallback.email
-        : session?.user?.email ?? user?.email ?? '',
-      role: metadataRole ?? 'professional',
-    };
-
-    if (!profile && metadataRole) {
-      setProfile(fallbackProfile);
+    if (data) {
+      setProfile(data as any as Profile);
     }
-
-    try {
-      const [
-        { data: profileData, error: profileError },
-        { data: patientLink, error: patientError },
-      ] = await Promise.all([
-        withAuthLockRetry(async () =>
-          await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', userId)
-            .maybeSingle()
-        , 1, 250),
-        withAuthLockRetry(async () =>
-          await supabase
-            .from('pacientes')
-            .select('id')
-            .eq('user_id', userId)
-            .maybeSingle()
-        , 1, 250),
-      ]);
-
-      if (profileError) {
-        console.error('AuthContext: Error fetching profile from database:', profileError);
-      }
-
-      if (patientError) {
-        console.error('AuthContext: Error inferring patient role from pacientes:', patientError);
-      }
-
-      const inferredRole: Profile['role'] = metadataRole ?? (patientLink ? 'patient' : 'professional');
-
-      if (profileData) {
-        setProfile({ ...(profileData as any), role: inferredRole } as Profile);
-      } else {
-        setProfile({ ...fallbackProfile, role: inferredRole });
-      }
-    } catch (err) {
-      console.error('AuthContext: Unexpected error in fetchProfile:', err);
-      if (!profile) setProfile(fallbackProfile);
-    } finally {
-      setLoading(false);
-    }
+    setLoading(false);
   };
 
   const signIn = async (email: string, password: string) => {
-    const result = await withAuthLockRetry(async () => await supabase.auth.signInWithPassword({ email, password }), 1, 250);
-    return { error: result.error };
+    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    return { error };
   };
 
-  const signUp = async (email: string, password: string, nome: string, role: string = 'patient', professionalId?: string) => {
+  const signUp = async (email: string, password: string, nome: string) => {
     const { error } = await supabase.auth.signUp({
       email,
       password,
-      options: {
-        data: {
-          nome,
-          role,
-          professional_id: professionalId
-        }
-      },
+      options: { data: { nome } },
     });
     return { error };
   };

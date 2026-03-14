@@ -22,7 +22,6 @@ import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fn
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { getAvaliacaoUrl, getAgendaUrl, getPortalUrl, getPersonalPortalUrl } from '@/utils/linkUrls';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
@@ -67,8 +66,6 @@ interface Paciente {
   ativo: boolean;
   created_at: string;
   terapeuta_id: string;
-  portal_token: string;
-  portal_activated: boolean;
   _servicos?: string[];
 }
 
@@ -462,26 +459,9 @@ export default function Pacientes() {
               <p className="text-xs sm:text-sm text-muted-foreground">{pacientes.length} cadastrados</p>
             </div>
           </div>
-          <div className="flex gap-2 shrink-0">
-            <Button
-              variant="outline"
-              size="sm"
-              className="hidden sm:flex border-primary/30 text-primary hover:bg-primary/5 gap-2"
-              onClick={() => {
-                const url = getPortalUrl(user!.id);
-                navigator.clipboard.writeText(url);
-                toast({
-                  title: 'Link do Portal Copiado! 🚀',
-                  description: 'Envie para seus pacientes para que eles se cadastrem sozinhos.',
-                });
-              }}
-            >
-              <Link2 className="h-4 w-4" /> Link do Portal
-            </Button>
-            <Button onClick={openNew} className="bg-gradient-primary text-white gap-2" size="sm">
-              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
-            </Button>
-          </div>
+          <Button onClick={openNew} className="bg-gradient-primary text-white gap-2 shrink-0" size="sm">
+            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
+          </Button>
         </div>
 
         {/* Filters */}
@@ -572,11 +552,6 @@ export default function Pacientes() {
                         <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
                           {tagCfg.emoji} {tagCfg.label}
                         </Badge>
-                        {p.portal_activated && (
-                          <Badge variant="outline" className="text-[10px] h-5 bg-indigo-50 text-indigo-700 border-indigo-200 gap-1">
-                            <Activity className="h-2.5 w-2.5" /> Hub Ativado
-                          </Badge>
-                        )}
                       </div>
                       <div className="flex flex-wrap gap-1 mt-1">
                         {pServicos.map(s => {
@@ -606,18 +581,6 @@ export default function Pacientes() {
                           <MessageCircle className="h-3.5 w-3.5" /> <span className="hidden sm:inline text-xs">Chamar</span>
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-indigo-600" title="Link Pessoal do Hub"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const url = getPersonalPortalUrl(p.portal_token);
-                          navigator.clipboard.writeText(url);
-                          toast({
-                            title: "Link do Hub Copiado!",
-                            description: `Envie para ${p.nome} para acesso simplificado.`
-                          });
-                        }}>
-                        <Link2 className="h-3.5 w-3.5" />
-                      </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-primary" title="Evoluções e Prontuário"
                         onClick={() => navigate(`/pacientes/${p.id}?tab=prontuario`)}>
                         <FileText className="h-3.5 w-3.5" />
@@ -835,6 +798,6 @@ export default function Pacientes() {
 
       {/* Overlay to close FAB */}
       {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
-    </AppLayout >
+    </AppLayout>
   );
 }

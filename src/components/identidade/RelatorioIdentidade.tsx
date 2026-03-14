@@ -4,13 +4,6 @@ import { AvaliacaoMyID } from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles } from 'lucide-react';
-
-function getThermalColor(value: number): string {
-  if (value <= 3) return 'hsl(142 76% 36%)';
-  if (value <= 5) return 'hsl(45 93% 47%)';
-  if (value <= 7) return 'hsl(25 95% 53%)';
-  return 'hsl(0 84% 60%)';
-}
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';

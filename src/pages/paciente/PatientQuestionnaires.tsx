@@ -6,43 +6,52 @@ import {
     CheckCircle2,
     Clock,
     ArrowRight,
-    Sparkles,
-    FileText,
     AlertCircle,
-    Inbox
+    Menu,
+    Activity,
+    LayoutDashboard,
+    Calendar,
+    Award,
+    BookOpen,
+    Watch,
+    CreditCard,
+    User,
+    LogOut,
+    Sparkles,
+    FileText
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import PatientLayout from "@/components/paciente/PatientLayout";
 
 const PatientQuestionnaires = () => {
-    const { user, profile } = useAuth();
+    const { user, profile, signOut } = useAuth();
     const navigate = useNavigate();
+    const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
-    // 1. Buscar dados do registro clínico associado ao user_id
-    const { data: pacienteData } = useQuery({
-        queryKey: ["patient-clinical-data", user?.id],
-        queryFn: async () => {
-            const { data } = await supabase
-                .from("pacientes")
-                .select("id")
-                .eq("user_id", user?.id)
-                .maybeSingle();
-            return data;
-        },
-        enabled: !!user?.id
-    });
+    const handleLogout = async () => {
+        await signOut();
+        navigate("/paciente/login");
+    };
 
     const { data: assessments, isLoading } = useQuery({
-        queryKey: ["patient-assessments", pacienteData?.id],
+        queryKey: ["patient-assessments", user?.email],
         queryFn: async () => {
-            if (!pacienteData?.id) return [];
+            // 1. Buscar ID do paciente na tabela legada
+            const { data: pacienteData } = await supabase
+                .from("pacientes")
+                .select("id")
+                .eq("email", user?.email)
+                .maybeSingle();
 
+            if (!pacienteData) return [];
+
+            // 2. Buscar avaliações vinculadas a esse paciente
             const { data } = await supabase
                 .from("myid_avaliacoes")
                 .select("*")
@@ -51,71 +60,120 @@ const PatientQuestionnaires = () => {
 
             return data || [];
         },
-        enabled: !!pacienteData?.id
+        enabled: !!user?.email
     });
+
+    const menuItems = [
+        { icon: LayoutDashboard, text: "Dashboard", path: "/paciente/dashboard" },
+        { icon: Calendar, text: "Minha Agenda", path: "/paciente/agenda" },
+        { icon: ClipboardCheck, text: "Questionários", path: "/paciente/questionarios", active: true },
+        { icon: Award, text: "Atividades", path: "/paciente/atividades" },
+        { icon: BookOpen, text: "Diário de Saúde", path: "/paciente/diario" },
+        { icon: Watch, text: "Meu Dispositivo", path: "/paciente/dispositivo" },
+        { icon: CreditCard, text: "Planos", path: "/paciente/planos" },
+        { icon: User, text: "Perfil", path: "/paciente/perfil" },
+    ];
 
     const pending = assessments?.filter(a => a.status === 'pendente') || [];
     const completed = assessments?.filter(a => a.status === 'concluido') || [];
 
     return (
-        <PatientLayout>
-            <div className="max-w-5xl mx-auto space-y-10">
-                <div className="flex flex-col gap-2">
-                    <h1 className="text-3xl font-black text-slate-900 italic uppercase leading-none tracking-tight">Avaliações & Feedbacks</h1>
-                    <p className="text-slate-500 font-medium">Sua voz é o guia do seu tratamento. Responda aos questionários para otimizar seus resultados.</p>
+        <div className="min-h-screen bg-slate-50 flex">
+            <aside className="hidden lg:flex w-64 bg-white border-r border-slate-200 flex-col sticky top-0 h-screen">
+                <div className="p-6">
+                    <div className="flex items-center gap-2 mb-8" onClick={() => navigate("/paciente/dashboard")} style={{ cursor: 'pointer' }}>
+                        <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center shadow-lg shadow-indigo-200/50">
+                            <Activity className="h-5 w-5 text-white" />
+                        </div>
+                        <span className="text-xl font-black text-slate-900 tracking-tight">MyHealthID</span>
+                    </div>
+                    <nav className="space-y-1">
+                        {menuItems.map((item, i) => (
+                            <button
+                                key={i}
+                                onClick={() => navigate(item.path)}
+                                className={cn(
+                                    "w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold transition-all",
+                                    item.active
+                                        ? "bg-indigo-50 text-indigo-600"
+                                        : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                )}
+                            >
+                                <item.icon className="h-5 w-5" />
+                                {item.text}
+                            </button>
+                        ))}
+                    </nav>
                 </div>
+                <div className="mt-auto p-6 border-t border-slate-100">
+                    <button
+                        onClick={handleLogout}
+                        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-bold text-red-500 hover:bg-red-50 transition-all text-left"
+                    >
+                        <LogOut className="h-5 w-5" />
+                        Sair da conta
+                    </button>
+                </div>
+            </aside>
+
+            <main className="flex-1 lg:max-w-4xl mx-auto p-4 lg:p-8 space-y-8">
+                <header className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                        <Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setIsSidebarOpen(true)}>
+                            <Menu className="h-6 w-6" />
+                        </Button>
+                        <div>
+                            <h1 className="text-2xl font-black text-slate-900">Questionários</h1>
+                            <p className="text-slate-500 text-sm font-medium">Avalie seu estado atual e receba insights personalizados.</p>
+                        </div>
+                    </div>
+                </header>
 
                 {isLoading ? (
-                    <div className="grid gap-6">
-                        {[1, 2].map(i => (
-                            <div key={i} className="h-40 bg-white rounded-[2.5rem] animate-pulse shadow-sm border border-slate-100" />
-                        ))}
+                    <div className="grid gap-4">
+                        {[1, 2].map(i => <div key={i} className="h-32 bg-white rounded-2xl animate-pulse shadow-sm" />)}
                     </div>
                 ) : (
-                    <div className="space-y-12">
-                        {/* Questionários Pendentes */}
-                        <section className="space-y-6">
+                    <div className="space-y-8">
+                        <section className="space-y-4">
                             <div className="flex items-center justify-between">
-                                <div className="flex items-center gap-3">
-                                    <div className="h-10 w-10 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600 shadow-inner">
-                                        <AlertCircle className="h-6 w-6" />
-                                    </div>
-                                    <h2 className="text-xl font-black text-slate-900 uppercase italic">Ações Necessárias ({pending.length})</h2>
+                                <div className="flex items-center gap-2">
+                                    <Clock className="h-5 w-5 text-orange-500" />
+                                    <h2 className="text-lg font-black text-slate-900">Pendentes ({pending.length})</h2>
                                 </div>
                                 {pending.length > 0 && (
-                                    <Badge className="bg-orange-500 text-white border-none py-1.5 px-4 rounded-full font-black text-[10px] uppercase tracking-widest shadow-lg shadow-orange-100 animate-pulse">
-                                        Ganhe +50 Pontos
-                                    </Badge>
+                                    <div className="flex items-center gap-1.5 px-3 py-1 bg-orange-50 text-orange-700 rounded-full border border-orange-100 animate-bounce">
+                                        <Sparkles className="h-3.5 w-3.5" />
+                                        <span className="text-[10px] font-black uppercase tracking-tight">Ganhe +50 pts</span>
+                                    </div>
                                 )}
                             </div>
 
                             {pending.length > 0 ? (
-                                <div className="grid gap-6">
+                                <div className="grid gap-4">
                                     {pending.map((a) => (
-                                        <Card key={a.id} className="border-none shadow-xl hover:shadow-2xl transition-all group bg-white rounded-[2.5rem] overflow-hidden border border-slate-100/50 hover:border-orange-100">
+                                        <Card key={a.id} className="border-none shadow-sm hover:shadow-md transition-all group bg-white overflow-hidden">
                                             <CardContent className="p-0">
-                                                <div className="flex flex-col md:flex-row">
-                                                    <div className="p-8 flex-1 space-y-6">
+                                                <div className="flex flex-col sm:flex-row">
+                                                    <div className="p-6 flex-1 space-y-4">
                                                         <div className="flex items-start justify-between">
-                                                            <div className="space-y-2">
-                                                                <h3 className="text-2xl font-black text-slate-900 group-hover:text-orange-600 transition-colors uppercase tracking-tight italic leading-tight">Avaliação Clínica MyID</h3>
-                                                                <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-widest">
-                                                                    <Inbox className="h-3.5 w-3.5" /> Recebido em {format(new Date(a.created_at), "dd 'de' MMMM", { locale: ptBR })}
-                                                                </div>
+                                                            <div className="space-y-1">
+                                                                <h3 className="text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors uppercase tracking-tight italic">Avaliação MyID</h3>
+                                                                <p className="text-xs text-slate-500 font-medium">Enviada em {format(new Date(a.created_at), "dd 'de' MMMM", { locale: ptBR })}</p>
                                                             </div>
-                                                            <Badge className="bg-orange-100 text-orange-700 border-none px-4 py-1.5 rounded-xl text-[10px] font-black uppercase tracking-widest">Pendente</Badge>
+                                                            <Badge className="bg-orange-100 text-orange-700 border-none px-3 h-6 text-[10px] font-black uppercase tracking-widest">Pendente</Badge>
                                                         </div>
-                                                        <div className="flex items-center gap-6 text-xs font-black text-slate-400 uppercase tracking-tighter">
-                                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg"><Clock className="h-4 w-4 text-orange-400" /> 5-10 MINUTOS</div>
-                                                            <div className="flex items-center gap-2 bg-slate-50 px-3 py-1.5 rounded-lg"><FileText className="h-4 w-4 text-orange-400" /> MULTIDIMENSIONAL</div>
+                                                        <div className="flex items-center gap-4 text-[11px] font-bold text-slate-400">
+                                                            <div className="flex items-center gap-1.5"><Clock className="h-3.5 w-3.5" /> 5-10 min</div>
+                                                            <div className="flex items-center gap-1.5"><FileText className="h-3.5 w-3.5" /> Múltipla Escolha</div>
                                                         </div>
                                                     </div>
-                                                    <div className="bg-slate-50/50 group-hover:bg-orange-50/30 p-8 flex items-center justify-center shrink-0 transition-colors">
+                                                    <div className="bg-slate-50 p-6 flex items-center justify-center shrink-0">
                                                         <Button
                                                             onClick={() => navigate(`/myid/responder/${a.token_acesso}`)}
-                                                            className="bg-orange-600 hover:bg-orange-700 text-white font-black rounded-2xl px-10 h-14 shadow-xl shadow-orange-100 active:scale-95 transition-all text-base uppercase italic"
+                                                            className="bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl px-8 shadow-md transform group-hover:scale-105 transition-transform"
                                                         >
-                                                            Iniciar Resposta <ArrowRight className="ml-2 h-5 w-5" />
+                                                            Começar Agora <ArrowRight className="ml-2 h-4 w-4" />
                                                         </Button>
                                                     </div>
                                                 </div>
@@ -124,61 +182,80 @@ const PatientQuestionnaires = () => {
                                     ))}
                                 </div>
                             ) : (
-                                <div className="bg-white p-20 rounded-[3rem] border-4 border-dashed border-slate-100 text-center flex flex-col items-center gap-6">
-                                    <div className="h-24 w-24 bg-emerald-50 rounded-full flex items-center justify-center shadow-inner">
-                                        <CheckCircle2 className="h-12 w-12 text-emerald-500" />
+                                <div className="bg-white p-12 rounded-2xl border-2 border-dashed border-slate-100 text-center flex flex-col items-center gap-3">
+                                    <div className="h-16 w-16 bg-emerald-50 rounded-full flex items-center justify-center">
+                                        <CheckCircle2 className="h-8 w-8 text-emerald-500" />
                                     </div>
-                                    <div className="space-y-2">
-                                        <p className="text-xl font-black text-slate-900 uppercase italic">Foco Total no Cuidado</p>
-                                        <p className="text-sm text-slate-500 font-medium max-w-sm">Você completou todas as avaliações pendentes. Agora é só focar na sua evolução!</p>
-                                    </div>
+                                    <p className="font-bold text-slate-900">Parabéns! Você está em dia.</p>
+                                    <p className="text-xs text-slate-500">Não há questionários pendentes para você no momento.</p>
                                 </div>
                             )}
                         </section>
 
-                        {/* Concluídos */}
-                        <section className="space-y-6">
-                            <div className="flex items-center gap-3">
-                                <div className="h-10 w-10 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400 shadow-inner">
-                                    <ClipboardCheck className="h-6 w-6" />
-                                </div>
-                                <h2 className="text-xl font-black text-slate-900 uppercase italic">Histórico de Feedbacks</h2>
+                        <section className="space-y-4">
+                            <div className="flex items-center gap-2">
+                                <CheckCircle2 className="h-5 w-5 text-slate-400" />
+                                <h2 className="text-sm font-black uppercase tracking-widest text-slate-400">Concluídos</h2>
                             </div>
 
                             {completed.length > 0 ? (
-                                <div className="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 divide-y divide-slate-50 overflow-hidden">
+                                <div className="bg-white rounded-2xl shadow-sm divide-y divide-slate-50 overflow-hidden">
                                     {completed.map((a) => (
-                                        <div key={a.id} className="p-6 flex items-center justify-between hover:bg-emerald-50/30 transition-all group">
-                                            <div className="flex items-center gap-6">
-                                                <div className="h-14 w-14 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600 shrink-0 border border-emerald-100/30 group-hover:scale-110 transition-transform">
-                                                    <FileText className="h-7 w-7" />
+                                        <div key={a.id} className="p-4 flex items-center justify-between hover:bg-slate-50/50 transition-colors">
+                                            <div className="flex items-center gap-4">
+                                                <div className="h-10 w-10 bg-emerald-50 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+                                                    <FileText className="h-5 w-5" />
                                                 </div>
                                                 <div>
-                                                    <p className="font-black text-slate-900 text-lg uppercase italic group-hover:text-emerald-700 transition-colors leading-none mb-2">Avaliação MyID Finalizada</p>
-                                                    <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">Processado em {format(new Date(a.updated_at || a.created_at), "dd/MM/yyyy")}</p>
+                                                    <p className="font-bold text-sm text-slate-900">Avaliação MyID</p>
+                                                    <p className="text-[10px] text-slate-500 font-medium tracking-tight">Finalizada em {format(new Date(a.updated_at || a.created_at), "dd/MM/yyyy")}</p>
                                                 </div>
                                             </div>
-                                            <div className="flex items-center gap-4">
-                                                <div className="flex items-center gap-2 px-3 py-1 bg-slate-100 rounded-xl text-slate-500 font-black text-[9px] uppercase tracking-widest">
-                                                    <Sparkles className="h-3 w-3" /> +50 PTS
-                                                </div>
-                                                <Button variant="ghost" size="icon" className="h-12 w-12 rounded-2xl text-slate-300 hover:text-emerald-600 hover:bg-emerald-50 transition-all">
-                                                    <ArrowRight className="h-6 w-6" />
+                                            <div className="flex items-center gap-2">
+                                                <Badge className="bg-slate-100 text-slate-500 hover:bg-slate-100 border-none text-[9px] font-black uppercase">Pontuado</Badge>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-slate-400 hover:text-indigo-600">
+                                                    <ArrowRight className="h-4 w-4" />
                                                 </Button>
                                             </div>
                                         </div>
                                     ))}
                                 </div>
                             ) : (
-                                <div className="bg-slate-50/50 p-12 rounded-[2.5rem] text-center border-2 border-dashed border-slate-100">
-                                    <p className="text-slate-300 font-black italic uppercase tracking-widest text-sm">Seu histórico de respostas aparecerá aqui.</p>
-                                </div>
+                                <p className="text-center py-8 text-slate-300 text-xs font-medium italic opacity-60">Nenhum questionário concluído ainda.</p>
                             )}
                         </section>
                     </div>
                 )}
-            </div>
-        </PatientLayout>
+            </main>
+
+            {isSidebarOpen && (
+                <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 lg:hidden" onClick={() => setIsSidebarOpen(false)}>
+                    <div className="w-72 h-full bg-white p-6 shadow-2xl animate-in slide-in-from-left duration-300" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center gap-2 mb-10 justify-between">
+                            <div className="flex items-center gap-2" onClick={() => { navigate("/paciente/dashboard"); setIsSidebarOpen(false); }} style={{ cursor: 'pointer' }}>
+                                <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white"><Activity className="h-5 w-5" /></div>
+                                <span className="text-xl font-black text-slate-900 tracking-tight">MyHealthID</span>
+                            </div>
+                        </div>
+                        <nav className="space-y-2">
+                            {menuItems.map((item, i) => (
+                                <button
+                                    key={i}
+                                    onClick={() => { navigate(item.path); setIsSidebarOpen(false); }}
+                                    className={cn(
+                                        "w-full flex items-center gap-3 px-4 py-3.5 rounded-2xl text-sm font-bold transition-all",
+                                        item.active ? "bg-indigo-50 text-indigo-600 shadow-sm" : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+                                    )}
+                                >
+                                    <item.icon className="h-5 w-5" />
+                                    {item.text}
+                                </button>
+                            ))}
+                        </nav>
+                    </div>
+                </div>
+            )}
+        </div>
     );
 };
 

@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import MyIDResponder from "./pages/MyIDResponder";
 import MetodoIdentidade from "./pages/MetodoIdentidade";
@@ -12,13 +12,9 @@ import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
 import PatientLogin from "./pages/paciente/PatientLogin";
 import PatientRegister from "./pages/paciente/PatientRegister";
-import PatientPortalAccess from "./pages/paciente/PatientPortalAccess";
 import PatientDashboard from "./pages/paciente/PatientDashboard";
 import PatientAgenda from "./pages/paciente/PatientAgenda";
-import PatientBooking from "./pages/paciente/PatientBooking";
-import PatientFinanceiro from "./pages/paciente/PatientFinanceiro";
 import PatientQuestionnaires from "./pages/paciente/PatientQuestionnaires";
-import PatientTests from "./pages/paciente/PatientTests";
 import PatientActivities from "./pages/paciente/PatientActivities";
 import PatientDiary from "./pages/paciente/PatientDiary";
 import PatientWearable from "./pages/paciente/PatientWearable";
@@ -28,7 +24,7 @@ import ProfessionalHub from "./pages/ProfessionalHub";
 import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
-import Protocolos from "./pages/Protocolos";
+import Protocolos from "./pages/Protocolos"; // kept for direct URL access
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
 import AgendaPublica from "./pages/AgendaPublica";
 import Relatorios from "./pages/Relatorios";
@@ -37,111 +33,50 @@ import Configuracoes from "./pages/Configuracoes";
 import FunilChat from "./pages/FunilChat";
 import { AuthProvider } from "./contexts/AuthContext";
 
-import { ProtectedRoute } from "./components/ProtectedRoute";
-import { isAuthLockTimeoutError } from "./lib/authLock";
-
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: (failureCount, error) => {
-        if (isAuthLockTimeoutError(error)) return failureCount < 5;
-        return failureCount < 2;
-      },
-      retryDelay: (attemptIndex) => Math.min(300 * 2 ** attemptIndex, 2000),
-    },
-  },
-});
-
-import { Component, ErrorInfo } from "react";
-
-class ErrorBoundary extends Component<{ children: React.ReactNode }, { hasError: boolean; error: Error | null }> {
-  constructor(props: { children: React.ReactNode }) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: Error) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    console.error("CRITICAL APP ERROR:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="flex flex-col items-center justify-center min-h-screen p-6 bg-slate-100 text-center">
-          <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md">
-            <h1 className="text-xl font-bold text-rose-600 mb-2">Ops! Ocorreu um erro crítico.</h1>
-            <p className="text-slate-600 mb-6 text-sm">A plataforma encontrou um problema técnico inesperado.</p>
-            <pre className="text-[10px] bg-slate-50 p-4 rounded-lg overflow-auto mb-6 text-left border border-slate-200">
-              {this.state.error?.message}
-            </pre>
-            <button
-              onClick={() => window.location.reload()}
-              className="w-full bg-indigo-600 text-white rounded-xl py-3 font-bold text-sm shadow-lg active:scale-95 transition-all"
-            >
-              Recarregar Sistema
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+const queryClient = new QueryClient();
 
 const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <AuthProvider>
-            <Routes>
-              {/* Public Routes */}
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/paciente/login" element={<PatientLogin />} />
-              <Route path="/paciente/cadastro" element={<PatientRegister />} />
-              <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
-              <Route path="/agenda/:token" element={<AgendaPublica />} />
-              <Route path="/myid/responder/:token" element={<MyIDResponder />} />
-              <Route path="/funil/:slug" element={<FunilChat />} />
-              <Route path="/portal/:token" element={<PatientPortalAccess />} />
+  <QueryClientProvider client={queryClient}>
+    <TooltipProvider>
+      <Toaster />
+      <Sonner />
+      <BrowserRouter>
+        <AuthProvider>
+          <Routes>
+            <Route path="/" element={<Index />} />
+            <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
+            <Route path="/cob-zero" element={<CobZero />} />
+            <Route path="/auth" element={<Auth />} />
+            <Route path="/paciente/login" element={<PatientLogin />} />
+            <Route path="/paciente/cadastro" element={<PatientRegister />} />
+            <Route path="/paciente/dashboard" element={<PatientDashboard />} />
+            <Route path="/paciente/agenda" element={<PatientAgenda />} />
+            <Route path="/paciente/questionarios" element={<PatientQuestionnaires />} />
+            <Route path="/paciente/atividades" element={<PatientActivities />} />
+            <Route path="/paciente/diario" element={<PatientDiary />} />
+            <Route path="/paciente/dispositivo" element={<PatientWearable />} />
+            <Route path="/paciente/planos" element={<PatientPlans />} />
+            <Route path="/paciente/perfil" element={<PatientProfileSettings />} />
+            <Route path="/studio-personal-id" element={<StudioPersonalID />} />
+            <Route path="/hub-paciente" element={<ProfessionalHub />} />
+            <Route path="/agenda" element={<Agenda />} />
+            <Route path="/pacientes" element={<Pacientes />} />
+            <Route path="/pacientes/:id" element={<PacientePerfil />} />
+            <Route path="/protocolos" element={<Protocolos />} />
 
-              {/* Professional Protected Routes */}
-              <Route path="/" element={<ProtectedRoute requiredRole="professional"><Index /></ProtectedRoute>} />
-              <Route path="/metodo-identidade" element={<ProtectedRoute requiredRole="professional"><MetodoIdentidade /></ProtectedRoute>} />
-              <Route path="/cob-zero" element={<ProtectedRoute requiredRole="professional"><CobZero /></ProtectedRoute>} />
-              <Route path="/studio-personal-id" element={<ProtectedRoute requiredRole="professional"><StudioPersonalID /></ProtectedRoute>} />
-              <Route path="/hub-paciente" element={<ProtectedRoute requiredRole="professional"><ProfessionalHub /></ProtectedRoute>} />
-              <Route path="/agenda" element={<ProtectedRoute requiredRole="professional"><Agenda /></ProtectedRoute>} />
-              <Route path="/pacientes" element={<ProtectedRoute requiredRole="professional"><Pacientes /></ProtectedRoute>} />
-              <Route path="/pacientes/:id" element={<ProtectedRoute requiredRole="professional"><PacientePerfil /></ProtectedRoute>} />
-              <Route path="/protocolos" element={<ProtectedRoute requiredRole="professional"><Protocolos /></ProtectedRoute>} />
-              <Route path="/relatorios" element={<ProtectedRoute requiredRole="professional"><Relatorios /></ProtectedRoute>} />
-              <Route path="/crm" element={<ProtectedRoute requiredRole="professional"><GestaoVendas /></ProtectedRoute>} />
-              <Route path="/configuracoes" element={<ProtectedRoute requiredRole="professional"><Configuracoes /></ProtectedRoute>} />
-
-              {/* Patient Protected Routes */}
-              <Route path="/paciente/dashboard" element={<ProtectedRoute requiredRole="patient"><PatientDashboard /></ProtectedRoute>} />
-              <Route path="/paciente/agenda" element={<ProtectedRoute requiredRole="patient"><PatientAgenda /></ProtectedRoute>} />
-              <Route path="/paciente/agendar" element={<ProtectedRoute requiredRole="patient"><PatientBooking /></ProtectedRoute>} />
-              <Route path="/paciente/financeiro" element={<ProtectedRoute requiredRole="patient"><PatientFinanceiro /></ProtectedRoute>} />
-              <Route path="/paciente/questionarios" element={<ProtectedRoute requiredRole="patient"><PatientQuestionnaires /></ProtectedRoute>} />
-              <Route path="/paciente/avaliacoes" element={<ProtectedRoute requiredRole="patient"><PatientTests /></ProtectedRoute>} />
-              <Route path="/paciente/atividades" element={<ProtectedRoute requiredRole="patient"><PatientActivities /></ProtectedRoute>} />
-              <Route path="/paciente/diario" element={<ProtectedRoute requiredRole="patient"><PatientDiary /></ProtectedRoute>} />
-              <Route path="/paciente/dispositivo" element={<ProtectedRoute requiredRole="patient"><PatientWearable /></ProtectedRoute>} />
-              <Route path="/paciente/planos" element={<ProtectedRoute requiredRole="patient"><PatientPlans /></ProtectedRoute>} />
-              <Route path="/paciente/perfil" element={<ProtectedRoute requiredRole="patient"><PatientProfileSettings /></ProtectedRoute>} />
-
-              <Route path="*" element={<NotFound />} />
-            </Routes >
-          </AuthProvider >
-        </BrowserRouter >
-      </TooltipProvider >
-    </QueryClientProvider >
-  </ErrorBoundary>
+            <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
+            <Route path="/agenda/:token" element={<AgendaPublica />} />
+            <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+            <Route path="/funil/:slug" element={<FunilChat />} />
+            <Route path="/relatorios" element={<Relatorios />} />
+            <Route path="/crm" element={<GestaoVendas />} />
+            <Route path="/configuracoes" element={<Configuracoes />} />
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </AuthProvider>
+      </BrowserRouter>
+    </TooltipProvider>
+  </QueryClientProvider>
 );
 
 export default App;

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Paciente {
   id: string;
@@ -34,14 +33,12 @@ export function usePacientes(filtroServico?: string) {
   const { data: pacientesRaw = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
     queryFn: async () => {
-      const { data, error } = await withAuthLockRetry(async () =>
-        await supabase
-          .from('pacientes')
-          .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
-          .eq('terapeuta_id', user!.id)
-          .eq('ativo', true)
-          .order('nome')
-      , 1, 250);
+      const { data, error } = await supabase
+        .from('pacientes')
+        .select('*, paciente_servicos(id, servico, ativo, paciente_id)')
+        .eq('terapeuta_id', user!.id)
+        .eq('ativo', true)
+        .order('nome');
       if (error) throw error;
       return data || [];
     },

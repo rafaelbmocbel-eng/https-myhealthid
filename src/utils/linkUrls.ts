@@ -3,7 +3,17 @@ const PRODUCTION_URL = 'https://myhealthid.lovable.app';
 
 export function getBaseUrl() {
   if (typeof window !== 'undefined') {
-    return window.location.origin;
+    const origin = window.location.origin;
+
+    // Se o origin contiver 'github.dev', 'github.codespaces' ou 'preview.lovable',
+    // provavelmente estamos no ambiente de desenvolvimento.
+    const isDev = origin.includes('github') || origin.includes('preview');
+
+    if (isDev && PRODUCTION_URL) {
+      return PRODUCTION_URL;
+    }
+
+    return origin;
   }
   return PRODUCTION_URL || '';
 }
@@ -14,12 +24,4 @@ export function getAvaliacaoUrl(token: string) {
 
 export function getAgendaUrl(token: string) {
   return `${getBaseUrl()}/agenda/${token}`;
-}
-
-export function getPortalUrl(professionalId: string) {
-  return `${getBaseUrl()}/paciente/cadastro?ref=${professionalId}`;
-}
-
-export function getPersonalPortalUrl(token: string) {
-  return `${getBaseUrl()}/portal/${token}`;
 }

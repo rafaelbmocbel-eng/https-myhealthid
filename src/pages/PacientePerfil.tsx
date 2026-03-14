@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
-import { getAgendaUrl, getPersonalPortalUrl } from '@/utils/linkUrls';
+import { getAgendaUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,7 +15,7 @@ import {
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
-  Award, Watch, BookOpen, Send,
+  Award, Watch, BookOpen,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -1026,12 +1026,12 @@ export default function PacientePerfil() {
                   <div className="flex items-center justify-between">
                     <Award className="h-8 w-8 opacity-80" />
                     <Badge className="bg-white/20 text-white border-none font-black uppercase text-[10px]">
-                      Nível 1
+                      Nível {paciente.current_level || '1'}
                     </Badge>
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total de Pontos MyID</p>
-                    <p className="text-3xl font-black italic tracking-tighter">0</p>
+                    <p className="text-3xl font-black italic tracking-tighter">{paciente.total_points || 0}</p>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-white" style={{ width: '45%' }} />
@@ -1046,35 +1046,24 @@ export default function PacientePerfil() {
                   <h3 className="font-bold text-slate-900 flex items-center gap-2">
                     <Shield className="h-5 w-5 text-indigo-600" /> Status do Portal do Paciente
                   </h3>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 text-[10px] font-black uppercase tracking-widest border-indigo-200 text-indigo-600 hover:bg-indigo-50"
-                    onClick={() => {
-                      const url = getPersonalPortalUrl(paciente.portal_token);
-                      window.open(url, '_blank');
-                    }}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" /> Simular Visão do Paciente
-                  </Button>
                 </div>
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plano</p>
                     <p className="text-sm font-black text-indigo-600 uppercase italic">
-                      {'Básico'}
+                      {paciente.plan || 'Básico'}
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Créditos</p>
                     <p className="text-sm font-black text-slate-900 italic tracking-tighter">
-                      {0} sessões
+                      {paciente.session_credits || 0} sessões
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wearable</p>
                     <p className="text-sm font-black text-slate-900 flex items-center gap-1">
-                      {false ? (
+                      {paciente.wearable_device ? (
                         <>
                           <Watch className="h-3 w-3 text-cyan-500" />
                           Conectado

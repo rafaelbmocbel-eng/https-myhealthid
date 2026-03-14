@@ -1,8 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, Award,
-  CreditCard
+  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, Award
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -25,7 +24,6 @@ const PROFISSIONAL_NAV_ITEMS = [
 const PACIENTE_NAV_ITEMS = [
   { label: 'Dashboard', href: '/paciente/dashboard', icon: LayoutDashboard, hasBadge: false },
   { label: 'Minha Agenda', href: '/paciente/agenda', icon: CalendarDays, hasBadge: false },
-  { label: 'Financeiro', href: '/paciente/financeiro', icon: CreditCard, hasBadge: false },
   { label: 'Diário de Saúde', href: '/paciente/diario', icon: FileText, hasBadge: false },
   { label: 'Questionários', href: '/paciente/questionarios', icon: ClipboardList, hasBadge: false },
   { label: 'Atividades e XP', href: '/paciente/atividades', icon: Sparkles, hasBadge: false },
