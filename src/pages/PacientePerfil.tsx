@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -317,6 +317,21 @@ export default function PacientePerfil() {
                 <Button variant="ghost" size="icon" className="h-7 w-7 text-[#25D366] hover:bg-[#25D366]/10 shrink-0" title="WhatsApp"
                   onClick={() => window.open(`https://wa.me/55${paciente.telefone?.replace(/\D/g, '')}`, '_blank')}>
                   <MessageCircle className="h-4 w-4" />
+                </Button>
+              )}
+              {paciente.portal_token && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0"
+                  title="Copiar link do Portal do Paciente"
+                  onClick={() => {
+                    const url = `${getBaseUrl()}/paciente/login?token=${paciente.portal_token}`;
+                    navigator.clipboard.writeText(url);
+                    toast({ title: 'Link copiado! 🔗', description: 'Envie este link ao paciente para acesso ao portal.' });
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" />
                 </Button>
               )}
               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
