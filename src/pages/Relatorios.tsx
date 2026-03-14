@@ -432,7 +432,7 @@ function RespostasERelatorios() {
             const respostasLink = respostas.filter(r => r.link_id === link.id);
             const blocosRecebidos = [...new Set(respostasLink.map(r => r.bloco_numero))].sort();
             const isOpen = expandido === link.id;
-            const completo = blocosRecebidos.length === 5;
+            const completo = blocosRecebidos.length >= 6;
 
             return (
               <div key={link.id} className="border rounded-xl overflow-hidden">

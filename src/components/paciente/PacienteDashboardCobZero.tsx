@@ -170,7 +170,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
         paciente_id: paciente.id,
         terapeuta_id: user.id,
         data_expiracao: dataExpiracao.toISOString(),
-        blocos_inclusos: [1, 2, 3, 4, 5],
+        blocos_inclusos: [1, 2, 3, 4, 5, 6],
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links-av-cobzero'] });
