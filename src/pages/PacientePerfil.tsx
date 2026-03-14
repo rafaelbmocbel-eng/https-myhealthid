@@ -319,6 +319,21 @@ export default function PacientePerfil() {
                   <MessageCircle className="h-4 w-4" />
                 </Button>
               )}
+              {paciente.portal_token && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0"
+                  title="Copiar link do Portal do Paciente"
+                  onClick={() => {
+                    const url = `${getBaseUrl()}/paciente/login?token=${paciente.portal_token}`;
+                    navigator.clipboard.writeText(url);
+                    toast({ title: 'Link copiado! 🔗', description: 'Envie este link ao paciente para acesso ao portal.' });
+                  }}
+                >
+                  <ExternalLink className="h-4 w-4" />
+                </Button>
+              )}
               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
                 onClick={handleDeletePaciente}>
                 <Trash2 className="h-4 w-4" />
