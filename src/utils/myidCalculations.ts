@@ -240,9 +240,28 @@ export function calcularMyID(
   r: number, c: number, n: number,
   af: number = 5, hid: number = 7, nut: number = 7, erg: number = 7, med: number = 0
 ): MyIDResult {
-  const numerador = ((d + efi) * (1 + p / 10)) + p + i;
-  const denominador = Math.max(0.5, (r + c + af + hid + nut + erg) - n - med);
-  const myidRaw = numerador / denominador;
+  // ── Demanda média (D, EFI, I) — cada 0-10 ──
+  const demandaAvg = (d + efi + i) / 3;
+
+  // ── Amplificador Psicológico — P alto amplifica demanda (1.0 a 2.0) ──
+  const amplificadorP = 1 + p / 10;
+
+  // ── Déficit do Ótimo — distância de cada capacidade ao ideal (10) ──
+  // Sono 8/10 → déficit 2; Hidratação 10/10 → déficit 0
+  const deficitR = 10 - r;
+  const deficitC = 10 - c;
+  const deficitAF = 10 - af;
+  const deficitHID = 10 - hid;
+  const deficitNUT = 10 - nut;
+  const deficitERG = 10 - erg;
+  const deficitAvg = (deficitR + deficitC + deficitAF + deficitHID + deficitNUT + deficitERG) / 6;
+
+  // ── MED buffer (medicação reduz score levemente) ──
+  const medBuffer = Math.min(2, med * 0.3);
+
+  // ── Fórmula v3: Composição ponderada ──
+  // 50% demanda amplificada + 35% déficit de capacidade + 15% ruído sistêmico
+  const myidRaw = (demandaAvg * amplificadorP * 0.50) + (deficitAvg * 0.35) + (n * 0.15) - medBuffer;
   const myidScore = Math.min(10, Math.max(0, Math.round(myidRaw * 10) / 10));
 
   const interp = getMyIDInterpretation(myidScore, false, { D: d, EFI: efi, P: p, I: i, N: n });
@@ -250,7 +269,7 @@ export function calcularMyID(
   return {
     myidScore,
     myidStatus: interp.label,
-    componentScores: { D: d, EFI: efi, P: p, I: i, R: r, C: c, N: n, AF: af, HID: hid, NUT: nut, ERG: erg },
+    componentScores: { D: d, EFI: efi, P: p, I: i, R: r, C: c, N: n, AF: af, HID: hid, NUT: nut, ERG: erg, MED: med },
     redFlagsDetected: false,
     redFlagAlerts: [],
     classificacao: interp.status,
