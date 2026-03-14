@@ -1,6 +1,7 @@
-import { createContext, useContext, useEffect, useState, ReactNode } from 'react';
+import { createContext, useContext, useEffect, useState, ReactNode, useCallback } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 interface Profile {
   id: string;
@@ -32,56 +33,102 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
 
+  const fetchProfile = useCallback(async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', userId)
+        .maybeSingle();
+
+      if (error) {
+        throw error;
+      }
+
+      setProfile(data);
+    } catch (error) {
+      console.error('[Auth] Falha ao buscar perfil:', error);
+      setProfile(null);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-        if (session?.user) {
-          setTimeout(() => fetchProfile(session.user.id), 0);
+      async (_event, nextSession) => {
+        setSession(nextSession);
+        setUser(nextSession?.user ?? null);
+
+        if (nextSession?.user) {
+          setLoading(true);
+          setTimeout(() => {
+            void fetchProfile(nextSession.user.id);
+          }, 0);
         } else {
           setProfile(null);
+          setLoading(false);
         }
-        setLoading(false);
       }
     );
 
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) fetchProfile(session.user.id);
-      else setLoading(false);
-    });
+    const bootstrapSession = async () => {
+      try {
+        const { data: { session: currentSession } } = await withAuthLockRetry(() => supabase.auth.getSession());
+        setSession(currentSession);
+        setUser(currentSession?.user ?? null);
+
+        if (currentSession?.user) {
+          await fetchProfile(currentSession.user.id);
+        } else {
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error('[Auth] Falha ao restaurar sessão:', error);
+        setSession(null);
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
+    };
+
+    void bootstrapSession();
 
     return () => subscription.unsubscribe();
-  }, []);
-
-  const fetchProfile = async (userId: string) => {
-    const { data } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('user_id', userId)
-      .single();
-    setProfile(data);
-    setLoading(false);
-  };
+  }, [fetchProfile]);
 
   const signIn = async (email: string, password: string) => {
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    return { error };
+    try {
+      const { error } = await withAuthLockRetry(() =>
+        supabase.auth.signInWithPassword({ email, password })
+      );
+      return { error };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Falha ao autenticar.') };
+    }
   };
 
   const signUp = async (email: string, password: string, nome: string) => {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-      options: { data: { nome } },
-    });
-    return { error };
+    try {
+      const { error } = await withAuthLockRetry(() =>
+        supabase.auth.signUp({
+          email,
+          password,
+          options: { data: { nome } },
+        })
+      );
+      return { error };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Falha ao cadastrar.') };
+    }
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
+    try {
+      await withAuthLockRetry(() => supabase.auth.signOut());
+    } catch (error) {
+      console.error('[Auth] Falha ao sair da sessão:', error);
+    }
   };
 
   return (
