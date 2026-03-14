@@ -962,8 +962,8 @@ export default function Agenda() {
                                 !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
-                                top: pos.top + 2,
-                                height: pos.height - 4,
+                                top: pos.top,
+                                height: pos.height,
                                 left: `${leftPct}%`,
                                 width: `${colWidth - 1}%`,
                                 ...(patientColor ? {
