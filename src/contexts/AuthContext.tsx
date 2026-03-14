@@ -138,16 +138,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         { data: profileData, error: profileError },
         { data: patientLink, error: patientError },
       ] = await Promise.all([
-        supabase
-          .from('profiles')
-          .select('*')
-          .eq('user_id', userId)
-          .maybeSingle(),
-        supabase
-          .from('pacientes')
-          .select('id')
-          .eq('user_id', userId)
-          .maybeSingle(),
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('profiles')
+            .select('*')
+            .eq('user_id', userId)
+            .maybeSingle()
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('pacientes')
+            .select('id')
+            .eq('user_id', userId)
+            .maybeSingle()
+        , 1, 250),
       ]);
 
       if (profileError) {
