@@ -8,13 +8,6 @@ import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 
-function getThermalColor(value: number): string {
-  if (value <= 3) return '#22c55e';
-  if (value <= 5) return '#eab308';
-  if (value <= 7) return '#f97316';
-  return '#ef4444';
-}
-
 interface Props {
   avaliacao: AvaliacaoMyID;
   pacienteId?: string;

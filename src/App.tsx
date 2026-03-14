@@ -10,17 +10,6 @@ import CobZero from "./pages/CobZero";
 import StudioPersonalID from "./pages/StudioPersonalID";
 import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import PatientLogin from "./pages/paciente/PatientLogin";
-import PatientRegister from "./pages/paciente/PatientRegister";
-import PatientDashboard from "./pages/paciente/PatientDashboard";
-import PatientAgenda from "./pages/paciente/PatientAgenda";
-import PatientQuestionnaires from "./pages/paciente/PatientQuestionnaires";
-import PatientActivities from "./pages/paciente/PatientActivities";
-import PatientDiary from "./pages/paciente/PatientDiary";
-import PatientWearable from "./pages/paciente/PatientWearable";
-import PatientPlans from "./pages/paciente/PatientPlans";
-import PatientProfileSettings from "./pages/paciente/PatientProfileSettings";
-import ProfessionalHub from "./pages/ProfessionalHub";
 import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
@@ -47,18 +36,7 @@ const App = () => (
             <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
             <Route path="/cob-zero" element={<CobZero />} />
             <Route path="/auth" element={<Auth />} />
-            <Route path="/paciente/login" element={<PatientLogin />} />
-            <Route path="/paciente/cadastro" element={<PatientRegister />} />
-            <Route path="/paciente/dashboard" element={<PatientDashboard />} />
-            <Route path="/paciente/agenda" element={<PatientAgenda />} />
-            <Route path="/paciente/questionarios" element={<PatientQuestionnaires />} />
-            <Route path="/paciente/atividades" element={<PatientActivities />} />
-            <Route path="/paciente/diario" element={<PatientDiary />} />
-            <Route path="/paciente/dispositivo" element={<PatientWearable />} />
-            <Route path="/paciente/planos" element={<PatientPlans />} />
-            <Route path="/paciente/perfil" element={<PatientProfileSettings />} />
             <Route path="/studio-personal-id" element={<StudioPersonalID />} />
-            <Route path="/hub-paciente" element={<ProfessionalHub />} />
             <Route path="/agenda" element={<Agenda />} />
             <Route path="/pacientes" element={<Pacientes />} />
             <Route path="/pacientes/:id" element={<PacientePerfil />} />

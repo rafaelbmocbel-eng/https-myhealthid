@@ -23,12 +23,6 @@ export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
 
-  useEffect(() => {
-    if (!loading && profile?.role === 'patient') {
-      navigate('/paciente/dashboard', { replace: true });
-    }
-  }, [profile, loading, navigate]);
-
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
     queryFn: async () => {

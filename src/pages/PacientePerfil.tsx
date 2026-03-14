@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Card, CardContent } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
@@ -15,7 +14,6 @@ import {
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
-  Award, Watch, BookOpen,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -529,7 +527,7 @@ export default function PacientePerfil() {
 
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-3 sm:grid-cols-6 h-auto gap-1.5 w-full border shadow-sm">
+          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-5 h-auto gap-1.5 w-full border shadow-sm">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
@@ -558,15 +556,6 @@ export default function PacientePerfil() {
 
             <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
-            </TabsTrigger>
-
-            <TabsTrigger
-              value="engajamento"
-              className="gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md text-[10px] sm:text-xs px-3 py-2.5 border-2 border-indigo-500/40 bg-indigo-50/80 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-800 font-black transition-all hover:bg-indigo-100"
-            >
-              <Award className="h-4 w-4 shrink-0 text-indigo-600" />
-              <span className="hidden sm:inline">Engajamento e Portal</span>
-              <span className="sm:hidden">Engaj.</span>
             </TabsTrigger>
 
           </TabsList>
@@ -1018,76 +1007,6 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          <TabsContent value="engajamento" className="mt-4 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Gamification Stats */}
-              <Card className="border-none shadow-sm bg-indigo-600 text-white">
-                <CardContent className="p-6 space-y-4">
-                  <div className="flex items-center justify-between">
-                    <Award className="h-8 w-8 opacity-80" />
-                    <Badge className="bg-white/20 text-white border-none font-black uppercase text-[10px]">
-                      Nível 1
-                    </Badge>
-                  </div>
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total de Pontos MyID</p>
-                    <p className="text-3xl font-black italic tracking-tighter">0</p>
-                  </div>
-                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                    <div className="h-full bg-white" style={{ width: '45%' }} />
-                  </div>
-                  <p className="text-[10px] font-bold text-center opacity-60 uppercase">Próximo nível em 550 pts</p>
-                </CardContent>
-              </Card>
-
-              {/* Status Portal */}
-              <div className="md:col-span-2 clinical-card !p-6 flex flex-col justify-between">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                    <Shield className="h-5 w-5 text-indigo-600" /> Status do Portal do Paciente
-                  </h3>
-                </div>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plano</p>
-                    <p className="text-sm font-black text-indigo-600 uppercase italic">
-                      Básico
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Créditos</p>
-                    <p className="text-sm font-black text-slate-900 italic tracking-tighter">
-                      0 sessões
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wearable</p>
-                    <p className="text-sm font-black text-slate-900 flex items-center gap-1">
-                      Off
-                    </p>
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Diário</p>
-                    <Badge variant="outline" className="text-[10px] h-5 border-emerald-200 text-emerald-600 bg-emerald-50">Ativo</Badge>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Daily Logs View - Professional Perspective */}
-            <div className="clinical-card">
-              <div className="flex items-center justify-between mb-6">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-primary" /> Diário de Saúde (Últimos 7 dias)
-                </h3>
-              </div>
-              <div className="space-y-3">
-                <p className="text-xs text-muted-foreground italic text-center py-6 border border-dashed rounded-xl">
-                  Os logs diários detalhados serão carregados aqui assim que a sincronização do perfil for validada.
-                </p>
-              </div>
-            </div>
-          </TabsContent>
           <TabsContent value="prontuario" className="mt-4 space-y-6">
             {/* Controle de Atendimentos */}
             {agendamentos.length > 0 && (
