@@ -231,7 +231,7 @@ const PatientDashboard = () => {
                                         {format(new Date(nextAppointment.data_inicio), "dd 'de' MMM", { locale: ptBR })}
                                     </p>
                                     <p className="text-xs text-slate-500 font-bold truncate opacity-70">
-                                        às {format(new Date(nextAppointment.data_inicio), "HH:mm")} • Dr. {(nextAppointment as any).profiles?.nome}
+                                        às {format(new Date(nextAppointment.data_inicio), "HH:mm")} • Dr. {nextAppointment.therapist?.nome || "Terapeuta"}
                                     </p>
                                 </div>
                             ) : (
