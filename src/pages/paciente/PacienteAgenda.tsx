@@ -160,15 +160,9 @@ export default function PacienteAgenda() {
     setSubmitting(false);
   };
 
-  // My appointments (upcoming)
-  const minhasConsultas = agendamentos
-    .filter((ag) => ag.paciente_id === paciente?.id || true) // RLS already filters
+  const meusAgendamentos = agendamentos
     .filter((ag) => ag.status !== 'cancelado')
     .sort((a, b) => a.data_inicio.localeCompare(b.data_inicio));
-
-  const meusAgendamentos = agendamentos.filter(
-    (ag) => ag.status !== 'cancelado'
-  );
 
   if (loading) {
     return (
