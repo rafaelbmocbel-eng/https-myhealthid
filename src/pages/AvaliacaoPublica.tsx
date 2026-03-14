@@ -60,6 +60,10 @@ export default function AvaliacaoPublica() {
     ...DEFAULT_BLOCO6,
   });
 
+  useEffect(() => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }, [blocoAtual, concluido]);
+
   const currentStepIdx = STEPS.findIndex(s => s.blocoNum === blocoAtual);
   const completedSteps = STEPS.filter(s => blocosConcluidos.has(s.blocoNum)).length;
   const progresso = (completedSteps / STEPS.length) * 100;
