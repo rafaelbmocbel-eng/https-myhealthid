@@ -115,6 +115,13 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               <p className="text-xs text-muted-foreground mt-4 px-4">
                 A balança entre sua <strong>Demanda Sistêmica</strong> (cores quentes) e sua <strong>Capacidade de Regulação</strong> (cores frias).
               </p>
+              <div className="mt-4 mx-4 p-3 rounded-lg bg-muted/50 border border-border">
+                <p className="text-[11px] text-muted-foreground leading-relaxed">
+                  <strong>Nota clínica:</strong> O índice MyID é uma ferramenta de <strong>suporte ao raciocínio clínico</strong>. 
+                  Os resultados devem ser interpretados pelo profissional de saúde no contexto da avaliação presencial, 
+                  não constituindo diagnóstico isolado.
+                </p>
+              </div>
             </div>
           </div>
         </div>
