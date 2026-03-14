@@ -46,13 +46,6 @@ const getRoleFromMetadata = (
   return null;
 };
 
-const isAuthLockTimeoutError = (error: unknown): boolean => {
-  if (!error || typeof error !== 'object') return false;
-  const message = 'message' in error ? String((error as { message?: string }).message ?? '') : '';
-  return message.includes('Navigator LockManager lock') || message.includes('lock:sb-');
-};
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
