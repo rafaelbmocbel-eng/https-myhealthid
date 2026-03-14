@@ -54,30 +54,49 @@ const PatientDashboard = () => {
         queryFn: async () => {
             if (!pacienteData?.id) return null;
 
-            const { data } = await supabase
+            const { data: appointment, error: appointmentError } = await supabase
                 .from("agendamentos")
-                .select("*, profiles!agendamentos_terapeuta_id_fkey(nome, sobrenome, especialidade)")
+                .select("id, data_inicio, data_fim, status, tipo_atendimento, terapeuta_id")
                 .eq("paciente_id", pacienteData.id)
                 .gte("data_inicio", new Date().toISOString())
                 .order("data_inicio", { ascending: true })
                 .limit(1)
                 .maybeSingle();
 
-            return data;
+            if (appointmentError) throw appointmentError;
+            if (!appointment) return null;
+
+            const { data: therapist, error: therapistError } = await supabase
+                .from("profiles")
+                .select("user_id, nome, sobrenome, especialidade, avatar_url")
+                .eq("user_id", appointment.terapeuta_id)
+                .maybeSingle();
+
+            if (therapistError) {
+                console.error("Erro ao buscar terapeuta:", therapistError);
+            }
+
+            return {
+                ...appointment,
+                therapist: therapist ?? null,
+            };
         },
         enabled: !!pacienteData?.id
     });
 
     // 3. Buscar questionários pendentes
-    const { data: pendingQuestionnaires, isLoading: loadingQuests } = useQuery({
+    const { data: pendingQuestionnaires = [], isLoading: loadingQuests } = useQuery({
         queryKey: ["patient-pending-questionnaires", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return [];
-            const { data } = await supabase
+
+            const { data, error } = await supabase
                 .from("myid_avaliacoes")
-                .select("id, titulo, status, token_acesso")
+                .select("id, status, token_acesso, created_at")
                 .eq("paciente_id", pacienteData.id)
                 .eq("status", "pendente");
+
+            if (error) throw error;
             return data || [];
         },
         enabled: !!pacienteData?.id
@@ -88,13 +107,16 @@ const PatientDashboard = () => {
         queryKey: ["patient-latest-evaluation", pacienteData?.id],
         queryFn: async () => {
             if (!pacienteData?.id) return null;
-            const { data } = await supabase
+
+            const { data, error } = await supabase
                 .from("avaliacoes_identidade")
                 .select("score_e, score_p, score_c, score_f, score_d, score_r, score_efi")
                 .eq("paciente_id", pacienteData.id)
                 .order("created_at", { ascending: false })
                 .limit(1)
                 .maybeSingle();
+
+            if (error) throw error;
             return data;
         },
         enabled: !!pacienteData?.id
