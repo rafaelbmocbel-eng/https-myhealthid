@@ -174,13 +174,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    let result = await supabase.auth.signInWithPassword({ email, password });
-
-    if (result.error && isAuthLockTimeoutError(result.error)) {
-      await sleep(250);
-      result = await supabase.auth.signInWithPassword({ email, password });
-    }
-
+    const result = await withAuthLockRetry(async () => await supabase.auth.signInWithPassword({ email, password }), 1, 250);
     return { error: result.error };
   };
 
