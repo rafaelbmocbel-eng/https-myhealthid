@@ -111,7 +111,9 @@ export function useAgenda() {
     if (!user) return;
 
     try {
-      const { error } = await withAuthLockRetry(() => supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id }));
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id });
+      });
       if (error) throw error;
 
       toast({ title: 'Agendamento criado! ✅' });
@@ -127,7 +129,9 @@ export function useAgenda() {
 
   const updateAgendamento = async (id: string, data: Partial<Agendamento>) => {
     try {
-      const { error } = await withAuthLockRetry(() => supabase.from('agendamentos').update(data).eq('id', id));
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').update(data).eq('id', id);
+      });
       if (error) throw error;
 
       await fetchAll();
@@ -142,7 +146,9 @@ export function useAgenda() {
 
   const deleteAgendamento = async (id: string) => {
     try {
-      const { error } = await withAuthLockRetry(() => supabase.from('agendamentos').delete().eq('id', id));
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').delete().eq('id', id);
+      });
       if (error) throw error;
 
       toast({ title: 'Agendamento removido' });
@@ -160,9 +166,9 @@ export function useAgenda() {
     if (!user) return null;
 
     try {
-      const { data: novo, error } = await withAuthLockRetry(() =>
-        supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single()
-      );
+      const { data: novo, error } = await withAuthLockRetry(async () => {
+        return await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
+      });
 
       if (error) throw error;
 
@@ -184,11 +190,11 @@ export function useAgenda() {
     const payload = { ...cfg, terapeuta_id: user.id };
 
     try {
-      const { error } = await withAuthLockRetry(() =>
-        cfg.id
-          ? supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-          : supabase.from('config_agenda').insert(payload)
-      );
+      const { error } = await withAuthLockRetry(async () => {
+        return cfg.id
+          ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
+          : await supabase.from('config_agenda').insert(payload);
+      });
 
       if (error) throw error;
 
