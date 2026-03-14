@@ -376,6 +376,53 @@ export type Database = {
           },
         ]
       }
+      daily_logs: {
+        Row: {
+          created_at: string
+          energy: number
+          id: string
+          mood: number
+          notes: string | null
+          paciente_id: string
+          pain: number
+          sleep_hours: number
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          energy?: number
+          id?: string
+          mood?: number
+          notes?: string | null
+          paciente_id: string
+          pain?: number
+          sleep_hours?: number
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          energy?: number
+          id?: string
+          mood?: number
+          notes?: string | null
+          paciente_id?: string
+          pain?: number
+          sleep_hours?: number
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_logs_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evolucao_paciente: {
         Row: {
           avaliacao_anterior_id: string | null
@@ -939,11 +986,13 @@ export type Database = {
           id: string
           nome: string
           observacoes: string | null
+          portal_token: string | null
           sexo: string | null
           sobrenome: string
           telefone: string | null
           terapeuta_id: string
           updated_at: string
+          user_id: string | null
         }
         Insert: {
           ativo?: boolean
@@ -956,11 +1005,13 @@ export type Database = {
           id?: string
           nome: string
           observacoes?: string | null
+          portal_token?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id: string
           updated_at?: string
+          user_id?: string | null
         }
         Update: {
           ativo?: boolean
@@ -973,11 +1024,13 @@ export type Database = {
           id?: string
           nome?: string
           observacoes?: string | null
+          portal_token?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id?: string
           updated_at?: string
+          user_id?: string | null
         }
         Relationships: []
       }
@@ -1947,6 +2000,25 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_patient_by_portal_token: {
+        Args: { p_token: string }
+        Returns: {
+          email: string
+          id: string
+          nome: string
+          sobrenome: string
+          telefone: string
+          user_id: string
+        }[]
+      }
+      has_active_agenda_link: {
+        Args: { p_terapeuta_id: string }
+        Returns: boolean
+      }
+      has_active_agenda_link_for_paciente: {
+        Args: { p_paciente_id: string; p_terapeuta_id: string }
+        Returns: boolean
+      }
       link_agenda_valido_por_token: {
         Args: { p_token: string }
         Returns: {
@@ -1955,6 +2027,7 @@ export type Database = {
         }[]
       }
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
+      link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
     }
     Enums: {
       [_ in never]: never
