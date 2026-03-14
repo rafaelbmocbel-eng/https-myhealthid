@@ -400,8 +400,10 @@ export default function Index() {
 
   return (
     <AppLayout>
+      <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-1 sm:px-6">
         {/* Welcome header */}
+        <FadeIn>
         <div className="mb-6 sm:mb-8">
           <h1 className="text-xl sm:text-2xl font-black text-foreground">
             {saudacao}, {profile?.nome || 'Terapeuta'}! 👋
@@ -410,9 +412,10 @@ export default function Index() {
             {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
           </p>
         </div>
+        </FadeIn>
 
         {/* Quick stats */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
           {[
             { label: 'Pacientes Totais', value: pacientes.length, icon: Users, color: 'text-primary' },
             { label: 'Atendimentos Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
