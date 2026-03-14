@@ -168,6 +168,8 @@ export default function Agenda() {
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
   const gridRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const [headerHeight, setHeaderHeight] = useState(0);
   const { refresh } = useAgenda();
 
   // Drag-and-drop state
@@ -227,6 +229,8 @@ export default function Agenda() {
     }
   }, [viewMode]);
 
+
+
   // Force 6h-20h range as specified
   const startHour = 6;
   const endHour = 20;
@@ -245,7 +249,14 @@ export default function Agenda() {
   };
   const days = getDays();
 
-  // Drag-and-drop handlers — using refs to avoid stale closures
+  // Measure header height for overlay alignment
+  useEffect(() => {
+    if (headerRef.current) {
+      setHeaderHeight(headerRef.current.offsetHeight);
+    }
+  }, [viewMode, days.length]);
+
+
   const draggingRef = useRef(dragging);
   draggingRef.current = dragging;
   const dragDeltaRef = useRef(dragDelta);
@@ -851,7 +862,7 @@ export default function Agenda() {
             {viewMode !== 'mes' && (
               <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
                 {/* Day headers */}
-                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
+                <div ref={headerRef} className="border-b border-r bg-card/80 sticky top-0 z-10" />
                 {days.map(day => (
                   <div
                     key={day.toISOString()}
@@ -928,8 +939,8 @@ export default function Agenda() {
                     gridTemplateColumns: `48px repeat(${days.length}, 1fr)`,
                     position: 'absolute',
                     top: 0, left: 0, right: 0,
-                    // offset by header height
-                    marginTop: days.length > 0 ? '52px' : '0',
+                    // offset by measured header height
+                    marginTop: headerHeight > 0 ? `${headerHeight}px` : '0',
                   }}
                 >
                   {/* Empty time-label column */}
