@@ -74,9 +74,11 @@ const ScoreIndicator = ({
 
 export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, hasRedFlags = false, className = '' }: Props & { hasRedFlags?: boolean }) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
-  const interp = getMyIDInterpretation(myidScore, hasRedFlags);
+  const dimScores = { D, EFI, P, I, N };
+  const interp = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const myidColor = interp.color;
   const status = interp.label;
+  const dimensionAlerts = interp.dimensionAlerts || [];
 
   // Hybrid Formula: ((D + EFI) * (1 + P / 10)) + P + I
   const numerator = ((D + EFI) * (1 + P / 10)) + P + I;

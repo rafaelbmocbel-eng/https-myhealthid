@@ -415,10 +415,18 @@ export class MyIDCalculator {
 
     // ==================== INTERPRETAÇÃO ====================
     interpretStatus(): string {
-        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false);
+        const dimScores = {
+            D: this.scores['D'] || 0,
+            EFI: this.scores['EFI'] || 0,
+            P: this.scores['P'] || 0,
+            I: this.scores['I'] || 0,
+            N: this.scores['N'] || 0,
+        };
+        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false, dimScores);
         this.result.status = interp.status;
         this.result.color = interp.color;
         this.result.recommendation = interp.recommendation;
+        this.result.dimension_alerts = interp.dimensionAlerts || [];
         return interp.status;
     }
 

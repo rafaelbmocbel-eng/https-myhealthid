@@ -105,10 +105,12 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
         recommendation: _recommendation // captured but overridden
     } = result;
 
-    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected);
+    const dimScores = { D, EFI, P, I, N: scores.N ?? scores.N_noise ?? 0 };
+    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected, dimScores);
     const status = interp.label;
     const color = interp.color;
     const recommendation = interp.recommendation;
+    const dimensionAlerts = interp.dimensionAlerts || result.dimension_alerts || [];
 
     const scores = component_scores || {};
     const D = scores.D ?? scores.D_pain ?? 0;
