@@ -220,9 +220,12 @@ export default function AvaliacaoPublica() {
       </div>
 
       <div className="max-w-2xl mx-auto px-4 py-8">
-        {blocoAtual === 6 && (
-          <Bloco6 data={data} updateData={updateData} />
-        )}
+        {blocoAtual === 1 && <Bloco1 data={data} updateData={updateData} />}
+        {blocoAtual === 2 && <Bloco2 data={data} updateData={updateData} />}
+        {blocoAtual === 3 && <Bloco3 data={data} updateData={updateData} />}
+        {blocoAtual === 4 && <Bloco4 data={data} updateData={updateData} />}
+        {blocoAtual === 5 && <Bloco5 data={data} updateData={updateData} />}
+        {blocoAtual === 6 && <Bloco6 data={data} updateData={updateData} />}
 
         {/* Navegação entre Blocos */}
         <div className="flex justify-between items-center mt-10 pt-6 border-t">
