@@ -1026,12 +1026,12 @@ export default function PacientePerfil() {
                   <div className="flex items-center justify-between">
                     <Award className="h-8 w-8 opacity-80" />
                     <Badge className="bg-white/20 text-white border-none font-black uppercase text-[10px]">
-                      Nível {paciente.current_level || '1'}
+                      Nível 1
                     </Badge>
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total de Pontos MyID</p>
-                    <p className="text-3xl font-black italic tracking-tighter">{paciente.total_points || 0}</p>
+                    <p className="text-3xl font-black italic tracking-tighter">0</p>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-white" style={{ width: '45%' }} />
@@ -1051,24 +1051,19 @@ export default function PacientePerfil() {
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Plano</p>
                     <p className="text-sm font-black text-indigo-600 uppercase italic">
-                      {paciente.plan || 'Básico'}
+                      Básico
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Créditos</p>
                     <p className="text-sm font-black text-slate-900 italic tracking-tighter">
-                      {paciente.session_credits || 0} sessões
+                      0 sessões
                     </p>
                   </div>
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wearable</p>
                     <p className="text-sm font-black text-slate-900 flex items-center gap-1">
-                      {paciente.wearable_device ? (
-                        <>
-                          <Watch className="h-3 w-3 text-cyan-500" />
-                          Conectado
-                        </>
-                      ) : 'Off'}
+                      Off
                     </p>
                   </div>
                   <div className="space-y-1">

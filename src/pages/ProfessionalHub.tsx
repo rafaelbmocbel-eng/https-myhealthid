@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { useAuth, Profile } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -25,7 +25,7 @@ export default function ProfessionalHub() {
     const { toast } = useToast();
     const [searchTerm, setSearchTerm] = useState('');
 
-    const handleInvite = async (paciente?: Profile) => {
+    const handleInvite = async (paciente?: any) => {
         const registerUrl = `${window.location.origin}/paciente/cadastro`;
 
         if (paciente) {
@@ -50,12 +50,13 @@ export default function ProfessionalHub() {
         queryFn: async () => {
             // Fetch patients 
             const { data: patients, error } = await supabase
-                .from('profiles')
+                .from('pacientes')
                 .select('*')
-                .eq('role', 'patient');
+                .eq('terapeuta_id', user!.id)
+                .eq('ativo', true);
 
             if (error) throw error;
-            return (patients as any as Profile[]) || [];
+            return (patients as any[]) || [];
         },
         enabled: !!user
     });

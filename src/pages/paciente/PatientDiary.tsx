@@ -56,25 +56,40 @@ const PatientDiary = () => {
         navigate("/paciente/login");
     };
 
-    const { data: logs, isLoading } = useQuery({
-        queryKey: ["patient-daily-logs", user?.id],
+    // Get patient record linked to this user
+    const { data: patientRecord } = useQuery({
+        queryKey: ["patient-record-for-diary", user?.id],
         queryFn: async () => {
             const { data } = await supabase
-                .from("daily_logs")
-                .select("*")
+                .from("pacientes")
+                .select("id, terapeuta_id")
                 .eq("user_id", user?.id)
-                .order("created_at", { ascending: false })
-                .limit(7);
-            return data || [];
+                .single();
+            return data;
         },
         enabled: !!user?.id
     });
 
+    const { data: logs, isLoading } = useQuery({
+        queryKey: ["patient-daily-logs", patientRecord?.id],
+        queryFn: async () => {
+            const { data } = await supabase
+                .from("daily_logs")
+                .select("*")
+                .eq("paciente_id", patientRecord!.id)
+                .order("created_at", { ascending: false })
+                .limit(7);
+            return data || [];
+        },
+        enabled: !!patientRecord?.id
+    });
+
     const mutation = useMutation({
         mutationFn: async (newLog: any) => {
+            if (!patientRecord) throw new Error("Paciente não encontrado");
             const { data, error } = await supabase
                 .from("daily_logs")
-                .insert([{ ...newLog, user_id: user?.id }]);
+                .insert([{ ...newLog, paciente_id: patientRecord.id, terapeuta_id: patientRecord.terapeuta_id }]);
             if (error) throw error;
             return data;
         },

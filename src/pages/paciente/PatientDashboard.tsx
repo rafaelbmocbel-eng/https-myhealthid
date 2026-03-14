@@ -24,7 +24,8 @@ import {
     CreditCard,
     Menu,
     Clock,
-    ExternalLink
+    ExternalLink,
+    Heart
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useState } from "react";
@@ -73,10 +74,16 @@ const PatientDashboard = () => {
     const { data: pendingQuestionnaires, isLoading: loadingQuests } = useQuery({
         queryKey: ["patient-pending-questionnaires", user?.id],
         queryFn: async () => {
+            const { data: paciente } = await supabase
+                .from("pacientes")
+                .select("id")
+                .eq("user_id", user?.id)
+                .single();
+            if (!paciente) return [];
             const { data } = await supabase
                 .from("myid_avaliacoes")
-                .select("id, titulo, status")
-                .eq("email_paciente", user?.email)
+                .select("id, token_acesso, status")
+                .eq("paciente_id", paciente.id)
                 .eq("status", "pendente");
             return data || [];
         },
