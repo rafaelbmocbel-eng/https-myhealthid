@@ -57,18 +57,18 @@ export function useAgenda() {
     if (!user) return;
     setLoading(true);
     const [agResult, pacResult, cfgResult] = await Promise.all([
-      withAuthLockRetry(() =>
-        supabase
+      withAuthLockRetry(async () =>
+        await supabase
           .from('agendamentos')
           .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
           .eq('terapeuta_id', user.id)
           .order('data_inicio')
       , 1, 250),
-      withAuthLockRetry(() =>
-        supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome')
+      withAuthLockRetry(async () =>
+        await supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome')
       , 1, 250),
-      withAuthLockRetry(() =>
-        supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle()
+      withAuthLockRetry(async () =>
+        await supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle()
       , 1, 250),
     ]);
 
