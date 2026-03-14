@@ -172,7 +172,7 @@ const PatientDashboard = () => {
                             </div>
                             <div>
                                 <p className="text-base font-black text-amber-950 uppercase italic tracking-tight">Próxima Consulta: Check-in Aberto</p>
-                                <p className="text-sm text-amber-900/70 font-medium">Prepare-se para sua consulta com Dr(a). {(nextAppointment as any).profiles?.nome}.</p>
+                                <p className="text-sm text-amber-900/70 font-medium">Prepare-se para sua consulta com Dr(a). {nextAppointment.therapist?.nome || "seu terapeuta"}.</p>
                             </div>
                         </div>
                         <Button className="bg-amber-600 hover:bg-amber-700 text-white font-black rounded-2xl shadow-xl shadow-amber-200 px-8 h-12">
