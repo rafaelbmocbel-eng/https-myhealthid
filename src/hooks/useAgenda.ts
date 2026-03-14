@@ -124,8 +124,8 @@ export function useAgenda() {
     if (!user) return;
     const payload = { ...cfg, terapeuta_id: user.id };
     const { error } = cfg.id
-      ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-      : await supabase.from('config_agenda').insert(payload);
+      ? await withAuthLockRetry(async () => await supabase.from('config_agenda').update(payload).eq('id', cfg.id), 1, 250)
+      : await withAuthLockRetry(async () => await supabase.from('config_agenda').insert(payload), 1, 250);
     if (error) { toast({ title: 'Erro ao salvar configuração', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Configurações salvas! ✅' });
     await fetchAll();
