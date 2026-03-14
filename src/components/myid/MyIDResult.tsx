@@ -201,9 +201,9 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 <Card className="border-red-200 shadow-sm flex flex-col">
                     <CardHeader className="bg-red-50/50 pb-4">
                         <CardTitle className="text-red-700 flex items-center gap-2 text-lg">
-                            <span className="text-xl">⚠️</span> O QUE ESTÁ SOBRECARREGANDO (Numerador)
+                            <span className="text-xl">⚠️</span> DEMANDA SISTÊMICA (50%)
                         </CardTitle>
-                        <CardDescription>Fatores que aumentam sua dor</CardDescription>
+                        <CardDescription>Fatores que aumentam sua sobrecarga</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5 pt-4 flex-1">
                         <div className="space-y-1.5">
@@ -220,7 +220,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                         </div>
                         <div className="space-y-1.5">
                             <div className="flex justify-between text-sm font-bold text-gray-700">
-                                <span>🟡 Psicológico (P)</span><span>{P.toFixed(1)}/10</span>
+                                <span>🟡 Psicológico (P) — Amplificador ×{(1 + P / 10).toFixed(1)}</span><span>{P.toFixed(1)}/10</span>
                             </div>
                             <Progress value={P * 10} className="h-2.5 bg-yellow-100 [&>div]:bg-yellow-500" />
                         </div>
@@ -233,25 +233,25 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                     </CardContent>
                 </Card>
 
-                <Card className="border-green-200 shadow-sm flex flex-col">
-                    <CardHeader className="bg-green-50/50 pb-4">
-                        <CardTitle className="text-green-700 flex items-center gap-2 text-lg">
-                            <span className="text-xl">🟢</span> O QUE ESTÁ AJUDANDO (Denominador)
+                <Card className="border-amber-200 shadow-sm flex flex-col">
+                    <CardHeader className="bg-amber-50/50 pb-4">
+                        <CardTitle className="text-amber-700 flex items-center gap-2 text-lg">
+                            <span className="text-xl">📊</span> DÉFICIT DE CAPACIDADE (35%)
                         </CardTitle>
-                        <CardDescription>Fatores de recuperação do seu sistema</CardDescription>
+                        <CardDescription>Distância do ideal — quanto menor, melhor</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-5 pt-4 flex-1">
                         <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Regulação (R)</span><span>{R.toFixed(1)}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>Regulação (R)</span><span>{R.toFixed(1)}/10</span></div>
                                 <Progress value={R * 10} className={`h-1.5 bg-green-100 ${R < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Contexto (C)</span><span>{C.toFixed(1)}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>Contexto (C)</span><span>{C.toFixed(1)}/10</span></div>
                                 <Progress value={C * 10} className={`h-1.5 bg-green-100 ${C < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
                             </div>
                             <div className="space-y-1.5">
-                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>🟢 Atividade (AF)</span><span>{AF.toFixed(1)}/10</span></div>
+                                <div className="flex justify-between text-xs font-bold text-gray-700"><span>Atividade (AF)</span><span>{AF.toFixed(1)}/10</span></div>
                                 <Progress value={AF * 10} className={`h-1.5 bg-green-100 ${AF < 5 ? "[&>div]:bg-red-500" : "[&>div]:bg-green-500"}`} />
                             </div>
                             <div className="space-y-1.5">
