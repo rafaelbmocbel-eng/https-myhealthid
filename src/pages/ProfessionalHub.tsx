@@ -56,7 +56,7 @@ export default function ProfessionalHub() {
                 .eq('ativo', true);
 
             if (error) throw error;
-            return (patients as any as Profile[]) || [];
+            return (patients as any[]) || [];
         },
         enabled: !!user
     });
