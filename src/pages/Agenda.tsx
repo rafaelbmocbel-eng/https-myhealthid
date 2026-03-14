@@ -17,6 +17,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -178,6 +182,14 @@ export default function Agenda() {
   } | null>(null);
   const [dragDelta, setDragDelta] = useState({ dy: 0, dx: 0 });
 
+  // Drag confirmation state
+  const [pendingDrag, setPendingDrag] = useState<{
+    agId: string;
+    newStart: string;
+    newEnd: string;
+    label: string;
+  } | null>(null);
+
   // Current time indicator update
   useEffect(() => {
     const tick = () => {
@@ -264,7 +276,7 @@ export default function Agenda() {
       const dx = clientX - draggingRef.current!.startX;
       setDragDelta({ dy, dx });
     };
-    const handleUp = async () => {
+    const handleUp = () => {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
@@ -287,6 +299,12 @@ export default function Agenda() {
       const newStart = setMinutes(setHours(new Date(newDay), newH), newM);
       const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
 
+      setDragging(null);
+      setDragDelta({ dy: 0, dx: 0 });
+
+      // If no actual change, skip
+      if (newStart.getTime() === origStart.getTime()) return;
+
       // Bloqueio rigoroso de limite de vagas
       const overlapping = countOverlapping(newStart.toISOString(), newEnd.toISOString(), d.ag.id);
       if (overlapping >= config.vagas_por_horario) {
@@ -295,19 +313,17 @@ export default function Agenda() {
           description: `Máximo de ${config.vagas_por_horario} pacientes neste horário. Arrastar bloqueado.`,
           variant: 'destructive'
         });
-        setDragging(null);
-        setDragDelta({ dy: 0, dx: 0 });
         return;
       }
 
-      if (newStart.getTime() !== origStart.getTime()) {
-        await updateAgendamento(d.ag.id, {
-          data_inicio: newStart.toISOString(),
-          data_fim: newEnd.toISOString(),
-        });
-      }
-      setDragging(null);
-      setDragDelta({ dy: 0, dx: 0 });
+      // Show confirmation dialog instead of immediately updating
+      const label = `${format(newStart, "dd/MM 'às' HH:mm")} – ${format(newEnd, 'HH:mm')}`;
+      setPendingDrag({
+        agId: d.ag.id,
+        newStart: newStart.toISOString(),
+        newEnd: newEnd.toISOString(),
+        label,
+      });
     };
     window.addEventListener('mousemove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleUp);
@@ -923,7 +939,7 @@ export default function Agenda() {
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     const overlapLayout = getOverlapLayout(dayAgs);
                     return (
-                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight }}>
+                      <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight, overflow: 'hidden' }}>
                         {dayAgs.filter(ag => ag.status !== 'cancelado').map(ag => {
                           const pos = getAgPos(ag);
                           const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
@@ -1292,6 +1308,32 @@ export default function Agenda() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Drag confirmation dialog */}
+      <AlertDialog open={!!pendingDrag} onOpenChange={(open) => { if (!open) setPendingDrag(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de horário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja mover este agendamento para <strong>{pendingDrag?.label}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!pendingDrag) return;
+              await updateAgendamento(pendingDrag.agId, {
+                data_inicio: pendingDrag.newStart,
+                data_fim: pendingDrag.newEnd,
+              });
+              setPendingDrag(null);
+              toast({ title: '✅ Horário atualizado!' });
+            }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
