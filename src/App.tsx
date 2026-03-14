@@ -21,8 +21,29 @@ import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import FunilChat from "./pages/FunilChat";
 import { AuthProvider } from "./contexts/AuthContext";
+import { isAuthLockTimeoutError } from "./lib/authLock";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: (failureCount, error) => {
+        if (isAuthLockTimeoutError(error)) return failureCount < 5;
+        return failureCount < 2;
+      },
+      retryDelay: (attemptIndex, error) => {
+        if (isAuthLockTimeoutError(error)) {
+          return Math.min(500 * 2 ** (attemptIndex - 1), 5000);
+        }
+        return Math.min(1000 * attemptIndex, 3000);
+      },
+      refetchOnWindowFocus: false,
+    },
+    mutations: {
+      retry: (failureCount, error) => isAuthLockTimeoutError(error) && failureCount < 2,
+      retryDelay: (attemptIndex) => Math.min(500 * 2 ** (attemptIndex - 1), 3000),
+    },
+  },
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>

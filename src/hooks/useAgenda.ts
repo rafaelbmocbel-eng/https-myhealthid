@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { isAuthLockTimeoutError, withAuthLockRetry } from '@/lib/authLock';
 
 export interface Paciente {
   id: string;
@@ -53,68 +54,171 @@ export function useAgenda() {
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
-    if (!user) return;
+    if (!user) {
+      setAgendamentos([]);
+      setPacientes([]);
+      setConfig(DEFAULT_CONFIG);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
-    const [agResult, pacResult, cfgResult] = await Promise.all([
-      supabase
-        .from('agendamentos')
-        .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
-        .eq('terapeuta_id', user.id)
-        .order('data_inicio'),
-      supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
-      supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle(),
-    ]);
 
-    if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
-    if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+    try {
+      const [agResult, pacResult, cfgResult] = await withAuthLockRetry(async () => {
+        const results = await Promise.all([
+          supabase
+            .from('agendamentos')
+            .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
+            .eq('terapeuta_id', user.id)
+            .order('data_inicio'),
+          supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome'),
+          supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle(),
+        ]);
 
-    setAgendamentos((agResult.data as Agendamento[]) || []);
-    setPacientes((pacResult.data as Paciente[]) || []);
-    if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
-    setLoading(false);
-  }, [user]);
+        const lockError = results.map((result) => result.error).find((error) => isAuthLockTimeoutError(error));
+        if (lockError) throw lockError;
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+        return results;
+      }, { maxAttempts: 4, baseDelayMs: 300 });
+
+      if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
+      if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+      if (cfgResult.error) console.error('[useAgenda] config error:', cfgResult.error);
+
+      setAgendamentos((agResult.data as Agendamento[]) || []);
+      setPacientes((pacResult.data as Paciente[]) || []);
+      if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
+    } catch (error) {
+      console.error('[useAgenda] fetchAll fatal error:', error);
+      toast({
+        title: isAuthLockTimeoutError(error) ? 'Sessão ocupada em outra aba' : 'Erro ao carregar agenda',
+        description: isAuthLockTimeoutError(error)
+          ? 'Feche outras abas do sistema e atualize a página.'
+          : 'Tente novamente em alguns segundos.',
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
+    }
+  }, [user, toast]);
+
+  useEffect(() => {
+    void fetchAll();
+  }, [fetchAll]);
 
   const createAgendamento = async (data: Omit<Agendamento, 'id'>) => {
     if (!user) return;
-    const { error } = await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id });
-    if (error) { toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Agendamento criado! ✅' });
-    await fetchAll();
+
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').insert({ ...data, terapeuta_id: user.id });
+      });
+      if (error) throw error;
+
+      toast({ title: 'Agendamento criado! ✅' });
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao agendar',
+        description: error instanceof Error ? error.message : 'Falha ao criar agendamento.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const updateAgendamento = async (id: string, data: Partial<Agendamento>) => {
-    const { error } = await supabase.from('agendamentos').update(data).eq('id', id);
-    if (error) { toast({ title: 'Erro ao atualizar', description: error.message, variant: 'destructive' }); return; }
-    await fetchAll();
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').update(data).eq('id', id);
+      });
+      if (error) throw error;
+
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao atualizar',
+        description: error instanceof Error ? error.message : 'Falha ao atualizar agendamento.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const deleteAgendamento = async (id: string) => {
-    const { error } = await supabase.from('agendamentos').delete().eq('id', id);
-    if (error) { toast({ title: 'Erro ao excluir', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Agendamento removido' });
-    await fetchAll();
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').delete().eq('id', id);
+      });
+      if (error) throw error;
+
+      toast({ title: 'Agendamento removido' });
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao excluir',
+        description: error instanceof Error ? error.message : 'Falha ao excluir agendamento.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const createPaciente = async (data: Omit<Paciente, 'id' | 'ativo'>) => {
     if (!user) return null;
-    const { data: novo, error } = await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
-    if (error) { toast({ title: 'Erro ao cadastrar paciente', description: error.message, variant: 'destructive' }); return null; }
-    await fetchAll();
-    return novo as Paciente;
+
+    try {
+      const { data: novo, error } = await withAuthLockRetry(async () => {
+        return await supabase.from('pacientes').insert({ ...data, terapeuta_id: user.id }).select().single();
+      });
+
+      if (error) throw error;
+
+      await fetchAll();
+      return novo as Paciente;
+    } catch (error) {
+      toast({
+        title: 'Erro ao cadastrar paciente',
+        description: error instanceof Error ? error.message : 'Falha ao cadastrar paciente.',
+        variant: 'destructive',
+      });
+      return null;
+    }
   };
 
   const saveConfig = async (cfg: ConfigAgenda) => {
     if (!user) return;
+
     const payload = { ...cfg, terapeuta_id: user.id };
-    const { error } = cfg.id
-      ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-      : await supabase.from('config_agenda').insert(payload);
-    if (error) { toast({ title: 'Erro ao salvar configuração', description: error.message, variant: 'destructive' }); return; }
-    toast({ title: 'Configurações salvas! ✅' });
-    await fetchAll();
+
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return cfg.id
+          ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
+          : await supabase.from('config_agenda').insert(payload);
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Configurações salvas! ✅' });
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao salvar configuração',
+        description: error instanceof Error ? error.message : 'Falha ao salvar configuração da agenda.',
+        variant: 'destructive',
+      });
+    }
   };
 
-  return { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente, saveConfig, refresh: fetchAll };
+  return {
+    agendamentos,
+    pacientes,
+    config,
+    loading,
+    createAgendamento,
+    updateAgendamento,
+    deleteAgendamento,
+    createPaciente,
+    saveConfig,
+    refresh: fetchAll,
+  };
 }
