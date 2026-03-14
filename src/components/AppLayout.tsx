@@ -11,13 +11,11 @@ interface AppLayoutProps {
 }
 
 export default function AppLayout({ children }: AppLayoutProps) {
-  const { profile, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
-
-  if (!loading && profile?.role === 'patient') {
-    return <Navigate to="/paciente/dashboard" replace />;
-  }
+  const metadataRole = user?.user_metadata?.role;
+  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
 
   useLayoutEffect(() => {
     const check = () => {
@@ -29,6 +27,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
     window.addEventListener('resize', check);
     return () => window.removeEventListener('resize', check);
   }, []);
+
+  if (!loading && resolvedRole === 'patient') {
+    return <Navigate to="/paciente/dashboard" replace />;
+  }
 
   // On mobile sidebar is always collapsed (icon-only 72px), on desktop user toggles
   const sidebarCollapsed = isMobile ? true : collapsed;

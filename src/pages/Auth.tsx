@@ -16,11 +16,23 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
 
+  const metadataRole = user?.user_metadata?.role;
+  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
+
   if (!loading && user) {
-    if (profile?.role === 'patient') {
+    if (resolvedRole === 'patient') {
       return <Navigate to="/paciente/dashboard" replace />;
     }
-    return <Navigate to="/agenda" replace />;
+
+    if (resolvedRole === 'professional' || resolvedRole === 'admin') {
+      return <Navigate to="/agenda" replace />;
+    }
+
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
   }
 
   const handleSubmit = async (e: React.FormEvent) => {

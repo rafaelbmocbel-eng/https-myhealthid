@@ -24,6 +24,8 @@ export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const metadataRole = user?.user_metadata?.role;
+  const resolvedRole = profile?.role ?? (metadataRole === 'admin' || metadataRole === 'professional' || metadataRole === 'patient' ? metadataRole : null);
 
   const handleCopiarLinkPortal = () => {
     if (!user) return;
@@ -36,10 +38,10 @@ export default function Index() {
   };
 
   useEffect(() => {
-    if (!loading && profile?.role === 'patient') {
+    if (!loading && resolvedRole === 'patient') {
       navigate('/paciente/dashboard', { replace: true });
     }
-  }, [profile, loading, navigate]);
+  }, [resolvedRole, loading, navigate]);
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],

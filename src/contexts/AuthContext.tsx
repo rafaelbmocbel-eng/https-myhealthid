@@ -37,12 +37,12 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 const getRoleFromMetadata = (
   metadata?: Record<string, unknown>
-): Profile['role'] => {
+): Profile['role'] | null => {
   const role = metadata?.role;
   if (role === 'admin' || role === 'professional' || role === 'patient') {
     return role;
   }
-  return 'professional';
+  return null;
 };
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -107,9 +107,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       (session?.user?.id === userId ? session.user.user_metadata as Record<string, unknown> : undefined) ??
       (user?.id === userId ? user.user_metadata as Record<string, unknown> : undefined);
 
-    const resolvedRole = getRoleFromMetadata(metadataFallback);
+    const metadataRole = getRoleFromMetadata(metadataFallback);
 
-    // Immediately set a preliminary profile based on metadata to prevent UI hangs
+    // Preliminary profile only when metadata role is explicit
     const fallbackProfile: Profile = {
       id: userId,
       user_id: userId,
@@ -118,42 +118,49 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: typeof metadataFallback?.email === 'string'
         ? metadataFallback.email
         : session?.user?.email ?? user?.email ?? '',
-      role: resolvedRole,
+      role: metadataRole ?? 'professional',
     };
 
-    if (!profile) {
+    if (!profile && metadataRole) {
       setProfile(fallbackProfile);
     }
 
-    // Add a local timeout for this specific fetch operation
-    const fetchTimeout = setTimeout(() => {
-      console.warn('AuthContext: Profile fetch timed out (4s), using metadata fallback.');
-      setLoading(false);
-    }, 4000);
-
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const [
+        { data: profileData, error: profileError },
+        { data: patientLink, error: patientError },
+      ] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle(),
+        supabase
+          .from('pacientes')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle(),
+      ]);
 
-      if (error) {
-        console.error('AuthContext: Error fetching profile from database:', error);
+      if (profileError) {
+        console.error('AuthContext: Error fetching profile from database:', profileError);
       }
 
-      if (data) {
-        // Update with full data from database, but preserve the metadata-derived role if DB role is missing or needs expansion
-        setProfile({ ...(data as any), role: (data as any).role || resolvedRole } as Profile);
+      if (patientError) {
+        console.error('AuthContext: Error inferring patient role from pacientes:', patientError);
+      }
+
+      const inferredRole: Profile['role'] = metadataRole ?? (patientLink ? 'patient' : 'professional');
+
+      if (profileData) {
+        setProfile({ ...(profileData as any), role: inferredRole } as Profile);
       } else {
-        // Keep the fallback profile if no record in DB
-        setProfile(fallbackProfile);
+        setProfile({ ...fallbackProfile, role: inferredRole });
       }
     } catch (err) {
       console.error('AuthContext: Unexpected error in fetchProfile:', err);
       if (!profile) setProfile(fallbackProfile);
     } finally {
-      clearTimeout(fetchTimeout);
       setLoading(false);
     }
   };
