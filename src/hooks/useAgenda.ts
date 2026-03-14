@@ -56,29 +56,35 @@ export function useAgenda() {
   const fetchAll = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-    const [agResult, pacResult, cfgResult] = await Promise.all([
-      withAuthLockRetry(async () =>
-        await supabase
-          .from('agendamentos')
-          .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
-          .eq('terapeuta_id', user.id)
-          .order('data_inicio')
-      , 1, 250),
-      withAuthLockRetry(async () =>
-        await supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome')
-      , 1, 250),
-      withAuthLockRetry(async () =>
-        await supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle()
-      , 1, 250),
-    ]);
 
-    if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
-    if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+    try {
+      const [agResult, pacResult, cfgResult] = await Promise.all([
+        withAuthLockRetry(async () =>
+          await supabase
+            .from('agendamentos')
+            .select('*, pacientes(id, nome, sobrenome, email, telefone, ativo)')
+            .eq('terapeuta_id', user.id)
+            .order('data_inicio')
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase.from('pacientes').select('*').eq('terapeuta_id', user.id).eq('ativo', true).order('nome')
+        , 1, 250),
+        withAuthLockRetry(async () =>
+          await supabase.from('config_agenda').select('*').eq('terapeuta_id', user.id).maybeSingle()
+        , 1, 250),
+      ]);
 
-    setAgendamentos((agResult.data as Agendamento[]) || []);
-    setPacientes((pacResult.data as Paciente[]) || []);
-    if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
-    setLoading(false);
+      if (agResult.error) console.error('[useAgenda] agendamentos error:', agResult.error);
+      if (pacResult.error) console.error('[useAgenda] pacientes error:', pacResult.error);
+
+      setAgendamentos((agResult.data as Agendamento[]) || []);
+      setPacientes((pacResult.data as Paciente[]) || []);
+      if (cfgResult.data) setConfig(cfgResult.data as ConfigAgenda);
+    } catch (error) {
+      console.error('[useAgenda] fetchAll failed:', error);
+    } finally {
+      setLoading(false);
+    }
   }, [user]);
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
