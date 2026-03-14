@@ -74,9 +74,11 @@ const ScoreIndicator = ({
 
 export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, hasRedFlags = false, className = '' }: Props & { hasRedFlags?: boolean }) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
-  const interp = getMyIDInterpretation(myidScore, hasRedFlags);
+  const dimScores = { D, EFI, P, I, N };
+  const interp = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const myidColor = interp.color;
   const status = interp.label;
+  const dimensionAlerts = interp.dimensionAlerts || [];
 
   // Hybrid Formula: ((D + EFI) * (1 + P / 10)) + P + I
   const numerator = ((D + EFI) * (1 + P / 10)) + P + I;
@@ -129,8 +131,21 @@ export default function MyIDFormulaDisplay({ scores, myidScore, highlightedKey, 
                 ))}
               </div>
             </div>
-          </div>
+              </div>
 
+              {/* Dimension Alerts */}
+              {dimensionAlerts.length > 0 && (
+                <div className="mt-4 space-y-2 max-w-lg mx-auto w-full">
+                  {dimensionAlerts.map((alert) => (
+                    <div key={alert.dimension} className="flex items-center gap-2 p-2.5 bg-amber-50 border border-amber-200 rounded-xl text-xs">
+                      <span className="text-base">🔴</span>
+                      <span className="font-bold text-amber-900">
+                        {alert.label} ({alert.dimension} = {alert.value.toFixed(1)}) → classificação elevada para {alert.severity}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
           {/* Balance Bar */}
           <div className="space-y-4 max-w-2xl mx-auto w-full">
             <div className="flex justify-between items-start px-1 mb-1">

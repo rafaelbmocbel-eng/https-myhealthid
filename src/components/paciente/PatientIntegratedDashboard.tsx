@@ -296,7 +296,14 @@ export default function PatientIntegratedDashboard({
   const myidScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
   const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
 
-  const interpretation = getMyIDInterpretation(myidScore, hasRedFlags);
+  const dimScores = {
+    D: scores.D ?? 0,
+    EFI: scores.EFI ?? 0,
+    P: scores.P ?? 0,
+    I: scores.I ?? 0,
+    N: scores.N ?? 0,
+  };
+  const interpretation = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const classificacao = interpretation.status;
   const label = interpretation.label;
   const recommendation = interpretation.recommendation || myidLinkResult?.recommendation || '';

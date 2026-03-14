@@ -36,6 +36,7 @@ export class MyIDCalculator {
         color: string;
         recommendation: string;
         MyID: number;
+        dimension_alerts: any[];
     }> = {};
 
 
@@ -415,10 +416,18 @@ export class MyIDCalculator {
 
     // ==================== INTERPRETAÇÃO ====================
     interpretStatus(): string {
-        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false);
+        const dimScores = {
+            D: this.scores['D'] || 0,
+            EFI: this.scores['EFI'] || 0,
+            P: this.scores['P'] || 0,
+            I: this.scores['I'] || 0,
+            N: this.scores['N'] || 0,
+        };
+        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false, dimScores);
         this.result.status = interp.status;
         this.result.color = interp.color;
         this.result.recommendation = interp.recommendation;
+        this.result.dimension_alerts = interp.dimensionAlerts || [];
         return interp.status;
     }
 
@@ -494,7 +503,9 @@ export class MyIDCalculator {
 
             red_flags: this.result.red_flags_detected || false,
             red_flags_details: this.result.red_flags || {},
+            red_flags_detected: this.result.red_flags_detected || false,
             pain_pattern: this.result.pain_pattern || 'Unknown',
+            dimension_alerts: this.result.dimension_alerts || [],
 
             clinical_priority: this.result.clinical_priority || 'Unknown',
             focus_areas: this.result.focus_areas || [],

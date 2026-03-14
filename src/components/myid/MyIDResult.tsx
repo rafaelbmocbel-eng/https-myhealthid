@@ -105,11 +105,6 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
         recommendation: _recommendation // captured but overridden
     } = result;
 
-    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected);
-    const status = interp.label;
-    const color = interp.color;
-    const recommendation = interp.recommendation;
-
     const scores = component_scores || {};
     const D = scores.D ?? scores.D_pain ?? 0;
     const EFI = scores.EFI ?? scores.EFI_functionality ?? 0;
@@ -123,6 +118,13 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     const ERG = scores.ERG ?? scores.ERG_ergonomics ?? 0;
     const N = scores.N ?? scores.N_noise ?? 0;
     const MED = scores.MED ?? scores.MED_penalty ?? 0;
+
+    const dimScores = { D, EFI, P, I, N };
+    const interp = getMyIDInterpretation(MyID_score ?? 0, red_flags_detected, dimScores);
+    const status = interp.label;
+    const color = interp.color;
+    const recommendation = interp.recommendation;
+    const dimensionAlerts = interp.dimensionAlerts || result.dimension_alerts || [];
 
     const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 
@@ -151,6 +153,24 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                                 </div>
                             )}
                         </div>
+                        {/* Dimension Alerts */}
+                        {dimensionAlerts.length > 0 && (
+                            <div className="mt-4 space-y-2">
+                                {dimensionAlerts.map((alert: any) => (
+                                    <div key={alert.dimension} className="flex items-center gap-3 p-3 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+                                        <span className="text-lg">🔴</span>
+                                        <div>
+                                            <span className="font-bold text-amber-900">
+                                                Atenção: {alert.label} Elevado(a) ({alert.dimension} = {alert.value.toFixed(1)})
+                                            </span>
+                                            <p className="text-amber-800/80 text-xs mt-0.5">
+                                                Esta dimensão isolada elevou sua classificação para {alert.severity}, mesmo com score geral mais baixo.
+                                            </p>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
                     </div>
                 </CardContent>
             </Card>

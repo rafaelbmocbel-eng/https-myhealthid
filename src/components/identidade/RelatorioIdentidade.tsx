@@ -49,7 +49,14 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
 
   const resultado = avaliacao.resultado;
   const hasRedFlags = resultado.redFlagsDetected || false;
-  const interp = getMyIDInterpretation(resultado.myidScore ?? 0, hasRedFlags);
+  const dimScores = {
+    D: resultado.componentScores?.D ?? 0,
+    EFI: resultado.componentScores?.EFI ?? 0,
+    P: resultado.componentScores?.P ?? 0,
+    I: resultado.componentScores?.I ?? 0,
+    N: resultado.componentScores?.N ?? 0,
+  };
+  const interp = getMyIDInterpretation(resultado.myidScore ?? 0, hasRedFlags, dimScores);
   const myidStatus = interp.label;
   const classificacao = interp.status;
   const fpData = getMyIDFingerprintData(resultado.componentScores);
