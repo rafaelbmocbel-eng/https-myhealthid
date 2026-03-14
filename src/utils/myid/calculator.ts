@@ -415,23 +415,8 @@ export class MyIDCalculator {
 
     // ==================== INTERPRETAÇÃO ====================
     interpretStatus(): string {
-        const val = this.result.MyID ?? 0;
-        let interp;
-
-        // Ajuste de thresholds para maior sensibilidade (conforme myid_fix_plan.md)
-        if (val < 1.3) {
-            interp = { status: 'LEVE', label: 'Frequência Favorável', color: '#8b5cf6', recommendation: 'Sua biologia está em excelente estado de equilíbrio.' };
-        } else if (val < 3.0) {
-            interp = { status: 'MODERADO', label: 'Sobrecarga Moderada', color: '#3b82f6', recommendation: 'Sua demanda está começando a superar sua capacidade.' };
-        } else if (val < 5.0) {
-            interp = { status: 'SEVERO', label: 'Desequilíbrio Severo', color: '#f59e0b', recommendation: 'Alerta: Seu sistema está operando no limite.' };
-        } else if (val < 7.5) {
-            interp = { status: 'CRÍTICO', label: 'Risco de Cronificação', color: '#ef4444', recommendation: 'SITUAÇÃO CRÍTICA - Intervenção recomendada.' };
-        } else {
-            interp = { status: 'EXTREMO', label: 'Probabilidade de Cronicidade', color: '#7f1d1d', recommendation: 'CRÍTICO: Alta probabilidade de falha sistêmica.' };
-        }
-
-        this.result.status = interp.label;
+        const interp = getMyIDInterpretation(this.result.MyID ?? 0, this.result.red_flags_detected || false);
+        this.result.status = interp.status;
         this.result.color = interp.color;
         this.result.recommendation = interp.recommendation;
         return interp.status;

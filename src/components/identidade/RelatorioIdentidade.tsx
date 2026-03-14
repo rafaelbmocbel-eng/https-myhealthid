@@ -121,32 +121,32 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ScoreCard
-              icon={Activity} label="D: Nível de Dor" value={resultado.componentScores.D.toFixed(1)} color={getThermalColor(resultado.componentScores.D)}
+              icon={Activity} label="D: Nível de Dor" value={resultado.componentScores.D.toFixed(1)} color="#FF6B6B"
               description="A dor experiencial atual e máxima relatada."
             />
             <ScoreCard
-              icon={Dumbbell} label="EFI: Funcionalidade" value={resultado.componentScores.EFI.toFixed(1)} color={getThermalColor(resultado.componentScores.EFI)}
+              icon={Dumbbell} label="EFI: Funcionalidade" value={resultado.componentScores.EFI.toFixed(1)} color="#FFA500"
               description="Capacidade para o trabalho, tarefas domésticas, etc."
             />
             <ScoreCard
-              icon={Brain} label="P: Modulador P" value={resultado.componentScores.P.toFixed(1)} color={getThermalColor(resultado.componentScores.P)}
+              icon={Brain} label="P: Modulador P" value={resultado.componentScores.P.toFixed(1)} color="#FFB84D"
               description="Comportamento da dor, crenças, autoeficácia e medo."
             />
             <ScoreCard
-              icon={ClipboardList} label="I: Inércia / Gatilho" value={resultado.componentScores.I.toFixed(1)} color={getThermalColor(resultado.componentScores.I)}
+              icon={ClipboardList} label="I: Inércia / Gatilho" value={resultado.componentScores.I.toFixed(1)} color="#FF8C42"
               description="Fatores desencadeantes, novos equipamentos ou mudança brutal na rotina."
             />
             <ScoreCard
-              icon={Bed} label="R: Regulação" value={resultado.componentScores.R.toFixed(1)} color={getThermalColor(10 - resultado.componentScores.R)}
+              icon={Bed} label="R: Regulação" value={resultado.componentScores.R.toFixed(1)} color="#87CEEB"
               description="Sono, fadiga, energia, estado psicológico base e estresse."
             />
             <ScoreCard
-              icon={ShieldAlert} label="C: Contexto" value={resultado.componentScores.C.toFixed(1)} color={getThermalColor(10 - resultado.componentScores.C)}
+              icon={ShieldAlert} label="C: Contexto" value={resultado.componentScores.C.toFixed(1)} color="#50C878"
               description="Avaliação do ambiente externo."
             />
             <div className="sm:col-span-2">
               <ScoreCard
-                icon={Activity} label="N: Ruído Sistêmico" value={resultado.componentScores.N.toFixed(1)} color={getThermalColor(resultado.componentScores.N)}
+                icon={Activity} label="N: Ruído Sistêmico" value={resultado.componentScores.N.toFixed(1)} color="#4A90E2"
                 description="Presença de outros problemas sistêmicos que 'roubam' suporte de outras partes."
               />
             </div>

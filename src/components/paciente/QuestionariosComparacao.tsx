@@ -1,5 +1,5 @@
 import { useState, useMemo } from 'react';
-import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye, Brain, Bed, Activity, ClipboardList, Zap, Moon, AlertTriangle, Heart, Briefcase, Home, Dumbbell, Users, PersonStanding, Trash2, Loader2 } from 'lucide-react';
+import { FileText, TrendingUp, TrendingDown, Minus, BarChart3, ArrowRight, Calendar, CheckCircle2, Clock, Eye, Brain, Bed, Activity, ClipboardList, Zap, Moon, AlertTriangle, Heart, Briefcase, Home, Dumbbell, Users, PersonStanding } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
@@ -61,8 +61,6 @@ interface Props {
   linksAvPaciente: LinkAvaliacao[];
   respostas: RespostaPaciente[];
   myidAvaliacoes?: any[];
-  onDelete?: (id: string, tipo: 'antigo' | 'myid') => Promise<void>;
-  isDeleting?: string | null;
 }
 
 function extractScores(dados: any): Record<string, number> {
@@ -437,7 +435,7 @@ const BLOCO_ICONS: Record<number, any> = {
   6: AlertTriangle,
 };
 
-export default function QuestionariosComparacao({ linksAvPaciente, respostas, myidAvaliacoes = [], onDelete, isDeleting }: Props) {
+export default function QuestionariosComparacao({ linksAvPaciente, respostas, myidAvaliacoes = [] }: Props) {
   const [selectedLinkId, setSelectedLinkId] = useState<string | null>(null);
   const [expandedBloco, setExpandedBloco] = useState<number | null>(null);
 
@@ -739,25 +737,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                         ))}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      {onDelete && (
-                        <Button
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                          disabled={isDeleting === group.id}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (window.confirm('Tem certeza que deseja excluir este questionário do histórico?')) {
-                              onDelete(group.id, group.tipo as any);
-                            }
-                          }}
-                        >
-                          {isDeleting === group.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                        </Button>
-                      )}
-                      <Eye className={`h-4 w-4 transition-transform ${isSelected ? 'text-primary rotate-0' : 'text-muted-foreground'}`} />
-                    </div>
+                    <Eye className={`h-4 w-4 transition-transform ${isSelected ? 'text-primary rotate-0' : 'text-muted-foreground'}`} />
                   </div>
                 </div>
 

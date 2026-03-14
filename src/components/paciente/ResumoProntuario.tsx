@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getMyIDInterpretation, generateMyIDNarrative4Lines, generateGuidelineExplanation4Lines } from "@/utils/myidCalculations";
+import { getMyIDInterpretation } from "@/utils/myidCalculations";
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -136,17 +136,9 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                                 {myidInterp.label}
                             </Badge>
                         </div>
-                        <div className="space-y-1">
-                            {generateMyIDNarrative4Lines(
-                                myidResult.myid_score,
-                                (myidResult.myid_analysis as any)?.componentScores || (myidResult.dados_avaliacao as any)?.resultado?.component_scores || {},
-                                !!myidResult.red_flags || (myidResult.dados_avaliacao as any)?.resultado?.redFlagsDetected
-                            ).map((line, i) => (
-                                <p key={i} className="text-[11px] leading-relaxed text-slate-600 italic">
-                                    • {line}
-                                </p>
-                            ))}
-                        </div>
+                        <p className="text-[11px] leading-relaxed text-slate-600 italic">
+                            {myidInterp.recommendation}
+                        </p>
                     </div>
                 )}
 
@@ -165,18 +157,13 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                     </div>
 
                     <div className="pl-5 border-l-2 border-amber-200 py-1">
-                        {temMudanca || (p1 && !p2) ? (
-                            <div className="space-y-1">
-                                {generateGuidelineExplanation4Lines(p1).map((line, i) => (
-                                    <p key={i} className="text-xs text-foreground leading-relaxed">
-                                        {i === 0 ? <strong className="text-amber-700">Atualização: </strong> : null}
-                                        {line}
-                                    </p>
-                                ))}
-                            </div>
+                        {temMudanca ? (
+                            <p className="text-xs text-foreground leading-relaxed">
+                                <strong className="text-amber-700">Atualização em {format(parseISO(p1.created_at), 'dd/MM')}:</strong> {p1.objetivo_geral || 'Novos objetivos terapêuticos definidos.'}
+                            </p>
                         ) : p1 ? (
                             <p className="text-xs text-muted-foreground italic">
-                                Conduta terapêutica mantida. Foco atual: {p1.objetivo_geral || 'Manutenção da estratégia vigente.'}
+                                Planejamento terapêutico inalterado desde a última avaliação. Foco atual: {p1.objetivo_geral || 'Manutenção da conduta.'}
                             </p>
                         ) : (
                             <p className="text-xs text-muted-foreground italic">Nenhuma diretriz de tratamento registrada.</p>

@@ -5,7 +5,6 @@ import { Button } from '@/components/ui/button';
 import { Zap, Brain, CheckCircle2, Save, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { generateGuidelineExplanation4Lines } from '@/utils/myidCalculations';
 
 const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
 const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
@@ -55,19 +54,6 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
     },
   });
 
-  const { data: protocolData } = useQuery({
-    queryKey: ['protocolo-metadata', protocoloId],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('protocolos')
-        .select('*')
-        .eq('id', protocoloId)
-        .maybeSingle();
-      if (error) throw error;
-      return data;
-    },
-  });
-
   const salvarProtocolo = async () => {
     setSalvando(true);
     try {
@@ -110,7 +96,7 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   return (
     <div className="space-y-4 mb-6">
       <div className="clinical-card border-l-4 border-emerald-500 bg-emerald-50/50 mb-2">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="h-4 w-4 text-emerald-600" />
             <p className="text-sm text-muted-foreground">
@@ -126,20 +112,6 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
             Salvar Diretriz
           </Button>
         </div>
-
-        {/* 4-Line Explanation */}
-        {protocolData && (
-          <div className="mt-2 p-3 bg-white/60 rounded-lg border border-emerald-100">
-            <h5 className="text-[10px] font-black uppercase tracking-widest text-emerald-700 mb-2">Resumo da Diretriz</h5>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-1">
-              {generateGuidelineExplanation4Lines(protocolData).map((line, i) => (
-                <p key={i} className="text-xs text-slate-600 leading-relaxed font-medium flex items-start gap-1.5">
-                  <span className="text-emerald-500">•</span>{line}
-                </p>
-              ))}
-            </div>
-          </div>
-        )}
       </div>
 
       {[1, 2, 3, 4].map(faseNum => {

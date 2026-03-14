@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2, Sparkles } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,7 +9,6 @@ import {
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
 import { gerarPDFEvolucao } from '@/utils/pdfEvolucaoGenerator';
-import { generateMyIDNarrative4Lines } from '@/utils/myidCalculations';
 
 const SCORE_LABELS: Record<string, string> = {
   score_e: 'Estrutural',
@@ -123,39 +122,6 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
           accent={deltaID <= 0 ? 'success' : 'danger'}
         />
       </div>
-
-      {/* Narrative Summary */}
-      {ultima && (
-        <div className="clinical-card bg-primary/5 border-primary/20">
-          <div className="flex items-center gap-2 mb-3">
-            <Sparkles className="h-4 w-4 text-primary animate-pulse" />
-            <h4 className="font-bold text-sm text-primary uppercase tracking-wider">Resumo Narrativo da Última Avaliação</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-2">
-            {generateMyIDNarrative4Lines(
-              Number(ultima.id_final || 0),
-              {
-                D: ultima.score_d || 0,
-                EFI: ultima.score_efi || 0,
-                P: ultima.score_p || 0,
-                I: (ultima as any).score_i || 0,
-                R: ultima.score_r || 0,
-                C: (ultima as any).score_c || 0,
-                N: (ultima as any).score_n || 0,
-                AF: (ultima as any).score_af || 5,
-                HID: (ultima as any).score_hid || 7,
-                NUT: (ultima as any).score_nut || 7,
-                ERG: (ultima as any).score_erg || 7,
-              }
-            ).map((line, i) => (
-              <p key={i} className="text-xs text-muted-foreground leading-relaxed flex items-start gap-2">
-                <span className="text-primary font-bold mt-0.5">•</span>
-                {line}
-              </p>
-            ))}
-          </div>
-        </div>
-      )}
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">

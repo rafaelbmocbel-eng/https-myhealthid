@@ -8,8 +8,8 @@ import {
 import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
-  Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign, Lock
+  Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
+  Smartphone, CreditCard, Info, DollarSign
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -18,16 +18,6 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
@@ -174,12 +164,6 @@ export default function Agenda() {
   const [paymentModal, setPaymentModal] = useState<{ open: boolean; patientId: string; agendamentoId?: string; valor: string; data: string; sessaoId?: string }>({
     open: false, patientId: '', valor: '0', data: format(new Date(), 'yyyy-MM-dd')
   });
-  const [confirmMove, setConfirmMove] = useState<{
-    open: boolean;
-    ag: Agendamento;
-    newStart: Date;
-    newEnd: Date;
-  } | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const { refresh } = useAgenda();
 
@@ -318,11 +302,9 @@ export default function Agenda() {
       }
 
       if (newStart.getTime() !== origStart.getTime()) {
-        setConfirmMove({
-          open: true,
-          ag: d.ag,
-          newStart,
-          newEnd
+        await updateAgendamento(d.ag.id, {
+          data_inicio: newStart.toISOString(),
+          data_fim: newEnd.toISOString(),
         });
       }
       setDragging(null);
@@ -1315,39 +1297,6 @@ export default function Agenda() {
           </div>
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={confirmMove?.open} onOpenChange={(open) => !open && setConfirmMove(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Confirmar alteração de horário?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Você está movendo o agendamento de <strong>{confirmMove?.ag.pacientes?.nome}</strong> para:
-              <br />
-              <span className="font-bold text-primary">
-                {confirmMove && format(confirmMove.newStart, "EEEE, d 'de' MMMM 'às' HH:mm", { locale: ptBR })}
-              </span>
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setConfirmMove(null)}>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-primary text-primary-foreground hover:bg-primary/90"
-              onClick={async () => {
-                if (confirmMove) {
-                  await updateAgendamento(confirmMove.ag.id, {
-                    data_inicio: confirmMove.newStart.toISOString(),
-                    data_fim: confirmMove.newEnd.toISOString(),
-                  });
-                  setConfirmMove(null);
-                  toast({ title: "Horário atualizado com sucesso! ✅" });
-                }
-              }}
-            >
-              Confirmar Mudança
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </AppLayout>
   );
 }

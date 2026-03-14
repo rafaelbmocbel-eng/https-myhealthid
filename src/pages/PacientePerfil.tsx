@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -47,8 +47,8 @@ export default function PacientePerfil() {
   const { toast } = useToast();
   const qc = useQueryClient();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
-  const { avaliacoes: avaliacoesId, isLoading: loadingId, deletar: deletarId } = useAvaliacoesIdentidade(id);
-  const { avaliacoes: avaliacoesCob, isLoading: loadingCob, deletar: deletarCob } = useAvaliacoesCobZero(id);
+  const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
+  const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
@@ -182,74 +182,6 @@ export default function PacientePerfil() {
       faltas
     };
   }, [agendamentos]);
-
-  const [isDeletingQuest, setIsDeletingQuest] = useState<string | null>(null);
-
-  // Real-time update for evaluations and links
-  useEffect(() => {
-    if (!id || !user) return;
-
-    const channel = supabase
-      .channel(`paciente-perfil-updates-${id}`)
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'avaliacoes_identidade',
-          filter: `paciente_id=eq.${id}`,
-        },
-        () => {
-          qc.invalidateQueries({ queryKey: ['avaliacoes-identidade', user.id, id] });
-          qc.invalidateQueries({ queryKey: ['evolucao-paciente', user.id, id] });
-          qc.invalidateQueries({ queryKey: ['respostas-av-perfil', id] });
-          qc.invalidateQueries({ queryKey: ['myid-latest', id] });
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'links_avaliacao',
-          filter: `paciente_id=eq.${id}`,
-        },
-        () => {
-          qc.invalidateQueries({ queryKey: ['links-av-perfil', id] });
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  }, [id, user, qc]);
-
-  const handleDeleteQuestionario = async (questId: string, tipo: 'antigo' | 'myid') => {
-    try {
-      setIsDeletingQuest(questId);
-      if (tipo === 'antigo') {
-        const { error } = await supabase
-          .from('respostas_avaliacao_paciente')
-          .delete()
-          .eq('link_id', questId);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('myid_avaliacoes')
-          .delete()
-          .eq('id', questId);
-        if (error) throw error;
-      }
-      toast({ title: 'Questionário excluído com sucesso' });
-      qc.invalidateQueries({ queryKey: ['respostas-av-perfil', id] });
-      qc.invalidateQueries({ queryKey: ['avaliacoes-identidade', user?.id, id] });
-    } catch (error: any) {
-      toast({ title: 'Erro ao excluir questionário', description: error.message, variant: 'destructive' });
-    } finally {
-      setIsDeletingQuest(null);
-    }
-  };
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
@@ -787,19 +719,6 @@ export default function PacientePerfil() {
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm('Tem certeza que deseja excluir esta avaliação do histórico? Esta ação não pode ser desfeita.')) {
-                                deletarId(av.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
                       ))}
                     </div>
@@ -829,19 +748,6 @@ export default function PacientePerfil() {
                             </div>
                           </div>
                           <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                          <Button
-                            size="icon"
-                            variant="ghost"
-                            className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10 ml-1"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              if (window.confirm('Tem certeza que deseja excluir esta avaliação COB° ZERO do histórico?')) {
-                                deletarCob(av.id);
-                              }
-                            }}
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </Button>
                         </div>
                       ))}
                     </div>
@@ -860,12 +766,7 @@ export default function PacientePerfil() {
                 <FileText className="h-4 w-4 text-primary" />
                 <h3 className="font-semibold text-sm">Questionários Remotos Recebidos</h3>
               </div>
-              <QuestionariosComparacao
-                linksAvPaciente={linksAvaliacao}
-                respostas={respostasPaciente}
-                onDelete={handleDeleteQuestionario}
-                isDeleting={isDeletingQuest}
-              />
+              <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
             </div>
           </TabsContent>
 
@@ -893,12 +794,7 @@ export default function PacientePerfil() {
                   <FileText className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Questionários Remotos</h3>
                 </div>
-                <QuestionariosComparacao
-                  linksAvPaciente={linksAvaliacao}
-                  respostas={respostasPaciente}
-                  onDelete={handleDeleteQuestionario}
-                  isDeleting={isDeletingQuest}
-                />
+                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
               </div>
             )}
 
@@ -1007,24 +903,7 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          <TabsContent value="prontuario" className="mt-4 space-y-6">
-            {/* Controle de Atendimentos */}
-            {agendamentos.length > 0 && (
-              <div className="clinical-card">
-                <div className="flex items-center gap-2 mb-3">
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">Controle de Atendimentos ({agendamentos.length})</h3>
-                </div>
-                <div className="space-y-2">
-                  {agendamentos.slice(0, 15).map((ag: any) => (
-                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted={isBefore(parseISO(ag.data_inicio), startOfToday())} />
-                  ))}
-                  {agendamentos.length > 15 && (
-                    <p className="text-xs text-muted-foreground text-center">+{agendamentos.length - 15} atendimentos anteriores</p>
-                  )}
-                </div>
-              </div>
-            )}
+          <TabsContent value="prontuario" className="mt-4">
             <StudioNotasTab pacienteId={id!} showSummary={true} />
           </TabsContent>
 

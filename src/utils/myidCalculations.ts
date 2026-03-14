@@ -119,7 +119,7 @@ export function calcularScoreN(bloco6: MyIDBloco6Data): number {
 // ═══════════════════════════════════════════════════════════
 // FÓRMULA FINAL: MyID = [(D + EFI) × (1 + P/10) + P + I] / [(R + C + AF + HID + NUT + ERG) - N - MED]
 // ═══════════════════════════════════════════════════════════
-
+// ── Interpretation Utility (Central Source of Truth) ──
 export interface Interpretation {
   status: string;
   label: string;
@@ -132,45 +132,45 @@ export function getMyIDInterpretation(score: number, hasRedFlags: boolean = fals
   const val = score ?? 0;
   let interp: Interpretation;
 
-  // Ajuste de thresholds para maior sensibilidade (conforme myid_fix_plan.md)
-  if (val < 1.3) {
+  if (val < 3) {
     interp = {
       status: 'LEVE',
-      label: 'Frequência Favorável',
+      label: 'RECUPERAÇÃO FAVORÁVEL',
       color: '#8b5cf6', // Violet
-      recommendation: 'Sua biologia está em excelente estado de equilíbrio. Continue com os bons hábitos.'
+      recommendation: 'Seu corpo está em excelente estado de recuperação e equilíbrio.'
     };
-  } else if (val < 3.0) {
+  } else if (val < 6) {
     interp = {
       status: 'MODERADO',
-      label: 'Sobrecarga Moderada',
+      label: 'SOBRECARGA MODERADA',
       color: '#3b82f6', // Blue
-      recommendation: 'Sua demanda está começando a superar sua capacidade. Ajuste o sono e a hidratação.'
+      recommendation: 'Sistema balanceado, mas exige atenção aos fatores de sobrecarga.'
     };
-  } else if (val < 5.0) {
+  } else if (val < 8) {
     interp = {
       status: 'SEVERO',
-      label: 'Desequilíbrio Severo',
+      label: 'SOBRECARGA CRÍTICA',
       color: '#f59e0b', // Amber/Orange
-      recommendation: 'Alerta: Seu sistema está operando no limite. Redução imediata de carga é recomendada.'
+      recommendation: 'Demanda começando a exceder capacidade. Atenção necessária.'
     };
-  } else if (val < 7.5) {
+  } else if (val < 9.5) {
     interp = {
       status: 'CRÍTICO',
-      label: 'Risco de Cronificação',
+      label: 'RISCO DE CRONIFICAÇÃO',
       color: '#ef4444', // Red
       recommendation: 'SITUAÇÃO CRÍTICA - Intervenção multidisciplinar altamente recomendada.'
     };
   } else {
     interp = {
       status: 'EXTREMO',
-      label: 'Probabilidade de Cronicidade',
+      label: 'RISCO DE COLAPSO',
       color: '#7f1d1d', // Deep Red
-      recommendation: 'CRÍTICO: Alta probabilidade de falha sistêmica e dor persistente. Intervenção urgente.'
+      recommendation: 'SISTEMA EM COLAPSO - Ação urgente necessária para evitar lesões.'
     };
   }
 
   // --- ELEVAÇÃO POR RED FLAGS ---
+  // Se houver Red Flags, o status mínimo é SEVERO, independente do score.
   if (hasRedFlags) {
     const severityOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
     const currentIdx = severityOrder.indexOf(interp.status);
@@ -179,16 +179,10 @@ export function getMyIDInterpretation(score: number, hasRedFlags: boolean = fals
     if (currentIdx < minIdx) {
       return {
         status: 'SEVERO',
-        label: `${interp.label} (ALERTA)`,
+        label: 'SOBRECARGA CRÍTICA (ALERTA)',
         color: '#f59e0b',
-        recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional.',
+        recommendation: 'NOTA: Embora o score numérico seja baixo, foram detectados sinais de alerta (Red Flags) que exigem atenção profissional imediata.',
         isRedFlagElevated: true
-      };
-    } else {
-      return {
-        ...interp,
-        label: `${interp.label} (RED FLAG)`,
-        recommendation: `ATENÇÃO: Este estado (${interp.status}) agravado por Red Flags exige avaliação médica imediata.`
       };
     }
   }
@@ -254,8 +248,14 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
 }
 
 // ── Classification color helpers ──
-// ── Classification color helpers ──
 export function getMyIDSeverityColor(classificacao: string): string {
+  const interp = getMyIDInterpretation(
+    classificacao === 'LEVE' ? 0 :
+      classificacao === 'MODERADO' ? 4 :
+        classificacao === 'SEVERO' ? 7 :
+          classificacao === 'CRÍTICO' ? 9 : 10
+  );
+
   switch (classificacao) {
     case 'LEVE': return 'text-violet-600 bg-violet-50 border-violet-200';
     case 'MODERADO': return 'text-blue-600 bg-blue-50 border-blue-200';
@@ -264,63 +264,4 @@ export function getMyIDSeverityColor(classificacao: string): string {
     case 'EXTREMO': return 'text-red-950 bg-red-50 border-red-900';
     default: return 'text-muted-foreground bg-muted border-border';
   }
-}
-
-// ── Narrativas de 4 Linhas para MyID e Diretrizes ──
-
-/**
- * Gera um resumo de 4 linhas para o resultado MyID
- */
-export function generateMyIDNarrative4Lines(score: number, components: Record<string, number>, hasRedFlags: boolean = false): string[] {
-  const interp = getMyIDInterpretation(score, hasRedFlags);
-
-  // Linha 1: Status Geral e Score
-  const line1 = `O Índice MyID de ${score.toFixed(1)} aponta para um estado de ${interp.label.toLowerCase()} (${interp.status}).`;
-
-  // Linha 2: Demanda vs Capacidade (O que pesa mais)
-  const D = components.D || 0;
-  const EFI = components.EFI || 0;
-  const P = components.P || 0;
-  const demandSource = D > 6 ? 'dor persistente' : EFI > 6 ? 'baixa funcionalidade' : P > 6 ? 'fatores emocionais' : 'carga sistêmica';
-  const line2 = `Identificamos uma sobrecarga vinda principalmente de ${demandSource}, elevando sua demanda biológica.`;
-
-  // Linha 3: Capacidade de Recuperação
-  const R = components.R || 0;
-  const capacityState = R > 7 ? 'está robusta' : R > 4 ? 'necessita de atenção' : 'está crítica';
-  const line3 = `Sua capacidade de autorregulação (sono e energia) ${capacityState}, sendo o pilar central para sua recuperação.`;
-
-  // Linha 4: Insight / Ação recomendada
-  const line4 = hasRedFlags
-    ? "Atenção: Sinais de alerta (Red Flags) detectados exigem acompanhamento profissional próximo."
-    : `Recomendamos focar em ${R < 6 ? 'melhorar o sono' : 'progressão gradual'} para equilibrar seu sistema e reduzir o score.`;
-
-  return [line1, line2, line3, line4];
-}
-
-/**
- * Gera um resumo de 4 linhas para as Diretrizes de Tratamento
- */
-export function generateGuidelineExplanation4Lines(protocol: any): string[] {
-  if (!protocol) return ["Nenhuma diretriz ativa no momento.", "", "", ""];
-
-  const objetivo = protocol.objetivo_geral || "Melhoria funcional global.";
-  const frequencia = protocol.frequencia || "2-3x por semana";
-  const duracao = protocol.duracao_total || "12 semanas";
-
-  // Linha 1: Objetivo Principal
-  const line1 = `Objetivo central: ${objetivo}`;
-
-  // Linha 2: Frequência e Duração
-  const line2 = `O plano está estruturado para ser executado ${frequencia} durante ${duracao}.`;
-
-  // Linha 3: Foco Terapêutico (Hierarquia)
-  const hierarquia = Array.isArray(protocol.hierarquia_terapeutica)
-    ? protocol.hierarquia_terapeutica.map((h: any) => h.foco).slice(0, 2).join(' e ')
-    : "reajuste biocomportamental";
-  const line3 = `A prioridade inicial será o controle de ${hierarquia.toLowerCase()}.`;
-
-  // Linha 4: Expectativa de Evolução
-  const line4 = "Buscaremos a redução da carga sistêmica e o aumento da sua régua de tolerância ao esforço.";
-
-  return [line1, line2, line3, line4];
 }
