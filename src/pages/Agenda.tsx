@@ -276,7 +276,7 @@ export default function Agenda() {
       const dx = clientX - draggingRef.current!.startX;
       setDragDelta({ dy, dx });
     };
-    const handleUp = async () => {
+    const handleUp = () => {
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
@@ -299,6 +299,12 @@ export default function Agenda() {
       const newStart = setMinutes(setHours(new Date(newDay), newH), newM);
       const newEnd = new Date(newStart.getTime() + d.durationMin * 60000);
 
+      setDragging(null);
+      setDragDelta({ dy: 0, dx: 0 });
+
+      // If no actual change, skip
+      if (newStart.getTime() === origStart.getTime()) return;
+
       // Bloqueio rigoroso de limite de vagas
       const overlapping = countOverlapping(newStart.toISOString(), newEnd.toISOString(), d.ag.id);
       if (overlapping >= config.vagas_por_horario) {
@@ -307,19 +313,17 @@ export default function Agenda() {
           description: `Máximo de ${config.vagas_por_horario} pacientes neste horário. Arrastar bloqueado.`,
           variant: 'destructive'
         });
-        setDragging(null);
-        setDragDelta({ dy: 0, dx: 0 });
         return;
       }
 
-      if (newStart.getTime() !== origStart.getTime()) {
-        await updateAgendamento(d.ag.id, {
-          data_inicio: newStart.toISOString(),
-          data_fim: newEnd.toISOString(),
-        });
-      }
-      setDragging(null);
-      setDragDelta({ dy: 0, dx: 0 });
+      // Show confirmation dialog instead of immediately updating
+      const label = `${format(newStart, "dd/MM 'às' HH:mm")} – ${format(newEnd, 'HH:mm')}`;
+      setPendingDrag({
+        agId: d.ag.id,
+        newStart: newStart.toISOString(),
+        newEnd: newEnd.toISOString(),
+        label,
+      });
     };
     window.addEventListener('mousemove', handleMove, { passive: false });
     window.addEventListener('mouseup', handleUp);
