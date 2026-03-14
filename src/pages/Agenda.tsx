@@ -956,16 +956,16 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
+                                'absolute border-l-[5px] px-2 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
                                 'hover:brightness-95 hover:shadow-md transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
-                                top: pos.top + 2,
-                                height: pos.height - 4,
+                                top: pos.top,
+                                height: pos.height,
                                 left: `${leftPct}%`,
-                                width: `${colWidth - 1}%`,
+                                width: `${colWidth}%`,
                                 ...(patientColor ? {
                                   backgroundColor: patientColor.backgroundColor,
                                   borderColor: patientColor.borderColor,
@@ -979,23 +979,17 @@ export default function Agenda() {
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
-                                  {layout.totalCols > 2
-                                    ? (ag.pacientes?.nome || ag.titulo || 'Ag.')
-                                    : (ag.titulo
-                                      || (ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : null)
-                                      || (ag.paciente_id ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p ? `${p.nome} ${p.sobrenome}` : null; })() : null)
-                                      || 'Agendamento')
-                                  }
+                                  {ag.pacientes?.nome
+                                    || ag.titulo
+                                    || (() => { const p = pacientes.find(x => x.id === ag.paciente_id); return p?.nome; })()
+                                    || 'Agendamento'}
                                 </span>
                                 {layout.totalCols > 1 && (
-                                  <span className="ml-auto text-[8px] opacity-60 shrink-0">{layout.col + 1}/{layout.totalCols}</span>
+                                  <span className="ml-auto bg-foreground/10 rounded-full h-4 w-4 flex items-center justify-center text-[9px] font-black shrink-0">
+                                    {layout.col + 1}
+                                  </span>
                                 )}
                               </div>
-                              {layout.totalCols > 1 && (
-                                <div className="absolute top-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-white/40 text-[10px] font-black border border-black/5 shadow-sm">
-                                  {layout.col + 1}
-                                </div>
-                              )}
                               {pos.height > 40 && layout.totalCols <= 3 && (
                                 <div className="text-[8px] opacity-70 truncate mt-0.5">
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
