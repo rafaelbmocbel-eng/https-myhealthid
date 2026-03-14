@@ -48,7 +48,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
     .filter(s => scores[s.key] !== undefined)
     .map(s => ({
       ...s,
-      value: Number(scores[s.key].toFixed(1)),
+      value: Number(Number(scores[s.key]).toFixed(1)),
     }));
 
   // Build radar data (parcial — sem E)
