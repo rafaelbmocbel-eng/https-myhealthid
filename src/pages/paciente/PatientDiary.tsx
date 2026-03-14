@@ -42,19 +42,56 @@ const PatientDiary = () => {
     const [sleep, setSleep] = useState<string>("8");
     const [notes, setNotes] = useState("");
 
-    const { data: logs, isLoading } = useQuery({
-        queryKey: ["patient-daily-logs", user?.id],
+    const { data: pacienteData } = useQuery({
+        queryKey: ["patient-clinical-data", user?.id],
         queryFn: async () => {
-            // Tabela daily_logs ainda não existe - retornamos vazio
-            return [] as any[];
+            if (!user?.id) return null;
+
+            const { data, error } = await supabase
+                .from("pacientes")
+                .select("id, terapeuta_id")
+                .eq("user_id", user.id)
+                .maybeSingle();
+
+            if (error) throw error;
+            return data;
         },
-        enabled: !!user?.id
+        enabled: !!user?.id,
+    });
+
+    const { data: logs = [], isLoading } = useQuery({
+        queryKey: ["patient-daily-logs", pacienteData?.id],
+        queryFn: async () => {
+            if (!pacienteData?.id) return [];
+
+            const { data, error } = await supabase
+                .from("daily_logs")
+                .select("id, mood, pain, energy, sleep_hours, notes, created_at")
+                .eq("paciente_id", pacienteData.id)
+                .order("created_at", { ascending: false })
+                .limit(7);
+
+            if (error) throw error;
+            return data || [];
+        },
+        enabled: !!pacienteData?.id
     });
 
     const mutation = useMutation({
-        mutationFn: async (newLog: any) => {
-            // Tabela daily_logs ainda não existe
-            throw new Error("Funcionalidade em desenvolvimento");
+        mutationFn: async (newLog: { mood: number; pain: number; energy: number; sleep_hours: number; notes: string }) => {
+            if (!pacienteData?.id || !pacienteData?.terapeuta_id) {
+                throw new Error("Paciente não vinculado ao profissional.");
+            }
+
+            const { error } = await supabase
+                .from("daily_logs")
+                .insert({
+                    ...newLog,
+                    paciente_id: pacienteData.id,
+                    terapeuta_id: pacienteData.terapeuta_id,
+                });
+
+            if (error) throw error;
         },
         onSuccess: () => {
             toast({
@@ -62,11 +99,11 @@ const PatientDiary = () => {
                 description: "Sua evolução está sendo mapeada.",
                 className: "bg-emerald-600 text-white border-none rounded-2xl font-bold"
             });
-            queryClient.invalidateQueries({ queryKey: ["patient-daily-logs"] });
+            queryClient.invalidateQueries({ queryKey: ["patient-daily-logs", pacienteData?.id] });
             setNotes("");
         },
-        onError: () => {
-            toast({ variant: "destructive", title: "Erro ao salvar", description: "Tente novamente mais tarde." });
+        onError: (error: Error) => {
+            toast({ variant: "destructive", title: "Erro ao salvar", description: error.message || "Tente novamente mais tarde." });
         }
     });
 
