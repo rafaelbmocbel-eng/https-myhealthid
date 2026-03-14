@@ -52,10 +52,20 @@ const PatientProfileSettings = () => {
 
     const updateMutation = useMutation({
         mutationFn: async (updatedData: any) => {
+            if (!user?.id) throw new Error("Usuário não autenticado.");
+
+            const payload = {
+                user_id: user.id,
+                email: profile?.email || user.email || "",
+                nome: updatedData.nome,
+                sobrenome: updatedData.sobrenome,
+                telefone: updatedData.telefone || null,
+            };
+
             const { error } = await supabase
                 .from("profiles")
-                .update(updatedData)
-                .eq("user_id", user?.id);
+                .upsert(payload, { onConflict: "user_id" });
+
             if (error) throw error;
         },
         onSuccess: () => {
