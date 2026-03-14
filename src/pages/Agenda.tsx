@@ -1308,6 +1308,32 @@ export default function Agenda() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Drag confirmation dialog */}
+      <AlertDialog open={!!pendingDrag} onOpenChange={(open) => { if (!open) setPendingDrag(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar alteração de horário?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Deseja mover este agendamento para <strong>{pendingDrag?.label}</strong>?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={async () => {
+              if (!pendingDrag) return;
+              await updateAgendamento(pendingDrag.agId, {
+                data_inicio: pendingDrag.newStart,
+                data_fim: pendingDrag.newEnd,
+              });
+              setPendingDrag(null);
+              toast({ title: '✅ Horário atualizado!' });
+            }}>
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
