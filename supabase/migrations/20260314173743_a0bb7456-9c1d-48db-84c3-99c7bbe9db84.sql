@@ -1,0 +1,1 @@
+ALTER TABLE public.links_avaliacao ALTER COLUMN blocos_inclusos SET DEFAULT '[1, 2, 3, 4, 5, 6]'::jsonb;

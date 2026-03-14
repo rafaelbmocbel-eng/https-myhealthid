@@ -94,7 +94,7 @@ function TodosOsLinks() {
         paciente_id: pacienteId,
         terapeuta_id: user.id,
         data_expiracao: dataExpiracao.toISOString(),
-        blocos_inclusos: [1, 2, 3, 4, 5],
+        blocos_inclusos: [1, 2, 3, 4, 5, 6],
       });
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['links-avaliacao-relatorio'] });
@@ -432,7 +432,7 @@ function RespostasERelatorios() {
             const respostasLink = respostas.filter(r => r.link_id === link.id);
             const blocosRecebidos = [...new Set(respostasLink.map(r => r.bloco_numero))].sort();
             const isOpen = expandido === link.id;
-            const completo = blocosRecebidos.length === 5;
+            const completo = blocosRecebidos.length >= 6;
 
             return (
               <div key={link.id} className="border rounded-xl overflow-hidden">
