@@ -465,7 +465,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         toast({ title: 'Erro ao salvar no banco', description: error.message, variant: 'destructive' });
                       } else {
                         refetchStructural();
-                        toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${sData.scoreStructuralGeneral.toFixed(1)}` });
+                        toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${Number(sData.scoreStructuralGeneral).toFixed(1)}` });
                       }
                     }}
                     onBack={() => setShowStructural(false)}
