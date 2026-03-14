@@ -1031,7 +1031,7 @@ export default function PacientePerfil() {
                   </div>
                   <div>
                     <p className="text-[10px] font-black uppercase tracking-widest opacity-60">Total de Pontos MyID</p>
-                    <p className="text-3xl font-black italic tracking-tighter">{paciente.total_points || 0}</p>
+                    <p className="text-3xl font-black italic tracking-tighter">0</p>
                   </div>
                   <div className="h-2 bg-white/10 rounded-full overflow-hidden">
                     <div className="h-full bg-white" style={{ width: '45%' }} />
