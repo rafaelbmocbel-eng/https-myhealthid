@@ -224,9 +224,9 @@ const PatientAgenda = () => {
                                                 </div>
                                                 <div>
                                                     <p className="font-black text-slate-900 text-lg uppercase italic group-hover:text-indigo-600 transition-colors">Sessão Finalizada</p>
-                                                    <p className="text-xs text-slate-400 font-bold tracking-tight mt-1 flex items-center gap-2">
-                                                        <User className="h-3 w-3" /> Dr(a). {(appt as any).profiles?.nome} • {format(new Date(appt.data_inicio), "HH:mm")}
-                                                    </p>
+                                                        <p className="text-xs text-slate-400 font-bold tracking-tight mt-1 flex items-center gap-2">
+                                                            <User className="h-3 w-3" /> Dr(a). {appt.therapist?.nome || "Terapeuta"} • {format(new Date(appt.data_inicio), "HH:mm")}
+                                                        </p>
                                                 </div>
                                             </div>
                                             <div className="flex items-center gap-4">
