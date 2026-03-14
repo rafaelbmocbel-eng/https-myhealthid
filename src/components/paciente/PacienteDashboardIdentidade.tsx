@@ -550,7 +550,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   </div>
                                 </div>
                                 <div className="text-right shrink-0 mr-2">
-                                  <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{score.toFixed(1)}</div>
+                                  <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{Number(score).toFixed(1)}</div>
                                   <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
                                 </div>
                                 <Button
