@@ -853,7 +853,7 @@ export default function Agenda() {
             {viewMode !== 'mes' && (
               <div className="min-w-[400px] relative" style={{ display: 'grid', gridTemplateColumns: `48px repeat(${days.length}, 1fr)` }}>
                 {/* Day headers */}
-                <div className="border-b border-r bg-card/80 sticky top-0 z-10" />
+                <div ref={headerRef} className="border-b border-r bg-card/80 sticky top-0 z-10" />
                 {days.map(day => (
                   <div
                     key={day.toISOString()}
