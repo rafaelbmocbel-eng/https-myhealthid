@@ -171,6 +171,7 @@ export interface MyIDResult {
     HID?: number;
     NUT?: number;
     ERG?: number;
+    MED?: number;
   };
   redFlagsDetected: boolean;
   redFlagAlerts: string[];
