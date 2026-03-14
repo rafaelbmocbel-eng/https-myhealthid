@@ -15,16 +15,24 @@ serve(async (req) => {
 
     const systemPrompt = `Você é o MOTOR DE ANÁLISE MyID. Analise os scores do paciente e gere recomendações clínicas.
 
-FÓRMULA: MyID = [(D + EFI) × (1 + P/10) + I] / [(R + C) - N]
+FÓRMULA v3 (Modelo Déficit do Ótimo):
+MyID = [ Demanda_avg × (1+P/10) × 0.50 + Déficit_avg × 0.35 + N × 0.15 ] - MED_buffer
+
+Demanda_avg = (D + EFI + I) / 3
+Déficit_avg = média de (10-R, 10-C, 10-AF, 10-HID, 10-NUT, 10-ERG)
 
 Variáveis:
 - D (Dor): Intensidade sensorial
 - EFI (Funcionalidade): Impacto funcional  
-- P (Psicológico): Medo, catastrofização, evitação
+- P (Psicológico): Amplificador — medo, catastrofização, evitação
 - I (Inércia): Gatilhos de mudança recentes
 - R (Regulação): Sono + Energia + Psicológico (capacidade)
 - C (Contexto): Suporte social (capacidade)
-- N (Ruído): Traumas, cicatrizes, visceral (subtrator)
+- AF, HID, NUT, ERG: Atividade Física, Hidratação, Nutrição, Ergonomia
+- N (Ruído): Traumas, cicatrizes, visceral
+- MED: Medicação (buffer redutor)
+
+IMPORTANTE: Capacidade é medida como DÉFICIT DO ÓTIMO. Sono 8/10 = déficit 2. Mesmo pequenas quedas são clinicamente relevantes.
 
 Responda APENAS com JSON válido no formato especificado.`;
 
