@@ -503,7 +503,9 @@ export class MyIDCalculator {
 
             red_flags: this.result.red_flags_detected || false,
             red_flags_details: this.result.red_flags || {},
+            red_flags_detected: this.result.red_flags_detected || false,
             pain_pattern: this.result.pain_pattern || 'Unknown',
+            dimension_alerts: this.result.dimension_alerts || [],
 
             clinical_priority: this.result.clinical_priority || 'Unknown',
             focus_areas: this.result.focus_areas || [],
