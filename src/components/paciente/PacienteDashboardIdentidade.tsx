@@ -539,7 +539,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                         const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
                                         return (
                                           <span key={unitId} className="flex items-center gap-0.5">
-                                            {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{unit.score.toFixed(1)}</span>
+                                            {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{Number(unit.score).toFixed(1)}</span>
                                           </span>
                                         );
                                       })}
