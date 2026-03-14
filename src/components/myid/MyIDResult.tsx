@@ -170,7 +170,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                                     </div>
                                 ))}
                             </div>
-                        )
+                        )}
                     </div>
                 </CardContent>
             </Card>
