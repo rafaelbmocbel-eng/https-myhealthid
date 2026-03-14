@@ -1063,12 +1063,7 @@ export default function PacientePerfil() {
                   <div className="space-y-1">
                     <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Wearable</p>
                     <p className="text-sm font-black text-slate-900 flex items-center gap-1">
-                      {paciente.wearable_device ? (
-                        <>
-                          <Watch className="h-3 w-3 text-cyan-500" />
-                          Conectado
-                        </>
-                      ) : 'Off'}
+                      Off
                     </p>
                   </div>
                   <div className="space-y-1">

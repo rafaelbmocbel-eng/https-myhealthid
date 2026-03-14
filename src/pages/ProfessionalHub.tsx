@@ -50,9 +50,10 @@ export default function ProfessionalHub() {
         queryFn: async () => {
             // Fetch patients 
             const { data: patients, error } = await supabase
-                .from('profiles')
+                .from('pacientes')
                 .select('*')
-                .eq('role', 'patient');
+                .eq('terapeuta_id', user!.id)
+                .eq('ativo', true);
 
             if (error) throw error;
             return (patients as any as Profile[]) || [];
