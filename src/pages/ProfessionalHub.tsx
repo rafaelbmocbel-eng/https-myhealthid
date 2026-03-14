@@ -72,12 +72,14 @@ export default function ProfessionalHub() {
     queryKey: ['hub-pacientes-engagement', user?.id],
     queryFn: async () => {
       if (!user?.id) return [];
-      const { data, error } = await supabase
-        .from('pacientes')
-        .select('*')
-        .eq('terapeuta_id', user.id)
-        .eq('ativo', true)
-        .order('nome');
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('pacientes')
+          .select('*')
+          .eq('terapeuta_id', user.id)
+          .eq('ativo', true)
+          .order('nome')
+      , 1, 250);
       if (error) throw error;
       return (data || []) as PacienteHub[];
     },

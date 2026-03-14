@@ -29,11 +29,13 @@ export function useLinksAvaliacao() {
   const { data: links = [], isLoading } = useQuery({
     queryKey: ['links_avaliacao', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .select('*')
+          .eq('terapeuta_id', user!.id)
+          .order('created_at', { ascending: false })
+      , 1, 250);
       if (error) throw error;
       return data as LinkAvaliacao[];
     },
