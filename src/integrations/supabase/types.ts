@@ -936,6 +936,50 @@ export type Database = {
           },
         ]
       }
+      notas_prontuario: {
+        Row: {
+          created_at: string
+          dados_extras: Json | null
+          descricao: string
+          id: string
+          paciente_id: string
+          referencia_id: string | null
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          dados_extras?: Json | null
+          descricao: string
+          id?: string
+          paciente_id: string
+          referencia_id?: string | null
+          terapeuta_id: string
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          dados_extras?: Json | null
+          descricao?: string
+          id?: string
+          paciente_id?: string
+          referencia_id?: string | null
+          terapeuta_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notas_prontuario_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
