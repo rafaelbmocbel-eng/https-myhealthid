@@ -59,6 +59,30 @@ interface Props {
 }
 
 export default function ProntuarioTimeline({ notas, isLoading }: Props) {
+  const [syncing, setSyncing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const handleBackfill = async () => {
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const { data, error } = await supabase.functions.invoke('backfill-prontuario', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      const count = data?.notas_criadas || 0;
+      toast({ title: `Histórico sincronizado! ✅`, description: `${count} nota(s) de prontuário gerada(s) a partir de dados existentes.` });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao sincronizar', description: err.message, variant: 'destructive' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -67,12 +91,18 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
     );
   }
 
+  const showBackfillButton = true; // Always show for convenience
+
   if (notas.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
         <p className="font-medium text-sm">Nenhuma nota de prontuário registrada</p>
-        <p className="text-xs mt-1">As notas serão geradas automaticamente conforme o paciente interagir com o sistema.</p>
+        <p className="text-xs mt-1 mb-4">As notas serão geradas automaticamente conforme o paciente interagir com o sistema.</p>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleBackfill} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Sincronizar Histórico Existente
+        </Button>
       </div>
     );
   }
