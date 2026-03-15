@@ -37,6 +37,7 @@ export default function PacienteQuestionarios() {
   const [submitting, setSubmitting] = useState(false);
   const [creatingRetake, setCreatingRetake] = useState(false);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
+  const [terapeutaId, setTerapeutaId] = useState<string | null>(null);
 
   const fetchQuestionarios = async () => {
     if (!user) return;
