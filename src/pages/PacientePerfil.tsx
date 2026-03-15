@@ -788,9 +788,13 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
-              TAB 2: EVOLUÇÃO
+              TAB: EVOLUÇÃO E PRONTUÁRIOS
           ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="evolucao" className="mt-4 space-y-6">
+          <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
+            {/* Prontuário Timeline */}
+            <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+            <StudioNotasTab pacienteId={id!} showSummary={true} />
+
             {/* Evolução Avaliações Identidade */}
             {evolucoesId.length >= 2 ? (
               <div>
@@ -815,17 +819,9 @@ export default function PacientePerfil() {
               </div>
             )}
 
-            {avaliacoesId.length < 2 && respostasPaciente.length === 0 && (
+            {avaliacoesId.length < 2 && respostasPaciente.length === 0 && notasProntuario.length === 0 && (
               <EmptyState icon={<TrendingUp />} title="Sem dados para evolução" subtitle="Realize avaliações ou envie questionários remotos para acompanhar a evolução." />
             )}
-          </TabsContent>
-
-          <TabsContent value="protocolos" className="mt-4">
-            <PacienteProtocolosTab
-              pacienteId={id!}
-              pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-              tipo="identidade"
-            />
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
