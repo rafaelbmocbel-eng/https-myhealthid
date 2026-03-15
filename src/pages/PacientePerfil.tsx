@@ -928,10 +928,6 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          <TabsContent value="prontuario" className="mt-4 space-y-6">
-            <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
-            <StudioNotasTab pacienteId={id!} showSummary={true} />
-          </TabsContent>
 
         </Tabs>
       </div>
