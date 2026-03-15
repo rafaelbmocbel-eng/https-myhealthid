@@ -45,7 +45,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'conversas' | 'mensagens' | 'pacotes' | 'metricas' | 'notas' | 'funil';
+type TabId = 'pipeline' | 'mensagens' | 'notas' | 'relatorios';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -345,13 +345,11 @@ export default function GestaoVendas() {
     };
 
     // ── Tabs ─────────────────────────────────────────────────────────
-    const TABS: { id: TabId; label: string; icon: any }[] = [
-        { id: 'pipeline', label: 'Pipeline', icon: Target },
-        { id: 'mensagens', label: 'Conversas', icon: MessageSquare },
-        { id: 'pacotes', label: 'Pacotes', icon: Package },
-        { id: 'metricas', label: 'Métricas', icon: BarChart3 },
-        { id: 'notas', label: 'Controle', icon: ClipboardCheck },
-        { id: 'funil', label: 'Funil', icon: Zap },
+    const TABS: { id: TabId; label: string; icon: any; desc: string }[] = [
+        { id: 'pipeline', label: 'Pacientes', icon: Users, desc: 'Veja todos os pacientes e seus status' },
+        { id: 'mensagens', label: 'WhatsApp', icon: MessageCircle, desc: 'Envie mensagens e veja o histórico' },
+        { id: 'notas', label: 'Controle', icon: ClipboardCheck, desc: 'Checklist diário de atendimentos' },
+        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e configurações do funil' },
     ];
 
     return (
@@ -441,8 +439,9 @@ export default function GestaoVendas() {
                 <div className="flex gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto">
                     {TABS.map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                            <tab.icon className="h-3.5 w-3.5" />{tab.label}
+                            className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                            <tab.icon className="h-4 w-4" />
+                            <span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
@@ -487,31 +486,44 @@ export default function GestaoVendas() {
                     const PatientRow = ({ p, actions }: { p: any; actions: React.ReactNode }) => {
                         const tag = getClassificacao(p.id, p.created_at);
                         const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
+                        const patientMsgs = mensagens.filter((m: any) => m.paciente_id === p.id);
+                        const lastMsg = patientMsgs.length > 0 ? patientMsgs[0] : null;
                         return (
-                            <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                            <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
+                            <div className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
+                                                <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
                                         </div>
-                                        <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                        {p.telefone && (
+                                            <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
+                                                    window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                                }}>
+                                                <MessageCircle className="h-3 w-3" /> Chamar
+                                            </Button>
+                                        )}
+                                        {actions}
                                     </div>
                                 </div>
-                                <div className="flex gap-1 shrink-0">
-                                    {p.telefone && (
-                                        <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
-                                                window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                                            }}>
-                                            <MessageCircle className="h-3 w-3" /> Chamar
-                                        </Button>
-                                    )}
-                                    {actions}
-                                </div>
+                                {/* WhatsApp history inline */}
+                                {lastMsg && (
+                                    <div className="ml-9 flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+                                        <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
+                                        <span className="truncate flex-1">{lastMsg.mensagem.substring(0, 60)}{lastMsg.mensagem.length > 60 ? '...' : ''}</span>
+                                        <span className="shrink-0 font-medium">{format(new Date(lastMsg.created_at), 'dd/MM')}</span>
+                                        {patientMsgs.length > 1 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{patientMsgs.length}</Badge>}
+                                    </div>
+                                )}
                             </div>
                         );
                     };
@@ -750,7 +762,8 @@ export default function GestaoVendas() {
 
                 {/* ══════════════════ MENSAGENS TAB ══════════════════ */}
                 {activeTab === 'mensagens' && (
-                    <Card className="border overflow-hidden h-[600px] flex flex-col md:flex-row">
+                    <div className="space-y-4">
+                    <Card className="border overflow-hidden h-[500px] flex flex-col md:flex-row">
                         {/* Sidebar (Left) */}
                         <div className="w-full md:w-1/3 bg-muted/20 border-r flex flex-col">
                             <div className="p-3 border-b flex-shrink-0 bg-card">
@@ -829,9 +842,7 @@ export default function GestaoVendas() {
 
                                     {/* Message History */}
                                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')] bg-repeat opacity-[0.97] dark:opacity-20 flex flex-col-reverse relative">
-                                        {/* Overlay to fade background slightly if needed */}
                                         <div className="absolute inset-0 bg-background/80 pointer-events-none z-0" />
-
                                         <div className="z-10 flex flex-col space-y-4">
                                             {(() => {
                                                 const msgs = mensagens.filter((m: any) => m.paciente_id === selectedPatient.id).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -839,7 +850,7 @@ export default function GestaoVendas() {
                                                     return (
                                                         <div className="bg-yellow-100/80 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-[10px] p-2 rounded-lg text-center mx-auto max-w-[80%] shadow-sm my-4">
                                                             Nenhuma mensagem registrada. <br />
-                                                            Mensagens enviadas por este painel ou pelos botões do CRM aparecerão aqui.
+                                                            Mensagens enviadas por este painel aparecerão aqui.
                                                         </div>
                                                     );
                                                 }
@@ -893,14 +904,8 @@ export default function GestaoVendas() {
                                                 onClick={async () => {
                                                     const txt = customMessages['currentInput'];
                                                     if (!txt || !selectedPatient.telefone) return;
-
-                                                    // 1. Log immediately
                                                     logMensagem.mutate({ paciente_id: selectedPatient.id, mensagem: txt, tipo: 'manual' });
-
-                                                    // 2. Open WhatsApp fallback (since direct=false)
                                                     shareViaWhatsApp(selectedPatient.telefone, txt);
-
-                                                    // 3. Clear input
                                                     setCustomMessages(prev => ({ ...prev, currentInput: '' }));
                                                     toast({ title: 'Ação registrada!', description: 'Abrindo o WhatsApp Web/App com a mensagem pronta.' });
                                                 }}>
@@ -917,81 +922,75 @@ export default function GestaoVendas() {
                             )}
                         </div>
                     </Card>
-                )}
 
-                {/* ══════════════════ PACOTES TAB ══════════════════ */}
-                {activeTab === 'pacotes' && (
-                    <div className="space-y-4">
-                        <Card className="border">
-                            <CardContent className="p-4">
-                                <label className="text-[10px] uppercase font-black text-muted-foreground mb-1 block">Paciente</label>
-                                <select className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                                    onChange={(e) => setSelectedPatient(patients.find((p: any) => p.id === e.target.value) || null)}>
-                                    <option value="">Selecione...</option>
-                                    {patients.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>
-                                    ))}
-                                </select>
-                            </CardContent>
-                        </Card>
-
-                        {(['Método Identidade', 'COB° ZERO', 'Studio Personal ID'] as const).map(servico => {
-                            const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servico);
-                            return (
-                                <div key={servico}>
-                                    <h3 className="font-bold text-sm mb-2">{servico}</h3>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                        {pacotes.map(pacote => {
-                                            const isSelected = selectedPacote === pacote.id;
-                                            return (
-                                                <div key={pacote.id} className={`clinical-card cursor-pointer transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
-                                                    onClick={() => { setSelectedPacote(isSelected ? null : pacote.id); setCustomValue(pacote.valorSugerido); }}>
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <div>
-                                                            <h4 className="font-bold text-sm">{pacote.nome}</h4>
-                                                            <p className="text-[10px] text-muted-foreground">{pacote.sessoes} sessões · {pacote.duracao}</p>
-                                                        </div>
-                                                        <Badge className="bg-primary/10 text-primary border-0 font-black">R$ {pacote.valorSugerido}</Badge>
-                                                    </div>
-                                                    <div className="space-y-1 mb-3">
-                                                        {pacote.diferenciais.map((d, i) => (
-                                                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
-                                                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                                                                <span>{d}</span>
+                    {/* ── Pacotes (Propostas Rápidas) ── */}
+                    <Card className="border">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <Package className="h-4 w-4 text-primary" /> Enviar Proposta de Pacote
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground">Selecione um paciente acima e envie uma proposta comercial via WhatsApp.</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {(['Método Identidade', 'COB° ZERO', 'Studio Personal ID'] as const).map(servico => {
+                                const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servico);
+                                return (
+                                    <div key={servico}>
+                                        <h4 className="font-bold text-xs mb-1.5 text-muted-foreground">{servico}</h4>
+                                        <div className="grid gap-2 md:grid-cols-2">
+                                            {pacotes.map(pacote => {
+                                                const isSelected = selectedPacote === pacote.id;
+                                                return (
+                                                    <div key={pacote.id} className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
+                                                        onClick={() => { setSelectedPacote(isSelected ? null : pacote.id); setCustomValue(pacote.valorSugerido); }}>
+                                                        <div className="flex items-start justify-between mb-1">
+                                                            <div>
+                                                                <h5 className="font-bold text-xs">{pacote.nome}</h5>
+                                                                <p className="text-[10px] text-muted-foreground">{pacote.sessoes} sessões · {pacote.duracao}</p>
                                                             </div>
-                                                        ))}
-                                                    </div>
-                                                    {isSelected && (
-                                                        <div className="pt-2 border-t space-y-2">
-                                                            <div className="flex gap-2">
-                                                                <div className="flex-1">
-                                                                    <label className="text-[9px] uppercase font-bold text-muted-foreground">Valor personalizado</label>
-                                                                    <div className="relative">
-                                                                        <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
-                                                                        <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
-                                                                            onChange={(e) => setCustomValue(e.target.value)} />
-                                                                    </div>
+                                                            <Badge className="bg-primary/10 text-primary border-0 font-black text-[10px]">R$ {pacote.valorSugerido}</Badge>
+                                                        </div>
+                                                        {isSelected && (
+                                                            <div className="pt-2 border-t mt-2 space-y-2">
+                                                                <div className="space-y-1">
+                                                                    {pacote.diferenciais.map((d, i) => (
+                                                                        <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                                                            <span>{d}</span>
+                                                                        </div>
+                                                                    ))}
                                                                 </div>
-                                                                <Button className="h-8 self-end bg-green-600 hover:bg-green-700 text-white gap-1 text-xs"
-                                                                    disabled={!selectedPatient?.telefone}
-                                                                    onClick={(e) => { e.stopPropagation(); handleSendPacote(pacote); }}>
-                                                                    <Send className="h-3 w-3" /> WhatsApp
-                                                                </Button>
+                                                                <div className="flex gap-2">
+                                                                    <div className="flex-1">
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
+                                                                            <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
+                                                                                onChange={(e) => setCustomValue(e.target.value)} />
+                                                                        </div>
+                                                                    </div>
+                                                                    <Button className="h-8 bg-[#25D366] hover:bg-[#20BE5C] text-white gap-1 text-xs"
+                                                                        disabled={!selectedPatient?.telefone}
+                                                                        onClick={(e) => { e.stopPropagation(); handleSendPacote(pacote); }}>
+                                                                        <Send className="h-3 w-3" /> Enviar
+                                                                    </Button>
+                                                                </div>
+                                                                {!selectedPatient && <p className="text-[9px] text-destructive">⚠️ Selecione um paciente primeiro</p>}
                                                             </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
                                     </div>
-                                </div>
-                            );
-                        })}
+                                );
+                            })}
+                        </CardContent>
+                    </Card>
                     </div>
                 )}
 
-                {/* ══════════════════ MÉTRICAS TAB ══════════════════ */}
-                {activeTab === 'metricas' && (
+                {/* ══════════════════ RELATÓRIOS TAB ══════════════════ */}
+                {activeTab === 'relatorios' && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             <MetricCard label="Taxa de Conversão" value={`${taxaConversao}%`} desc="Leads → Avaliados" icon={TrendingUp} color="primary" />
@@ -1044,6 +1043,16 @@ export default function GestaoVendas() {
                                 </CardContent>
                             </Card>
                         </div>
+
+                        {/* Funil Config */}
+                        <Card className="border">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" /> Configurar Funil de Vendas</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FunilConfigPanel />
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 
@@ -1509,8 +1518,7 @@ export default function GestaoVendas() {
                     );
                 })()}
 
-                {/* ══════════════════ FUNIL TAB ══════════════════ */}
-                {activeTab === 'funil' && <FunilConfigPanel />}
+                {/* Funil is now inside Relatórios tab */}
             </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
