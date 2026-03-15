@@ -139,14 +139,12 @@ export default function PacienteQuestionarios() {
   };
 
   const handleRequestRetake = async () => {
-    if (!pacienteId || !canRetake()) return;
+    if (!pacienteId || !terapeutaId) return;
+    // Only check canRetake if there are completed questionnaires
+    if (questionarios.some(q => q.status === 'concluido') && !canRetake()) return;
     setCreatingRetake(true);
 
     try {
-      // Get terapeuta_id from the last questionnaire
-      const lastQ = questionarios[0];
-      if (!lastQ) throw new Error('Nenhum questionário anterior encontrado');
-
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-myid-retake`,
@@ -159,17 +157,17 @@ export default function PacienteQuestionarios() {
           },
           body: JSON.stringify({
             paciente_id: pacienteId,
-            terapeuta_id: lastQ.terapeuta_id,
+            terapeuta_id: terapeutaId,
           }),
         }
       );
 
       if (!res.ok) {
         const body = await res.json();
-        throw new Error(body.error || 'Erro ao criar reavaliação');
+        throw new Error(body.error || 'Erro ao criar questionário');
       }
 
-      toast({ title: '📋 Novo questionário criado!', description: 'Você já pode respondê-lo.' });
+      toast({ title: '📋 Questionário criado!', description: 'Você já pode respondê-lo.' });
       fetchQuestionarios();
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
