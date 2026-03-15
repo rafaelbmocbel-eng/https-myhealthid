@@ -286,10 +286,26 @@ export default function PacienteExercicios() {
                     <div className="border-t border-border">
                       {/* Exercises */}
                       <div className="p-4 space-y-2">
-                        {exs.map((ex, i) => (
+                        {exs.map((ex, i) => {
+                          const imgUrl = `${import.meta.env.VITE_SUPABASE_URL}/storage/v1/object/public/exercise-images/exercises/${ex.id}.png`;
+                          return (
                           <div key={ex.id} className="flex items-start gap-3 p-2.5 rounded-lg bg-muted/30">
-                            <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
-                              <span className="text-[10px] font-black text-primary">{i + 1}</span>
+                            <div className="h-14 w-14 rounded-xl bg-muted/50 flex items-center justify-center shrink-0 mt-0.5 overflow-hidden border border-border">
+                              <img
+                                src={imgUrl}
+                                alt={ex.nome_customizado || 'Exercício'}
+                                className="h-full w-full object-cover"
+                                onError={(e) => {
+                                  // Fallback to number circle
+                                  const target = e.currentTarget;
+                                  target.style.display = 'none';
+                                  const parent = target.parentElement;
+                                  if (parent) {
+                                    parent.innerHTML = `<span class="text-sm font-black text-primary">${i + 1}</span>`;
+                                    parent.classList.add('bg-primary/10');
+                                  }
+                                }}
+                              />
                             </div>
                             <div className="flex-1 min-w-0">
                               <p className="text-xs font-bold text-foreground">{ex.nome_customizado || 'Exercício'}</p>
@@ -311,7 +327,8 @@ export default function PacienteExercicios() {
                               )}
                             </div>
                           </div>
-                        ))}
+                          );
+                        })}
                       </div>
 
                       {/* Start session button */}
