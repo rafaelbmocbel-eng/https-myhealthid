@@ -933,8 +933,8 @@ export default function GestaoVendas() {
 
                 {/* Pacotes section is now part of WhatsApp tab - see below in mensagens */}
 
-                {/* ══════════════════ MÉTRICAS TAB ══════════════════ */}
-                {activeTab === 'metricas' && (
+                {/* ══════════════════ RELATÓRIOS TAB ══════════════════ */}
+                {activeTab === 'relatorios' && (
                     <div className="space-y-4">
                         <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
                             <MetricCard label="Taxa de Conversão" value={`${taxaConversao}%`} desc="Leads → Avaliados" icon={TrendingUp} color="primary" />
@@ -987,6 +987,16 @@ export default function GestaoVendas() {
                                 </CardContent>
                             </Card>
                         </div>
+
+                        {/* Funil Config */}
+                        <Card className="border">
+                            <CardHeader className="pb-2">
+                                <CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" /> Configurar Funil de Vendas</CardTitle>
+                            </CardHeader>
+                            <CardContent>
+                                <FunilConfigPanel />
+                            </CardContent>
+                        </Card>
                     </div>
                 )}
 
