@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ExerciseImageManager from '@/components/studio/ExerciseImageManager';
 
 interface Props {
   pacienteId: string;
@@ -185,7 +186,11 @@ function TreinoCard({ treino, isExpanded, onToggle, onDelete, onUpdate }: {
 
             {exercicios.map((ex: any, idx: number) => (
               <div key={ex.id} className="flex items-center gap-2 p-2.5 rounded-lg bg-muted/50 border">
-                <span className="text-xs font-bold text-muted-foreground w-5">{idx + 1}.</span>
+                <ExerciseImageManager
+                  exercicioId={ex.id}
+                  exercicioNome={ex.nome_customizado || 'Exercício'}
+                  grupoMuscular={ex.grupo_muscular}
+                />
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-sm text-foreground">{ex.nome_customizado || 'Exercício'}</div>
                   <div className="text-[10px] text-muted-foreground">
