@@ -1034,6 +1034,56 @@ export type Database = {
         }
         Relationships: []
       }
+      pagamentos_paciente: {
+        Row: {
+          comprovante_url: string | null
+          created_at: string
+          descricao: string
+          forma_pagamento: string
+          id: string
+          observacoes: string | null
+          paciente_id: string
+          status: string
+          terapeuta_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          comprovante_url?: string | null
+          created_at?: string
+          descricao: string
+          forma_pagamento?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id: string
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          comprovante_url?: string | null
+          created_at?: string
+          descricao?: string
+          forma_pagamento?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagamentos_paciente_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       prescricoes_exercicios: {
         Row: {
           created_at: string
