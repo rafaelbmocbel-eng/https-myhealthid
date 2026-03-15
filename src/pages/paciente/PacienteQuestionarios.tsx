@@ -257,12 +257,24 @@ export default function PacienteQuestionarios() {
             </div>
           ) : questionarios.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhum questionário disponível</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  Quando seu profissional enviar um questionário, ele aparecerá aqui.
-                </p>
+              <CardContent className="p-8 text-center space-y-4">
+                <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Questionário MyID</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Descubra sua Identidade Sistêmica respondendo o questionário por etapas. São 6 blocos curtos — você pode pausar e continuar quando quiser.
+                  </p>
+                </div>
+                {terapeutaId && (
+                  <Button
+                    onClick={handleRequestRetake}
+                    disabled={creatingRetake}
+                    className="gap-2"
+                  >
+                    {creatingRetake ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                    Iniciar MyID
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
