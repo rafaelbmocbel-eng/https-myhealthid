@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { supabase } from '@/integrations/supabase/client';
+import { gerarNotaAvaliacaoProfissional } from '@/utils/prontuarioAutoNotes';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
