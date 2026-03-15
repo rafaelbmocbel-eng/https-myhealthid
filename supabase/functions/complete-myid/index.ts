@@ -173,6 +173,70 @@ serve(async (req) => {
       console.warn("Evolução não registrada:", evolErr);
     }
 
+    // 6. AUTO-GENERATE PRONTUÁRIO NOTE
+    try {
+      const scoreD = Number(cs.D ?? cs.D_pain ?? 0).toFixed(1);
+      const scoreEFI = Number(cs.EFI ?? cs.EFI_functionality ?? 0).toFixed(1);
+      const scoreP = Number(cs.P ?? cs.P_psychological ?? 0).toFixed(1);
+      const scoreI = Number(cs.I ?? cs.I_inertia ?? 0).toFixed(1);
+      const scoreN = Number(cs.N ?? cs.N_noise ?? 0).toFixed(1);
+      const scoreR = Number(cs.R ?? cs.R_regulation ?? 0).toFixed(1);
+      const scoreC = Number(cs.C ?? cs.C_context ?? 0).toFixed(1);
+      const myidFormatted = Number(myidScore).toFixed(1);
+
+      // Build descriptive summary from raw_data
+      const rd = raw_data || {};
+      const painLocation = rd.painLocation || rd.localizacao_dor || "não especificada";
+      const painDuration = rd.painDuration || rd.duracao_dor || "não informada";
+      const painIntensity = rd.painIntensity ?? rd.intensidade_dor ?? rd.nrs ?? "N/A";
+      const sleepQuality = rd.sleepQuality ?? rd.qualidade_sono ?? "N/A";
+      const stressLevel = rd.stressLevel ?? rd.nivel_estresse ?? "N/A";
+      const activityLevel = rd.activityLevel ?? rd.nivel_atividade ?? "N/A";
+      const hydration = rd.hydration ?? rd.hidratacao ?? "N/A";
+
+      const flagsText = redFlags && redFlagAlerts.length > 0
+        ? `\n⚠️ RED FLAGS DETECTADAS: ${redFlagAlerts.join(", ")}`
+        : "";
+
+      const descricao = `📋 QUESTIONÁRIO MyID RESPONDIDO PELO PACIENTE
+
+🎯 Score MyID: ${myidFormatted}/10 — Classificação: ${classificacao}
+
+📊 SCORES POR DIMENSÃO:
+• Dor (D): ${scoreD}/10
+• Funcionalidade (EFI): ${scoreEFI}/10
+• Psicológico (P): ${scoreP}/10
+• Inércia/Demanda (I): ${scoreI}/10
+• Ruído Sistêmico (N): ${scoreN}/10
+• Regulação (R): ${scoreR}/10
+• Contexto (C): ${scoreC}/10
+
+📝 CARACTERÍSTICAS REPORTADAS:
+• Localização da dor: ${painLocation}
+• Duração da dor: ${painDuration}
+• Intensidade (NRS): ${painIntensity}/10
+• Qualidade do sono: ${sleepQuality}/10
+• Nível de estresse: ${stressLevel}/10
+• Nível de atividade física: ${activityLevel}/10
+• Hidratação: ${hydration}/10
+${flagsText}
+
+🔄 Dados completos armazenados para análise detalhada.
+Avaliação nº ${pacienteNome} — preenchida pelo paciente via link público.`;
+
+      await supabase.from("notas_prontuario").insert({
+        paciente_id: pacienteId,
+        terapeuta_id: terapeutaId,
+        tipo: "myid_resposta",
+        titulo: `MyID Respondido — Score ${myidFormatted} (${classificacao})`,
+        descricao,
+        dados_extras: { avaliacao_id: inserted.id, myid_score: myidScore, classificacao, scores: cs },
+        referencia_id: inserted.id,
+      });
+    } catch (noteErr) {
+      console.warn("Nota de prontuário não registrada:", noteErr);
+    }
+
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
