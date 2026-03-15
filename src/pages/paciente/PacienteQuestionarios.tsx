@@ -123,25 +123,8 @@ export default function PacienteQuestionarios() {
     }
   };
 
-  // Check if can retake (15 days since last completed)
-  const canRetake = () => {
-    const lastCompleted = questionarios.find(q => q.status === 'concluido');
-    if (!lastCompleted) return true;
-    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
-    return daysSince >= 15;
-  };
-
-  const daysUntilRetake = () => {
-    const lastCompleted = questionarios.find(q => q.status === 'concluido');
-    if (!lastCompleted) return 0;
-    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
-    return Math.max(0, 15 - daysSince);
-  };
-
   const handleRequestRetake = async () => {
     if (!pacienteId || !terapeutaId) return;
-    // Only check canRetake if there are completed questionnaires
-    if (questionarios.some(q => q.status === 'concluido') && !canRetake()) return;
     setCreatingRetake(true);
 
     try {
