@@ -143,21 +143,7 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
         </div>
       )}
 
-      {/* Body Map — always visible */}
-      <BodyMapSelector
-        units={data.units}
-        activeUnitId={selectedUnit || undefined}
-        onSelectUnit={handleSelectUnit}
-      />
-
-      {/* Connection Map — below body map, editable by therapist */}
-      <StructuralConnectionMap
-        data={data}
-        editable={true}
-        onDataChange={setData}
-      />
-
-      {/* Unit evaluation form — appears BELOW the map when a unit is selected */}
+      {/* Unit evaluation form — appears ABOVE the body map when a unit is selected */}
       {selectedUnit && (() => {
         const cfg = UNIT_CONFIGS.find(c => c.id === selectedUnit);
         if (!cfg) return null;
@@ -188,6 +174,20 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
           </div>
         );
       })()}
+
+      {/* Body Map — always visible */}
+      <BodyMapSelector
+        units={data.units}
+        activeUnitId={selectedUnit || undefined}
+        onSelectUnit={handleSelectUnit}
+      />
+
+      {/* Connection Map — below body map */}
+      <StructuralConnectionMap
+        data={data}
+        editable={true}
+        onDataChange={setData}
+      />
 
       {/* Actions */}
       <div className="flex justify-between items-center bg-card p-4 rounded-xl shadow-sm border">

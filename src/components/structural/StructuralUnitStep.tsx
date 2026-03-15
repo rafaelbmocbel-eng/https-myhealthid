@@ -105,113 +105,147 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
         </div>
       </div>
 
-      {/* ── Testes Clínicos ── */}
-      <button
-        onClick={() => toggle('tests')}
-        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Testes Clínicos</span>
-          <Badge variant="outline" className="text-[10px]">{tests.length} testes</Badge>
-        </div>
-        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
-      </button>
+      {/* ── Testes Clínicos (compact) ── */}
+      <div className="clinical-card !p-0 overflow-hidden">
+        <button
+          onClick={() => toggle('tests')}
+          className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-muted/30 transition-all"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold">Testes Clínicos</span>
+            {(() => {
+              const usedCount = assessment.testsPerformed.filter(t => t.performed || t.notes.length > 0).length;
+              return (
+                <Badge variant="outline" className="text-[9px]">
+                  {usedCount}/{tests.length} usados
+                </Badge>
+              );
+            })()}
+          </div>
+          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
+        </button>
 
-      {expandedSection === 'tests' && (
-        <div className="clinical-card space-y-3 animate-slide-in">
-          {tests.map(test => {
-            const result = assessment.testsPerformed.find(t => t.testId === test.id);
-            return (
-              <div key={test.id} className="p-3 rounded-lg border bg-muted/20 space-y-2">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <span className="text-sm font-medium">{test.name}</span>
-                    {test.optional && <Badge variant="outline" className="text-[9px] ml-2">Opcional</Badge>}
-                  </div>
-                  <span className="text-[10px] text-muted-foreground">{test.time} · {test.difficulty}</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground">{test.evidence}</p>
-                <Textarea
-                  placeholder={`Resultado / achados do ${test.name}...`}
-                  value={result?.notes || ''}
-                  onChange={e => updateTestNotes(test.id, e.target.value)}
-                  className="text-xs resize-none h-14"
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ── Estruturas Acometidas ── */}
-      <button
-        onClick={() => toggle('structures')}
-        className="w-full clinical-card !p-3 flex items-center justify-between hover:border-primary/30 transition-all"
-      >
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-semibold">Estruturas Acometidas</span>
-          {Object.values(assessment.affectedStructures).flat().length > 0 && (
-            <Badge variant="outline" className="text-[10px]">
-              {Object.values(assessment.affectedStructures).flat().length} selecionadas
-            </Badge>
-          )}
-        </div>
-        <ChevronDown className={cn('h-4 w-4 text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
-      </button>
-
-      {expandedSection === 'structures' && (
-        <div className="clinical-card space-y-4 animate-slide-in">
-          {structureCategories.map(({ key, label, icon, color, borderColor }) => {
-            const structures = unitConfig.structures[key];
-            if (structures.length === 0) return null;
-
-            return (
-              <div key={key} className={cn('p-3 rounded-lg border', borderColor, 'bg-muted/10')}>
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-sm">{icon}</span>
-                  <span className={cn('text-xs font-bold', color)}>{label}</span>
-                </div>
-
-                {/* Selectable structure pills */}
-                <div className="flex flex-wrap gap-1.5 mb-2">
-                  {structures.map(name => {
-                    const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
-                    return (
-                      <button
-                        key={name}
-                        onClick={() => toggleStructure(key, name)}
-                        className={cn(
-                          'text-[11px] px-2.5 py-1 rounded-full border transition-all',
-                          isSelected
-                            ? 'bg-primary text-primary-foreground border-primary'
-                            : 'hover:border-primary/50 bg-background'
-                        )}
-                      >
-                        {name}
-                      </button>
-                    );
-                  })}
-                </div>
-
-                {/* Free text for additional structures */}
-                <Input
-                  placeholder={`Outros ${label.toLowerCase()}...`}
-                  className="text-xs h-8"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      const val = (e.target as HTMLInputElement).value.trim();
-                      if (val) {
-                        toggleStructure(key, val);
-                        (e.target as HTMLInputElement).value = '';
-                      }
-                    }
+        {expandedSection === 'tests' && (
+          <div className="border-t px-3 py-2 space-y-1.5 animate-slide-in">
+            {tests.map(test => {
+              const result = assessment.testsPerformed.find(t => t.testId === test.id);
+              const hasNotes = result && result.notes.length > 0;
+              return (
+                <div key={test.id} className={cn(
+                  'flex items-center gap-2 px-2 py-1.5 rounded-md border text-[11px] transition-all cursor-pointer',
+                  hasNotes ? 'bg-primary/5 border-primary/20' : 'bg-muted/10 border-transparent hover:border-muted'
+                )}
+                  onClick={() => {
+                    const el = document.getElementById(`test-notes-${test.id}`);
+                    if (el) el.classList.toggle('hidden');
                   }}
-                />
-              </div>
-            );
-          })}
-        </div>
-      )}
+                >
+                  <span className={cn('h-1.5 w-1.5 rounded-full shrink-0', hasNotes ? 'bg-primary' : 'bg-muted-foreground/30')} />
+                  <span className="font-medium flex-1 truncate">{test.name}</span>
+                  {test.optional && <span className="text-[8px] text-muted-foreground">OPC</span>}
+                  <ChevronDown className="h-3 w-3 text-muted-foreground shrink-0" />
+                </div>
+              );
+            })}
+            {/* Expanded note areas */}
+            {tests.map(test => {
+              const result = assessment.testsPerformed.find(t => t.testId === test.id);
+              return (
+                <div key={`notes-${test.id}`} id={`test-notes-${test.id}`} className="hidden pl-4 pb-1">
+                  <p className="text-[9px] text-muted-foreground mb-1">{test.evidence}</p>
+                  <Textarea
+                    placeholder={`Achados do ${test.name}...`}
+                    value={result?.notes || ''}
+                    onChange={e => updateTestNotes(test.id, e.target.value)}
+                    className="text-[11px] resize-none h-12"
+                  />
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* ── Estruturas Acometidas (compact) ── */}
+      <div className="clinical-card !p-0 overflow-hidden">
+        <button
+          onClick={() => toggle('structures')}
+          className="w-full px-3 py-2.5 flex items-center justify-between hover:bg-muted/30 transition-all"
+        >
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-semibold">Estruturas Acometidas</span>
+            {Object.values(assessment.affectedStructures).flat().length > 0 && (
+              <Badge variant="outline" className="text-[9px]">
+                {Object.values(assessment.affectedStructures).flat().length} selecionadas
+              </Badge>
+            )}
+          </div>
+          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
+        </button>
+
+        {expandedSection === 'structures' && (
+          <div className="border-t px-3 py-2 space-y-2 animate-slide-in">
+            {structureCategories.map(({ key, label, icon, color, borderColor }) => {
+              const structures = unitConfig.structures[key];
+              if (structures.length === 0) return null;
+              const selectedCount = assessment.affectedStructures[key].length;
+
+              return (
+                <div key={key}>
+                  <button
+                    className="w-full flex items-center gap-1.5 py-1 text-[11px]"
+                    onClick={() => {
+                      const el = document.getElementById(`struct-${unitConfig.id}-${key}`);
+                      if (el) el.classList.toggle('hidden');
+                    }}
+                  >
+                    <span className="text-xs">{icon}</span>
+                    <span className={cn('font-bold', color)}>{label}</span>
+                    {selectedCount > 0 && (
+                      <Badge variant="outline" className="text-[8px] ml-auto">{selectedCount}</Badge>
+                    )}
+                    <ChevronDown className="h-3 w-3 text-muted-foreground" />
+                  </button>
+                  <div id={`struct-${unitConfig.id}-${key}`} className="hidden pl-4 pb-1">
+                    <div className="flex flex-wrap gap-1 mb-1.5">
+                      {structures.map(name => {
+                        const isSelected = assessment.affectedStructures[key].some(s => s.name === name);
+                        return (
+                          <button
+                            key={name}
+                            onClick={() => toggleStructure(key, name)}
+                            className={cn(
+                              'text-[10px] px-2 py-0.5 rounded-full border transition-all',
+                              isSelected
+                                ? 'bg-primary text-primary-foreground border-primary'
+                                : 'hover:border-primary/50 bg-background'
+                            )}
+                          >
+                            {name}
+                          </button>
+                        );
+                      })}
+                    </div>
+                    <Input
+                      placeholder={`Outros ${label.toLowerCase()}...`}
+                      className="text-[10px] h-7"
+                      onKeyDown={e => {
+                        if (e.key === 'Enter') {
+                          const val = (e.target as HTMLInputElement).value.trim();
+                          if (val) {
+                            toggleStructure(key, val);
+                            (e.target as HTMLInputElement).value = '';
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
 
       {/* ── Observações ── */}
       <div className="clinical-card">
