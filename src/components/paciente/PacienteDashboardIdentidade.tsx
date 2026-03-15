@@ -482,6 +482,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         console.error('Erro ao salvar avaliação estrutural:', error);
                         toast({ title: 'Erro ao salvar no banco', description: error.message, variant: 'destructive' });
                       } else {
+                        // Auto-generate prontuário note
+                        gerarNotaAvaliacaoProfissional({
+                          pacienteId: paciente.id,
+                          terapeutaId: user?.id || '',
+                          tipoAvaliacao: 'identidade',
+                          resumoScores: { 'Score Estrutural': sData.scoreStructuralGeneral },
+                          classificacao: sData.classification || undefined,
+                          observacoes: 'Avaliação Estrutural (Unidades ID) realizada presencialmente.',
+                        });
                         refetchStructural();
                         toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${Number(sData.scoreStructuralGeneral).toFixed(1)}` });
                       }
