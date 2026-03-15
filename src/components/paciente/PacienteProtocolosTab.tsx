@@ -230,6 +230,75 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     }
   };
 
+
+  const handlePublicarExercicios = async (protocolo: any) => {
+    setPublishingId(protocolo.id);
+    try {
+      // 1. Buscar fases e prescrições do protocolo
+      const { data: fases } = await supabase
+        .from('protocolo_fases' as any)
+        .select('*')
+        .eq('protocolo_id', protocolo.id)
+        .order('numero_fase');
+
+      const { data: prescricoes } = await supabase
+        .from('prescricoes_exercicios' as any)
+        .select('*, exercicio:exercicio_id(*)')
+        .eq('protocolo_id', protocolo.id);
+
+      if (!prescricoes || prescricoes.length === 0) {
+        toast({ title: 'Sem exercícios', description: 'Esta diretriz não possui exercícios prescritos.', variant: 'destructive' });
+        return;
+      }
+
+      // 2. Criar treino no Studio já publicado
+      const { data: treino, error: treinoErr } = await supabase
+        .from('studio_treinos' as any)
+        .insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user!.id,
+          titulo: `${protocolo.titulo || 'Diretriz'} — Exercícios`,
+          objetivo: protocolo.objetivo_geral || 'Reabilitação',
+          duracao_estimada: protocolo.duracao_total || '12 semanas',
+          frequencia: protocolo.frequencia || '2-3x por semana',
+          intensidade: 'Moderada',
+          publicado: true,
+          ativo: true,
+        })
+        .select('id')
+        .single();
+
+      if (treinoErr) throw treinoErr;
+
+      // 3. Inserir exercícios do protocolo no treino
+      const exerciciosInsert = (prescricoes as any[]).map((p: any, idx: number) => ({
+        treino_id: (treino as any).id,
+        exercicio_id: p.exercicio_id || null,
+        nome_customizado: p.exercicio?.nome || 'Exercício',
+        grupo_muscular: (p.exercicio?.regiao_corporal as any[])?.[0] || 'Geral',
+        ordem: idx + 1,
+        series: p.series || 3,
+        repeticoes: p.repeticoes || 12,
+        descanso_segundos: parseInt(p.tempo_descanso) || 60,
+        orientacoes: p.observacoes || null,
+      }));
+
+      const { error: exErr } = await supabase
+        .from('studio_treino_exercicios' as any)
+        .insert(exerciciosInsert);
+
+      if (exErr) throw exErr;
+
+      toast({ title: 'Exercícios publicados!', description: `${exerciciosInsert.length} exercícios enviados ao portal do paciente.` });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao publicar exercícios', variant: 'destructive' });
+    } finally {
+      setPublishingId(null);
+    }
+  };
+
   // Viewing a protocol
   if (viewingId && tipo === 'identidade') {
     return (
