@@ -80,11 +80,11 @@ export default function PacientePagamentos() {
 
       // Get payment history
       const { data: pags } = await supabase
-        .from('pagamentos_paciente')
+        .from('pagamentos_paciente' as any)
         .select('id, descricao, valor, forma_pagamento, status, created_at')
         .eq('paciente_id', pac.id)
         .order('created_at', { ascending: false });
-      setPagamentos(pags || []);
+      setPagamentos((pags as any[]) || []);
     } finally {
       setLoading(false);
     }
