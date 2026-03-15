@@ -1,5 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import { getMyIDFingerprintData } from '@/utils/myidCalculations';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
@@ -241,59 +243,83 @@ export default function PacienteDashboard() {
             </Card>
           )}
 
-          {/* ── MyID Score Card ── */}
-          {ultimaAval && (
-            <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card to-violet-50/40 dark:to-violet-950/20">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-3 mb-3">
-                  <div className="h-10 w-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-md">
-                    <Fingerprint className="h-5 w-5 text-white" />
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-sm font-black text-foreground">Seu MyID Score</h2>
-                    <p className="text-[10px] text-muted-foreground">Resultado mais recente</p>
-                  </div>
-                  <div className="text-right">
-                    <span className="text-3xl font-black text-violet-600">{Number(ultimaAval.myid_score).toFixed(1)}</span>
-                    <p className="text-[10px] font-bold text-muted-foreground">/10</p>
-                  </div>
-                </div>
+          {/* ── MyID Score Card with Fingerprint ── */}
+          {ultimaAval && (() => {
+            const fpScores: Record<string, number> = {
+              D: Number(ultimaAval.score_d) || 0,
+              EFI: Number(ultimaAval.score_efi) || 0,
+              P: Number(ultimaAval.score_p) || 0,
+              I: Number(ultimaAval.score_i) || 0,
+              R: Number(ultimaAval.score_r) || 0,
+              C: Number(ultimaAval.score_c) || 0,
+              N: Number(ultimaAval.score_n) || 0,
+            };
+            const fpRings = getMyIDFingerprintData(fpScores);
 
-                {ultimaAval.classificacao && (
-                  <Badge variant="outline" className="text-[10px] font-bold mb-3">
-                    {ultimaAval.classificacao}
-                  </Badge>
-                )}
+            return (
+              <Card className="overflow-hidden border-0 shadow-lg bg-gradient-to-br from-card to-violet-50/40 dark:to-violet-950/20">
+                <CardContent className="p-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-xl bg-violet-600 flex items-center justify-center shadow-md">
+                      <Fingerprint className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1">
+                      <h2 className="text-sm font-black text-foreground">Seu MyID Score</h2>
+                      <p className="text-[10px] text-muted-foreground">Resultado mais recente</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-3xl font-black text-violet-600">{Number(ultimaAval.myid_score).toFixed(1)}</span>
+                      <p className="text-[10px] font-bold text-muted-foreground">/10</p>
+                    </div>
+                  </div>
 
-                {/* Score dimensions */}
-                <div className="grid grid-cols-4 gap-1.5 mt-2">
-                  {(['d', 'efi', 'p', 'i', 'r', 'c', 'n'] as const).map((key) => {
-                    const val = Number((ultimaAval as any)[`score_${key}`]) || 0;
-                    const delta = getScoreDelta(key);
-                    const labels: Record<string, string> = { d: 'Dor', efi: 'Função', p: 'Psico', i: 'Inércia', r: 'Regulação', c: 'Contexto', n: 'Ruído' };
-                    return (
-                      <div key={key} className="bg-muted/50 rounded-lg p-2 text-center">
-                        <span className="text-[9px] text-muted-foreground font-semibold uppercase block">{labels[key]}</span>
-                        <span className="text-sm font-black text-foreground">{val.toFixed(1)}</span>
-                        {delta !== null && delta !== 0 && (
-                          <div className="flex items-center justify-center gap-0.5 mt-0.5">
-                            {delta < 0 ? (
-                              <TrendingDown className="h-2.5 w-2.5 text-emerald-600" />
-                            ) : (
-                              <TrendingUp className="h-2.5 w-2.5 text-red-500" />
-                            )}
-                            <span className={`text-[9px] font-bold ${delta < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
-                              {delta > 0 ? '+' : ''}{delta}
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                  {ultimaAval.classificacao && (
+                    <Badge variant="outline" className="text-[10px] font-bold mb-3">
+                      {ultimaAval.classificacao}
+                    </Badge>
+                  )}
+
+                  {/* Fingerprint Visualization */}
+                  {fpRings.length > 0 && (
+                    <div className="my-4">
+                      <MyIDFingerprint
+                        rings={fpRings}
+                        myidScore={Number(ultimaAval.myid_score) || 0}
+                        className="w-full max-w-sm mx-auto"
+                      />
+                    </div>
+                  )}
+
+                  {/* Score dimensions */}
+                  <div className="grid grid-cols-4 gap-1.5 mt-2">
+                    {(['d', 'efi', 'p', 'i', 'r', 'c', 'n'] as const).map((key) => {
+                      const val = Number((ultimaAval as any)[`score_${key}`]) || 0;
+                      const delta = getScoreDelta(key);
+                      const labels: Record<string, string> = { d: 'Dor', efi: 'Função', p: 'Psico', i: 'Inércia', r: 'Regulação', c: 'Contexto', n: 'Ruído' };
+                      return (
+                        <div key={key} className="bg-muted/50 rounded-lg p-2 text-center">
+                          <span className="text-[9px] text-muted-foreground font-semibold uppercase block">{labels[key]}</span>
+                          <span className="text-sm font-black text-foreground">{val.toFixed(1)}</span>
+                          {delta !== null && delta !== 0 && (
+                            <div className="flex items-center justify-center gap-0.5 mt-0.5">
+                              {delta < 0 ? (
+                                <TrendingDown className="h-2.5 w-2.5 text-emerald-600" />
+                              ) : (
+                                <TrendingUp className="h-2.5 w-2.5 text-red-500" />
+                              )}
+                              <span className={`text-[9px] font-bold ${delta < 0 ? 'text-emerald-600' : 'text-red-500'}`}>
+                                {delta > 0 ? '+' : ''}{delta}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
           {/* ── Evolution Charts (only if 2+ avaliacoes) ── */}
           {hasEvolution && (
