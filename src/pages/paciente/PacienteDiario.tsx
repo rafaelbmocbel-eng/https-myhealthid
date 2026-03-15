@@ -103,6 +103,16 @@ export default function PacienteDiario() {
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } else {
+      // Auto-generate prontuário note
+      gerarNotaDiario({
+        pacienteId: paciente.id,
+        terapeutaId: paciente.terapeuta_id,
+        mood,
+        pain,
+        energy,
+        sleepHours,
+        notes: notes.trim() || undefined,
+      });
       toast({ title: 'Registro salvo! ✅', description: '+10 XP pelo registro diário' });
       setShowForm(false);
       setMood(3); setPain(0); setEnergy(3); setSleepHours(7); setNotes('');
