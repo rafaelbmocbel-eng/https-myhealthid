@@ -71,6 +71,7 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
 
       const { data, error } = await supabase.functions.invoke('backfill-prontuario', {
         headers: { Authorization: `Bearer ${session.access_token}` },
+        body: { force: true },
       });
       if (error) throw error;
       const count = data?.notas_criadas || 0;
