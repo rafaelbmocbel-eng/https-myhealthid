@@ -13,6 +13,9 @@ import { ptBR } from 'date-fns/locale';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PatientIntegratedDashboard from '@/components/paciente/PatientIntegratedDashboard';
+import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
+import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
+import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 
 interface PacienteInfo {
   id: string;
