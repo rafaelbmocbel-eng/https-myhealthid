@@ -18,6 +18,7 @@ export interface Paciente {
   created_at: string;
   terapeuta_id: string;
   servicos?: string[];
+  portal_token?: string | null;
 }
 
 export interface PacienteServico {
