@@ -44,12 +44,13 @@ export default function PacienteQuestionarios() {
 
     const { data: pac } = await supabase
       .from('pacientes')
-      .select('id')
+      .select('id, terapeuta_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (!pac) { setLoading(false); return; }
     setPacienteId(pac.id);
+    setTerapeutaId(pac.terapeuta_id);
 
     const { data } = await supabase
       .from('myid_avaliacoes')
