@@ -122,7 +122,7 @@ export default function PacientePagamentos() {
     if (!paciente || !selectedServico || !paymentMethod) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('pagamentos_paciente').insert({
+      const { error } = await supabase.from('pagamentos_paciente' as any).insert({
         paciente_id: paciente.id,
         terapeuta_id: paciente.terapeuta_id,
         descricao: selectedServico.nome,

@@ -11,6 +11,7 @@ const navItems = [
   { path: '/paciente/exercicios', label: 'Treinos', icon: Dumbbell },
   { path: '/paciente/agenda', label: 'Agenda', icon: CalendarDays },
   { path: '/paciente/questionarios', label: 'Questionários', icon: ClipboardList },
+  { path: '/paciente/pagamentos', label: 'Pagamentos', icon: Wallet },
   { path: '/paciente/perfil', label: 'Perfil', icon: User },
 ];
 

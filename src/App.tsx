@@ -99,6 +99,7 @@ const App = () => (
               <Route path="/paciente/exercicios" element={<PacienteExercicios />} />
               <Route path="/paciente/agenda" element={<PacienteAgenda />} />
               <Route path="/paciente/questionarios" element={<PacienteQuestionarios />} />
+              <Route path="/paciente/pagamentos" element={<PacientePagamentos />} />
               <Route path="/paciente/perfil" element={<PacientePerfilPage />} />
 
               <Route path="*" element={<NotFound />} />
