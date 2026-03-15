@@ -6,7 +6,6 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { format, parseISO } from 'date-fns';
@@ -29,11 +28,11 @@ export default function PacienteQuestionarios() {
   const [questionarios, setQuestionarios] = useState<QuestionarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [submitting, setSubmitting] = useState(false);
 
   const fetchQuestionarios = async () => {
     if (!user) return;
 
-    // Get patient record
     const { data: pac } = await supabase
       .from('pacientes')
       .select('id')
@@ -56,24 +55,54 @@ export default function PacienteQuestionarios() {
 
   const handleComplete = async (result: any, rawData: any) => {
     if (!activeId) return;
-    const { error } = await supabase
-      .from('myid_avaliacoes')
-      .update({
+    setSubmitting(true);
+
+    try {
+      // Call edge function to sync to avaliacoes_identidade + evolucao_paciente
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/complete-myid`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || anonKey}`,
+          },
+          body: JSON.stringify({
+            avaliacao_id: activeId,
+            result,
+            raw_data: rawData,
+          }),
+        }
+      );
+
+      const body = await res.json();
+
+      if (!res.ok) {
+        throw new Error(body.error || 'Erro ao processar avaliação');
+      }
+
+      toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada e sincronizada.' });
+      setActiveId(null);
+      fetchQuestionarios();
+    } catch (err: any) {
+      // Fallback: at least update myid_avaliacoes directly
+      await supabase.from('myid_avaliacoes').update({
         status: 'concluido',
         respostas_brutas: rawData,
         resultado_processado: result,
         updated_at: new Date().toISOString(),
-      })
-      .eq('id', activeId);
+      }).eq('id', activeId);
 
-    if (error) {
-      toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
-      return;
+      toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada ao profissional.' });
+      setActiveId(null);
+      fetchQuestionarios();
+    } finally {
+      setSubmitting(false);
     }
-
-    toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada ao profissional.' });
-    setActiveId(null);
-    fetchQuestionarios();
   };
 
   // Render wizard if answering
@@ -93,6 +122,14 @@ export default function PacienteQuestionarios() {
               onComplete={handleComplete}
               initialData={item?.respostas_brutas || {}}
             />
+            {submitting && (
+              <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+                <div className="flex flex-col items-center gap-3 bg-card p-6 rounded-2xl shadow-xl border">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <p className="text-sm font-medium text-foreground">Processando sua avaliação...</p>
+                </div>
+              </div>
+            )}
           </div>
         </PacienteLayout>
       </ProtectedPatientRoute>
@@ -124,7 +161,6 @@ export default function PacienteQuestionarios() {
             </Card>
           ) : (
             <>
-              {/* Pending */}
               {pendentes.length > 0 && (
                 <div className="space-y-2">
                   <h2 className="text-sm font-bold text-foreground">Pendentes</h2>
@@ -144,7 +180,6 @@ export default function PacienteQuestionarios() {
                           size="sm"
                           className="text-xs font-bold gap-1"
                           onClick={() => {
-                            // mark as in progress
                             if (q.status === 'pendente') {
                               supabase.from('myid_avaliacoes').update({ status: 'em_andamento' }).eq('id', q.id);
                             }
@@ -160,24 +195,31 @@ export default function PacienteQuestionarios() {
                 </div>
               )}
 
-              {/* Completed */}
               {concluidos.length > 0 && (
                 <div className="space-y-2">
                   <h2 className="text-sm font-bold text-foreground">Concluídos</h2>
-                  {concluidos.map((q) => (
-                    <Card key={q.id} className="opacity-80">
+                  {concluidos.map((q, idx) => (
+                    <Card key={q.id} className={idx === 0 ? 'border-green-200' : 'opacity-70'}>
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-foreground">Questionário MyID</p>
+                          <p className="text-sm font-semibold text-foreground">
+                            Questionário MyID
+                            {idx === 0 && <span className="text-[10px] text-green-600 ml-1">(mais recente)</span>}
+                          </p>
                           <p className="text-[11px] text-muted-foreground">
                             Respondido em {format(parseISO(q.updated_at), "d 'de' MMM, yyyy", { locale: ptBR })}
                           </p>
+                          {q.resultado_processado && (
+                            <p className="text-[10px] text-primary font-semibold mt-0.5">
+                              Score: {(q.resultado_processado as any)?.MyID_score?.toFixed(1) || (q.resultado_processado as any)?.myidScore?.toFixed(1) || '—'}
+                            </p>
+                          )}
                         </div>
                         <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 text-[10px]">
-                          Concluído
+                          {concluidos.length > 1 && idx === 0 ? `#${concluidos.length}` : 'Concluído'}
                         </Badge>
                       </CardContent>
                     </Card>
