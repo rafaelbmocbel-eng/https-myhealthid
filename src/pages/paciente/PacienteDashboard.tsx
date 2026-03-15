@@ -183,6 +183,15 @@ export default function PacienteDashboard() {
             </Card>
           )}
 
+          {/* ── Alertas & Lembretes (consultas, diário, treinos) ── */}
+          {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
+
+          {/* ── Metas & Desafios Semanais ── */}
+          {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
+
+          {/* ── Exercícios para Casa (resumo) ── */}
+          {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
+
           {/* ── Visão Integrada MyID (same as professional view) ── */}
           {paciente && (
             <PatientIntegratedDashboard
