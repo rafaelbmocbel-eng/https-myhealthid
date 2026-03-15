@@ -29,21 +29,6 @@ interface Agendamento {
   tipo_atendimento: string | null;
 }
 
-interface AvaliacaoIdentidade {
-  id: string;
-  created_at: string;
-  data_avaliacao: string;
-  classificacao: string | null;
-  myid_score: number | null;
-  score_d: number | null;
-  score_p: number | null;
-  score_efi: number | null;
-  score_i: number | null;
-  score_n: number | null;
-  score_r: number | null;
-  score_c: number | null;
-}
-
 // XP / Gamification helpers
 function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number }) {
   return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10;
