@@ -34,6 +34,7 @@ const PacientePerfilPage = lazy(() => import("./pages/paciente/PacientePerfil"))
 const PacienteDiario = lazy(() => import("./pages/paciente/PacienteDiario"));
 const PacienteEvolucao = lazy(() => import("./pages/paciente/PacienteEvolucao"));
 const PacienteExercicios = lazy(() => import("./pages/paciente/PacienteExercicios"));
+const PacientePagamentos = lazy(() => import("./pages/paciente/PacientePagamentos"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -98,6 +99,7 @@ const App = () => (
               <Route path="/paciente/exercicios" element={<PacienteExercicios />} />
               <Route path="/paciente/agenda" element={<PacienteAgenda />} />
               <Route path="/paciente/questionarios" element={<PacienteQuestionarios />} />
+              <Route path="/paciente/pagamentos" element={<PacientePagamentos />} />
               <Route path="/paciente/perfil" element={<PacientePerfilPage />} />
 
               <Route path="*" element={<NotFound />} />
