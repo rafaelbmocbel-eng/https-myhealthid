@@ -116,6 +116,18 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
   });
 
   return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-muted-foreground">Prontuário Automático</h3>
+          <Badge variant="outline" className="text-[10px]">{notas.length} registro(s)</Badge>
+        </div>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={handleBackfill} disabled={syncing}>
+          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Sincronizar
+        </Button>
+      </div>
     <ScrollArea className="max-h-[600px]">
       <div className="space-y-6 pr-2">
         {Object.entries(grouped).map(([dateKey, dayNotas]) => (
