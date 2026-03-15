@@ -283,14 +283,32 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
         orientacoes: p.observacoes || null,
       }));
 
-      const { error: exErr } = await supabase
+      const { data: insertedExs, error: exErr } = await supabase
         .from('studio_treino_exercicios' as any)
-        .insert(exerciciosInsert);
+        .insert(exerciciosInsert)
+        .select('id, nome_customizado, grupo_muscular');
 
       if (exErr) throw exErr;
 
-      toast({ title: 'Exercícios publicados!', description: `${exerciciosInsert.length} exercícios enviados ao portal do paciente.` });
+      toast({ title: 'Exercícios publicados!', description: `${exerciciosInsert.length} exercícios enviados. Gerando ilustrações...` });
       qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+
+      // Generate AI images in background (non-blocking)
+      if (insertedExs) {
+        (insertedExs as any[]).forEach(async (ex: any) => {
+          try {
+            await supabase.functions.invoke('generate-exercise-image', {
+              body: {
+                exerciseName: ex.nome_customizado || 'Exercício',
+                muscleGroup: ex.grupo_muscular || 'Geral',
+                exerciseId: ex.id,
+              },
+            });
+          } catch (imgErr) {
+            console.warn('Failed to generate image for', ex.nome_customizado, imgErr);
+          }
+        });
+      }
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro ao publicar exercícios', variant: 'destructive' });
