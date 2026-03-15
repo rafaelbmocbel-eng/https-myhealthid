@@ -30,6 +30,8 @@ import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
+import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
+import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
