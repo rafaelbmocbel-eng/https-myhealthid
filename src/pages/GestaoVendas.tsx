@@ -931,76 +931,7 @@ export default function GestaoVendas() {
                     </Card>
                 )}
 
-                {/* ══════════════════ PACOTES TAB ══════════════════ */}
-                {activeTab === 'pacotes' && (
-                    <div className="space-y-4">
-                        <Card className="border">
-                            <CardContent className="p-4">
-                                <label className="text-[10px] uppercase font-black text-muted-foreground mb-1 block">Paciente</label>
-                                <select className="w-full h-10 px-3 rounded-md border border-input bg-background text-sm"
-                                    onChange={(e) => setSelectedPatient(patients.find((p: any) => p.id === e.target.value) || null)}>
-                                    <option value="">Selecione...</option>
-                                    {patients.map((p: any) => (
-                                        <option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>
-                                    ))}
-                                </select>
-                            </CardContent>
-                        </Card>
-
-                        {(['Método Identidade', 'COB° ZERO', 'Studio Personal ID'] as const).map(servico => {
-                            const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servico);
-                            return (
-                                <div key={servico}>
-                                    <h3 className="font-bold text-sm mb-2">{servico}</h3>
-                                    <div className="grid gap-3 md:grid-cols-2">
-                                        {pacotes.map(pacote => {
-                                            const isSelected = selectedPacote === pacote.id;
-                                            return (
-                                                <div key={pacote.id} className={`clinical-card cursor-pointer transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
-                                                    onClick={() => { setSelectedPacote(isSelected ? null : pacote.id); setCustomValue(pacote.valorSugerido); }}>
-                                                    <div className="flex items-start justify-between mb-2">
-                                                        <div>
-                                                            <h4 className="font-bold text-sm">{pacote.nome}</h4>
-                                                            <p className="text-[10px] text-muted-foreground">{pacote.sessoes} sessões · {pacote.duracao}</p>
-                                                        </div>
-                                                        <Badge className="bg-primary/10 text-primary border-0 font-black">R$ {pacote.valorSugerido}</Badge>
-                                                    </div>
-                                                    <div className="space-y-1 mb-3">
-                                                        {pacote.diferenciais.map((d, i) => (
-                                                            <div key={i} className="flex items-center gap-1.5 text-[10px]">
-                                                                <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
-                                                                <span>{d}</span>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                    {isSelected && (
-                                                        <div className="pt-2 border-t space-y-2">
-                                                            <div className="flex gap-2">
-                                                                <div className="flex-1">
-                                                                    <label className="text-[9px] uppercase font-bold text-muted-foreground">Valor personalizado</label>
-                                                                    <div className="relative">
-                                                                        <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
-                                                                        <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
-                                                                            onChange={(e) => setCustomValue(e.target.value)} />
-                                                                    </div>
-                                                                </div>
-                                                                <Button className="h-8 self-end bg-green-600 hover:bg-green-700 text-white gap-1 text-xs"
-                                                                    disabled={!selectedPatient?.telefone}
-                                                                    onClick={(e) => { e.stopPropagation(); handleSendPacote(pacote); }}>
-                                                                    <Send className="h-3 w-3" /> WhatsApp
-                                                                </Button>
-                                                            </div>
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                )}
+                {/* Pacotes section is now part of WhatsApp tab - see below in mensagens */}
 
                 {/* ══════════════════ MÉTRICAS TAB ══════════════════ */}
                 {activeTab === 'metricas' && (
