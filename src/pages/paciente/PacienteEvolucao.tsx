@@ -43,7 +43,9 @@ export default function PacienteEvolucao() {
   const { user } = useAuth();
   const [logs, setLogs] = useState<DailyLogEntry[]>([]);
   const [myidScores, setMyidScores] = useState<MyIDScore[]>([]);
+  const [notas, setNotas] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
@@ -55,12 +57,15 @@ export default function PacienteEvolucao() {
         .maybeSingle();
 
       if (!pac) { setLoading(false); return; }
+      setPacienteId(pac.id);
 
-      const [logsRes, evolRes] = await Promise.all([
+      const [logsRes, evolRes, notasRes] = await Promise.all([
         supabase.from('daily_logs').select('*').eq('paciente_id', pac.id)
           .order('created_at', { ascending: true }).limit(90),
         supabase.from('evolucao_paciente').select('*').eq('paciente_id', pac.id)
           .order('data_registro', { ascending: true }),
+        (supabase as any).from('notas_prontuario').select('*').eq('paciente_id', pac.id)
+          .order('created_at', { ascending: false }).limit(50),
       ]);
 
       setLogs((logsRes.data as DailyLogEntry[]) || []);
@@ -76,6 +81,7 @@ export default function PacienteEvolucao() {
           id_final: e.id_final,
         }))
       );
+      setNotas(notasRes.data || []);
       setLoading(false);
     })();
   }, [user]);
