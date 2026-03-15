@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { gerarNotaDiario } from '@/utils/prontuarioAutoNotes';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
@@ -102,6 +103,16 @@ export default function PacienteDiario() {
     if (error) {
       toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
     } else {
+      // Auto-generate prontuário note
+      gerarNotaDiario({
+        pacienteId: paciente.id,
+        terapeutaId: paciente.terapeuta_id,
+        mood,
+        pain,
+        energy,
+        sleepHours,
+        notes: notes.trim() || undefined,
+      });
       toast({ title: 'Registro salvo! ✅', description: '+10 XP pelo registro diário' });
       setShowForm(false);
       setMood(3); setPain(0); setEnergy(3); setSleepHours(7); setNotes('');

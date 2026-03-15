@@ -30,6 +30,8 @@ import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
+import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
+import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -51,6 +53,7 @@ export default function PacientePerfil() {
   const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
+  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
@@ -938,7 +941,8 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          <TabsContent value="prontuario" className="mt-4">
+          <TabsContent value="prontuario" className="mt-4 space-y-6">
+            <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
             <StudioNotasTab pacienteId={id!} showSummary={true} />
           </TabsContent>
 
