@@ -3,8 +3,9 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { CalendarDays, TrendingUp, Activity, ChevronRight } from 'lucide-react';
-import { format, isAfter, parseISO } from 'date-fns';
+import { Badge } from '@/components/ui/badge';
+import { CalendarDays, TrendingUp, Activity, ChevronRight, Trophy, Star, Flame, ClipboardList } from 'lucide-react';
+import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
@@ -24,56 +25,81 @@ interface Agendamento {
   tipo_atendimento: string | null;
 }
 
+// XP / Gamification helpers
+function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number }) {
+  return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10;
+}
+function getLevel(xp: number) {
+  if (xp >= 500) return { label: 'Ouro', color: 'text-yellow-600', bg: 'bg-yellow-100', icon: Trophy, next: null };
+  if (xp >= 250) return { label: 'Prata', color: 'text-slate-500', bg: 'bg-slate-100', icon: Star, next: 500 };
+  if (xp >= 100) return { label: 'Bronze', color: 'text-amber-700', bg: 'bg-amber-100', icon: Flame, next: 250 };
+  return { label: 'Iniciante', color: 'text-primary', bg: 'bg-primary/10', icon: Star, next: 100 };
+}
+
 export default function PacienteDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
   const [paciente, setPaciente] = useState<PacienteInfo | null>(null);
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
-  const [totalAvaliacoes, setTotalAvaliacoes] = useState(0);
+  const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0 });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
 
     const fetchData = async () => {
-      // Get patient record
       const { data: pac } = await supabase
         .from('pacientes')
         .select('id, nome, sobrenome')
         .eq('user_id', user.id)
         .maybeSingle();
 
-      if (!pac) {
-        setLoading(false);
-        return;
-      }
+      if (!pac) { setLoading(false); return; }
       setPaciente(pac);
 
-      // Get upcoming appointments
       const now = new Date().toISOString();
-      const { data: agendas } = await supabase
-        .from('agendamentos')
-        .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
-        .eq('paciente_id', pac.id)
-        .gte('data_inicio', now)
-        .in('status', ['confirmado', 'pendente'])
-        .order('data_inicio', { ascending: true })
-        .limit(3);
 
-      setProximasConsultas(agendas || []);
+      // Parallel fetches
+      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes] = await Promise.all([
+        supabase.from('agendamentos')
+          .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
+          .eq('paciente_id', pac.id)
+          .gte('data_inicio', now)
+          .in('status', ['confirmado', 'pendente'])
+          .order('data_inicio', { ascending: true })
+          .limit(3),
+        supabase.from('avaliacoes_identidade')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pac.id),
+        supabase.from('controle_sessoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pac.id)
+          .eq('status', 'realizada'),
+        supabase.from('daily_logs')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pac.id),
+        supabase.from('myid_avaliacoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pac.id)
+          .neq('status', 'concluido'),
+      ]);
 
-      // Count evaluations
-      const { count } = await supabase
-        .from('avaliacoes_identidade')
-        .select('id', { count: 'exact', head: true })
-        .eq('paciente_id', pac.id);
-
-      setTotalAvaliacoes(count || 0);
+      setProximasConsultas(agendaRes.data || []);
+      setStats({
+        avaliacoes: avalRes.count || 0,
+        consultas: sessaoRes.count || 0,
+        diarios: diarioRes.count || 0,
+        pendentes: pendentesRes.count || 0,
+      });
       setLoading(false);
     };
 
     fetchData();
   }, [user]);
+
+  const xp = calcXP(stats);
+  const level = getLevel(xp);
+  const LevelIcon = level.icon;
 
   const getGreeting = () => {
     const hour = new Date().getHours();
@@ -86,34 +112,80 @@ export default function PacienteDashboard() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
-          {/* Greeting */}
-          <div>
-            <h1 className="text-lg font-black text-foreground">
-              {getGreeting()}, {paciente?.nome || '...'} 👋
-            </h1>
-            <p className="text-xs text-muted-foreground mt-0.5">
-              Acompanhe sua evolução e próximas consultas.
-            </p>
+          {/* Greeting + Level */}
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-lg font-black text-foreground">
+                {getGreeting()}, {paciente?.nome || '...'} 👋
+              </h1>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                Acompanhe sua evolução e próximas consultas.
+              </p>
+            </div>
+            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${level.bg}`}>
+              <LevelIcon className={`h-3.5 w-3.5 ${level.color}`} />
+              <span className={`text-[11px] font-bold ${level.color}`}>{level.label}</span>
+            </div>
           </div>
 
-          {/* Quick stats */}
-          <div className="grid grid-cols-2 gap-3">
-            <Card className="bg-primary/5 border-primary/10">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <CalendarDays className="h-4 w-4 text-primary" />
-                  <span className="text-[11px] font-medium text-muted-foreground">Próximas consultas</span>
+          {/* XP bar */}
+          {level.next && (
+            <div className="space-y-1">
+              <div className="flex justify-between text-[10px] text-muted-foreground">
+                <span>{xp} XP</span>
+                <span>Próximo: {level.next} XP</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-700"
+                  style={{ width: `${Math.min(100, (xp / level.next) * 100)}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {/* Alert: pending questionnaires */}
+          {stats.pendentes > 0 && (
+            <Card
+              className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
+              onClick={() => navigate('/paciente/questionarios')}
+            >
+              <CardContent className="p-3 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                  <ClipboardList className="h-5 w-5 text-primary" />
                 </div>
-                <span className="text-2xl font-black text-foreground">{proximasConsultas.length}</span>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-foreground">
+                    {stats.pendentes} questionário{stats.pendentes > 1 ? 's' : ''} pendente{stats.pendentes > 1 ? 's' : ''}
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">Toque para responder agora</p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary" />
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Quick stats */}
+          <div className="grid grid-cols-3 gap-2">
+            <Card className="bg-primary/5 border-primary/10">
+              <CardContent className="p-3 text-center">
+                <CalendarDays className="h-4 w-4 text-primary mx-auto mb-1" />
+                <span className="text-xl font-black text-foreground block">{proximasConsultas.length}</span>
+                <span className="text-[10px] text-muted-foreground">Consultas</span>
               </CardContent>
             </Card>
             <Card className="bg-accent/5 border-accent/10">
-              <CardContent className="p-4">
-                <div className="flex items-center gap-2 mb-1">
-                  <Activity className="h-4 w-4" style={{ color: 'hsl(40 95% 52%)' }} />
-                  <span className="text-[11px] font-medium text-muted-foreground">Avaliações</span>
-                </div>
-                <span className="text-2xl font-black text-foreground">{totalAvaliacoes}</span>
+              <CardContent className="p-3 text-center">
+                <Activity className="h-4 w-4 mx-auto mb-1" style={{ color: 'hsl(40 95% 52%)' }} />
+                <span className="text-xl font-black text-foreground block">{stats.avaliacoes}</span>
+                <span className="text-[10px] text-muted-foreground">Avaliações</span>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardContent className="p-3 text-center">
+                <Flame className="h-4 w-4 text-orange-500 mx-auto mb-1" />
+                <span className="text-xl font-black text-foreground block">{stats.consultas}</span>
+                <span className="text-[10px] text-muted-foreground">Sessões</span>
               </CardContent>
             </Card>
           </div>
@@ -188,8 +260,8 @@ export default function PacienteDashboard() {
                 <div className="flex-1">
                   <p className="text-sm font-bold text-foreground">Sua evolução</p>
                   <p className="text-[11px] text-muted-foreground">
-                    {totalAvaliacoes > 0
-                      ? `${totalAvaliacoes} avaliação(ões) registrada(s)`
+                    {stats.avaliacoes > 0
+                      ? `${stats.avaliacoes} avaliação(ões) · ${stats.diarios} registro(s) no diário`
                       : 'Responda o questionário para começar'}
                   </p>
                 </div>
@@ -197,6 +269,38 @@ export default function PacienteDashboard() {
               </div>
             </CardContent>
           </Card>
+
+          {/* Gamification badges */}
+          <div>
+            <h2 className="text-sm font-bold text-foreground mb-3">Conquistas</h2>
+            <div className="flex flex-wrap gap-2">
+              {stats.avaliacoes >= 1 && (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 text-[10px] gap-1">
+                  <ClipboardList className="h-3 w-3" /> 1ª Avaliação
+                </Badge>
+              )}
+              {stats.consultas >= 5 && (
+                <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 text-[10px] gap-1">
+                  <CalendarDays className="h-3 w-3" /> 5 Sessões
+                </Badge>
+              )}
+              {stats.diarios >= 7 && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] gap-1">
+                  <Flame className="h-3 w-3" /> 7 Dias de Diário
+                </Badge>
+              )}
+              {stats.consultas >= 10 && (
+                <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200 text-[10px] gap-1">
+                  <Trophy className="h-3 w-3" /> 10 Sessões
+                </Badge>
+              )}
+              {xp < 50 && (
+                <p className="text-[10px] text-muted-foreground/50 italic">
+                  Continue interagindo para desbloquear conquistas!
+                </p>
+              )}
+            </div>
+          </div>
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>
