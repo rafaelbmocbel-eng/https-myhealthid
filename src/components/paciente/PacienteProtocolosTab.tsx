@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Eye, Download, Trash2, Calendar, Activity, Loader2,
-  Zap, FileText, User, Plus
+  Zap, FileText, User, Plus, Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -39,6 +39,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   // Protocolos do paciente
   const { data: protocolos = [], isLoading } = useQuery({
@@ -226,6 +227,75 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro ao gerar diretriz', variant: 'destructive' });
+    }
+  };
+
+
+  const handlePublicarExercicios = async (protocolo: any) => {
+    setPublishingId(protocolo.id);
+    try {
+      // 1. Buscar fases e prescrições do protocolo
+      const { data: fases } = await supabase
+        .from('protocolo_fases' as any)
+        .select('*')
+        .eq('protocolo_id', protocolo.id)
+        .order('numero_fase');
+
+      const { data: prescricoes } = await supabase
+        .from('prescricoes_exercicios' as any)
+        .select('*, exercicio:exercicio_id(*)')
+        .eq('protocolo_id', protocolo.id);
+
+      if (!prescricoes || prescricoes.length === 0) {
+        toast({ title: 'Sem exercícios', description: 'Esta diretriz não possui exercícios prescritos.', variant: 'destructive' });
+        return;
+      }
+
+      // 2. Criar treino no Studio já publicado
+      const { data: treino, error: treinoErr } = await supabase
+        .from('studio_treinos' as any)
+        .insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user!.id,
+          titulo: `${protocolo.titulo || 'Diretriz'} — Exercícios`,
+          objetivo: protocolo.objetivo_geral || 'Reabilitação',
+          duracao_estimada: protocolo.duracao_total || '12 semanas',
+          frequencia: protocolo.frequencia || '2-3x por semana',
+          intensidade: 'Moderada',
+          publicado: true,
+          ativo: true,
+        })
+        .select('id')
+        .single();
+
+      if (treinoErr) throw treinoErr;
+
+      // 3. Inserir exercícios do protocolo no treino
+      const exerciciosInsert = (prescricoes as any[]).map((p: any, idx: number) => ({
+        treino_id: (treino as any).id,
+        exercicio_id: p.exercicio_id || null,
+        nome_customizado: p.exercicio?.nome || 'Exercício',
+        grupo_muscular: (p.exercicio?.regiao_corporal as any[])?.[0] || 'Geral',
+        ordem: idx + 1,
+        series: p.series || 3,
+        repeticoes: p.repeticoes || 12,
+        descanso_segundos: parseInt(p.tempo_descanso) || 60,
+        orientacoes: p.observacoes || null,
+      }));
+
+      const { error: exErr } = await supabase
+        .from('studio_treino_exercicios' as any)
+        .insert(exerciciosInsert);
+
+      if (exErr) throw exErr;
+
+      toast({ title: 'Exercícios publicados!', description: `${exerciciosInsert.length} exercícios enviados ao portal do paciente.` });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+    } catch (err) {
+      console.error(err);
+      toast({ title: 'Erro ao publicar exercícios', variant: 'destructive' });
+    } finally {
+      setPublishingId(null);
     }
   };
 
@@ -417,6 +487,13 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
                       onClick={() => handleExportPDF(protocolo)} disabled={exportingId === protocolo.id}>
                       {exportingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                    </Button>
+                  )}
+                  {!isCobZero && (
+                    <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
+                      onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
+                      {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Publicar
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
