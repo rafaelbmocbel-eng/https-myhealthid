@@ -26,7 +26,7 @@ export default function PacientePerfil() {
         { icon: User, label: 'Nome', value: `${paciente.nome} ${paciente.sobrenome}` },
         { icon: Mail, label: 'E-mail', value: paciente.email || '—' },
         { icon: Phone, label: 'Telefone', value: paciente.telefone || '—' },
-        { icon: Calendar, label: 'Nascimento', value: paciente.data_nascimento || '—' },
+        { icon: Calendar, label: 'Nascimento', value: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yyyy') : '—' },
       ]
     : [];
 
