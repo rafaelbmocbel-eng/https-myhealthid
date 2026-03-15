@@ -410,35 +410,26 @@ export default function PatientIntegratedDashboard({
                 <div className="space-y-5">
                   {insights && (
                     <>
-                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-5 rounded-[2rem] group transition-all hover:bg-emerald-500/10 dark:hover:bg-emerald-500/15 hover:translate-x-1 duration-300">
-                        <div className="flex items-start gap-5">
-                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-emerald-500/20 text-emerald-600 group-hover:scale-110 group-hover:rotate-3 transition-all duration-300 shadow-sm">
-                            <TrendingUp className="h-6 w-6" />
+                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl group transition-all hover:bg-emerald-500/10 duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 shrink-0">
+                            <TrendingUp className="h-4 w-4" />
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-1">
-                              <span className="text-[10px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest opacity-80">Maior Oportunidade</span>
-                              <div className="h-1 w-1 rounded-full bg-emerald-400 animate-ping" />
-                            </div>
-                            <h4 className="font-bold text-lg text-emerald-950 dark:text-emerald-100">{insights.opportunity.label}</h4>
-                            <p className="text-[13px] text-emerald-900/60 dark:text-emerald-400/60 mt-1.5 leading-relaxed font-medium">
-                              Reduzir este índice trará o maior retorno direto para sua saúde global agora.
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest opacity-80">Maior Oportunidade</span>
+                            <h4 className="font-bold text-sm text-emerald-950 dark:text-emerald-100 truncate">{insights.opportunity.label}</h4>
                           </div>
                         </div>
                       </div>
 
-                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-5 rounded-[2rem] group transition-all hover:bg-amber-500/10 dark:hover:bg-amber-500/15 hover:translate-x-1 duration-300">
-                        <div className="flex items-start gap-5">
-                          <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-amber-500/20 text-amber-600 group-hover:scale-110 group-hover:-rotate-3 transition-all duration-300 shadow-sm">
-                            <AlertTriangle className="h-6 w-6" />
+                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl group transition-all hover:bg-amber-500/10 duration-300">
+                        <div className="flex items-center gap-3">
+                          <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 shrink-0">
+                            <AlertTriangle className="h-4 w-4" />
                           </div>
-                          <div className="flex-1">
-                            <span className="text-[10px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80">Ponto de Atenção</span>
-                            <h4 className="font-bold text-lg text-amber-950 dark:text-amber-100">{insights.limitation.label}</h4>
-                            <p className="text-[13px] text-amber-900/60 dark:text-amber-400/60 mt-1.5 leading-relaxed font-medium">
-                              Sua base de sustentação. Este fator está equilibrado, mantenha como está.
-                            </p>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80">Ponto de Atenção</span>
+                            <h4 className="font-bold text-sm text-amber-950 dark:text-amber-100 truncate">{insights.limitation.label}</h4>
                           </div>
                         </div>
                       </div>
@@ -545,34 +536,30 @@ export default function PatientIntegratedDashboard({
           {/* ─── MISSÕES DIÁRIAS (Interativo) ─── */}
           {insights && (
             <div className="mb-10 lg:px-2">
-              <div className="bg-violet-600 rounded-3xl p-6 shadow-xl shadow-violet-200 dark:shadow-none overflow-hidden relative">
-                <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
-                <div className="absolute bottom-0 left-0 w-24 h-24 bg-violet-400/20 rounded-full -ml-12 -mb-12 blur-xl" />
+              <div className="bg-violet-600 rounded-2xl p-4 shadow-lg shadow-violet-200 dark:shadow-none overflow-hidden relative">
+                <div className="absolute top-0 right-0 w-20 h-20 bg-white/5 rounded-full -mr-10 -mt-10 blur-2xl" />
 
                 <div className="relative z-10">
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/20 backdrop-blur-md">
-                      <Zap className="h-5 w-5 text-white animate-pulse" />
+                  <div className="flex items-center gap-2.5 mb-3">
+                    <div className="h-7 w-7 flex items-center justify-center rounded-lg bg-white/20">
+                      <Zap className="h-3.5 w-3.5 text-white" />
                     </div>
                     <div>
-                      <h4 className="font-black text-lg text-white leading-none">Missões para Você</h4>
-                      <p className="text-xs text-violet-100/70 mt-1 uppercase tracking-tighter font-bold">Baseadas no seu MyID de {classificacao}</p>
+                      <h4 className="font-black text-sm text-white leading-none">Missões para Você</h4>
+                      <p className="text-[9px] text-violet-100/70 mt-0.5 uppercase tracking-tighter font-bold">Baseadas no seu MyID</p>
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
                     {insights.missions.map((mission, idx) => (
-                      <div key={idx} className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl p-4 hover:bg-white/15 transition-all cursor-pointer group">
-                        <div className="flex items-start gap-3">
-                          <div className="h-8 w-8 flex items-center justify-center rounded-lg bg-white/20 group-hover:scale-110 transition-transform">
-                            <mission.icon className="h-4 w-4 text-white" />
+                      <div key={idx} className="bg-white/10 border border-white/20 rounded-xl p-2.5 hover:bg-white/15 transition-all cursor-pointer group">
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 flex items-center justify-center rounded-md bg-white/20 shrink-0">
+                            <mission.icon className="h-3 w-3 text-white" />
                           </div>
-                          <div className="flex-1">
-                            <h5 className="font-bold text-sm text-white">{mission.title}</h5>
-                            <p className="text-[11px] text-white/80 mt-1 leading-snug">{mission.description}</p>
-                          </div>
-                          <div className="h-5 w-5 rounded-full border border-white/40 flex items-center justify-center group-hover:bg-white/20 transition-all">
-                            <CheckCircle2 className="h-3 w-3 text-white opacity-0 group-hover:opacity-100 transition-opacity" />
+                          <div className="flex-1 min-w-0">
+                            <h5 className="font-bold text-[11px] text-white truncate">{mission.title}</h5>
+                            <p className="text-[9px] text-white/70 leading-tight truncate">{mission.description}</p>
                           </div>
                         </div>
                       </div>
