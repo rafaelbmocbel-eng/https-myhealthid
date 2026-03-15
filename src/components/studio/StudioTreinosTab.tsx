@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import ExerciseImageManager from '@/components/studio/ExerciseImageManager';
 
 interface Props {
   pacienteId: string;
