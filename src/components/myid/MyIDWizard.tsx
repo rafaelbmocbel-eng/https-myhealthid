@@ -37,6 +37,9 @@ export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialSte
             const res = calculator.getFullResult();
             setResult(res);
             if (onComplete) onComplete(res, data);
+        } else if (step >= 1 && step <= 5 && onSaveProgress) {
+            // Auto-save progress after each block
+            onSaveProgress(data, step);
         }
         setStep(s => Math.min(s + 1, totalSteps));
     };
