@@ -439,8 +439,9 @@ export default function GestaoVendas() {
                 <div className="flex gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto">
                     {TABS.map(tab => (
                         <button key={tab.id} onClick={() => setActiveTab(tab.id)}
-                            className={`flex-1 flex items-center justify-center gap-1.5 px-3 py-2 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
-                            <tab.icon className="h-3.5 w-3.5" />{tab.label}
+                            className={`flex-1 flex flex-col items-center justify-center gap-0.5 px-3 py-2.5 rounded-lg text-xs font-bold transition-all ${activeTab === tab.id ? 'bg-background shadow-sm text-primary' : 'text-muted-foreground hover:text-foreground'}`}>
+                            <tab.icon className="h-4 w-4" />
+                            <span>{tab.label}</span>
                         </button>
                     ))}
                 </div>
