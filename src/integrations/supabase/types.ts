@@ -67,6 +67,53 @@ export type Database = {
           },
         ]
       }
+      assinaturas: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          origem: string
+          plano_id: string
+          status: string
+          stripe_subscription_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          origem?: string
+          plano_id: string
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          origem?: string
+          plano_id?: string
+          status?: string
+          stripe_subscription_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "assinaturas_plano_id_fkey"
+            columns: ["plano_id"]
+            isOneToOne: false
+            referencedRelation: "planos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       avaliacoes: {
         Row: {
           created_at: string
@@ -1128,6 +1175,42 @@ export type Database = {
           },
         ]
       }
+      planos: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          id: string
+          modulos: Json
+          nome: string
+          preco_mensal: number
+          stripe_price_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modulos?: Json
+          nome: string
+          preco_mensal?: number
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          modulos?: Json
+          nome?: string
+          preco_mensal?: number
+          stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       prescricoes_exercicios: {
         Row: {
           created_at: string
@@ -2111,6 +2194,10 @@ export type Database = {
       }
       has_active_agenda_link_for_paciente: {
         Args: { p_paciente_id: string; p_terapeuta_id: string }
+        Returns: boolean
+      }
+      has_module_access: {
+        Args: { p_module: string; p_user_id: string }
         Returns: boolean
       }
       link_agenda_valido_por_token: {
