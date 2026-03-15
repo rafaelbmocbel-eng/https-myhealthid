@@ -16,8 +16,8 @@ const navItems = [
   { path: '/paciente/perfil', label: 'Perfil', shortLabel: 'Perfil', icon: User },
 ];
 
-// Show max 5 items in bottom nav, put rest in "more" or just show top 5
-const MOBILE_NAV_ITEMS = [0, 1, 2, 3, 7]; // Início, Diário, Evolução, Treinos, Perfil
+// Show max 5 items in bottom nav (priorizando acesso ao MyID/Questionários)
+const MOBILE_NAV_ITEMS = [0, 1, 3, 5, 7]; // Início, Diário, Treinos, Questionários, Perfil
 
 interface Props {
   children: ReactNode;
