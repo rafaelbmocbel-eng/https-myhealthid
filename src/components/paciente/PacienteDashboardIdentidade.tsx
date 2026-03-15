@@ -12,7 +12,7 @@ import { useToast } from '@/hooks/use-toast';
 import { differenceInDays, format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import QuestionariosComparacao from './QuestionariosComparacao';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
