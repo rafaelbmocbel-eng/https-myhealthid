@@ -39,6 +39,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
+  const [publishingId, setPublishingId] = useState<string | null>(null);
 
   // Protocolos do paciente
   const { data: protocolos = [], isLoading } = useQuery({
