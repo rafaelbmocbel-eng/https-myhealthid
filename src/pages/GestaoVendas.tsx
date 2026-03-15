@@ -486,31 +486,44 @@ export default function GestaoVendas() {
                     const PatientRow = ({ p, actions }: { p: any; actions: React.ReactNode }) => {
                         const tag = getClassificacao(p.id, p.created_at);
                         const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
+                        const patientMsgs = mensagens.filter((m: any) => m.paciente_id === p.id);
+                        const lastMsg = patientMsgs.length > 0 ? patientMsgs[0] : null;
                         return (
-                            <div className="flex items-center justify-between p-2.5 rounded-lg hover:bg-muted/30 transition-colors">
-                                <div className="flex items-center gap-2 min-w-0">
-                                    <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
-                                    <div className="min-w-0">
-                                        <div className="flex items-center gap-1.5 flex-wrap">
-                                            <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                            <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
+                            <div className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
+                                <div className="flex items-center justify-between">
+                                    <div className="flex items-center gap-2 min-w-0">
+                                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
+                                        <div className="min-w-0">
+                                            <div className="flex items-center gap-1.5 flex-wrap">
+                                                <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
+                                                <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
+                                            </div>
+                                            <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
                                         </div>
-                                        <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
+                                    </div>
+                                    <div className="flex gap-1 shrink-0">
+                                        {p.telefone && (
+                                            <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
+                                                onClick={(e) => {
+                                                    e.stopPropagation();
+                                                    const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
+                                                    window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                                }}>
+                                                <MessageCircle className="h-3 w-3" /> Chamar
+                                            </Button>
+                                        )}
+                                        {actions}
                                     </div>
                                 </div>
-                                <div className="flex gap-1 shrink-0">
-                                    {p.telefone && (
-                                        <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
-                                                window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                                            }}>
-                                            <MessageCircle className="h-3 w-3" /> Chamar
-                                        </Button>
-                                    )}
-                                    {actions}
-                                </div>
+                                {/* WhatsApp history inline */}
+                                {lastMsg && (
+                                    <div className="ml-9 flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+                                        <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
+                                        <span className="truncate flex-1">{lastMsg.mensagem.substring(0, 60)}{lastMsg.mensagem.length > 60 ? '...' : ''}</span>
+                                        <span className="shrink-0 font-medium">{format(new Date(lastMsg.created_at), 'dd/MM')}</span>
+                                        {patientMsgs.length > 1 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{patientMsgs.length}</Badge>}
+                                    </div>
+                                )}
                             </div>
                         );
                     };
