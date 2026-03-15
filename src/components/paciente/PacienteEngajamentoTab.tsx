@@ -16,7 +16,7 @@ import {
   ResponsiveContainer, RadarChart, PolarGrid, PolarAngleAxis,
   PolarRadiusAxis, Radar
 } from 'recharts';
-import { calculateWellnessIndex, calculateTrend, WellnessSnapshot } from '@/utils/wellnessIndex';
+import { calculateWellnessIndex, analyzeWellnessTrend, WellnessSnapshot } from '@/utils/wellnessIndex';
 
 interface Props {
   pacienteId: string;
