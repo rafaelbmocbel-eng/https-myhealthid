@@ -1462,8 +1462,7 @@ export default function GestaoVendas() {
                     );
                 })()}
 
-                {/* ══════════════════ FUNIL TAB ══════════════════ */}
-                {activeTab === 'funil' && <FunilConfigPanel />}
+                {/* Funil is now inside Relatórios tab */}
             </div>
 
             {/* ── Floating Action Buttons (FAB) ── */}
