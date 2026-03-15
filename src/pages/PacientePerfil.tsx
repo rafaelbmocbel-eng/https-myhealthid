@@ -53,6 +53,7 @@ export default function PacientePerfil() {
   const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
+  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(id);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
