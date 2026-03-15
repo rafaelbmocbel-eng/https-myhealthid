@@ -13,7 +13,9 @@ import { MyIDResult } from './MyIDResult';
 
 interface MyIDWizardProps {
     onComplete?: (result: any, rawData: any) => void;
+    onSaveProgress?: (data: any, step: number) => void;
     initialData?: any;
+    initialStep?: number;
 }
 
 export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {

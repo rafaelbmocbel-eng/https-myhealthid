@@ -6,9 +6,10 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2 } from 'lucide-react';
+import { ClipboardList, CheckCircle2, Clock, ChevronRight, ArrowLeft, Loader2, Eye, RefreshCw, Save } from 'lucide-react';
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
-import { format, parseISO } from 'date-fns';
+import { MyIDResult } from '@/components/myid/MyIDResult';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/components/ui/use-toast';
 
@@ -20,7 +21,11 @@ interface QuestionarioItem {
   updated_at: string;
   respostas_brutas: any;
   resultado_processado: any;
+  paciente_id: string;
+  terapeuta_id: string;
 }
+
+type ViewMode = 'list' | 'answering' | 'viewing';
 
 export default function PacienteQuestionarios() {
   const { user } = useAuth();
@@ -28,7 +33,10 @@ export default function PacienteQuestionarios() {
   const [questionarios, setQuestionarios] = useState<QuestionarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('list');
   const [submitting, setSubmitting] = useState(false);
+  const [creatingRetake, setCreatingRetake] = useState(false);
+  const [pacienteId, setPacienteId] = useState<string | null>(null);
 
   const fetchQuestionarios = async () => {
     if (!user) return;
@@ -40,10 +48,11 @@ export default function PacienteQuestionarios() {
       .maybeSingle();
 
     if (!pac) { setLoading(false); return; }
+    setPacienteId(pac.id);
 
     const { data } = await supabase
       .from('myid_avaliacoes')
-      .select('id, token_acesso, status, created_at, updated_at, respostas_brutas, resultado_processado')
+      .select('id, token_acesso, status, created_at, updated_at, respostas_brutas, resultado_processado, paciente_id, terapeuta_id')
       .eq('paciente_id', pac.id)
       .order('created_at', { ascending: false });
 
@@ -53,15 +62,28 @@ export default function PacienteQuestionarios() {
 
   useEffect(() => { fetchQuestionarios(); }, [user]);
 
+  // Auto-save progress
+  const handleSaveProgress = async (data: any, step: number) => {
+    if (!activeId) return;
+    try {
+      await supabase.from('myid_avaliacoes').update({
+        respostas_brutas: { ...data, _savedStep: step },
+        status: 'em_andamento',
+        updated_at: new Date().toISOString(),
+      }).eq('id', activeId);
+      
+      toast({ title: '💾 Progresso salvo', description: 'Você pode continuar depois.', duration: 2000 });
+    } catch (err) {
+      console.warn('Erro ao salvar progresso:', err);
+    }
+  };
+
   const handleComplete = async (result: any, rawData: any) => {
     if (!activeId) return;
     setSubmitting(true);
 
     try {
-      // Call edge function to sync to avaliacoes_identidade + evolucao_paciente
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/complete-myid`,
         {
@@ -80,47 +102,99 @@ export default function PacienteQuestionarios() {
       );
 
       const body = await res.json();
-
-      if (!res.ok) {
-        throw new Error(body.error || 'Erro ao processar avaliação');
-      }
+      if (!res.ok) throw new Error(body.error || 'Erro ao processar avaliação');
 
       toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada e sincronizada.' });
-      setActiveId(null);
-      fetchQuestionarios();
     } catch (err: any) {
-      // Fallback: at least update myid_avaliacoes directly
       await supabase.from('myid_avaliacoes').update({
         status: 'concluido',
         respostas_brutas: rawData,
         resultado_processado: result,
         updated_at: new Date().toISOString(),
       }).eq('id', activeId);
-
       toast({ title: 'Concluído! ✅', description: 'Sua avaliação foi enviada ao profissional.' });
-      setActiveId(null);
-      fetchQuestionarios();
     } finally {
       setSubmitting(false);
+      setActiveId(null);
+      setViewMode('list');
+      fetchQuestionarios();
     }
   };
 
-  // Render wizard if answering
-  if (activeId) {
+  // Check if can retake (15 days since last completed)
+  const canRetake = () => {
+    const lastCompleted = questionarios.find(q => q.status === 'concluido');
+    if (!lastCompleted) return true;
+    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
+    return daysSince >= 15;
+  };
+
+  const daysUntilRetake = () => {
+    const lastCompleted = questionarios.find(q => q.status === 'concluido');
+    if (!lastCompleted) return 0;
+    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
+    return Math.max(0, 15 - daysSince);
+  };
+
+  const handleRequestRetake = async () => {
+    if (!pacienteId || !canRetake()) return;
+    setCreatingRetake(true);
+
+    try {
+      // Get terapeuta_id from the last questionnaire
+      const lastQ = questionarios[0];
+      if (!lastQ) throw new Error('Nenhum questionário anterior encontrado');
+
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const res = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-myid-retake`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token || anonKey}`,
+          },
+          body: JSON.stringify({
+            paciente_id: pacienteId,
+            terapeuta_id: lastQ.terapeuta_id,
+          }),
+        }
+      );
+
+      if (!res.ok) {
+        const body = await res.json();
+        throw new Error(body.error || 'Erro ao criar reavaliação');
+      }
+
+      toast({ title: '📋 Novo questionário criado!', description: 'Você já pode respondê-lo.' });
+      fetchQuestionarios();
+    } catch (err: any) {
+      toast({ title: 'Erro', description: err.message, variant: 'destructive' });
+    } finally {
+      setCreatingRetake(false);
+    }
+  };
+
+  // ── View: Answering wizard ──
+  if (viewMode === 'answering' && activeId) {
     const item = questionarios.find(q => q.id === activeId);
+    const savedStep = item?.respostas_brutas?._savedStep;
     return (
       <ProtectedPatientRoute>
         <PacienteLayout>
           <div className="p-4 md:p-6 max-w-4xl mx-auto">
             <button
-              onClick={() => setActiveId(null)}
+              onClick={() => { setActiveId(null); setViewMode('list'); }}
               className="flex items-center gap-1 text-sm font-medium text-muted-foreground mb-4 hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" /> Voltar
             </button>
             <MyIDWizard
               onComplete={handleComplete}
+              onSaveProgress={handleSaveProgress}
               initialData={item?.respostas_brutas || {}}
+              initialStep={savedStep || 0}
             />
             {submitting && (
               <div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
@@ -136,8 +210,40 @@ export default function PacienteQuestionarios() {
     );
   }
 
+  // ── View: Viewing results ──
+  if (viewMode === 'viewing' && activeId) {
+    const item = questionarios.find(q => q.id === activeId);
+    return (
+      <ProtectedPatientRoute>
+        <PacienteLayout>
+          <div className="p-4 md:p-6 max-w-4xl mx-auto">
+            <button
+              onClick={() => { setActiveId(null); setViewMode('list'); }}
+              className="flex items-center gap-1 text-sm font-medium text-muted-foreground mb-4 hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" /> Voltar aos questionários
+            </button>
+            {item?.resultado_processado ? (
+              <div className="bg-card p-4 md:p-6 rounded-xl border shadow-sm">
+                <MyIDResult result={item.resultado_processado} rawData={item.respostas_brutas} />
+              </div>
+            ) : (
+              <Card>
+                <CardContent className="p-8 text-center">
+                  <p className="text-sm text-muted-foreground">Resultado não disponível para esta avaliação.</p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </PacienteLayout>
+      </ProtectedPatientRoute>
+    );
+  }
+
+  // ── View: List ──
   const pendentes = questionarios.filter(q => q.status !== 'concluido');
   const concluidos = questionarios.filter(q => q.status === 'concluido');
+  const hasPending = pendentes.length > 0;
 
   return (
     <ProtectedPatientRoute>
@@ -175,6 +281,12 @@ export default function PacienteQuestionarios() {
                           <p className="text-[11px] text-muted-foreground">
                             Enviado em {format(parseISO(q.created_at), "d 'de' MMM, yyyy", { locale: ptBR })}
                           </p>
+                          {q.respostas_brutas?._savedStep && (
+                            <p className="text-[10px] text-primary font-semibold mt-0.5 flex items-center gap-1">
+                              <Save className="h-3 w-3" />
+                              Progresso salvo (Bloco {q.respostas_brutas._savedStep}/6)
+                            </p>
+                          )}
                         </div>
                         <Button
                           size="sm"
@@ -184,6 +296,7 @@ export default function PacienteQuestionarios() {
                               supabase.from('myid_avaliacoes').update({ status: 'em_andamento' }).eq('id', q.id);
                             }
                             setActiveId(q.id);
+                            setViewMode('answering');
                           }}
                         >
                           {q.status === 'em_andamento' ? 'Continuar' : 'Responder'}
@@ -197,7 +310,28 @@ export default function PacienteQuestionarios() {
 
               {concluidos.length > 0 && (
                 <div className="space-y-2">
-                  <h2 className="text-sm font-bold text-foreground">Concluídos</h2>
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-sm font-bold text-foreground">Concluídos</h2>
+                    {/* Retake button */}
+                    {!hasPending && concluidos.length > 0 && (
+                      canRetake() ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="text-xs gap-1"
+                          onClick={handleRequestRetake}
+                          disabled={creatingRetake}
+                        >
+                          {creatingRetake ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                          Nova avaliação
+                        </Button>
+                      ) : (
+                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                          Disponível em {daysUntilRetake()} dia{daysUntilRetake() !== 1 ? 's' : ''}
+                        </Badge>
+                      )
+                    )}
+                  </div>
                   {concluidos.map((q, idx) => (
                     <Card key={q.id} className={idx === 0 ? 'border-green-200' : 'opacity-70'}>
                       <CardContent className="p-4 flex items-center gap-3">
@@ -218,9 +352,25 @@ export default function PacienteQuestionarios() {
                             </p>
                           )}
                         </div>
-                        <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 text-[10px]">
-                          {concluidos.length > 1 && idx === 0 ? `#${concluidos.length}` : 'Concluído'}
-                        </Badge>
+                        <div className="flex items-center gap-1.5">
+                          {q.resultado_processado && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-xs gap-1 text-primary"
+                              onClick={() => {
+                                setActiveId(q.id);
+                                setViewMode('viewing');
+                              }}
+                            >
+                              <Eye className="h-3.5 w-3.5" />
+                              Ver
+                            </Button>
+                          )}
+                          <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 text-[10px]">
+                            {concluidos.length > 1 && idx === 0 ? `#${concluidos.length}` : 'Concluído'}
+                          </Badge>
+                        </div>
                       </CardContent>
                     </Card>
                   ))}
