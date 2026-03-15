@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
-  Dumbbell, Calendar, AlertTriangle, Brain, Zap,
+  Dumbbell, Calendar, AlertTriangle, Brain, Zap, RefreshCw, Loader2,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
@@ -54,6 +59,30 @@ interface Props {
 }
 
 export default function ProntuarioTimeline({ notas, isLoading }: Props) {
+  const [syncing, setSyncing] = useState(false);
+  const { toast } = useToast();
+  const qc = useQueryClient();
+
+  const handleBackfill = async () => {
+    setSyncing(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error('Não autenticado');
+
+      const { data, error } = await supabase.functions.invoke('backfill-prontuario', {
+        headers: { Authorization: `Bearer ${session.access_token}` },
+      });
+      if (error) throw error;
+      const count = data?.notas_criadas || 0;
+      toast({ title: `Histórico sincronizado! ✅`, description: `${count} nota(s) de prontuário gerada(s) a partir de dados existentes.` });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao sincronizar', description: err.message, variant: 'destructive' });
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="space-y-3">
@@ -62,12 +91,18 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
     );
   }
 
+  const showBackfillButton = true; // Always show for convenience
+
   if (notas.length === 0) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
         <p className="font-medium text-sm">Nenhuma nota de prontuário registrada</p>
-        <p className="text-xs mt-1">As notas serão geradas automaticamente conforme o paciente interagir com o sistema.</p>
+        <p className="text-xs mt-1 mb-4">As notas serão geradas automaticamente conforme o paciente interagir com o sistema.</p>
+        <Button variant="outline" size="sm" className="gap-2" onClick={handleBackfill} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          Sincronizar Histórico Existente
+        </Button>
       </div>
     );
   }
@@ -81,6 +116,18 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
   });
 
   return (
+    <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <FileText className="h-4 w-4 text-primary" />
+          <h3 className="text-sm font-semibold text-muted-foreground">Prontuário Automático</h3>
+          <Badge variant="outline" className="text-[10px]">{notas.length} registro(s)</Badge>
+        </div>
+        <Button variant="ghost" size="sm" className="gap-1.5 text-xs" onClick={handleBackfill} disabled={syncing}>
+          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          Sincronizar
+        </Button>
+      </div>
     <ScrollArea className="max-h-[600px]">
       <div className="space-y-6 pr-2">
         {Object.entries(grouped).map(([dateKey, dayNotas]) => (
@@ -139,5 +186,6 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
         ))}
       </div>
     </ScrollArea>
+    </div>
   );
 }
