@@ -123,25 +123,8 @@ export default function PacienteQuestionarios() {
     }
   };
 
-  // Check if can retake (15 days since last completed)
-  const canRetake = () => {
-    const lastCompleted = questionarios.find(q => q.status === 'concluido');
-    if (!lastCompleted) return true;
-    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
-    return daysSince >= 15;
-  };
-
-  const daysUntilRetake = () => {
-    const lastCompleted = questionarios.find(q => q.status === 'concluido');
-    if (!lastCompleted) return 0;
-    const daysSince = differenceInDays(new Date(), parseISO(lastCompleted.updated_at));
-    return Math.max(0, 15 - daysSince);
-  };
-
   const handleRequestRetake = async () => {
     if (!pacienteId || !terapeutaId) return;
-    // Only check canRetake if there are completed questionnaires
-    if (questionarios.some(q => q.status === 'concluido') && !canRetake()) return;
     setCreatingRetake(true);
 
     try {
@@ -323,36 +306,31 @@ export default function PacienteQuestionarios() {
               {concluidos.length > 0 && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <h2 className="text-sm font-bold text-foreground">Concluídos</h2>
-                    {/* Retake button */}
-                    {!hasPending && concluidos.length > 0 && (
-                      canRetake() ? (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="text-xs gap-1"
-                          onClick={handleRequestRetake}
-                          disabled={creatingRetake}
-                        >
-                          {creatingRetake ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
-                          Nova avaliação
-                        </Button>
-                      ) : (
-                        <Badge variant="outline" className="text-[10px] text-muted-foreground">
-                          Disponível em {daysUntilRetake()} dia{daysUntilRetake() !== 1 ? 's' : ''}
-                        </Badge>
-                      )
+                    <h2 className="text-sm font-bold text-foreground">Concluídos ({concluidos.length} sessão{concluidos.length !== 1 ? 'ões' : ''})</h2>
+                    {!hasPending && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        className="text-xs gap-1"
+                        onClick={handleRequestRetake}
+                        disabled={creatingRetake}
+                      >
+                        {creatingRetake ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                        Nova avaliação
+                      </Button>
                     )}
                   </div>
-                  {concluidos.map((q, idx) => (
-                    <Card key={q.id} className={idx === 0 ? 'border-green-200' : 'opacity-70'}>
+                  {concluidos.map((q, idx) => {
+                    const sessionNumber = concluidos.length - idx;
+                    return (
+                    <Card key={q.id} className={idx === 0 ? 'border-green-200' : ''}>
                       <CardContent className="p-4 flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center shrink-0">
                           <CheckCircle2 className="h-5 w-5 text-green-600" />
                         </div>
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-foreground">
-                            Questionário MyID
+                            Sessão #{sessionNumber}
                             {idx === 0 && <span className="text-[10px] text-green-600 ml-1">(mais recente)</span>}
                           </p>
                           <p className="text-[11px] text-muted-foreground">
@@ -380,12 +358,13 @@ export default function PacienteQuestionarios() {
                             </Button>
                           )}
                           <Badge variant="outline" className="text-green-700 border-green-200 bg-green-50 text-[10px]">
-                            {concluidos.length > 1 && idx === 0 ? `#${concluidos.length}` : 'Concluído'}
+                            #{sessionNumber}
                           </Badge>
                         </div>
                       </CardContent>
                     </Card>
-                  ))}
+                    );
+                  })}
                 </div>
               )}
             </>
