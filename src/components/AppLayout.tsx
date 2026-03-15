@@ -36,7 +36,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="min-h-screen bg-background relative overflow-hidden">
+    <div className="min-h-[100dvh] bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -81,11 +81,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content offset by sidebar width */}
       <div
-        className="flex flex-col min-h-screen transition-all duration-500 ease-in-out relative z-10"
+        className="flex flex-col min-h-[100dvh] transition-all duration-500 ease-in-out relative z-10"
         style={{ marginLeft: sidebarW }}
       >
         {/* Header */}
-        <header className="sticky top-0 z-20 flex h-14 md:h-16 items-center bg-background/60 backdrop-blur-md px-4 md:px-8 gap-4 border-b border-border/50">
+        <header
+          className="sticky top-0 z-20 flex h-14 md:h-16 items-center bg-background/60 backdrop-blur-md px-4 md:px-8 gap-4 border-b border-border/50"
+          style={{ paddingTop: 'env(safe-area-inset-top)' }}
+        >
           {isMobile ? (
             <button
               onClick={() => setMobileOpen(true)}
@@ -107,7 +110,11 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <div className="ml-auto flex items-center gap-4" />
         </header>
 
-        <main className={cn('flex-1 px-4 pb-12 pt-4 transition-all duration-500', !isMobile && 'px-8 pt-6')}>
+        <main className={cn(
+          'flex-1 px-3 pb-12 pt-4 transition-all duration-500',
+          'sm:px-4',
+          !isMobile && 'px-6 lg:px-8 pt-6',
+        )}>
           {children}
         </main>
       </div>
