@@ -835,7 +835,19 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
-              TAB 4: AGENDA
+              TAB: ENGAJAMENTO DO PACIENTE (Portal)
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="engajamento" className="mt-4">
+            {paciente && (
+              <PacienteEngajamentoTab
+                pacienteId={id!}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            )}
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: AGENDA
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="agenda" className="mt-4 space-y-4">
             {/* Actions */}
