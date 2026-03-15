@@ -1,7 +1,7 @@
 import { ReactNode } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 
 const navItems = [
