@@ -18,8 +18,8 @@ interface MyIDWizardProps {
     initialStep?: number;
 }
 
-export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {
-    const [step, setStep] = useState(0);
+export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialStep }: MyIDWizardProps) {
+    const [step, setStep] = useState(initialStep || 0);
     const [data, setData] = useState<MyIDResponses>(initialData || {});
     const [result, setResult] = useState<any>(null);
 
