@@ -1,12 +1,17 @@
+import { useState } from 'react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
-  Dumbbell, Calendar, AlertTriangle, Brain, Zap,
+  Dumbbell, Calendar, AlertTriangle, Brain, Zap, RefreshCw, Loader2,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
