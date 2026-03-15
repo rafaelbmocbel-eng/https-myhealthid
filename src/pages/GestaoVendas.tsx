@@ -345,13 +345,11 @@ export default function GestaoVendas() {
     };
 
     // ── Tabs ─────────────────────────────────────────────────────────
-    const TABS: { id: TabId; label: string; icon: any }[] = [
-        { id: 'pipeline', label: 'Pipeline', icon: Target },
-        { id: 'mensagens', label: 'Conversas', icon: MessageSquare },
-        { id: 'pacotes', label: 'Pacotes', icon: Package },
-        { id: 'metricas', label: 'Métricas', icon: BarChart3 },
-        { id: 'notas', label: 'Controle', icon: ClipboardCheck },
-        { id: 'funil', label: 'Funil', icon: Zap },
+    const TABS: { id: TabId; label: string; icon: any; desc: string }[] = [
+        { id: 'pipeline', label: 'Pacientes', icon: Users, desc: 'Veja todos os pacientes e seus status' },
+        { id: 'mensagens', label: 'WhatsApp', icon: MessageCircle, desc: 'Envie mensagens e veja o histórico' },
+        { id: 'notas', label: 'Controle', icon: ClipboardCheck, desc: 'Checklist diário de atendimentos' },
+        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e configurações do funil' },
     ];
 
     return (
