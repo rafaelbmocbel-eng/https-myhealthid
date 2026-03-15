@@ -169,6 +169,7 @@ export default function ProtocoloScores({ scores }: Props) {
             })}
           </div>
         </div>
+      </div>
 
       {/* Legend */}
       <div className="clinical-card bg-gradient-to-br from-muted/20 to-muted/40 border-2 border-border/30">
