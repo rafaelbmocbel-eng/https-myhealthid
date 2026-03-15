@@ -7,6 +7,7 @@ import LogoIcon from '@/components/LogoIcon';
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início', icon: LayoutDashboard },
   { path: '/paciente/diario', label: 'Diário', icon: Heart },
+  { path: '/paciente/evolucao', label: 'Evolução', icon: Flame },
   { path: '/paciente/agenda', label: 'Agenda', icon: CalendarDays },
   { path: '/paciente/questionarios', label: 'Questionários', icon: ClipboardList },
   { path: '/paciente/perfil', label: 'Perfil', icon: User },
