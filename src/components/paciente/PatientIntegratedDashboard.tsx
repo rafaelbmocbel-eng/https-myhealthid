@@ -514,39 +514,27 @@ export default function PatientIntegratedDashboard({
               </div>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {powerZones.map((zone) => (
-                <Card key={zone.id} className="overflow-hidden group hover:shadow-md transition-all border-violet-100/30 dark:border-violet-900/20">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between mb-4">
-                      <div className={cn("p-2 rounded-xl transition-colors", zone.color.replace('text-', 'bg-').replace('600', '100'), `dark:${zone.color.replace('text-', 'bg-').replace('600', '900/30')}`)}>
-                        <zone.icon className={cn("h-4 w-4", zone.color)} />
+                <Card key={zone.id} className="overflow-hidden group hover:shadow-sm transition-all border-border/40">
+                  <CardContent className="p-2.5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <div className={cn("p-1.5 rounded-lg transition-colors", zone.color.replace('text-', 'bg-').replace('600', '100'), `dark:${zone.color.replace('text-', 'bg-').replace('600', '900/30')}`)}>
+                        <zone.icon className={cn("h-3 w-3", zone.color)} />
                       </div>
-                      <div className="text-right leading-none">
-                        <span className={cn("text-xl font-black", zone.color)}>{zone.level.toFixed(0)}%</span>
-                        <p className="text-[8px] font-bold text-muted-foreground uppercase mt-0.5">Potencial</p>
-                      </div>
+                      <span className={cn("text-sm font-black", zone.color)}>{zone.level.toFixed(0)}%</span>
                     </div>
 
-                    <h5 className="font-bold text-sm mb-1">{zone.title}</h5>
-                    <p className="text-[10px] text-muted-foreground mb-4 line-clamp-2 leading-relaxed">{zone.description}</p>
+                    <h5 className="font-bold text-[11px] leading-tight mb-1">{zone.title}</h5>
 
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <div className="flex justify-between items-center text-[9px] font-bold uppercase tracking-tight mb-1">
-                          <span className="text-muted-foreground">Ganho de Saúde</span>
-                          <span className={zone.color}>{zone.level.toFixed(0)}%</span>
-                        </div>
-                        <Progress value={zone.level} className="h-1.5" />
-                      </div>
+                    <Progress value={zone.level} className="h-1 mb-1.5" />
 
-                      <div className="flex flex-wrap gap-1">
-                        {zone.factors.map(f => (
-                          <span key={f} className="text-[8px] font-bold px-1.5 py-0.5 bg-muted rounded uppercase border border-border/50 text-muted-foreground">
-                            {f}
-                          </span>
-                        ))}
-                      </div>
+                    <div className="flex flex-wrap gap-0.5">
+                      {zone.factors.map(f => (
+                        <span key={f} className="text-[7px] font-semibold px-1 py-px bg-muted rounded text-muted-foreground">
+                          {f}
+                        </span>
+                      ))}
                     </div>
                   </CardContent>
                 </Card>
