@@ -179,6 +179,7 @@ export default function StudioPersonalID() {
             </div>
           </div>
         </div>
+      </div>
 
             <div className="flex items-center gap-2">
               <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-border hover:bg-muted" asChild>
