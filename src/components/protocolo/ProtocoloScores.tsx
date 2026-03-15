@@ -139,48 +139,36 @@ export default function ProtocoloScores({ scores }: Props) {
 
       {/* Row 2: Top 3 Alertas */}
       <div className="grid grid-cols-1 gap-4">
-        <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border-2 border-border/50 shadow-lg p-5">
-          <div className="flex flex-col md:flex-row items-center gap-6">
-            <div className="flex-1 w-full">
-              <div className="mb-4">
-                <h3 className="font-bold text-sm flex items-center gap-2">
-                  <span className="h-6 w-6 rounded-lg bg-destructive/10 flex items-center justify-center text-xs">⚠️</span>
-                  Top 3 Alertas Clínicos
-                </h3>
-                <p className="text-[10px] text-muted-foreground mt-1.5 leading-tight">
-                  Estes são os três fatores que mais exigem atenção imediata. Eles representam áreas de maior vulnerabilidade ou menor capacidade de resposta do seu corpo.
-                </p>
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 flex-1">
-                {top3.map((item, i) => {
-                  const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MODERADO';
-                  const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
-                  const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
-                  return (
-                    <div key={item.name} className="flex flex-col gap-3 p-3 rounded-xl bg-muted/20 border border-border/40">
-                      <div className="flex items-center justify-between">
-                        <div className={`text-lg font-black w-8 h-8 rounded-lg flex items-center justify-center ${rankColors[i]}`}>
-                          {i + 1}
-                        </div>
-                        <Badge className={`text-[10px] ${sevColor} shadow-sm`}>{severity}</Badge>
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="font-semibold text-sm">{item.name}</div>
-                        <div className="flex items-center gap-2 mt-1.5">
-                          <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
-                            <div className="h-2 rounded-full" style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.color }} />
-                          </div>
-                          <span className="text-xs font-bold shrink-0" style={{ color: item.color }}>{item.value}/10</span>
-                        </div>
-                      </div>
+        <div className="clinical-card bg-gradient-to-br from-background to-muted/30 border border-border/50 shadow-sm p-3">
+          <div className="mb-2 flex items-center gap-1.5">
+            <span className="h-5 w-5 rounded-md bg-destructive/10 flex items-center justify-center text-[10px]">⚠️</span>
+            <h3 className="font-bold text-xs">Top 3 Alertas Clínicos</h3>
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            {top3.map((item, i) => {
+              const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MOD';
+              const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
+              const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
+              return (
+                <div key={item.name} className="flex flex-col gap-1.5 p-2 rounded-lg bg-muted/20 border border-border/40">
+                  <div className="flex items-center justify-between">
+                    <div className={`text-xs font-black w-5 h-5 rounded flex items-center justify-center ${rankColors[i]}`}>
+                      {i + 1}
                     </div>
-                  );
-                })}
-              </div>
-            </div>
+                    <Badge className={`text-[8px] px-1 py-0 ${sevColor}`}>{severity}</Badge>
+                  </div>
+                  <div className="font-semibold text-[10px] leading-tight truncate">{item.name}</div>
+                  <div className="flex items-center gap-1">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                      <div className="h-1 rounded-full" style={{ width: `${(item.value / 10) * 100}%`, backgroundColor: item.color }} />
+                    </div>
+                    <span className="text-[9px] font-bold shrink-0" style={{ color: item.color }}>{item.value.toFixed(1)}</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
-      </div>
 
       {/* Legend */}
       <div className="clinical-card bg-gradient-to-br from-muted/20 to-muted/40 border-2 border-border/30">
