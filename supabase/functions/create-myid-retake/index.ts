@@ -22,29 +22,6 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Check last completed evaluation - must be at least 15 days ago
-    const { data: lastCompleted } = await supabase
-      .from("myid_avaliacoes")
-      .select("updated_at")
-      .eq("paciente_id", paciente_id)
-      .eq("status", "concluido")
-      .order("updated_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (lastCompleted) {
-      const daysSince = Math.floor(
-        (Date.now() - new Date(lastCompleted.updated_at).getTime()) / (1000 * 60 * 60 * 24)
-      );
-      if (daysSince < 15) {
-        return new Response(JSON.stringify({ 
-          error: `Aguarde mais ${15 - daysSince} dia(s) para solicitar uma nova avaliação.` 
-        }), {
-          status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-    }
-
     // Check if there's already a pending/in-progress evaluation
     const { data: pending } = await supabase
       .from("myid_avaliacoes")
