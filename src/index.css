@@ -219,13 +219,17 @@
 
   /* Clinical card — clean white card with refined shadow + hover */
   .clinical-card {
-    @apply bg-card rounded-2xl border border-border p-6 transition-all duration-200;
+    @apply bg-card rounded-2xl border border-border p-4 sm:p-6 transition-all duration-200;
     box-shadow: var(--shadow-card);
   }
   .clinical-card:hover {
     box-shadow: var(--shadow-md);
     border-color: hsl(var(--border) / 0.8);
-    transform: translateY(-1px);
+  }
+  @media (hover: hover) {
+    .clinical-card:hover {
+      transform: translateY(-1px);
+    }
   }
 
   /* Score pill */
