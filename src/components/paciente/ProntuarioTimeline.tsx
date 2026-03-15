@@ -186,5 +186,6 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
         ))}
       </div>
     </ScrollArea>
+    </div>
   );
 }
