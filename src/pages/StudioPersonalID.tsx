@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { differenceInDays, format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
 

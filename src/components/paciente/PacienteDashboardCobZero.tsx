@@ -34,6 +34,7 @@ interface Paciente {
   sobrenome: string;
   email?: string | null;
   telefone?: string | null;
+  portal_token?: string | null;
 }
 
 interface Props {
