@@ -64,7 +64,8 @@ export default function PacienteEngajamentoTab({ pacienteId, pacienteNome }: Pro
 
   // Calculate wellness snapshots
   const snapshots: WellnessSnapshot[] = dailyLogs.map((log: any) => calculateWellnessIndex(log));
-  const trend = calculateTrend(snapshots);
+  const trendData = analyzeWellnessTrend(snapshots);
+  const trend = trendData.slope;
 
   // Averages
   const avgMood = dailyLogs.length > 0 ? dailyLogs.reduce((s: number, l: any) => s + l.mood, 0) / dailyLogs.length : 0;
