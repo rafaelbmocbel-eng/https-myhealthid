@@ -489,6 +489,13 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
                       {exportingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
                     </Button>
                   )}
+                  {!isCobZero && (
+                    <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
+                      onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
+                      {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                      Publicar
+                    </Button>
+                  )}
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
                     onClick={() => { if (confirm('Excluir esta diretriz?')) deleteMutation.mutate(protocolo.id); }}>
                     <Trash2 className="h-3 w-3" />
