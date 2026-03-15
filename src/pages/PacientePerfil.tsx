@@ -29,6 +29,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
+import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
