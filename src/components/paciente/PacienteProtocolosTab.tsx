@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Eye, Download, Trash2, Calendar, Activity, Loader2,
-  Zap, FileText, User, Plus
+  Zap, FileText, User, Plus, Send
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
