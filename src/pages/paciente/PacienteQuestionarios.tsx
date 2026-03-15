@@ -37,18 +37,20 @@ export default function PacienteQuestionarios() {
   const [submitting, setSubmitting] = useState(false);
   const [creatingRetake, setCreatingRetake] = useState(false);
   const [pacienteId, setPacienteId] = useState<string | null>(null);
+  const [terapeutaId, setTerapeutaId] = useState<string | null>(null);
 
   const fetchQuestionarios = async () => {
     if (!user) return;
 
     const { data: pac } = await supabase
       .from('pacientes')
-      .select('id')
+      .select('id, terapeuta_id')
       .eq('user_id', user.id)
       .maybeSingle();
 
     if (!pac) { setLoading(false); return; }
     setPacienteId(pac.id);
+    setTerapeutaId(pac.terapeuta_id);
 
     const { data } = await supabase
       .from('myid_avaliacoes')
@@ -137,14 +139,12 @@ export default function PacienteQuestionarios() {
   };
 
   const handleRequestRetake = async () => {
-    if (!pacienteId || !canRetake()) return;
+    if (!pacienteId || !terapeutaId) return;
+    // Only check canRetake if there are completed questionnaires
+    if (questionarios.some(q => q.status === 'concluido') && !canRetake()) return;
     setCreatingRetake(true);
 
     try {
-      // Get terapeuta_id from the last questionnaire
-      const lastQ = questionarios[0];
-      if (!lastQ) throw new Error('Nenhum questionário anterior encontrado');
-
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const res = await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/create-myid-retake`,
@@ -157,17 +157,17 @@ export default function PacienteQuestionarios() {
           },
           body: JSON.stringify({
             paciente_id: pacienteId,
-            terapeuta_id: lastQ.terapeuta_id,
+            terapeuta_id: terapeutaId,
           }),
         }
       );
 
       if (!res.ok) {
         const body = await res.json();
-        throw new Error(body.error || 'Erro ao criar reavaliação');
+        throw new Error(body.error || 'Erro ao criar questionário');
       }
 
-      toast({ title: '📋 Novo questionário criado!', description: 'Você já pode respondê-lo.' });
+      toast({ title: '📋 Questionário criado!', description: 'Você já pode respondê-lo.' });
       fetchQuestionarios();
     } catch (err: any) {
       toast({ title: 'Erro', description: err.message, variant: 'destructive' });
@@ -257,12 +257,24 @@ export default function PacienteQuestionarios() {
             </div>
           ) : questionarios.length === 0 ? (
             <Card>
-              <CardContent className="p-8 text-center">
-                <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto mb-3" />
-                <p className="text-sm font-medium text-muted-foreground">Nenhum questionário disponível</p>
-                <p className="text-xs text-muted-foreground/60 mt-1">
-                  Quando seu profissional enviar um questionário, ele aparecerá aqui.
-                </p>
+              <CardContent className="p-8 text-center space-y-4">
+                <ClipboardList className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                <div>
+                  <p className="text-sm font-medium text-foreground">Questionário MyID</p>
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Descubra sua Identidade Sistêmica respondendo o questionário por etapas. São 6 blocos curtos — você pode pausar e continuar quando quiser.
+                  </p>
+                </div>
+                {terapeutaId && (
+                  <Button
+                    onClick={handleRequestRetake}
+                    disabled={creatingRetake}
+                    className="gap-2"
+                  >
+                    {creatingRetake ? <Loader2 className="h-4 w-4 animate-spin" /> : <ClipboardList className="h-4 w-4" />}
+                    Iniciar MyID
+                  </Button>
+                )}
               </CardContent>
             </Card>
           ) : (
