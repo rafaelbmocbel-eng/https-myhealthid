@@ -17,10 +17,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
   useLayoutEffect(() => {
     const check = () => {
       const mobile = window.innerWidth < 768;
+      const tablet = window.innerWidth >= 768 && window.innerWidth < 1024;
       setIsMobile(mobile);
       if (mobile) {
         setCollapsed(true);
         setMobileOpen(false);
+      } else if (tablet) {
+        setCollapsed(true);
       }
     };
     check();
