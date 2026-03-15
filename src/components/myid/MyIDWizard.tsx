@@ -13,11 +13,13 @@ import { MyIDResult } from './MyIDResult';
 
 interface MyIDWizardProps {
     onComplete?: (result: any, rawData: any) => void;
+    onSaveProgress?: (data: any, step: number) => void;
     initialData?: any;
+    initialStep?: number;
 }
 
-export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {
-    const [step, setStep] = useState(0);
+export function MyIDWizard({ onComplete, onSaveProgress, initialData, initialStep }: MyIDWizardProps) {
+    const [step, setStep] = useState(initialStep || 0);
     const [data, setData] = useState<MyIDResponses>(initialData || {});
     const [result, setResult] = useState<any>(null);
 
@@ -35,6 +37,9 @@ export function MyIDWizard({ onComplete, initialData }: MyIDWizardProps) {
             const res = calculator.getFullResult();
             setResult(res);
             if (onComplete) onComplete(res, data);
+        } else if (step >= 1 && step <= 5 && onSaveProgress) {
+            // Auto-save progress after each block
+            onSaveProgress(data, step);
         }
         setStep(s => Math.min(s + 1, totalSteps));
     };
