@@ -762,7 +762,8 @@ export default function GestaoVendas() {
 
                 {/* ══════════════════ MENSAGENS TAB ══════════════════ */}
                 {activeTab === 'mensagens' && (
-                    <Card className="border overflow-hidden h-[600px] flex flex-col md:flex-row">
+                    <div className="space-y-4">
+                    <Card className="border overflow-hidden h-[500px] flex flex-col md:flex-row">
                         {/* Sidebar (Left) */}
                         <div className="w-full md:w-1/3 bg-muted/20 border-r flex flex-col">
                             <div className="p-3 border-b flex-shrink-0 bg-card">
@@ -841,9 +842,7 @@ export default function GestaoVendas() {
 
                                     {/* Message History */}
                                     <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-[url('https://web.whatsapp.com/img/bg-chat-tile-dark_a4be512e7195b6b733d9110b408f075d.png')] bg-repeat opacity-[0.97] dark:opacity-20 flex flex-col-reverse relative">
-                                        {/* Overlay to fade background slightly if needed */}
                                         <div className="absolute inset-0 bg-background/80 pointer-events-none z-0" />
-
                                         <div className="z-10 flex flex-col space-y-4">
                                             {(() => {
                                                 const msgs = mensagens.filter((m: any) => m.paciente_id === selectedPatient.id).sort((a: any, b: any) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
@@ -851,7 +850,7 @@ export default function GestaoVendas() {
                                                     return (
                                                         <div className="bg-yellow-100/80 dark:bg-yellow-900/30 text-yellow-800 dark:text-yellow-200 text-[10px] p-2 rounded-lg text-center mx-auto max-w-[80%] shadow-sm my-4">
                                                             Nenhuma mensagem registrada. <br />
-                                                            Mensagens enviadas por este painel ou pelos botões do CRM aparecerão aqui.
+                                                            Mensagens enviadas por este painel aparecerão aqui.
                                                         </div>
                                                     );
                                                 }
@@ -905,14 +904,8 @@ export default function GestaoVendas() {
                                                 onClick={async () => {
                                                     const txt = customMessages['currentInput'];
                                                     if (!txt || !selectedPatient.telefone) return;
-
-                                                    // 1. Log immediately
                                                     logMensagem.mutate({ paciente_id: selectedPatient.id, mensagem: txt, tipo: 'manual' });
-
-                                                    // 2. Open WhatsApp fallback (since direct=false)
                                                     shareViaWhatsApp(selectedPatient.telefone, txt);
-
-                                                    // 3. Clear input
                                                     setCustomMessages(prev => ({ ...prev, currentInput: '' }));
                                                     toast({ title: 'Ação registrada!', description: 'Abrindo o WhatsApp Web/App com a mensagem pronta.' });
                                                 }}>
@@ -929,9 +922,72 @@ export default function GestaoVendas() {
                             )}
                         </div>
                     </Card>
-                )}
 
-                {/* Pacotes section is now part of WhatsApp tab - see below in mensagens */}
+                    {/* ── Pacotes (Propostas Rápidas) ── */}
+                    <Card className="border">
+                        <CardHeader className="pb-2">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                <Package className="h-4 w-4 text-primary" /> Enviar Proposta de Pacote
+                            </CardTitle>
+                            <p className="text-xs text-muted-foreground">Selecione um paciente acima e envie uma proposta comercial via WhatsApp.</p>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {(['Método Identidade', 'COB° ZERO', 'Studio Personal ID'] as const).map(servico => {
+                                const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servico);
+                                return (
+                                    <div key={servico}>
+                                        <h4 className="font-bold text-xs mb-1.5 text-muted-foreground">{servico}</h4>
+                                        <div className="grid gap-2 md:grid-cols-2">
+                                            {pacotes.map(pacote => {
+                                                const isSelected = selectedPacote === pacote.id;
+                                                return (
+                                                    <div key={pacote.id} className={`p-3 rounded-lg border cursor-pointer transition-all ${isSelected ? 'border-primary ring-2 ring-primary/20' : 'hover:border-primary/30'}`}
+                                                        onClick={() => { setSelectedPacote(isSelected ? null : pacote.id); setCustomValue(pacote.valorSugerido); }}>
+                                                        <div className="flex items-start justify-between mb-1">
+                                                            <div>
+                                                                <h5 className="font-bold text-xs">{pacote.nome}</h5>
+                                                                <p className="text-[10px] text-muted-foreground">{pacote.sessoes} sessões · {pacote.duracao}</p>
+                                                            </div>
+                                                            <Badge className="bg-primary/10 text-primary border-0 font-black text-[10px]">R$ {pacote.valorSugerido}</Badge>
+                                                        </div>
+                                                        {isSelected && (
+                                                            <div className="pt-2 border-t mt-2 space-y-2">
+                                                                <div className="space-y-1">
+                                                                    {pacote.diferenciais.map((d, i) => (
+                                                                        <div key={i} className="flex items-center gap-1.5 text-[10px]">
+                                                                            <CheckCircle2 className="h-3 w-3 text-emerald-500 shrink-0" />
+                                                                            <span>{d}</span>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                                <div className="flex gap-2">
+                                                                    <div className="flex-1">
+                                                                        <div className="relative">
+                                                                            <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
+                                                                            <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
+                                                                                onChange={(e) => setCustomValue(e.target.value)} />
+                                                                        </div>
+                                                                    </div>
+                                                                    <Button className="h-8 bg-[#25D366] hover:bg-[#20BE5C] text-white gap-1 text-xs"
+                                                                        disabled={!selectedPatient?.telefone}
+                                                                        onClick={(e) => { e.stopPropagation(); handleSendPacote(pacote); }}>
+                                                                        <Send className="h-3 w-3" /> Enviar
+                                                                    </Button>
+                                                                </div>
+                                                                {!selectedPatient && <p className="text-[9px] text-destructive">⚠️ Selecione um paciente primeiro</p>}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </CardContent>
+                    </Card>
+                    </div>
+                )}
 
                 {/* ══════════════════ RELATÓRIOS TAB ══════════════════ */}
                 {activeTab === 'relatorios' && (
