@@ -524,7 +524,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 size="sm"
                 className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
                 onClick={handleRespostaCompleta}
-                disabled={gerandoRespostaCompleta || !ultimaMyID}
+                disabled={gerandoRespostaCompleta}
               >
                 {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
                 Resposta Completa
