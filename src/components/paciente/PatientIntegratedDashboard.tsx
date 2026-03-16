@@ -534,6 +534,13 @@ export default function PatientIntegratedDashboard({
             </div>
           </div>
 
+          {/* ─── DICAS PERSONALIZADAS ─── */}
+          {scores && (
+            <div className="mb-10 lg:px-2">
+              <MyIDDicasPessoais scores={scores} />
+            </div>
+          )}
+
           {/* ─── MISSÕES DIÁRIAS (Interativo) ─── */}
           {insights && (
             <div className="mb-10 lg:px-2">
