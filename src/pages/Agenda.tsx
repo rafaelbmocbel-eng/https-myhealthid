@@ -609,25 +609,47 @@ export default function Agenda() {
   };
 
   const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
+    if (!user) return;
     try {
       if (status === 'pendente') {
         const { error } = await supabase.from('controle_sessoes').delete().eq('agendamento_id', ag.id);
         if (error) throw error;
         await updateAgendamento(ag.id, { status: 'confirmado' });
       } else {
-        const { error } = await supabase.from('controle_sessoes').upsert({
-          paciente_id: ag.paciente_id,
-          agendamento_id: ag.id,
-          terapeuta_id: user?.id,
-          data_sessao: ag.data_inicio,
-          status: status === 'atendido' ? 'realizada' : 'falta',
-          valor_cobrado: 0
-        }, { onConflict: 'agendamento_id' });
-        if (error) throw error;
+        if (!ag.paciente_id) {
+          toast({ title: 'Erro', description: 'Agendamento sem paciente vinculado.', variant: 'destructive' });
+          return;
+        }
+        // Check if a session record already exists for this appointment
+        const { data: existing } = await supabase
+          .from('controle_sessoes')
+          .select('id')
+          .eq('agendamento_id', ag.id)
+          .maybeSingle();
+
+        if (existing) {
+          // Update existing record
+          const { error } = await supabase.from('controle_sessoes')
+            .update({
+              status: status === 'atendido' ? 'realizada' : 'falta',
+            })
+            .eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          // Insert new record
+          const { error } = await supabase.from('controle_sessoes').insert({
+            paciente_id: ag.paciente_id,
+            agendamento_id: ag.id,
+            terapeuta_id: user.id,
+            data_sessao: ag.data_inicio,
+            status: status === 'atendido' ? 'realizada' : 'falta',
+            valor_cobrado: 0,
+          });
+          if (error) throw error;
+        }
         await updateAgendamento(ag.id, { status: status === 'atendido' ? 'concluido' : 'faltou' });
       }
       toast({ title: `Status atualizado: ${status === 'atendido' ? 'Atendido ✅' : status === 'faltou' ? 'Faltou ❌' : 'Pendente ⏳'}` });
-      refresh();
     } catch (error: any) {
       toast({ title: 'Erro ao atualizar status', description: error.message, variant: 'destructive' });
     }
