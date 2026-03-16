@@ -151,7 +151,7 @@ function MiniCalendar({
 
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
-  const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente } = useAgenda();
+  const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
   const { toast } = useToast();
 
@@ -170,7 +170,6 @@ export default function Agenda() {
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(52);
-  const { refresh } = useAgenda();
 
   // Drag-and-drop state
   const [dragging, setDragging] = useState<{
@@ -610,25 +609,47 @@ export default function Agenda() {
   };
 
   const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
+    if (!user) return;
     try {
       if (status === 'pendente') {
         const { error } = await supabase.from('controle_sessoes').delete().eq('agendamento_id', ag.id);
         if (error) throw error;
         await updateAgendamento(ag.id, { status: 'confirmado' });
       } else {
-        const { error } = await supabase.from('controle_sessoes').upsert({
-          paciente_id: ag.paciente_id,
-          agendamento_id: ag.id,
-          terapeuta_id: user?.id,
-          data_sessao: ag.data_inicio,
-          status: status === 'atendido' ? 'realizada' : 'falta',
-          valor_cobrado: 0
-        }, { onConflict: 'agendamento_id' });
-        if (error) throw error;
+        if (!ag.paciente_id) {
+          toast({ title: 'Erro', description: 'Agendamento sem paciente vinculado.', variant: 'destructive' });
+          return;
+        }
+        // Check if a session record already exists for this appointment
+        const { data: existing } = await supabase
+          .from('controle_sessoes')
+          .select('id')
+          .eq('agendamento_id', ag.id)
+          .maybeSingle();
+
+        if (existing) {
+          // Update existing record
+          const { error } = await supabase.from('controle_sessoes')
+            .update({
+              status: status === 'atendido' ? 'realizada' : 'falta',
+            })
+            .eq('id', existing.id);
+          if (error) throw error;
+        } else {
+          // Insert new record
+          const { error } = await supabase.from('controle_sessoes').insert({
+            paciente_id: ag.paciente_id,
+            agendamento_id: ag.id,
+            terapeuta_id: user.id,
+            data_sessao: ag.data_inicio,
+            status: status === 'atendido' ? 'realizada' : 'falta',
+            valor_cobrado: 0,
+          });
+          if (error) throw error;
+        }
         await updateAgendamento(ag.id, { status: status === 'atendido' ? 'concluido' : 'faltou' });
       }
       toast({ title: `Status atualizado: ${status === 'atendido' ? 'Atendido ✅' : status === 'faltou' ? 'Faltou ❌' : 'Pendente ⏳'}` });
-      refresh();
     } catch (error: any) {
       toast({ title: 'Erro ao atualizar status', description: error.message, variant: 'destructive' });
     }
@@ -1347,17 +1368,37 @@ export default function Agenda() {
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11"
               onClick={async () => {
                 try {
-                  const { error } = await supabase.from('controle_sessoes').upsert({
-                    id: paymentModal.sessaoId,
-                    paciente_id: paymentModal.patientId,
-                    agendamento_id: paymentModal.agendamentoId,
-                    terapeuta_id: user?.id,
-                    data_sessao: new Date(paymentModal.data).toISOString(),
-                    status: 'realizada',
-                    valor_cobrado: Number(paymentModal.valor)
-                  }, { onConflict: 'agendamento_id' });
+                  // Check if session already exists for this appointment
+                  let sessaoId = paymentModal.sessaoId;
+                  if (!sessaoId && paymentModal.agendamentoId) {
+                    const { data: existing } = await supabase
+                      .from('controle_sessoes')
+                      .select('id')
+                      .eq('agendamento_id', paymentModal.agendamentoId)
+                      .maybeSingle();
+                    sessaoId = existing?.id;
+                  }
 
-                  if (error) throw error;
+                  if (sessaoId) {
+                    const { error } = await supabase.from('controle_sessoes')
+                      .update({
+                        status: 'realizada',
+                        valor_cobrado: Number(paymentModal.valor),
+                        data_sessao: new Date(paymentModal.data).toISOString(),
+                      })
+                      .eq('id', sessaoId);
+                    if (error) throw error;
+                  } else {
+                    const { error } = await supabase.from('controle_sessoes').insert({
+                      paciente_id: paymentModal.patientId,
+                      agendamento_id: paymentModal.agendamentoId,
+                      terapeuta_id: user?.id,
+                      data_sessao: new Date(paymentModal.data).toISOString(),
+                      status: 'realizada',
+                      valor_cobrado: Number(paymentModal.valor),
+                    });
+                    if (error) throw error;
+                  }
 
                   if (paymentModal.agendamentoId) {
                     await updateAgendamento(paymentModal.agendamentoId, { status: 'concluido' });
@@ -1365,7 +1406,6 @@ export default function Agenda() {
 
                   toast({ title: 'Pagamento registrado! 💵', description: `R$ ${paymentModal.valor} recebido com sucesso.` });
                   setPaymentModal(prev => ({ ...prev, open: false }));
-                  refresh();
                 } catch (err: any) {
                   toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
                 }
