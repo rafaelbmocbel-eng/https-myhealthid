@@ -1,0 +1,1 @@
+ALTER TABLE public.config_agenda ADD COLUMN IF NOT EXISTS servicos_ativos jsonb NOT NULL DEFAULT '{"identidade": true, "cob_zero": true, "studio": true}'::jsonb;
