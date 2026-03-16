@@ -1340,7 +1340,7 @@ export default function GestaoVendas() {
                                         </div>
 
                                         {dailyAgs.length > 0 ? dailyAgs.map((ag: any) => {
-                                            const status = checkedIds[ag.id] || 'pendente';
+                                            const status = getAttendanceStatus(ag.id);
                                             const pac = patients.find((p: any) => p.id === ag.paciente_id);
                                             const name = ag.titulo || (pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Agendamento');
                                             const hora = format(parseISO(ag.data_inicio), 'HH:mm');
