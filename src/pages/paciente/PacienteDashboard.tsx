@@ -10,12 +10,14 @@ import {
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PatientIntegratedDashboard from '@/components/paciente/PatientIntegratedDashboard';
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
+import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 
 interface PacienteInfo {
   id: string;
@@ -43,6 +45,15 @@ function getLevel(xp: number) {
   return { label: 'Iniciante', color: 'text-primary', bg: 'bg-primary/10', icon: Star, next: 100 };
 }
 
+const fadeUp = {
+  hidden: { opacity: 0, y: 16 },
+  visible: (i: number) => ({
+    opacity: 1,
+    y: 0,
+    transition: { delay: i * 0.07, duration: 0.4, ease: [0.22, 1, 0.36, 1] },
+  }),
+};
+
 export default function PacienteDashboard() {
   const { user } = useAuth();
   const navigate = useNavigate();
@@ -50,6 +61,7 @@ export default function PacienteDashboard() {
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
   const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0 });
   const [loading, setLoading] = useState(true);
+  const notifications = usePacienteNotifications(user?.id);
 
   useEffect(() => {
     if (!user) return;
@@ -130,103 +142,139 @@ export default function PacienteDashboard() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-5">
-          {/* Greeting + Level */}
-          <div className="flex items-start justify-between">
-            <div>
-              <h1 className="text-lg font-black text-foreground">
-                {getGreeting()}, {paciente?.nome || '...'} 👋
-              </h1>
-              <p className="text-xs text-muted-foreground mt-0.5">
-                Acompanhe sua evolução e próximas consultas.
-              </p>
-            </div>
-            <div className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full ${level.bg}`}>
-              <LevelIcon className={`h-3.5 w-3.5 ${level.color}`} />
-              <span className={`text-[11px] font-bold ${level.color}`}>{level.label}</span>
-            </div>
-          </div>
+          {/* Welcome card with gradient */}
+          <motion.div
+            variants={fadeUp} initial="hidden" animate="visible" custom={0}
+          >
+            <Card className="overflow-hidden border-0 shadow-md"
+              style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(213 55% 28%) 100%)' }}
+            >
+              <CardContent className="p-4 md:p-5">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h1 className="text-lg font-black text-primary-foreground">
+                      {getGreeting()}, {paciente?.nome || '...'} 👋
+                    </h1>
+                    <p className="text-xs text-primary-foreground/70 mt-0.5">
+                      Acompanhe sua evolução e próximas consultas.
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-white/15 backdrop-blur-sm">
+                    <LevelIcon className="h-3.5 w-3.5 text-primary-foreground" />
+                    <span className="text-[11px] font-bold text-primary-foreground">{level.label}</span>
+                  </div>
+                </div>
 
-          {/* XP bar */}
-          {level.next && (
-            <div className="space-y-1">
-              <div className="flex justify-between text-[10px] text-muted-foreground">
-                <span>{xp} XP</span>
-                <span>Próximo: {level.next} XP</span>
-              </div>
-              <div className="h-2 bg-muted rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-primary rounded-full transition-all duration-700"
-                  style={{ width: `${Math.min(100, (xp / level.next) * 100)}%` }}
-                />
-              </div>
-            </div>
-          )}
+                {/* XP bar */}
+                {level.next && (
+                  <div className="mt-3 space-y-1">
+                    <div className="flex justify-between text-[10px] text-primary-foreground/60">
+                      <span>{xp} XP</span>
+                      <span>Próximo: {level.next} XP</span>
+                    </div>
+                    <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                      <motion.div
+                        className="h-full rounded-full"
+                        style={{ background: 'hsl(var(--accent))' }}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min(100, (xp / level.next) * 100)}%` }}
+                        transition={{ duration: 1, delay: 0.3, ease: [0.22, 1, 0.36, 1] }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Streak */}
+                {notifications.streak > 1 && (
+                  <div className="mt-3 flex items-center gap-2 px-3 py-1.5 rounded-lg bg-white/10">
+                    <span className="text-sm">🔥</span>
+                    <span className="text-[11px] font-bold text-primary-foreground">
+                      {notifications.streak} dias consecutivos
+                    </span>
+                    <span className="text-[10px] text-primary-foreground/60">no diário</span>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* Alert: pending questionnaires */}
           {stats.pendentes > 0 && (
-            <Card
-              className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
-              onClick={() => navigate('/paciente/questionarios')}
-            >
-              <CardContent className="p-3 flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-bold text-foreground">
-                    {stats.pendentes} questionário{stats.pendentes > 1 ? 's' : ''} pendente{stats.pendentes > 1 ? 's' : ''}
-                  </p>
-                  <p className="text-[11px] text-muted-foreground">Toque para responder agora</p>
-                </div>
-                <ChevronRight className="h-4 w-4 text-primary" />
-              </CardContent>
-            </Card>
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card
+                className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
+                onClick={() => navigate('/paciente/questionarios')}
+              >
+                <CardContent className="p-3 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <ClipboardList className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-foreground">
+                      {stats.pendentes} questionário{stats.pendentes > 1 ? 's' : ''} pendente{stats.pendentes > 1 ? 's' : ''}
+                    </p>
+                    <p className="text-[11px] text-muted-foreground">Toque para responder agora</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-primary" />
+                </CardContent>
+              </Card>
+            </motion.div>
           )}
 
-          {/* ── Alertas & Lembretes (consultas, diário, treinos) ── */}
-          {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
+          {/* ── Alertas & Lembretes ── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
+          </motion.div>
 
           {/* ── Metas & Desafios Semanais ── */}
-          {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+            {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
+          </motion.div>
 
-          {/* ── Exercícios para Casa (resumo) ── */}
-          {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
+          {/* ── Exercícios para Casa ── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
+            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
+          </motion.div>
 
-          {/* ── Visão Integrada MyID (same as professional view) ── */}
-          {paciente && (
-            <PatientIntegratedDashboard
-              pacienteId={paciente.id}
-              serviceType="identidade"
-            />
-          )}
+          {/* ── Visão Integrada MyID ── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+            {paciente && (
+              <PatientIntegratedDashboard
+                pacienteId={paciente.id}
+                serviceType="identidade"
+              />
+            )}
+          </motion.div>
 
           {/* Quick stats */}
-          <div className="grid grid-cols-3 gap-2">
-            <Card className="bg-primary/5 border-primary/10">
-              <CardContent className="p-3 text-center">
-                <CalendarDays className="h-4 w-4 text-primary mx-auto mb-1" />
-                <span className="text-xl font-black text-foreground block">{proximasConsultas.length}</span>
-                <span className="text-[10px] text-muted-foreground">Consultas</span>
-              </CardContent>
-            </Card>
-            <Card className="bg-accent/5 border-accent/10">
-              <CardContent className="p-3 text-center">
-                <Fingerprint className="h-4 w-4 mx-auto mb-1 text-primary" />
-                <span className="text-xl font-black text-foreground block">{stats.avaliacoes}</span>
-                <span className="text-[10px] text-muted-foreground">Avaliações</span>
-              </CardContent>
-            </Card>
-            <Card>
-              <CardContent className="p-3 text-center">
-                <Flame className="h-4 w-4 text-primary mx-auto mb-1" />
-                <span className="text-xl font-black text-foreground block">{stats.consultas}</span>
-                <span className="text-[10px] text-muted-foreground">Sessões</span>
-              </CardContent>
-            </Card>
-          </div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
+            <div className="grid grid-cols-3 gap-2">
+              <Card className="bg-primary/5 border-primary/10">
+                <CardContent className="p-3 text-center">
+                  <CalendarDays className="h-4 w-4 text-primary mx-auto mb-1" />
+                  <span className="text-xl font-black text-foreground block">{proximasConsultas.length}</span>
+                  <span className="text-[10px] text-muted-foreground">Consultas</span>
+                </CardContent>
+              </Card>
+              <Card className="bg-accent/5 border-accent/10">
+                <CardContent className="p-3 text-center">
+                  <Fingerprint className="h-4 w-4 mx-auto mb-1 text-primary" />
+                  <span className="text-xl font-black text-foreground block">{stats.avaliacoes}</span>
+                  <span className="text-[10px] text-muted-foreground">Avaliações</span>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardContent className="p-3 text-center">
+                  <Flame className="h-4 w-4 text-primary mx-auto mb-1" />
+                  <span className="text-xl font-black text-foreground block">{stats.consultas}</span>
+                  <span className="text-[10px] text-muted-foreground">Sessões</span>
+                </CardContent>
+              </Card>
+            </div>
+          </motion.div>
 
           {/* Upcoming appointments */}
-          <div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
             <div className="flex items-center justify-between mb-3">
               <h2 className="text-sm font-bold text-foreground">Próximas consultas</h2>
               <button
@@ -252,38 +300,40 @@ export default function PacienteDashboard() {
               </Card>
             ) : (
               <div className="space-y-2">
-                {proximasConsultas.map((ag) => (
-                  <Card key={ag.id} className="hover:shadow-sm transition-shadow">
-                    <CardContent className="p-3 flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
-                        <CalendarDays className="h-5 w-5 text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-semibold text-foreground truncate">
-                          {ag.titulo || ag.tipo_atendimento || 'Consulta'}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {format(parseISO(ag.data_inicio), "EEEE, d 'de' MMM · HH:mm", { locale: ptBR })}
-                        </p>
-                      </div>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          ag.status === 'confirmado'
-                            ? 'bg-emerald-100 text-emerald-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        {ag.status === 'confirmado' ? 'Confirmado' : 'Pendente'}
-                      </span>
-                    </CardContent>
-                  </Card>
+                {proximasConsultas.map((ag, i) => (
+                  <motion.div key={ag.id} variants={fadeUp} initial="hidden" animate="visible" custom={8 + i}>
+                    <Card className="hover:shadow-sm transition-shadow">
+                      <CardContent className="p-3 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                          <CalendarDays className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold text-foreground truncate">
+                            {ag.titulo || ag.tipo_atendimento || 'Consulta'}
+                          </p>
+                          <p className="text-[11px] text-muted-foreground">
+                            {format(parseISO(ag.data_inicio), "EEEE, d 'de' MMM · HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            ag.status === 'confirmado'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {ag.status === 'confirmado' ? 'Confirmado' : 'Pendente'}
+                        </span>
+                      </CardContent>
+                    </Card>
+                  </motion.div>
                 ))}
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* Gamification badges */}
-          <div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={10}>
             <h2 className="text-sm font-bold text-foreground mb-3">Conquistas</h2>
             <div className="flex flex-wrap gap-2">
               {stats.avaliacoes >= 1 && (
@@ -306,6 +356,11 @@ export default function PacienteDashboard() {
                   <Flame className="h-3 w-3" /> 7 Dias de Diário
                 </Badge>
               )}
+              {notifications.streak >= 3 && (
+                <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200 text-[10px] gap-1">
+                  🔥 Streak {notifications.streak}d
+                </Badge>
+              )}
               {stats.consultas >= 10 && (
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 text-[10px] gap-1">
                   <Trophy className="h-3 w-3" /> 10 Sessões
@@ -317,7 +372,7 @@ export default function PacienteDashboard() {
                 </p>
               )}
             </div>
-          </div>
+          </motion.div>
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>
