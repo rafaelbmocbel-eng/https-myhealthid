@@ -73,6 +73,8 @@ export default function MetodoIdentidade() {
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoMyID>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
+  const [showDiretrizBuilder, setShowDiretrizBuilder] = useState(false);
+  const [savedAvaliacaoId, setSavedAvaliacaoId] = useState<string | null>(null);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
 
 
