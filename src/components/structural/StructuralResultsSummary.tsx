@@ -297,6 +297,181 @@ export default function StructuralResultsSummary({ data }: Props) {
         </div>
       )}
 
+      {/* ═══ REHAB TIMELINE — EVIDENCE-BASED ═══ */}
+      {rehabInsights.length > 0 && (
+        <div className="clinical-card border-primary/20 bg-gradient-to-br from-card to-primary/5">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
+              <Clock className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h3 className="font-bold text-sm">Tempo de Reabilitação — Baseado em Evidência</h3>
+              <p className="text-[10px] text-muted-foreground">Cada tecido tem seu relógio biológico. Respeitar esse tempo é a chave da recuperação.</p>
+            </div>
+          </div>
+
+          {/* Alert for articular/ligament structures */}
+          {rehabInsights.some(i => i.category === 'Articular' || i.category === 'Ligamentar') && (
+            <div className="p-3 rounded-xl border-2 border-destructive/30 bg-destructive/5 mb-4">
+              <div className="flex items-start gap-2">
+                <Shield className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-xs font-bold text-destructive">⚠️ Estruturas com cicatrização lenta identificadas</p>
+                  <p className="text-[11px] text-muted-foreground mt-1">
+                    Articulações e ligamentos têm tempos de recuperação <strong>significativamente maiores</strong> que músculos. 
+                    O alívio da dor <strong>NÃO significa</strong> que o tecido está curado — o processo biológico continua 
+                    mesmo quando os sintomas melhoram. Abandonar a reabilitação precocemente é a principal causa de recidiva.
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Timeline overview bar */}
+          <div className="mb-4 p-3 rounded-xl bg-muted/50 border">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-xs font-semibold text-muted-foreground">VISÃO GERAL DO TEMPO</span>
+              <span className="text-xs text-muted-foreground">
+                {rehabInsights[rehabInsights.length - 1]?.minWeeks || 0}–{rehabInsights[0]?.maxWeeks || 0} semanas total
+              </span>
+            </div>
+            <div className="space-y-2">
+              {rehabInsights.map((insight, idx) => {
+                const maxAll = rehabInsights[0]?.maxWeeks || 1;
+                const barWidth = (insight.maxWeeks / maxAll) * 100;
+                const barStart = (insight.minWeeks / maxAll) * 100;
+                const colorMap: Record<string, string> = {
+                  emerald: 'bg-emerald-500',
+                  amber: 'bg-amber-500',
+                  orange: 'bg-orange-500',
+                  red: 'bg-red-500',
+                  purple: 'bg-purple-500',
+                  blue: 'bg-blue-500',
+                };
+                return (
+                  <div key={idx} className="flex items-center gap-2">
+                    <span className="text-sm w-6 shrink-0">{insight.icon}</span>
+                    <span className="text-[10px] font-medium w-20 truncate shrink-0">{insight.tissue}</span>
+                    <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden relative">
+                      <div
+                        className={cn('h-full rounded-full absolute', colorMap[insight.color] || 'bg-primary')}
+                        style={{ left: `${barStart}%`, width: `${barWidth - barStart}%` }}
+                      />
+                    </div>
+                    <span className="text-[10px] font-bold w-20 text-right shrink-0">
+                      {insight.minWeeks}–{insight.maxWeeks} sem
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Detailed insights per tissue */}
+          <div className="space-y-2">
+            {rehabInsights.map((insight, idx) => {
+              const isOpen = openRehabDetails.has(idx);
+              const colorMap: Record<string, { bg: string; border: string; text: string; badge: string }> = {
+                emerald: { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500' },
+                amber: { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-500' },
+                orange: { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-700', badge: 'bg-orange-500' },
+                red: { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-500' },
+                purple: { bg: 'bg-purple-50', border: 'border-purple-200', text: 'text-purple-700', badge: 'bg-purple-500' },
+                blue: { bg: 'bg-blue-50', border: 'border-blue-200', text: 'text-blue-700', badge: 'bg-blue-500' },
+              };
+              const col = colorMap[insight.color] || colorMap.blue;
+
+              return (
+                <div key={idx} className={cn('rounded-xl border-2 overflow-hidden', col.border)}>
+                  <button
+                    className={cn('w-full flex items-center justify-between p-3', col.bg, 'text-left')}
+                    onClick={() => setOpenRehabDetails(prev => {
+                      const s = new Set(prev);
+                      if (s.has(idx)) s.delete(idx); else s.add(idx);
+                      return s;
+                    })}
+                  >
+                    <div className="flex items-center gap-3">
+                      <span className="text-xl">{insight.icon}</span>
+                      <div>
+                        <div className={cn('font-semibold text-sm', col.text)}>
+                          {insight.tissue} — {insight.severity}
+                        </div>
+                        <div className="text-[10px] text-muted-foreground">
+                          {insight.structures.join(', ')} · {insight.unitId}
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Badge className={cn('text-[10px] text-white', col.badge)}>
+                        {insight.minWeeks}–{insight.maxWeeks} semanas
+                      </Badge>
+                      {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+                    </div>
+                  </button>
+                  {isOpen && (
+                    <div className="p-3 space-y-3 bg-background">
+                      {/* Patient engagement message */}
+                      <div className="p-3 rounded-lg bg-primary/5 border border-primary/20">
+                        <div className="flex items-start gap-2">
+                          <Heart className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                          <p className="text-xs leading-relaxed text-foreground">{insight.patientMessage}</p>
+                        </div>
+                      </div>
+                      
+                      {/* Healing phases timeline */}
+                      <div>
+                        <h5 className="text-xs font-semibold mb-2 text-muted-foreground">FASES DE CICATRIZAÇÃO</h5>
+                        <div className="space-y-1.5">
+                          {insight.phases.map((phase, pi) => (
+                            <div key={pi} className="flex items-start gap-2 p-2 rounded-lg bg-muted/30">
+                              <div className={cn('w-5 h-5 rounded-full flex items-center justify-center text-white text-[9px] font-bold shrink-0', col.badge)}>
+                                {pi + 1}
+                              </div>
+                              <div>
+                                <div className="text-xs font-medium">{phase.name} <span className="text-muted-foreground">· Sem {phase.weeks}</span></div>
+                                <p className="text-[10px] text-muted-foreground">{phase.description}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Evidence reference */}
+                      <div className="p-2 rounded-lg bg-muted/30 border border-dashed">
+                        <p className="text-[9px] text-muted-foreground italic">📖 {insight.evidenceNote}</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Global engagement message */}
+          <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
+            <div className="flex items-start gap-3">
+              <div className="h-8 w-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <Heart className="h-4 w-4 text-primary" />
+              </div>
+              <div>
+                <h4 className="font-bold text-sm text-foreground mb-1">Por que cada sessão importa?</h4>
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                  A reabilitação é um investimento no seu corpo. Cada tecido tem seu próprio relógio biológico — 
+                  <strong> respeitar esse tempo é a diferença entre uma recuperação completa e uma recidiva</strong>. 
+                  {rehabInsights.some(i => i.category === 'Articular') && (
+                    <> Especialmente para tecidos articulares, o tratamento consistente é a única forma comprovada de estimular o reparo biológico.</>
+                  )}
+                  {rehabInsights.some(i => i.category === 'Ligamentar') && (
+                    <> Para ligamentos, o fortalecimento muscular ao redor da articulação se torna seu principal mecanismo de proteção a longo prazo.</>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ═══ TECHNIQUE & EXERCISE MENU ═══ */}
       <div className="clinical-card border-primary/30">
         <div className="flex items-center gap-3 mb-4">
