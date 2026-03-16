@@ -21,6 +21,7 @@ import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreCol
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import { Progress } from '@/components/ui/progress';
 import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
+import MyIDDicasPessoais from '@/components/myid/MyIDDicasPessoais';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Area
@@ -532,6 +533,13 @@ export default function PatientIntegratedDashboard({
               ))}
             </div>
           </div>
+
+          {/* ─── DICAS PERSONALIZADAS ─── */}
+          {scores && (
+            <div className="mb-10 lg:px-2">
+              <MyIDDicasPessoais scores={scores} />
+            </div>
+          )}
 
           {/* ─── MISSÕES DIÁRIAS (Interativo) ─── */}
           {insights && (
