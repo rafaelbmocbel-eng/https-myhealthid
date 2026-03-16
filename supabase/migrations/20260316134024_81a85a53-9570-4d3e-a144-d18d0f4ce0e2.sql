@@ -1,0 +1,1 @@
+CREATE UNIQUE INDEX IF NOT EXISTS controle_sessoes_agendamento_id_unique ON public.controle_sessoes (agendamento_id) WHERE agendamento_id IS NOT NULL;
