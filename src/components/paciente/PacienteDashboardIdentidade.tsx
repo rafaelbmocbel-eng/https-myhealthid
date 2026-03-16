@@ -315,6 +315,25 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     if (!user) return;
     setGerandoRespostaCompleta(true);
     try {
+      // If no MyID data, try fetching the latest evaluation directly
+      let latestMyID = ultimaMyID;
+      if (!latestMyID) {
+        const { data } = await supabase
+          .from('avaliacoes_identidade')
+          .select('*')
+          .eq('paciente_id', paciente.id)
+          .not('myid_score', 'is', null)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        latestMyID = data;
+      }
+
+      if (!latestMyID) {
+        toast({ title: 'Avaliação não encontrada', description: 'Complete uma avaliação MyID antes de gerar o relatório.', variant: 'destructive' });
+        return;
+      }
+
       const { data: profile } = await supabase
         .from('profiles')
         .select('nome, sobrenome')
@@ -322,24 +341,17 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
         .maybeSingle();
       const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
 
-      // Build avaliacao object from latest MyID data
-      const latestMyID = ultimaMyID;
-      if (!latestMyID) {
-        toast({ title: 'Avaliação não encontrada', description: 'Complete uma avaliação MyID antes de gerar o relatório.', variant: 'destructive' });
-        return;
-      }
-
       const avaliacao = {
         resultado: {
-          myidScore: latestMyID.myid_score || 0,
+          myidScore: latestMyID.myid_score ?? 0,
           componentScores: {
-            D: latestMyID.score_d || 0,
-            EFI: latestMyID.score_efi || 0,
-            P: latestMyID.score_p || 0,
-            I: latestMyID.score_i || 0,
-            R: latestMyID.score_r || 0,
-            C: latestMyID.score_c || 0,
-            N: latestMyID.score_n || 0,
+            D: latestMyID.score_d ?? 0,
+            EFI: latestMyID.score_efi ?? 0,
+            P: latestMyID.score_p ?? 0,
+            I: latestMyID.score_i ?? 0,
+            R: latestMyID.score_r ?? 0,
+            C: latestMyID.score_c ?? 0,
+            N: latestMyID.score_n ?? 0,
           },
           redFlagsDetected: !!(latestMyID.red_flags as any)?.detected,
           redFlagAlerts: (latestMyID.red_flags as any)?.alerts || [],
@@ -354,7 +366,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
       });
       toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
     } catch (err) {
-      console.error('Erro ao gerar PDF:', err);
+      console.error('Erro ao gerar PDF Resposta Completa:', err);
       toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
     } finally {
       setGerandoRespostaCompleta(false);
