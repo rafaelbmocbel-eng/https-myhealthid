@@ -119,8 +119,10 @@ export default function StructuralResultsSummary({ data }: Props) {
   const [guidelines, setGuidelines] = useState('');
   const [copied, setCopied] = useState(false);
   const [openPhases, setOpenPhases] = useState<Set<number>>(new Set([0]));
+  const [openRehabDetails, setOpenRehabDetails] = useState<Set<number>>(new Set());
 
   const phases = buildPhases(data);
+  const rehabInsights = generateRehabInsights(data.units);
 
   // Selection state — starts empty, therapist picks what they want
   const [selectedTecnicas, setSelectedTecnicas] = useState<Record<number, Set<number>>>(() => {
