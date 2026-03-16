@@ -34,6 +34,9 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { pendingCount, clearCount } = useAgendamentoNotifications();
+  const { servicos } = useServicosAtivos();
+
+  const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);

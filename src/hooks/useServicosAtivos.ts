@@ -27,7 +27,7 @@ export function useServicosAtivos() {
       .eq('terapeuta_id', user.id)
       .maybeSingle();
     if (data?.servicos_ativos) {
-      setServicos({ ...DEFAULT_SERVICOS, ...(data.servicos_ativos as ServicosAtivos) });
+      setServicos({ ...DEFAULT_SERVICOS, ...(data.servicos_ativos as unknown as ServicosAtivos) });
     }
     setLoading(false);
   }, [user]);
