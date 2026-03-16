@@ -78,6 +78,44 @@ export default function Configuracoes() {
           </Button>
         </div>
 
+        {/* Módulos / Serviços ativos */}
+        <div className="clinical-card mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutGrid className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Módulos Ativos</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Escolha quais serviços ficam <strong>visíveis</strong> no menu lateral. Desmarcar um módulo apenas oculta-o da navegação.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, color: 'hsl(var(--primary))' },
+              { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, color: 'hsl(200 70% 50%)' },
+              { key: 'studio' as const, label: 'Studio Personal ID', icon: Sparkles, color: 'hsl(280 60% 55%)' },
+            ]).map(mod => {
+              const ativo = servicos[mod.key];
+              return (
+                <button
+                  key={mod.key}
+                  onClick={() => saveServicos({ ...servicos, [mod.key]: !ativo })}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border-2 transition-all',
+                    ativo
+                      ? 'border-primary bg-primary/5'
+                      : 'border-dashed border-muted-foreground/20 opacity-50',
+                  )}
+                >
+                  <Switch checked={ativo} onCheckedChange={(v) => saveServicos({ ...servicos, [mod.key]: v })} />
+                  <mod.icon className="h-4 w-4 shrink-0" style={{ color: ativo ? mod.color : undefined }} />
+                  <span className={cn('text-sm font-medium', ativo ? 'text-foreground' : 'text-muted-foreground')}>
+                    {mod.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* Dias de atendimento */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
