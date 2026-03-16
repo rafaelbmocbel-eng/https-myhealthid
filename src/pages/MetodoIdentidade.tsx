@@ -10,6 +10,7 @@ import { Bloco5 } from '@/components/myid/steps/Bloco5';
 import { Bloco6 } from '@/components/myid/steps/Bloco6';
 import { MyIDCalculator } from '@/utils/myid/calculator';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
+import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
 
 import {
   CheckCircle2, Circle, ClipboardList, Activity, Brain,
