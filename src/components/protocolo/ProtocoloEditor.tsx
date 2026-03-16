@@ -171,11 +171,57 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
                 if (errFase) throw errFase;
             }
 
+            // ── Auto-create prontuário note with technique summary ──
+            try {
+                const tecnicasResumo = analisePersonalizada.fases.map((fase, idx) => {
+                    const tecsSelecionadas = fase.tecnicas.map(t => t.nome || t.tecnica || 'Técnica').join(', ');
+                    const exsSelecionados = fase.exercicios.map(e => e.nome || e.exercicio || 'Exercício').join(', ');
+                    return `Fase ${fase.numero} — ${fase.titulo}:\n  Técnicas: ${tecsSelecionadas || 'Nenhuma'}\n  Exercícios: ${exsSelecionados || 'Nenhum'}`;
+                }).join('\n\n');
+
+                const notaDescricao = `📋 DIRETRIZ DE TRATAMENTO CRIADA
+
+🎯 Objetivo: ${analisePersonalizada.objetivoGeral}
+⏱️ Duração: ${analisePersonalizada.duracaoTotal} · ${analisePersonalizada.frequencia}
+📊 Prognóstico: ${analisePersonalizada.prognose}
+
+📌 DEMANDAS IDENTIFICADAS:
+${analisePersonalizada.demandasIdentificadas.map(d => `  • ${d.area} (${d.severidade}) — ${d.motivo}`).join('\n')}
+
+🔬 TÉCNICAS E EXERCÍCIOS POR FASE:
+${tecnicasResumo}
+
+💡 INSIGHTS BASEADOS EM EVIDÊNCIA:
+${analisePersonalizada.fases.map(f => f.tecnicas.filter(t => t.evidencia === 'A' || t.nivel_evidencia === 'A').map(t => `  ✅ ${t.nome || t.tecnica}: Evidência nível A`).join('\n')).filter(Boolean).join('\n') || '  Consulte as técnicas selecionadas para níveis de evidência detalhados.'}
+
+Diretriz montada automaticamente a partir da avaliação MyID.`;
+
+                await (supabase as any)
+                    .from('notas_prontuario')
+                    .insert({
+                        paciente_id: avaliacao.paciente_id,
+                        terapeuta_id: user.id,
+                        tipo: 'diretriz_tratamento',
+                        titulo: `Diretriz de Tratamento — ${analisePersonalizada.duracaoTotal}`,
+                        descricao: notaDescricao,
+                        referencia_id: (prot as any).id,
+                        dados_extras: {
+                            protocolo_id: (prot as any).id,
+                            total_tecnicas: totalTecSelecionados,
+                            total_exercicios: totalExSelecionados,
+                            demandas: analisePersonalizada.demandasIdentificadas.length,
+                        },
+                    });
+            } catch (notaErr) {
+                console.warn('Nota do prontuário não registrada:', notaErr);
+            }
+
             qc.invalidateQueries({ queryKey: ['protocolos'] });
             qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
             qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo'] });
             qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo-paciente'] });
-            toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada e pronta para uso.' });
+            qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+            toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada, registrada no prontuário e pronta para uso.' });
             if (onSave) onSave();
         } catch (err: any) {
             console.error(err);
