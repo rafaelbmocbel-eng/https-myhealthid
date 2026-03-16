@@ -221,6 +221,44 @@ export default function MetodoIdentidade() {
   // React Hook rules: All hooks must be defined before any early return based on conditions
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
+  if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
+    // Build a compatible avaliacao object for ProtocoloEditor
+    const editorAvaliacao = {
+      id: savedAvaliacaoId,
+      paciente_id: selectedPacienteId,
+      created_at: new Date().toISOString(),
+      score_e: avaliacao.resultado?.componentScores?.E || 0,
+      score_p: avaliacao.resultado?.componentScores?.P || 0,
+      score_c: avaliacao.resultado?.componentScores?.C || 0,
+      score_f: 0,
+      score_d: avaliacao.resultado?.componentScores?.D || 0,
+      score_r: avaliacao.resultado?.componentScores?.R || 0,
+      score_efi: avaliacao.resultado?.componentScores?.EFI || 0,
+      dor_identidade: avaliacao.resultado?.myidScore || 0,
+      status: 'concluida',
+    };
+
+    return (
+      <AppLayout>
+        <div className="container py-8">
+          <ProtocoloEditor
+            avaliacao={editorAvaliacao}
+            pacienteNome={avaliacao.pacienteNome}
+            onSave={() => {
+              toast({ title: '✅ Diretriz salva!', description: 'Diretriz disponível em Diretrizes e Serviços e no prontuário do paciente.' });
+              setShowDiretrizBuilder(false);
+              setShowDashboard(true);
+            }}
+            onCancel={() => {
+              setShowDiretrizBuilder(false);
+              setShowRelatorio(true);
+            }}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (showRelatorio) {
     return (
       <AppLayout>
