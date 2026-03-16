@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -21,10 +21,12 @@ export default function PacienteLogin() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
   const [linking, setLinking] = useState(false);
+  const linkAttempted = useRef(false);
 
   // If already logged in, try to link and redirect
   useEffect(() => {
-    if (!authLoading && user) {
+    if (!authLoading && user && !linkAttempted.current) {
+      linkAttempted.current = true;
       handlePostLogin();
     }
   }, [authLoading, user]);
@@ -34,17 +36,31 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
-      // Try to link patient via portal_token
+      // 1) Try to link via portal_token (priority)
       if (portalToken) {
         const { data, error } = await supabase.rpc('link_patient_user_by_token', {
           p_token: portalToken,
         });
         if (error) {
-          console.warn('[Portal] Falha ao vincular paciente:', error);
+          console.warn('[Portal] Falha ao vincular via token:', error);
+        } else if (data) {
+          console.log('[Portal] Vinculado via token, paciente_id:', data);
+          navigate('/paciente/dashboard', { replace: true });
+          return;
         }
       }
 
-      // Check if user is a patient (has pacientes record linked)
+      // 2) Try to link by email as fallback
+      const { data: linkedByEmail, error: emailError } = await supabase.rpc('link_patient_user_by_email');
+      if (emailError) {
+        console.warn('[Portal] Falha ao vincular via email:', emailError);
+      } else if (linkedByEmail) {
+        console.log('[Portal] Vinculado via email, paciente_id:', linkedByEmail);
+        navigate('/paciente/dashboard', { replace: true });
+        return;
+      }
+
+      // 3) Final check - maybe already linked
       const { data: paciente } = await supabase
         .from('pacientes')
         .select('id')
@@ -56,13 +72,16 @@ export default function PacienteLogin() {
       } else {
         toast({
           title: 'Conta não vinculada',
-          description: 'Seu e-mail não está vinculado a nenhum paciente. Peça o link de acesso ao seu terapeuta.',
+          description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
           variant: 'destructive',
         });
+        // Sign out so they can try with correct email
+        linkAttempted.current = false;
         setLinking(false);
       }
     } catch (err) {
       console.error('[Portal] Erro:', err);
+      linkAttempted.current = false;
       setLinking(false);
     }
   };
@@ -76,27 +95,31 @@ export default function PacienteLogin() {
       if (error) {
         toast({ title: 'Erro ao entrar', description: error.message, variant: 'destructive' });
         setSubmitting(false);
+        linkAttempted.current = false;
       }
-      // redirect handled by useEffect
+      // redirect handled by useEffect when user state changes
     } else {
       const { error } = await signUp(form.email, form.password, form.nome);
       if (error) {
         toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
+        setSubmitting(false);
       } else {
+        // With auto-confirm, user is already logged in — useEffect handles redirect.
+        // Show a brief message while we process.
         toast({
-          title: 'Cadastro realizado!',
-          description: 'Verifique seu e-mail para confirmar a conta.',
+          title: 'Conta criada!',
+          description: 'Conectando ao portal...',
         });
-        setTab('login');
+        // Don't set submitting false — let the linking flow handle it
       }
-      setSubmitting(false);
     }
   };
 
-  if (authLoading || linking) {
+  if (authLoading || linking || (submitting && user)) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
+      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground">Conectando ao portal...</p>
       </div>
     );
   }
@@ -126,8 +149,8 @@ export default function PacienteLogin() {
             </h1>
             <p className="text-muted-foreground text-xs mt-1">
               {tab === 'login'
-                ? 'Acompanhe sua evolução e agende consultas.'
-                : 'Cadastre-se para acessar seus resultados.'}
+                ? 'Use o mesmo e-mail informado ao seu terapeuta.'
+                : 'Use o mesmo e-mail que seu terapeuta cadastrou.'}
             </p>
           </div>
 
