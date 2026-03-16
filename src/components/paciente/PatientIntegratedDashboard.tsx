@@ -10,7 +10,7 @@ import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award
+  AlertTriangle, CheckCircle2, Target, Award, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -18,6 +18,7 @@ import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
+import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import { Progress } from '@/components/ui/progress';
 import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
@@ -626,6 +627,62 @@ export default function PatientIntegratedDashboard({
 
             {/* Connection Map */}
             <StructuralConnectionMap data={structuralData} />
+
+            {/* ── Rehab Timeline Widget ── */}
+            {(() => {
+              const insights = structuralData.units ? generateRehabInsights(structuralData.units) : [];
+              if (insights.length === 0) return null;
+              const longestRecovery = insights[0];
+              const hasSlowTissue = insights.some(i => i.category === 'Articular' || i.category === 'Ligamentar');
+              return (
+                <div className="mt-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 p-4 space-y-3">
+                  <div className="flex items-center gap-2 mb-1">
+                    <Clock className="h-4 w-4 text-primary" />
+                    <h4 className="font-bold text-sm text-foreground">Tempo de Reabilitação</h4>
+                    <Badge variant="outline" className="text-[9px] ml-auto">Baseado em Evidência</Badge>
+                  </div>
+
+                  {hasSlowTissue && (
+                    <div className="p-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
+                      <p className="text-[10px] text-destructive font-medium">
+                        ⚠️ Estruturas de cicatrização lenta identificadas. O alívio dos sintomas NÃO significa cura completa do tecido.
+                      </p>
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    {insights.slice(0, 4).map((insight, idx) => {
+                      const colorMap: Record<string, string> = {
+                        emerald: 'bg-emerald-500', amber: 'bg-amber-500', orange: 'bg-orange-500',
+                        red: 'bg-red-500', purple: 'bg-purple-500', blue: 'bg-blue-500',
+                      };
+                      const maxAll = insights[0]?.maxWeeks || 1;
+                      const barWidth = (insight.maxWeeks / maxAll) * 100;
+                      return (
+                        <div key={idx} className="flex items-center gap-2">
+                          <span className="text-sm w-5 shrink-0">{insight.icon}</span>
+                          <span className="text-[9px] font-medium w-14 truncate shrink-0">{insight.tissue}</span>
+                          <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
+                            <div className={cn('h-full rounded-full', colorMap[insight.color] || 'bg-primary')} style={{ width: `${barWidth}%` }} />
+                          </div>
+                          <span className="text-[9px] font-bold w-16 text-right shrink-0">{insight.minWeeks}–{insight.maxWeeks} sem</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+
+                  <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
+                    <div className="flex items-start gap-2">
+                      <Heart className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        Cada tecido tem seu relógio biológico. <strong>Respeitar esse tempo é a diferença entre recuperação completa e recidiva.</strong>
+                        {hasSlowTissue && ' O fortalecimento muscular ao redor é seu principal mecanismo de proteção.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })()}
 
             {/* Gerar Diretriz de Tratamento */}
             <StructuralDiretrizButton data={structuralData} pacienteId={pacienteId} />
