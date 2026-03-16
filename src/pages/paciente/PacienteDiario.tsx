@@ -20,6 +20,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import HealthSyncCard from '@/components/paciente/HealthSyncCard';
+import { useHealthSync, HealthSyncResult } from '@/hooks/useHealthSync';
 
 interface DailyLog {
   id: string;
@@ -43,6 +45,7 @@ const ENERGY_LABELS = ['Exausto', 'Cansado', 'Normal', 'Energizado', 'Muito ativ
 export default function PacienteDiario() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { estimateEnergyFromSteps } = useHealthSync();
   const [paciente, setPaciente] = useState<PacienteData | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
@@ -121,6 +124,16 @@ export default function PacienteDiario() {
     setSubmitting(false);
   };
 
+  // Handle wearable sync data → pre-fill form
+  const handleSyncComplete = (data: HealthSyncResult) => {
+    setEnergy(estimateEnergyFromSteps(data.steps));
+    if (data.sleepHours) setSleepHours(data.sleepHours);
+    const syncNote = `📱 Smartwatch: ${data.steps.toLocaleString()} passos${data.heartRate ? `, ${data.heartRate} bpm` : ''}${data.calories ? `, ${Math.round(data.calories)} kcal` : ''}`;
+    setNotes(prev => prev ? `${prev}\n${syncNote}` : syncNote);
+    setShowForm(true);
+    toast({ title: 'Dados sincronizados! ⌚', description: 'Energia e notas preenchidas automaticamente' });
+  };
+
   // Chart data (last 14 days)
   const chartData = useMemo(() => {
     const last14 = [...logs].reverse().slice(-14);
@@ -194,6 +207,9 @@ export default function PacienteDiario() {
               </CardContent>
             </Card>
           )}
+
+          {/* Wearable Sync */}
+          <HealthSyncCard onSyncComplete={handleSyncComplete} />
 
           {/* Form */}
           {showForm && (
