@@ -26,6 +26,7 @@ const DURACAO_OPTIONS = [30, 45, 50, 60, 90];
 export default function Configuracoes() {
   const { user, loading: authLoading } = useAuth();
   const { config, saveConfig, loading } = useAgenda();
+  const { servicos, saveServicos } = useServicosAtivos();
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
