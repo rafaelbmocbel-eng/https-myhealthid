@@ -8,13 +8,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
-const NAV_ITEMS = [
+type ServiceKey = 'identidade' | 'cob_zero' | 'studio';
+
+const NAV_ITEMS: { label: string; href: string; icon: any; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
-  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, serviceKey: 'identidade' },
+  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
+  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
