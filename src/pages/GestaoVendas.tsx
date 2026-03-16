@@ -82,7 +82,7 @@ export default function GestaoVendas() {
         status: 'pendente'
     });
 
-    // Persisted VIP list, notes, and attendance checks (localStorage)
+    // Persisted VIP list and notes (localStorage)
     const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
     const todayKey = format(new Date(), 'yyyy-MM-dd');
     const [vipIds, setVipIds] = useState<string[]>(() => {
@@ -91,17 +91,12 @@ export default function GestaoVendas() {
     const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-notes`) || '[]'); } catch { return []; }
     });
-    // Attendance status: { 'agendamento-id': 'atendido' | 'faltou' | 'pendente' }
-    const [checkedIds, setCheckedIds] = useState<Record<string, string>>(() => {
-        try { return JSON.parse(localStorage.getItem(`${storageKey}-checks-all`) || '{}'); } catch { return {}; }
-    });
     // Per-patient quick notes linked to appointments
     const [patientNotes, setPatientNotes] = useState<Record<string, string>>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-pnotes-all`) || '{}'); } catch { return {}; }
     });
     const saveVip = (ids: string[]) => { setVipIds(ids); localStorage.setItem(`${storageKey}-vip`, JSON.stringify(ids)); };
     const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
-    const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-all`, JSON.stringify(c)); };
     const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-all`, JSON.stringify(pn)); };
 
     // ── Queries ──────────────────────────────────────────────────────
