@@ -168,10 +168,40 @@ export default function GestaoVendas() {
     // ── Mutations ──────────────────────────────────────────────────
     const upsertSessao = useMutation({
         mutationFn: async (sessao: any) => {
-            const { error } = await supabase.from('controle_sessoes').upsert({
+            const { data: existing, error: selectError } = await supabase
+                .from('controle_sessoes')
+                .select('id, valor_cobrado, forma_pagamento, observacoes, numero_sessao, duracao_minutos, tipo_atendimento')
+                .eq('agendamento_id', sessao.agendamento_id)
+                .maybeSingle();
+
+            if (selectError) throw selectError;
+
+            if (existing?.id) {
+                const { error } = await supabase
+                    .from('controle_sessoes')
+                    .update({
+                        ...sessao,
+                        terapeuta_id: user!.id,
+                        valor_cobrado: sessao.valor_cobrado ?? existing.valor_cobrado ?? 0,
+                        forma_pagamento: sessao.forma_pagamento ?? existing.forma_pagamento ?? null,
+                        observacoes: sessao.observacoes ?? existing.observacoes ?? null,
+                        numero_sessao: sessao.numero_sessao ?? existing.numero_sessao ?? 1,
+                        duracao_minutos: sessao.duracao_minutos ?? existing.duracao_minutos ?? 45,
+                        tipo_atendimento: sessao.tipo_atendimento ?? existing.tipo_atendimento ?? 'retorno',
+                    })
+                    .eq('id', existing.id);
+                if (error) throw error;
+                return;
+            }
+
+            const { error } = await supabase.from('controle_sessoes').insert({
                 ...sessao,
                 terapeuta_id: user!.id,
-            }, { onConflict: 'agendamento_id' });
+                valor_cobrado: sessao.valor_cobrado ?? 0,
+                numero_sessao: sessao.numero_sessao ?? 1,
+                duracao_minutos: sessao.duracao_minutos ?? 45,
+                tipo_atendimento: sessao.tipo_atendimento ?? 'retorno',
+            });
             if (error) throw error;
         },
         onSuccess: () => {
@@ -188,6 +218,24 @@ export default function GestaoVendas() {
             queryClient.invalidateQueries({ queryKey: ['crm-sessoes'] });
         }
     });
+
+    const attendanceStatusByAgendamento = useMemo(() => {
+        const statusMap: Record<string, 'pendente' | 'atendido' | 'faltou'> = {};
+
+        sessoes.forEach((sessao: any) => {
+            if (!sessao.agendamento_id) return;
+
+            statusMap[sessao.agendamento_id] = sessao.status === 'realizada'
+                ? 'atendido'
+                : sessao.status === 'falta' || sessao.status === 'faltou'
+                    ? 'faltou'
+                    : 'pendente';
+        });
+
+        return statusMap;
+    }, [sessoes]);
+
+    const getAttendanceStatus = (agendamentoId: string) => attendanceStatusByAgendamento[agendamentoId] || 'pendente';
 
     // ── Classificação automática dos pacientes ──────────────────────
     const getClassificacao = useMemo(() => {
