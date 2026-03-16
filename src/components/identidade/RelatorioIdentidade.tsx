@@ -115,6 +115,17 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             <Download className="h-3.5 w-3.5" />
             PDF (Breve)
           </Button>
+          {pacienteId && (
+            <Button
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+              onClick={handleRespostaCompleta}
+              disabled={gerandoPDF}
+            >
+              {gerandoPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              Resposta Completa
+            </Button>
+          )}
         </div>
       </div>
 
