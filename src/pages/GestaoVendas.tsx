@@ -1106,37 +1106,36 @@ export default function GestaoVendas() {
                         .filter((ag: any) => isSameDay(parseISO(ag.data_inicio), currentDate) && ag.status !== 'cancelado')
                         .sort((a: any, b: any) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
 
-                    const atendidos = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
-                    const faltaram = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                    const atendidos = dailyAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'atendido').length;
+                    const faltaram = dailyAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'faltou').length;
                     const pendentes = dailyAgs.length - atendidos - faltaram;
                     const pctDone = dailyAgs.length > 0 ? Math.round((atendidos / dailyAgs.length) * 100) : 0;
 
                     const cycleStatus = async (ag: any) => {
                         const agId = ag.id;
-                        const current = checkedIds[agId] || 'pendente';
+                        const current = getAttendanceStatus(agId);
                         const next = current === 'pendente' ? 'atendido' : current === 'atendido' ? 'faltou' : 'pendente';
 
-                        saveChecks({ ...checkedIds, [agId]: next });
+                        if (!ag.paciente_id && next !== 'pendente') {
+                            toast({ title: 'Paciente não vinculado', description: 'Esse atendimento precisa ter um paciente para salvar presença.', variant: 'destructive' });
+                            return;
+                        }
 
-                        // Sincronizar com banco de dados
-                        if (next === 'atendido') {
-                            upsertSessao.mutate({
-                                paciente_id: ag.paciente_id,
-                                agendamento_id: agId,
-                                data_sessao: ag.data_inicio,
-                                status: 'realizada',
-                                valor_cobrado: 0 // Inicia como a pagar
-                            });
-                        } else if (next === 'faltou') {
-                            upsertSessao.mutate({
-                                paciente_id: ag.paciente_id,
-                                agendamento_id: agId,
-                                data_sessao: ag.data_inicio,
-                                status: 'falta',
-                                valor_cobrado: 0
-                            });
-                        } else {
-                            deleteSessao.mutate(agId);
+                        try {
+                            if (next === 'pendente') {
+                                await deleteSessao.mutateAsync(agId);
+                            } else {
+                                await upsertSessao.mutateAsync({
+                                    paciente_id: ag.paciente_id,
+                                    agendamento_id: agId,
+                                    data_sessao: ag.data_inicio,
+                                    status: next === 'atendido' ? 'realizada' : 'falta',
+                                    valor_cobrado: 0,
+                                    tipo_atendimento: ag.tipo_atendimento,
+                                });
+                            }
+                        } catch (e: any) {
+                            toast({ title: 'Erro ao salvar status', description: e.message, variant: 'destructive' });
                         }
                     };
 
