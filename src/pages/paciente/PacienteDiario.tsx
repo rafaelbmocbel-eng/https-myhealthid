@@ -208,6 +208,9 @@ export default function PacienteDiario() {
             </Card>
           )}
 
+          {/* Wearable Sync */}
+          <HealthSyncCard onSyncComplete={handleSyncComplete} />
+
           {/* Form */}
           {showForm && (
             <Card className="border-primary/20 shadow-lg">
