@@ -1447,7 +1447,7 @@ export default function GestaoVendas() {
                                                     {/* Timeline */}
                                                     <div className="relative border-l-2 border-muted ml-3 pl-4 space-y-4 py-2 mt-2">
                                                         {patientAgs.length > 0 ? patientAgs.map((ag: any) => {
-                                                            const status = checkedIds[ag.id] || 'pendente';
+                                                            const status = getAttendanceStatus(ag.id);
                                                             const isPast = parseISO(ag.data_inicio).getTime() < new Date().getTime();
                                                             // auto visually mark past un-checked as red (optional)
                                                             // For now we keep the actual state
