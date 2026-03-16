@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { AvaliacaoMyID } from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles, FileText } from 'lucide-react';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import { useAuth } from '@/contexts/AuthContext';
+import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 
 interface Props {
   avaliacao: AvaliacaoMyID;
