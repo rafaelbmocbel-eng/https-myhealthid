@@ -9,9 +9,10 @@ import {
 import {
   AlertTriangle, ArrowRight, Target, TrendingDown, Zap,
   FileText, Sparkles, Printer, Check, Dumbbell, Brain,
-  ChevronDown, ChevronUp, Copy,
+  ChevronDown, ChevronUp, Copy, Clock, Heart, Shield,
 } from 'lucide-react';
 import StructuralConnectionMap from './StructuralConnectionMap';
+import { generateRehabInsights, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
 
 interface Props {
   data: StructuralAssessmentData;
