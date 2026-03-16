@@ -151,7 +151,7 @@ function MiniCalendar({
 
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
-  const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente } = useAgenda();
+  const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
   const { toast } = useToast();
 
