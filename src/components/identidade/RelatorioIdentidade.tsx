@@ -3,10 +3,12 @@ import { useNavigate } from 'react-router-dom';
 import { AvaliacaoMyID } from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles } from 'lucide-react';
+import { ArrowLeft, Save, Loader2, Download, Share2, ClipboardList, Activity, Brain, Bed, Dumbbell, ShieldAlert, BadgeInfo, Sparkles, FileText } from 'lucide-react';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import { useAuth } from '@/contexts/AuthContext';
+import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 
 interface Props {
   avaliacao: AvaliacaoMyID;
@@ -38,13 +40,40 @@ function ScoreCard({ icon: Icon, label, value, color, description }: {
 
 export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { salvar, salvando } = useAvaliacoesIdentidade();
   const [salvo, setSalvo] = useState(false);
+  const [gerandoPDF, setGerandoPDF] = useState(false);
 
   const handleSalvar = async () => {
     if (!pacienteId) return;
     await salvar({ avaliacao, pacienteId });
     setSalvo(true);
+  };
+
+  const handleRespostaCompleta = async () => {
+    if (!pacienteId || !user) return;
+    setGerandoPDF(true);
+    try {
+      // Fetch therapist name from profile
+      const { data: profile } = await (await import('@/integrations/supabase/client')).supabase
+        .from('profiles')
+        .select('nome, sobrenome')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
+      await gerarPDFRespostaCompleta({
+        avaliacao,
+        pacienteId,
+        terapeutaNome,
+      });
+      toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    } finally {
+      setGerandoPDF(false);
+    }
   };
 
   const resultado = avaliacao.resultado || {};
@@ -92,6 +121,17 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             <Download className="h-3.5 w-3.5" />
             PDF (Breve)
           </Button>
+          {pacienteId && (
+            <Button
+              size="sm"
+              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+              onClick={handleRespostaCompleta}
+              disabled={gerandoPDF}
+            >
+              {gerandoPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              Resposta Completa
+            </Button>
+          )}
         </div>
       </div>
 
