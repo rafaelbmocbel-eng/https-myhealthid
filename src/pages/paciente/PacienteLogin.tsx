@@ -100,7 +100,35 @@ export default function PacienteLogin() {
       // redirect handled by useEffect when user state changes
     } else {
       const { error } = await signUp(form.email, form.password, form.nome);
+
       if (error) {
+        const message = error.message.toLowerCase();
+        const isAlreadyRegistered =
+          message.includes('already registered') ||
+          message.includes('already been registered') ||
+          message.includes('user already registered');
+
+        if (isAlreadyRegistered) {
+          const { error: signInError } = await signIn(form.email, form.password);
+
+          if (!signInError) {
+            toast({
+              title: 'Conta já existente',
+              description: 'Você já tinha cadastro. Entrando no portal...',
+            });
+            return;
+          }
+
+          toast({
+            title: 'E-mail já cadastrado',
+            description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
+            variant: 'destructive',
+          });
+          setTab('login');
+          setSubmitting(false);
+          return;
+        }
+
         toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
         setSubmitting(false);
       } else {
