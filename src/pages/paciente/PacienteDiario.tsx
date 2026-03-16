@@ -124,6 +124,16 @@ export default function PacienteDiario() {
     setSubmitting(false);
   };
 
+  // Handle wearable sync data → pre-fill form
+  const handleSyncComplete = (data: HealthSyncResult) => {
+    setEnergy(estimateEnergyFromSteps(data.steps));
+    if (data.sleepHours) setSleepHours(data.sleepHours);
+    const syncNote = `📱 Smartwatch: ${data.steps.toLocaleString()} passos${data.heartRate ? `, ${data.heartRate} bpm` : ''}${data.calories ? `, ${Math.round(data.calories)} kcal` : ''}`;
+    setNotes(prev => prev ? `${prev}\n${syncNote}` : syncNote);
+    setShowForm(true);
+    toast({ title: 'Dados sincronizados! ⌚', description: 'Energia e notas preenchidas automaticamente' });
+  };
+
   // Chart data (last 14 days)
   const chartData = useMemo(() => {
     const last14 = [...logs].reverse().slice(-14);
