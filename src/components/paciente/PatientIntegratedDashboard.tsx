@@ -18,6 +18,7 @@ import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
+import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import { Progress } from '@/components/ui/progress';
 import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
