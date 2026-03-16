@@ -45,6 +45,7 @@ const ENERGY_LABELS = ['Exausto', 'Cansado', 'Normal', 'Energizado', 'Muito ativ
 export default function PacienteDiario() {
   const { user } = useAuth();
   const { toast } = useToast();
+  const { estimateEnergyFromSteps } = useHealthSync();
   const [paciente, setPaciente] = useState<PacienteData | null>(null);
   const [logs, setLogs] = useState<DailyLog[]>([]);
   const [loading, setLoading] = useState(true);
