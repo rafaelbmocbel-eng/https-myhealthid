@@ -1,26 +1,12 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Capacitor } from '@capacitor/core';
+import type { HealthSyncResult } from '@/types/health';
 
-// Types for the capacitor-health plugin
-interface HealthDataPoint {
-  startDate: string;
-  endDate: string;
-  value: number;
-  unit: string;
-  source?: string;
-}
-
-interface HealthSyncResult {
-  steps: number;
-  heartRate: number | null;
-  sleepHours: number | null;
-  calories: number | null;
-  syncedAt: string;
-}
+export type { HealthSyncResult };
 
 /**
- * Hook to sync health data from Apple HealthKit / Google Health Connect
- * Only works when running as a native Capacitor app
+ * Hook to sync health data from Apple HealthKit / Google Health Connect.
+ * Only works when running as a native Capacitor app.
  */
 export function useHealthSync() {
   const [isNative, setIsNative] = useState(false);
@@ -42,8 +28,8 @@ export function useHealthSync() {
 
   const checkAvailability = async () => {
     try {
-      const { CapacitorHealth } = await import('capacitor-health');
-      const result = await CapacitorHealth.isHealthAvailable();
+      const { Health } = await import('capacitor-health');
+      const result = await Health.isHealthAvailable();
       setIsAvailable(result.available);
     } catch (err) {
       console.warn('Health plugin not available:', err);
@@ -55,17 +41,11 @@ export function useHealthSync() {
     if (!isAvailable) return false;
 
     try {
-      const { CapacitorHealth } = await import('capacitor-health');
-      const result = await CapacitorHealth.checkHealthPermissions({
-        permissions: ['READ_STEPS', 'READ_HEART_RATE', 'READ_CALORIES'],
-      });
+      const { Health } = await import('capacitor-health');
 
-      // If not all granted, request them
-      if (!result.granted) {
-        await CapacitorHealth.requestHealthPermissions({
-          permissions: ['READ_STEPS', 'READ_HEART_RATE', 'READ_CALORIES'],
-        });
-      }
+      await Health.requestHealthPermissions({
+        permissions: ['READ_STEPS', 'READ_HEART_RATE', 'READ_ACTIVE_CALORIES'],
+      });
 
       setHasPermission(true);
       return true;
@@ -78,12 +58,12 @@ export function useHealthSync() {
   }, [isAvailable]);
 
   const syncHealthData = useCallback(async (): Promise<HealthSyncResult | null> => {
-    if (!isAvailable || !hasPermission) return null;
+    if (!isAvailable) return null;
     setSyncing(true);
     setError(null);
 
     try {
-      const { CapacitorHealth } = await import('capacitor-health');
+      const { Health } = await import('capacitor-health');
 
       const now = new Date();
       const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
@@ -91,40 +71,48 @@ export function useHealthSync() {
       // Read steps
       let steps = 0;
       try {
-        const stepsData = await CapacitorHealth.queryAggregated({
+        const stepsData = await Health.queryAggregated({
           startDate: startOfDay.toISOString(),
           endDate: now.toISOString(),
-          dataType: 'STEPS',
+          dataType: 'steps',
+          bucket: 'day',
         });
-        steps = stepsData?.value ?? 0;
+        steps = stepsData.aggregatedData?.[0]?.value ?? 0;
       } catch { steps = 0; }
-
-      // Read heart rate (latest)
-      let heartRate: number | null = null;
-      try {
-        const hrData = await CapacitorHealth.queryAggregated({
-          startDate: startOfDay.toISOString(),
-          endDate: now.toISOString(),
-          dataType: 'HEART_RATE',
-        });
-        heartRate = hrData?.value ?? null;
-      } catch { heartRate = null; }
 
       // Read calories
       let calories: number | null = null;
       try {
-        const calData = await CapacitorHealth.queryAggregated({
+        const calData = await Health.queryAggregated({
           startDate: startOfDay.toISOString(),
           endDate: now.toISOString(),
-          dataType: 'CALORIES',
+          dataType: 'active-calories',
+          bucket: 'day',
         });
-        calories = calData?.value ?? null;
+        calories = calData.aggregatedData?.[0]?.value ?? null;
       } catch { calories = null; }
+
+      // Heart rate via workouts (last workout of the day)
+      let heartRate: number | null = null;
+      try {
+        const workouts = await Health.queryWorkouts({
+          startDate: startOfDay.toISOString(),
+          endDate: now.toISOString(),
+          includeHeartRate: true,
+          includeRoute: false,
+          includeSteps: false,
+        });
+        const lastWorkout = workouts.workouts?.[workouts.workouts.length - 1];
+        if (lastWorkout?.heartRate?.length) {
+          const avgBpm = lastWorkout.heartRate.reduce((s, h) => s + h.bpm, 0) / lastWorkout.heartRate.length;
+          heartRate = Math.round(avgBpm);
+        }
+      } catch { heartRate = null; }
 
       const result: HealthSyncResult = {
         steps,
         heartRate,
-        sleepHours: null, // Sleep requires special handling per platform
+        sleepHours: null,
         calories,
         syncedAt: now.toISOString(),
       };
@@ -138,7 +126,7 @@ export function useHealthSync() {
       setSyncing(false);
       return null;
     }
-  }, [isAvailable, hasPermission]);
+  }, [isAvailable]);
 
   // Estimate energy level from steps (heuristic)
   const estimateEnergyFromSteps = (steps: number): number => {
@@ -161,5 +149,3 @@ export function useHealthSync() {
     estimateEnergyFromSteps,
   };
 }
-
-export type { HealthSyncResult };
