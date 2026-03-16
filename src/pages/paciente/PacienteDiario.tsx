@@ -20,6 +20,8 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip,
   ResponsiveContainer, Legend
 } from 'recharts';
+import HealthSyncCard from '@/components/paciente/HealthSyncCard';
+import { useHealthSync, HealthSyncResult } from '@/hooks/useHealthSync';
 
 interface DailyLog {
   id: string;
