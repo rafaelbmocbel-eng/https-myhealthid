@@ -506,6 +506,19 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               </TabsTrigger>
             </TabsList>
 
+            {/* Botão Resposta Completa - após as sub-abas */}
+            <div className="flex justify-end mt-2">
+              <Button
+                size="sm"
+                className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                onClick={handleRespostaCompleta}
+                disabled={gerandoRespostaCompleta || !ultimaMyID}
+              >
+                {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                Resposta Completa
+              </Button>
+            </div>
+
             <TabsContent value="integrada" className="mt-4">
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             </TabsContent>
