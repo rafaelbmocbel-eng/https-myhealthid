@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useServicosAtivos, ServicosAtivos } from '@/hooks/useServicosAtivos';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -25,6 +26,7 @@ const DURACAO_OPTIONS = [30, 45, 50, 60, 90];
 export default function Configuracoes() {
   const { user, loading: authLoading } = useAuth();
   const { config, saveConfig, loading } = useAgenda();
+  const { servicos, saveServicos } = useServicosAtivos();
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -74,6 +76,44 @@ export default function Configuracoes() {
           <Button asChild variant="outline" className="gap-2">
             <Link to="/agenda"><CalendarDays className="h-4 w-4" /> Abrir Agenda</Link>
           </Button>
+        </div>
+
+        {/* Módulos / Serviços ativos */}
+        <div className="clinical-card mb-6">
+          <div className="flex items-center gap-2 mb-4">
+            <LayoutGrid className="h-4 w-4 text-primary" />
+            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Módulos Ativos</h2>
+          </div>
+          <p className="text-xs text-muted-foreground mb-4">
+            Escolha quais serviços ficam <strong>visíveis</strong> no menu lateral. Desmarcar um módulo apenas oculta-o da navegação.
+          </p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            {([
+              { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, color: 'hsl(var(--primary))' },
+              { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, color: 'hsl(200 70% 50%)' },
+              { key: 'studio' as const, label: 'Studio Personal ID', icon: Sparkles, color: 'hsl(280 60% 55%)' },
+            ]).map(mod => {
+              const ativo = servicos[mod.key];
+              return (
+                <button
+                  key={mod.key}
+                  onClick={() => saveServicos({ ...servicos, [mod.key]: !ativo })}
+                  className={cn(
+                    'flex items-center gap-3 p-3 rounded-xl border-2 transition-all',
+                    ativo
+                      ? 'border-primary bg-primary/5'
+                      : 'border-dashed border-muted-foreground/20 opacity-50',
+                  )}
+                >
+                  <Switch checked={ativo} onCheckedChange={(v) => saveServicos({ ...servicos, [mod.key]: v })} />
+                  <mod.icon className="h-4 w-4 shrink-0" style={{ color: ativo ? mod.color : undefined }} />
+                  <span className={cn('text-sm font-medium', ativo ? 'text-foreground' : 'text-muted-foreground')}>
+                    {mod.label}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
         </div>
 
         {/* Dias de atendimento */}

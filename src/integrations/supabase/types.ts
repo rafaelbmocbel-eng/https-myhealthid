@@ -324,6 +324,7 @@ export type Database = {
           horario_inicio: string
           id: string
           intervalo_entre_sessoes: number
+          servicos_ativos: Json
           slug: string | null
           terapeuta_id: string
           updated_at: string
@@ -337,6 +338,7 @@ export type Database = {
           horario_inicio?: string
           id?: string
           intervalo_entre_sessoes?: number
+          servicos_ativos?: Json
           slug?: string | null
           terapeuta_id: string
           updated_at?: string
@@ -350,6 +352,7 @@ export type Database = {
           horario_inicio?: string
           id?: string
           intervalo_entre_sessoes?: number
+          servicos_ativos?: Json
           slug?: string | null
           terapeuta_id?: string
           updated_at?: string

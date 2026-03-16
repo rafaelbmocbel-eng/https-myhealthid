@@ -8,13 +8,16 @@ import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
-const NAV_ITEMS = [
+type ServiceKey = 'identidade' | 'cob_zero' | 'studio';
+
+const NAV_ITEMS: { label: string; href: string; icon: any; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
-  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, serviceKey: 'identidade' },
+  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
+  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
@@ -31,6 +34,9 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
   const { pendingCount, clearCount } = useAgendamentoNotifications();
+  const { servicos } = useServicosAtivos();
+
+  const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
   const isActive = (href: string) =>
     href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
@@ -70,7 +76,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {NAV_ITEMS.map(item => {
+        {visibleItems.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
