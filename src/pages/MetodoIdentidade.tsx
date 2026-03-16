@@ -177,7 +177,7 @@ export default function MetodoIdentidade() {
 
   const BLOCK_ORDER = [1, 2, 3, 4, 5, 6];
 
-  const avancarBloco = useCallback((blocoAtual: number) => {
+  const avancarBloco = useCallback(async (blocoAtual: number) => {
     setBlocosConcluidos(prev => new Set([...prev, blocoAtual]));
     const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
     const nextBlock = BLOCK_ORDER[currentIdx + 1];
@@ -190,13 +190,23 @@ export default function MetodoIdentidade() {
 
       const finalAv = { ...avaliacao, resultado, concluido: true };
       setAvaliacao(finalAv);
-      setShowRelatorio(true);
-      // Auto-save to patient record
+      
+      // Auto-save to patient record and redirect to diretriz builder
       if (selectedPacienteId) {
-        salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
+        try {
+          const savedData = await salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
+          setSavedAvaliacaoId(savedData?.id || null);
+          toast({ title: '✅ Avaliação salva automaticamente!', description: 'Agora monte a Diretriz de Tratamento.' });
+          setShowDiretrizBuilder(true);
+        } catch (err) {
+          console.error('Erro ao salvar avaliação:', err);
+          setShowRelatorio(true);
+        }
+      } else {
+        setShowRelatorio(true);
       }
     }
-  }, [avaliacao, selectedPacienteId, salvarAvaliacao]);
+  }, [avaliacao, selectedPacienteId, salvarAvaliacao, toast]);
 
   const voltarBloco = useCallback(() => {
     setAvaliacao(prev => {
