@@ -309,6 +309,57 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
+  const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
+
+  const handleRespostaCompleta = async () => {
+    if (!user) return;
+    setGerandoRespostaCompleta(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nome, sobrenome')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
+
+      // Build avaliacao object from latest MyID data
+      const latestMyID = ultimaMyID;
+      if (!latestMyID) {
+        toast({ title: 'Avaliação não encontrada', description: 'Complete uma avaliação MyID antes de gerar o relatório.', variant: 'destructive' });
+        return;
+      }
+
+      const avaliacao = {
+        resultado: {
+          myidScore: latestMyID.myid_score || 0,
+          componentScores: {
+            D: latestMyID.score_d || 0,
+            EFI: latestMyID.score_efi || 0,
+            P: latestMyID.score_p || 0,
+            I: latestMyID.score_i || 0,
+            R: latestMyID.score_r || 0,
+            C: latestMyID.score_c || 0,
+            N: latestMyID.score_n || 0,
+          },
+          redFlagsDetected: !!(latestMyID.red_flags as any)?.detected,
+          redFlagAlerts: (latestMyID.red_flags as any)?.alerts || [],
+          classificacao: latestMyID.classificacao || '',
+        },
+      };
+
+      await gerarPDFRespostaCompleta({
+        avaliacao: avaliacao as any,
+        pacienteId: paciente.id,
+        terapeutaNome,
+      });
+      toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    } finally {
+      setGerandoRespostaCompleta(false);
+    }
+  };
 
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
