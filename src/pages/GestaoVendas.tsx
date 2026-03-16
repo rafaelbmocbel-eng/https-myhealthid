@@ -82,7 +82,7 @@ export default function GestaoVendas() {
         status: 'pendente'
     });
 
-    // Persisted VIP list, notes, and attendance checks (localStorage)
+    // Persisted VIP list and notes (localStorage)
     const storageKey = user?.id ? `crm-notas-${user.id}` : 'crm-notas';
     const todayKey = format(new Date(), 'yyyy-MM-dd');
     const [vipIds, setVipIds] = useState<string[]>(() => {
@@ -91,17 +91,12 @@ export default function GestaoVendas() {
     const [notes, setNotes] = useState<{ id: string; text: string; createdAt: string }[]>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-notes`) || '[]'); } catch { return []; }
     });
-    // Attendance status: { 'agendamento-id': 'atendido' | 'faltou' | 'pendente' }
-    const [checkedIds, setCheckedIds] = useState<Record<string, string>>(() => {
-        try { return JSON.parse(localStorage.getItem(`${storageKey}-checks-all`) || '{}'); } catch { return {}; }
-    });
     // Per-patient quick notes linked to appointments
     const [patientNotes, setPatientNotes] = useState<Record<string, string>>(() => {
         try { return JSON.parse(localStorage.getItem(`${storageKey}-pnotes-all`) || '{}'); } catch { return {}; }
     });
     const saveVip = (ids: string[]) => { setVipIds(ids); localStorage.setItem(`${storageKey}-vip`, JSON.stringify(ids)); };
     const saveNotes = (n: typeof notes) => { setNotes(n); localStorage.setItem(`${storageKey}-notes`, JSON.stringify(n)); };
-    const saveChecks = (c: Record<string, string>) => { setCheckedIds(c); localStorage.setItem(`${storageKey}-checks-all`, JSON.stringify(c)); };
     const savePatientNotes = (pn: Record<string, string>) => { setPatientNotes(pn); localStorage.setItem(`${storageKey}-pnotes-all`, JSON.stringify(pn)); };
 
     // ── Queries ──────────────────────────────────────────────────────
@@ -173,10 +168,40 @@ export default function GestaoVendas() {
     // ── Mutations ──────────────────────────────────────────────────
     const upsertSessao = useMutation({
         mutationFn: async (sessao: any) => {
-            const { error } = await supabase.from('controle_sessoes').upsert({
+            const { data: existing, error: selectError } = await supabase
+                .from('controle_sessoes')
+                .select('id, valor_cobrado, forma_pagamento, observacoes, numero_sessao, duracao_minutos, tipo_atendimento')
+                .eq('agendamento_id', sessao.agendamento_id)
+                .maybeSingle();
+
+            if (selectError) throw selectError;
+
+            if (existing?.id) {
+                const { error } = await supabase
+                    .from('controle_sessoes')
+                    .update({
+                        ...sessao,
+                        terapeuta_id: user!.id,
+                        valor_cobrado: sessao.valor_cobrado ?? existing.valor_cobrado ?? 0,
+                        forma_pagamento: sessao.forma_pagamento ?? existing.forma_pagamento ?? null,
+                        observacoes: sessao.observacoes ?? existing.observacoes ?? null,
+                        numero_sessao: sessao.numero_sessao ?? existing.numero_sessao ?? 1,
+                        duracao_minutos: sessao.duracao_minutos ?? existing.duracao_minutos ?? 45,
+                        tipo_atendimento: sessao.tipo_atendimento ?? existing.tipo_atendimento ?? 'retorno',
+                    })
+                    .eq('id', existing.id);
+                if (error) throw error;
+                return;
+            }
+
+            const { error } = await supabase.from('controle_sessoes').insert({
                 ...sessao,
                 terapeuta_id: user!.id,
-            }, { onConflict: 'agendamento_id' });
+                valor_cobrado: sessao.valor_cobrado ?? 0,
+                numero_sessao: sessao.numero_sessao ?? 1,
+                duracao_minutos: sessao.duracao_minutos ?? 45,
+                tipo_atendimento: sessao.tipo_atendimento ?? 'retorno',
+            });
             if (error) throw error;
         },
         onSuccess: () => {
@@ -193,6 +218,24 @@ export default function GestaoVendas() {
             queryClient.invalidateQueries({ queryKey: ['crm-sessoes'] });
         }
     });
+
+    const attendanceStatusByAgendamento = useMemo(() => {
+        const statusMap: Record<string, 'pendente' | 'atendido' | 'faltou'> = {};
+
+        sessoes.forEach((sessao: any) => {
+            if (!sessao.agendamento_id) return;
+
+            statusMap[sessao.agendamento_id] = sessao.status === 'realizada'
+                ? 'atendido'
+                : sessao.status === 'falta' || sessao.status === 'faltou'
+                    ? 'faltou'
+                    : 'pendente';
+        });
+
+        return statusMap;
+    }, [sessoes]);
+
+    const getAttendanceStatus = (agendamentoId: string) => attendanceStatusByAgendamento[agendamentoId] || 'pendente';
 
     // ── Classificação automática dos pacientes ──────────────────────
     const getClassificacao = useMemo(() => {
@@ -1063,37 +1106,36 @@ export default function GestaoVendas() {
                         .filter((ag: any) => isSameDay(parseISO(ag.data_inicio), currentDate) && ag.status !== 'cancelado')
                         .sort((a: any, b: any) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
 
-                    const atendidos = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
-                    const faltaram = dailyAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                    const atendidos = dailyAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'atendido').length;
+                    const faltaram = dailyAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'faltou').length;
                     const pendentes = dailyAgs.length - atendidos - faltaram;
                     const pctDone = dailyAgs.length > 0 ? Math.round((atendidos / dailyAgs.length) * 100) : 0;
 
                     const cycleStatus = async (ag: any) => {
                         const agId = ag.id;
-                        const current = checkedIds[agId] || 'pendente';
+                        const current = getAttendanceStatus(agId);
                         const next = current === 'pendente' ? 'atendido' : current === 'atendido' ? 'faltou' : 'pendente';
 
-                        saveChecks({ ...checkedIds, [agId]: next });
+                        if (!ag.paciente_id && next !== 'pendente') {
+                            toast({ title: 'Paciente não vinculado', description: 'Esse atendimento precisa ter um paciente para salvar presença.', variant: 'destructive' });
+                            return;
+                        }
 
-                        // Sincronizar com banco de dados
-                        if (next === 'atendido') {
-                            upsertSessao.mutate({
-                                paciente_id: ag.paciente_id,
-                                agendamento_id: agId,
-                                data_sessao: ag.data_inicio,
-                                status: 'realizada',
-                                valor_cobrado: 0 // Inicia como a pagar
-                            });
-                        } else if (next === 'faltou') {
-                            upsertSessao.mutate({
-                                paciente_id: ag.paciente_id,
-                                agendamento_id: agId,
-                                data_sessao: ag.data_inicio,
-                                status: 'falta',
-                                valor_cobrado: 0
-                            });
-                        } else {
-                            deleteSessao.mutate(agId);
+                        try {
+                            if (next === 'pendente') {
+                                await deleteSessao.mutateAsync(agId);
+                            } else {
+                                await upsertSessao.mutateAsync({
+                                    paciente_id: ag.paciente_id,
+                                    agendamento_id: agId,
+                                    data_sessao: ag.data_inicio,
+                                    status: next === 'atendido' ? 'realizada' : 'falta',
+                                    valor_cobrado: 0,
+                                    tipo_atendimento: ag.tipo_atendimento,
+                                });
+                            }
+                        } catch (e: any) {
+                            toast({ title: 'Erro ao salvar status', description: e.message, variant: 'destructive' });
                         }
                     };
 
@@ -1204,7 +1246,14 @@ export default function GestaoVendas() {
                                                 if (error) throw error;
 
                                                 if (data && addPacienteForm.status !== 'pendente') {
-                                                    saveChecks({ ...checkedIds, [data.id]: addPacienteForm.status });
+                                                    await upsertSessao.mutateAsync({
+                                                        paciente_id: addPacienteForm.pacienteId,
+                                                        agendamento_id: data.id,
+                                                        data_sessao: dataInicio.toISOString(),
+                                                        status: addPacienteForm.status === 'atendido' ? 'realizada' : 'falta',
+                                                        valor_cobrado: 0,
+                                                        tipo_atendimento: 'sessao_regular',
+                                                    });
                                                 }
 
                                                 toast({ title: 'Paciente adicionado ao dia!' });
@@ -1291,7 +1340,7 @@ export default function GestaoVendas() {
                                         </div>
 
                                         {dailyAgs.length > 0 ? dailyAgs.map((ag: any) => {
-                                            const status = checkedIds[ag.id] || 'pendente';
+                                            const status = getAttendanceStatus(ag.id);
                                             const pac = patients.find((p: any) => p.id === ag.paciente_id);
                                             const name = ag.titulo || (pac ? `${pac.nome} ${pac.sobrenome || ''}`.trim() : 'Agendamento');
                                             const hora = format(parseISO(ag.data_inicio), 'HH:mm');
@@ -1374,8 +1423,8 @@ export default function GestaoVendas() {
                                                 .filter((ag: any) => ag.paciente_id === historicoPatientId && ag.status !== 'cancelado')
                                                 .sort((a: any, b: any) => parseISO(b.data_inicio).getTime() - parseISO(a.data_inicio).getTime()); // Newest first
 
-                                            const statsAtendidos = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
-                                            const statsFaltas = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                                            const statsAtendidos = patientAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'atendido').length;
+                                            const statsFaltas = patientAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'faltou').length;
 
                                             return (
                                                 <div className="space-y-4">
@@ -1398,7 +1447,7 @@ export default function GestaoVendas() {
                                                     {/* Timeline */}
                                                     <div className="relative border-l-2 border-muted ml-3 pl-4 space-y-4 py-2 mt-2">
                                                         {patientAgs.length > 0 ? patientAgs.map((ag: any) => {
-                                                            const status = checkedIds[ag.id] || 'pendente';
+                                                            const status = getAttendanceStatus(ag.id);
                                                             const isPast = parseISO(ag.data_inicio).getTime() < new Date().getTime();
                                                             // auto visually mark past un-checked as red (optional)
                                                             // For now we keep the actual state
