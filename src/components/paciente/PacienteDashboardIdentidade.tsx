@@ -30,6 +30,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 
 interface Paciente {
   id: string;
