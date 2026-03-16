@@ -1368,17 +1368,37 @@ export default function Agenda() {
               className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold h-11"
               onClick={async () => {
                 try {
-                  const { error } = await supabase.from('controle_sessoes').upsert({
-                    id: paymentModal.sessaoId,
-                    paciente_id: paymentModal.patientId,
-                    agendamento_id: paymentModal.agendamentoId,
-                    terapeuta_id: user?.id,
-                    data_sessao: new Date(paymentModal.data).toISOString(),
-                    status: 'realizada',
-                    valor_cobrado: Number(paymentModal.valor)
-                  }, { onConflict: 'agendamento_id' });
+                  // Check if session already exists for this appointment
+                  let sessaoId = paymentModal.sessaoId;
+                  if (!sessaoId && paymentModal.agendamentoId) {
+                    const { data: existing } = await supabase
+                      .from('controle_sessoes')
+                      .select('id')
+                      .eq('agendamento_id', paymentModal.agendamentoId)
+                      .maybeSingle();
+                    sessaoId = existing?.id;
+                  }
 
-                  if (error) throw error;
+                  if (sessaoId) {
+                    const { error } = await supabase.from('controle_sessoes')
+                      .update({
+                        status: 'realizada',
+                        valor_cobrado: Number(paymentModal.valor),
+                        data_sessao: new Date(paymentModal.data).toISOString(),
+                      })
+                      .eq('id', sessaoId);
+                    if (error) throw error;
+                  } else {
+                    const { error } = await supabase.from('controle_sessoes').insert({
+                      paciente_id: paymentModal.patientId,
+                      agendamento_id: paymentModal.agendamentoId,
+                      terapeuta_id: user?.id,
+                      data_sessao: new Date(paymentModal.data).toISOString(),
+                      status: 'realizada',
+                      valor_cobrado: Number(paymentModal.valor),
+                    });
+                    if (error) throw error;
+                  }
 
                   if (paymentModal.agendamentoId) {
                     await updateAgendamento(paymentModal.agendamentoId, { status: 'concluido' });
@@ -1386,7 +1406,6 @@ export default function Agenda() {
 
                   toast({ title: 'Pagamento registrado! 💵', description: `R$ ${paymentModal.valor} recebido com sucesso.` });
                   setPaymentModal(prev => ({ ...prev, open: false }));
-                  refresh();
                 } catch (err: any) {
                   toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
                 }
