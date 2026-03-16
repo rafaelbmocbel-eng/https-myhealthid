@@ -1423,8 +1423,8 @@ export default function GestaoVendas() {
                                                 .filter((ag: any) => ag.paciente_id === historicoPatientId && ag.status !== 'cancelado')
                                                 .sort((a: any, b: any) => parseISO(b.data_inicio).getTime() - parseISO(a.data_inicio).getTime()); // Newest first
 
-                                            const statsAtendidos = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'atendido').length;
-                                            const statsFaltas = patientAgs.filter((ag: any) => checkedIds[ag.id] === 'faltou').length;
+                                            const statsAtendidos = patientAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'atendido').length;
+                                            const statsFaltas = patientAgs.filter((ag: any) => getAttendanceStatus(ag.id) === 'faltou').length;
 
                                             return (
                                                 <div className="space-y-4">
