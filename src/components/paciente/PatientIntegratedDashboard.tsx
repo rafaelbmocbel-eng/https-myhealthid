@@ -10,7 +10,7 @@ import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award
+  AlertTriangle, CheckCircle2, Target, Award, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
