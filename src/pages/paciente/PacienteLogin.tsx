@@ -99,7 +99,12 @@ export default function PacienteLogin() {
       }
       // redirect handled by useEffect when user state changes
     } else {
-      const { error } = await signUp(form.email, form.password, form.nome);
+      // Pass is_patient flag so the handle_new_user trigger skips profile creation
+      const { error } = await supabase.auth.signUp({
+        email: form.email,
+        password: form.password,
+        options: { data: { nome: form.nome, is_patient: true } },
+      }).then(r => ({ error: r.error }));
 
       if (error) {
         const message = error.message.toLowerCase();
