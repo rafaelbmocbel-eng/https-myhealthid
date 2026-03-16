@@ -173,9 +173,9 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
 
             // ── Auto-create prontuário note with technique summary ──
             try {
-                const tecnicasResumo = analisePersonalizada.fases.map((fase, idx) => {
-                    const tecsSelecionadas = fase.tecnicas.map(t => t.nome || t.tecnica || 'Técnica').join(', ');
-                    const exsSelecionados = fase.exercicios.map(e => e.nome || e.exercicio || 'Exercício').join(', ');
+                const tecnicasResumo = analisePersonalizada.fases.map((fase) => {
+                    const tecsSelecionadas = fase.tecnicas.map(t => t.nome).join(', ');
+                    const exsSelecionados = fase.exercicios.map(e => e.nome).join(', ');
                     return `Fase ${fase.numero} — ${fase.titulo}:\n  Técnicas: ${tecsSelecionadas || 'Nenhuma'}\n  Exercícios: ${exsSelecionados || 'Nenhum'}`;
                 }).join('\n\n');
 
@@ -192,7 +192,7 @@ ${analisePersonalizada.demandasIdentificadas.map(d => `  • ${d.area} (${d.seve
 ${tecnicasResumo}
 
 💡 INSIGHTS BASEADOS EM EVIDÊNCIA:
-${analisePersonalizada.fases.map(f => f.tecnicas.filter(t => t.evidencia === 'A' || t.nivel_evidencia === 'A').map(t => `  ✅ ${t.nome || t.tecnica}: Evidência nível A`).join('\n')).filter(Boolean).join('\n') || '  Consulte as técnicas selecionadas para níveis de evidência detalhados.'}
+${analisePersonalizada.fases.flatMap(f => f.tecnicas.map(t => `  ✅ ${t.nome}: ${t.descricao}`)).slice(0, 5).join('\n') || '  Consulte as técnicas selecionadas para detalhes.'}
 
 Diretriz montada automaticamente a partir da avaliação MyID.`;
 
