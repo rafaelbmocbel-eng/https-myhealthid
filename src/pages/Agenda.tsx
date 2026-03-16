@@ -1069,63 +1069,89 @@ export default function Agenda() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+
+            {/* ===== AÇÕES RÁPIDAS DE STATUS (só para edição de sessões passadas confirmadas) ===== */}
+            {modal.agendamento && modal.agendamento.paciente_id && ['confirmado'].includes(modal.agendamento.status) && parseISO(modal.agendamento.data_fim) < new Date() && (
+              <div className="bg-muted/40 rounded-xl p-3 border border-border space-y-2 animate-in fade-in slide-in-from-top-2">
+                <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">Ação Rápida</p>
+                <div className="grid grid-cols-3 gap-2">
+                  <Button
+                    size="sm"
+                    className="h-10 bg-emerald-600 hover:bg-emerald-700 text-white gap-1.5 text-xs font-bold"
+                    onClick={async () => { await handleSessaoStatus(modal.agendamento!, 'atendido'); setModal({ open: false }); }}
+                  >
+                    <CheckCircle2 className="h-4 w-4" /> Atendido
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-10 border-orange-300 text-orange-700 hover:bg-orange-50 gap-1.5 text-xs font-bold"
+                    onClick={async () => { await handleSessaoStatus(modal.agendamento!, 'faltou'); setModal({ open: false }); }}
+                  >
+                    <X className="h-4 w-4" /> Faltou
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-10 border-amber-300 text-amber-700 hover:bg-amber-50 gap-1.5 text-xs font-bold"
+                    onClick={() => {
+                      setPaymentModal({
+                        open: true,
+                        patientId: modal.agendamento!.paciente_id || '',
+                        agendamentoId: modal.agendamento!.id,
+                        valor: '0',
+                        data: format(new Date(), 'yyyy-MM-dd')
+                      });
+                    }}
+                  >
+                    <DollarSign className="h-4 w-4" /> Pagar
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Ações rápidas para Concluído/Faltou (reverter) */}
+            {modal.agendamento && ['concluido', 'faltou'].includes(modal.agendamento.status) && (
+              <div className="bg-muted/40 rounded-xl p-3 border border-border animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    {STATUS_CONFIG[modal.agendamento.status]?.icon}
+                    <span className="text-xs font-bold">{STATUS_CONFIG[modal.agendamento.status]?.label}</span>
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-7 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={async () => { await handleSessaoStatus(modal.agendamento!, 'pendente'); setModal({ open: false }); }}
+                  >
+                    ↩ Reverter para Confirmado
+                  </Button>
+                </div>
+              </div>
+            )}
+
             {/* Clinical Snapshot (Quick insight if patient selected) */}
             {form.paciente_id && form.paciente_id !== 'bloqueio' && (() => {
               const pac = pacientes.find(p => p.id === form.paciente_id);
-              // Note: In a real scenario we'd use a dedicated hook/query here
-              // For now, let's show a placeholder or basic info we have
               return (
-                <>
-                  <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                        <Users className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
-                        </p>
-                      </div>
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                      <Users className="h-5 w-5" />
                     </div>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
-                      <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
-                        Ver Prontuário →
-                      </a>
-                    </Button>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                        <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
+                      </p>
+                    </div>
                   </div>
-
-                  {/* Alerta de Sinal via Pix (Se não tiver pacote) */}
-                  {false && (
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 space-y-3 animate-in fade-in zoom-in-95 duration-300">
-                      <div className="flex items-start gap-3">
-                        <div className="p-2 bg-amber-100 rounded-lg text-amber-600">
-                          <Smartphone className="h-5 w-5" />
-                        </div>
-                        <div className="flex-1">
-                          <p className="text-sm font-bold text-amber-900">Pagamento de Sinal Obrigatório</p>
-                          <p className="text-xs text-amber-800/80 leading-relaxed">
-                            Este paciente ainda não possui um pacote fechado. Para confirmar o agendamento, solicite um sinal via Pix.
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className="bg-white/60 border border-amber-100 rounded-lg p-3 space-y-2">
-                        <div className="flex justify-between items-center text-xs">
-                          <span className="font-semibold text-amber-900/60 uppercase text-[10px]">Chave Pix (CNPJ)</span>
-                          <Badge variant="outline" className="h-5 text-[9px] bg-amber-100/50 text-amber-700 border-amber-200 cursor-pointer">Copiar</Badge>
-                        </div>
-                        <p className="text-sm font-mono font-bold text-amber-900 tracking-wider">00.000.000/0001-00</p>
-                        <p className="text-[10px] text-amber-700 italic">Beneficiário: MyHealthID Soluções Médicas</p>
-                      </div>
-
-                      <div className="flex items-center gap-2 text-[10px] text-amber-700 font-medium bg-amber-100/30 p-2 rounded-md">
-                        <Info className="h-3 w-3" />
-                        O status será definido como "Pendente" até a confirmação do sinal.
-                      </div>
-                    </div>
-                  )}
-                </>
+                  <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
+                    <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
+                      Ver Prontuário →
+                    </a>
+                  </Button>
+                </div>
               );
             })()}
 
@@ -1137,10 +1163,7 @@ export default function Agenda() {
                   pacientes={pacientes}
                   value={form.paciente_id}
                   onValueChange={v => {
-                    setForm(f => ({
-                      ...f,
-                      paciente_id: v,
-                    }));
+                    setForm(f => ({ ...f, paciente_id: v }));
                   }}
                   allowBlock
                 />
@@ -1170,8 +1193,8 @@ export default function Agenda() {
               </Select>
             </div>
 
-            {/* Datas */}
-            <div className="grid grid-cols-2 gap-3">
+            {/* Horário + Duração rápida */}
+            <div className="space-y-3">
               <div>
                 <Label>Início</Label>
                 <Input type="datetime-local" className="mt-1.5" value={form.data_inicio} onChange={e => {
@@ -1181,27 +1204,62 @@ export default function Agenda() {
                 }} />
               </div>
               <div>
-                <Label>Término</Label>
-                <Input type="datetime-local" className="mt-1.5" value={form.data_fim} onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} />
+                <Label className="mb-1.5 block">Duração</Label>
+                <div className="flex gap-1.5 flex-wrap">
+                  {[30, 45, 50, 60, 90].map(mins => {
+                    const currentDuration = form.data_inicio && form.data_fim
+                      ? differenceInMinutes(new Date(form.data_fim), new Date(form.data_inicio))
+                      : config.duracao_padrao;
+                    const isActive = currentDuration === mins;
+                    return (
+                      <button
+                        key={mins}
+                        type="button"
+                        onClick={() => {
+                          if (!form.data_inicio) return;
+                          const start = new Date(form.data_inicio);
+                          const end = new Date(start.getTime() + mins * 60000);
+                          setForm(f => ({ ...f, data_fim: format(end, "yyyy-MM-dd'T'HH:mm") }));
+                        }}
+                        className={cn(
+                          'px-3 py-1.5 rounded-lg text-xs font-bold border transition-all',
+                          isActive
+                            ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                            : 'bg-card text-muted-foreground border-border hover:border-primary/40 hover:text-foreground',
+                        )}
+                      >
+                        {mins}min
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-2">
+                  <Label className="text-[10px] text-muted-foreground">Término</Label>
+                  <Input type="datetime-local" className="mt-1 h-8 text-xs" value={form.data_fim} onChange={e => setForm(f => ({ ...f, data_fim: e.target.value }))} />
+                </div>
               </div>
             </div>
 
             {/* Status */}
             <div>
               <Label>Status</Label>
-              <Select value={form.status} onValueChange={v => setForm(f => ({ ...f, status: v }))}>
-                <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {Object.entries(STATUS_CONFIG).map(([k, v]) => (
-                    <SelectItem key={k} value={k}>
-                      <div className="flex items-center gap-2">
-                        <div className={cn('h-2 w-2 rounded-full border', v.bg, v.border)} />
-                        {v.label}
-                      </div>
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1.5 flex-wrap mt-1.5">
+                {Object.entries(STATUS_CONFIG).map(([k, v]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, status: k }))}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                      form.status === k
+                        ? cn(v.bg, v.border, v.text, 'ring-1 ring-offset-1', `ring-current`)
+                        : 'bg-card border-border text-muted-foreground hover:bg-accent/30',
+                    )}
+                  >
+                    {v.icon} {v.label}
+                  </button>
+                ))}
+              </div>
             </div>
 
             {/* Recorrência (só para novos) */}
