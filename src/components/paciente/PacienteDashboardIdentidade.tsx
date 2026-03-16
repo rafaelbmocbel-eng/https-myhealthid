@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +30,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 
 interface Paciente {
   id: string;
@@ -308,6 +309,57 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
+  const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
+
+  const handleRespostaCompleta = async () => {
+    if (!user) return;
+    setGerandoRespostaCompleta(true);
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('nome, sobrenome')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
+
+      // Build avaliacao object from latest MyID data
+      const latestMyID = ultimaMyID;
+      if (!latestMyID) {
+        toast({ title: 'Avaliação não encontrada', description: 'Complete uma avaliação MyID antes de gerar o relatório.', variant: 'destructive' });
+        return;
+      }
+
+      const avaliacao = {
+        resultado: {
+          myidScore: latestMyID.myid_score || 0,
+          componentScores: {
+            D: latestMyID.score_d || 0,
+            EFI: latestMyID.score_efi || 0,
+            P: latestMyID.score_p || 0,
+            I: latestMyID.score_i || 0,
+            R: latestMyID.score_r || 0,
+            C: latestMyID.score_c || 0,
+            N: latestMyID.score_n || 0,
+          },
+          redFlagsDetected: !!(latestMyID.red_flags as any)?.detected,
+          redFlagAlerts: (latestMyID.red_flags as any)?.alerts || [],
+          classificacao: latestMyID.classificacao || '',
+        },
+      };
+
+      await gerarPDFRespostaCompleta({
+        avaliacao: avaliacao as any,
+        pacienteId: paciente.id,
+        terapeutaNome,
+      });
+      toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    } finally {
+      setGerandoRespostaCompleta(false);
+    }
+  };
 
   // Buscar avaliações estruturais salvas
   const { data: structuralAvaliacoes = [], refetch: refetchStructural } = useQuery({
@@ -453,6 +505,19 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <Target className="h-4 w-4" /> Diretrizes e Serviços
               </TabsTrigger>
             </TabsList>
+
+            {/* Botão Resposta Completa - após as sub-abas */}
+            <div className="flex justify-end mt-2">
+              <Button
+                size="sm"
+                className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                onClick={handleRespostaCompleta}
+                disabled={gerandoRespostaCompleta || !ultimaMyID}
+              >
+                {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                Resposta Completa
+              </Button>
+            </div>
 
             <TabsContent value="integrada" className="mt-4">
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
