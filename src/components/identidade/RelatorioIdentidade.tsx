@@ -52,14 +52,20 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   };
 
   const handleRespostaCompleta = async () => {
-    if (!pacienteId) return;
+    if (!pacienteId || !user) return;
     setGerandoPDF(true);
     try {
-      const profileName = user?.email?.split('@')[0] || 'Terapeuta';
+      // Fetch therapist name from profile
+      const { data: profile } = await (await import('@/integrations/supabase/client')).supabase
+        .from('profiles')
+        .select('nome, sobrenome')
+        .eq('user_id', user.id)
+        .maybeSingle();
+      const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
       await gerarPDFRespostaCompleta({
         avaliacao,
         pacienteId,
-        terapeutaNome: profileName,
+        terapeutaNome,
       });
       toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
     } catch (err) {
