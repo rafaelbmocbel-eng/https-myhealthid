@@ -1246,7 +1246,14 @@ export default function GestaoVendas() {
                                                 if (error) throw error;
 
                                                 if (data && addPacienteForm.status !== 'pendente') {
-                                                    saveChecks({ ...checkedIds, [data.id]: addPacienteForm.status });
+                                                    await upsertSessao.mutateAsync({
+                                                        paciente_id: addPacienteForm.pacienteId,
+                                                        agendamento_id: data.id,
+                                                        data_sessao: dataInicio.toISOString(),
+                                                        status: addPacienteForm.status === 'atendido' ? 'realizada' : 'falta',
+                                                        valor_cobrado: 0,
+                                                        tipo_atendimento: 'sessao_regular',
+                                                    });
                                                 }
 
                                                 toast({ title: 'Paciente adicionado ao dia!' });
