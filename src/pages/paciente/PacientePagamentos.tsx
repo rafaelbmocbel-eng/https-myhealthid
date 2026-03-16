@@ -5,11 +5,12 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
 import { CreditCard, QrCode, ExternalLink, Copy, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { gerarPixQrCodeDataUrl } from '@/utils/pixQrCode';
+import ResumoFinanceiro from '@/components/pagamento/ResumoFinanceiro';
+import HistoricoPagamentos from '@/components/pagamento/HistoricoPagamentos';
+import UploadComprovante from '@/components/pagamento/UploadComprovante';
 
 interface ServicoFunil {
   nome: string;
@@ -33,6 +34,7 @@ interface Pagamento {
   forma_pagamento: string;
   status: string;
   created_at: string;
+  comprovante_url?: string | null;
 }
 
 export default function PacientePagamentos() {
@@ -47,16 +49,45 @@ export default function PacientePagamentos() {
   const [pixQr, setPixQr] = useState<string | null>(null);
   const [generatingQr, setGeneratingQr] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [lastPaymentId, setLastPaymentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!user) return;
     loadData();
   }, [user]);
 
+  // Realtime: listen for payment status updates
+  useEffect(() => {
+    if (!paciente) return;
+    const channel = supabase
+      .channel('pagamentos-status')
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'pagamentos_paciente',
+          filter: `paciente_id=eq.${paciente.id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          setPagamentos(prev =>
+            prev.map(p => p.id === updated.id ? { ...p, ...updated } : p)
+          );
+          if (updated.status === 'confirmado') {
+            toast({ title: 'Pagamento confirmado! ✅', description: `${updated.descricao} foi confirmado pelo profissional.` });
+          } else if (updated.status === 'recusado') {
+            toast({ title: 'Pagamento recusado ❌', description: `${updated.descricao} foi marcado como recusado.`, variant: 'destructive' });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [paciente]);
+
   const loadData = async () => {
     setLoading(true);
     try {
-      // Get paciente
       const { data: pac } = await supabase
         .from('pacientes')
         .select('id, terapeuta_id, nome, sobrenome')
@@ -65,23 +96,18 @@ export default function PacientePagamentos() {
       if (!pac) return;
       setPaciente(pac);
 
-      // Get funil config from therapist
       const { data: cfg } = await supabase
         .from('funil_config')
         .select('pix_chave, pix_nome, pix_tipo, link_cartao, servicos')
         .eq('terapeuta_id', pac.terapeuta_id)
         .maybeSingle();
       if (cfg) {
-        setConfig({
-          ...cfg,
-          servicos: (cfg.servicos as any) || [],
-        });
+        setConfig({ ...cfg, servicos: (cfg.servicos as any) || [] });
       }
 
-      // Get payment history
       const { data: pags } = await supabase
-        .from('pagamentos_paciente' as any)
-        .select('id, descricao, valor, forma_pagamento, status, created_at')
+        .from('pagamentos_paciente')
+        .select('id, descricao, valor, forma_pagamento, status, created_at, comprovante_url')
         .eq('paciente_id', pac.id)
         .order('created_at', { ascending: false });
       setPagamentos((pags as any[]) || []);
@@ -94,6 +120,7 @@ export default function PacientePagamentos() {
     setSelectedServico(servico);
     setPaymentMethod(null);
     setPixQr(null);
+    setLastPaymentId(null);
   };
 
   const handleSelectPix = async () => {
@@ -122,19 +149,17 @@ export default function PacientePagamentos() {
     if (!paciente || !selectedServico || !paymentMethod) return;
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('pagamentos_paciente' as any).insert({
+      const { data, error } = await supabase.from('pagamentos_paciente').insert({
         paciente_id: paciente.id,
         terapeuta_id: paciente.terapeuta_id,
         descricao: selectedServico.nome,
         valor: selectedServico.valor,
         forma_pagamento: paymentMethod,
         status: 'pendente',
-      } as any);
+      }).select('id').single();
       if (error) throw error;
-      toast({ title: 'Pagamento registrado! ✅', description: 'Seu terapeuta será notificado para confirmar.' });
-      setSelectedServico(null);
-      setPaymentMethod(null);
-      setPixQr(null);
+      setLastPaymentId(data.id);
+      toast({ title: 'Pagamento registrado! ✅', description: 'Seu profissional será notificado para confirmar.' });
       loadData();
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
@@ -147,14 +172,6 @@ export default function PacientePagamentos() {
     if (config?.pix_chave) {
       navigator.clipboard.writeText(config.pix_chave);
       toast({ title: 'Chave PIX copiada! 📋' });
-    }
-  };
-
-  const statusBadge = (status: string) => {
-    switch (status) {
-      case 'confirmado': return <Badge className="bg-emerald-500/15 text-emerald-600 border-emerald-500/30">Confirmado</Badge>;
-      case 'recusado': return <Badge variant="destructive">Recusado</Badge>;
-      default: return <Badge variant="secondary" className="gap-1"><Clock className="h-3 w-3" /> Pendente</Badge>;
     }
   };
 
@@ -175,6 +192,9 @@ export default function PacientePagamentos() {
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-6">
           <h1 className="text-lg font-black text-foreground">Pagamentos</h1>
+
+          {/* Financial summary */}
+          {pagamentos.length > 0 && <ResumoFinanceiro pagamentos={pagamentos} />}
 
           {/* Service selection */}
           {!selectedServico && config?.servicos && config.servicos.length > 0 && (
@@ -222,12 +242,8 @@ export default function PacientePagamentos() {
               </CardHeader>
               <CardContent className="space-y-3">
                 <p className="text-xs text-muted-foreground mb-2">Escolha a forma de pagamento:</p>
-                
                 {config?.pix_chave && (
-                  <button
-                    onClick={handleSelectPix}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
-                  >
+                  <button onClick={handleSelectPix} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-emerald-500/10 flex items-center justify-center">
                       <QrCode className="h-5 w-5 text-emerald-600" />
                     </div>
@@ -237,12 +253,8 @@ export default function PacientePagamentos() {
                     </div>
                   </button>
                 )}
-
                 {config?.link_cartao && (
-                  <button
-                    onClick={handleSelectCartao}
-                    className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all"
-                  >
+                  <button onClick={handleSelectCartao} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <CreditCard className="h-5 w-5 text-blue-600" />
                     </div>
@@ -252,7 +264,6 @@ export default function PacientePagamentos() {
                     </div>
                   </button>
                 )}
-
                 {!config?.pix_chave && !config?.link_cartao && (
                   <p className="text-sm text-muted-foreground text-center py-4">Nenhuma forma de pagamento configurada pelo profissional.</p>
                 )}
@@ -282,24 +293,20 @@ export default function PacientePagamentos() {
                     <img src={pixQr} alt="QR Code PIX" className="mx-auto rounded-lg" />
                   ) : null}
                 </div>
-
                 <div className="flex items-center gap-2">
-                  <div className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs font-mono truncate">
-                    {config?.pix_chave}
-                  </div>
-                  <Button variant="outline" size="icon" onClick={copyPixKey}>
-                    <Copy className="h-4 w-4" />
-                  </Button>
+                  <div className="flex-1 px-3 py-2 bg-muted rounded-lg text-xs font-mono truncate">{config?.pix_chave}</div>
+                  <Button variant="outline" size="icon" onClick={copyPixKey}><Copy className="h-4 w-4" /></Button>
                 </div>
-
                 <p className="text-[10px] text-muted-foreground text-center">
                   Após pagar, clique em "Já paguei" para notificar seu profissional.
                 </p>
-
-                <Button onClick={handleConfirmPayment} disabled={submitting} className="w-full gap-2">
+                <Button onClick={handleConfirmPayment} disabled={submitting || !!lastPaymentId} className="w-full gap-2">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                   Já paguei
                 </Button>
+                {lastPaymentId && user && (
+                  <UploadComprovante pagamentoId={lastPaymentId} userId={user.id} onUploaded={loadData} />
+                )}
               </CardContent>
             </Card>
           )}
@@ -326,52 +333,32 @@ export default function PacientePagamentos() {
                     </p>
                   )}
                 </div>
-
                 <Button asChild className="w-full gap-2">
                   <a href={config?.link_cartao || '#'} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                    Pagar com Cartão
+                    <ExternalLink className="h-4 w-4" /> Pagar com Cartão
                   </a>
                 </Button>
-
                 <p className="text-[10px] text-muted-foreground text-center">
                   Você será redirecionado para a página de pagamento. Após concluir, volte e clique em "Já paguei".
                 </p>
-
-                <Button variant="outline" onClick={handleConfirmPayment} disabled={submitting} className="w-full gap-2">
+                <Button variant="outline" onClick={handleConfirmPayment} disabled={submitting || !!lastPaymentId} className="w-full gap-2">
                   {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
                   Já paguei
                 </Button>
+                {lastPaymentId && user && (
+                  <UploadComprovante pagamentoId={lastPaymentId} userId={user.id} onUploaded={loadData} />
+                )}
               </CardContent>
             </Card>
           )}
 
-          {/* Payment history */}
-          {pagamentos.length > 0 && (
-            <>
-              <Separator />
-              <div>
-                <h2 className="text-sm font-semibold text-foreground mb-3">Histórico</h2>
-                <div className="space-y-2">
-                  {pagamentos.map((p) => (
-                    <div key={p.id} className="flex items-center justify-between p-3 rounded-xl border border-border bg-card">
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{p.descricao}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(p.created_at).toLocaleDateString('pt-BR')} · {p.forma_pagamento === 'pix' ? 'PIX' : 'Cartão'}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-3">
-                        <span className="text-sm font-bold text-foreground">
-                          R$ {Number(p.valor).toFixed(2).replace('.', ',')}
-                        </span>
-                        {statusBadge(p.status)}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </>
+          {/* Payment history with filters */}
+          {user && (
+            <HistoricoPagamentos
+              pagamentos={pagamentos}
+              userId={user.id}
+              onRefresh={loadData}
+            />
           )}
         </div>
       </PacienteLayout>
