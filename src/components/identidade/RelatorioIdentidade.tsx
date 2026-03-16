@@ -40,13 +40,34 @@ function ScoreCard({ icon: Icon, label, value, color, description }: {
 
 export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { salvar, salvando } = useAvaliacoesIdentidade();
   const [salvo, setSalvo] = useState(false);
+  const [gerandoPDF, setGerandoPDF] = useState(false);
 
   const handleSalvar = async () => {
     if (!pacienteId) return;
     await salvar({ avaliacao, pacienteId });
     setSalvo(true);
+  };
+
+  const handleRespostaCompleta = async () => {
+    if (!pacienteId) return;
+    setGerandoPDF(true);
+    try {
+      const profileName = user?.email?.split('@')[0] || 'Terapeuta';
+      await gerarPDFRespostaCompleta({
+        avaliacao,
+        pacienteId,
+        terapeutaNome: profileName,
+      });
+      toast({ title: '📄 PDF Gerado!', description: 'Resposta Completa baixada com sucesso.' });
+    } catch (err) {
+      console.error('Erro ao gerar PDF:', err);
+      toast({ title: 'Erro', description: 'Não foi possível gerar o PDF.', variant: 'destructive' });
+    } finally {
+      setGerandoPDF(false);
+    }
   };
 
   const resultado = avaliacao.resultado || {};
