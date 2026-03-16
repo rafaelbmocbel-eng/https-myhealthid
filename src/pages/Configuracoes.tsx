@@ -8,13 +8,14 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useServicosAtivos, ServicosAtivos } from '@/hooks/useServicosAtivos';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',

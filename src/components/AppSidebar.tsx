@@ -76,7 +76,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {NAV_ITEMS.map(item => {
+        {visibleItems.map(item => {
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
