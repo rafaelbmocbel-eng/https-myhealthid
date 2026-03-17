@@ -55,12 +55,14 @@ export default function ProtocoloScores({ scores }: Props) {
   const barData = ALL_ITEMS.map(item => {
     const isDemand = DEMAND_ITEMS.some(d => d.key === item.key);
     const val = Number(((scores[item.key] as number) || 0).toFixed(1));
-    // Severity for sorting: for demand it's the value, for capacity it's the inverse
-    const severity = isDemand ? val : (10 - val);
+    // Use loss table for actual clinical impact
+    const lossInput = isDemand ? val : (10 - val);
+    const perda = calcularPerdaDimensao(item.key, lossInput);
     return {
       name: item.label,
       value: val,
-      severity,
+      severity: perda.perda_pontos,
+      lossPoints: perda.perda_pontos,
       color: getThermicColor(val, isDemand ? 'demand' : 'capacity'),
     };
   });
