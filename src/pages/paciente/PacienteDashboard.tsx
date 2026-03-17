@@ -221,29 +221,29 @@ export default function PacienteDashboard() {
             </motion.div>
           )}
 
-          {/* ── Alertas & Lembretes ── */}
+          {/* ─── 1. Visão Integrada MyID (Fingerprint + Score + Perdas + Driver + Demand/Capacity + Zonas de Poder) ─── */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
-            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
-          </motion.div>
-
-          {/* ── Metas & Desafios Semanais ── */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
-            {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
-          </motion.div>
-
-          {/* ── Exercícios para Casa ── */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
-            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
-          </motion.div>
-
-          {/* ── Visão Integrada MyID ── */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && (
               <PatientIntegratedDashboard
                 pacienteId={paciente.id}
                 serviceType="identidade"
               />
             )}
+          </motion.div>
+
+          {/* ─── 2. Gamificação: Metas, Desafios & Dicas como Missões ─── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+            {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
+          </motion.div>
+
+          {/* ─── 3. Alertas & Lembretes ─── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
+            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
+          </motion.div>
+
+          {/* ─── 4. Exercícios para Casa ─── */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </motion.div>
 
           {/* Quick stats */}
