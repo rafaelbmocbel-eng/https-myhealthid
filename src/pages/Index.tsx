@@ -20,10 +20,12 @@ import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } 
 import { ptBR } from 'date-fns/locale';
 import { PageTransition, StaggerContainer, StaggerItem, FadeIn } from '@/components/PageTransition';
 import { DashboardSkeleton } from '@/components/ui/skeleton-card';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { servicos } = useServicosAtivos();
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
@@ -449,6 +451,7 @@ export default function Index() {
         {/* Main modules */}
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
           {/* Método Identidade */}
+          {servicos.identidade && (
           <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0">
@@ -480,8 +483,10 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* COB° ZERO */}
+          {servicos.cob_zero && (
           <div className="clinical-card border-2 border-blue-200 hover:border-blue-400 transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shrink-0">
@@ -513,8 +518,10 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* Studio Personal ID */}
+          {servicos.studio && (
           <div className="clinical-card border-2 border-[hsl(165_65%_32%/0.2)] hover:border-[hsl(165_65%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0">
@@ -546,6 +553,7 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* Agenda Premium */}
           <div className="clinical-card border-2 border-amber-200 hover:border-amber-400 transition-all flex flex-col">
@@ -697,8 +705,8 @@ export default function Index() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
               {[
-                { label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' },
-                { label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' },
+                ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' }] : []),
+                ...(servicos.cob_zero ? [{ label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' }] : []),
                 { label: 'Diretrizes Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
                 { label: 'Diretrizes Ativas', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
@@ -742,7 +750,7 @@ export default function Index() {
         )}
 
         {/* Amostra Clínica Populacional */}
-        {amostraClinica && (
+        {servicos.identidade && amostraClinica && (
           <div className="clinical-card mb-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-600 to-pink-500 flex items-center justify-center shadow-lg">
