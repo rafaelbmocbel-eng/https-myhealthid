@@ -750,7 +750,7 @@ export default function Index() {
         )}
 
         {/* Amostra Clínica Populacional */}
-        {amostraClinica && (
+        {servicos.identidade && amostraClinica && (
           <div className="clinical-card mb-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-600 to-pink-500 flex items-center justify-center shadow-lg">
