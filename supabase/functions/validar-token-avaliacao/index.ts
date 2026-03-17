@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         id: data.id,
         paciente_id: data.paciente_id,
+        terapeuta_id: data.terapeuta_id,
         blocos_inclusos: data.blocos_inclusos,
         data_expiracao: data.data_expiracao,
       }),
