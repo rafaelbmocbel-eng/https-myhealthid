@@ -1,6 +1,7 @@
 import React, { useMemo, useState, useCallback } from 'react';
 import type { FingerprintRing } from '@/types/myid';
 import { getThermalColor } from '@/utils/myidCalculations';
+import { classificarMyID100 } from '@/utils/myid/lossTable';
 
 interface Props {
   rings: FingerprintRing[];
