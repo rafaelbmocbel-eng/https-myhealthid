@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Zap, ShieldCheck, Info, AlertTriangle, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import MyIDGaugeSemicircle from './MyIDGaugeSemicircle';
 import {
   DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
   classificarMyID100, PerdaCalculada, calcularPerdaDimensao, identificarDriver,
@@ -85,57 +86,15 @@ export default function MyIDFormulaDisplay({
       <Card className="border-0 shadow-lg bg-card overflow-hidden rounded-3xl">
         <CardContent className="p-8 space-y-6">
           <div className="flex flex-col items-center">
-            <div className="text-7xl font-black tracking-tighter" style={{ color: classificacao.cor }}>
-              {Math.round(myidScore)}
-            </div>
-            <div className="text-sm font-bold text-muted-foreground mt-1">/100</div>
-            <div className="flex flex-col items-center mt-2">
-              <span className="text-[10px] font-black uppercase tracking-[0.4em] text-muted-foreground/60">MyID-100</span>
-              <span
-                className="text-xs font-black mt-2 px-4 py-1.5 rounded-full text-white uppercase tracking-wider shadow-sm"
-                style={{ backgroundColor: classificacao.cor }}
-              >
-                {classificacao.emoji} {classificacao.nome}
-              </span>
-            </div>
-
-            {/* Progress gauge */}
-            <div className="w-full max-w-md mt-6">
-              <div className="h-4 w-full bg-muted/30 rounded-full overflow-hidden shadow-inner">
-                <div
-                  className="h-full rounded-full transition-all duration-1000 ease-out"
-                  style={{
-                    width: `${myidScore}%`,
-                    backgroundColor: classificacao.cor,
-                    boxShadow: `0 0 12px ${classificacao.cor}40`,
-                  }}
-                />
-              </div>
-              <div className="flex justify-between mt-1.5 text-[9px] font-bold text-muted-foreground/50">
-                <span>0 — Crítico</span>
-                <span>50 — Moderado</span>
-                <span>100 — Excelente</span>
-              </div>
-            </div>
-
-            {/* Classification legend */}
-            <div className="flex flex-wrap justify-center gap-x-4 gap-y-1 mt-6 pt-4 border-t border-border/40 w-full max-w-lg">
-              {[
-                { emoji: '🟢', range: '85-100', label: 'EXCELENTE', color: 'text-emerald-600' },
-                { emoji: '🟡', range: '70-84', label: 'BOM', color: 'text-yellow-600' },
-                { emoji: '🟠', range: '50-69', label: 'MODERADO', color: 'text-amber-600' },
-                { emoji: '🔴', range: '0-49', label: 'CRÍTICO', color: 'text-red-600' },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-1.5 opacity-80 hover:opacity-100 transition-opacity">
-                  <span className="text-xs">{item.emoji}</span>
-                  <span className={cn("text-[9px] font-black uppercase tracking-wider", item.color)}>{item.range}</span>
-                  <span className="text-[9px] font-bold text-muted-foreground/80 uppercase tracking-tighter">{item.label}</span>
-                </div>
-              ))}
-            </div>
+            <MyIDGaugeSemicircle
+              score={myidScore}
+              classificacao={classificacao.nome}
+              cor={classificacao.cor}
+              emoji={classificacao.emoji}
+            />
 
             {/* Interpretation */}
-            <div className="mt-6 p-4 rounded-xl bg-muted/30 border w-full max-w-lg text-left">
+            <div className="mt-4 p-4 rounded-xl bg-muted/30 border w-full max-w-lg text-left">
               <p className="text-sm font-medium text-foreground leading-relaxed">{template.descricao}</p>
               <p className="text-xs text-muted-foreground mt-2">{template.recomendacao}</p>
             </div>
