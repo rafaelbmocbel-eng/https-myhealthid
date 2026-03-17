@@ -1,26 +1,27 @@
 import { Badge } from '@/components/ui/badge';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { getThermalColor } from '@/utils/myidCalculations';
+import { calcularPerdaDimensao, DIMENSION_LABELS } from '@/utils/myid/lossTable';
 
 interface Props {
   scores: Record<string, any>;
 }
 
 const DEMAND_ITEMS = [
-  { key: 'D', label: 'Dor', fullLabel: 'Intensidade da Dor' },
-  { key: 'EFI', label: 'Disfunção', fullLabel: 'Disfunção Física' },
-  { key: 'P', label: 'Severidade', fullLabel: 'Severidade Clínica' },
-  { key: 'I', label: 'Incap.', fullLabel: 'Incapacidade' },
-  { key: 'E', label: 'Estrutural', fullLabel: 'Comprometimento Estrutural' },
+  { key: 'D', label: 'Dor', fullLabel: 'Dor (Intensidade)' },
+  { key: 'EFI', label: 'Função', fullLabel: 'Funcionalidade' },
+  { key: 'P', label: 'Psico', fullLabel: 'Psicológico (Medo/Evitação)' },
+  { key: 'I', label: 'Inércia', fullLabel: 'Inércia (Mudanças Recentes)' },
+  { key: 'N', label: 'Ruído', fullLabel: 'Ruído Sistêmico' },
 ];
 
 const CAPACITY_ITEMS = [
-  { key: 'R', label: 'Respirar', fullLabel: 'Respirar (Sono/Energia)' },
-  { key: 'C', label: 'Circular', fullLabel: 'Circular (Fluidez)' },
+  { key: 'R', label: 'Regulação', fullLabel: 'Regulação (Sono/Energia)' },
+  { key: 'C', label: 'Contexto', fullLabel: 'Contexto Social' },
   { key: 'AF', label: 'Atividade', fullLabel: 'Atividade Física' },
-  { key: 'HID', label: 'Hidratar', fullLabel: 'Hidratação' },
-  { key: 'NUT', label: 'Nutrir', fullLabel: 'Nutrição' },
-  { key: 'ERG', label: 'Energia', fullLabel: 'Ergometria/Métrica' },
+  { key: 'HID', label: 'Hidratação', fullLabel: 'Hidratação' },
+  { key: 'NUT', label: 'Nutrição', fullLabel: 'Nutrição' },
+  { key: 'ERG', label: 'Ergonomia', fullLabel: 'Ergonomia' },
 ];
 
 const ALL_ITEMS = [...DEMAND_ITEMS, ...CAPACITY_ITEMS];
@@ -54,12 +55,14 @@ export default function ProtocoloScores({ scores }: Props) {
   const barData = ALL_ITEMS.map(item => {
     const isDemand = DEMAND_ITEMS.some(d => d.key === item.key);
     const val = Number(((scores[item.key] as number) || 0).toFixed(1));
-    // Severity for sorting: for demand it's the value, for capacity it's the inverse
-    const severity = isDemand ? val : (10 - val);
+    // Use loss table for actual clinical impact
+    const lossInput = isDemand ? val : (10 - val);
+    const perda = calcularPerdaDimensao(item.key, lossInput);
     return {
       name: item.label,
       value: val,
-      severity,
+      severity: perda.perda_pontos,
+      lossPoints: perda.perda_pontos,
       color: getThermicColor(val, isDemand ? 'demand' : 'capacity'),
     };
   });
@@ -146,8 +149,8 @@ export default function ProtocoloScores({ scores }: Props) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {top3.map((item, i) => {
-              const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MOD';
-              const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
+              const severity = item.lossPoints >= 13 ? 'CRÍTICO' : item.lossPoints >= 8 ? 'ALTO' : item.lossPoints >= 3 ? 'MOD' : 'OK';
+              const sevColor = item.lossPoints >= 13 ? 'bg-destructive text-white' : item.lossPoints >= 8 ? 'bg-warning text-white' : item.lossPoints >= 3 ? 'bg-muted text-muted-foreground' : 'bg-emerald-100 text-emerald-700';
               const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
               return (
                 <div key={item.name} className="flex flex-col gap-1.5 p-2 rounded-lg bg-muted/20 border border-border/40">
