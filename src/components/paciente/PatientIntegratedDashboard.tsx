@@ -288,20 +288,27 @@ export default function PatientIntegratedDashboard({
   // ── Lógica de Missões e Insights ───────────────────────────────────────────
   const getInsights = (sc: any) => {
     if (!sc) return null;
+    // Use loss-table to calculate actual point recovery potential per factor
     const factors = [
-      { key: 'R', label: 'Melhorar o Sono', potential: 10 - sc.R, mission: 'Tentar dormir 30min mais cedo hoje.' },
-      { key: 'HID', label: 'Beber mais Água', potential: 10 - sc.HID, mission: 'Beber 2 litros de água durante o dia.' },
-      { key: 'AF', label: 'Mais Movimento', potential: 10 - sc.AF, mission: 'Fazer uma caminhada leve de 15 min.' },
-      { key: 'NUT', label: 'Ajustar Nutrição', potential: 10 - sc.NUT, mission: 'Evitar ultraprocessados nas próximas 3 refeições.' },
-      { key: 'P', label: 'Reduzir Ansiedade', potential: sc.P, mission: 'Praticar 5 min de respiração consciente.' },
-      { key: 'I', label: 'Vencer a Inércia', potential: sc.I, mission: 'Realizar uma tarefa pendente que te gera estresse.' },
+      { key: 'R', label: 'Melhorar o Sono', potential: calcularPerdaDimensao('R', 10 - sc.R).perda_pontos, mission: 'Tentar dormir 30min mais cedo hoje.' },
+      { key: 'HID', label: 'Beber mais Água', potential: calcularPerdaDimensao('HID', 10 - sc.HID).perda_pontos, mission: 'Beber 2 litros de água durante o dia.' },
+      { key: 'AF', label: 'Mais Movimento', potential: calcularPerdaDimensao('AF', 10 - sc.AF).perda_pontos, mission: 'Fazer uma caminhada leve de 15 min.' },
+      { key: 'NUT', label: 'Ajustar Nutrição', potential: calcularPerdaDimensao('NUT', 10 - sc.NUT).perda_pontos, mission: 'Evitar ultraprocessados nas próximas 3 refeições.' },
+      { key: 'P', label: 'Reduzir Ansiedade', potential: calcularPerdaDimensao('P', sc.P).perda_pontos, mission: 'Praticar 5 min de respiração consciente.' },
+      { key: 'I', label: 'Vencer a Inércia', potential: calcularPerdaDimensao('I', sc.I).perda_pontos, mission: 'Realizar uma tarefa pendente que te gera estresse.' },
+      { key: 'D', label: 'Reduzir a Dor', potential: calcularPerdaDimensao('D', sc.D).perda_pontos, mission: 'Aplicar técnica de relaxamento ou crioterapia.' },
+      { key: 'C', label: 'Melhorar Contexto', potential: calcularPerdaDimensao('C', 10 - sc.C).perda_pontos, mission: 'Dedique 10 min a uma atividade que lhe traz prazer.' },
+      { key: 'ERG', label: 'Ajustar Ergonomia', potential: calcularPerdaDimensao('ERG', 10 - sc.ERG).perda_pontos, mission: 'Faça micro-pausas a cada 50 min de trabalho.' },
     ];
 
     const sorted = [...factors].sort((a, b) => b.potential - a.potential);
+    // Filter out factors with 0 loss (no improvement needed)
+    const actionable = sorted.filter(f => f.potential > 0);
+    const best = actionable.length > 0 ? actionable : sorted;
     return {
-      opportunity: sorted[0],
-      limitation: sorted[sorted.length - 1],
-      missions: sorted.slice(0, 3).map(f => ({
+      opportunity: best[0],
+      limitation: best[best.length - 1],
+      missions: best.slice(0, 3).map(f => ({
         id: f.key,
         title: f.label,
         description: f.mission,

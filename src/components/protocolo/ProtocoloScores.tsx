@@ -1,26 +1,27 @@
 import { Badge } from '@/components/ui/badge';
 import { RadarChart, Radar, PolarGrid, PolarAngleAxis, PolarRadiusAxis, ResponsiveContainer, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Cell } from 'recharts';
 import { getThermalColor } from '@/utils/myidCalculations';
+import { calcularPerdaDimensao, DIMENSION_LABELS } from '@/utils/myid/lossTable';
 
 interface Props {
   scores: Record<string, any>;
 }
 
 const DEMAND_ITEMS = [
-  { key: 'D', label: 'Dor', fullLabel: 'Intensidade da Dor' },
-  { key: 'EFI', label: 'Disfunção', fullLabel: 'Disfunção Física' },
-  { key: 'P', label: 'Severidade', fullLabel: 'Severidade Clínica' },
-  { key: 'I', label: 'Incap.', fullLabel: 'Incapacidade' },
-  { key: 'E', label: 'Estrutural', fullLabel: 'Comprometimento Estrutural' },
+  { key: 'D', label: 'Dor', fullLabel: 'Dor (Intensidade)' },
+  { key: 'EFI', label: 'Função', fullLabel: 'Funcionalidade' },
+  { key: 'P', label: 'Psico', fullLabel: 'Psicológico (Medo/Evitação)' },
+  { key: 'I', label: 'Inércia', fullLabel: 'Inércia (Mudanças Recentes)' },
+  { key: 'N', label: 'Ruído', fullLabel: 'Ruído Sistêmico' },
 ];
 
 const CAPACITY_ITEMS = [
-  { key: 'R', label: 'Respirar', fullLabel: 'Respirar (Sono/Energia)' },
-  { key: 'C', label: 'Circular', fullLabel: 'Circular (Fluidez)' },
+  { key: 'R', label: 'Regulação', fullLabel: 'Regulação (Sono/Energia)' },
+  { key: 'C', label: 'Contexto', fullLabel: 'Contexto Social' },
   { key: 'AF', label: 'Atividade', fullLabel: 'Atividade Física' },
-  { key: 'HID', label: 'Hidratar', fullLabel: 'Hidratação' },
-  { key: 'NUT', label: 'Nutrir', fullLabel: 'Nutrição' },
-  { key: 'ERG', label: 'Energia', fullLabel: 'Ergometria/Métrica' },
+  { key: 'HID', label: 'Hidratação', fullLabel: 'Hidratação' },
+  { key: 'NUT', label: 'Nutrição', fullLabel: 'Nutrição' },
+  { key: 'ERG', label: 'Ergonomia', fullLabel: 'Ergonomia' },
 ];
 
 const ALL_ITEMS = [...DEMAND_ITEMS, ...CAPACITY_ITEMS];
