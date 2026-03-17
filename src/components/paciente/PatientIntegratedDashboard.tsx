@@ -13,6 +13,7 @@ import {
   AlertTriangle, CheckCircle2, Target, Award, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
@@ -295,7 +296,30 @@ export default function PatientIntegratedDashboard({
   };
 
   const insights = getInsights(scores);
-  const myidScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
+
+  // Compute MyID-100 from component scores using loss table (same logic as calculator)
+  const computeMyID100FromScores = (sc: typeof scores): number => {
+    if (!sc) return 0;
+    let totalPerdas = 0;
+    // Demand dimensions (raw score = how bad)
+    totalPerdas += calcularPerdaDimensao('D', sc.D).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('EFI', sc.EFI).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('P', sc.P).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('I', sc.I).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('N', sc.N).perda_pontos;
+    // Capacity dimensions (deficit = 10 - value)
+    totalPerdas += calcularPerdaDimensao('R', 10 - sc.R).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('C', 10 - sc.C).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('AF', 10 - sc.AF).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('HID', 10 - sc.HID).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('NUT', 10 - sc.NUT).perda_pontos;
+    totalPerdas += calcularPerdaDimensao('ERG', 10 - sc.ERG).perda_pontos;
+    return Math.max(0, Math.min(100, 100 - totalPerdas));
+  };
+
+  // Prefer stored 0-100 value, but recalculate from scores if stored value seems wrong (0 or old scale <11)
+  const storedScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
+  const myidScore = (storedScore > 10 ? storedScore : scores ? computeMyID100FromScores(scores) : storedScore);
   const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
 
   const dimScores = {
