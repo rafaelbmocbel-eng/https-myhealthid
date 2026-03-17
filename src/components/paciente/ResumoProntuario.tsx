@@ -83,6 +83,9 @@ export default function ResumoProntuario({ pacienteId }: Props) {
         P: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.P ?? myidResult.score_p ?? 0),
         I: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.I ?? myidResult.score_i ?? 0),
         N: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.N ?? myidResult.score_n ?? 0),
+        R: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.R ?? myidResult.score_r ?? 0) > 0 ? 10 - Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.R ?? myidResult.score_r ?? 0) : 0,
+        AF: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.AF ?? 0) > 0 ? 10 - Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.AF ?? 0) : 0,
+        ERG: Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.ERG ?? 0) > 0 ? 10 - Number((myidResult.dados_avaliacao as any)?.resultado?.componentScores?.ERG ?? 0) : 0,
     } : undefined;
     const myidInterp = myidResult?.myid_score !== undefined
         ? getMyIDInterpretation(myidResult.myid_score, !!myidResult.red_flags || (myidResult.dados_avaliacao as any)?.resultado?.redFlagsDetected, myidDimScores)

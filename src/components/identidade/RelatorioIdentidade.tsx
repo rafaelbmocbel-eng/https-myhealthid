@@ -84,6 +84,9 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
     P: resultado?.componentScores?.P ?? 0,
     I: resultado?.componentScores?.I ?? 0,
     N: resultado?.componentScores?.N ?? 0,
+    R: resultado?.componentScores?.R ? 10 - resultado.componentScores.R : 0,
+    AF: resultado?.componentScores?.AF ? 10 - resultado.componentScores.AF : 0,
+    ERG: resultado?.componentScores?.ERG ? 10 - resultado.componentScores.ERG : 0,
   };
   const interp = getMyIDInterpretation(resultado?.myidScore ?? 0, hasRedFlags, dimScores);
   const myidStatus = interp.label;
