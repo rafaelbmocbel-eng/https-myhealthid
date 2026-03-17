@@ -980,7 +980,7 @@ export default function Index() {
         )}
 
         {/* Análise Epidemiológica */}
-        {avaliacoesRaw.length >= 2 && (
+        {(servicos.identidade || servicos.cob_zero || servicos.studio) && avaliacoesRaw.length >= 2 && (
           <div className="clinical-card mb-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
@@ -989,14 +989,14 @@ export default function Index() {
               <div>
                 <h2 className="font-bold text-foreground">Central de Inteligência Epidemiológica</h2>
                 <p className="text-xs text-muted-foreground">
-                  Integração Multi-Serviço (MyID, COB° ZERO, Studio) · Base Científica
+                  Inteligência clínica dos módulos visíveis · Base Científica
                 </p>
               </div>
             </div>
             <AmostraIntegrada
-              avaliacoesIdentidade={avaliacoesRaw as any}
-              avaliacoesCobZero={avaliacoesCobZero as any}
-              medidasStudio={medidasStudio as any}
+              avaliacoesIdentidade={servicos.identidade ? (avaliacoesRaw as any) : []}
+              avaliacoesCobZero={servicos.cob_zero ? (avaliacoesCobZero as any) : []}
+              medidasStudio={servicos.studio ? (medidasStudio as any) : []}
             />
           </div>
         )}
@@ -1010,8 +1010,10 @@ export default function Index() {
             {[
               { label: 'Novo Paciente', icon: UserPlus, to: '/pacientes', gradient: 'from-primary to-rose-500' },
               { label: 'Agendar', icon: CalendarDays, to: '/agenda', gradient: 'from-amber-500 to-orange-500' },
-              { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
-              { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },
+              ...(servicos.identidade ? [
+                { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
+                { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },
+              ] : []),
             ].map(item => (
               <div key={item.label} className="flex items-center gap-2">
                 <span className="px-3 py-1.5 rounded-lg bg-card border shadow-lg text-xs font-medium text-foreground whitespace-nowrap">
