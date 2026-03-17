@@ -131,8 +131,37 @@ export default function AvaliacaoPublica() {
   };
 
   const handleFinalizar = async () => {
+    setSalvando(true);
     await salvarBloco(6, data);
     setBlocosConcluidos(prev => new Set([...prev, 6]));
+
+    // Compute result and sync to backend
+    try {
+      const calculator = new MyIDCalculator(data);
+      const resultado = calculator.getFullResult();
+
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/complete-myid`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'apikey': anonKey,
+            'Authorization': `Bearer ${anonKey}`,
+          },
+          body: JSON.stringify({
+            link_avaliacao_id: linkInfo?.id,
+            result: resultado,
+            raw_data: data,
+          }),
+        }
+      );
+    } catch (e) {
+      console.warn('Erro ao sincronizar resultado:', e);
+    }
+
+    setSalvando(false);
     setConcluido(true);
   };
 
