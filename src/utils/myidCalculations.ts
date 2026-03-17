@@ -63,15 +63,15 @@ export function calcularScoreP_MyID(bloco4: MyIDBloco4Data): number {
 // ── Score R ──
 export function calcularScoreR_MyID(bloco5: MyIDBloco5Data): { r: number; r1: number; r2: number; r3: number; c: number } {
   const horasSonoNorm = Math.min(bloco5.horasSono * 1.25, 10);
-  const acordaMap: Record<string, number> = { nunca: 0, raramente: 2, frequentemente: 5, sempre: 8 };
+  const acordaMap: Record<string, number> = { nunca: 0, never: 0, raramente: 2, rarely: 2, frequentemente: 5, frequently: 5, sempre: 8, always: 8 };
   const acordaPenalty = acordaMap[bloco5.acordaPorDor] ?? 0;
   const r1 = Math.max(0, (bloco5.qualidadeSono + horasSonoNorm - acordaPenalty) / 2);
 
-  const exaustoMap: Record<string, number> = { nunca: 0, as_vezes: 3, frequentemente: 6, sempre: 9 };
+  const exaustoMap: Record<string, number> = { nunca: 0, never: 0, as_vezes: 3, sometimes: 3, frequentemente: 6, frequently: 6, sempre: 9, always: 9 };
   const exaustoPenalty = exaustoMap[bloco5.exaustoAoAcordar] ?? 0;
   const r2 = Math.max(0, (10 - bloco5.fadiga + (10 - exaustoPenalty)) / 2);
 
-  const controleMap: Record<string, number> = { muito: 9, moderado: 6, pouco: 3, sem: 0 };
+  const controleMap: Record<string, number> = { muito: 9, very: 9, moderado: 6, moderate: 6, pouco: 3, little: 3, sem: 0, none: 0 };
   const controleVal = controleMap[bloco5.controleSaude] ?? 5;
   const r3 = ((10 - bloco5.estresse) + (10 - bloco5.ansiedade) + controleVal) / 3;
 
