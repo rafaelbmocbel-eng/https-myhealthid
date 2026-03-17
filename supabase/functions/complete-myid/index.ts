@@ -299,7 +299,7 @@ O paciente ${pacienteNome} apresenta um índice MyID-100 de ${myidFormatted}/100
         paciente_id: pacienteId,
         terapeuta_id: terapeutaId,
         tipo: "myid_resposta",
-        titulo: `MyID Respondido — Score ${myidFormatted} (${classificacao})`,
+        titulo: `MyID Respondido — Score ${myidFormatted}/100 (${classificacao})`,
         descricao,
         dados_extras: { avaliacao_id: inserted.id, myid_score: myidScore, classificacao, scores: cs },
         referencia_id: inserted.id,
