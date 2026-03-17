@@ -13,6 +13,7 @@ import {
   AlertTriangle, CheckCircle2, Target, Award, Clock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
