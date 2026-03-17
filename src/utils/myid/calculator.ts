@@ -131,21 +131,21 @@ export class MyIDCalculator {
         const sleepQuality = this.responses.bloco_5a_quality ?? this.responses.bloco5?.qualidadeSono ?? 5;
         const sleepHours = this.responses.bloco_5a_hours ?? this.responses.bloco5?.horasSono ?? 7;
         const sleepHoursNormalized = this.normalizeTo10(sleepHours, 9);
-        const awakeMapping: Record<string, number> = { nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
+        const awakeMapping: Record<string, number> = { never: 10, nunca: 10, rarely: 7, rarely_v2: 7, moderately: 5, frequently: 3, always: 0 };
         let sleepAwake = awakeMapping[this.responses.bloco_5a_awake || this.responses.bloco5?.acordaPorDor || 'rarely'] ?? 5;
         const disorders = this.responses.bloco_5a_disorders || this.responses.bloco5?.bloco_5a_disorders || [];
         const disorderPenalty = disorders.length * 1.5;
         const rSleep = Math.max(0, ((sleepQuality + sleepHoursNormalized + sleepAwake) / 3) - disorderPenalty);
 
-        const fatigue = this.responses.fadiga ?? 5;
-        const fatigueInverted = 10 - fatigue;
-        const tirednessMapping: Record<string, number> = { nunca: 10, sometimes: 6, frequently: 3, always: 0 };
+        // Fatigue is derived from tired_awake answer (no separate question exists)
+        const tirednessMapping: Record<string, number> = { never: 10, nunca: 10, sometimes: 6, as_vezes: 6, frequently: 3, always: 0 };
         const wakingTired = tirednessMapping[this.responses.bloco_5b_tired_awake || this.responses.bloco5?.exaustoAoAcordar || 'sometimes'] ?? 5;
-        const rEnergy = (fatigueInverted + wakingTired) / 2;
+        // Use wakingTired as the sole energy metric (fadiga field was never collected)
+        const rEnergy = wakingTired;
 
         const stress = this.responses.bloco_5c_stress ?? this.responses.bloco5?.estresse ?? 5;
         const anxiety = this.responses.bloco_5c_anxiety ?? this.responses.bloco5?.ansiedade ?? 5;
-        const controlMapping: Record<string, number> = { very: 10, moderate: 6, little: 3, none: 0, muito: 10, sem: 0 };
+        const controlMapping: Record<string, number> = { very: 10, moderate: 6, little: 3, none: 0, muito: 10, moderado: 6, pouco: 3, sem: 0 };
         const control = controlMapping[this.responses.bloco_5c_control || this.responses.bloco5?.controleSaude || 'moderate'] ?? 5;
         const rPsychology = ((10 - stress) + (10 - anxiety) + control) / 3;
 
