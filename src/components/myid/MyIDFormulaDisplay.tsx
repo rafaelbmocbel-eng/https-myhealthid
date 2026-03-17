@@ -107,7 +107,7 @@ export default function MyIDFormulaDisplay({
                 <div key={dim} className="flex items-center gap-2 p-2.5 bg-red-50 border border-red-200 rounded-xl text-xs">
                   <AlertTriangle className="h-4 w-4 text-red-500 shrink-0" />
                   <span className="font-bold text-red-900">
-                    ⚠️ Gatilho Crítico: {DIMENSION_LABELS[dim]} (score bruto {p.score_bruto.toFixed(1)}) → classificação forçada para CRÍTICO
+                    ⚠️ Característica em perigo crítico: {DIMENSION_LABELS[dim]} (score bruto {p.score_bruto.toFixed(1)})
                   </span>
                 </div>
               ))}
