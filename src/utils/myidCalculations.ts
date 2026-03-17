@@ -142,26 +142,10 @@ export function getMyIDInterpretation(
 ): Interpretation {
   const val = score ?? 0;
 
-  // Detect if we're on 0-100 scale or legacy 0-10 scale
-  // If score > 15, it's the new MyID-100 scale
-  const isMyID100 = val > 15;
-
-  let classificacao: string;
-  let cor: string;
-
-  if (isMyID100) {
-    // MyID-100: higher = better
-    if (val >= 85) { classificacao = 'EXCELENTE'; cor = '#10B981'; }
-    else if (val >= 70) { classificacao = 'BOM'; cor = '#FBBF24'; }
-    else if (val >= 50) { classificacao = 'MODERADO'; cor = '#F59E0B'; }
-    else { classificacao = 'CRÍTICO'; cor = '#DC2626'; }
-  } else {
-    // Legacy 0-10 scale
-    if (val < 3) { classificacao = 'EXCELENTE'; cor = '#10B981'; }
-    else if (val < 6) { classificacao = 'BOM'; cor = '#FBBF24'; }
-    else if (val < 8) { classificacao = 'MODERADO'; cor = '#F59E0B'; }
-    else { classificacao = 'CRÍTICO'; cor = '#DC2626'; }
-  }
+  // Use classificarMyID100 as single source of truth
+  const classif = classificarMyID100(val);
+  let classificacao = classif.nome;
+  let cor = classif.cor;
 
   // Alertas críticos/moderados ficam separados da classificação principal.
   // A classificação visual principal deve depender apenas do score total.
