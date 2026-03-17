@@ -215,13 +215,16 @@ serve(async (req) => {
       const nNum = Number(scoreN);
       const myidNum = Number(myidScore);
 
-      const severityDesc = myidNum >= 8
-        ? "RISCO DE CRONIFICAÇÃO — Paciente apresenta sobrecarga sistêmica extrema com múltiplos domínios comprometidos. Necessidade urgente de abordagem multidisciplinar e reavaliação de condutas atuais."
-        : myidNum >= 6
-        ? "SOBRECARGA CRÍTICA — O perfil indica demandas que excedem significativamente a capacidade de regulação do paciente. Intervenção prioritária recomendada nos domínios mais comprometidos."
-        : myidNum >= 3
+      // MyID-100 scale: 0-100, higher = better
+      const severityDesc = myidNum <= 29
+        ? "SITUAÇÃO CRÍTICA — Paciente apresenta sobrecarga sistêmica extrema com múltiplos domínios comprometidos. Necessidade urgente de abordagem multidisciplinar."
+        : myidNum <= 49
+        ? "SOBRECARGA CRÍTICA — O perfil indica demandas que excedem significativamente a capacidade de regulação do paciente. Intervenção prioritária recomendada."
+        : myidNum <= 69
         ? "SOBRECARGA MODERADA — Há desequilíbrio entre demandas e capacidades de recuperação. Monitoramento frequente e ajustes terapêuticos são indicados."
-        : "RECUPERAÇÃO FAVORÁVEL — O paciente apresenta boa capacidade de regulação com demandas controláveis. Manutenção e prevenção são o foco.";
+        : myidNum <= 84
+        ? "BOA SAÚDE — Perfil bom com espaço para otimização. Tratamento conservador e ajustes de estilo de vida recomendados."
+        : "EXCELENTE — O paciente apresenta boa capacidade de regulação com demandas controláveis. Manutenção e prevenção são o foco.";
 
       // Identify top concerns
       const dimensions = [
@@ -267,7 +270,7 @@ serve(async (req) => {
 
       const descricao = `📋 QUESTIONÁRIO MyID RESPONDIDO PELO PACIENTE — ${pacienteNome}
 
-🎯 RESULTADO GERAL: Score MyID ${myidFormatted}/10 — ${classificacao}
+🎯 RESULTADO GERAL: Score MyID-100 ${myidFormatted}/100 — ${classificacao}
 📌 ${severityDesc}
 ${flagsText}
 
@@ -288,15 +291,15 @@ Paciente refere ${lifestyleText}. Intensidade de dor reportada (NRS): ${painInte
 ${psychText ? `\n🧠 PERFIL PSICOLÓGICO:\n${psychText}` : ""}
 
 📝 INTERPRETAÇÃO CLÍNICA:
-O paciente ${pacienteNome} apresenta um índice MyID de ${myidFormatted}/10, classificado como "${classificacao}". ${topConcerns.length >= 3 ? "O perfil revela comprometimento em múltiplas dimensões, sugerindo uma condição de complexidade elevada que demanda abordagem integrada e multidisciplinar." : topConcerns.length >= 1 ? `Os domínios de ${topConcerns.map(d => d.name).join(" e ")} requerem atenção prioritária nas condutas terapêuticas.` : "O perfil sistêmico encontra-se em faixa favorável, com foco recomendado em manutenção e prevenção."} ${dNum >= 6 && efiNum >= 6 ? "A combinação de dor intensa com limitação funcional significativa indica necessidade de intervenção analgésica associada à reabilitação funcional progressiva." : ""} ${pNum >= 6 ? "O componente psicológico elevado sugere que estratégias de educação em dor, terapia cognitivo-comportamental ou técnicas de regulação emocional devem ser incorporadas ao plano terapêutico." : ""} ${nNum >= 6 ? "Os fatores de estilo de vida comprometidos (ruído sistêmico) podem estar perpetuando o quadro — orientações sobre higiene do sono, manejo do estresse e hábitos saudáveis são essenciais." : ""}
+O paciente ${pacienteNome} apresenta um índice MyID-100 de ${myidFormatted}/100, classificado como "${classificacao}". ${topConcerns.length >= 3 ? "O perfil revela comprometimento em múltiplas dimensões, sugerindo uma condição de complexidade elevada que demanda abordagem integrada e multidisciplinar." : topConcerns.length >= 1 ? `Os domínios de ${topConcerns.map(d => d.name).join(" e ")} requerem atenção prioritária nas condutas terapêuticas.` : "O perfil sistêmico encontra-se em faixa favorável, com foco recomendado em manutenção e prevenção."} ${dNum >= 6 && efiNum >= 6 ? "A combinação de dor intensa com limitação funcional significativa indica necessidade de intervenção analgésica associada à reabilitação funcional progressiva." : ""} ${pNum >= 6 ? "O componente psicológico elevado sugere que estratégias de educação em dor, terapia cognitivo-comportamental ou técnicas de regulação emocional devem ser incorporadas ao plano terapêutico." : ""} ${nNum >= 6 ? "Os fatores de estilo de vida comprometidos (ruído sistêmico) podem estar perpetuando o quadro — orientações sobre higiene do sono, manejo do estresse e hábitos saudáveis são essenciais." : ""}
 
-🔄 Avaliação preenchida pelo paciente via link público. Dados completos disponíveis para análise detalhada no dashboard.`;
+🔄 Avaliação preenchida pelo paciente via link público (MyID-100 v2.0). Dados completos disponíveis para análise detalhada no dashboard.`;
 
       await supabase.from("notas_prontuario").insert({
         paciente_id: pacienteId,
         terapeuta_id: terapeutaId,
         tipo: "myid_resposta",
-        titulo: `MyID Respondido — Score ${myidFormatted} (${classificacao})`,
+        titulo: `MyID Respondido — Score ${myidFormatted}/100 (${classificacao})`,
         descricao,
         dados_extras: { avaliacao_id: inserted.id, myid_score: myidScore, classificacao, scores: cs },
         referencia_id: inserted.id,
