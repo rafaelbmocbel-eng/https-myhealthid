@@ -215,13 +215,16 @@ serve(async (req) => {
       const nNum = Number(scoreN);
       const myidNum = Number(myidScore);
 
-      const severityDesc = myidNum >= 8
-        ? "RISCO DE CRONIFICAÇÃO — Paciente apresenta sobrecarga sistêmica extrema com múltiplos domínios comprometidos. Necessidade urgente de abordagem multidisciplinar e reavaliação de condutas atuais."
-        : myidNum >= 6
-        ? "SOBRECARGA CRÍTICA — O perfil indica demandas que excedem significativamente a capacidade de regulação do paciente. Intervenção prioritária recomendada nos domínios mais comprometidos."
-        : myidNum >= 3
+      // MyID-100 scale: 0-100, higher = better
+      const severityDesc = myidNum <= 29
+        ? "SITUAÇÃO CRÍTICA — Paciente apresenta sobrecarga sistêmica extrema com múltiplos domínios comprometidos. Necessidade urgente de abordagem multidisciplinar."
+        : myidNum <= 49
+        ? "SOBRECARGA CRÍTICA — O perfil indica demandas que excedem significativamente a capacidade de regulação do paciente. Intervenção prioritária recomendada."
+        : myidNum <= 69
         ? "SOBRECARGA MODERADA — Há desequilíbrio entre demandas e capacidades de recuperação. Monitoramento frequente e ajustes terapêuticos são indicados."
-        : "RECUPERAÇÃO FAVORÁVEL — O paciente apresenta boa capacidade de regulação com demandas controláveis. Manutenção e prevenção são o foco.";
+        : myidNum <= 84
+        ? "BOA SAÚDE — Perfil bom com espaço para otimização. Tratamento conservador e ajustes de estilo de vida recomendados."
+        : "EXCELENTE — O paciente apresenta boa capacidade de regulação com demandas controláveis. Manutenção e prevenção são o foco.";
 
       // Identify top concerns
       const dimensions = [
