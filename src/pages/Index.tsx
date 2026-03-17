@@ -521,6 +521,7 @@ export default function Index() {
           )}
 
           {/* Studio Personal ID */}
+          {servicos.studio && (
           <div className="clinical-card border-2 border-[hsl(165_65%_32%/0.2)] hover:border-[hsl(165_65%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0">
@@ -552,6 +553,7 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* Agenda Premium */}
           <div className="clinical-card border-2 border-amber-200 hover:border-amber-400 transition-all flex flex-col">
