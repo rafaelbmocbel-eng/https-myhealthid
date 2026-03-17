@@ -163,19 +163,17 @@ export function getMyIDInterpretation(
     else { classificacao = 'CRÍTICO'; cor = '#DC2626'; }
   }
 
-  // Check critical triggers from capacity dimensions (R≥7, AF≥7, ERG≥8) → force CRÍTICO
-  // This matches classificarMyID100 in lossTable.ts for consistency
-  let temGatilhoCritico = false;
+  // Alertas críticos/moderados ficam separados da classificação principal.
+  // A classificação visual principal deve depender apenas do score total.
   const dimensionAlerts: DimensionAlert[] = [];
 
   if (dimensionScores) {
-    // Critical trigger thresholds (demand dims: high raw score = bad)
     const CRITICAL_THRESHOLDS: Record<string, number> = { R: 7, AF: 7, ERG: 8 };
     for (const [key, dimVal] of Object.entries(dimensionScores)) {
       if (dimVal === undefined || dimVal === null) continue;
       const threshold = CRITICAL_THRESHOLDS[key];
+
       if (threshold !== undefined && dimVal >= threshold) {
-        temGatilhoCritico = true;
         dimensionAlerts.push({
           dimension: key,
           label: DIMENSION_LABELS[key] || key,
@@ -191,18 +189,6 @@ export function getMyIDInterpretation(
         });
       }
     }
-  }
-
-  // Force CRÍTICO if critical triggers detected
-  if (temGatilhoCritico) {
-    classificacao = 'CRÍTICO';
-    cor = '#DC2626';
-  } else if (hasRedFlags && (classificacao === 'EXCELENTE' || classificacao === 'BOM')) {
-    classificacao = 'MODERADO';
-    cor = '#F59E0B';
-  } else if (dimensionAlerts.length > 0 && (classificacao === 'EXCELENTE' || classificacao === 'BOM')) {
-    classificacao = 'MODERADO';
-    cor = '#F59E0B';
   }
 
   const template = TEMPLATES_INTERPRETACAO[classificacao] || TEMPLATES_INTERPRETACAO['MODERADO'];
