@@ -9,27 +9,21 @@ import {
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
 import { gerarPDFEvolucao } from '@/utils/pdfEvolucaoGenerator';
+import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 
-const SCORE_LABELS: Record<string, string> = {
-  score_e: 'Estrutural',
-  score_p: 'Cinesiofobia',
-  score_c: 'Carga Contextual',
-  score_f: 'Contextual',
-  score_d: 'Dor',
-  score_r: 'Regulação',
-  score_efi: 'Funcionalidade',
-};
+// ── Dimension configuration: demand (higher raw = worse) vs capacity (higher raw = better) ──
+const DIMENSION_CONFIG: { key: string; dbKey: string; label: string; color: string; type: 'demand' | 'capacity' }[] = [
+  { key: 'D', dbKey: 'score_d', label: 'Dor', color: '#ef4444', type: 'demand' },
+  { key: 'EFI', dbKey: 'score_efi', label: 'Funcionalidade', color: '#f97316', type: 'demand' },
+  { key: 'P', dbKey: 'score_p', label: 'Kinesiofobia', color: '#f59e0b', type: 'demand' },
+  { key: 'I', dbKey: 'score_i', label: 'Inércia', color: '#fcd34d', type: 'demand' },
+  { key: 'R', dbKey: 'score_r', label: 'Regulação', color: '#8b5cf6', type: 'capacity' },
+  { key: 'C', dbKey: 'score_c', label: 'Contexto', color: '#6366f1', type: 'capacity' },
+  { key: 'N', dbKey: 'score_n', label: 'Ruído', color: '#64748b', type: 'demand' },
+];
 
-const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi'];
-const SCORE_COLORS: Record<string, string> = {
-  score_e: '#3b82f6',
-  score_p: '#f59e0b',
-  score_c: '#06b6d4',
-  score_f: '#10b981',
-  score_d: '#ef4444',
-  score_r: '#8b5cf6',
-  score_efi: '#ec4899',
-};
+const SCORE_COLORS: Record<string, string> = {};
+DIMENSION_CONFIG.forEach(d => { SCORE_COLORS[d.dbKey] = d.color; });
 
 interface Props {
   evolucoes: EvolucaoRecord[];
@@ -37,15 +31,42 @@ interface Props {
   terapeutaNome?: string;
 }
 
-/** Helper: get the main score for an evolution record (prefers myid_score 0-100, falls back to id_final 0-50) */
+/** Get the main score: prefer myid_score (0-100), recalculate if missing */
 function getMainScore(ev: EvolucaoRecord): number {
   if (ev.myid_score != null && ev.myid_score > 0) return Number(ev.myid_score);
-  return Number(ev.id_final ?? 0);
+  // Fallback: recalculate from dimension scores using loss table
+  const dims: { key: string; dbKey: string; type: 'demand' | 'capacity' }[] = [
+    { key: 'D', dbKey: 'score_d', type: 'demand' },
+    { key: 'EFI', dbKey: 'score_efi', type: 'demand' },
+    { key: 'P', dbKey: 'score_p', type: 'demand' },
+    { key: 'I', dbKey: 'score_i', type: 'demand' },
+    { key: 'N', dbKey: 'score_n', type: 'demand' },
+    { key: 'R', dbKey: 'score_r', type: 'capacity' },
+    { key: 'C', dbKey: 'score_c', type: 'capacity' },
+  ];
+  let totalPerdas = 0;
+  for (const d of dims) {
+    const raw = Number((ev as any)[d.dbKey] || 0);
+    const input = d.type === 'capacity' ? (10 - raw) : raw;
+    totalPerdas += calcularPerdaDimensao(d.key, input).perda_pontos;
+  }
+  const score = Math.max(0, Math.min(100, 100 - totalPerdas));
+  return score > 0 ? score : Number(ev.id_final ?? 0);
 }
 
-/** Helper: detect if we're using MyID-100 scale */
 function isMyID100Scale(evolucoes: EvolucaoRecord[]): boolean {
   return evolucoes.some(ev => ev.myid_score != null && ev.myid_score > 0);
+}
+
+/**
+ * For delta indicators: determine if a change is "improvement"
+ * Demand dimensions (D, EFI, P, I, N): decrease = improvement (negative delta = good)
+ * Capacity dimensions (R, C): increase = improvement (positive delta = good)
+ */
+function isDimensionImprovement(dimKey: string, delta: number): boolean {
+  const cfg = DIMENSION_CONFIG.find(d => d.dbKey === dimKey || d.key === dimKey);
+  if (!cfg) return delta < 0; // default: lower = better
+  return cfg.type === 'capacity' ? delta > 0 : delta < 0;
 }
 
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
@@ -69,8 +90,8 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
   const primeira = sorted[0];
   const ultima = sorted[sorted.length - 1];
   const useMyID100 = isMyID100Scale(sorted);
-  const maxScore = useMyID100 ? 100 : 50;
-  const scoreLabel = useMyID100 ? 'MyID-100' : 'ID Final';
+  const maxScore = 100;
+  const scoreLabel = 'MyID-100';
 
   const totalAvaliacoes = sorted.length;
   const scoreAtual = getMainScore(ultima);
@@ -78,45 +99,66 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
   const deltaScore = Number((scoreAtual - scoreInicial).toFixed(1));
   const classificacaoAtual = ultima?.classificacao || '—';
 
-  const radarData = SCORE_KEYS.slice(0, 6).map(key => ({
-    score: SCORE_LABELS[key],
-    atual: Number(((ultima as any)?.[key] || 0).toFixed(1)),
-    inicial: Number(((primeira as any)?.[key] || 0).toFixed(1)),
-  }));
-
-  const evolucaoData = sorted.map(ev => ({
-    name: `Av. ${ev.numero_avaliacao}`,
-    Score: Number(getMainScore(ev).toFixed(1)),
-    E: Number((ev.score_e || 0).toFixed(1)),
-    P: Number((ev.score_p || 0).toFixed(1)),
-    C: Number((ev.score_c || 0).toFixed(1)),
-    F: Number((ev.score_f || 0).toFixed(1)),
-    D: Number((ev.score_d || 0).toFixed(1)),
-    R: Number((ev.score_r || 0).toFixed(1)),
-  }));
-
-  const comparisonData = SCORE_KEYS.map(key => ({
-    score: key.replace('score_', '').toUpperCase(),
-    Primeira: Number(((primeira as any)?.[key] || 0).toFixed(1)),
-    Última: Number(((ultima as any)?.[key] || 0).toFixed(1)),
-  }));
-
-  const scoreDeltaData = SCORE_KEYS.map(key => {
-    const cumulativeDelta = Number(
-      (Number((ultima as any)?.[key] || 0) - Number((primeira as any)?.[key] || 0)).toFixed(1)
-    );
+  // Radar: use loss-based "impacto" for demand dimensions, "deficit" for capacity
+  const radarData = DIMENSION_CONFIG.map(dim => {
+    const atualRaw = Number(((ultima as any)?.[dim.dbKey] || 0));
+    const inicialRaw = Number(((primeira as any)?.[dim.dbKey] || 0));
+    // Convert to "impact" (0-10 where 10 = maximum negative impact)
+    const atualImpact = dim.type === 'capacity' ? (10 - atualRaw) : atualRaw;
+    const inicialImpact = dim.type === 'capacity' ? (10 - inicialRaw) : inicialRaw;
     return {
-      key: key.replace('score_', '').toUpperCase(),
-      first: Number(((primeira as any)?.[key] || 0).toFixed(1)),
-      last: Number(((ultima as any)?.[key] || 0).toFixed(1)),
-      delta: cumulativeDelta,
-      color: SCORE_COLORS[key],
+      score: dim.label,
+      atual: Number(atualImpact.toFixed(1)),
+      inicial: Number(inicialImpact.toFixed(1)),
     };
   });
 
-  // For MyID-100: higher = better, so positive delta = improvement
-  // For old scale: lower = better, so negative delta = improvement
-  const isImprovement = useMyID100 ? deltaScore > 0 : deltaScore <= 0;
+  const evolucaoData = sorted.map(ev => {
+    const point: any = {
+      name: `Av. ${ev.numero_avaliacao}`,
+      Score: Number(getMainScore(ev).toFixed(1)),
+    };
+    DIMENSION_CONFIG.forEach(dim => {
+      const raw = Number(((ev as any)[dim.dbKey] || 0));
+      // Convert to "perda" (loss points) using the loss table
+      const input = dim.type === 'capacity' ? (10 - raw) : raw;
+      point[dim.key] = calcularPerdaDimensao(dim.key, input).perda_pontos;
+    });
+    return point;
+  });
+
+  const comparisonData = DIMENSION_CONFIG.map(dim => {
+    const primeiraRaw = Number(((primeira as any)?.[dim.dbKey] || 0));
+    const ultimaRaw = Number(((ultima as any)?.[dim.dbKey] || 0));
+    // Show as "impact/loss" so higher bar = worse
+    const primeiraImpact = dim.type === 'capacity' ? (10 - primeiraRaw) : primeiraRaw;
+    const ultimaImpact = dim.type === 'capacity' ? (10 - ultimaRaw) : ultimaRaw;
+    return {
+      score: dim.key,
+      Primeira: Number(primeiraImpact.toFixed(1)),
+      Última: Number(ultimaImpact.toFixed(1)),
+    };
+  });
+
+  const scoreDeltaData = DIMENSION_CONFIG.map(dim => {
+    const first = Number(((primeira as any)?.[dim.dbKey] || 0));
+    const last = Number(((ultima as any)?.[dim.dbKey] || 0));
+    const delta = Number((last - first).toFixed(1));
+    const improved = isDimensionImprovement(dim.key, delta);
+    return {
+      key: dim.key,
+      label: dim.label,
+      first: first.toFixed(1),
+      last: last.toFixed(1),
+      delta,
+      color: dim.color,
+      type: dim.type,
+      improved,
+    };
+  });
+
+  // For MyID-100: higher score = better, so positive delta = improvement
+  const isImprovement = deltaScore > 0;
 
   return (
     <div className="space-y-4">
@@ -142,15 +184,16 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
 
       {/* Charts Row */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        {/* Radar */}
+        {/* Radar — "Impacto por Dimensão" (higher = worse) */}
         <div className="clinical-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              <h4 className="font-semibold text-sm">Perfil Comparativo</h4>
+              <h4 className="font-semibold text-sm">Impacto por Dimensão</h4>
             </div>
             <Badge variant="outline" className="text-[10px]">1ª vs Última</Badge>
           </div>
+          <p className="text-[9px] text-muted-foreground mb-2">Quanto mais expandido, maior o impacto negativo. Capacidades invertidas (déficit).</p>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
@@ -165,12 +208,12 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
           </div>
         </div>
 
-        {/* Evolution Line */}
+        {/* Evolution Line — MyID-100 score + loss per dimension */}
         <div className="clinical-card">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
-              <h4 className="font-semibold text-sm">Evolução dos Scores</h4>
+              <h4 className="font-semibold text-sm">Evolução MyID-100</h4>
             </div>
             <Badge variant="outline" className="text-[10px]">{evolucaoData.length} avaliações</Badge>
           </div>
@@ -179,33 +222,32 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
               <LineChart data={evolucaoData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} domain={useMyID100 ? [0, 100] : undefined} />
+                <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
                 <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name={scoreLabel} />
-                <Line type="monotone" dataKey="E" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 3 }} name="Estrutural" />
-                <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={1.5} dot={{ r: 3 }} name="Dor" />
-                <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 3 }} name="Kinesiophobia" />
-                <Line type="monotone" dataKey="F" stroke="#10b981" strokeWidth={1.5} dot={{ r: 3 }} name="Funcional" />
-                <Line type="monotone" dataKey="R" stroke="#8b5cf6" strokeWidth={1.5} dot={{ r: 3 }} name="Regulação" />
+                {DIMENSION_CONFIG.slice(0, 5).map(dim => (
+                  <Line key={dim.key} type="monotone" dataKey={dim.key} stroke={dim.color} strokeWidth={1.5} dot={{ r: 3 }} name={`${dim.label} (perda)`} />
+                ))}
               </LineChart>
             </ResponsiveContainer>
           </div>
         </div>
       </div>
 
-      {/* Comparison Bar */}
+      {/* Comparison Bar — shows "impact" so bar reduction = improvement */}
       <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <BarChart3 className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold text-sm">Comparação: Primeira vs Última Avaliação</h4>
+          <h4 className="font-semibold text-sm">Comparação: Impacto Primeira vs Última</h4>
         </div>
+        <p className="text-[9px] text-muted-foreground mb-3">Barras menores = melhora. Capacidades mostradas como déficit (10 - valor).</p>
         <div className="h-48">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={comparisonData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
               <XAxis dataKey="score" tick={{ fontSize: 11 }} />
-              <YAxis tick={{ fontSize: 11 }} />
+              <YAxis tick={{ fontSize: 11 }} domain={[0, 10]} />
               <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
               <Bar dataKey="Primeira" fill="#94a3b8" radius={[4, 4, 0, 0]} opacity={0.6} />
@@ -215,29 +257,33 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
         </div>
       </div>
 
-      {/* Delta Indicators */}
+      {/* Delta Indicators — color-coded per dimension type */}
       <div className="clinical-card">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-2">
           <Calendar className="h-4 w-4 text-primary" />
-          <h4 className="font-semibold text-sm">Variação por Score</h4>
+          <h4 className="font-semibold text-sm">Variação por Dimensão</h4>
         </div>
+        <p className="text-[9px] text-muted-foreground mb-3">
+          🔻 Demanda: redução = melhora · 🔺 Capacidade: aumento = melhora
+        </p>
         <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
           {scoreDeltaData.map(s => (
             <div key={s.key} className="bg-muted/50 rounded-xl p-3 text-center border border-border/50">
               <div className="flex items-center justify-center gap-1 mb-1">
                 <div className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />
                 <span className="text-xs font-semibold text-muted-foreground">{s.key}</span>
+                <span className="text-[8px] text-muted-foreground/60">{s.type === 'capacity' ? '🛡' : '🔥'}</span>
               </div>
               <div className="text-lg font-bold text-foreground">{s.last}</div>
               <div className="flex items-center justify-center gap-1 mt-1">
-                {s.delta < 0 ? (
-                  <TrendingDown className="h-3 w-3 text-emerald-600" />
-                ) : s.delta > 0 ? (
-                  <TrendingUp className="h-3 w-3 text-red-500" />
-                ) : (
+                {s.delta === 0 ? (
                   <Minus className="h-3 w-3 text-muted-foreground" />
+                ) : s.improved ? (
+                  <TrendingUp className="h-3 w-3 text-emerald-600" />
+                ) : (
+                  <TrendingDown className="h-3 w-3 text-red-500" />
                 )}
-                <span className={`text-xs font-bold ${s.delta < 0 ? 'text-emerald-600' : s.delta > 0 ? 'text-red-500' : 'text-muted-foreground'}`}>
+                <span className={`text-xs font-bold ${s.delta === 0 ? 'text-muted-foreground' : s.improved ? 'text-emerald-600' : 'text-red-500'}`}>
                   {s.delta > 0 ? '+' : ''}{s.delta}
                 </span>
               </div>
@@ -278,16 +324,13 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    {scoreLabel}: {Math.round(evScore)}/{maxScore}
+                    MyID-100: {Math.round(evScore)}/100
                     {ev.delta_id_final != null && ev.delta_id_final !== 0 && (
-                      <span className={useMyID100
-                        ? (ev.delta_id_final > 0 ? 'text-emerald-600' : 'text-red-500')
-                        : (ev.delta_id_final < 0 ? 'text-emerald-600' : 'text-red-500')
-                      }>
+                      <span className={ev.delta_id_final > 0 ? 'text-emerald-600' : 'text-red-500'}>
                         {' '}({ev.delta_id_final > 0 ? '+' : ''}{Number(ev.delta_id_final).toFixed(1)})
                       </span>
                     )}
-                    {' · '}E:{Number(ev.score_e || 0).toFixed(1)} P:{Number(ev.score_p || 0).toFixed(1)} D:{Number(ev.score_d || 0).toFixed(1)} F:{Number(ev.score_f || 0).toFixed(1)} R:{Number(ev.score_r || 0).toFixed(1)}
+                    {' · '}D:{Number(ev.score_d || 0).toFixed(1)} P:{Number(ev.score_p || 0).toFixed(1)} R:{Number(ev.score_r || 0).toFixed(1)} I:{Number(ev.score_i || 0).toFixed(1)} N:{Number(ev.score_n || 0).toFixed(1)}
                   </div>
                 </div>
               </div>
