@@ -451,6 +451,7 @@ export default function Index() {
         {/* Main modules */}
         <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
           {/* Método Identidade */}
+          {servicos.identidade && (
           <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0">
@@ -482,6 +483,7 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* COB° ZERO */}
           <div className="clinical-card border-2 border-blue-200 hover:border-blue-400 transition-all flex flex-col">
