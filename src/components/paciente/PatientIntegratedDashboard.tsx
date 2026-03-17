@@ -351,6 +351,9 @@ export default function PatientIntegratedDashboard({
     P: scores?.P ?? 0,
     I: scores?.I ?? 0,
     N: scores?.N ?? 0,
+    R: scores?.R ? 10 - scores.R : 0,
+    AF: scores?.AF ? 10 - scores.AF : 0,
+    ERG: scores?.ERG ? 10 - scores.ERG : 0,
   };
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const classificacao = interpretation.status;
