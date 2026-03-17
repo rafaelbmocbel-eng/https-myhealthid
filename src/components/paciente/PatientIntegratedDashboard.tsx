@@ -300,7 +300,6 @@ export default function PatientIntegratedDashboard({
   // Compute MyID-100 from component scores using loss table (same logic as calculator)
   const computeMyID100FromScores = (sc: typeof scores): number => {
     if (!sc) return 0;
-    const { calcularPerdaDimensao } = require('@/utils/myid/lossTable');
     let totalPerdas = 0;
     // Demand dimensions (raw score = how bad)
     totalPerdas += calcularPerdaDimensao('D', sc.D).perda_pontos;
