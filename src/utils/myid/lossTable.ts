@@ -233,10 +233,10 @@ export function calcularPerdaMedicamentos(meds: {
 }
 
 /** Main MyID-100 classification */
-export function classificarMyID100(score: number, temGatilhoCritico: boolean): {
+export function classificarMyID100(score: number, _temGatilhoCritico?: boolean): {
   nome: string; cor: string; emoji: string;
 } {
-  if (temGatilhoCritico || score <= 29) {
+  if (score <= 29) {
     return { nome: 'CRÍTICO', cor: '#DC2626', emoji: '🔴' };
   } else if (score <= 49) {
     return { nome: 'CRÍTICO', cor: '#DC2626', emoji: '🔴' };
