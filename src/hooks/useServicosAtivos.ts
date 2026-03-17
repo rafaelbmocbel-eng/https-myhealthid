@@ -37,10 +37,24 @@ export function useServicosAtivos() {
   const saveServicos = useCallback(async (next: ServicosAtivos) => {
     if (!user) return;
     setServicos(next);
+
+    const { data: existingConfig } = await supabase
+      .from('config_agenda')
+      .select('id')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle();
+
+    if (existingConfig?.id) {
+      await supabase
+        .from('config_agenda')
+        .update({ servicos_ativos: next as any })
+        .eq('id', existingConfig.id);
+      return;
+    }
+
     await supabase
       .from('config_agenda')
-      .update({ servicos_ativos: next as any })
-      .eq('terapeuta_id', user.id);
+      .insert({ terapeuta_id: user.id, servicos_ativos: next as any });
   }, [user]);
 
   return { servicos, saveServicos, loading };
