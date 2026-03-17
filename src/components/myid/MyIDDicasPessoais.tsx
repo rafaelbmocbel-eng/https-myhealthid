@@ -329,7 +329,7 @@ function DicaCard({ dica, mini = false }: { dica: DicaPersonalizada; mini?: bool
             <Badge className={cn("text-[9px] h-4 px-1.5 font-bold border-0", catConfig.badge)}>
               {catConfig.label}
             </Badge>
-            <span className={cn("text-xs font-black ml-auto", dica.colorClass)}>{dica.score.toFixed(1)}/10</span>
+            <span className={cn("text-xs font-black ml-auto", dica.colorClass)}>{dica.lossPoints > 0 ? `-${dica.lossPoints}pts` : '✓ 0pts'}</span>
           </div>
           <p className="text-xs text-foreground/80 leading-relaxed mb-2">{dica.descricao}</p>
           <div className="flex items-start gap-1.5 bg-white/60 dark:bg-black/20 p-2 rounded-lg border border-current/10">
