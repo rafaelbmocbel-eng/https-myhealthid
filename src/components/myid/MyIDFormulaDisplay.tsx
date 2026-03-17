@@ -3,6 +3,7 @@ import { cn } from '@/lib/utils';
 import { Zap, ShieldCheck, Info, AlertTriangle, Target } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
+import MyIDGaugeSemicircle from './MyIDGaugeSemicircle';
 import {
   DIMENSION_LABELS, DIMENSION_COLORS, TEMPLATES_INTERPRETACAO,
   classificarMyID100, PerdaCalculada, calcularPerdaDimensao, identificarDriver,
