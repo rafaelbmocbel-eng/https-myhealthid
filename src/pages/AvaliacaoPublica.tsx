@@ -26,6 +26,7 @@ import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalcul
 interface LinkInfo {
   id: string;
   paciente_id: string;
+  terapeuta_id: string;
   blocos_inclusos: number[];
   data_expiracao: string;
 }
