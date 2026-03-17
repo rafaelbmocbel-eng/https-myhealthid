@@ -24,6 +24,7 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 export default function Index() {
   const { user, profile, loading } = useAuth();
   const navigate = useNavigate();
+  const { servicos } = useServicosAtivos();
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
