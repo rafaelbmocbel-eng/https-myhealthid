@@ -9,35 +9,53 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { scores, redFlags, blocos } = await req.json();
+    const { scores, redFlags, blocos, perdas, myid_100 } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
-    const systemPrompt = `Você é o MOTOR DE ANÁLISE MyID. Analise os scores do paciente e gere recomendações clínicas.
+    const systemPrompt = `Você é o MOTOR DE ANÁLISE MyID-100 v2.0. Analise os scores e perdas do paciente.
 
-FÓRMULA v3 (Modelo Déficit do Ótimo):
-MyID = [ Demanda_avg × (1+P/10) × 0.50 + Déficit_avg × 0.35 + N × 0.15 ] - MED_buffer
+FÓRMULA MyID-100 (Modelo Subtração Cumulativa):
+MyID_100 = 100 - Σ(Perdas por dimensão) + MED_bonus
+Resultado: 0-100 (quanto MAIOR, MELHOR)
 
-Demanda_avg = (D + EFI + I) / 3
-Déficit_avg = média de (10-R, 10-C, 10-AF, 10-HID, 10-NUT, 10-ERG)
+Cada dimensão subtrai pontos de 100 (saúde perfeita) usando tabela de perdas não-lineares.
 
-Variáveis:
-- D (Dor): Intensidade sensorial
-- EFI (Funcionalidade): Impacto funcional  
-- P (Psicológico): Amplificador — medo, catastrofização, evitação
-- I (Inércia): Gatilhos de mudança recentes
-- R (Regulação): Sono + Energia + Psicológico (capacidade)
-- C (Contexto): Suporte social (capacidade)
-- AF, HID, NUT, ERG: Atividade Física, Hidratação, Nutrição, Ergonomia
-- N (Ruído): Traumas, cicatrizes, visceral
-- MED: Medicação (buffer redutor)
+DIMENSÕES DE DEMANDA (score alto = ruim):
+- D (Dor): max -20pts
+- EFI (Funcionalidade): max -15pts  
+- P (Psicológico): max -5pts (amplificador de medo/evitação)
+- I (Inércia): max -5pts (mudanças recentes)
 
-IMPORTANTE: Capacidade é medida como DÉFICIT DO ÓTIMO. Sono 8/10 = déficit 2. Mesmo pequenas quedas são clinicamente relevantes.
+DIMENSÕES DE CAPACIDADE (score alto = bom, perda = 10-valor):
+- R (Regulação): max -15pts, gatilho crítico ≥7
+- C (Contexto): max -10pts
+- AF (Atividade Física): max -8pts, gatilho crítico ≥7
+- HID (Hidratação): max -6pts
+- NUT (Nutrição): max -6pts
+- ERG (Ergonomia): max -5pts, gatilho crítico ≥8
+
+RUÍDO E MEDICAÇÃO:
+- N (Ruído Sistêmico): max -5pts
+- MED: Bônus ou penalidade
+
+CLASSIFICAÇÃO:
+- 85-100: EXCELENTE 🟢
+- 70-84: BOM 🟡
+- 50-69: MODERADO 🟠
+- 0-49: CRÍTICO 🔴 (ou se gatilho crítico ativado)
+
+DRIVER PRIMÁRIO = dimensão com maior perda (×1.5 se gatilho crítico).
 
 Responda APENAS com JSON válido no formato especificado.`;
 
-    const userPrompt = `Scores do paciente:
+    const userPrompt = `Scores brutos (0-10):
 ${JSON.stringify(scores, null, 2)}
+
+Perdas calculadas:
+${JSON.stringify(perdas, null, 2)}
+
+MyID-100: ${JSON.stringify(myid_100)}
 
 Red Flags: ${JSON.stringify(redFlags)}
 
@@ -46,10 +64,15 @@ Dados dos blocos: ${JSON.stringify(blocos)}
 Gere um JSON com:
 {
   "clinical_priority": {
-    "focus_area": "Numerador ou Denominador",
+    "focus_area": "nome da dimensão driver",
     "reason": "explicação curta",
     "recommendation": "recomendação principal"
   },
+  "treatment_phases": [
+    { "fase": 1, "titulo": "...", "duracao_semanas": 2, "meta_score": 45, "intervencoes": ["..."] },
+    { "fase": 2, "titulo": "...", "duracao_semanas": 2, "meta_score": 55, "intervencoes": ["..."] },
+    { "fase": 3, "titulo": "...", "duracao_semanas": 2, "meta_score": 65, "intervencoes": ["..."] }
+  ],
   "integration_directives": {
     "fisioterapia": "diretiva",
     "studio_personal": "diretiva",
@@ -84,7 +107,6 @@ Gere um JSON com:
     const aiData = await response.json();
     const content = aiData.choices?.[0]?.message?.content || "{}";
     
-    // Parse JSON from response
     let analysis;
     try {
       const jsonMatch = content.match(/\{[\s\S]*\}/);
