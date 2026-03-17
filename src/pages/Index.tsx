@@ -486,6 +486,7 @@ export default function Index() {
           )}
 
           {/* COB° ZERO */}
+          {servicos.cob_zero && (
           <div className="clinical-card border-2 border-blue-200 hover:border-blue-400 transition-all flex flex-col">
             <div className="flex items-center gap-3 mb-4">
               <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shrink-0">
@@ -517,6 +518,7 @@ export default function Index() {
               </Button>
             </div>
           </div>
+          )}
 
           {/* Studio Personal ID */}
           <div className="clinical-card border-2 border-[hsl(165_65%_32%/0.2)] hover:border-[hsl(165_65%_32%/0.4)] transition-all flex flex-col">
