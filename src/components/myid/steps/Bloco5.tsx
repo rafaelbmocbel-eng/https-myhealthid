@@ -176,6 +176,68 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
             </section>
 
+            {/* 5D: Contexto Social */}
+            <section className="space-y-6">
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">5D. Contexto Social</h3>
+
+                <div className="space-y-4">
+                    <Label className="font-semibold text-base">PERGUNTA 5D.1: ESTRESSE NO TRABALHO</Label>
+                    <p className="text-sm text-gray-500">O quanto seu ambiente de trabalho é estressante?</p>
+                    <div className="px-2 pt-2">
+                        <Input
+                            type="range"
+                            min="0" max="10" step="1"
+                            value={data.bloco_5d_work_stress || 0}
+                            onChange={(e) => updateData({ bloco_5d_work_stress: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <span>0 (Nenhum estresse)</span>
+                            <span>10 (Estresse extremo)</span>
+                        </div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_work_stress || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-muted border-dashed">
+                    <Label className="font-semibold text-base">PERGUNTA 5D.2: CONFLITOS FAMILIARES / PESSOAIS</Label>
+                    <p className="text-sm text-gray-500">Tem tido conflitos familiares ou pessoais recentes?</p>
+                    <div className="px-2 pt-2">
+                        <Input
+                            type="range"
+                            min="0" max="10" step="1"
+                            value={data.bloco_5d_family_conflict || 0}
+                            onChange={(e) => updateData({ bloco_5d_family_conflict: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <span>0 (Nenhum conflito)</span>
+                            <span>10 (Conflitos intensos)</span>
+                        </div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_family_conflict || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                    </div>
+                </div>
+
+                <div className="space-y-4 pt-4 border-t border-muted border-dashed">
+                    <Label className="font-semibold text-base">PERGUNTA 5D.3: PREOCUPAÇÃO FINANCEIRA</Label>
+                    <p className="text-sm text-gray-500">Sua situação financeira te gera preocupação?</p>
+                    <div className="px-2 pt-2">
+                        <Input
+                            type="range"
+                            min="0" max="10" step="1"
+                            value={data.bloco_5d_financial_worry || 0}
+                            onChange={(e) => updateData({ bloco_5d_financial_worry: parseInt(e.target.value) })}
+                            className="w-full"
+                        />
+                        <div className="flex justify-between text-xs font-bold text-gray-400 mt-2 uppercase tracking-wider">
+                            <span>0 (Nenhuma preocupação)</span>
+                            <span>10 (Preocupação extrema)</span>
+                        </div>
+                        <div className="text-center font-black text-2xl text-primary mt-2">{data.bloco_5d_financial_worry || 0} <span className="text-lg text-gray-400 font-bold">/ 10</span></div>
+                    </div>
+                </div>
+            </section>
+
             {/* 5E: Atividade Física */}
             <section className="space-y-6">
                 <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5E: ATIVIDADE FÍSICA E TENSÃO DIÁRIA</h3>
