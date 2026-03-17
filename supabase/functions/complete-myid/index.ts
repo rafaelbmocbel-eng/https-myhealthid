@@ -10,10 +10,16 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { avaliacao_id, result, raw_data } = await req.json();
+    const { avaliacao_id, link_avaliacao_id, paciente_id: directPacienteId, terapeuta_id: directTerapeutaId, result, raw_data } = await req.json();
 
-    if (!avaliacao_id || !result) {
-      return new Response(JSON.stringify({ error: "avaliacao_id and result are required" }), {
+    if (!result) {
+      return new Response(JSON.stringify({ error: "result is required" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    if (!avaliacao_id && !link_avaliacao_id && (!directPacienteId || !directTerapeutaId)) {
+      return new Response(JSON.stringify({ error: "avaliacao_id, link_avaliacao_id, or (paciente_id + terapeuta_id) required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -22,29 +28,47 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // 1. Get the myid_avaliacoes record
-    const { data: avaliacao, error: fetchErr } = await supabase
-      .from("myid_avaliacoes")
-      .select("*")
-      .eq("id", avaliacao_id)
-      .single();
+    let pacienteId: string | null = directPacienteId || null;
+    let terapeutaId: string | null = directTerapeutaId || null;
 
-    if (fetchErr || !avaliacao) {
-      return new Response(JSON.stringify({ error: "Avaliação não encontrada" }), {
-        status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+    // Path A: via myid_avaliacoes
+    if (avaliacao_id) {
+      const { data: avaliacao, error: fetchErr } = await supabase
+        .from("myid_avaliacoes")
+        .select("*")
+        .eq("id", avaliacao_id)
+        .single();
+
+      if (fetchErr || !avaliacao) {
+        return new Response(JSON.stringify({ error: "Avaliação não encontrada" }), {
+          status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      await supabase.from("myid_avaliacoes").update({
+        status: "concluido",
+        respostas_brutas: raw_data,
+        resultado_processado: result,
+        updated_at: new Date().toISOString(),
+      }).eq("id", avaliacao_id);
+
+      pacienteId = avaliacao.paciente_id;
+      terapeutaId = avaliacao.terapeuta_id;
     }
 
-    // 2. Update myid_avaliacoes status
-    await supabase.from("myid_avaliacoes").update({
-      status: "concluido",
-      respostas_brutas: raw_data,
-      resultado_processado: result,
-      updated_at: new Date().toISOString(),
-    }).eq("id", avaliacao_id);
+    // Path B: via links_avaliacao
+    if (!pacienteId && link_avaliacao_id) {
+      const { data: link } = await supabase
+        .from("links_avaliacao")
+        .select("paciente_id, terapeuta_id")
+        .eq("id", link_avaliacao_id)
+        .single();
 
-    const pacienteId = avaliacao.paciente_id;
-    const terapeutaId = avaliacao.terapeuta_id;
+      if (link) {
+        pacienteId = link.paciente_id;
+        terapeutaId = link.terapeuta_id;
+      }
+    }
 
     if (!pacienteId || !terapeutaId) {
       return new Response(JSON.stringify({ ok: true, synced: false, reason: "missing paciente_id or terapeuta_id" }), {
