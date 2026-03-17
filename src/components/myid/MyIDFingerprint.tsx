@@ -17,19 +17,13 @@ function valueToOpacity(value: number): number {
   return 0.45 + (value / 10) * 0.55;
 }
 
+// Use classificarMyID100 as single source of truth
 function scoreStatusLabel(score: number): string {
-  // MyID-100: higher = better
-  if (score >= 85) return 'EXCELENTE';
-  if (score >= 70) return 'BOM';
-  if (score >= 50) return 'MODERADO';
-  return 'CRÍTICO';
+  return classificarMyID100(score).nome;
 }
 
 function scoreStatusColor(score: number): string {
-  if (score >= 85) return '#10B981';
-  if (score >= 70) return '#FBBF24';
-  if (score >= 50) return '#F59E0B';
-  return '#DC2626';
+  return classificarMyID100(score).cor;
 }
 
 export default function MyIDFingerprint({ rings, myidScore, className = '', onRingClick, onRingHover, highlightedKey, hasRedFlags = false }: Props) {

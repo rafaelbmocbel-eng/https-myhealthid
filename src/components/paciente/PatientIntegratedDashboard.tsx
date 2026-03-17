@@ -432,9 +432,7 @@ export default function PatientIntegratedDashboard({
                 </div>
 
                 <div className="flex items-center gap-4 bg-white/50 dark:bg-black/20 p-2 pr-4 rounded-2xl border border-white dark:border-white/10">
-                  <GlobalGauge score={myidScore} color={severityClass.split(' ')[0].replace('text-', '') === 'violet-600' ? '#8b5cf6' :
-                    severityClass.includes('blue') ? '#3b82f6' :
-                      severityClass.includes('amber') ? '#f59e0b' : '#ef4444'} />
+                  <GlobalGauge score={myidScore} color={interpretation.color} />
                   <div className="flex flex-col">
                     <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0 border-current mb-1", severityClass)}>{classificacao}</Badge>
                     <span className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[100px] uppercase">Estado de Saúde Atual</span>
