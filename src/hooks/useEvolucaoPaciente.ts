@@ -12,6 +12,7 @@ export interface EvolucaoRecord {
   data_registro: string;
   classificacao: string | null;
   id_final: number | null;
+  myid_score: number | null;
   score_e: number | null;
   score_p: number | null;
   score_c: number | null;
@@ -19,6 +20,8 @@ export interface EvolucaoRecord {
   score_d: number | null;
   score_r: number | null;
   score_efi: number | null;
+  score_i: number | null;
+  score_n: number | null;
   delta_e: number | null;
   delta_p: number | null;
   delta_c: number | null;

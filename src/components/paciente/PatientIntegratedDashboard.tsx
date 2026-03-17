@@ -52,8 +52,8 @@ const MiniGauge = ({ value, color }: { value: number; color: string }) => {
 const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
   const radius = 38;
   const circ = Math.PI * radius;
-  const maxVal = Math.max(0.01, score);
-  const dashoffset = circ - (maxVal / 10) * circ;
+  const pct = Math.max(0, Math.min(100, score)) / 100;
+  const dashoffset = circ - pct * circ;
   return (
     <div className="relative flex flex-col items-center justify-center w-full max-w-[200px] h-[100px] mx-auto overflow-hidden">
       <svg width="100%" height="100%" viewBox="0 0 100 55" className="overflow-visible mt-2">
@@ -61,8 +61,8 @@ const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
         <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 1s cubic-bezier(0.25, 1, 0.5, 1)' }} />
       </svg>
       <div className="absolute bottom-1 flex flex-col items-center leading-none">
-        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{score.toFixed(1)}</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">MyID Score</span>
+        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{Math.round(score)}</span>
+        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">MyID-100</span>
       </div>
     </div>
   );

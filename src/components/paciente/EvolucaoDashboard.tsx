@@ -37,6 +37,17 @@ interface Props {
   terapeutaNome?: string;
 }
 
+/** Helper: get the main score for an evolution record (prefers myid_score 0-100, falls back to id_final 0-50) */
+function getMainScore(ev: EvolucaoRecord): number {
+  if (ev.myid_score != null && ev.myid_score > 0) return Number(ev.myid_score);
+  return Number(ev.id_final ?? 0);
+}
+
+/** Helper: detect if we're using MyID-100 scale */
+function isMyID100Scale(evolucoes: EvolucaoRecord[]): boolean {
+  return evolucoes.some(ev => ev.myid_score != null && ev.myid_score > 0);
+}
+
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
   const [exportando, setExportando] = useState(false);
 
@@ -57,11 +68,14 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
 
   const primeira = sorted[0];
   const ultima = sorted[sorted.length - 1];
+  const useMyID100 = isMyID100Scale(sorted);
+  const maxScore = useMyID100 ? 100 : 50;
+  const scoreLabel = useMyID100 ? 'MyID-100' : 'ID Final';
 
   const totalAvaliacoes = sorted.length;
-  const idFinalAtual = Number(ultima?.id_final ?? 0);
-  const idFinalInicial = Number(primeira?.id_final ?? 0);
-  const deltaID = Number((idFinalAtual - idFinalInicial).toFixed(1));
+  const scoreAtual = getMainScore(ultima);
+  const scoreInicial = getMainScore(primeira);
+  const deltaScore = Number((scoreAtual - scoreInicial).toFixed(1));
   const classificacaoAtual = ultima?.classificacao || '—';
 
   const radarData = SCORE_KEYS.slice(0, 6).map(key => ({
@@ -72,7 +86,7 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
 
   const evolucaoData = sorted.map(ev => ({
     name: `Av. ${ev.numero_avaliacao}`,
-    ID: Number((ev.id_final || 0).toFixed(1)),
+    Score: Number(getMainScore(ev).toFixed(1)),
     E: Number((ev.score_e || 0).toFixed(1)),
     P: Number((ev.score_p || 0).toFixed(1)),
     C: Number((ev.score_c || 0).toFixed(1)),
@@ -88,7 +102,6 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
   }));
 
   const scoreDeltaData = SCORE_KEYS.map(key => {
-    const deltaKey = key.replace('score_', 'delta_');
     const cumulativeDelta = Number(
       (Number((ultima as any)?.[key] || 0) - Number((primeira as any)?.[key] || 0)).toFixed(1)
     );
@@ -100,6 +113,10 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
       color: SCORE_COLORS[key],
     };
   });
+
+  // For MyID-100: higher = better, so positive delta = improvement
+  // For old scale: lower = better, so negative delta = improvement
+  const isImprovement = useMyID100 ? deltaScore > 0 : deltaScore <= 0;
 
   return (
     <div className="space-y-4">
@@ -113,13 +130,13 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
       </div>
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <SummaryCard label="Avaliações" value={totalAvaliacoes} icon={<Activity className="h-4 w-4" />} accent="primary" />
-        <SummaryCard label="ID Final Atual" value={`${idFinalAtual.toFixed(1)}/50`} icon={<Target className="h-4 w-4" />} accent="info" />
+        <SummaryCard label={`${scoreLabel} Atual`} value={`${Math.round(scoreAtual)}/${maxScore}`} icon={<Target className="h-4 w-4" />} accent="info" />
         <SummaryCard label="Classificação" value={classificacaoAtual} icon={<Award className="h-4 w-4" />} accent="warning" />
         <SummaryCard
-          label="Variação ID"
-          value={`${deltaID > 0 ? '+' : ''}${deltaID}`}
-          icon={deltaID <= 0 ? <TrendingDown className="h-4 w-4" /> : <TrendingUp className="h-4 w-4" />}
-          accent={deltaID <= 0 ? 'success' : 'danger'}
+          label={`Variação ${scoreLabel}`}
+          value={`${deltaScore > 0 ? '+' : ''}${deltaScore.toFixed(1)}`}
+          icon={isImprovement ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+          accent={isImprovement ? 'success' : 'danger'}
         />
       </div>
 
@@ -162,10 +179,10 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
               <LineChart data={evolucaoData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                 <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                <YAxis tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} domain={useMyID100 ? [0, 100] : undefined} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Line type="monotone" dataKey="ID" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name="ID Final" />
+                <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name={scoreLabel} />
                 <Line type="monotone" dataKey="E" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 3 }} name="Estrutural" />
                 <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={1.5} dot={{ r: 3 }} name="Dor" />
                 <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={1.5} dot={{ r: 3 }} name="Kinesiophobia" />
@@ -239,6 +256,7 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
         <div className="space-y-2">
           {[...sorted].reverse().map((ev, idx) => {
             const isLatest = idx === 0;
+            const evScore = getMainScore(ev);
             return (
               <div key={ev.id} className={`rounded-xl border p-3 flex items-center gap-3 transition-all ${isLatest ? 'border-primary bg-accent/20' : 'hover:bg-accent/10'}`}>
                 <div className={`h-9 w-9 rounded-lg flex items-center justify-center shrink-0 ${isLatest ? 'bg-primary/20' : 'bg-muted'}`}>
@@ -260,9 +278,12 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                     )}
                   </div>
                   <div className="text-xs text-muted-foreground mt-0.5">
-                    ID: {Number(ev.id_final || 0).toFixed(1)}/50
+                    {scoreLabel}: {Math.round(evScore)}/{maxScore}
                     {ev.delta_id_final != null && ev.delta_id_final !== 0 && (
-                      <span className={ev.delta_id_final < 0 ? 'text-emerald-600' : 'text-red-500'}>
+                      <span className={useMyID100
+                        ? (ev.delta_id_final > 0 ? 'text-emerald-600' : 'text-red-500')
+                        : (ev.delta_id_final < 0 ? 'text-emerald-600' : 'text-red-500')
+                      }>
                         {' '}({ev.delta_id_final > 0 ? '+' : ''}{Number(ev.delta_id_final).toFixed(1)})
                       </span>
                     )}
