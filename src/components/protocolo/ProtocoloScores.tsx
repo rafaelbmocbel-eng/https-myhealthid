@@ -149,8 +149,8 @@ export default function ProtocoloScores({ scores }: Props) {
           </div>
           <div className="grid grid-cols-3 gap-2">
             {top3.map((item, i) => {
-              const severity = item.value >= 8 ? 'CRÍTICO' : item.value >= 6 ? 'ALTO' : 'MOD';
-              const sevColor = item.value >= 8 ? 'bg-destructive text-white' : item.value >= 6 ? 'bg-warning text-white' : 'bg-muted text-muted-foreground';
+              const severity = item.lossPoints >= 13 ? 'CRÍTICO' : item.lossPoints >= 8 ? 'ALTO' : item.lossPoints >= 3 ? 'MOD' : 'OK';
+              const sevColor = item.lossPoints >= 13 ? 'bg-destructive text-white' : item.lossPoints >= 8 ? 'bg-warning text-white' : item.lossPoints >= 3 ? 'bg-muted text-muted-foreground' : 'bg-emerald-100 text-emerald-700';
               const rankColors = ['bg-destructive/10 text-destructive', 'bg-warning/10 text-warning', 'bg-muted text-muted-foreground'];
               return (
                 <div key={item.name} className="flex flex-col gap-1.5 p-2 rounded-lg bg-muted/20 border border-border/40">
