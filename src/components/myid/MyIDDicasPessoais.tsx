@@ -310,7 +310,7 @@ function DicaCard({ dica, mini = false }: { dica: DicaPersonalizada; mini?: bool
         <div className="flex items-center gap-2 mb-1">
           <Icon className={cn("h-3.5 w-3.5", dica.colorClass)} />
           <span className={cn("text-xs font-bold", dica.colorClass)}>{dica.titulo}</span>
-          <span className={cn("text-[10px] font-black ml-auto", dica.colorClass)}>{dica.score.toFixed(1)}/10</span>
+          <span className={cn("text-[10px] font-black ml-auto", dica.colorClass)}>{dica.lossPoints > 0 ? `-${dica.lossPoints}pts` : '✓ 0pts'}</span>
         </div>
         <p className="text-[11px] text-foreground/70 leading-snug">{dica.acaoImediata}</p>
       </div>
