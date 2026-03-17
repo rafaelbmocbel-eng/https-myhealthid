@@ -270,7 +270,7 @@ serve(async (req) => {
 
       const descricao = `📋 QUESTIONÁRIO MyID RESPONDIDO PELO PACIENTE — ${pacienteNome}
 
-🎯 RESULTADO GERAL: Score MyID ${myidFormatted}/10 — ${classificacao}
+🎯 RESULTADO GERAL: Score MyID-100 ${myidFormatted}/100 — ${classificacao}
 📌 ${severityDesc}
 ${flagsText}
 
