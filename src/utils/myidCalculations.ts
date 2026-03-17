@@ -125,6 +125,10 @@ export interface DimensionScores {
   P?: number;
   I?: number;
   N?: number;
+  R?: number;
+  AF?: number;
+  ERG?: number;
+  [key: string]: number | undefined;
 }
 
 /**
