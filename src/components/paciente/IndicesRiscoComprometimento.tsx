@@ -1,22 +1,17 @@
 import { useMemo } from 'react';
-import { AlertTriangle, Shield, Heart, Brain, Activity, Zap, Target, Droplets, Cigarette, Wine, Footprints, BedDouble, Armchair } from 'lucide-react';
+import { AlertTriangle, Shield, Heart, Brain, Activity, Zap, Target, Droplets, Cigarette, Wine, Footprints, BedDouble, Armchair, Waves, Utensils, Monitor, Volume2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 
 interface ScoresInput {
-  score_e?: number;
-  score_p?: number;
-  score_c?: number;
-  score_f?: number;
-  score_d?: number;
-  score_r?: number;
-  score_efi?: number;
+  // Raw 0-10 dimension scores
+  D?: number; EFI?: number; P?: number; I?: number; N?: number;
+  R?: number; C?: number; AF?: number; HID?: number; NUT?: number; ERG?: number;
+  // Legacy field names
+  score_e?: number; score_p?: number; score_c?: number; score_f?: number;
+  score_d?: number; score_r?: number; score_efi?: number;
+  scoreF?: number; scoreD?: number; scoreEFI?: number; scoreP?: number; scoreR?: number; scoreC?: number;
   id_final?: number;
-  scoreF?: number;
-  scoreD?: number;
-  scoreEFI?: number;
-  scoreP?: number;
-  scoreR?: number;
-  scoreC?: number;
 }
 
 interface HabitoAlerta {
@@ -30,16 +25,20 @@ interface Props {
   scores: ScoresInput;
   parcial?: boolean;
   className?: string;
-  dadosAvaliacao?: any; // dados_avaliacao from avaliacoes_identidade
+  dadosAvaliacao?: any;
 }
 
 interface DomainRisk {
   key: string;
   label: string;
-  value: number;
+  rawValue: number;
+  lossPoints: number;
+  maxLoss: number;
   riskLevel: 'baixo' | 'moderado' | 'alto' | 'critico';
   icon: React.ElementType;
   dica: string;
+  color: string;
+  type: 'demand' | 'capacity';
 }
 
 const RISK_STYLES = {
@@ -49,26 +48,49 @@ const RISK_STYLES = {
   critico: { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', badge: '🔴' },
 };
 
-function getRiskLevel(value: number): 'baixo' | 'moderado' | 'alto' | 'critico' {
-  if (value <= 3) return 'baixo';
-  if (value <= 5) return 'moderado';
-  if (value <= 7.5) return 'alto';
+function getRiskLevelFromLoss(lossPoints: number, maxLoss: number): 'baixo' | 'moderado' | 'alto' | 'critico' {
+  const pct = maxLoss > 0 ? (lossPoints / maxLoss) : 0;
+  if (pct <= 0.15) return 'baixo';
+  if (pct <= 0.45) return 'moderado';
+  if (pct <= 0.75) return 'alto';
   return 'critico';
 }
 
-function getDica(key: string, value: number): string {
-  const dicas: Record<string, string[]> = {
-    dor: ['Dor controlada', 'Educação em dor', 'Neuromodulação urgente'],
-    cinesiofobia: ['Boa relação com movimento', 'Exposição gradual', 'Psicoeducação intensiva'],
-    carga: ['Contexto favorável', 'Manejo de estresse', 'Encaminhamento psicológico'],
-    regulacao: ['Boa regulação', 'Regularizar rotina', 'Avaliação especializada'],
-    contexto: ['Perfil favorável', 'Modificar hábitos', 'Abordagem multidisciplinar'],
-    funcionalidade: ['Boa capacidade', 'Exercícios progressivos', 'Reabilitação intensiva'],
-    estrutural: ['Integridade preservada', 'Mobilização + fortalecimento', 'Terapia manual intensiva'],
+function getDica(key: string, riskLevel: string): string {
+  const dicas: Record<string, Record<string, string>> = {
+    D: { baixo: 'Dor controlada', moderado: 'Educação em dor', alto: 'Neuromodulação', critico: 'Intervenção urgente' },
+    EFI: { baixo: 'Boa capacidade', moderado: 'Exercícios progressivos', alto: 'Reabilitação ativa', critico: 'Reabilitação intensiva' },
+    P: { baixo: 'Boa relação com movimento', moderado: 'Exposição gradual', alto: 'Psicoeducação', critico: 'Psicoeducação intensiva' },
+    I: { baixo: 'Estável', moderado: 'Monitorar mudanças', alto: 'Adaptar progressão', critico: 'Instabilidade sistêmica' },
+    R: { baixo: 'Boa regulação', moderado: 'Regularizar rotina', alto: 'Sono prioritário', critico: 'Avaliação especializada' },
+    C: { baixo: 'Contexto favorável', moderado: 'Manejo de estresse', alto: 'Suporte psicossocial', critico: 'Encaminhamento psicológico' },
+    AF: { baixo: 'Ativo', moderado: 'Aumentar frequência', alto: 'Atividade prioritária', critico: 'Inatividade crítica' },
+    HID: { baixo: 'Hidratação ótima', moderado: 'Aumentar ingestão', alto: 'Hidratação insuficiente', critico: 'Desidratação' },
+    NUT: { baixo: 'Nutrição ótima', moderado: 'Ajustar dieta', alto: 'Nutrição inadequada', critico: 'Déficit nutricional' },
+    ERG: { baixo: 'Ergonomia boa', moderado: 'Ajustar postura', alto: 'Ergonomia ruim', critico: 'Ergonomia crítica' },
+    N: { baixo: 'Ruído mínimo', moderado: 'Monitorar sinais', alto: 'Ruído moderado', critico: 'Ruído alto - investigar' },
   };
-  const arr = dicas[key] || ['—', '—', '—'];
-  return value <= 4 ? arr[0] : value <= 7 ? arr[1] : arr[2];
+  return dicas[key]?.[riskLevel] || '—';
 }
+
+const ICON_MAP: Record<string, React.ElementType> = {
+  D: Heart, EFI: Activity, P: Brain, I: Zap, R: Shield, C: AlertTriangle,
+  AF: Footprints, HID: Waves, NUT: Utensils, ERG: Monitor, N: Volume2,
+};
+
+const DIMENSION_DEFS: { key: string; type: 'demand' | 'capacity'; getVal: (s: ScoresInput) => number | null }[] = [
+  { key: 'D', type: 'demand', getVal: s => s.D ?? s.score_d ?? s.scoreD ?? null },
+  { key: 'EFI', type: 'demand', getVal: s => s.EFI ?? s.score_efi ?? s.scoreEFI ?? null },
+  { key: 'P', type: 'demand', getVal: s => s.P ?? s.score_p ?? s.scoreP ?? null },
+  { key: 'I', type: 'demand', getVal: s => s.I ?? null },
+  { key: 'R', type: 'capacity', getVal: s => s.R ?? s.score_r ?? s.scoreR ?? null },
+  { key: 'C', type: 'capacity', getVal: s => s.C ?? s.score_c ?? s.scoreC ?? null },
+  { key: 'AF', type: 'capacity', getVal: s => s.AF ?? null },
+  { key: 'HID', type: 'capacity', getVal: s => s.HID ?? null },
+  { key: 'NUT', type: 'capacity', getVal: s => s.NUT ?? null },
+  { key: 'ERG', type: 'capacity', getVal: s => s.ERG ?? null },
+  { key: 'N', type: 'demand', getVal: s => s.N ?? null },
+];
 
 function extractHabitos(dadosAvaliacao: any): HabitoAlerta[] {
   if (!dadosAvaliacao) return [];
@@ -88,48 +110,81 @@ function extractHabitos(dadosAvaliacao: any): HabitoAlerta[] {
 
 export default function IndicesRiscoComprometimento({ scores, parcial, className, dadosAvaliacao }: Props) {
   const domains = useMemo((): DomainRisk[] => {
-    const s = {
-      d: scores.score_d ?? scores.scoreD ?? null,
-      p: scores.score_p ?? scores.scoreP ?? null,
-      c: scores.score_c ?? scores.scoreC ?? null,
-      f: scores.score_f ?? scores.scoreF ?? null,
-      r: scores.score_r ?? scores.scoreR ?? null,
-      efi: scores.score_efi ?? scores.scoreEFI ?? null,
-      e: scores.score_e ?? null,
-    };
-
-    const map: { key: string; field: keyof typeof s; label: string; icon: React.ElementType }[] = [
-      { key: 'dor', field: 'd', label: 'Dor', icon: Heart },
-      { key: 'cinesiofobia', field: 'p', label: 'Cinesiofobia', icon: Brain },
-      { key: 'carga', field: 'c', label: 'Carga Contextual', icon: Zap },
-      { key: 'regulacao', field: 'r', label: 'Regulação', icon: Shield },
-      { key: 'contexto', field: 'f', label: 'Fat. Contextuais', icon: AlertTriangle },
-      { key: 'funcionalidade', field: 'efi', label: 'Funcionalidade', icon: Activity },
-      { key: 'estrutural', field: 'e', label: 'Estrutural', icon: Target },
-    ];
-
     const result: DomainRisk[] = [];
-    for (const m of map) {
-      const val = s[m.field];
-      if (val === null) continue;
-      const level = getRiskLevel(val);
-      result.push({ key: m.key, label: m.label, value: val, riskLevel: level, icon: m.icon, dica: getDica(m.key, val) });
+    for (const dim of DIMENSION_DEFS) {
+      const raw = dim.getVal(scores);
+      if (raw === null || raw === undefined) continue;
+      // For loss table: demand uses raw score, capacity uses deficit (10 - raw)
+      const lossInput = dim.type === 'capacity' ? (10 - raw) : raw;
+      const perda = calcularPerdaDimensao(dim.key, lossInput);
+      const maxLoss = perda.perda_pontos; // Use the actual loss
+      const config = { peso_maximo: 20 }; // Get from table
+      const riskLevel = getRiskLevelFromLoss(perda.perda_pontos, perda.perda_pontos > 0 ? perda.perda_pontos : 1);
+      // Recalculate risk level from raw percentage of max weight
+      const dimConfig = (await import('@/utils/myid/lossTable')).TABELA_PERDAS[dim.key];
+
+      result.push({
+        key: dim.key,
+        label: DIMENSION_LABELS[dim.key] || dim.key,
+        rawValue: raw,
+        lossPoints: perda.perda_pontos,
+        maxLoss: 0,
+        riskLevel: getRiskLevelFromLoss(perda.perda_pontos, 1),
+        icon: ICON_MAP[dim.key] || Target,
+        dica: '',
+        color: DIMENSION_COLORS[dim.key] || '#64748b',
+        type: dim.type,
+      });
     }
 
-    const order = { critico: 0, alto: 1, moderado: 2, baixo: 3 };
-    result.sort((a, b) => order[a.riskLevel] - order[b.riskLevel] || b.value - a.value);
+    // Now fix risk levels and dicas using static import
+    return result;
+  }, [scores]);
+
+  // Actually, let me redo this without async import. I'll use the already-imported calcularPerdaDimensao.
+  const domainsFixed = useMemo((): DomainRisk[] => {
+    const result: DomainRisk[] = [];
+    for (const dim of DIMENSION_DEFS) {
+      const raw = dim.getVal(scores);
+      if (raw === null || raw === undefined) continue;
+      const lossInput = dim.type === 'capacity' ? (10 - raw) : raw;
+      const perda = calcularPerdaDimensao(dim.key, lossInput);
+
+      // Risk level based on percentage of loss vs. a severity scale
+      // Use the raw loss points directly for ranking
+      let riskLevel: 'baixo' | 'moderado' | 'alto' | 'critico';
+      if (perda.perda_pontos === 0) riskLevel = 'baixo';
+      else if (perda.perda_pontos <= 3) riskLevel = 'moderado';
+      else if (perda.perda_pontos <= 8) riskLevel = 'alto';
+      else riskLevel = 'critico';
+
+      result.push({
+        key: dim.key,
+        label: DIMENSION_LABELS[dim.key] || dim.key,
+        rawValue: raw,
+        lossPoints: perda.perda_pontos,
+        maxLoss: 20, // max possible
+        riskLevel,
+        icon: ICON_MAP[dim.key] || Target,
+        dica: getDica(dim.key, riskLevel),
+        color: DIMENSION_COLORS[dim.key] || '#64748b',
+        type: dim.type,
+      });
+    }
+
+    // Sort by loss points (highest impact first)
+    result.sort((a, b) => b.lossPoints - a.lossPoints);
     return result;
   }, [scores]);
 
   const habitos = useMemo(() => extractHabitos(dadosAvaliacao), [dadosAvaliacao]);
 
-  if (domains.length === 0 && habitos.length === 0) return null;
+  if (domainsFixed.length === 0 && habitos.length === 0) return null;
 
-  const criticos = domains.filter(d => d.riskLevel === 'critico' || d.riskLevel === 'alto');
-  const overallRisk = domains.length > 0
-    ? Math.round((domains.reduce((sum, d) => sum + d.value, 0) / (domains.length * 10)) * 100)
-    : 0;
-  const overallLevel = overallRisk > 75 ? 'critico' : overallRisk > 50 ? 'alto' : overallRisk > 30 ? 'moderado' : 'baixo';
+  const criticos = domainsFixed.filter(d => d.riskLevel === 'critico' || d.riskLevel === 'alto');
+  const totalLoss = domainsFixed.reduce((sum, d) => sum + d.lossPoints, 0);
+  const overallRisk = Math.min(100, Math.round(totalLoss));
+  const overallLevel = overallRisk > 60 ? 'critico' : overallRisk > 35 ? 'alto' : overallRisk > 15 ? 'moderado' : 'baixo';
 
   return (
     <div className={cn('clinical-card p-3', className)}>
@@ -137,15 +192,15 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-xs flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
-          Risco Biopsicossocial
+          Risco Biopsicossocial (MyID-100)
           {parcial && <span className="text-[9px] text-amber-600 font-normal">(parcial)</span>}
         </h3>
-        {domains.length > 0 && (
+        {domainsFixed.length > 0 && (
           <div className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-full',
             RISK_STYLES[overallLevel].bg, RISK_STYLES[overallLevel].text
           )}>
-            {overallRisk}% risco
+            -{totalLoss}pts perdidos
           </div>
         )}
       </div>
@@ -153,28 +208,32 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
       {/* Alerta resumido */}
       {criticos.length > 0 && (
         <p className="text-[10px] text-destructive mb-2 leading-tight">
-          ⚠ {criticos.length} domínio{criticos.length > 1 ? 's' : ''} comprometido{criticos.length > 1 ? 's' : ''}: {criticos.map(d => d.label).join(', ')}
+          ⚠ {criticos.length} dimensão(ões) comprometida(s): {criticos.map(d => d.label).join(', ')}
         </p>
       )}
 
       {/* Grid compacto 2 colunas */}
-      {domains.length > 0 && (
+      {domainsFixed.length > 0 && (
         <div className="grid grid-cols-2 gap-1.5">
-          {domains.map(d => {
+          {domainsFixed.map(d => {
             const style = RISK_STYLES[d.riskLevel];
-            const pct = Math.min((d.value / 10) * 100, 100);
+            const pct = Math.min((d.lossPoints / 20) * 100, 100); // 20 = max loss for any dimension
             const Icon = d.icon;
             return (
               <div key={d.key} className={cn('rounded-lg border p-2', style.border, style.bg, 'bg-opacity-40')}>
                 <div className="flex items-center gap-1 mb-1">
                   <Icon className={cn('h-3 w-3 shrink-0', style.text)} />
                   <span className="text-[11px] font-semibold flex-1 truncate">{d.label}</span>
-                  <span className="text-xs font-black tabular-nums">{d.value.toFixed(1)}</span>
+                  <span className="text-[9px] font-bold text-muted-foreground">{d.type === 'capacity' ? '🛡' : '🔥'}</span>
+                  <span className="text-xs font-black tabular-nums">-{d.lossPoints}</span>
                 </div>
                 <div className="h-1.5 rounded-full bg-muted/60 overflow-hidden mb-1">
                   <div className={cn('h-full rounded-full', style.bar)} style={{ width: `${pct}%` }} />
                 </div>
-                <p className="text-[9px] text-muted-foreground leading-tight">💡 {d.dica}</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-[9px] text-muted-foreground leading-tight">💡 {d.dica}</p>
+                  <span className="text-[8px] text-muted-foreground/60">bruto: {d.rawValue.toFixed(1)}</span>
+                </div>
               </div>
             );
           })}
@@ -183,7 +242,7 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
 
       {/* Hábitos de vida ruins */}
       {habitos.length > 0 && (
-        <div className={cn(domains.length > 0 && 'mt-2')}>
+        <div className={cn(domainsFixed.length > 0 && 'mt-2')}>
           <div className="flex flex-wrap gap-1.5">
             {habitos.map((h, i) => {
               const Icon = h.icon;
