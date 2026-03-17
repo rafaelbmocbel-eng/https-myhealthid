@@ -4,10 +4,8 @@ import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 
 interface ScoresInput {
-  // Raw 0-10 dimension scores
   D?: number; EFI?: number; P?: number; I?: number; N?: number;
   R?: number; C?: number; AF?: number; HID?: number; NUT?: number; ERG?: number;
-  // Legacy field names
   score_e?: number; score_p?: number; score_c?: number; score_f?: number;
   score_d?: number; score_r?: number; score_efi?: number;
   scoreF?: number; scoreD?: number; scoreEFI?: number; scoreP?: number; scoreR?: number; scoreC?: number;
@@ -33,7 +31,6 @@ interface DomainRisk {
   label: string;
   rawValue: number;
   lossPoints: number;
-  maxLoss: number;
   riskLevel: 'baixo' | 'moderado' | 'alto' | 'critico';
   icon: React.ElementType;
   dica: string;
@@ -42,19 +39,11 @@ interface DomainRisk {
 }
 
 const RISK_STYLES = {
-  baixo: { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200', badge: '🟢' },
-  moderado: { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200', badge: '🟡' },
-  alto: { bar: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200', badge: '🟠' },
-  critico: { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200', badge: '🔴' },
+  baixo: { bar: 'bg-emerald-500', text: 'text-emerald-700', bg: 'bg-emerald-50', border: 'border-emerald-200' },
+  moderado: { bar: 'bg-amber-500', text: 'text-amber-700', bg: 'bg-amber-50', border: 'border-amber-200' },
+  alto: { bar: 'bg-orange-500', text: 'text-orange-700', bg: 'bg-orange-50', border: 'border-orange-200' },
+  critico: { bar: 'bg-red-500', text: 'text-red-700', bg: 'bg-red-50', border: 'border-red-200' },
 };
-
-function getRiskLevelFromLoss(lossPoints: number, maxLoss: number): 'baixo' | 'moderado' | 'alto' | 'critico' {
-  const pct = maxLoss > 0 ? (lossPoints / maxLoss) : 0;
-  if (pct <= 0.15) return 'baixo';
-  if (pct <= 0.45) return 'moderado';
-  if (pct <= 0.75) return 'alto';
-  return 'critico';
-}
 
 function getDica(key: string, riskLevel: string): string {
   const dicas: Record<string, Record<string, string>> = {
@@ -114,44 +103,9 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
     for (const dim of DIMENSION_DEFS) {
       const raw = dim.getVal(scores);
       if (raw === null || raw === undefined) continue;
-      // For loss table: demand uses raw score, capacity uses deficit (10 - raw)
-      const lossInput = dim.type === 'capacity' ? (10 - raw) : raw;
-      const perda = calcularPerdaDimensao(dim.key, lossInput);
-      const maxLoss = perda.perda_pontos; // Use the actual loss
-      const config = { peso_maximo: 20 }; // Get from table
-      const riskLevel = getRiskLevelFromLoss(perda.perda_pontos, perda.perda_pontos > 0 ? perda.perda_pontos : 1);
-      // Recalculate risk level from raw percentage of max weight
-      const dimConfig = (await import('@/utils/myid/lossTable')).TABELA_PERDAS[dim.key];
-
-      result.push({
-        key: dim.key,
-        label: DIMENSION_LABELS[dim.key] || dim.key,
-        rawValue: raw,
-        lossPoints: perda.perda_pontos,
-        maxLoss: 0,
-        riskLevel: getRiskLevelFromLoss(perda.perda_pontos, 1),
-        icon: ICON_MAP[dim.key] || Target,
-        dica: '',
-        color: DIMENSION_COLORS[dim.key] || '#64748b',
-        type: dim.type,
-      });
-    }
-
-    // Now fix risk levels and dicas using static import
-    return result;
-  }, [scores]);
-
-  // Actually, let me redo this without async import. I'll use the already-imported calcularPerdaDimensao.
-  const domainsFixed = useMemo((): DomainRisk[] => {
-    const result: DomainRisk[] = [];
-    for (const dim of DIMENSION_DEFS) {
-      const raw = dim.getVal(scores);
-      if (raw === null || raw === undefined) continue;
       const lossInput = dim.type === 'capacity' ? (10 - raw) : raw;
       const perda = calcularPerdaDimensao(dim.key, lossInput);
 
-      // Risk level based on percentage of loss vs. a severity scale
-      // Use the raw loss points directly for ranking
       let riskLevel: 'baixo' | 'moderado' | 'alto' | 'critico';
       if (perda.perda_pontos === 0) riskLevel = 'baixo';
       else if (perda.perda_pontos <= 3) riskLevel = 'moderado';
@@ -163,7 +117,6 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
         label: DIMENSION_LABELS[dim.key] || dim.key,
         rawValue: raw,
         lossPoints: perda.perda_pontos,
-        maxLoss: 20, // max possible
         riskLevel,
         icon: ICON_MAP[dim.key] || Target,
         dica: getDica(dim.key, riskLevel),
@@ -171,31 +124,27 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
         type: dim.type,
       });
     }
-
-    // Sort by loss points (highest impact first)
     result.sort((a, b) => b.lossPoints - a.lossPoints);
     return result;
   }, [scores]);
 
   const habitos = useMemo(() => extractHabitos(dadosAvaliacao), [dadosAvaliacao]);
 
-  if (domainsFixed.length === 0 && habitos.length === 0) return null;
+  if (domains.length === 0 && habitos.length === 0) return null;
 
-  const criticos = domainsFixed.filter(d => d.riskLevel === 'critico' || d.riskLevel === 'alto');
-  const totalLoss = domainsFixed.reduce((sum, d) => sum + d.lossPoints, 0);
-  const overallRisk = Math.min(100, Math.round(totalLoss));
-  const overallLevel = overallRisk > 60 ? 'critico' : overallRisk > 35 ? 'alto' : overallRisk > 15 ? 'moderado' : 'baixo';
+  const criticos = domains.filter(d => d.riskLevel === 'critico' || d.riskLevel === 'alto');
+  const totalLoss = domains.reduce((sum, d) => sum + d.lossPoints, 0);
+  const overallLevel = totalLoss > 60 ? 'critico' : totalLoss > 35 ? 'alto' : totalLoss > 15 ? 'moderado' : 'baixo';
 
   return (
     <div className={cn('clinical-card p-3', className)}>
-      {/* Header compacto */}
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-xs flex items-center gap-1.5">
           <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
           Risco Biopsicossocial (MyID-100)
           {parcial && <span className="text-[9px] text-amber-600 font-normal">(parcial)</span>}
         </h3>
-        {domainsFixed.length > 0 && (
+        {domains.length > 0 && (
           <div className={cn(
             'text-[10px] font-bold px-2 py-0.5 rounded-full',
             RISK_STYLES[overallLevel].bg, RISK_STYLES[overallLevel].text
@@ -205,19 +154,17 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
         )}
       </div>
 
-      {/* Alerta resumido */}
       {criticos.length > 0 && (
         <p className="text-[10px] text-destructive mb-2 leading-tight">
           ⚠ {criticos.length} dimensão(ões) comprometida(s): {criticos.map(d => d.label).join(', ')}
         </p>
       )}
 
-      {/* Grid compacto 2 colunas */}
-      {domainsFixed.length > 0 && (
+      {domains.length > 0 && (
         <div className="grid grid-cols-2 gap-1.5">
-          {domainsFixed.map(d => {
+          {domains.map(d => {
             const style = RISK_STYLES[d.riskLevel];
-            const pct = Math.min((d.lossPoints / 20) * 100, 100); // 20 = max loss for any dimension
+            const pct = Math.min((d.lossPoints / 20) * 100, 100);
             const Icon = d.icon;
             return (
               <div key={d.key} className={cn('rounded-lg border p-2', style.border, style.bg, 'bg-opacity-40')}>
@@ -240,9 +187,8 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
         </div>
       )}
 
-      {/* Hábitos de vida ruins */}
       {habitos.length > 0 && (
-        <div className={cn(domainsFixed.length > 0 && 'mt-2')}>
+        <div className={cn(domains.length > 0 && 'mt-2')}>
           <div className="flex flex-wrap gap-1.5">
             {habitos.map((h, i) => {
               const Icon = h.icon;
