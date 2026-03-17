@@ -215,17 +215,33 @@ export default function PatientIntegratedDashboard({
   const getPowerZones = (sc: any): PowerZone[] => {
     if (!sc) return [];
 
-    // Biológica: R, HID, NUT (Higher is better)
-    const bioLevel = ((sc.R + sc.HID + sc.NUT) / 30) * 100;
+    // Use loss table to calculate actual impact per zone
+    // Biológica: R (capacity), HID (capacity), NUT (capacity)
+    const bioLossR = calcularPerdaDimensao('R', 10 - sc.R).perda_pontos;
+    const bioLossHID = calcularPerdaDimensao('HID', 10 - sc.HID).perda_pontos;
+    const bioLossNUT = calcularPerdaDimensao('NUT', 10 - sc.NUT).perda_pontos;
+    const bioMaxLoss = 15 + 6 + 6; // max weights from loss table
+    const bioLevel = Math.max(0, 100 - ((bioLossR + bioLossHID + bioLossNUT) / bioMaxLoss) * 100);
 
-    // Comportamental: I, AF, ERG (I: lower is better, others: higher is better)
-    const compLevel = (((10 - sc.I) + sc.AF + sc.ERG) / 30) * 100;
+    // Comportamental: I (demand), AF (capacity), ERG (capacity)
+    const compLossI = calcularPerdaDimensao('I', sc.I).perda_pontos;
+    const compLossAF = calcularPerdaDimensao('AF', 10 - sc.AF).perda_pontos;
+    const compLossERG = calcularPerdaDimensao('ERG', 10 - sc.ERG).perda_pontos;
+    const compMaxLoss = 5 + 8 + 5;
+    const compLevel = Math.max(0, 100 - ((compLossI + compLossAF + compLossERG) / compMaxLoss) * 100);
 
-    // Emocional: P, C (P: lower is better, C: higher is better)
-    const emoLevel = (((10 - sc.P) + sc.C) / 20) * 100;
+    // Emocional: P (demand), C (capacity)
+    const emoLossP = calcularPerdaDimensao('P', sc.P).perda_pontos;
+    const emoLossC = calcularPerdaDimensao('C', 10 - sc.C).perda_pontos;
+    const emoMaxLoss = 5 + 10;
+    const emoLevel = Math.max(0, 100 - ((emoLossP + emoLossC) / emoMaxLoss) * 100);
 
-    // Sistêmica/Ambiental: N, D, EFI (Lower is better)
-    const sistLevel = (((10 - sc.N) + (10 - sc.D) + (10 - sc.EFI)) / 30) * 100;
+    // Sistêmica: N (demand), D (demand), EFI (demand)
+    const sistLossN = calcularPerdaDimensao('N', sc.N).perda_pontos;
+    const sistLossD = calcularPerdaDimensao('D', sc.D).perda_pontos;
+    const sistLossEFI = calcularPerdaDimensao('EFI', sc.EFI).perda_pontos;
+    const sistMaxLoss = 5 + 20 + 15;
+    const sistLevel = Math.max(0, 100 - ((sistLossN + sistLossD + sistLossEFI) / sistMaxLoss) * 100);
 
     return [
       {
