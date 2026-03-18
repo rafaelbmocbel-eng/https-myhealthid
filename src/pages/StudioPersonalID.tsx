@@ -26,6 +26,7 @@ import { ptBR } from 'date-fns/locale';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
 // Sub-components
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';

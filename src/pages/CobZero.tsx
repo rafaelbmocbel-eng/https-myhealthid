@@ -30,6 +30,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
 const etapas = [
   { id: 1, label: 'Dados Básicos', sublabel: 'Queixa & História', icon: ClipboardList, time: '5 min' },

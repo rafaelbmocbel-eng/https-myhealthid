@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
