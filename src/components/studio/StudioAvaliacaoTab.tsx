@@ -156,6 +156,14 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           <PatientIntegratedDashboard pacienteId={pacienteId} serviceType="studio" />
         </TabsContent>
 
+        {/* Tab: Avaliação por Voz */}
+        <TabsContent value="voz" className="space-y-4 mt-4">
+          <VoiceAssessment
+            serviceType="studio"
+            patientName={pacienteNome}
+          />
+        </TabsContent>
+
         {/* Tab: Avaliação Remota & Agenda */}
         <TabsContent value="remota" className="space-y-4 mt-4">
           <Card className="border-studio/20 shadow-sm">
