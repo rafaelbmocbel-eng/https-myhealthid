@@ -143,6 +143,9 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           <TabsTrigger value="presencial" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
             <Presentation className="h-4 w-4" /> Avaliação Presencial
           </TabsTrigger>
+          <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
+            <Mic className="h-4 w-4" /> Avaliação por Voz
+          </TabsTrigger>
           <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
             <Dumbbell className="h-4 w-4" /> Diretrizes e Serviços
           </TabsTrigger>
