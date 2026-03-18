@@ -539,6 +539,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             </TabsContent>
 
+            <TabsContent value="voz" className="mt-4">
+              <VoiceAssessment
+                serviceType="identidade"
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            </TabsContent>
+
             <TabsContent value="myid" className="mt-4">
               <div className="space-y-6">
                 {/* ── Avaliação Estrutural (Unidades Corporais) ── */}
