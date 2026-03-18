@@ -321,6 +321,9 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   <TrendingUp className="h-4 w-4" /> Cob Evolução
                 </TabsTrigger>
               )}
+              <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+                <Mic className="h-4 w-4" /> Avaliação por Voz
+              </TabsTrigger>
               <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
                 <Target className="h-4 w-4" /> Diretrizes e Serviços
               </TabsTrigger>
