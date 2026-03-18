@@ -223,7 +223,7 @@ export default function FunilPublico() {
     await delay(400);
     const payOpts: { label: string; value: string }[] = [];
     if (config?.pix_chave) payOpts.push({ label: '📱 PIX (QR Code)', value: 'pix' });
-    if (config?.link_cartao) payOpts.push({ label: '💳 Cartão de Crédito', value: 'cartao' });
+    payOpts.push({ label: '💳 Cartão de Crédito', value: 'cartao' });
     if (payOpts.length === 0) {
       addBotMessage('Entre em contato para combinar a forma de pagamento.');
       addBotMessage(config?.mensagem_confirmacao || 'Registramos seu interesse! ✅');
