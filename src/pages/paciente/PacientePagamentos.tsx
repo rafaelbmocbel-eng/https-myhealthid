@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CreditCard, QrCode, ExternalLink, Copy, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { gerarPixQrCodeDataUrl } from '@/utils/pixQrCode';
+import { createSumUpCheckout } from '@/utils/sumupCheckout';
 import ResumoFinanceiro from '@/components/pagamento/ResumoFinanceiro';
 import HistoricoPagamentos from '@/components/pagamento/HistoricoPagamentos';
 import UploadComprovante from '@/components/pagamento/UploadComprovante';
