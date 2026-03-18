@@ -333,6 +333,13 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
             </TabsContent>
 
+            <TabsContent value="voz" className="mt-4">
+              <VoiceAssessment
+                serviceType="cobzero"
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            </TabsContent>
+
             {/* Aba: Avaliação Remota */}
             <TabsContent value="remota" className="mt-4 space-y-4">
 
