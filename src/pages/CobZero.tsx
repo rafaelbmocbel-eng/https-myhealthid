@@ -269,7 +269,7 @@ export default function CobZero() {
           </div>
 
           {/* Agenda Hoje */}
-          {agendamentosHoje.length > 0 && (
+          {servicosAtivos.cob_zero && agendamentosHoje.length > 0 && (
             <Card className="mb-6">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center gap-2 mb-3">
