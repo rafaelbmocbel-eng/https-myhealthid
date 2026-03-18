@@ -78,6 +78,8 @@ export default function MetodoIdentidade() {
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
 
 
+  const { servicos: servicosAtivos } = useServicosAtivos();
+
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ['metodo-agenda-hoje', user?.id],
@@ -85,16 +87,25 @@ export default function MetodoIdentidade() {
       const today = startOfDay(new Date());
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      // Get patients enrolled in identidade service
+      const { data: servicoPacientes } = await supabase
+        .from('paciente_servicos')
+        .select('paciente_id')
+        .eq('servico', 'identidade')
+        .eq('ativo', true);
+      const pacienteIds = (servicoPacientes || []).map((s: any) => s.paciente_id);
+      if (pacienteIds.length === 0) return [];
       const { data } = await supabase
         .from('agendamentos')
         .select('*, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
+        .in('paciente_id', pacienteIds)
         .gte('data_inicio', today.toISOString())
         .lt('data_inicio', tomorrow.toISOString())
         .order('data_inicio');
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && servicosAtivos.identidade,
   });
 
   const { data: myidAvaliacoesCount = 0 } = useQuery({
