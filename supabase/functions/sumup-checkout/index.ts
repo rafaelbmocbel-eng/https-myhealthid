@@ -25,6 +25,20 @@ Deno.serve(async (req) => {
       });
     }
 
+    // First, get merchant code from profile
+    const profileRes = await fetch('https://api.sumup.com/v0.1/me', {
+      headers: { 'Authorization': `Bearer ${SUMUP_API_KEY}` },
+    });
+    const profileData = await profileRes.json();
+    if (!profileRes.ok) {
+      console.error('SumUp profile error:', JSON.stringify(profileData));
+      throw new Error(`SumUp profile error [${profileRes.status}]: ${JSON.stringify(profileData)}`);
+    }
+    const merchantCode = profileData.merchant_profile?.merchant_code;
+    if (!merchantCode) {
+      throw new Error('Could not retrieve merchant_code from SumUp profile');
+    }
+
     // Create SumUp checkout
     const checkoutRes = await fetch('https://api.sumup.com/v0.1/checkouts', {
       method: 'POST',
@@ -36,6 +50,8 @@ Deno.serve(async (req) => {
         checkout_reference: reference || crypto.randomUUID(),
         amount,
         currency: 'BRL',
+        pay_to_email: profileData.merchant_profile?.email || undefined,
+        merchant_code: merchantCode,
         description: description || 'Pagamento',
         redirect_url: redirect_url || 'https://myhealthid.lovable.app',
         ...(customer_email && { customer_email }),
