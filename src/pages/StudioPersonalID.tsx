@@ -26,6 +26,7 @@ import { ptBR } from 'date-fns/locale';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
 // Sub-components
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
@@ -43,6 +44,8 @@ export default function StudioPersonalID() {
   const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
   const [searchPac, setSearchPac] = useState('');
 
+  const { servicos: servicosAtivos } = useServicosAtivos();
+
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ['studio-agenda-hoje', user?.id],
@@ -50,16 +53,24 @@ export default function StudioPersonalID() {
       const today = startOfDay(new Date());
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const { data: servicoPacientes } = await supabase
+        .from('paciente_servicos')
+        .select('paciente_id')
+        .eq('servico', 'studio')
+        .eq('ativo', true);
+      const pacienteIds = (servicoPacientes || []).map((s: any) => s.paciente_id);
+      if (pacienteIds.length === 0) return [];
       const { data } = await supabase
         .from('agendamentos')
         .select('*, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
+        .in('paciente_id', pacienteIds)
         .gte('data_inicio', today.toISOString())
         .lt('data_inicio', tomorrow.toISOString())
         .order('data_inicio');
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && servicosAtivos.studio,
   });
 
   const { data: studioTreinosCount = 0 } = useQuery({
@@ -267,7 +278,7 @@ export default function StudioPersonalID() {
 
 
         {/* Agenda Hoje */}
-        {agendamentosHoje.length > 0 && (
+        {servicosAtivos.studio && agendamentosHoje.length > 0 && (
           <Card className="mb-6">
             <CardContent className="pt-4 pb-3">
               <div className="flex items-center gap-2 mb-3">

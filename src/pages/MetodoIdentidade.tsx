@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
@@ -78,6 +79,8 @@ export default function MetodoIdentidade() {
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
 
 
+  const { servicos: servicosAtivos } = useServicosAtivos();
+
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ['metodo-agenda-hoje', user?.id],
@@ -85,16 +88,25 @@ export default function MetodoIdentidade() {
       const today = startOfDay(new Date());
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      // Get patients enrolled in identidade service
+      const { data: servicoPacientes } = await supabase
+        .from('paciente_servicos')
+        .select('paciente_id')
+        .eq('servico', 'identidade')
+        .eq('ativo', true);
+      const pacienteIds = (servicoPacientes || []).map((s: any) => s.paciente_id);
+      if (pacienteIds.length === 0) return [];
       const { data } = await supabase
         .from('agendamentos')
         .select('*, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
+        .in('paciente_id', pacienteIds)
         .gte('data_inicio', today.toISOString())
         .lt('data_inicio', tomorrow.toISOString())
         .order('data_inicio');
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && servicosAtivos.identidade,
   });
 
   const { data: myidAvaliacoesCount = 0 } = useQuery({
@@ -333,7 +345,7 @@ export default function MetodoIdentidade() {
           </div>
 
           {/* Agenda Hoje */}
-          {agendamentosHoje.length > 0 && (
+          {servicosAtivos.identidade && agendamentosHoje.length > 0 && (
             <Card className="mb-6">
               <CardContent className="pt-4 pb-3">
                 <div className="flex items-center gap-2 mb-3">
