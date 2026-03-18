@@ -98,6 +98,8 @@ export default function CobZero() {
   const [showRelatorio, setShowRelatorio] = useState(false);
   const [etapasConcluidas, setEtapasConcluidas] = useState<Set<number>>(new Set());
 
+  const { servicos: servicosAtivos } = useServicosAtivos();
+
   // Stats queries
   const { data: agendamentosHoje = [] } = useQuery({
     queryKey: ['cobzero-agenda-hoje', user?.id],
@@ -105,16 +107,24 @@ export default function CobZero() {
       const today = startOfDay(new Date());
       const tomorrow = new Date(today);
       tomorrow.setDate(tomorrow.getDate() + 1);
+      const { data: servicoPacientes } = await supabase
+        .from('paciente_servicos')
+        .select('paciente_id')
+        .eq('servico', 'cob_zero')
+        .eq('ativo', true);
+      const pacienteIds = (servicoPacientes || []).map((s: any) => s.paciente_id);
+      if (pacienteIds.length === 0) return [];
       const { data } = await supabase
         .from('agendamentos')
         .select('*, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
+        .in('paciente_id', pacienteIds)
         .gte('data_inicio', today.toISOString())
         .lt('data_inicio', tomorrow.toISOString())
         .order('data_inicio');
       return data || [];
     },
-    enabled: !!user,
+    enabled: !!user && servicosAtivos.cob_zero,
   });
 
   const { data: cobZeroAvaliacoesCount = 0 } = useQuery({
