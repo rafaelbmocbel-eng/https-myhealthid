@@ -281,18 +281,16 @@ export default function PacientePagamentos() {
                     </div>
                   </button>
                 )}
-                {config?.link_cartao && (
-                  <button onClick={handleSelectCartao} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
+                <button onClick={handleSelectCartao} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <CreditCard className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-foreground">Cartão de Crédito</p>
-                      <p className="text-xs text-muted-foreground">Pague com cartão via link externo</p>
+                      <p className="text-xs text-muted-foreground">Pague com cartão via SumUp</p>
                     </div>
                   </button>
-                )}
-                {!config?.pix_chave && !config?.link_cartao && (
+                {!config?.pix_chave && (
                   <p className="text-sm text-muted-foreground text-center py-4">Nenhuma forma de pagamento configurada pelo profissional.</p>
                 )}
               </CardContent>
