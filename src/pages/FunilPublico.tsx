@@ -333,17 +333,42 @@ export default function FunilPublico() {
     } else if (value === 'cartao') {
       addUserMessage('Pagar via Cartão');
       await delay(500);
-      if (config?.link_cartao) {
+      addBotMessage('⏳ Gerando seu link de pagamento...');
+      try {
+        const { createSumUpCheckout } = await import('@/utils/sumupCheckout');
+        const result = await createSumUpCheckout({
+          amount: servicoEscolhido?.valor || 0,
+          description: servicoEscolhido?.nome || 'Pagamento',
+          customer_name: leadData.nome,
+          customer_email: leadData.email || undefined,
+          reference: leadId ? `lead_${leadId}` : undefined,
+          redirect_url: window.location.href,
+        });
+        // Remove the loading message
+        setMessages(prev => prev.filter(m => m.texto !== '⏳ Gerando seu link de pagamento...'));
         addBotMessage('🔗 Clique no link abaixo para realizar o pagamento:');
         setTimeout(() => {
           setMessages(prev => [...prev, {
             id: crypto.randomUUID(),
             tipo: 'bot',
-            texto: `💳 [Pagar com Cartão](${config.link_cartao})`,
+            texto: `💳 [Pagar com Cartão](${result.checkout_url})`,
           }]);
         }, 400);
-      } else {
-        addBotMessage('Entre em contato para detalhes de pagamento com cartão.');
+      } catch (err) {
+        console.error('SumUp checkout error:', err);
+        setMessages(prev => prev.filter(m => m.texto !== '⏳ Gerando seu link de pagamento...'));
+        if (config?.link_cartao) {
+          addBotMessage('🔗 Clique no link abaixo para realizar o pagamento:');
+          setTimeout(() => {
+            setMessages(prev => [...prev, {
+              id: crypto.randomUUID(),
+              tipo: 'bot',
+              texto: `💳 [Pagar com Cartão](${config.link_cartao})`,
+            }]);
+          }, 400);
+        } else {
+          addBotMessage('Não foi possível gerar o link de pagamento. Entre em contato para combinar.');
+        }
       }
       await delay(800);
       addBotMessage(config?.mensagem_confirmacao || 'Obrigado! Seu interesse foi registrado. ✅');
