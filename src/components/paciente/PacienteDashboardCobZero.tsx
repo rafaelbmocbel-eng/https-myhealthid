@@ -27,6 +27,7 @@ import { CobZeroWizard } from '../cobzero/CobZeroWizard';
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
 
 interface Paciente {
   id: string;
