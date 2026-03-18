@@ -361,11 +361,21 @@ export default function PacientePagamentos() {
                     </p>
                   )}
                 </div>
-                <Button asChild className="w-full gap-2">
-                  <a href={config?.link_cartao || '#'} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" /> Pagar com Cartão
-                  </a>
-                </Button>
+                {sumupLoading ? (
+                  <Button disabled className="w-full gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Gerando link de pagamento...
+                  </Button>
+                ) : sumupUrl ? (
+                  <Button asChild className="w-full gap-2">
+                    <a href={sumupUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-4 w-4" /> Pagar com Cartão
+                    </a>
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full gap-2">
+                    <CreditCard className="h-4 w-4" /> Link indisponível
+                  </Button>
+                )}
                 <p className="text-[10px] text-muted-foreground text-center">
                   Você será redirecionado para a página de pagamento. Após concluir, volte e clique em "Já paguei".
                 </p>
