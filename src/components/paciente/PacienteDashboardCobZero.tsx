@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone } from 'lucide-react';
+import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone, Mic } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -27,6 +27,7 @@ import { CobZeroWizard } from '../cobzero/CobZeroWizard';
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
 
 interface Paciente {
   id: string;
@@ -320,6 +321,9 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   <TrendingUp className="h-4 w-4" /> Cob Evolução
                 </TabsTrigger>
               )}
+              <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+                <Mic className="h-4 w-4" /> Avaliação por Voz
+              </TabsTrigger>
               <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
                 <Target className="h-4 w-4" /> Diretrizes e Serviços
               </TabsTrigger>
@@ -327,6 +331,13 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
             <TabsContent value="integrada" className="mt-4">
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
+            </TabsContent>
+
+            <TabsContent value="voz" className="mt-4">
+              <VoiceAssessment
+                serviceType="cobzero"
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
             </TabsContent>
 
             {/* Aba: Avaliação Remota */}

@@ -12,9 +12,10 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
-  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell, Plus
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell, Plus, Mic
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import QuestionariosComparacao from '../paciente/QuestionariosComparacao';
 import IndicesRiscoComprometimento from '../paciente/IndicesRiscoComprometimento';
 import PacienteProtocolosTab from '../paciente/PacienteProtocolosTab';
@@ -142,6 +143,9 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           <TabsTrigger value="presencial" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
             <Presentation className="h-4 w-4" /> Avaliação Presencial
           </TabsTrigger>
+          <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
+            <Mic className="h-4 w-4" /> Avaliação por Voz
+          </TabsTrigger>
           <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
             <Dumbbell className="h-4 w-4" /> Diretrizes e Serviços
           </TabsTrigger>
@@ -150,6 +154,14 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
         {/* Tab: Visão Integrada */}
         <TabsContent value="integrada" className="space-y-4 mt-4">
           <PatientIntegratedDashboard pacienteId={pacienteId} serviceType="studio" />
+        </TabsContent>
+
+        {/* Tab: Avaliação por Voz */}
+        <TabsContent value="voz" className="space-y-4 mt-4">
+          <VoiceAssessment
+            serviceType="studio"
+            patientName={pacienteNome}
+          />
         </TabsContent>
 
         {/* Tab: Avaliação Remota & Agenda */}

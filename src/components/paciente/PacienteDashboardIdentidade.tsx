@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -26,6 +26,7 @@ import StructuralResultsSummary from '../structural/StructuralResultsSummary';
 import StructuralConnectionMap from '../structural/StructuralConnectionMap';
 import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
@@ -513,6 +514,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial
               </TabsTrigger>
+              <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+                <Mic className="h-4 w-4" /> Avaliação por Voz
+              </TabsTrigger>
               <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Target className="h-4 w-4" /> Diretrizes e Serviços
               </TabsTrigger>
@@ -533,6 +537,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
             <TabsContent value="integrada" className="mt-4">
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+            </TabsContent>
+
+            <TabsContent value="voz" className="mt-4">
+              <VoiceAssessment
+                serviceType="identidade"
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
             </TabsContent>
 
             <TabsContent value="myid" className="mt-4">

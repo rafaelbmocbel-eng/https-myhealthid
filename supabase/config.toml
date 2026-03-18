@@ -5,3 +5,6 @@ verify_jwt = true
 
 [functions.generate-exercise-image]
 verify_jwt = true
+
+[functions.voice-assessment]
+verify_jwt = false
