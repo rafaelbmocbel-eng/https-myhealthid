@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { CreditCard, QrCode, ExternalLink, Copy, CheckCircle, Clock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { gerarPixQrCodeDataUrl } from '@/utils/pixQrCode';
+import { createSumUpCheckout } from '@/utils/sumupCheckout';
 import ResumoFinanceiro from '@/components/pagamento/ResumoFinanceiro';
 import HistoricoPagamentos from '@/components/pagamento/HistoricoPagamentos';
 import UploadComprovante from '@/components/pagamento/UploadComprovante';
@@ -140,9 +141,36 @@ export default function PacientePagamentos() {
     }
   };
 
-  const handleSelectCartao = () => {
+  const [sumupLoading, setSumupLoading] = useState(false);
+  const [sumupUrl, setSumupUrl] = useState<string | null>(null);
+
+  const handleSelectCartao = async () => {
     setPaymentMethod('cartao');
     setPixQr(null);
+    setSumupUrl(null);
+
+    if (!selectedServico || !paciente) return;
+    setSumupLoading(true);
+    try {
+      const result = await createSumUpCheckout({
+        amount: selectedServico.valor,
+        description: selectedServico.nome,
+        customer_name: `${paciente.nome} ${paciente.sobrenome}`,
+        reference: `pac_${paciente.id}_${Date.now()}`,
+        redirect_url: window.location.href,
+      });
+      setSumupUrl(result.checkout_url);
+    } catch (e: any) {
+      console.error('SumUp error:', e);
+      // Fallback to static link if available
+      if (config?.link_cartao) {
+        setSumupUrl(config.link_cartao);
+      } else {
+        toast({ title: 'Erro ao gerar link de pagamento', description: e.message, variant: 'destructive' });
+      }
+    } finally {
+      setSumupLoading(false);
+    }
   };
 
   const handleConfirmPayment = async () => {
@@ -253,18 +281,16 @@ export default function PacientePagamentos() {
                     </div>
                   </button>
                 )}
-                {config?.link_cartao && (
-                  <button onClick={handleSelectCartao} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
+                <button onClick={handleSelectCartao} className="w-full flex items-center gap-3 p-4 rounded-xl border border-border hover:border-primary/50 hover:bg-primary/5 transition-all">
                     <div className="w-10 h-10 rounded-lg bg-blue-500/10 flex items-center justify-center">
                       <CreditCard className="h-5 w-5 text-blue-600" />
                     </div>
                     <div className="text-left">
                       <p className="text-sm font-semibold text-foreground">Cartão de Crédito</p>
-                      <p className="text-xs text-muted-foreground">Pague com cartão via link externo</p>
+                      <p className="text-xs text-muted-foreground">Pague com cartão via SumUp</p>
                     </div>
                   </button>
-                )}
-                {!config?.pix_chave && !config?.link_cartao && (
+                {!config?.pix_chave && (
                   <p className="text-sm text-muted-foreground text-center py-4">Nenhuma forma de pagamento configurada pelo profissional.</p>
                 )}
               </CardContent>
@@ -333,11 +359,21 @@ export default function PacientePagamentos() {
                     </p>
                   )}
                 </div>
-                <Button asChild className="w-full gap-2">
-                  <a href={config?.link_cartao || '#'} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" /> Pagar com Cartão
-                  </a>
-                </Button>
+                {sumupLoading ? (
+                  <Button disabled className="w-full gap-2">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Gerando link de pagamento...
+                  </Button>
+                ) : sumupUrl ? (
+                  <Button asChild className="w-full gap-2">
+                    <a href={sumupUrl} target="_blank" rel="noreferrer">
+                      <ExternalLink className="h-4 w-4" /> Pagar com Cartão
+                    </a>
+                  </Button>
+                ) : (
+                  <Button disabled className="w-full gap-2">
+                    <CreditCard className="h-4 w-4" /> Link indisponível
+                  </Button>
+                )}
                 <p className="text-[10px] text-muted-foreground text-center">
                   Você será redirecionado para a página de pagamento. Após concluir, volte e clique em "Já paguei".
                 </p>
