@@ -72,6 +72,7 @@ export default function GestaoVendas() {
     const [historicoPatientId, setHistoricoPatientId] = useState<string>('');
     const queryClient = useQueryClient();
     const { logMensagem, conversas, mensagens } = useMensagensWhatsApp();
+    const { config: funilConfig } = useFunil();
 
     // Modal de Adição Diária
     const [addPacienteModal, setAddPacienteModal] = useState(false);
