@@ -70,6 +70,17 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
   doc.setFillColor(...VERMELHO);
   doc.rect(0, 0, W, 55, 'F');
 
+  // Real app logo
+  await addLogoToDoc(doc, margin, 8, 14);
+  const W = 210;
+  const margin = 15;
+  const contentW = W - margin * 2;
+  let y = 0;
+
+  // ── CAPA ──────────────────────────────────────────────────────────────────
+  doc.setFillColor(...VERMELHO);
+  doc.rect(0, 0, W, 55, 'F');
+
   doc.setTextColor(...BRANCO);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
