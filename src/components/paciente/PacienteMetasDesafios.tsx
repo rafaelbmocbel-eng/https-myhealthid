@@ -293,7 +293,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const weekAgo = subDays(now, 7);
       const metasList: Meta[] = [];
 
-      const [diarioRes, treinosRes, execucoesRes, streakRes] = await Promise.all([
+      const [diarioRes, treinosRes, streakRes] = await Promise.all([
         supabase.from('daily_logs')
           .select('id, created_at')
           .eq('paciente_id', pacienteId)
@@ -303,11 +303,6 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           .eq('paciente_id', pacienteId)
           .eq('publicado', true)
           .eq('ativo', true),
-        supabase.from('studio_execucoes' as any)
-          .select('treino_id, data_execucao')
-          .eq('paciente_id', pacienteId)
-          .eq('completo', true)
-          .gte('data_execucao', weekAgo.toISOString()),
         supabase.from('daily_logs')
           .select('created_at')
           .eq('paciente_id', pacienteId)
