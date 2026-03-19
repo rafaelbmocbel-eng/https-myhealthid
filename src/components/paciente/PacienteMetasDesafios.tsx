@@ -9,10 +9,11 @@ import {
   Target, Trophy, Heart, Dumbbell, BookOpen,
   CheckCircle2, Flame, Zap, Moon, Droplets, Apple,
   Monitor, Brain, Shield, AlertTriangle, Lightbulb,
-  ChevronDown, ChevronUp, Sparkles
+  ChevronDown, ChevronUp, Sparkles, ArrowRight
 } from 'lucide-react';
 import { subDays } from 'date-fns';
-import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
+import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
+import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Meta {
