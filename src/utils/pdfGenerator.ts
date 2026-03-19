@@ -372,5 +372,5 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
     doc.text(`Página ${i} de ${totalPages}`, W - margin, 293, { align: 'right' });
   }
 
-  doc.save(`Diretriz_${data.pacienteNome.replace(/\s+/g, '_')}_${data.dataEmissao.replace(/\//g, '-')}.pdf`);
+  doc.save(`MyHealthID_Diretriz_${data.pacienteNome.replace(/\s+/g, '_')}_${data.dataEmissao.replace(/\//g, '-')}.pdf`);
 }

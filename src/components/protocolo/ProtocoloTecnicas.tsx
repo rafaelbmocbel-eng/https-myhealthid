@@ -96,9 +96,9 @@ export default function ProtocoloTecnicas({ tecnicas, faseAtual, protocoloId }: 
     });
   };
 
-  // Group by fase_ideal
+  // Group by fase_ideal, filtering to only cardápio categories
   const porFase: Record<number, any[]> = { 1: [], 2: [], 3: [], 4: [] };
-  tecnicas.forEach(t => {
+  tecnicas.filter(t => CATEGORIAS_CARDAPIO.has(t.categoria || '')).forEach(t => {
     const f = t.fase_ideal || 1;
     if (porFase[f]) porFase[f].push(t);
   });

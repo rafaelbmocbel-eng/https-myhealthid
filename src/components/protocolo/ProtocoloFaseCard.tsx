@@ -35,10 +35,15 @@ interface Props {
   isConcluida: boolean;
 }
 
+// Only these categories appear in the treatment guidelines cardápio
+const CATEGORIAS_CARDAPIO = new Set(['terapia_manual', 'eletroterapia', 'tracao']);
+
 export default function ProtocoloFaseCard({
-  fase, idx, prescricoes, tecnicas, selectedTecnicaIds, onToggleTecnica,
+  fase, idx, prescricoes, tecnicas: tecnicasRaw, selectedTecnicaIds, onToggleTecnica,
   isOpen, onToggle, isAtual, isConcluida
 }: Props) {
+  // Filter to only show terapia manual, eletrotermofoto, and cinesioterapia/tracao
+  const tecnicas = tecnicasRaw.filter((t: any) => CATEGORIAS_CARDAPIO.has(t.categoria || ''));
   return (
     <div className={`rounded-xl border-2 ${FASE_BORDE[idx % 4]} overflow-hidden ${isAtual ? 'ring-2 ring-primary shadow-lg' : ''}`}>
       {/* Header */}
