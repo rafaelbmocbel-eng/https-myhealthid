@@ -3,11 +3,10 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Textarea } from '@/components/ui/textarea';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
@@ -41,9 +40,12 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const { toast } = useToast();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('record');
-  const [isListening, setIsListening] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const [recordingTime, setRecordingTime] = useState(0);
   const [transcript, setTranscript] = useState('');
   const [editedTranscript, setEditedTranscript] = useState('');
+  const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioMimeType, setAudioMimeType] = useState<string>('audio/webm');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
@@ -52,118 +54,119 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     resumo: true, dor: true, funcionalidade: true, psicossocial: false,
     redflags: true, hipoteses: true, plano: true, insights: true,
   });
-  const recognitionRef = useRef<any>(null);
-  const fullTranscriptRef = useRef('');
-  const isListeningRef = useRef(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  const isSupported = typeof window !== 'undefined' &&
-    ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
-
-  const startListening = useCallback(() => {
-    if (!isSupported) {
-      toast({ title: 'Navegador não suporta reconhecimento de voz', description: 'Use Chrome, Edge ou Safari.', variant: 'destructive' });
-      return;
-    }
-    try { recognitionRef.current?.stop(); } catch {}
-    recognitionRef.current = null;
-
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    recognition.lang = 'pt-BR';
-    recognition.continuous = true;
-    recognition.interimResults = true;
-
-    recognition.onresult = (event: any) => {
-      let interimTranscript = '';
-      let finalTranscript = '';
-      for (let i = event.resultIndex; i < event.results.length; i++) {
-        const t = event.results[i][0].transcript;
-        if (event.results[i].isFinal) {
-          finalTranscript += t + ' ';
-        } else {
-          interimTranscript = t;
-        }
-      }
-      if (finalTranscript) {
-        fullTranscriptRef.current += finalTranscript;
-      }
-      setTranscript(fullTranscriptRef.current + interimTranscript);
-    };
-
-    recognition.onerror = (e: any) => {
-      console.error('Speech recognition error:', e.error);
-      if (e.error === 'not-allowed' || e.error === 'service-not-available') {
-        toast({ title: 'Microfone não permitido', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
-        isListeningRef.current = false;
-        setIsListening(false);
-        recognitionRef.current = null;
-      } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
-        toast({ title: 'Erro no reconhecimento de voz', description: e.error, variant: 'destructive' });
-      }
-    };
-
-    recognition.onend = () => {
-      if (isListeningRef.current) {
-        try { recognition.start(); } catch {
-          isListeningRef.current = false;
-          setIsListening(false);
-          recognitionRef.current = null;
-        }
-      }
-    };
-
-    recognitionRef.current = recognition;
-    try {
-      recognition.start();
-      isListeningRef.current = true;
-      setIsListening(true);
-    } catch (err) {
-      console.error('Failed to start recognition:', err);
-      toast({ title: 'Erro ao iniciar gravação', description: 'Tente novamente ou use outro navegador.', variant: 'destructive' });
-      recognitionRef.current = null;
-    }
-  }, [isSupported, toast]);
-
-  const stopListening = useCallback(() => {
-    isListeningRef.current = false;
-    recognitionRef.current?.stop();
-    recognitionRef.current = null;
-    setIsListening(false);
-    setTranscript(fullTranscriptRef.current);
-  }, []);
-
+  // Cleanup on unmount
   useEffect(() => {
     return () => {
-      isListeningRef.current = false;
-      recognitionRef.current?.stop();
-      recognitionRef.current = null;
+      stopRecording();
+      if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
 
+  const startRecording = useCallback(async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+
+      // Pick best supported format
+      let mimeType = 'audio/webm;codecs=opus';
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/webm';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = 'audio/mp4';
+      }
+      if (!MediaRecorder.isTypeSupported(mimeType)) {
+        mimeType = ''; // let browser decide
+      }
+
+      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+      chunksRef.current = [];
+
+      recorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      recorder.onstop = () => {
+        stream.getTracks().forEach(t => t.stop());
+        const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64 = (reader.result as string).split(',')[1];
+          setAudioBase64(base64);
+          setAudioMimeType(recorder.mimeType.split(';')[0]);
+        };
+        reader.readAsDataURL(blob);
+      };
+
+      mediaRecorderRef.current = recorder;
+      recorder.start(1000); // collect chunks every second
+      setIsRecording(true);
+      setRecordingTime(0);
+      timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+    } catch (err) {
+      console.error('Failed to start recording:', err);
+      toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
+    }
+  }, [toast]);
+
+  const stopRecording = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      mediaRecorderRef.current.stop();
+    }
+    mediaRecorderRef.current = null;
+    setIsRecording(false);
+  }, []);
+
+  const formatTime = (seconds: number) => {
+    const m = Math.floor(seconds / 60);
+    const s = seconds % 60;
+    return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+  };
+
   const goToReview = () => {
-    const text = transcript.trim();
-    if (text.length < 20) {
-      toast({ title: 'Transcrição muito curta', description: 'Grave pelo menos algumas frases da conversa.', variant: 'destructive' });
+    if (!audioBase64 && transcript.trim().length < 20) {
+      toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
-    setEditedTranscript(text);
+    setEditedTranscript(transcript.trim());
     setStep('review');
   };
 
-  const processTranscript = async () => {
+  const processAssessment = async () => {
     const text = editedTranscript.trim();
-    if (text.length < 20) {
-      toast({ title: 'Transcrição muito curta', description: 'Adicione mais conteúdo antes de processar.', variant: 'destructive' });
+    if (!audioBase64 && text.length < 20) {
+      toast({ title: 'Conteúdo insuficiente', description: 'Adicione mais conteúdo ou grave áudio.', variant: 'destructive' });
       return;
     }
+
     setIsProcessing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('voice-assessment', {
-        body: { transcript: text, serviceType, patientName, patientAge, patientSex },
-      });
+      const body: any = { serviceType, patientName, patientAge, patientSex };
+
+      if (audioBase64) {
+        body.audioBase64 = audioBase64;
+        body.audioMimeType = audioMimeType;
+      }
+      if (text.length >= 20) {
+        body.transcript = text;
+      }
+
+      const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
+
       setAssessment(data.assessment);
+      // If Gemini returned a transcription from audio, use it
+      if (data.transcricao && (!editedTranscript || editedTranscript.length < 20)) {
+        setEditedTranscript(data.transcricao);
+      }
       setStep('result');
       onAssessmentComplete?.(data.assessment);
       toast({ title: '✅ Avaliação gerada!', description: 'Revise e salve no prontuário.' });
@@ -178,23 +181,20 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     if (!assessment || !user) return;
     setIsSaving(true);
     try {
-      // Save to avaliacoes_voz
       const { error: saveError } = await supabase.from('avaliacoes_voz' as any).insert({
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
         servico: serviceType,
-        transcricao: editedTranscript,
+        transcricao: editedTranscript || 'Avaliação por áudio',
         resultado: assessment,
         classificacao_severidade: assessment.classificacao_severidade,
         queixa_principal: assessment.queixa_principal,
       } as any);
       if (saveError) throw saveError;
 
-      // Also save to prontuário if pacienteId is available
       if (pacienteId) {
         const descricao = `${assessment.resumo_clinico}\n\nQueixa: ${assessment.queixa_principal || 'N/I'}\nDor EVA: ${assessment.dor?.intensidade_eva || '?'}/10 — ${assessment.dor?.tipo || 'N/I'}\nClassificação: ${assessment.classificacao_severidade}\n\nHipóteses: ${assessment.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
-
         await supabase.from('notas_prontuario').insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,
@@ -246,9 +246,10 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
   const resetAll = () => {
     setTranscript('');
     setEditedTranscript('');
-    fullTranscriptRef.current = '';
+    setAudioBase64(null);
     setAssessment(null);
     setIsSaved(false);
+    setRecordingTime(0);
     setStep('record');
   };
 
@@ -427,24 +428,37 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <div>
                 <h3 className="font-bold text-lg">Revisar Transcrição</h3>
                 <p className="text-sm text-muted-foreground">
-                  Corrija erros, adicione informações ou complete trechos antes de gerar a avaliação.
+                  {audioBase64
+                    ? 'Áudio capturado! Adicione contexto ou anotações extras (opcional). A IA transcreverá o áudio automaticamente.'
+                    : 'Corrija erros, adicione informações ou complete trechos antes de gerar a avaliação.'}
                 </p>
               </div>
             </div>
 
+            {audioBase64 && (
+              <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
+                <CheckCircle2 className="h-4 w-4" />
+                <span>Áudio gravado ({formatTime(recordingTime)}) — será transcrito e analisado pela IA</span>
+              </div>
+            )}
+
             <Textarea
               value={editedTranscript}
               onChange={(e) => setEditedTranscript(e.target.value)}
-              placeholder="Revise e edite a transcrição..."
+              placeholder={audioBase64 ? "Notas adicionais (opcional)..." : "Revise e edite a transcrição..."}
               className="min-h-[200px] text-sm"
             />
-            <p className="text-xs text-muted-foreground mt-1">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>
+            {editedTranscript && <p className="text-xs text-muted-foreground mt-1">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>}
 
             <div className="flex gap-2 mt-4">
               <Button variant="outline" onClick={() => setStep('record')}>
-                <RotateCcw className="h-4 w-4 mr-2" />Voltar e Gravar Mais
+                <RotateCcw className="h-4 w-4 mr-2" />Voltar
               </Button>
-              <Button onClick={processTranscript} disabled={isProcessing || editedTranscript.trim().length < 20} className="bg-primary text-primary-foreground">
+              <Button
+                onClick={processAssessment}
+                disabled={isProcessing || (!audioBase64 && editedTranscript.trim().length < 20)}
+                className="bg-primary text-primary-foreground"
+              >
                 {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
               </Button>
             </div>
@@ -455,7 +469,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           <Card className="border-primary/20">
             <CardContent className="p-6 flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">Analisando conversa com IA clínica baseada em evidências...</p>
+              <p className="text-sm text-muted-foreground">
+                {audioBase64 ? 'Transcrevendo áudio e analisando com IA clínica...' : 'Analisando conversa com IA clínica baseada em evidências...'}
+              </p>
               <div className="flex flex-wrap gap-2 justify-center">
                 <Badge variant="outline" className="text-xs">Magee (2021)</Badge>
                 <Badge variant="outline" className="text-xs">O'Sullivan (2018)</Badge>
@@ -477,51 +493,61 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           <div className="flex items-center gap-3 mb-4">
             <div className={cn(
               'h-14 w-14 rounded-full flex items-center justify-center transition-all',
-              isListening ? 'bg-destructive/10 animate-pulse' : 'bg-primary/10'
+              isRecording ? 'bg-destructive/10 animate-pulse' : 'bg-primary/10'
             )}>
-              {isListening ? <Mic className="h-7 w-7 text-destructive" /> : <MicOff className="h-7 w-7 text-primary" />}
+              {isRecording ? <Mic className="h-7 w-7 text-destructive" /> : <MicOff className="h-7 w-7 text-primary" />}
             </div>
             <div>
               <h3 className="font-bold text-lg">Avaliação por Voz</h3>
               <p className="text-sm text-muted-foreground">
-                {SERVICE_LABELS[serviceType]} — {isListening ? 'Gravando conversa...' : 'Inicie a gravação e converse com o paciente'}
+                {SERVICE_LABELS[serviceType]} — {isRecording ? 'Gravando áudio...' : 'Grave a consulta ou digite/cole a transcrição'}
               </p>
             </div>
           </div>
 
-          <div className="flex gap-2 mb-4">
-            {!isListening ? (
-              <Button onClick={startListening} className="bg-primary text-primary-foreground">
+          <div className="flex gap-2 items-center mb-4">
+            {!isRecording ? (
+              <Button onClick={startRecording} className="bg-primary text-primary-foreground">
                 <Mic className="h-4 w-4 mr-2" />Iniciar Gravação
               </Button>
             ) : (
-              <Button onClick={stopListening} variant="destructive">
-                <MicOff className="h-4 w-4 mr-2" />Parar Gravação
-              </Button>
+              <>
+                <Button onClick={stopRecording} variant="destructive">
+                  <MicOff className="h-4 w-4 mr-2" />Parar Gravação
+                </Button>
+                <div className="flex items-center gap-1.5 text-sm text-destructive font-mono">
+                  <Clock className="h-4 w-4" />
+                  {formatTime(recordingTime)}
+                </div>
+              </>
             )}
-            {transcript.trim().length > 20 && !isListening && (
+            {(audioBase64 || transcript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
                 <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
               </Button>
             )}
           </div>
 
-          {!isSupported && (
-            <div className="bg-destructive/10 text-destructive rounded-lg p-3 text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4" />Navegador não suporta reconhecimento de voz. Use Chrome ou Edge.
+          {audioBase64 && !isRecording && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Áudio capturado ({formatTime(recordingTime)}) — pronto para processar</span>
             </div>
           )}
 
-          <Textarea
-            value={transcript}
-            onChange={(e) => { setTranscript(e.target.value); fullTranscriptRef.current = e.target.value; }}
-            placeholder="A transcrição aparecerá aqui conforme você conversa... Ou cole/digite manualmente."
-            className="min-h-[120px] text-sm"
-          />
+          <div className="relative">
+            <p className="text-xs text-muted-foreground mb-1">Ou cole/digite a transcrição manualmente:</p>
+            <Textarea
+              value={transcript}
+              onChange={(e) => setTranscript(e.target.value)}
+              placeholder="Cole ou digite a transcrição aqui (alternativa ao áudio)..."
+              className="min-h-[100px] text-sm"
+            />
+          </div>
           {transcript.length > 0 && (
             <div className="flex items-center justify-between mt-1">
               <p className="text-xs text-muted-foreground">{transcript.split(/\s+/).filter(Boolean).length} palavras</p>
-              {!isListening && transcript.trim().length > 20 && (
+              {!isRecording && transcript.trim().length > 20 && (
                 <Button variant="ghost" size="sm" onClick={goToReview} className="text-xs text-primary">
                   Revisar antes de processar →
                 </Button>
