@@ -141,8 +141,7 @@ export default function PacientePagamentos() {
     }
   };
 
-  const [sumupLoading, setSumupLoading] = useState(false);
-  const [sumupUrl, setSumupUrl] = useState<string | null>(null);
+  const [sumupLoading] = useState(false);
 
   const handleSelectCartao = () => {
     setPaymentMethod('cartao');
