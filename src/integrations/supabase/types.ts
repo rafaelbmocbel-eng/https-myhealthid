@@ -1228,6 +1228,51 @@ export type Database = {
           },
         ]
       }
+      pesquisas_nps: {
+        Row: {
+          comentario: string | null
+          created_at: string
+          id: string
+          nota: number
+          paciente_id: string
+          sessao_id: string | null
+          terapeuta_id: string
+        }
+        Insert: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota: number
+          paciente_id: string
+          sessao_id?: string | null
+          terapeuta_id: string
+        }
+        Update: {
+          comentario?: string | null
+          created_at?: string
+          id?: string
+          nota?: number
+          paciente_id?: string
+          sessao_id?: string | null
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pesquisas_nps_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pesquisas_nps_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "controle_sessoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planos: {
         Row: {
           ativo: boolean

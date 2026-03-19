@@ -21,6 +21,8 @@ import { ptBR } from 'date-fns/locale';
 import { PageTransition, StaggerContainer, StaggerItem, FadeIn } from '@/components/PageTransition';
 import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
+import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 
 export default function Index() {
   const { user, profile, loading } = useAuth();
@@ -412,6 +414,11 @@ export default function Index() {
           </p>
         </div>
         </FadeIn>
+
+        {/* Onboarding Guide */}
+        <div className="mb-4">
+          <OnboardingGuide />
+        </div>
 
         {/* Quick stats — compact row */}
         <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
@@ -877,6 +884,11 @@ export default function Index() {
           </div>
         )}
 
+      </div>
+
+      {/* NPS Dashboard */}
+      <div className="container max-w-6xl px-1 sm:px-6 pb-6">
+        <NpsSurveyCard showDashboard />
       </div>
 
       {/* FAB removed — actions available via sidebar/module cards */}
