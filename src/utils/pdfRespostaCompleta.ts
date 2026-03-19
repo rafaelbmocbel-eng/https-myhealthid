@@ -339,6 +339,92 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
     y += 8;
   }
 
+  // ═══════════════════════════════════════════════════════
+  // SECTION 2.5 — ORIENTAÇÕES RESPIRATÓRIAS & DICAS DE MELHORIA
+  // ═══════════════════════════════════════════════════════
+  y = checkPage(doc, y + 6, 30, M);
+  doc.setTextColor(...DARK);
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Orientações Respiratórias & Dicas de Melhoria', M, y);
+  doc.setFillColor(...GOLD);
+  doc.rect(M, y + 2, 58, 0.8, 'F');
+  y += 10;
+
+  // Fetch respiratory/other techniques from DB
+  const { data: tecnicasExtras } = await (await import('@/integrations/supabase/client')).supabase
+    .from('tecnicas_tratamento')
+    .select('*')
+    .in('categoria', ['exercicio_respiratorio', 'outros'])
+    .order('nome');
+
+  if (tecnicasExtras && tecnicasExtras.length > 0) {
+    const porCat: Record<string, any[]> = {};
+    (tecnicasExtras as any[]).forEach((t: any) => {
+      const cat = t.categoria === 'exercicio_respiratorio' ? 'Exercícios Respiratórios' : 'Dicas de Melhoria';
+      if (!porCat[cat]) porCat[cat] = [];
+      porCat[cat].push(t);
+    });
+
+    Object.entries(porCat).forEach(([catLabel, tecs]) => {
+      y = checkPage(doc, y, 12, M);
+      const icon = catLabel.includes('Respirat') ? '🫁' : '💡';
+      doc.setFontSize(9);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(`${icon} ${catLabel}`, M, y + 3);
+      y += 7;
+
+      (tecs as any[]).forEach((tec: any) => {
+        y = checkPage(doc, y, 12, M);
+        doc.setFillColor(248, 250, 255);
+        doc.roundedRect(M + 2, y, CW - 4, 10, 1.5, 1.5, 'F');
+        doc.setFontSize(7);
+        doc.setFont('helvetica', 'bold');
+        doc.setTextColor(...DARK);
+        doc.text(tec.nome, M + 5, y + 4);
+        if (tec.nivel_evidencia) {
+          doc.setFontSize(5.5);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...GRAY);
+          doc.text(`Evidência: ${tec.nivel_evidencia}`, W - M - 6, y + 4, { align: 'right' });
+        }
+        if (tec.descricao) {
+          doc.setFontSize(6);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(...GRAY);
+          const dl = doc.splitTextToSize(tec.descricao, CW - 14);
+          doc.text(dl.slice(0, 1), M + 5, y + 8);
+        }
+        y += 12;
+      });
+      y += 2;
+    });
+  } else {
+    // Generic lifestyle tips when no techniques in DB
+    const dicas = [
+      { titulo: '🫁 Respiração Diafragmática', desc: 'Inspire pelo nariz expandindo o abdômen (4s), segure (2s), expire lentamente (6s). Repita 10x, 2-3x/dia.' },
+      { titulo: '🧘 Relaxamento Progressivo', desc: 'Tensione e relaxe cada grupo muscular por 5s. Do pé à cabeça. Ideal antes de dormir.' },
+      { titulo: '💧 Hidratação Adequada', desc: 'Mínimo 35ml/kg/dia. Tecidos hidratados respondem melhor ao tratamento.' },
+      { titulo: '🛌 Higiene do Sono', desc: 'Rotina regular, sem telas 1h antes, quarto escuro e fresco. Meta: 7-9h/noite.' },
+      { titulo: '🚶 Movimento Ativo', desc: 'Caminhadas de 20-30min/dia reduzem inflamação sistêmica e melhoram o humor.' },
+    ];
+    dicas.forEach(d => {
+      y = checkPage(doc, y, 10, M);
+      doc.setFillColor(248, 250, 255);
+      doc.roundedRect(M, y, CW, 9, 1.5, 1.5, 'F');
+      doc.setFontSize(7);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(...DARK);
+      doc.text(d.titulo, M + 3, y + 4);
+      doc.setFontSize(6);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...GRAY);
+      doc.text(d.desc, M + 3, y + 7.5);
+      y += 11;
+    });
+  }
+
   y += 6;
 
   // ═══════════════════════════════════════════════════════
