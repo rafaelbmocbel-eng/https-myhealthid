@@ -447,3 +447,31 @@ function DicaCard({ dica, mini = false }: { dica: DicaPersonalizada; mini?: bool
     </div>
   );
 }
+
+const missaoCategoriaColors: Record<string, { bg: string; text: string; badge: string }> = {
+  urgente: { bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-400', badge: '🔴' },
+  importante: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', badge: '🟡' },
+  oportunidade: { bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', badge: '🔵' },
+  consolidacao: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', badge: '🟢' },
+};
+
+function MissaoMiniCard({ missao }: { missao: ClinicalMission }) {
+  const colors = missaoCategoriaColors[missao.categoria] || missaoCategoriaColors.oportunidade;
+  const dimColor = DIMENSION_COLORS[missao.dimensao] || '#6366F1';
+  return (
+    <div className={cn("p-2 rounded-lg border border-border", colors.bg)}>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <span className="text-[10px]">{colors.badge}</span>
+        <span className={cn("text-[10px] font-bold truncate", colors.text)}>{missao.titulo}</span>
+        <span className="text-[9px] font-black text-primary ml-auto">+{missao.xp}XP</span>
+      </div>
+      <p className="text-[10px] text-foreground/60 leading-snug line-clamp-2">{missao.descricao}</p>
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="text-[9px] px-1 py-0 rounded-sm font-medium" style={{ backgroundColor: `${dimColor}15`, color: dimColor }}>
+          {DIMENSION_LABELS[missao.dimensao] || missao.dimensao}
+        </span>
+        <span className="text-[9px] text-muted-foreground capitalize">{missao.tipo}</span>
+      </div>
+    </div>
+  );
+}
