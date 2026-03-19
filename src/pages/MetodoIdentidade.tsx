@@ -323,21 +323,20 @@ export default function MetodoIdentidade() {
             </div>
           </div>
 
-          {/* Visão Geral Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {/* Quick Stats — compact */}
+          <div className="grid grid-cols-3 gap-2 mb-6">
             {[
-              { icon: Users, label: 'Pacientes Ativos', value: pacientes.length, color: 'text-primary' },
-              { icon: CalendarDays, label: 'Sessões Hoje', value: agendamentosHoje.length, color: 'text-primary' },
-              { icon: Activity, label: 'Avaliações MyID', value: myidAvaliacoesCount, color: 'text-primary' },
-              { icon: CheckCircle2, label: 'Status', value: 'On', color: 'text-primary' },
+              { icon: Users, label: 'Pacientes', value: pacientes.length },
+              { icon: CalendarDays, label: 'Hoje', value: agendamentosHoje.length },
+              { icon: Activity, label: 'MyID', value: myidAvaliacoesCount },
             ].map(stat => {
               const Icon = stat.icon;
               return (
-                <Card key={stat.label} className="border-primary/10 hover:border-primary/30 transition-all">
-                  <CardContent className="pt-4 pb-3 text-center">
-                    <Icon className={cn('h-5 w-5 mx-auto mb-1', stat.color)} />
-                    <div className="text-2xl font-black text-foreground">{stat.value}</div>
-                    <div className="text-[10px] text-muted-foreground">{stat.label}</div>
+                <Card key={stat.label} className="border-primary/10">
+                  <CardContent className="pt-3 pb-2 text-center">
+                    <Icon className="h-4 w-4 mx-auto mb-0.5 text-primary" />
+                    <div className="text-xl font-black text-foreground">{stat.value}</div>
+                    <div className="text-[9px] text-muted-foreground">{stat.label}</div>
                   </CardContent>
                 </Card>
               );
