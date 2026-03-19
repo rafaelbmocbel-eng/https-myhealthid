@@ -13,7 +13,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
