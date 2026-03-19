@@ -456,7 +456,7 @@ export default function Index() {
                 </div>
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </Link>
-            );
+          })}
         </div>
 
         {/* Today's schedule */}
