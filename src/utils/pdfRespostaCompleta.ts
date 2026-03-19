@@ -112,6 +112,12 @@ export async function gerarPDFRespostaCompleta({ avaliacao, pacienteId, terapeut
   // Logo area — real app logo
   await addLogoToDoc(doc, M, 10, 16);
 
+  doc.setTextColor(...WHITE);
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('MY HEALTH', M + 20, 18);
+  doc.setTextColor(...GOLD);
+  doc.text('ID', M + 64, 18);
 
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
