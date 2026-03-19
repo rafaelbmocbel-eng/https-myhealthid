@@ -413,175 +413,51 @@ export default function Index() {
         </div>
         </FadeIn>
 
-        {/* Quick stats */}
-        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        {/* Quick stats — compact row */}
+        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
-            { label: 'Pacientes Totais', value: pacientes.length, icon: Users, color: 'text-primary' },
-            { label: 'Atendimentos Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
-            { label: 'Avaliações Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, color: 'text-amber-600' },
+            { label: 'Pacientes', value: pacientes.length, icon: Users, color: 'text-primary' },
+            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
+            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, color: 'text-amber-600' },
+            { label: 'Próximo', value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—', icon: Clock, color: 'text-blue-600',
+              onClick: () => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`),
+              subtitle: proximoAtendimento?.pacientes ? `${(proximoAtendimento as any).pacientes.nome}` : undefined },
           ].map(stat => {
             const Icon = stat.icon;
             return (
-              <div key={stat.label} className="clinical-card text-center p-4">
-                <Icon className={`h-6 w-6 mx-auto mb-2 ${stat.color}`} />
-                <div className="text-2xl font-black text-foreground">{stat.value}</div>
-                <div className="text-xs text-muted-foreground mt-1 leading-tight">{stat.label}</div>
+              <StaggerItem key={stat.label}>
+              <div className={`clinical-card !p-3 text-center ${(stat as any).onClick ? 'cursor-pointer hover:ring-1 hover:ring-primary/30' : ''}`} onClick={(stat as any).onClick}>
+                <Icon className={`h-5 w-5 mx-auto mb-1 ${stat.color}`} />
+                <div className="text-xl font-black text-foreground">{stat.value}</div>
+                <div className="text-[10px] text-muted-foreground leading-tight">{(stat as any).subtitle || stat.label}</div>
               </div>
+              </StaggerItem>
             );
           })}
-          {/* Próximo Atendimento — enriched */}
-          <div
-            className={`clinical-card text-center p-4 ${proximoAtendimento ? 'cursor-pointer hover:ring-2 hover:ring-blue-300 transition-all' : ''}`}
-            onClick={() => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
-          >
-            <Clock className="h-6 w-6 mx-auto mb-2 text-blue-600" />
-            <div className="text-2xl font-black text-foreground">
-              {proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—'}
-            </div>
-            {proximoAtendimento?.pacientes ? (
-              <div className="text-xs text-blue-600 font-semibold mt-1 truncate">
-                {(proximoAtendimento as any).pacientes.nome} {(proximoAtendimento as any).pacientes.sobrenome}
-              </div>
-            ) : (
-              <div className="text-xs text-muted-foreground mt-1 leading-tight">Próximo Atendimento</div>
-            )}
-          </div>
         </StaggerContainer>
 
-        {/* Main modules */}
-        <div className="grid sm:grid-cols-2 md:grid-cols-4 gap-4 sm:gap-5 mb-6 sm:mb-8">
-          {/* Método Identidade */}
-          {servicos.identidade && (
-          <div className="clinical-card border-2 border-[hsl(345_55%_32%/0.2)] hover:border-[hsl(345_55%_32%/0.4)] transition-all flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-gradient-identidade flex items-center justify-center shadow-lg shrink-0">
-                <Activity className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Método Identidade</h2>
-                <p className="text-xs text-muted-foreground">Radar de Valências e Alertas Clínicos</p>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Pacientes</span>
-                <span className="font-semibold text-primary">{metodoIdentidadePacientes}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Gamificação</span>
-                <span className="text-muted-foreground">Fórmula e Herói Silencioso</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <Link to="/pacientes">Ver Pacientes</Link>
-              </Button>
-              <Button asChild size="sm" className="flex-1 bg-gradient-identidade text-white">
-                <Link to="/metodo-identidade">
-                  Avaliar <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-          )}
-
-          {/* COB° ZERO */}
-          {servicos.cob_zero && (
-          <div className="clinical-card border-2 border-blue-200 hover:border-blue-400 transition-all flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-blue-600 to-cyan-500 flex items-center justify-center shadow-lg shrink-0">
-                <AlignCenter className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">COB° ZERO</h2>
-                <p className="text-xs text-muted-foreground">Protocolo Integrado de Escoliose</p>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Pacientes</span>
-                <span className="font-semibold text-blue-600">{cobZeroPacientes}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">5 Etapas</span>
-                <span className="text-muted-foreground">Cobb, Lenke, Risco</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <Link to="/pacientes">Ver Pacientes</Link>
-              </Button>
-              <Button asChild size="sm" className="flex-1 text-white" style={{ background: 'linear-gradient(135deg, hsl(210 80% 45%), hsl(187 76% 45%))' }}>
-                <Link to="/cob-zero">
-                  Protocolo <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-          )}
-
-          {/* Studio Personal ID */}
-          {servicos.studio && (
-          <div className="clinical-card border-2 border-[hsl(165_65%_32%/0.2)] hover:border-[hsl(165_65%_32%/0.4)] transition-all flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-2xl bg-gradient-studio flex items-center justify-center shadow-lg shrink-0">
-                <Sparkles className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Studio Personal ID</h2>
-                <p className="text-xs text-muted-foreground">Treinamento Personalizado</p>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Pacientes</span>
-                <span className="font-semibold text-studio">{studioPacientes}</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Objetivos & Sessões</span>
-                <span className="text-muted-foreground">Personalizado</span>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button asChild variant="outline" size="sm" className="flex-1">
-                <Link to="/pacientes">Ver Pacientes</Link>
-              </Button>
-              <Button asChild size="sm" className="flex-1 bg-gradient-studio text-white hover:opacity-90">
-                <Link to="/studio-personal-id">
-                  Abrir <ArrowRight className="h-3.5 w-3.5 ml-1" />
-                </Link>
-              </Button>
-            </div>
-          </div>
-          )}
-
-          {/* Agenda Premium */}
-          <div className="clinical-card border-2 border-amber-200 hover:border-amber-400 transition-all flex flex-col">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-11 w-11 rounded-xl bg-gradient-to-br from-amber-500 to-orange-500 flex items-center justify-center shadow-lg shrink-0">
-                <CalendarDays className="h-6 w-6 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Agenda Premium</h2>
-                <p className="text-xs text-muted-foreground">Calendário Inteligente · Slots 45min</p>
-              </div>
-            </div>
-            <div className="flex-1 space-y-2 mb-4">
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Hoje</span>
-                <span className="font-semibold text-amber-600">{agendamentosHoje.length} atendimentos</span>
-              </div>
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Horário</span>
-                <span className="text-muted-foreground">6h – 20h</span>
-              </div>
-            </div>
-            <Button asChild size="sm" className="w-full text-white" style={{ background: 'linear-gradient(135deg, hsl(40 96% 52%), hsl(25 95% 53%))' }}>
-              <Link to="/agenda">
-                Abrir Agenda <ArrowRight className="h-3.5 w-3.5 ml-1" />
+        {/* Service modules — compact list */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+          {[
+            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
+            ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
+            ...(servicos.studio ? [{ label: 'Studio Personal ID', sublabel: `${studioPacientes} pacientes`, icon: Sparkles, href: '/studio-personal-id', gradient: 'bg-gradient-studio' }] : []),
+            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
+          ].map(mod => {
+            const Icon = mod.icon;
+            return (
+              <Link key={mod.href} to={mod.href} className="clinical-card !p-3 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
+                <div className={`h-9 w-9 rounded-lg ${mod.gradient} flex items-center justify-center shrink-0`}>
+                  <Icon className="h-4.5 w-4.5 text-white" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="text-sm font-bold text-foreground truncate">{mod.label}</div>
+                  <div className="text-[10px] text-muted-foreground">{mod.sublabel}</div>
+                </div>
+                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </Link>
-            </Button>
-          </div>
+            );
+          })}
         </div>
 
         {/* Today's schedule */}
@@ -1003,50 +879,7 @@ export default function Index() {
 
       </div>
 
-      {/* Quick Action FAB */}
-      <div ref={fabRef} className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-2">
-        {isFabOpen && (
-          <div className="flex flex-col gap-2 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            {[
-              { label: 'Novo Paciente', icon: UserPlus, to: '/pacientes', gradient: 'from-primary to-rose-500' },
-              { label: 'Agendar', icon: CalendarDays, to: '/agenda', gradient: 'from-amber-500 to-orange-500' },
-              ...(servicos.identidade ? [
-                { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
-                { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },
-              ] : []),
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <span className="px-3 py-1.5 rounded-lg bg-card border shadow-lg text-xs font-medium text-foreground whitespace-nowrap">
-                  {item.label}
-                </span>
-                {item.to ? (
-                  <Link
-                    to={item.to}
-                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform`}
-                  >
-                    <item.icon className="h-5 w-5 text-white" />
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => { item.action?.(); setIsFabOpen(false); }}
-                    disabled={isGeneratingLink}
-                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform disabled:opacity-50`}
-                  >
-                    {isGeneratingLink ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <item.icon className="h-5 w-5 text-white" />}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        <button
-          onClick={() => setIsFabOpen(prev => !prev)}
-          className={`h-14 w-14 rounded-full bg-gradient-to-br from-primary to-rose-600 flex items-center justify-center shadow-2xl hover:scale-105 transition-all duration-200 ${isFabOpen ? 'rotate-45' : ''}`}
-          aria-label="Ações rápidas"
-        >
-          {isFabOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-7 w-7 text-white" />}
-        </button>
-      </div>
+      {/* FAB removed — actions available via sidebar/module cards */}
       </PageTransition>
     </AppLayout>
   );

@@ -323,21 +323,20 @@ export default function MetodoIdentidade() {
             </div>
           </div>
 
-          {/* Visão Geral Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
+          {/* Quick Stats — compact */}
+          <div className="grid grid-cols-3 gap-2 mb-6">
             {[
-              { icon: Users, label: 'Pacientes Ativos', value: pacientes.length, color: 'text-primary' },
-              { icon: CalendarDays, label: 'Sessões Hoje', value: agendamentosHoje.length, color: 'text-primary' },
-              { icon: Activity, label: 'Avaliações MyID', value: myidAvaliacoesCount, color: 'text-primary' },
-              { icon: CheckCircle2, label: 'Status', value: 'On', color: 'text-primary' },
+              { icon: Users, label: 'Pacientes', value: pacientes.length },
+              { icon: CalendarDays, label: 'Hoje', value: agendamentosHoje.length },
+              { icon: Activity, label: 'MyID', value: myidAvaliacoesCount },
             ].map(stat => {
               const Icon = stat.icon;
               return (
-                <Card key={stat.label} className="border-primary/10 hover:border-primary/30 transition-all">
-                  <CardContent className="pt-4 pb-3 text-center">
-                    <Icon className={cn('h-5 w-5 mx-auto mb-1', stat.color)} />
-                    <div className="text-2xl font-black text-foreground">{stat.value}</div>
-                    <div className="text-[10px] text-muted-foreground">{stat.label}</div>
+                <Card key={stat.label} className="border-primary/10">
+                  <CardContent className="pt-3 pb-2 text-center">
+                    <Icon className="h-4 w-4 mx-auto mb-0.5 text-primary" />
+                    <div className="text-xl font-black text-foreground">{stat.value}</div>
+                    <div className="text-[9px] text-muted-foreground">{stat.label}</div>
                   </CardContent>
                 </Card>
               );
@@ -433,58 +432,27 @@ export default function MetodoIdentidade() {
                           </div>
                         </div>
 
-                        {/* Ações (Links + Avaliação) */}
-                        <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap sm:flex-nowrap" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center gap-2 border-r pr-3">
-                            {/* Link MyID */}
-                            <div className="flex flex-col gap-1 items-center">
-                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
-                              {linkAtivo ? (
-                                <div className="flex items-center gap-1">
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                  {p.telefone && (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
-                                      <Smartphone className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" disabled={gerando} onClick={() => gerarLink(p.id)}>
-                                  {gerando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />} Novo Link
-                                </Button>
-                              )}
-                            </div>
-
-                            {/* Link Agenda */}
-                            <div className="flex flex-col gap-1 items-center pl-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
-                              {linkAgenda ? (
-                                <div className="flex items-center gap-1">
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                  {p.telefone && (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
-                                      <Smartphone className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
-                              )}
-                            </div>
-                          </div>
-
+                        {/* Actions — simplified */}
+                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          {(() => {
+                            const linkAtivo = getLinkAtivo(p.id);
+                            return linkAtivo ? (
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            ) : (
+                              <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" disabled={gerando} onClick={() => gerarLink(p.id)} title="Gerar Link">
+                                {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+                              </Button>
+                            );
+                          })()}
                           <Button
                             size="sm"
-                            className="bg-primary hover:bg-primary-dark text-white gap-1 ml-1"
+                            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1"
                             onClick={() => handleSelectPaciente(p)}
                           >
-                            Avaliação <ChevronRight className="h-3 w-3" />
+                            Abrir <ChevronRight className="h-3 w-3" />
                           </Button>
-
                         </div>
                       </div>
                     );

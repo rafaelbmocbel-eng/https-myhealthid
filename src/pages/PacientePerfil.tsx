@@ -373,154 +373,50 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-6">
-          {/* Idade */}
-          <div className="clinical-card !p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Idade</span>
-            </div>
-            <div className="text-lg font-bold">
-              {idade !== null ? `${idade} anos` : '—'}
-            </div>
-            {paciente.data_nascimento && (
-              <span className="text-[10px] text-muted-foreground">{format(parseISO(paciente.data_nascimento), 'dd/MM/yyyy')}</span>
-            )}
-          </div>
-
-          {/* Tempo de acompanhamento */}
-          <div className="clinical-card !p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Acompanhamento</span>
-            </div>
-            <div className="text-lg font-bold">
-              {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR })}
-            </div>
-            <span className="text-[10px] text-muted-foreground">Desde {format(parseISO(paciente.created_at), 'dd/MM/yyyy')}</span>
-          </div>
-
-          {/* Total de avaliações */}
-          <div className="clinical-card !p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Avaliações</span>
-            </div>
-            <div className="text-lg font-bold">
-              {avaliacoesId.length + avaliacoesCob.length}
-            </div>
-            <div className="flex gap-2">
-              {avaliacoesId.length > 0 && <span className="text-[10px] text-primary">{avaliacoesId.length} ID</span>}
-              {avaliacoesCob.length > 0 && <span className="text-[10px] text-blue-600">{avaliacoesCob.length} COB°</span>}
-              {avaliacoesId.length + avaliacoesCob.length === 0 && <span className="text-[10px] text-muted-foreground">Nenhuma</span>}
-            </div>
-          </div>
-
-          {/* Próxima consulta */}
-          <div className="clinical-card !p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <CalendarDays className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Próxima Consulta</span>
-            </div>
-            {agendamentosFuturos.length > 0 ? (
-              <>
-                <div className="text-lg font-bold">
-                  {format(parseISO(agendamentosFuturos[agendamentosFuturos.length - 1].data_inicio), 'dd/MM', { locale: ptBR })}
-                </div>
-                <span className="text-[10px] text-muted-foreground">
-                  {format(parseISO(agendamentosFuturos[agendamentosFuturos.length - 1].data_inicio), "HH:mm", { locale: ptBR })}
-                </span>
-              </>
-            ) : (
-              <div className="text-lg font-bold text-muted-foreground">—</div>
-            )}
-          </div>
-
-          {/* Controle de Sessões */}
-          <div className="clinical-card !p-3">
-            <div className="flex items-center gap-2 mb-1.5">
-              <Activity className="h-3.5 w-3.5 text-muted-foreground" />
-              <span className="text-[10px] text-muted-foreground uppercase font-semibold tracking-wide">Sessões</span>
-            </div>
-            <div className="text-lg font-bold">
-              {sessionMetrics.total > 0 ? `${sessionMetrics.atendidas}/${sessionMetrics.total}` : '—'}
-            </div>
-            <div className="flex gap-2">
-              <span className="text-[10px] text-emerald-600 font-medium">{sessionMetrics.atendidas} ✓</span>
-              <span className="text-[10px] text-red-600 font-medium">{sessionMetrics.faltas} ✗</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Contact + Notes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-          {/* Contact info */}
-          <div className="clinical-card !p-3">
-            <div className="space-y-1.5">
-              {paciente.telefone && (
-                <div className="flex items-center gap-2 text-xs">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{paciente.telefone}</span>
-                </div>
-              )}
-              {paciente.email && (
-                <div className="flex items-center gap-2 text-xs">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="truncate">{paciente.email}</span>
-                </div>
-              )}
-              {paciente.genero && (
-                <div className="flex items-center gap-2 text-xs">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="capitalize">{paciente.genero}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Observations */}
-          {paciente.observacoes && (
-            <div className="clinical-card !p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground uppercase font-semibold">Observações</span>
+        {/* KPI Cards — compact 3-col, show only available data */}
+        <div className="grid grid-cols-3 gap-2 mb-4">
+          {[
+            idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
+            { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
+            { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
+          ].filter(Boolean).map((kpi: any) => {
+            const Icon = kpi.icon;
+            return (
+              <div key={kpi.label} className="clinical-card !p-2.5 text-center">
+                <Icon className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+                <div className="text-base font-bold leading-tight">{kpi.value}</div>
+                <div className="text-[9px] text-muted-foreground">{kpi.sub || kpi.label}</div>
               </div>
-              <p className="text-xs text-muted-foreground">{paciente.observacoes}</p>
-            </div>
-          )}
+            );
+          })}
         </div>
 
+        {/* Contact inline */}
+        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4 px-1">
+          {paciente.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>}
+          {paciente.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{paciente.email}</span>}
+          {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
+          {paciente.observacoes && <span className="flex items-center gap-1 text-muted-foreground/70" title={paciente.observacoes}><FileText className="h-3 w-3" />Obs: {paciente.observacoes.slice(0, 40)}{paciente.observacoes.length > 40 ? '…' : ''}</span>}
+        </div>
+        {/* Contact + Notes removed — now inline above */}
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-5 h-auto gap-1.5 w-full border shadow-sm">
-            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
+            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="evolucao-prontuario"
-              className="gap-2 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md text-[10px] sm:text-xs px-3 py-2.5 border-2 border-emerald-500/40 bg-emerald-50/80 data-[state=active]:border-emerald-600 data-[state=active]:text-emerald-800 font-black transition-all hover:bg-emerald-100"
-            >
-              <FileText className="h-4 w-4 shrink-0 text-emerald-600" />
-              <span className="hidden sm:inline">Evolução e Prontuários</span>
-              <span className="sm:hidden">Evol. Pront.</span>
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
+              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evolução</span><span className="sm:hidden">Evol.</span>
             </TabsTrigger>
-
-            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
             </TabsTrigger>
-
-            <TabsTrigger
-              value="engajamento"
-              className="gap-1 rounded-lg data-[state=active]:bg-white data-[state=active]:shadow-md text-[10px] sm:text-xs px-2 py-2 border-2 border-primary/30 bg-primary/5 data-[state=active]:border-primary data-[state=active]:text-primary font-bold transition-all hover:bg-primary/10"
-            >
+            <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <Heart className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Engajamento</span><span className="sm:hidden">Engaj.</span>
             </TabsTrigger>
-
-            <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-2">
+            <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
             </TabsTrigger>
-
           </TabsList>
 
           {/* ══════════════════════════════════════════════════════════════════

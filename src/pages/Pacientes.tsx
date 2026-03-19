@@ -581,31 +581,19 @@ export default function Pacientes() {
                         )}
                       </div>
                     </div>
-                    {/* Actions — visible on hover */}
+                    {/* Actions — compact */}
                     <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
                       {p.telefone && (
-                        <Button variant="default" size="sm" className="h-8 gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white" title="WhatsApp"
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10" title="WhatsApp"
                           onClick={() => {
                             const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
                             window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}?text=${msg}`, '_blank');
                           }}>
-                          <MessageCircle className="h-3.5 w-3.5" /> <span className="hidden sm:inline text-xs">Chamar</span>
+                          <MessageCircle className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity text-primary" title="Evoluções e Prontuário"
-                        onClick={() => navigate(`/pacientes/${p.id}?tab=prontuario`)}>
-                        <FileText className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity" title="Nova Avaliação"
-                        onClick={() => navigate(`/pacientes/${p.id}`)}>
-                        <ClipboardList className="h-3.5 w-3.5" />
-                      </Button>
-
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
                         <Edit2 className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 hover:text-destructive" onClick={() => handleDelete(p)} title="Desativar">
-                        <Trash2 className="h-3.5 w-3.5" />
                       </Button>
                     </div>
                   </div>
