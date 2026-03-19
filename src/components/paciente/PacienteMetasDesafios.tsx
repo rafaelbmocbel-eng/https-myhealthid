@@ -312,7 +312,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
       const diarios = diarioRes.data || [];
       const treinos = treinosRes.data || [];
-      const execucoes = execucoesRes.data || [];
+      const execucoes: any[] = []; // studio_execucoes table not yet created
 
       let streakCount = 0;
       const streakLogs = streakRes.data || [];
