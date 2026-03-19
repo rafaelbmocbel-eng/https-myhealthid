@@ -46,6 +46,11 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; color: string; label:
     color: 'bg-violet-100 text-violet-700 border-violet-200',
     label: 'Conduta / Diretriz',
   },
+  avaliacao_voz: {
+    icon: <Stethoscope className="h-4 w-4" />,
+    color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
+    label: 'Avaliação por Voz',
+  },
   geral: {
     icon: <FileText className="h-4 w-4" />,
     color: 'bg-muted text-muted-foreground border-border',
