@@ -321,8 +321,17 @@ export default function Pacientes() {
     setSubmitting(true);
     try {
       let pacienteId = modal.paciente?.id;
+      const validated = parsed.data;
       const payload = {
-        ...parsed.data,
+        nome: validated.nome!,
+        sobrenome: validated.sobrenome!,
+        email: validated.email ?? null,
+        telefone: validated.telefone ?? null,
+        data_nascimento: validated.data_nascimento ?? null,
+        genero: validated.genero ?? null,
+        cpf: validated.cpf ?? null,
+        endereco: validated.endereco ?? null,
+        observacoes: validated.observacoes ?? null,
         terapeuta_id: user!.id,
       };
       if (pacienteId) {
