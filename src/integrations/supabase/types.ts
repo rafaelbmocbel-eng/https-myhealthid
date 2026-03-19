@@ -2225,6 +2225,56 @@ export type Database = {
         }
         Relationships: []
       }
+      termos_consentimento: {
+        Row: {
+          aceito: boolean
+          created_at: string
+          data_aceite: string | null
+          id: string
+          ip_aceite: string | null
+          paciente_id: string
+          terapeuta_id: string
+          texto_termo: string
+          tipo: string
+          updated_at: string
+          versao: string
+        }
+        Insert: {
+          aceito?: boolean
+          created_at?: string
+          data_aceite?: string | null
+          id?: string
+          ip_aceite?: string | null
+          paciente_id: string
+          terapeuta_id: string
+          texto_termo: string
+          tipo?: string
+          updated_at?: string
+          versao?: string
+        }
+        Update: {
+          aceito?: boolean
+          created_at?: string
+          data_aceite?: string | null
+          id?: string
+          ip_aceite?: string | null
+          paciente_id?: string
+          terapeuta_id?: string
+          texto_termo?: string
+          tipo?: string
+          updated_at?: string
+          versao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "termos_consentimento_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never

@@ -32,6 +32,8 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
+import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
+import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -398,6 +400,12 @@ export default function PacientePerfil() {
           {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
           {paciente.observacoes && <span className="flex items-center gap-1 text-muted-foreground/70" title={paciente.observacoes}><FileText className="h-3 w-3" />Obs: {paciente.observacoes.slice(0, 40)}{paciente.observacoes.length > 40 ? '…' : ''}</span>}
         </div>
+
+        {/* LGPD Consent */}
+        <div className="mb-4">
+          <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+        </div>
+
         {/* Contact + Notes removed — now inline above */}
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
@@ -749,7 +757,8 @@ export default function PacientePerfil() {
               TAB: EVOLUÇÃO E PRONTUÁRIOS
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
-            {/* Prontuário Timeline */}
+            {/* SOAP Note + Prontuário */}
+            <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
             <StudioNotasTab pacienteId={id!} showSummary={true} />
 

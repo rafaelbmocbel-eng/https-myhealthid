@@ -51,6 +51,11 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; color: string; label:
     color: 'bg-indigo-100 text-indigo-700 border-indigo-200',
     label: 'Avaliação por Voz',
   },
+  soap_note: {
+    icon: <FileText className="h-4 w-4" />,
+    color: 'bg-teal-100 text-teal-700 border-teal-200',
+    label: 'Nota SOAP',
+  },
   geral: {
     icon: <FileText className="h-4 w-4" />,
     color: 'bg-muted text-muted-foreground border-border',
