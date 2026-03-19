@@ -1,5 +1,6 @@
 import jsPDF from 'jspdf';
 import { supabase } from '@/integrations/supabase/client';
+import { addLogoToDoc } from './pdfLogoHelper';
 
 // Colors
 const NAVY = [28, 55, 83] as const;
