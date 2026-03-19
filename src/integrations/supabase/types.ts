@@ -315,6 +315,56 @@ export type Database = {
           },
         ]
       }
+      avaliacoes_voz: {
+        Row: {
+          classificacao_severidade: string | null
+          created_at: string
+          id: string
+          paciente_id: string | null
+          paciente_nome: string | null
+          queixa_principal: string | null
+          resultado: Json
+          servico: string
+          terapeuta_id: string
+          transcricao: string
+          updated_at: string
+        }
+        Insert: {
+          classificacao_severidade?: string | null
+          created_at?: string
+          id?: string
+          paciente_id?: string | null
+          paciente_nome?: string | null
+          queixa_principal?: string | null
+          resultado: Json
+          servico: string
+          terapeuta_id: string
+          transcricao: string
+          updated_at?: string
+        }
+        Update: {
+          classificacao_severidade?: string | null
+          created_at?: string
+          id?: string
+          paciente_id?: string | null
+          paciente_nome?: string | null
+          queixa_principal?: string | null
+          resultado?: Json
+          servico?: string
+          terapeuta_id?: string
+          transcricao?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "avaliacoes_voz_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_agenda: {
         Row: {
           created_at: string
