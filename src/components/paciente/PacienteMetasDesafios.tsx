@@ -9,10 +9,11 @@ import {
   Target, Trophy, Heart, Dumbbell, BookOpen,
   CheckCircle2, Flame, Zap, Moon, Droplets, Apple,
   Monitor, Brain, Shield, AlertTriangle, Lightbulb,
-  ChevronDown, ChevronUp, Sparkles
+  ChevronDown, ChevronUp, Sparkles, ArrowRight
 } from 'lucide-react';
 import { subDays } from 'date-fns';
-import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
+import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
+import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Meta {
@@ -198,9 +199,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [streak, setStreak] = useState(0);
   const [completedMissions, setCompletedMissions] = useState<Set<string>>(new Set());
   const [showDicas, setShowDicas] = useState(true);
+  const [showFases, setShowFases] = useState(false);
 
   // Fetch MyID scores for health missions
-  const { data: myidScores } = useQuery({
+  const { data: myidData } = useQuery({
     queryKey: ['metas-myid-scores', pacienteId],
     queryFn: async () => {
       // Try avaliacoes_identidade first
@@ -217,14 +219,17 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         const analysis = av.myid_analysis as any;
         const cs = analysis?.componentScores || analysis?.component_scores || {};
         return {
-          D: cs.D ?? (Number(av.score_d) || 0),
-          EFI: cs.EFI ?? (Number(av.score_efi) || 0),
-          P: cs.P ?? (Number(av.score_p) || 0),
-          I: cs.I ?? (Number(av.score_i) || 0),
-          R: cs.R ?? (Number(av.score_r) || 0),
-          C: cs.C ?? (Number(av.score_c) || 0),
-          AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
-          N: cs.N ?? (Number(av.score_n) || 0),
+          scores: {
+            D: cs.D ?? (Number(av.score_d) || 0),
+            EFI: cs.EFI ?? (Number(av.score_efi) || 0),
+            P: cs.P ?? (Number(av.score_p) || 0),
+            I: cs.I ?? (Number(av.score_i) || 0),
+            R: cs.R ?? (Number(av.score_r) || 0),
+            C: cs.C ?? (Number(av.score_c) || 0),
+            AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
+            N: cs.N ?? (Number(av.score_n) || 0),
+          },
+          myidScore: Number(av.myid_score) || 0,
         };
       }
 
@@ -238,11 +243,15 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         .limit(1);
 
       if (myidAv?.[0]?.resultado_processado) {
-        const cs = (myidAv[0].resultado_processado as any)?.component_scores;
+        const rp = myidAv[0].resultado_processado as any;
+        const cs = rp?.component_scores;
         if (cs) return {
-          D: cs.D ?? 0, EFI: cs.EFI ?? 0, P: cs.P ?? 0, I: cs.I ?? 0,
-          R: cs.R ?? 0, C: cs.C ?? 0, AF: cs.AF ?? 5, HID: cs.HID ?? 5,
-          NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5, N: cs.N ?? 0,
+          scores: {
+            D: cs.D ?? 0, EFI: cs.EFI ?? 0, P: cs.P ?? 0, I: cs.I ?? 0,
+            R: cs.R ?? 0, C: cs.C ?? 0, AF: cs.AF ?? 5, HID: cs.HID ?? 5,
+            NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5, N: cs.N ?? 0,
+          },
+          myidScore: rp?.myid_100 ?? rp?.MyID_score ?? 0,
         };
       }
 
@@ -250,7 +259,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
     },
   });
 
+  const myidScores = myidData?.scores || null;
   const missoesSaude = useMemo(() => gerarMissoesSaude(myidScores), [myidScores]);
+  const insights = useMemo(
+    () => myidData?.scores && myidData.myidScore
+      ? gerarInsightsClinicosMyID(myidData.scores, myidData.myidScore)
+      : null,
+    [myidData]
+  );
 
   // Load completed missions from localStorage (daily reset)
   useEffect(() => {
@@ -555,6 +571,101 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   </div>
                 </div>
               )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* ── PLANO DE AÇÃO POR FASES (Clinical Insights) ── */}
+      {insights && (
+        <div className="space-y-3 pt-2">
+          <div
+            className="flex items-center justify-between cursor-pointer"
+            onClick={() => setShowFases(!showFases)}
+          >
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-bold text-foreground">Seu Plano de Evolução</h2>
+              {insights.driverInsight && (
+                <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold border-primary/20 text-primary">
+                  Foco: {insights.driverInsight.driverLabel}
+                </Badge>
+              )}
+            </div>
+            {showFases ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </div>
+
+          {showFases && (
+            <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+              {/* Driver card */}
+              {insights.driverInsight && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-[11px] font-bold text-primary">
+                        Prioridade: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
+                      </span>
+                    </div>
+                    <div className="flex flex-wrap gap-1">
+                      {insights.driverInsight.intervencoes.slice(0, 3).map((i, idx) => (
+                        <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                          {i}
+                        </span>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
+              {/* Treatment Phases */}
+              {insights.fases.map(fase => (
+                <Card key={fase.fase} className="border-border">
+                  <CardContent className="p-3">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="text-sm">{fase.icone}</span>
+                      <span className="text-xs font-bold text-foreground">Fase {fase.fase}: {fase.titulo}</span>
+                      <span className="text-[10px] text-muted-foreground">({fase.semanas})</span>
+                    </div>
+                    <p className="text-[10px] text-muted-foreground mb-2 font-medium">{fase.foco}</p>
+                    <div className="flex flex-wrap gap-1">
+                      {fase.intervencoes.slice(0, 4).map((interv, idx) => (
+                        <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-muted border border-border text-foreground/70 flex items-center gap-1">
+                          <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                          {interv}
+                        </span>
+                      ))}
+                    </div>
+                    <div className="mt-2 pt-1.5 border-t border-border/50">
+                      <span className="text-[10px] font-bold text-primary">{fase.metaMyID}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+
+              {/* Milestone missions */}
+              <Card className="bg-gradient-to-r from-primary/5 to-accent/5 border-primary/15">
+                <CardContent className="p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Trophy className="h-4 w-4 text-primary" />
+                    <span className="text-xs font-bold text-foreground">Marcos de Evolução</span>
+                  </div>
+                  <div className="space-y-1.5">
+                    {insights.missoes.filter(m => m.tipo === 'marco').map(missao => (
+                      <div key={missao.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-background/50">
+                        <Trophy className="h-3 w-3 text-primary/60 shrink-0" />
+                        <span className="text-[10px] text-foreground/70 flex-1">{missao.titulo}</span>
+                        <Badge variant="outline" className="text-[8px] py-0 h-3.5 gap-0.5">
+                          <Zap className="h-2 w-2" /> +{missao.xp} XP
+                        </Badge>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="text-[10px] text-primary font-bold mt-2 text-center">
+                    🎯 {insights.metaFinal}
+                  </p>
+                </CardContent>
+              </Card>
             </div>
           )}
         </div>
