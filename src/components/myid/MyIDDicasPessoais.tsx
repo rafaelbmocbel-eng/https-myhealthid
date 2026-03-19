@@ -298,6 +298,108 @@ export default function MyIDDicasPessoais({ scores, myidScore, compact = false, 
               </div>
             </div>
           )}
+          {/* Clinical Insights (Phase-based) */}
+          {insights && (
+            <div className="space-y-3 pt-3 border-t border-border">
+              <div
+                className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setShowInsights(!showInsights)}
+              >
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-black text-foreground">Plano de Ação por Fases</span>
+                  {insights.driverInsight && (
+                    <Badge className="text-[9px] h-4 px-1.5 font-bold border-0 bg-primary/10 text-primary">
+                      Driver: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
+                    </Badge>
+                  )}
+                </div>
+                {showInsights ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </div>
+
+              {showInsights && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  {/* Driver-specific insight */}
+                  {insights.driverInsight && (
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-6 w-6 rounded-lg flex items-center justify-center bg-primary/10">
+                          <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <span className="text-xs font-bold text-primary">
+                          Prioridade: {insights.driverInsight.driverLabel}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {insights.driverInsight.intervencoes.map((i, idx) => (
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            {i}
+                          </span>
+                        ))}
+                      </div>
+                      {insights.driverInsight.encaminhamentos.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          <strong>Encaminhamentos:</strong> {insights.driverInsight.encaminhamentos.join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Treatment Phases */}
+                  {insights.fases.map(fase => (
+                    <div key={fase.fase} className="p-3 rounded-xl border border-border bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-base">{fase.icone}</span>
+                        <div>
+                          <span className="text-xs font-bold text-foreground">Fase {fase.fase}: {fase.titulo}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">({fase.semanas})</span>
+                        </div>
+                        <Badge className="text-[9px] h-4 px-1.5 font-bold border-0 bg-accent/10 text-accent-foreground ml-auto">
+                          {fase.metaMyID}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">{fase.foco}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {fase.intervencoes.map((interv, idx) => (
+                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-foreground/70 flex items-center gap-1">
+                            <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                            {interv}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Gamification Missions Preview */}
+                  <div className="p-3 rounded-xl border border-border bg-gradient-to-br from-primary/5 to-accent/5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-black text-foreground">Missões Disponíveis</span>
+                      <span className="text-[10px] text-muted-foreground">({insights.missoes.length} missões · {insights.missoes.reduce((s, m) => s + m.xp, 0)} XP total)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {insights.missoes.filter(m => m.tipo !== 'marco').slice(0, 6).map(missao => (
+                        <MissaoMiniCard key={missao.id} missao={missao} />
+                      ))}
+                    </div>
+                    {/* Milestone missions */}
+                    <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                      {insights.missoes.filter(m => m.tipo === 'marco').map(missao => (
+                        <div key={missao.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Trophy className="h-3 w-3 text-primary/60" />
+                          <span className="font-medium">{missao.titulo}</span>
+                          <span className="font-bold text-primary">+{missao.xp}XP</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold mt-2 text-center">
+                      🎯 Meta final: {insights.metaFinal}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
