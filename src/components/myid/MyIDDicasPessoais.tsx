@@ -222,13 +222,16 @@ const categoriaConfig = {
 
 interface MyIDDicasPessoaisProps {
   scores: Scores;
+  myidScore?: number;
   compact?: boolean;
   className?: string;
 }
 
-export default function MyIDDicasPessoais({ scores, compact = false, className }: MyIDDicasPessoaisProps) {
+export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className }: MyIDDicasPessoaisProps) {
   const [expandido, setExpandido] = useState(!compact);
+  const [showInsights, setShowInsights] = useState(false);
   const dicas = gerarDicas(scores);
+  const insights = myidScore ? gerarInsightsClinicosMyID(scores, myidScore) : null;
 
   if (dicas.length === 0) return null;
 
