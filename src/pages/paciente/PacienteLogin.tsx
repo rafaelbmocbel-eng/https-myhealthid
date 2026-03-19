@@ -8,9 +8,10 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, Heart } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export default function PacienteLogin() {
-  const { user, signIn, signUp, loading: authLoading } = useAuth();
+  const { user, signIn, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -75,14 +76,16 @@ export default function PacienteLogin() {
           description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
           variant: 'destructive',
         });
-        // Sign out so they can try with correct email
+        // Reset all states so user can try again
         linkAttempted.current = false;
         setLinking(false);
+        setSubmitting(false); // ← FIX: reset submitting to unlock form
       }
     } catch (err) {
       console.error('[Portal] Erro:', err);
       linkAttempted.current = false;
       setLinking(false);
+      setSubmitting(false); // ← FIX: reset submitting on error
     }
   };
 
@@ -99,56 +102,68 @@ export default function PacienteLogin() {
       }
       // redirect handled by useEffect when user state changes
     } else {
-      // Pass is_patient flag so the handle_new_user trigger skips profile creation
-      const { error } = await supabase.auth.signUp({
-        email: form.email,
-        password: form.password,
-        options: { data: { nome: form.nome, is_patient: true } },
-      }).then(r => ({ error: r.error }));
+      try {
+        // FIX: Use withAuthLockRetry to prevent lock timeout errors
+        const { error } = await withAuthLockRetry(() =>
+          supabase.auth.signUp({
+            email: form.email,
+            password: form.password,
+            options: { data: { nome: form.nome, is_patient: true } },
+          })
+        );
 
-      if (error) {
-        const message = error.message.toLowerCase();
-        const isAlreadyRegistered =
-          message.includes('already registered') ||
-          message.includes('already been registered') ||
-          message.includes('user already registered');
+        if (error) {
+          const message = error.message.toLowerCase();
+          const isAlreadyRegistered =
+            message.includes('already registered') ||
+            message.includes('already been registered') ||
+            message.includes('user already registered');
 
-        if (isAlreadyRegistered) {
-          const { error: signInError } = await signIn(form.email, form.password);
+          if (isAlreadyRegistered) {
+            const { error: signInError } = await signIn(form.email, form.password);
 
-          if (!signInError) {
+            if (!signInError) {
+              toast({
+                title: 'Conta já existente',
+                description: 'Você já tinha cadastro. Entrando no portal...',
+              });
+              // submitting stays true — useEffect will handle redirect
+              return;
+            }
+
             toast({
-              title: 'Conta já existente',
-              description: 'Você já tinha cadastro. Entrando no portal...',
+              title: 'E-mail já cadastrado',
+              description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
+              variant: 'destructive',
             });
+            setTab('login');
+            setSubmitting(false);
             return;
           }
 
-          toast({
-            title: 'E-mail já cadastrado',
-            description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
-            variant: 'destructive',
-          });
-          setTab('login');
+          toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
           setSubmitting(false);
-          return;
+        } else {
+          toast({
+            title: 'Conta criada!',
+            description: 'Conectando ao portal...',
+          });
+          // submitting stays true — useEffect handles redirect via handlePostLogin
         }
-
-        toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
-        setSubmitting(false);
-      } else {
-        // With auto-confirm, user is already logged in — useEffect handles redirect.
-        // Show a brief message while we process.
+      } catch (err: any) {
+        // FIX: Catch lock timeout or network errors during signUp
+        console.error('[Portal] Erro no cadastro:', err);
         toast({
-          title: 'Conta criada!',
-          description: 'Conectando ao portal...',
+          title: 'Erro ao cadastrar',
+          description: 'Ocorreu um erro de conexão. Tente novamente.',
+          variant: 'destructive',
         });
-        // Don't set submitting false — let the linking flow handle it
+        setSubmitting(false);
       }
     }
   };
 
-  if (authLoading || linking || (submitting && user)) {
+  if (authLoading || linking) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
