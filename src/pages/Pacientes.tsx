@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PacienteSchema } from '@/lib/validations';
 import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
