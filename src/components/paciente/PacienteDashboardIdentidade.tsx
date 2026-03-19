@@ -541,6 +541,24 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
             <TabsContent value="myid" className="mt-4">
               <div className="space-y-6">
+                {/* ── Avaliação por Voz — Estrutural ── */}
+                <div className="clinical-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                      <Mic className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Avaliação por Voz — Estrutural</h3>
+                      <p className="text-xs text-muted-foreground">Grave a anamnese estrutural e receba insights baseados em evidências sobre as 8 Unidades Corporais</p>
+                    </div>
+                  </div>
+                  <VoiceAssessment
+                    serviceType="identidade"
+                    pacienteId={paciente.id}
+                    patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                  />
+                </div>
+
                 {/* ── Avaliação Estrutural (Unidades Corporais) ── */}
                 {showStructural ? (
                   <StructuralWizard
