@@ -86,6 +86,50 @@ export default function PacientePagamentos() {
     return () => { supabase.removeChannel(channel); };
   }, [paciente]);
 
+  // Realtime: listen for funil_config changes (services/values updates)
+  useEffect(() => {
+    if (!paciente) return;
+    const channel = supabase
+      .channel('funil-config-updates')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'funil_config',
+          filter: `terapeuta_id=eq.${paciente.terapeuta_id}`,
+        },
+        (payload) => {
+          const updated = payload.new as any;
+          if (updated) {
+            setConfig({
+              pix_chave: updated.pix_chave,
+              pix_nome: updated.pix_nome,
+              pix_tipo: updated.pix_tipo,
+              link_cartao: updated.link_cartao,
+              servicos: (updated.servicos as any) || [],
+            });
+            // Reset selection if current service was removed or changed
+            if (selectedServico) {
+              const stillExists = ((updated.servicos as any) || []).find(
+                (s: ServicoFunil) => s.nome === selectedServico.nome
+              );
+              if (!stillExists) {
+                setSelectedServico(null);
+                setPaymentMethod(null);
+                setPixQr(null);
+              } else if (stillExists.valor !== selectedServico.valor) {
+                setSelectedServico(stillExists);
+              }
+            }
+            toast({ title: 'Serviços atualizados 🔄', description: 'Os serviços foram atualizados pelo profissional.' });
+          }
+        }
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [paciente, selectedServico]);
+
   const loadData = async () => {
     setLoading(true);
     try {
