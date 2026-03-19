@@ -13,16 +13,18 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
-  ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus,
+  ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
+import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
@@ -470,9 +472,49 @@ export default function Pacientes() {
               <p className="text-xs sm:text-sm text-muted-foreground">{pacientes.length} cadastrados</p>
             </div>
           </div>
-          <Button onClick={openNew} className="bg-gradient-primary text-white gap-2 shrink-0" size="sm">
-            <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
-          </Button>
+          <div className="flex items-center gap-2 shrink-0">
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const rows = filtered.map(p => ({
+                      nome: p.nome,
+                      sobrenome: p.sobrenome,
+                      email: p.email || '',
+                      telefone: p.telefone || '',
+                      cpf: p.cpf || '',
+                      data_nascimento: p.data_nascimento || '',
+                      genero: p.genero || '',
+                      servicos: (p._servicos || []).join(', '),
+                      cadastro: p.created_at ? format(parseISO(p.created_at), 'dd/MM/yyyy') : '',
+                    }));
+                    exportToCsv(`pacientes_${format(new Date(), 'yyyy-MM-dd')}.csv`, rows, [
+                      { key: 'nome', label: 'Nome' },
+                      { key: 'sobrenome', label: 'Sobrenome' },
+                      { key: 'email', label: 'E-mail' },
+                      { key: 'telefone', label: 'Telefone' },
+                      { key: 'cpf', label: 'CPF' },
+                      { key: 'data_nascimento', label: 'Nascimento' },
+                      { key: 'genero', label: 'Gênero' },
+                      { key: 'servicos', label: 'Serviços' },
+                      { key: 'cadastro', label: 'Data Cadastro' },
+                    ]);
+                    toast({ title: `${rows.length} pacientes exportados!` });
+                  }}
+                  disabled={filtered.length === 0}
+                >
+                  <Download className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1.5">CSV</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Exportar lista para CSV</TooltipContent>
+            </Tooltip>
+            <Button onClick={openNew} className="bg-gradient-primary text-white gap-2" size="sm">
+              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
+            </Button>
+          </div>
         </div>
 
         {/* Filters */}
