@@ -877,50 +877,7 @@ export default function Index() {
 
       </div>
 
-      {/* Quick Action FAB */}
-      <div ref={fabRef} className="fixed bottom-6 right-6 z-50 flex flex-col-reverse items-end gap-2">
-        {isFabOpen && (
-          <div className="flex flex-col gap-2 mb-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
-            {[
-              { label: 'Novo Paciente', icon: UserPlus, to: '/pacientes', gradient: 'from-primary to-rose-500' },
-              { label: 'Agendar', icon: CalendarDays, to: '/agenda', gradient: 'from-amber-500 to-orange-500' },
-              ...(servicos.identidade ? [
-                { label: 'Nova Avaliação', icon: ClipboardList, to: '/metodo-identidade', gradient: 'from-emerald-500 to-teal-500' },
-                { label: 'Gerar Link MyID', icon: LinkIcon, action: handleGerarLinkMyID, gradient: 'from-slate-700 to-slate-900' },
-              ] : []),
-            ].map(item => (
-              <div key={item.label} className="flex items-center gap-2">
-                <span className="px-3 py-1.5 rounded-lg bg-card border shadow-lg text-xs font-medium text-foreground whitespace-nowrap">
-                  {item.label}
-                </span>
-                {item.to ? (
-                  <Link
-                    to={item.to}
-                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform`}
-                  >
-                    <item.icon className="h-5 w-5 text-white" />
-                  </Link>
-                ) : (
-                  <button
-                    onClick={() => { item.action?.(); setIsFabOpen(false); }}
-                    disabled={isGeneratingLink}
-                    className={`h-11 w-11 rounded-full bg-gradient-to-br ${item.gradient} flex items-center justify-center shadow-lg hover:scale-110 transition-transform disabled:opacity-50`}
-                  >
-                    {isGeneratingLink ? <Loader2 className="h-5 w-5 text-white animate-spin" /> : <item.icon className="h-5 w-5 text-white" />}
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-        )}
-        <button
-          onClick={() => setIsFabOpen(prev => !prev)}
-          className={`h-14 w-14 rounded-full bg-gradient-to-br from-primary to-rose-600 flex items-center justify-center shadow-2xl hover:scale-105 transition-all duration-200 ${isFabOpen ? 'rotate-45' : ''}`}
-          aria-label="Ações rápidas"
-        >
-          {isFabOpen ? <X className="h-6 w-6 text-white" /> : <Plus className="h-7 w-7 text-white" />}
-        </button>
-      </div>
+      {/* FAB removed — actions available via sidebar/module cards */}
       </PageTransition>
     </AppLayout>
   );
