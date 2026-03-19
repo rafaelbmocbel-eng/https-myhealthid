@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SignInSchema, SignUpSchema } from '@/lib/validations';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
