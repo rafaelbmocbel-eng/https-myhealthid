@@ -72,7 +72,7 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
   doc.setTextColor(...BRANCO);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('CORE AXIS PRO', margin, 20);
+  doc.text('MY HEALTH ID', margin, 20);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
   doc.text('Diretriz de Tratamento Personalizada', margin, 28);
