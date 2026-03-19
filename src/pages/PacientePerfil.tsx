@@ -398,43 +398,7 @@ export default function PacientePerfil() {
           {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
           {paciente.observacoes && <span className="flex items-center gap-1 text-muted-foreground/70" title={paciente.observacoes}><FileText className="h-3 w-3" />Obs: {paciente.observacoes.slice(0, 40)}{paciente.observacoes.length > 40 ? '…' : ''}</span>}
         </div>
-        {/* Contact + Notes */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-6">
-          {/* Contact info */}
-          <div className="clinical-card !p-3">
-            <div className="space-y-1.5">
-              {paciente.telefone && (
-                <div className="flex items-center gap-2 text-xs">
-                  <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span>{paciente.telefone}</span>
-                </div>
-              )}
-              {paciente.email && (
-                <div className="flex items-center gap-2 text-xs">
-                  <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="truncate">{paciente.email}</span>
-                </div>
-              )}
-              {paciente.genero && (
-                <div className="flex items-center gap-2 text-xs">
-                  <User className="h-3.5 w-3.5 text-muted-foreground" />
-                  <span className="capitalize">{paciente.genero}</span>
-                </div>
-              )}
-            </div>
-          </div>
-          {/* Observations */}
-          {paciente.observacoes && (
-            <div className="clinical-card !p-3">
-              <div className="flex items-center gap-2 mb-1">
-                <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-                <span className="text-[10px] text-muted-foreground uppercase font-semibold">Observações</span>
-              </div>
-              <p className="text-xs text-muted-foreground">{paciente.observacoes}</p>
-            </div>
-          )}
-        </div>
-
+        {/* Contact + Notes removed — now inline above */}
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
           <TabsList className="bg-secondary/50 p-1.5 rounded-xl grid grid-cols-5 h-auto gap-1.5 w-full border shadow-sm">
