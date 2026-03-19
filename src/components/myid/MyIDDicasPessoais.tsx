@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils';
 import {
   Heart, Droplets, Apple, Brain, Moon, Dumbbell,
   Monitor, AlertTriangle, Sparkles, ChevronDown, ChevronUp,
-  Lightbulb, Shield, Zap
+  Lightbulb, Shield, Zap, Target, Trophy, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
-import { calcularPerdaDimensao, DIMENSION_LABELS } from '@/utils/myid/lossTable';
+import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
+import { gerarInsightsClinicosMyID, type ClinicalInsightResult, type ClinicalMission } from '@/utils/myid/clinicalInsights';
 
 interface Scores {
   D: number;
@@ -221,13 +222,16 @@ const categoriaConfig = {
 
 interface MyIDDicasPessoaisProps {
   scores: Scores;
+  myidScore?: number;
   compact?: boolean;
   className?: string;
 }
 
-export default function MyIDDicasPessoais({ scores, compact = false, className }: MyIDDicasPessoaisProps) {
+export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className }: MyIDDicasPessoaisProps) {
   const [expandido, setExpandido] = useState(!compact);
+  const [showInsights, setShowInsights] = useState(false);
   const dicas = gerarDicas(scores);
+  const insights = myidScore ? gerarInsightsClinicosMyID(scores, myidScore) : null;
 
   if (dicas.length === 0) return null;
 
@@ -294,6 +298,108 @@ export default function MyIDDicasPessoais({ scores, compact = false, className }
               </div>
             </div>
           )}
+          {/* Clinical Insights (Phase-based) */}
+          {insights && (
+            <div className="space-y-3 pt-3 border-t border-border">
+              <div
+                className="flex items-center justify-between cursor-pointer hover:opacity-80 transition-opacity"
+                onClick={() => setShowInsights(!showInsights)}
+              >
+                <div className="flex items-center gap-2">
+                  <Target className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-black text-foreground">Plano de Ação por Fases</span>
+                  {insights.driverInsight && (
+                    <Badge className="text-[9px] h-4 px-1.5 font-bold border-0 bg-primary/10 text-primary">
+                      Driver: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
+                    </Badge>
+                  )}
+                </div>
+                {showInsights ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+              </div>
+
+              {showInsights && (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                  {/* Driver-specific insight */}
+                  {insights.driverInsight && (
+                    <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <div className="h-6 w-6 rounded-lg flex items-center justify-center bg-primary/10">
+                          <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                        </div>
+                        <span className="text-xs font-bold text-primary">
+                          Prioridade: {insights.driverInsight.driverLabel}
+                        </span>
+                      </div>
+                      <div className="flex flex-wrap gap-1.5 mb-2">
+                        {insights.driverInsight.intervencoes.map((i, idx) => (
+                          <span key={idx} className="text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary font-medium">
+                            {i}
+                          </span>
+                        ))}
+                      </div>
+                      {insights.driverInsight.encaminhamentos.length > 0 && (
+                        <p className="text-[10px] text-muted-foreground mt-1">
+                          <strong>Encaminhamentos:</strong> {insights.driverInsight.encaminhamentos.join(' · ')}
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Treatment Phases */}
+                  {insights.fases.map(fase => (
+                    <div key={fase.fase} className="p-3 rounded-xl border border-border bg-muted/30">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="text-base">{fase.icone}</span>
+                        <div>
+                          <span className="text-xs font-bold text-foreground">Fase {fase.fase}: {fase.titulo}</span>
+                          <span className="text-[10px] text-muted-foreground ml-2">({fase.semanas})</span>
+                        </div>
+                        <Badge className="text-[9px] h-4 px-1.5 font-bold border-0 bg-accent/10 text-accent-foreground ml-auto">
+                          {fase.metaMyID}
+                        </Badge>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground mb-1.5 font-medium">{fase.foco}</p>
+                      <div className="flex flex-wrap gap-1">
+                        {fase.intervencoes.map((interv, idx) => (
+                          <span key={idx} className="text-[10px] px-1.5 py-0.5 rounded bg-background border border-border text-foreground/70 flex items-center gap-1">
+                            <ArrowRight className="h-2.5 w-2.5 text-muted-foreground" />
+                            {interv}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))}
+
+                  {/* Gamification Missions Preview */}
+                  <div className="p-3 rounded-xl border border-border bg-gradient-to-br from-primary/5 to-accent/5">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Trophy className="h-4 w-4 text-primary" />
+                      <span className="text-xs font-black text-foreground">Missões Disponíveis</span>
+                      <span className="text-[10px] text-muted-foreground">({insights.missoes.length} missões · {insights.missoes.reduce((s, m) => s + m.xp, 0)} XP total)</span>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                      {insights.missoes.filter(m => m.tipo !== 'marco').slice(0, 6).map(missao => (
+                        <MissaoMiniCard key={missao.id} missao={missao} />
+                      ))}
+                    </div>
+                    {/* Milestone missions */}
+                    <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1.5">
+                      {insights.missoes.filter(m => m.tipo === 'marco').map(missao => (
+                        <div key={missao.id} className="flex items-center gap-1.5 text-[10px] text-muted-foreground">
+                          <Trophy className="h-3 w-3 text-primary/60" />
+                          <span className="font-medium">{missao.titulo}</span>
+                          <span className="font-bold text-primary">+{missao.xp}XP</span>
+                        </div>
+                      ))}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground font-bold mt-2 text-center">
+                      🎯 Meta final: {insights.metaFinal}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
@@ -337,6 +443,34 @@ function DicaCard({ dica, mini = false }: { dica: DicaPersonalizada; mini?: bool
             <p className={cn("text-[11px] font-semibold leading-snug", dica.colorClass)}>{dica.acaoImediata}</p>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+const missaoCategoriaColors: Record<string, { bg: string; text: string; badge: string }> = {
+  urgente: { bg: 'bg-red-50 dark:bg-red-950/30', text: 'text-red-700 dark:text-red-400', badge: '🔴' },
+  importante: { bg: 'bg-amber-50 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', badge: '🟡' },
+  oportunidade: { bg: 'bg-blue-50 dark:bg-blue-950/30', text: 'text-blue-700 dark:text-blue-400', badge: '🔵' },
+  consolidacao: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', badge: '🟢' },
+};
+
+function MissaoMiniCard({ missao }: { missao: ClinicalMission }) {
+  const colors = missaoCategoriaColors[missao.categoria] || missaoCategoriaColors.oportunidade;
+  const dimColor = DIMENSION_COLORS[missao.dimensao] || '#6366F1';
+  return (
+    <div className={cn("p-2 rounded-lg border border-border", colors.bg)}>
+      <div className="flex items-center gap-1.5 mb-0.5">
+        <span className="text-[10px]">{colors.badge}</span>
+        <span className={cn("text-[10px] font-bold truncate", colors.text)}>{missao.titulo}</span>
+        <span className="text-[9px] font-black text-primary ml-auto">+{missao.xp}XP</span>
+      </div>
+      <p className="text-[10px] text-foreground/60 leading-snug line-clamp-2">{missao.descricao}</p>
+      <div className="flex items-center gap-1.5 mt-1">
+        <span className="text-[9px] px-1 py-0 rounded-sm font-medium" style={{ backgroundColor: `${dimColor}15`, color: dimColor }}>
+          {DIMENSION_LABELS[missao.dimensao] || missao.dimensao}
+        </span>
+        <span className="text-[9px] text-muted-foreground capitalize">{missao.tipo}</span>
       </div>
     </div>
   );

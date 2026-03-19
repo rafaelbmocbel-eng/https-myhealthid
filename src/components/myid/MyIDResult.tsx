@@ -128,7 +128,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
             </Card>
 
             {/* Dicas Personalizadas */}
-            <MyIDDicasPessoais scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }} />
+            <MyIDDicasPessoais scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }} myidScore={myid_100 ?? MyID_score ?? 0} />
 
             {/* Hidden Factors */}
             <Card className="border-slate-200 shadow-sm">
