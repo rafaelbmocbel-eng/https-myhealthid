@@ -160,6 +160,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
         <TabsContent value="voz" className="space-y-4 mt-4">
           <VoiceAssessment
             serviceType="studio"
+            pacienteId={pacienteId}
             patientName={pacienteNome}
           />
         </TabsContent>

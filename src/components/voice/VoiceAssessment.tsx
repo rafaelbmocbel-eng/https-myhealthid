@@ -6,13 +6,15 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
-import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
 interface VoiceAssessmentProps {
   serviceType: ServiceType;
+  pacienteId?: string;
   patientName?: string;
   patientAge?: number;
   patientSex?: string;
@@ -33,11 +35,18 @@ const SEVERITY_COLORS: Record<string, string> = {
   'Risco de Cronificação': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-300',
 };
 
-export default function VoiceAssessment({ serviceType, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
+type Step = 'record' | 'review' | 'result';
+
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const [step, setStep] = useState<Step>('record');
   const [isListening, setIsListening] = useState(false);
   const [transcript, setTranscript] = useState('');
+  const [editedTranscript, setEditedTranscript] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSaved, setIsSaved] = useState(false);
   const [assessment, setAssessment] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     resumo: true, dor: true, funcionalidade: true, psicossocial: false,
@@ -55,8 +64,6 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
       toast({ title: 'Navegador não suporta reconhecimento de voz', description: 'Use Chrome, Edge ou Safari.', variant: 'destructive' });
       return;
     }
-
-    // Stop any existing recognition first
     try { recognitionRef.current?.stop(); } catch {}
     recognitionRef.current = null;
 
@@ -96,7 +103,6 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
     };
 
     recognition.onend = () => {
-      // Auto-restart if still listening (use ref to avoid stale closure)
       if (isListeningRef.current) {
         try { recognition.start(); } catch {
           isListeningRef.current = false;
@@ -126,7 +132,6 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
     setTranscript(fullTranscriptRef.current);
   }, []);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
       isListeningRef.current = false;
@@ -135,10 +140,20 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
     };
   }, []);
 
-  const processTranscript = async () => {
+  const goToReview = () => {
     const text = transcript.trim();
     if (text.length < 20) {
       toast({ title: 'Transcrição muito curta', description: 'Grave pelo menos algumas frases da conversa.', variant: 'destructive' });
+      return;
+    }
+    setEditedTranscript(text);
+    setStep('review');
+  };
+
+  const processTranscript = async () => {
+    const text = editedTranscript.trim();
+    if (text.length < 20) {
+      toast({ title: 'Transcrição muito curta', description: 'Adicione mais conteúdo antes de processar.', variant: 'destructive' });
       return;
     }
     setIsProcessing(true);
@@ -149,12 +164,53 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
       setAssessment(data.assessment);
+      setStep('result');
       onAssessmentComplete?.(data.assessment);
-      toast({ title: '✅ Avaliação gerada!', description: 'Avaliação clínica baseada em evidências pronta.' });
+      toast({ title: '✅ Avaliação gerada!', description: 'Revise e salve no prontuário.' });
     } catch (err: any) {
       toast({ title: 'Erro ao processar', description: err.message, variant: 'destructive' });
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  const saveAssessment = async () => {
+    if (!assessment || !user) return;
+    setIsSaving(true);
+    try {
+      // Save to avaliacoes_voz
+      const { error: saveError } = await supabase.from('avaliacoes_voz' as any).insert({
+        terapeuta_id: user.id,
+        paciente_id: pacienteId || null,
+        paciente_nome: patientName || null,
+        servico: serviceType,
+        transcricao: editedTranscript,
+        resultado: assessment,
+        classificacao_severidade: assessment.classificacao_severidade,
+        queixa_principal: assessment.queixa_principal,
+      } as any);
+      if (saveError) throw saveError;
+
+      // Also save to prontuário if pacienteId is available
+      if (pacienteId) {
+        const descricao = `${assessment.resumo_clinico}\n\nQueixa: ${assessment.queixa_principal || 'N/I'}\nDor EVA: ${assessment.dor?.intensidade_eva || '?'}/10 — ${assessment.dor?.tipo || 'N/I'}\nClassificação: ${assessment.classificacao_severidade}\n\nHipóteses: ${assessment.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
+
+        await supabase.from('notas_prontuario').insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user.id,
+          tipo: 'avaliacao_voz',
+          titulo: `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}`,
+          descricao,
+          dados_extras: { assessment, transcricao: editedTranscript },
+        });
+      }
+
+      setIsSaved(true);
+      toast({ title: '💾 Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -189,15 +245,18 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
 
   const resetAll = () => {
     setTranscript('');
+    setEditedTranscript('');
     fullTranscriptRef.current = '';
     setAssessment(null);
+    setIsSaved(false);
+    setStep('record');
   };
 
-  // ── Render: Assessment Results ──
-  if (assessment) {
+  // ── Step 3: Assessment Results ──
+  if (step === 'result' && assessment) {
     return (
       <div className="space-y-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between flex-wrap gap-2">
           <div className="flex items-center gap-2">
             <Stethoscope className="h-5 w-5 text-primary" />
             <h3 className="font-bold text-lg">Avaliação por Voz</h3>
@@ -205,13 +264,22 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               {assessment.classificacao_severidade}
             </Badge>
           </div>
-          <div className="flex gap-2">
+          <div className="flex gap-2 flex-wrap">
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
-            <Button variant="outline" size="sm" onClick={resetAll}>Nova Avaliação</Button>
+            {!isSaved ? (
+              <Button size="sm" onClick={saveAssessment} disabled={isSaving} className="bg-primary text-primary-foreground">
+                {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
+                {isSaving ? 'Salvando...' : 'Salvar no Prontuário'}
+              </Button>
+            ) : (
+              <Badge variant="outline" className="text-green-600 border-green-300 py-1.5 px-3">
+                <CheckCircle2 className="h-4 w-4 mr-1" />Salvo
+              </Badge>
+            )}
+            <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
 
-        {/* Resumo */}
         <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
           <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
           <div className="flex flex-wrap gap-2 mt-2">
@@ -220,7 +288,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </SectionCard>
 
-        {/* Dor */}
         <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection}>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">Local:</span> <strong>{assessment.dor?.localizacao}</strong></div>
@@ -250,7 +317,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           )}
         </SectionCard>
 
-        {/* Funcionalidade */}
         <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection}>
           <Badge className={cn('text-xs mb-2', assessment.funcionalidade?.nivel_impacto === 'Incapacitante' ? 'bg-destructive text-white' : 'bg-secondary')}>
             Impacto: {assessment.funcionalidade?.nivel_impacto}
@@ -262,7 +328,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           )}
         </SectionCard>
 
-        {/* Fatores Psicossociais */}
         <SectionCard icon={Brain} title="Fatores Psicossociais" sectionKey="psicossocial" expanded={expandedSections} toggle={toggleSection}>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>Catastrofização: <strong>{assessment.fatores_psicossociais?.catastrofizacao}</strong></div>
@@ -275,7 +340,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           )}
         </SectionCard>
 
-        {/* Red Flags */}
         {assessment.red_flags?.length > 0 && (
           <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
             <ul className="space-y-1">
@@ -288,7 +352,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </SectionCard>
         )}
 
-        {/* Hipóteses Diagnósticas */}
         <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection}>
           <div className="space-y-3">
             {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
@@ -305,7 +368,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </SectionCard>
 
-        {/* Plano de Tratamento */}
         <SectionCard icon={CheckCircle2} title="Plano de Tratamento" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
           {assessment.plano_tratamento?.objetivos_curto_prazo?.length > 0 && (
             <div className="mb-3">
@@ -334,7 +396,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           <p className="text-sm"><strong>Prognóstico:</strong> {assessment.plano_tratamento?.prognostico}</p>
         </SectionCard>
 
-        {/* Insights */}
         <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection}>
           <div className="space-y-3">
             {assessment.insights_baseados_evidencia?.map((ins: any, i: number) => (
@@ -353,7 +414,62 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     );
   }
 
-  // ── Render: Recording UI ──
+  // ── Step 2: Review & Edit Transcript ──
+  if (step === 'review') {
+    return (
+      <div className="space-y-4">
+        <Card className="border-primary/20">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center bg-accent/10">
+                <Edit3 className="h-7 w-7 text-accent-foreground" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Revisar Transcrição</h3>
+                <p className="text-sm text-muted-foreground">
+                  Corrija erros, adicione informações ou complete trechos antes de gerar a avaliação.
+                </p>
+              </div>
+            </div>
+
+            <Textarea
+              value={editedTranscript}
+              onChange={(e) => setEditedTranscript(e.target.value)}
+              placeholder="Revise e edite a transcrição..."
+              className="min-h-[200px] text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>
+
+            <div className="flex gap-2 mt-4">
+              <Button variant="outline" onClick={() => setStep('record')}>
+                <RotateCcw className="h-4 w-4 mr-2" />Voltar e Gravar Mais
+              </Button>
+              <Button onClick={processTranscript} disabled={isProcessing || editedTranscript.trim().length < 20} className="bg-primary text-primary-foreground">
+                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {isProcessing && (
+          <Card className="border-primary/20">
+            <CardContent className="p-6 flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Analisando conversa com IA clínica baseada em evidências...</p>
+              <div className="flex flex-wrap gap-2 justify-center">
+                <Badge variant="outline" className="text-xs">Magee (2021)</Badge>
+                <Badge variant="outline" className="text-xs">O'Sullivan (2018)</Badge>
+                <Badge variant="outline" className="text-xs">Butler & Moseley</Badge>
+                <Badge variant="outline" className="text-xs">Cook (2014)</Badge>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
+  // ── Step 1: Recording UI ──
   return (
     <div className="space-y-4">
       <Card className="border-primary/20">
@@ -383,9 +499,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 <MicOff className="h-4 w-4 mr-2" />Parar Gravação
               </Button>
             )}
-            {transcript.length > 20 && !isListening && (
-              <Button onClick={processTranscript} disabled={isProcessing} className="bg-accent text-accent-foreground">
-                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
+            {transcript.trim().length > 20 && !isListening && (
+              <Button onClick={goToReview} className="bg-accent text-accent-foreground">
+                <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
               </Button>
             )}
           </div>
@@ -403,25 +519,17 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             className="min-h-[120px] text-sm"
           />
           {transcript.length > 0 && (
-            <p className="text-xs text-muted-foreground mt-1">{transcript.split(/\s+/).length} palavras</p>
+            <div className="flex items-center justify-between mt-1">
+              <p className="text-xs text-muted-foreground">{transcript.split(/\s+/).filter(Boolean).length} palavras</p>
+              {!isListening && transcript.trim().length > 20 && (
+                <Button variant="ghost" size="sm" onClick={goToReview} className="text-xs text-primary">
+                  Revisar antes de processar →
+                </Button>
+              )}
+            </div>
           )}
         </CardContent>
       </Card>
-
-      {isProcessing && (
-        <Card className="border-primary/20">
-          <CardContent className="p-6 flex flex-col items-center gap-3">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Analisando conversa com IA clínica baseada em evidências...</p>
-            <div className="flex flex-wrap gap-2 justify-center">
-              <Badge variant="outline" className="text-xs">Magee (2021)</Badge>
-              <Badge variant="outline" className="text-xs">O'Sullivan (2018)</Badge>
-              <Badge variant="outline" className="text-xs">Butler & Moseley</Badge>
-              <Badge variant="outline" className="text-xs">Cook (2014)</Badge>
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }
