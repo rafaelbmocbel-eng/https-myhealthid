@@ -66,50 +66,52 @@ const LazyFallback = () => (
 );
 
 const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <AuthProvider>
-          <Suspense fallback={<LazyFallback />}>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
-              <Route path="/cob-zero" element={<CobZero />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/studio-personal-id" element={<StudioPersonalID />} />
-              <Route path="/agenda" element={<Agenda />} />
-              <Route path="/pacientes" element={<Pacientes />} />
-              <Route path="/pacientes/:id" element={<PacientePerfil />} />
-              <Route path="/protocolos" element={<Protocolos />} />
+  <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <AuthProvider>
+            <Suspense fallback={<LazyFallback />}>
+              <Routes>
+                <Route path="/" element={<Index />} />
+                <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
+                <Route path="/cob-zero" element={<CobZero />} />
+                <Route path="/auth" element={<Auth />} />
+                <Route path="/studio-personal-id" element={<StudioPersonalID />} />
+                <Route path="/agenda" element={<Agenda />} />
+                <Route path="/pacientes" element={<Pacientes />} />
+                <Route path="/pacientes/:id" element={<PacientePerfil />} />
+                <Route path="/protocolos" element={<Protocolos />} />
 
-              <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
-              <Route path="/agenda/:token" element={<AgendaPublica />} />
-              <Route path="/myid/responder/:token" element={<MyIDResponder />} />
-              <Route path="/funil/:slug" element={<FunilChat />} />
-              <Route path="/relatorios" element={<Relatorios />} />
-              <Route path="/crm" element={<GestaoVendas />} />
-              <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
+                <Route path="/agenda/:token" element={<AgendaPublica />} />
+                <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+                <Route path="/funil/:slug" element={<FunilChat />} />
+                <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/crm" element={<GestaoVendas />} />
+                <Route path="/configuracoes" element={<Configuracoes />} />
 
-              {/* Patient Portal */}
-              <Route path="/paciente/login" element={<PacienteLogin />} />
-              <Route path="/paciente/dashboard" element={<PacienteDashboard />} />
-              <Route path="/paciente/diario" element={<PacienteDiario />} />
-              <Route path="/paciente/evolucao" element={<PacienteEvolucao />} />
-              <Route path="/paciente/exercicios" element={<PacienteExercicios />} />
-              <Route path="/paciente/agenda" element={<PacienteAgenda />} />
-              <Route path="/paciente/questionarios" element={<PacienteQuestionarios />} />
-              <Route path="/paciente/pagamentos" element={<PacientePagamentos />} />
-              <Route path="/paciente/perfil" element={<PacientePerfilPage />} />
+                {/* Patient Portal */}
+                <Route path="/paciente/login" element={<PacienteLogin />} />
+                <Route path="/paciente/dashboard" element={<PacienteDashboard />} />
+                <Route path="/paciente/diario" element={<PacienteDiario />} />
+                <Route path="/paciente/evolucao" element={<PacienteEvolucao />} />
+                <Route path="/paciente/exercicios" element={<PacienteExercicios />} />
+                <Route path="/paciente/agenda" element={<PacienteAgenda />} />
+                <Route path="/paciente/questionarios" element={<PacienteQuestionarios />} />
+                <Route path="/paciente/pagamentos" element={<PacientePagamentos />} />
+                <Route path="/paciente/perfil" element={<PacientePerfilPage />} />
 
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Suspense>
-        </AuthProvider>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Suspense>
+          </AuthProvider>
+        </BrowserRouter>
+      </TooltipProvider>
+    </QueryClientProvider>
+  </ThemeProvider>
 );
 
 export default App;
