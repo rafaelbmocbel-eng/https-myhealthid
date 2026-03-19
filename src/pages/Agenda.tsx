@@ -648,6 +648,41 @@ export default function Agenda() {
           if (error) throw error;
         }
         await updateAgendamento(ag.id, { status: status === 'atendido' ? 'concluido' : 'faltou' });
+
+        // ── Auto-generate prontuário note on session status change ──
+        if (ag.paciente_id) {
+          try {
+            const pac = pacientes.find(p => p.id === ag.paciente_id);
+            const pacNome = pac ? `${pac.nome} ${pac.sobrenome}`.trim() : 'Paciente';
+            const dataFormatted = format(parseISO(ag.data_inicio), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+            const tipo = ag.tipo_atendimento || 'Retorno';
+            const duracao = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
+
+            if (status === 'atendido') {
+              await supabase.from('notas_prontuario').insert({
+                paciente_id: ag.paciente_id,
+                terapeuta_id: user.id,
+                tipo: 'sessao_confirmada',
+                titulo: `Sessão ${tipo} — ${dataFormatted}`,
+                descricao: `✅ ATENDIMENTO CONFIRMADO\n\n📅 Data: ${dataFormatted}\n⏱️ Duração: ${duracao} minutos\n🏷️ Tipo: ${tipo}\n👤 Paciente: ${pacNome}\n${ag.observacoes ? `\n📝 Observações:\n${ag.observacoes}` : ''}`,
+                dados_extras: { agendamento_id: ag.id, duracao, tipo },
+                referencia_id: ag.id,
+              });
+            } else if (status === 'faltou') {
+              await supabase.from('notas_prontuario').insert({
+                paciente_id: ag.paciente_id,
+                terapeuta_id: user.id,
+                tipo: 'sessao_falta',
+                titulo: `Falta — Sessão ${tipo} ${dataFormatted}`,
+                descricao: `❌ PACIENTE NÃO COMPARECEU\n\n📅 Data prevista: ${dataFormatted}\n🏷️ Tipo: ${tipo}\n👤 Paciente: ${pacNome}\n\nRegistro automático de ausência para controle de adesão ao tratamento.`,
+                dados_extras: { agendamento_id: ag.id, tipo },
+                referencia_id: ag.id,
+              });
+            }
+          } catch (noteErr) {
+            console.warn('Nota de prontuário não registrada:', noteErr);
+          }
+        }
       }
       toast({ title: `Status atualizado: ${status === 'atendido' ? 'Atendido ✅' : status === 'faltou' ? 'Faltou ❌' : 'Pendente ⏳'}` });
     } catch (error: any) {

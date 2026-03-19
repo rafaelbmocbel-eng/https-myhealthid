@@ -138,12 +138,74 @@ export function useAvaliacoesIdentidade(pacienteId?: string) {
         console.warn('Evolução não registrada:', evolErr);
       }
 
+      // ── Auto-generate prontuário note ──────────────────────────────
+      try {
+        const cs = avaliacao.resultado?.componentScores || {};
+        const myidScore = avaliacao.resultado?.myidScore || 0;
+        const classificacao = avaliacao.resultado?.classificacao || 'N/A';
+        const redFlags = avaliacao.resultado?.redFlagsDetected || false;
+        const redFlagAlerts = avaliacao.resultado?.redFlagAlerts || [];
+
+        const myidFormatted = Number(myidScore).toFixed(1);
+        const scoreD = Number(cs.D || 0).toFixed(1);
+        const scoreEFI = Number(cs.EFI || 0).toFixed(1);
+        const scoreP = Number(cs.P || 0).toFixed(1);
+        const scoreI = Number(cs.I || 0).toFixed(1);
+        const scoreN = Number(cs.N || 0).toFixed(1);
+        const scoreR = Number(cs.R || 0).toFixed(1);
+        const scoreC = Number(cs.C || 0).toFixed(1);
+
+        const myidNum = Number(myidScore);
+        const severityDesc = myidNum <= 29
+          ? "SITUAÇÃO CRÍTICA — Sobrecarga sistêmica extrema."
+          : myidNum <= 49
+          ? "SOBRECARGA CRÍTICA — Demandas excedem capacidade de regulação."
+          : myidNum <= 69
+          ? "SOBRECARGA MODERADA — Desequilíbrio entre demandas e recuperação."
+          : myidNum <= 84
+          ? "BOA SAÚDE — Perfil bom com espaço para otimização."
+          : "EXCELENTE — Boa capacidade de regulação.";
+
+        const flagsText = redFlags && redFlagAlerts.length > 0
+          ? `\n⚠️ RED FLAGS: ${redFlagAlerts.join(', ')}`
+          : '';
+
+        const descricao = `🩺 AVALIAÇÃO PROFISSIONAL — Método Identidade (MyID)
+
+🎯 Score MyID-100: ${myidFormatted}/100 — ${classificacao}
+📌 ${severityDesc}${flagsText}
+
+📊 PERFIL:
+• Dor (D): ${scoreD}/10
+• Funcionalidade (EFI): ${scoreEFI}/10
+• Psicológico (P): ${scoreP}/10
+• Demanda (I): ${scoreI}/10
+• Ruído (N): ${scoreN}/10
+• Regulação (R): ${scoreR}/10
+• Contexto (C): ${scoreC}/10
+
+Avaliação realizada presencialmente pelo terapeuta via Método Identidade.`;
+
+        await (supabase as any).from('notas_prontuario').insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user!.id,
+          tipo: 'avaliacao_profissional',
+          titulo: `Avaliação MyID — Score ${myidFormatted}/100 (${classificacao})`,
+          descricao,
+          dados_extras: { avaliacao_id: data.id, myid_score: myidScore, classificacao, scores: cs },
+          referencia_id: data.id,
+        });
+      } catch (noteErr) {
+        console.warn('Nota de prontuário não registrada:', noteErr);
+      }
+
       return data;
     },
     onSuccess: () => {
-      toast({ title: '✅ Avaliação salva!', description: 'Histórico atualizado com sucesso.' });
+      toast({ title: '✅ Avaliação salva!', description: 'Histórico e prontuário atualizados com sucesso.' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
       qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
     },
     onError: (e: any) => {
       toast({ title: 'Erro ao salvar avaliação', description: e.message, variant: 'destructive' });
