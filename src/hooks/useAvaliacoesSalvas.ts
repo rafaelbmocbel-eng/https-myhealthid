@@ -202,9 +202,10 @@ Avaliação realizada presencialmente pelo terapeuta via Método Identidade.`;
       return data;
     },
     onSuccess: () => {
-      toast({ title: '✅ Avaliação salva!', description: 'Histórico atualizado com sucesso.' });
+      toast({ title: '✅ Avaliação salva!', description: 'Histórico e prontuário atualizados com sucesso.' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
       qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
     },
     onError: (e: any) => {
       toast({ title: 'Erro ao salvar avaliação', description: e.message, variant: 'destructive' });
