@@ -457,7 +457,8 @@ export default function Index() {
                 <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
               </Link>
             );
-          })}
+        </div>
+
         {/* Today's schedule */}
         {agendamentosHoje.length > 0 && (
           <div className="clinical-card">
