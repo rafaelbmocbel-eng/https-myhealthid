@@ -23,6 +23,7 @@ import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fn
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
+import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
