@@ -112,7 +112,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
             </button>
           )}
-          <div className="ml-auto flex items-center gap-4" />
+          <GlobalSearch />
+          <div className="ml-auto flex items-center gap-2">
+            <QuickActions />
+          </div>
         </header>
 
         <main className={cn(
