@@ -55,6 +55,19 @@ export default function PacientePerfil() {
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
   const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(id);
+  const { data: avaliacoesVoz = [], isLoading: loadingVoz } = useQuery({
+    queryKey: ['avaliacoes-voz', user?.id, id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('avaliacoes_voz')
+        .select('*')
+        .eq('paciente_id', id!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
