@@ -760,6 +760,34 @@ export default function GestaoVendas() {
                                         <DialogTitle>Registrar Pagamento</DialogTitle>
                                     </DialogHeader>
                                     <div className="space-y-4 py-4">
+                                        {/* Quick-select from configured services */}
+                                        {funilConfig?.servicos && funilConfig.servicos.length > 0 && (
+                                            <div className="space-y-2">
+                                                <Label className="text-xs text-muted-foreground">Selecionar Serviço</Label>
+                                                <div className="grid grid-cols-1 gap-2">
+                                                    {funilConfig.servicos.map((s, i) => (
+                                                        <button
+                                                            key={i}
+                                                            onClick={() => setPaymentModal(prev => ({ ...prev, valor: String(s.valor) }))}
+                                                            className={cn(
+                                                                'flex items-center justify-between p-3 rounded-xl border text-left transition-all',
+                                                                Number(paymentModal.valor) === s.valor
+                                                                    ? 'border-primary bg-primary/5 ring-1 ring-primary'
+                                                                    : 'border-border hover:border-primary/50 hover:bg-primary/5'
+                                                            )}
+                                                        >
+                                                            <div>
+                                                                <p className="text-sm font-semibold">{s.nome}</p>
+                                                                {s.descricao && <p className="text-[10px] text-muted-foreground">{s.descricao}</p>}
+                                                            </div>
+                                                            <span className="text-sm font-bold text-primary">
+                                                                R$ {s.valor.toFixed(2).replace('.', ',')}
+                                                            </span>
+                                                        </button>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
                                         <div className="space-y-2">
                                             <Label>Valor Recebido (R$)</Label>
                                             <Input
