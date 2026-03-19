@@ -13,7 +13,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,6 +55,19 @@ export default function PacientePerfil() {
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
   const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
   const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(id);
+  const { data: avaliacoesVoz = [], isLoading: loadingVoz } = useQuery({
+    queryKey: ['avaliacoes-voz', user?.id, id],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('avaliacoes_voz')
+        .select('*')
+        .eq('paciente_id', id!)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
@@ -772,7 +785,55 @@ export default function PacientePerfil() {
                   </div>
                 )}
 
-                {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && (
+                {avaliacoesVoz.length > 0 && (
+                  <div className="clinical-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Stethoscope className="h-4 w-4 text-indigo-600" />
+                      <h3 className="font-semibold text-sm">Avaliações por Voz ({avaliacoesVoz.length})</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {avaliacoesVoz.map((av: any, idx: number) => {
+                        const severityColors: Record<string, string> = {
+                          'Favorável': 'bg-green-100 text-green-700 border-green-200',
+                          'Atenção': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                          'Moderado': 'bg-orange-100 text-orange-700 border-orange-200',
+                          'Severo': 'bg-red-100 text-red-700 border-red-200',
+                          'Risco de Cronificação': 'bg-purple-100 text-purple-700 border-purple-200',
+                        };
+                        return (
+                          <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3">
+                            <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-indigo-100' : 'bg-muted')}>
+                              <Stethoscope className={cn('h-4 w-4', idx === 0 ? 'text-indigo-600' : 'text-muted-foreground')} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold">
+                                  {format(parseISO(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </span>
+                                {av.classificacao_severidade && (
+                                  <Badge variant="outline" className={cn('text-[10px] h-4', severityColors[av.classificacao_severidade] || '')}>
+                                    {av.classificacao_severidade}
+                                  </Badge>
+                                )}
+                                {idx === 0 && <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[10px] h-4">Mais recente</Badge>}
+                              </div>
+                              {av.queixa_principal && (
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">
+                                  Queixa: {av.queixa_principal}
+                                </p>
+                              )}
+                              <p className="text-[10px] text-muted-foreground mt-0.5">
+                                Serviço: {av.servico === 'identidade' ? 'Método Identidade' : av.servico === 'cobzero' ? 'COB° ZERO' : 'Studio Personal ID'}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && (
                   <EmptyState icon={<Activity />} title="Nenhuma avaliação salva" subtitle="Realize uma avaliação completa para visualizar o histórico." />
                 )}
               </>
