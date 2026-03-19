@@ -10,8 +10,9 @@ interface Props {
 
 export default function ProtectedPatientRoute({ children }: Props) {
   const { user, loading: authLoading } = useAuth();
-  const [role, setRole] = useState<'patient' | 'professional' | null>(null);
+  const [role, setRole] = useState<'patient' | 'professional' | 'unknown' | null>(null);
   const [checking, setChecking] = useState(true);
+  const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
     if (authLoading) return;
@@ -21,30 +22,48 @@ export default function ProtectedPatientRoute({ children }: Props) {
     }
 
     const detectRole = async () => {
-      // Check if user has a profile (professional)
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      try {
+        // Check if user has a profile (professional)
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      // Check if user is linked as a patient
-      const { data: paciente } = await supabase
-        .from('pacientes')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+        // Check if user is linked as a patient
+        const { data: paciente } = await supabase
+          .from('pacientes')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
 
-      if (paciente) {
-        setRole('patient');
-      } else if (profile) {
-        setRole('professional');
+        if (paciente) {
+          setRole('patient');
+        } else if (profile) {
+          setRole('professional');
+        } else {
+          // FIX: User exists but has no role yet (e.g., just registered, linking in progress).
+          // Retry a few times with delay before giving up — the linking RPC may still be running.
+          if (retryCount < 3) {
+            setTimeout(() => setRetryCount(c => c + 1), 1500);
+            return; // don't set checking=false yet
+          }
+          setRole('unknown');
+        }
+      } catch (err) {
+        console.error('[ProtectedPatientRoute] Erro ao detectar role:', err);
+        // On error, retry once
+        if (retryCount < 2) {
+          setTimeout(() => setRetryCount(c => c + 1), 2000);
+          return;
+        }
+        setRole('unknown');
       }
       setChecking(false);
     };
 
     detectRole();
-  }, [user, authLoading]);
+  }, [user, authLoading, retryCount]);
 
   if (authLoading || checking) {
     return (
