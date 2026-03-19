@@ -11,11 +11,30 @@ Deno.serve(async (req) => {
     }
 
     try {
-        const { link_id, paciente_id, bloco_numero, dados_respostas } = await req.json();
+        const body = await req.json();
+        const { link_id, paciente_id, bloco_numero, dados_respostas } = body;
 
-        // Validação básica de entrada
-        if (!link_id || !bloco_numero || !dados_respostas) {
-            return new Response(JSON.stringify({ error: 'Dados incompletos.' }), {
+        // Validate input types and formats
+        if (!link_id || typeof link_id !== 'string' || !/^[0-9a-f-]{36}$/.test(link_id)) {
+            return new Response(JSON.stringify({ error: 'link_id inválido.' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        if (paciente_id && (typeof paciente_id !== 'string' || !/^[0-9a-f-]{36}$/.test(paciente_id))) {
+            return new Response(JSON.stringify({ error: 'paciente_id inválido.' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        if (!bloco_numero || typeof bloco_numero !== 'number' || bloco_numero < 1 || bloco_numero > 10) {
+            return new Response(JSON.stringify({ error: 'bloco_numero inválido.' }), {
+                status: 400,
+                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            });
+        }
+        if (!dados_respostas || typeof dados_respostas !== 'object') {
+            return new Response(JSON.stringify({ error: 'dados_respostas inválido.' }), {
                 status: 400,
                 headers: { ...corsHeaders, 'Content-Type': 'application/json' },
             });
