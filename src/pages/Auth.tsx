@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { SignInSchema, SignUpSchema } from '@/lib/validations';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
@@ -20,6 +21,17 @@ export default function Auth() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (tab === 'login') {
+      const parsed = SignInSchema.safeParse(form);
+      if (!parsed.success) {
+        return toast({ title: parsed.error.errors[0]?.message || 'Dados inválidos', variant: 'destructive' });
+      }
+    } else {
+      const parsed = SignUpSchema.safeParse(form);
+      if (!parsed.success) {
+        return toast({ title: parsed.error.errors[0]?.message || 'Dados inválidos', variant: 'destructive' });
+      }
+    }
     setSubmitting(true);
     if (tab === 'login') {
       const { error } = await signIn(form.email, form.password);

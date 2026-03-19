@@ -1,4 +1,5 @@
 import { useState, useMemo } from 'react';
+import { PacienteSchema } from '@/lib/validations';
 import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -312,16 +313,26 @@ export default function Pacientes() {
   };
 
   const handleSave = async () => {
-    if (!form.nome.trim()) return toast({ title: 'Nome obrigatório', variant: 'destructive' });
+    const parsed = PacienteSchema.safeParse(form);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Dados inválidos';
+      return toast({ title: firstError, variant: 'destructive' });
+    }
     setSubmitting(true);
     try {
       let pacienteId = modal.paciente?.id;
+      const validated = parsed.data;
       const payload = {
-        nome: form.nome.trim(), sobrenome: form.sobrenome.trim(),
-        email: form.email || null, telefone: form.telefone || null,
-        data_nascimento: form.data_nascimento || null, genero: form.genero || null,
-        cpf: form.cpf || null, endereco: form.endereco || null,
-        observacoes: form.observacoes || null, terapeuta_id: user!.id,
+        nome: validated.nome!,
+        sobrenome: validated.sobrenome!,
+        email: validated.email ?? null,
+        telefone: validated.telefone ?? null,
+        data_nascimento: validated.data_nascimento ?? null,
+        genero: validated.genero ?? null,
+        cpf: validated.cpf ?? null,
+        endereco: validated.endereco ?? null,
+        observacoes: validated.observacoes ?? null,
+        terapeuta_id: user!.id,
       };
       if (pacienteId) {
         await supabase.from('pacientes').update(payload).eq('id', pacienteId);
