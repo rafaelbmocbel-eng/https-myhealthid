@@ -72,22 +72,14 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
 
   // Real app logo
   await addLogoToDoc(doc, margin, 8, 14);
-  const W = 210;
-  const margin = 15;
-  const contentW = W - margin * 2;
-  let y = 0;
-
-  // ── CAPA ──────────────────────────────────────────────────────────────────
-  doc.setFillColor(...VERMELHO);
-  doc.rect(0, 0, W, 55, 'F');
 
   doc.setTextColor(...BRANCO);
   doc.setFontSize(22);
   doc.setFont('helvetica', 'bold');
-  doc.text('MY HEALTH ID', margin, 20);
+  doc.text('MY HEALTH ID', margin + 18, 20);
   doc.setFontSize(11);
   doc.setFont('helvetica', 'normal');
-  doc.text('Diretriz de Tratamento Personalizada', margin, 28);
+  doc.text('Diretriz de Tratamento Personalizada', margin + 18, 28);
 
   doc.setFontSize(9);
   doc.setTextColor(255, 200, 200);
