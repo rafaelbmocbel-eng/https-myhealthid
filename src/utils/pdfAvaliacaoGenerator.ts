@@ -57,19 +57,9 @@ const ORANGE = [240, 120, 40] as const;
 
 type C3 = readonly [number, number, number];
 
-// Logo My Health ID (Base64 placeholder for now, ideally passed as prop or from asset)
-// Using a simplified vector drawing function or a placeholder image
+// Logo My Health ID — uses the actual app logo image
 async function drawLogo(doc: jsPDF, x: number, y: number, size: number) {
-  // Simple circular logo representation like LogoIcon.tsx
-  doc.setFillColor(28, 55, 83); // Navy background
-  doc.circle(x + size / 2, y + size / 2, size / 2, 'F');
-
-  doc.setFillColor(234, 170, 20); // Gold inner circle
-  doc.circle(x + size / 2, y + size / 2, size / 3, 'F');
-
-  doc.setDrawColor(255, 255, 255);
-  doc.setLineWidth(0.5);
-  doc.circle(x + size / 2, y + size / 2, size / 2, 'S');
+  await addLogoToDoc(doc, x, y, size);
 }
 
 function checkPage(doc: jsPDF, y: number, needed: number, margin: number): number {
