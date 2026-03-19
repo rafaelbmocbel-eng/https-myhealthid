@@ -31,6 +31,7 @@ import { useToast } from '@/hooks/use-toast';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import { useMensagensWhatsApp } from '@/hooks/useMensagensWhatsApp';
 import FunilConfigPanel from '@/components/funil/FunilConfigPanel';
+import { useFunil } from '@/hooks/useFunil';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 
