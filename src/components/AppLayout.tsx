@@ -1,5 +1,7 @@
 import { useState, useLayoutEffect, useCallback } from 'react';
 import AppSidebar from './AppSidebar';
+import GlobalSearch from './GlobalSearch';
+import QuickActions from './QuickActions';
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -110,7 +112,10 @@ export default function AppLayout({ children }: AppLayoutProps) {
               }
             </button>
           )}
-          <div className="ml-auto flex items-center gap-4" />
+          <GlobalSearch />
+          <div className="ml-auto flex items-center gap-2">
+            <QuickActions />
+          </div>
         </header>
 
         <main className={cn(
