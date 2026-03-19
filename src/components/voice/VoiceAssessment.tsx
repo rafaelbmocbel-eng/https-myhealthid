@@ -119,6 +119,7 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
   }, [isSupported, toast]);
 
   const stopListening = useCallback(() => {
+    isListeningRef.current = false;
     recognitionRef.current?.stop();
     recognitionRef.current = null;
     setIsListening(false);
