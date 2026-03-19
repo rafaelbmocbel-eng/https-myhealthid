@@ -24,12 +24,13 @@ const COMPLEXIDADE_BADGE: Record<string, { label: string; class: string }> = {
   avancada: { label: 'Avançada', class: 'bg-red-100 text-red-700' },
 };
 
+// Only these categories appear in the treatment guidelines cardápio
+const CATEGORIAS_CARDAPIO = new Set(['terapia_manual', 'eletroterapia', 'tracao']);
+
 const CAT_LABELS: Record<string, { icon: string; label: string }> = {
   terapia_manual: { icon: '🖐️', label: 'Terapia Manual' },
   eletroterapia: { icon: '⚡', label: 'Eletrotermofototerapia' },
-  exercicio_respiratorio: { icon: '🫁', label: 'Exercícios Respiratórios' },
-  tracao: { icon: '🔗', label: 'Tração' },
-  outros: { icon: '🧊', label: 'Outras Técnicas' },
+  tracao: { icon: '🔗', label: 'Cinesioterapia / Tração' },
 };
 
 interface Props {
