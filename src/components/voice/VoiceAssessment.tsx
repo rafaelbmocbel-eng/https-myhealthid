@@ -45,15 +45,20 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
   });
   const recognitionRef = useRef<any>(null);
   const fullTranscriptRef = useRef('');
+  const isListeningRef = useRef(false);
 
   const isSupported = typeof window !== 'undefined' &&
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   const startListening = useCallback(() => {
     if (!isSupported) {
-      toast({ title: 'Navegador não suporta reconhecimento de voz', variant: 'destructive' });
+      toast({ title: 'Navegador não suporta reconhecimento de voz', description: 'Use Chrome, Edge ou Safari.', variant: 'destructive' });
       return;
     }
+
+    // Stop any existing recognition first
+    try { recognitionRef.current?.stop(); } catch {}
+    recognitionRef.current = null;
 
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
@@ -79,23 +84,39 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
     };
 
     recognition.onerror = (e: any) => {
-      if (e.error !== 'no-speech') {
-        console.error('Speech error:', e.error);
+      console.error('Speech recognition error:', e.error);
+      if (e.error === 'not-allowed' || e.error === 'service-not-available') {
+        toast({ title: 'Microfone não permitido', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
+        isListeningRef.current = false;
+        setIsListening(false);
+        recognitionRef.current = null;
+      } else if (e.error !== 'no-speech' && e.error !== 'aborted') {
         toast({ title: 'Erro no reconhecimento de voz', description: e.error, variant: 'destructive' });
       }
     };
 
     recognition.onend = () => {
-      // Auto-restart if still listening
-      if (recognitionRef.current && isListening) {
-        try { recognition.start(); } catch {}
+      // Auto-restart if still listening (use ref to avoid stale closure)
+      if (isListeningRef.current) {
+        try { recognition.start(); } catch {
+          isListeningRef.current = false;
+          setIsListening(false);
+          recognitionRef.current = null;
+        }
       }
     };
 
     recognitionRef.current = recognition;
-    recognition.start();
-    setIsListening(true);
-  }, [isSupported, isListening, toast]);
+    try {
+      recognition.start();
+      isListeningRef.current = true;
+      setIsListening(true);
+    } catch (err) {
+      console.error('Failed to start recognition:', err);
+      toast({ title: 'Erro ao iniciar gravação', description: 'Tente novamente ou use outro navegador.', variant: 'destructive' });
+      recognitionRef.current = null;
+    }
+  }, [isSupported, toast]);
 
   const stopListening = useCallback(() => {
     recognitionRef.current?.stop();
