@@ -199,9 +199,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [streak, setStreak] = useState(0);
   const [completedMissions, setCompletedMissions] = useState<Set<string>>(new Set());
   const [showDicas, setShowDicas] = useState(true);
+  const [showFases, setShowFases] = useState(false);
 
   // Fetch MyID scores for health missions
-  const { data: myidScores } = useQuery({
+  const { data: myidData } = useQuery({
     queryKey: ['metas-myid-scores', pacienteId],
     queryFn: async () => {
       // Try avaliacoes_identidade first
@@ -218,14 +219,17 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         const analysis = av.myid_analysis as any;
         const cs = analysis?.componentScores || analysis?.component_scores || {};
         return {
-          D: cs.D ?? (Number(av.score_d) || 0),
-          EFI: cs.EFI ?? (Number(av.score_efi) || 0),
-          P: cs.P ?? (Number(av.score_p) || 0),
-          I: cs.I ?? (Number(av.score_i) || 0),
-          R: cs.R ?? (Number(av.score_r) || 0),
-          C: cs.C ?? (Number(av.score_c) || 0),
-          AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
-          N: cs.N ?? (Number(av.score_n) || 0),
+          scores: {
+            D: cs.D ?? (Number(av.score_d) || 0),
+            EFI: cs.EFI ?? (Number(av.score_efi) || 0),
+            P: cs.P ?? (Number(av.score_p) || 0),
+            I: cs.I ?? (Number(av.score_i) || 0),
+            R: cs.R ?? (Number(av.score_r) || 0),
+            C: cs.C ?? (Number(av.score_c) || 0),
+            AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
+            N: cs.N ?? (Number(av.score_n) || 0),
+          },
+          myidScore: Number(av.myid_score) || 0,
         };
       }
 
@@ -239,11 +243,15 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         .limit(1);
 
       if (myidAv?.[0]?.resultado_processado) {
-        const cs = (myidAv[0].resultado_processado as any)?.component_scores;
+        const rp = myidAv[0].resultado_processado as any;
+        const cs = rp?.component_scores;
         if (cs) return {
-          D: cs.D ?? 0, EFI: cs.EFI ?? 0, P: cs.P ?? 0, I: cs.I ?? 0,
-          R: cs.R ?? 0, C: cs.C ?? 0, AF: cs.AF ?? 5, HID: cs.HID ?? 5,
-          NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5, N: cs.N ?? 0,
+          scores: {
+            D: cs.D ?? 0, EFI: cs.EFI ?? 0, P: cs.P ?? 0, I: cs.I ?? 0,
+            R: cs.R ?? 0, C: cs.C ?? 0, AF: cs.AF ?? 5, HID: cs.HID ?? 5,
+            NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5, N: cs.N ?? 0,
+          },
+          myidScore: rp?.myid_100 ?? rp?.MyID_score ?? 0,
         };
       }
 
@@ -251,7 +259,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
     },
   });
 
+  const myidScores = myidData?.scores || null;
   const missoesSaude = useMemo(() => gerarMissoesSaude(myidScores), [myidScores]);
+  const insights = useMemo(
+    () => myidData?.scores && myidData.myidScore
+      ? gerarInsightsClinicosMyID(myidData.scores, myidData.myidScore)
+      : null,
+    [myidData]
+  );
 
   // Load completed missions from localStorage (daily reset)
   useEffect(() => {
