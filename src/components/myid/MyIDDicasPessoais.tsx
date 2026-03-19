@@ -4,10 +4,11 @@ import { cn } from '@/lib/utils';
 import {
   Heart, Droplets, Apple, Brain, Moon, Dumbbell,
   Monitor, AlertTriangle, Sparkles, ChevronDown, ChevronUp,
-  Lightbulb, Shield, Zap
+  Lightbulb, Shield, Zap, Target, Trophy, ArrowRight
 } from 'lucide-react';
 import { useState } from 'react';
-import { calcularPerdaDimensao, DIMENSION_LABELS } from '@/utils/myid/lossTable';
+import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
+import { gerarInsightsClinicosMyID, type ClinicalInsightResult, type ClinicalMission } from '@/utils/myid/clinicalInsights';
 
 interface Scores {
   D: number;
