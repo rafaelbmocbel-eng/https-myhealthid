@@ -542,6 +542,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
             <TabsContent value="voz" className="mt-4">
               <VoiceAssessment
                 serviceType="identidade"
+                pacienteId={paciente.id}
                 patientName={`${paciente.nome} ${paciente.sobrenome}`}
               />
             </TabsContent>
