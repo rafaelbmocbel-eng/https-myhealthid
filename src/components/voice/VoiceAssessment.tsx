@@ -129,6 +129,7 @@ export default function VoiceAssessment({ serviceType, patientName, patientAge, 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
+      isListeningRef.current = false;
       recognitionRef.current?.stop();
       recognitionRef.current = null;
     };
