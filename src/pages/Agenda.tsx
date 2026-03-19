@@ -32,6 +32,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
+import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
@@ -764,6 +765,20 @@ export default function Agenda() {
           </div>
         )}
 
+        {/* Lembrete de encerramento do expediente */}
+        <LembreteEncerramento
+          agendamentos={agendamentos}
+          pacientes={pacientes}
+          config={config}
+          onMarcarConcluido={(id) => {
+            const ag = agendamentos.find(a => a.id === id);
+            if (ag) handleSessaoStatus(ag, 'atendido');
+          }}
+          onMarcarFaltou={(id) => {
+            const ag = agendamentos.find(a => a.id === id);
+            if (ag) handleSessaoStatus(ag, 'faltou');
+          }}
+        />
 
         <div className="flex flex-1 overflow-hidden">
           {/* Left: mini calendar + stats */}
