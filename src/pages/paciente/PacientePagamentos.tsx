@@ -144,33 +144,11 @@ export default function PacientePagamentos() {
   const [sumupLoading, setSumupLoading] = useState(false);
   const [sumupUrl, setSumupUrl] = useState<string | null>(null);
 
-  const handleSelectCartao = async () => {
+  const handleSelectCartao = () => {
     setPaymentMethod('cartao');
     setPixQr(null);
-    setSumupUrl(null);
-
-    if (!selectedServico || !paciente) return;
-    setSumupLoading(true);
-    try {
-      const result = await createSumUpCheckout({
-        amount: selectedServico.valor,
-        description: selectedServico.nome,
-        customer_name: `${paciente.nome} ${paciente.sobrenome}`,
-        reference: `pac_${paciente.id}_${Date.now()}`,
-        redirect_url: window.location.href,
-      });
-      setSumupUrl(result.checkout_url);
-    } catch (e: any) {
-      console.error('SumUp error:', e);
-      // Fallback to static link if available
-      if (config?.link_cartao) {
-        setSumupUrl(config.link_cartao);
-      } else {
-        toast({ title: 'Erro ao gerar link de pagamento', description: e.message, variant: 'destructive' });
-      }
-    } finally {
-      setSumupLoading(false);
-    }
+    // Use static link directly from funil_config
+    setSumupUrl(config?.link_cartao || null);
   };
 
   const handleConfirmPayment = async () => {
