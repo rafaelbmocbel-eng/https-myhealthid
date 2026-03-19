@@ -1,4 +1,5 @@
 import jsPDF from 'jspdf';
+import { addLogoToDoc } from './pdfLogoHelper';
 
 export interface PDFEstiloVidaItem {
   label: string;
