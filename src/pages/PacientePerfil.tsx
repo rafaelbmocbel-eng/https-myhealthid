@@ -32,6 +32,8 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
+import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
+import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
