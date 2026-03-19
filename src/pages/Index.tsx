@@ -886,6 +886,11 @@ export default function Index() {
 
       </div>
 
+      {/* NPS Dashboard */}
+      <div className="container max-w-6xl px-1 sm:px-6 pb-6">
+        <NpsSurveyCard showDashboard />
+      </div>
+
       {/* FAB removed — actions available via sidebar/module cards */}
       </PageTransition>
     </AppLayout>
