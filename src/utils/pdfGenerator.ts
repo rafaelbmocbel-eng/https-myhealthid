@@ -368,7 +368,7 @@ export async function gerarPDFProtocolo(data: PDFProtocolo): Promise<void> {
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...CINZA_MEDIO);
-    doc.text('Core Axis Pro · Diretriz Personalizada · Documento confidencial', margin, 293);
+    doc.text('My Health ID · Diretriz Personalizada · Documento confidencial', margin, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - margin, 293, { align: 'right' });
   }
 
