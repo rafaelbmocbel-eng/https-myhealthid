@@ -195,7 +195,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
       if (pacienteId) {
         const descricao = `${assessment.resumo_clinico}\n\nQueixa: ${assessment.queixa_principal || 'N/I'}\nDor EVA: ${assessment.dor?.intensidade_eva || '?'}/10 — ${assessment.dor?.tipo || 'N/I'}\nClassificação: ${assessment.classificacao_severidade}\n\nHipóteses: ${assessment.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
-        await supabase.from('notas_prontuario').insert({
+        const { error: prontuarioError } = await supabase.from('notas_prontuario').insert({
           paciente_id: pacienteId,
           terapeuta_id: user.id,
           tipo: 'avaliacao_voz',
@@ -203,10 +203,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           descricao,
           dados_extras: { assessment, transcricao: editedTranscript },
         });
+        if (prontuarioError) throw prontuarioError;
       }
 
       setIsSaved(true);
-      toast({ title: '💾 Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
+      toast({ title: '✅ Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
     } finally {
@@ -253,7 +254,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setStep('record');
   };
 
-  // ── Step 3: Assessment Results ──
+  // ‚îÄ‚îÄ Step 3: Assessment Results ‚îÄ‚îÄ
   if (step === 'result' && assessment) {
     return (
       <div className="space-y-4">
@@ -285,298 +286,8 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {assessment.queixa_principal && <Badge variant="secondary">QP: {assessment.queixa_principal}</Badge>}
-            {assessment.tempo_evolucao && <Badge variant="outline">⏱ {assessment.tempo_evolucao}</Badge>}
+            {assessment.tempo_evolucao && <Badge variant="outline">‚è± {assessment.tempo_evolucao}</Badge>}
           </div>
         </SectionCard>
 
         <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection}>
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Local:</span> <strong>{assessment.dor?.localizacao}</strong></div>
-            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg">{assessment.dor?.intensidade_eva}/10</strong></div>
-            <div><span className="text-muted-foreground">Tipo:</span> <strong>{assessment.dor?.tipo}</strong></div>
-            <div><span className="text-muted-foreground">Padrão:</span> <strong>{assessment.dor?.padrao_temporal || 'N/I'}</strong></div>
-          </div>
-          {assessment.dor?.fatores_agravantes?.length > 0 && (
-            <div className="mt-2">
-              <span className="text-xs text-muted-foreground">Agravantes:</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {assessment.dor.fatores_agravantes.map((f: string, i: number) => (
-                  <Badge key={i} variant="outline" className="text-xs border-destructive/30 text-destructive">{f}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-          {assessment.dor?.fatores_atenuantes?.length > 0 && (
-            <div className="mt-2">
-              <span className="text-xs text-muted-foreground">Atenuantes:</span>
-              <div className="flex flex-wrap gap-1 mt-1">
-                {assessment.dor.fatores_atenuantes.map((f: string, i: number) => (
-                  <Badge key={i} variant="outline" className="text-xs border-green-500/30 text-green-700">{f}</Badge>
-                ))}
-              </div>
-            </div>
-          )}
-        </SectionCard>
-
-        <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection}>
-          <Badge className={cn('text-xs mb-2', assessment.funcionalidade?.nivel_impacto === 'Incapacitante' ? 'bg-destructive text-white' : 'bg-secondary')}>
-            Impacto: {assessment.funcionalidade?.nivel_impacto}
-          </Badge>
-          {assessment.funcionalidade?.limitacoes_avds?.length > 0 && (
-            <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-              {assessment.funcionalidade.limitacoes_avds.map((l: string, i: number) => <li key={i}>• {l}</li>)}
-            </ul>
-          )}
-        </SectionCard>
-
-        <SectionCard icon={Brain} title="Fatores Psicossociais" sectionKey="psicossocial" expanded={expandedSections} toggle={toggleSection}>
-          <div className="grid grid-cols-2 gap-2 text-sm">
-            <div>Catastrofização: <strong>{assessment.fatores_psicossociais?.catastrofizacao}</strong></div>
-            <div>Medo-evitação: <strong>{assessment.fatores_psicossociais?.medo_evitacao}</strong></div>
-            <div>Sono: <strong>{assessment.fatores_psicossociais?.qualidade_sono || 'N/I'}</strong></div>
-            <div>Estresse: <strong>{assessment.fatores_psicossociais?.estresse || 'N/I'}</strong></div>
-          </div>
-          {assessment.fatores_psicossociais?.observacoes && (
-            <p className="text-xs text-muted-foreground mt-2 italic">{assessment.fatores_psicossociais.observacoes}</p>
-          )}
-        </SectionCard>
-
-        {assessment.red_flags?.length > 0 && (
-          <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
-            <ul className="space-y-1">
-              {assessment.red_flags.map((rf: string, i: number) => (
-                <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{rf}
-                </li>
-              ))}
-            </ul>
-          </SectionCard>
-        )}
-
-        <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection}>
-          <div className="space-y-3">
-            {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
-              <div key={i} className="border border-border/50 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{h.diagnostico}</span>
-                  <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
-                    {h.probabilidade}
-                  </Badge>
-                </div>
-                <p className="text-xs text-muted-foreground mt-1 italic">📖 {h.evidencia}</p>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-
-        <SectionCard icon={CheckCircle2} title="Plano de Tratamento" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
-          {assessment.plano_tratamento?.objetivos_curto_prazo?.length > 0 && (
-            <div className="mb-3">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
-              <ul className="text-sm space-y-1 mt-1">
-                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: string, i: number) => <li key={i}>• {o}</li>)}
-              </ul>
-            </div>
-          )}
-          {assessment.plano_tratamento?.tecnicas_recomendadas?.length > 0 && (
-            <div className="mb-3">
-              <span className="text-xs font-semibold text-muted-foreground uppercase">Técnicas Recomendadas</span>
-              <div className="space-y-2 mt-1">
-                {assessment.plano_tratamento.tecnicas_recomendadas.map((t: any, i: number) => (
-                  <div key={i} className="bg-secondary/50 rounded-lg p-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-sm">{t.tecnica}</span>
-                      <Badge variant="outline" className="text-xs">Nível {t.nivel_evidencia}</Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">{t.justificativa}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-          <p className="text-sm"><strong>Prognóstico:</strong> {assessment.plano_tratamento?.prognostico}</p>
-        </SectionCard>
-
-        <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection}>
-          <div className="space-y-3">
-            {assessment.insights_baseados_evidencia?.map((ins: any, i: number) => (
-              <div key={i} className="border-l-2 border-primary/40 pl-3">
-                <p className="text-sm font-medium">{ins.insight}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <BookOpen className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground italic">{ins.referencia}</span>
-                  <Badge variant="outline" className="text-xs ml-auto">{ins.relevancia_clinica}</Badge>
-                </div>
-              </div>
-            ))}
-          </div>
-        </SectionCard>
-      </div>
-    );
-  }
-
-  // ── Step 2: Review & Edit Transcript ──
-  if (step === 'review') {
-    return (
-      <div className="space-y-4">
-        <Card className="border-primary/20">
-          <CardContent className="p-6">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-14 w-14 rounded-full flex items-center justify-center bg-accent/10">
-                <Edit3 className="h-7 w-7 text-accent-foreground" />
-              </div>
-              <div>
-                <h3 className="font-bold text-lg">Revisar Transcrição</h3>
-                <p className="text-sm text-muted-foreground">
-                  {audioBase64
-                    ? 'Áudio capturado! Adicione contexto ou anotações extras (opcional). A IA transcreverá o áudio automaticamente.'
-                    : 'Corrija erros, adicione informações ou complete trechos antes de gerar a avaliação.'}
-                </p>
-              </div>
-            </div>
-
-            {audioBase64 && (
-              <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Áudio gravado ({formatTime(recordingTime)}) — será transcrito e analisado pela IA</span>
-              </div>
-            )}
-
-            <Textarea
-              value={editedTranscript}
-              onChange={(e) => setEditedTranscript(e.target.value)}
-              placeholder={audioBase64 ? "Notas adicionais (opcional)..." : "Revise e edite a transcrição..."}
-              className="min-h-[200px] text-sm"
-            />
-            {editedTranscript && <p className="text-xs text-muted-foreground mt-1">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>}
-
-            <div className="flex gap-2 mt-4">
-              <Button variant="outline" onClick={() => setStep('record')}>
-                <RotateCcw className="h-4 w-4 mr-2" />Voltar
-              </Button>
-              <Button
-                onClick={processAssessment}
-                disabled={isProcessing || (!audioBase64 && editedTranscript.trim().length < 20)}
-                className="bg-primary text-primary-foreground"
-              >
-                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        {isProcessing && (
-          <Card className="border-primary/20">
-            <CardContent className="p-6 flex flex-col items-center gap-3">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                {audioBase64 ? 'Transcrevendo áudio e analisando com IA clínica...' : 'Analisando conversa com IA clínica baseada em evidências...'}
-              </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Badge variant="outline" className="text-xs">Magee (2021)</Badge>
-                <Badge variant="outline" className="text-xs">O'Sullivan (2018)</Badge>
-                <Badge variant="outline" className="text-xs">Butler & Moseley</Badge>
-                <Badge variant="outline" className="text-xs">Cook (2014)</Badge>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-    );
-  }
-
-  // ── Step 1: Recording UI ──
-  return (
-    <div className="space-y-4">
-      <Card className="border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className={cn(
-              'h-14 w-14 rounded-full flex items-center justify-center transition-all',
-              isRecording ? 'bg-destructive/10 animate-pulse' : 'bg-primary/10'
-            )}>
-              {isRecording ? <Mic className="h-7 w-7 text-destructive" /> : <MicOff className="h-7 w-7 text-primary" />}
-            </div>
-            <div>
-              <h3 className="font-bold text-lg">Avaliação por Voz</h3>
-              <p className="text-sm text-muted-foreground">
-                {SERVICE_LABELS[serviceType]} — {isRecording ? 'Gravando áudio...' : 'Grave a consulta ou digite/cole a transcrição'}
-              </p>
-            </div>
-          </div>
-
-          <div className="flex gap-2 items-center mb-4">
-            {!isRecording ? (
-              <Button onClick={startRecording} className="bg-primary text-primary-foreground">
-                <Mic className="h-4 w-4 mr-2" />Iniciar Gravação
-              </Button>
-            ) : (
-              <>
-                <Button onClick={stopRecording} variant="destructive">
-                  <MicOff className="h-4 w-4 mr-2" />Parar Gravação
-                </Button>
-                <div className="flex items-center gap-1.5 text-sm text-destructive font-mono">
-                  <Clock className="h-4 w-4" />
-                  {formatTime(recordingTime)}
-                </div>
-              </>
-            )}
-            {(audioBase64 || transcript.trim().length > 20) && !isRecording && (
-              <Button onClick={goToReview} className="bg-accent text-accent-foreground">
-                <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
-              </Button>
-            )}
-          </div>
-
-          {audioBase64 && !isRecording && (
-            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 text-sm">
-              <CheckCircle2 className="h-4 w-4" />
-              <span>Áudio capturado ({formatTime(recordingTime)}) — pronto para processar</span>
-            </div>
-          )}
-
-          <div className="relative">
-            <p className="text-xs text-muted-foreground mb-1">Ou cole/digite a transcrição manualmente:</p>
-            <Textarea
-              value={transcript}
-              onChange={(e) => setTranscript(e.target.value)}
-              placeholder="Cole ou digite a transcrição aqui (alternativa ao áudio)..."
-              className="min-h-[100px] text-sm"
-            />
-          </div>
-          {transcript.length > 0 && (
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-muted-foreground">{transcript.split(/\s+/).filter(Boolean).length} palavras</p>
-              {!isRecording && transcript.trim().length > 20 && (
-                <Button variant="ghost" size="sm" onClick={goToReview} className="text-xs text-primary">
-                  Revisar antes de processar →
-                </Button>
-              )}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
-// ── Collapsible Section Card ──
-function SectionCard({ icon: Icon, title, sectionKey, expanded, toggle, children, danger }: {
-  icon: any; title: string; sectionKey: string;
-  expanded: Record<string, boolean>; toggle: (k: string) => void;
-  children: React.ReactNode; danger?: boolean;
-}) {
-  const isOpen = expanded[sectionKey];
-  return (
-    <Card className={cn('transition-all', danger && 'border-destructive/30 bg-destructive/5')}>
-      <button onClick={() => toggle(sectionKey)} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-        <div className="flex items-center gap-2">
-          <Icon className={cn('h-4 w-4', danger ? 'text-destructive' : 'text-primary')} />
-          <span className="font-semibold text-sm">{title}</span>
-        </div>
-        {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-      </button>
-      {isOpen && <CardContent className="pt-0 pb-4 px-4">{children}</CardContent>}
-    </Card>
-  );
-}
