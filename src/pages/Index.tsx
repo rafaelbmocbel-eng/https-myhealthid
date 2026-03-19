@@ -415,6 +415,11 @@ export default function Index() {
         </div>
         </FadeIn>
 
+        {/* Onboarding Guide */}
+        <div className="mb-4">
+          <OnboardingGuide />
+        </div>
+
         {/* Quick stats — compact row */}
         <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
           {[
