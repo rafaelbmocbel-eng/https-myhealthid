@@ -514,9 +514,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial
               </TabsTrigger>
-              <TabsTrigger value="voz" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <Mic className="h-4 w-4" /> Avaliação por Voz
-              </TabsTrigger>
               <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Target className="h-4 w-4" /> Diretrizes e Serviços
               </TabsTrigger>
@@ -539,16 +536,29 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             </TabsContent>
 
-            <TabsContent value="voz" className="mt-4">
-              <VoiceAssessment
-                serviceType="identidade"
-                pacienteId={paciente.id}
-                patientName={`${paciente.nome} ${paciente.sobrenome}`}
-              />
-            </TabsContent>
+
+
 
             <TabsContent value="myid" className="mt-4">
               <div className="space-y-6">
+                {/* ── Avaliação por Voz — Estrutural ── */}
+                <div className="clinical-card">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                      <Mic className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Avaliação por Voz — Estrutural</h3>
+                      <p className="text-xs text-muted-foreground">Grave a anamnese estrutural e receba insights baseados em evidências sobre as 8 Unidades Corporais</p>
+                    </div>
+                  </div>
+                  <VoiceAssessment
+                    serviceType="identidade"
+                    pacienteId={paciente.id}
+                    patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                  />
+                </div>
+
                 {/* ── Avaliação Estrutural (Unidades Corporais) ── */}
                 {showStructural ? (
                   <StructuralWizard
