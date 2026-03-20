@@ -71,6 +71,12 @@ function isDimensionImprovement(dimKey: string, delta: number): boolean {
 
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
   const [exportando, setExportando] = useState(false);
+  const [visibleDims, setVisibleDims] = useState<Set<string>>(new Set());
+  const toggleDim = (key: string) => setVisibleDims(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
 
   const handleExportPDF = async () => {
     setExportando(true);
