@@ -11,9 +11,9 @@ import {
   CheckCircle2, Moon, Droplets, Apple, Dumbbell,
   Monitor, Brain, Shield, Zap, Heart, AlertTriangle,
   ChevronDown, ChevronUp, Sparkles, ArrowRight, Clock,
-  CalendarDays, BarChart3, Play
+  CalendarDays, BarChart3, Play, Bell, AlertCircle
 } from 'lucide-react';
-import { subDays, format, parseISO, isToday } from 'date-fns';
+import { subDays, format, parseISO, isToday, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID } from '@/utils/myid/clinicalInsights';
@@ -97,6 +97,7 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
   const [showDicas, setShowDicas] = useState(false);
   const [showFases, setShowFases] = useState(false);
   const [showTreinos, setShowTreinos] = useState(true);
+  const [showAlertas, setShowAlertas] = useState(true);
 
   // ── Patient engagement stats ────────────────────────────────────────
   const { data: engagementStats } = useQuery({
@@ -207,6 +208,74 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
       return { treinos: treinosRes.data || [], execucoes: execRes.data || [] };
     },
     enabled: !!user && !!pacienteId,
+  });
+
+  // ── Alertas do Paciente (espelha PacienteAlertasLembretes) ──────────
+  const { data: alertasData } = useQuery({
+    queryKey: ['portal-control-alertas', pacienteId],
+    queryFn: async () => {
+      const now = new Date();
+      const alerts: { id: string; tipo: string; titulo: string; descricao: string; urgencia: string }[] = [];
+
+      // Próxima consulta nas próximas 48h
+      const { data: proxConsultas } = await supabase
+        .from('agendamentos')
+        .select('id, data_inicio, titulo, tipo_atendimento, status')
+        .eq('paciente_id', pacienteId)
+        .gte('data_inicio', now.toISOString())
+        .in('status', ['confirmado', 'pendente'])
+        .order('data_inicio', { ascending: true })
+        .limit(3);
+
+      proxConsultas?.forEach(c => {
+        const horasAte = differenceInHours(parseISO(c.data_inicio), now);
+        if (horasAte <= 48) {
+          alerts.push({
+            id: `consulta-${c.id}`, tipo: 'consulta',
+            titulo: horasAte <= 2 ? '⏰ Consulta em breve!' : '📅 Consulta próxima',
+            descricao: `${c.titulo || c.tipo_atendimento || 'Consulta'} — ${format(parseISO(c.data_inicio), "EEEE, HH:mm", { locale: ptBR })}`,
+            urgencia: horasAte <= 2 ? 'alta' : horasAte <= 24 ? 'media' : 'baixa',
+          });
+        }
+      });
+
+      // Diário não preenchido hoje
+      const { count: diarioHoje } = await supabase
+        .from('daily_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString());
+
+      if (!diarioHoje || diarioHoje === 0) {
+        alerts.push({
+          id: 'diario-hoje', tipo: 'diario',
+          titulo: '💊 Registre seu dia',
+          descricao: 'Diário de saúde não preenchido hoje.',
+          urgencia: now.getHours() >= 18 ? 'media' : 'baixa',
+        });
+      }
+
+      // Questionários pendentes
+      const { count: pendentes } = await supabase
+        .from('myid_avaliacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .neq('status', 'concluido');
+
+      if (pendentes && pendentes > 0) {
+        alerts.push({
+          id: 'quest-pendente', tipo: 'questionario',
+          titulo: '📋 Questionário pendente',
+          descricao: `${pendentes} questionário(s) aguardando resposta`,
+          urgencia: 'media',
+        });
+      }
+
+      const urgOrder: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+      alerts.sort((a, b) => (urgOrder[a.urgencia] ?? 2) - (urgOrder[b.urgencia] ?? 2));
+      return alerts;
+    },
+    enabled: !!pacienteId,
   });
 
   const treinos = treinosData?.treinos || [];
@@ -486,8 +555,53 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
         )}
       </div>
 
+      {/* ── Alertas & Lembretes (visão do paciente) ────────────────── */}
+      {(alertasData?.length ?? 0) > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowAlertas(!showAlertas)}>
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-studio" />
+              <h4 className="font-bold text-sm text-foreground">Alertas do Paciente</h4>
+              <Badge variant="outline" className="text-[9px] h-4">{alertasData!.length} ativos</Badge>
+            </div>
+            {showAlertas ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </div>
+
+          {showAlertas && (
+            <div className="space-y-1.5">
+              {alertasData!.map(alerta => {
+                const urgColorMap: Record<string, string> = {
+                  alta: 'border-destructive/30 bg-destructive/5',
+                  media: 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20',
+                  baixa: 'border-primary/20 bg-primary/5',
+                };
+                const iconMap: Record<string, any> = { consulta: CalendarDays, diario: Heart, treino: Dumbbell, questionario: Bell };
+                const Icon = iconMap[alerta.tipo] || AlertCircle;
+                return (
+                  <div key={alerta.id} className={cn("p-2.5 rounded-xl border flex items-center gap-2.5", urgColorMap[alerta.urgencia] || urgColorMap.baixa)}>
+                    <div className="w-7 h-7 rounded-lg bg-background/60 flex items-center justify-center shrink-0">
+                      <Icon className="h-3.5 w-3.5 text-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold text-foreground truncate">{alerta.titulo}</p>
+                      <p className="text-[9px] text-muted-foreground truncate">{alerta.descricao}</p>
+                    </div>
+                    <Badge variant="outline" className={cn("text-[8px] h-4 shrink-0",
+                      alerta.urgencia === 'alta' ? 'border-destructive text-destructive' :
+                      alerta.urgencia === 'media' ? 'border-amber-500 text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
+                    )}>
+                      {alerta.urgencia === 'alta' ? 'Urgente' : alerta.urgencia === 'media' ? 'Atenção' : 'Info'}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Empty state if no MyID data */}
-      {!myidData && missoes.length === 0 && treinos.length === 0 && (
+      {!myidData && missoes.length === 0 && treinos.length === 0 && (alertasData?.length ?? 0) === 0 && (
         <Card className="border-dashed border-2 border-studio/20">
           <CardContent className="py-10 text-center">
             <Eye className="h-10 w-10 mx-auto mb-3 text-studio/30" />
