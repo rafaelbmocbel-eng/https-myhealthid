@@ -856,9 +856,14 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     <div className="space-y-3">
                       {voiceAvaliacoes.map((av: any) => {
                         const resultado = av.resultado as any;
+                        const isExpanded = expandedVoiceId === av.id;
                         return (
-                          <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                            <div className="flex items-center gap-3 p-4">
+                          <div key={av.id} className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
+                            <button
+                              type="button"
+                              className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                              onClick={() => setExpandedVoiceId(isExpanded ? null : av.id)}
+                            >
                               <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
                                 <Mic className="h-5 w-5 text-violet-600" />
                               </div>
@@ -883,7 +888,73 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   </div>
                                 )}
                               </div>
-                            </div>
+                              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                            </button>
+
+                            {isExpanded && (
+                              <div className="border-t px-4 py-3 space-y-3 text-xs bg-muted/10">
+                                {/* Resumo Clínico */}
+                                {resultado?.resumo_clinico && (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Resumo Clínico</p>
+                                    <p className="text-muted-foreground whitespace-pre-wrap">{resultado.resumo_clinico}</p>
+                                  </div>
+                                )}
+
+                                {/* Dor */}
+                                {resultado?.dor && (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Dor</p>
+                                    <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                                      {resultado.dor.localizacao && <span>Local: {resultado.dor.localizacao}</span>}
+                                      {resultado.dor.intensidade_eva && <span>EVA: {resultado.dor.intensidade_eva}/10</span>}
+                                      {resultado.dor.tipo && <span>Tipo: {resultado.dor.tipo}</span>}
+                                      {resultado.dor.padrao && <span>Padrão: {resultado.dor.padrao}</span>}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Funcionalidade */}
+                                {resultado?.funcionalidade && (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Funcionalidade</p>
+                                    <p className="text-muted-foreground">
+                                      {typeof resultado.funcionalidade === 'string' ? resultado.funcionalidade : JSON.stringify(resultado.funcionalidade)}
+                                    </p>
+                                  </div>
+                                )}
+
+                                {/* Red Flags */}
+                                {resultado?.red_flags && resultado.red_flags.length > 0 && (
+                                  <div>
+                                    <p className="font-semibold text-destructive mb-1">🚩 Red Flags</p>
+                                    <ul className="list-disc pl-4 text-destructive/80">
+                                      {resultado.red_flags.map((rf: string, i: number) => <li key={i}>{rf}</li>)}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Hipóteses */}
+                                {resultado?.hipoteses_diagnosticas && resultado.hipoteses_diagnosticas.length > 0 && (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
+                                    <ul className="list-disc pl-4 text-muted-foreground">
+                                      {resultado.hipoteses_diagnosticas.map((h: string, i: number) => <li key={i}>{h}</li>)}
+                                    </ul>
+                                  </div>
+                                )}
+
+                                {/* Transcrição */}
+                                {av.transcricao && (
+                                  <div>
+                                    <p className="font-semibold text-foreground mb-1">Transcrição</p>
+                                    <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
+                                      {av.transcricao}
+                                    </p>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         );
                       })}
