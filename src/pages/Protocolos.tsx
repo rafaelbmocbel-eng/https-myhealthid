@@ -295,8 +295,6 @@ export default function Protocolos() {
           </Button>
         </div>
 
-        {/* Sub-navigation */}
-        <PacientesSubNav />
 
         {/* Avaliações pendentes de protocolo */}
         {avaliacoesSemProtocolo.length > 0 && (
