@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -12,6 +15,8 @@ serve(async (req) => {
 
   try {
     const { patientName, patientEmail, linkUrl, linkType } = await req.json();
+    const safeName = esc(String(patientName || ''));
+    const safeUrl = esc(String(linkUrl || ''));
 
     if (!patientEmail || !linkUrl || !linkType) {
       return new Response(JSON.stringify({ error: 'Dados incompletos' }), {
