@@ -136,6 +136,7 @@ export default function FunilPublico() {
 
       // Count how many agendamentos overlap this slot
       const overlaps = (existingAg || []).filter(ag => {
+        if (ag.status !== 'confirmado' && ag.status !== 'pendente') return false;
         const agStart = new Date(ag.data_inicio);
         const agEnd = new Date(ag.data_fim);
         return isBefore(current, agEnd) && isAfter(slotEnd, agStart);
