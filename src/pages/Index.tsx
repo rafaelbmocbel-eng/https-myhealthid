@@ -164,10 +164,20 @@ export default function Index() {
         const vals = avaliacoes.map(a => (a as any)[key]).filter((v: any) => v != null && !isNaN(v));
         return vals.length > 0 ? vals.reduce((s: number, v: number) => s + Number(v), 0) / vals.length : 0;
       };
+      // Extract v2 sub-dimensions from dados_avaliacao
+      const extractSubScore = (key: string) => {
+        const vals = avaliacoes.map(a => {
+          try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.[key] || 0); } catch { return 0; }
+        }).filter(v => v > 0);
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      };
       const scores = {
-        E: avg('score_e'), P: avg('score_p'), C: avg('score_c'),
-        F: avg('score_f'), D: avg('score_d'), R: avg('score_r'),
-        EFI: avg('score_efi'), ID: avg('id_final'),
+        D: avg('score_d'), EFI: avg('score_efi'), R: avg('score_r'),
+        C: avg('score_c'), P: avg('score_p'), I: avg('score_i'),
+        N: avg('score_n'), MyID: avg('id_final'),
+        AF: extractSubScore('AF'), HID: extractSubScore('HID'),
+        NUT: extractSubScore('NUT'), ERG: extractSubScore('ERG'),
+        MED: extractSubScore('MED'),
       };
 
       const totalRedFlags = avaliacoes.filter(a => a.red_flags || (a.dados_avaliacao as any)?.resultado?.redFlagsDetected).length;
