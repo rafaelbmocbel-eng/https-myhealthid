@@ -114,7 +114,7 @@ export default function AmostraIntegrada({ avaliacoesIdentidade, avaliacoesCobZe
         const rBfEfi = pearson(bfVector, efiVectorStudio);
 
         // AI EXECUTIVO SUMMARY (String construction)
-        const taxaCriticos = avaliacoesIdentidade.filter(a => ['SEVERO', 'CRÍTICO', 'EXTREMO'].includes(a.classificacao)).length;
+        const taxaCriticos = avaliacoesIdentidade.filter(a => ['Crítico'].includes(a.classificacao)).length;
         const percCriticos = n > 0 ? Math.round((taxaCriticos / n) * 100) : 0;
 
         let execSummary = `Nossa base de inteligência processou um total de ${n} avaliações do Método Identidade, cobrindo ${pacientesId.length} pacientes únicos. `;
