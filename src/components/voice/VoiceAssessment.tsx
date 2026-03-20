@@ -143,6 +143,81 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     setStep('review');
   };
 
+  const normalizeJson = (value: unknown) => JSON.parse(JSON.stringify(value ?? null));
+
+  const saveAssessment = async (
+    assessmentToSave = assessment,
+    transcriptToSave = editedTranscript,
+    options?: { silent?: boolean }
+  ) => {
+    if (!assessmentToSave || !user || isSaving) return { saved: false, noteWarning: null };
+
+    setIsSaving(true);
+    try {
+      const payload = {
+        terapeuta_id: user.id,
+        paciente_id: pacienteId || null,
+        paciente_nome: patientName || null,
+        servico: serviceType,
+        transcricao: transcriptToSave || 'Avaliação por áudio',
+        resultado: normalizeJson(assessmentToSave),
+        classificacao_severidade: assessmentToSave.classificacao_severidade || null,
+        queixa_principal: assessmentToSave.queixa_principal || null,
+      };
+
+      const { error: saveError } = await supabase
+        .from('avaliacoes_voz')
+        .insert(payload)
+        .select('id')
+        .single();
+
+      if (saveError) throw saveError;
+
+      let noteWarning: string | null = null;
+
+      if (pacienteId) {
+        const descricao = `${assessmentToSave.resumo_clinico}\n\nQueixa: ${assessmentToSave.queixa_principal || 'N/I'}\nDor EVA: ${assessmentToSave.dor?.intensidade_eva || '?'}/10 — ${assessmentToSave.dor?.tipo || 'N/I'}\nClassificação: ${assessmentToSave.classificacao_severidade}\n\nHipóteses: ${assessmentToSave.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
+
+        const { error: noteError } = await supabase.from('notas_prontuario').insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user.id,
+          tipo: 'avaliacao_voz',
+          titulo: `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}`,
+          descricao,
+          dados_extras: normalizeJson({ assessment: assessmentToSave, transcricao: transcriptToSave }),
+        });
+
+        if (noteError) {
+          console.error('Erro ao salvar nota de prontuário da avaliação por voz:', noteError);
+          noteWarning = noteError.message;
+        }
+      }
+
+      setIsSaved(true);
+      onAssessmentComplete?.(assessmentToSave);
+
+      if (!options?.silent) {
+        toast({
+          title: noteWarning ? 'Avaliação salva com aviso' : '💾 Avaliação salva!',
+          description: noteWarning
+            ? 'A avaliação foi salva no histórico, mas a nota do prontuário não pôde ser criada agora.'
+            : pacienteId
+              ? 'Salva no histórico e no prontuário do paciente.'
+              : 'Salva no histórico com sucesso.',
+        });
+      }
+
+      return { saved: true, noteWarning };
+    } catch (err: any) {
+      if (!options?.silent) {
+        toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+      }
+      return { saved: false, noteWarning: null };
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const processAssessment = async () => {
     const text = editedTranscript.trim();
     if (!audioBase64 && text.length < 20) {
@@ -151,6 +226,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
 
     setIsProcessing(true);
+    setIsSaved(false);
+
     try {
       const body: any = { serviceType, patientName, patientAge, patientSex };
 
@@ -166,56 +243,25 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
 
-      setAssessment(data.assessment);
-      // If Gemini returned a transcription from audio, use it
-      if (data.transcricao && (!editedTranscript || editedTranscript.length < 20)) {
-        setEditedTranscript(data.transcricao);
-      }
+      const generatedAssessment = data.assessment;
+      const generatedTranscript = data.transcricao && text.length < 20 ? data.transcricao : text;
+
+      setAssessment(generatedAssessment);
+      setEditedTranscript(generatedTranscript);
+
+      const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
+
       setStep('result');
-      toast({ title: '✅ Avaliação gerada!', description: 'Revise e salve no prontuário.' });
+      toast({
+        title: saveResult.saved ? '✅ Avaliação gerada e salva!' : '✅ Avaliação gerada!',
+        description: saveResult.saved
+          ? 'Ela já foi adicionada automaticamente ao histórico.'
+          : 'Não consegui salvar automaticamente; use o botão para tentar novamente.',
+      });
     } catch (err: any) {
       toast({ title: 'Erro ao processar', description: err.message, variant: 'destructive' });
     } finally {
       setIsProcessing(false);
-    }
-  };
-
-  const saveAssessment = async () => {
-    if (!assessment || !user) return;
-    setIsSaving(true);
-    try {
-      const { error: saveError } = await supabase.from('avaliacoes_voz').insert({
-        terapeuta_id: user.id,
-        paciente_id: pacienteId || null,
-        paciente_nome: patientName || null,
-        servico: serviceType,
-        transcricao: editedTranscript || 'Avaliação por áudio',
-        resultado: assessment as any,
-        classificacao_severidade: assessment.classificacao_severidade,
-        queixa_principal: assessment.queixa_principal,
-      });
-      if (saveError) throw saveError;
-
-      if (pacienteId) {
-        const descricao = `${assessment.resumo_clinico}\n\nQueixa: ${assessment.queixa_principal || 'N/I'}\nDor EVA: ${assessment.dor?.intensidade_eva || '?'}/10 — ${assessment.dor?.tipo || 'N/I'}\nClassificação: ${assessment.classificacao_severidade}\n\nHipóteses: ${assessment.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
-        const { error: noteError } = await supabase.from('notas_prontuario').insert({
-          paciente_id: pacienteId,
-          terapeuta_id: user.id,
-          tipo: 'avaliacao_voz',
-          titulo: `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}`,
-          descricao,
-          dados_extras: { assessment, transcricao: editedTranscript },
-        });
-        if (noteError) throw noteError;
-      }
-
-      setIsSaved(true);
-      onAssessmentComplete?.(assessment);
-      toast({ title: '💾 Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
-    } catch (err: any) {
-      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
-    } finally {
-      setIsSaving(false);
     }
   };
 
