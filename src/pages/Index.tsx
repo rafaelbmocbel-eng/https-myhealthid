@@ -670,16 +670,17 @@ export default function Index() {
               <TabsContent value="scores">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   {[
-                    { label: 'Estrutural (E)', value: amostraClinica.scores.E, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-                    { label: 'Cinesiofobia (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
-                    { label: 'Carga Contextual (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-                    { label: 'Contextual (F)', value: amostraClinica.scores.F, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
                     { label: 'Dor (D)', value: amostraClinica.scores.D, icon: Heart, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30' },
+                    { label: 'Função (EFI)', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
                     { label: 'Regulação (R)', value: amostraClinica.scores.R, icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
-                    { label: 'Funcionalidade (EFI)', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-                    { label: 'Dor Identidade (ID)', value: amostraClinica.scores.ID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30' },
+                    { label: 'Contexto (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+                    { label: 'Comportamento (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+                    { label: 'Inércia (I)', value: amostraClinica.scores.I, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+                    { label: 'Ruído (N)', value: amostraClinica.scores.N, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+                    { label: 'MyID-100', value: amostraClinica.scores.MyID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', isMyID: true },
                   ].map(s => {
                     const Icon = s.icon;
+                    const isMyID = (s as any).isMyID;
                     return (
                       <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -687,7 +688,7 @@ export default function Index() {
                           <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
                         </div>
                         <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
-                        <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                        <Progress value={isMyID ? s.value : s.value * 10} className="h-1.5 mt-1" />
                       </div>
                     );
                   })}

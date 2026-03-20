@@ -117,8 +117,8 @@ export default function AmostraIntegrada({ avaliacoesIdentidade, avaliacoesCobZe
         const taxaCriticos = avaliacoesIdentidade.filter(a => ['Crítico'].includes(a.classificacao)).length;
         const percCriticos = n > 0 ? Math.round((taxaCriticos / n) * 100) : 0;
 
-        let execSummary = `Nossa base de inteligência processou um total de ${n} avaliações do Método Identidade, cobrindo ${pacientesId.length} pacientes únicos. `;
-        execSummary += `Atualmente, ${percCriticos}% da amostra encontra-se em zonas de risco Severo ou superior, o que exige protocolos de atenção contínua. `;
+        let execSummary = `Nossa base de inteligência processou um total de ${n} avaliações MyID-100, cobrindo ${pacientesId.length} pacientes únicos. `;
+        execSummary += `Atualmente, ${percCriticos}% da amostra encontra-se na classificação Crítica (MyID < 50), exigindo protocolos de atenção contínua. `;
 
         if (totalRedFlags > 0) {
             execSummary += `Foi detectada a presença de Perímetros de Alerta (Red Flags) em ${totalRedFlags} avaliações, exigindo rastreio médico para descartar patologias graves subjacentes. `;
