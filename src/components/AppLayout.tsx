@@ -3,6 +3,7 @@ import AppSidebar from './AppSidebar';
 import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
+import NotificationCenter from './NotificationCenter';
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
