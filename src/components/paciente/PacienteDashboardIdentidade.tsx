@@ -839,6 +839,64 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     )}
                   </>
                 )}
+
+                {/* ── Histórico de Avaliações por Voz ── */}
+                <div className="clinical-card mt-6">
+                  <div className="flex items-center gap-3 mb-4">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                      <Mic className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Histórico de Avaliações por Voz</h3>
+                      <p className="text-xs text-muted-foreground">{voiceAvaliacoes.length} avaliação(ões) registrada(s)</p>
+                    </div>
+                  </div>
+
+                  {voiceAvaliacoes.length > 0 ? (
+                    <div className="space-y-3">
+                      {voiceAvaliacoes.map((av: any) => {
+                        const resultado = av.resultado as any;
+                        return (
+                          <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                            <div className="flex items-center gap-3 p-4">
+                              <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                                <Mic className="h-5 w-5 text-violet-600" />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className="text-sm font-bold">
+                                    {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                  </span>
+                                  {av.classificacao_severidade && (
+                                    <Badge variant="outline" className="text-[10px] h-4 py-0">
+                                      {av.classificacao_severidade}
+                                    </Badge>
+                                  )}
+                                </div>
+                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                  {av.queixa_principal || resultado?.resumo_clinico?.slice(0, 80) || 'Avaliação por voz'}
+                                </div>
+                                {resultado?.dor?.intensidade_eva && (
+                                  <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
+                                    <span>Dor EVA: <strong className="text-foreground">{resultado.dor.intensidade_eva}/10</strong></span>
+                                    {resultado.dor?.localizacao && <span>• {resultado.dor.localizacao}</span>}
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Mic className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Nenhuma avaliação por voz registrada</p>
+                      <p className="text-xs mt-1">Use a ferramenta de avaliação por voz acima para registrar.</p>
+                    </div>
+                  )}
+                </div>
+
               </div>
             </TabsContent>
 
