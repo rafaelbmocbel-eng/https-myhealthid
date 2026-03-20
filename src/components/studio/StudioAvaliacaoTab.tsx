@@ -488,6 +488,59 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
             )}
           </div>
 
+          {/* Histórico de Avaliações por Voz */}
+          <div className="space-y-3 mt-6">
+            <div className="flex items-center gap-2 px-1">
+              <Mic className="h-4 w-4 text-studio" />
+              <h4 className="font-black text-sm text-foreground tracking-tight uppercase">Avaliações por Voz</h4>
+              <Badge variant="outline" className="text-[10px] h-5 px-2 font-bold">{voiceAvaliacoes.length}</Badge>
+            </div>
+
+            {voiceAvaliacoes.length > 0 ? (
+              <div className="space-y-2">
+                {voiceAvaliacoes.map((av: any) => {
+                  const resultado = av.resultado as any;
+                  return (
+                    <div key={av.id} className="group border rounded-2xl p-4 bg-white/60 dark:bg-black/20 hover:bg-studio/5 hover:border-studio/30 transition-all duration-500 shadow-sm hover:shadow-md relative overflow-hidden">
+                      <div className="absolute top-0 left-0 w-1 h-full bg-violet-500 opacity-0 group-hover:opacity-100 transition-all duration-500" />
+                      <div className="flex items-center gap-4">
+                        <div className="h-12 w-12 rounded-2xl bg-violet-500/10 flex items-center justify-center shrink-0 group-hover:bg-violet-500 transition-all duration-700 shadow-inner">
+                          <Mic className="h-6 w-6 text-violet-600 group-hover:text-white transition-colors duration-500" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1 flex-wrap">
+                            <span className="text-sm font-black text-foreground">
+                              {format(parseISO(av.created_at), "dd 'de' MMMM", { locale: ptBR })}
+                            </span>
+                            {av.classificacao_severidade && (
+                              <Badge variant="outline" className="text-[10px] h-4 py-0 font-bold border-none bg-muted/60">
+                                {av.classificacao_severidade}
+                              </Badge>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter truncate">
+                            {av.queixa_principal || resultado?.resumo_clinico?.slice(0, 60) || 'Avaliação por voz'}
+                          </div>
+                          {resultado?.dor?.intensidade_eva && (
+                            <div className="flex items-center gap-3 text-[10px] text-muted-foreground font-bold uppercase tracking-tighter mt-0.5">
+                              <span>Dor EVA: <span className="text-foreground">{resultado.dor.intensidade_eva}/10</span></span>
+                              {resultado.dor?.localizacao && <span>• {resultado.dor.localizacao}</span>}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-6 border-2 rounded-2xl border-dashed bg-muted/20 border-muted-foreground/10">
+                <Mic className="h-8 w-8 text-muted-foreground opacity-20 mx-auto mb-2" />
+                <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest">Nenhuma avaliação por voz</p>
+              </div>
+            )}
+          </div>
+
           <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium opacity-60">
             * As métricas premium são baseadas em algoritmos de saúde integrativa e regulação autonômica.
           </p>
