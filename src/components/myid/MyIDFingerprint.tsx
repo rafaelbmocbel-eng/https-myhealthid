@@ -183,7 +183,7 @@ export default function MyIDFingerprint({
           /100
         </text>
         <text x={cx} y={cy + 30} textAnchor="middle" fontSize="9.5" fontWeight="800" fill={centerColor} opacity="0.85"
-          letterSpacing="1.2" textTransform="uppercase">
+          letterSpacing="1.2">
           {label.toUpperCase()}
         </text>
 
