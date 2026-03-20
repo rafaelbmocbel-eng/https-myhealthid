@@ -120,7 +120,7 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao, paciente_id, created_at, red_flags, pacientes(nome, sobrenome)')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, score_i, score_n, id_final, myid_score, dados_avaliacao, classificacao, paciente_id, created_at, red_flags, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
         .order('created_at', { ascending: true });
       return data || [];
