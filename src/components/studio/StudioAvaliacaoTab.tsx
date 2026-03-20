@@ -12,7 +12,7 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import {
   Link2, MessageCircle, Loader2, Copy, FileText, Calendar, Activity,
-  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell, Plus, Mic
+  Moon, Zap, Brain, Shield, Sparkles, Target, CheckCircle2, AlertTriangle, Heart, ChevronRight, BarChart3, Presentation, Fingerprint, Dumbbell, Plus, Mic, ChevronDown
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
