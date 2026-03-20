@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import NotificationPreferences from '@/components/NotificationPreferences';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, ConfigAgenda } from '@/hooks/useAgenda';
