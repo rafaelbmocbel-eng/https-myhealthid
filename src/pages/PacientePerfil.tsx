@@ -813,6 +813,23 @@ export default function PacientePerfil() {
               TAB: AGENDA
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="agenda" className="mt-4 space-y-4">
+            {/* Session Status Summary */}
+            {agendamentos.length > 0 && (
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Total', value: agendamentos.length, cls: 'text-foreground' },
+                  { label: 'Concluídos', value: agendamentos.filter((a: any) => a.status === 'concluido').length, cls: 'text-emerald-600' },
+                  { label: 'Faltas', value: agendamentos.filter((a: any) => a.status === 'faltou').length, cls: 'text-amber-600' },
+                  { label: 'Cancelados', value: agendamentos.filter((a: any) => a.status === 'cancelado').length, cls: 'text-red-600' },
+                ].map(s => (
+                  <div key={s.label} className="border rounded-xl p-2.5 text-center bg-card">
+                    <div className={`text-lg font-bold ${s.cls}`}>{s.value}</div>
+                    <div className="text-[10px] text-muted-foreground">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={agendarRapido}>
