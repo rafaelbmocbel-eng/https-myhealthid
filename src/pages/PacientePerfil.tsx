@@ -747,6 +747,15 @@ export default function PacientePerfil() {
               </>
             )}
 
+            {/* Avaliação por Voz */}
+            <div className="clinical-card">
+              <VoiceAssessment
+                serviceType="identidade"
+                pacienteId={id!}
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            </div>
+
             {/* Questionários Recebidos */}
             <div>
               <div className="flex items-center gap-2 mb-3">
