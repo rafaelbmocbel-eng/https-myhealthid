@@ -88,16 +88,7 @@ export default function MyIDResponder() {
             setEvalData({ ...evalData, status: 'concluido', resultado_processado: result, respostas_brutas: rawData });
 
         } catch (error: any) {
-            // Fallback: direct update
-            await supabase.from('myid_avaliacoes').update({
-                status: 'concluido',
-                respostas_brutas: rawData,
-                resultado_processado: result,
-                updated_at: new Date().toISOString(),
-            }).eq('id', evalData.id);
-
-            toast({ title: "Sucesso!", description: "Sua avaliação MyID foi enviada com sucesso." });
-            setEvalData({ ...evalData, status: 'concluido', resultado_processado: result, respostas_brutas: rawData });
+            toast({ title: "Erro", description: "Não foi possível processar a avaliação. Tente novamente.", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }
