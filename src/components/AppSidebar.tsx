@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, BookOpen
+  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, BookOpen, BarChart3
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ type ServiceKey = 'identidade' | 'cob_zero' | 'studio';
 const NAV_ITEMS: { label: string; href: string; icon: any; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
+  { label: 'Protocolos & Relatórios', href: '/protocolos', icon: BarChart3 },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, serviceKey: 'identidade' },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
@@ -39,7 +40,9 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
   const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+    href === '/' ? location.pathname === '/'
+    : href === '/protocolos' ? (location.pathname.startsWith('/protocolos') || location.pathname.startsWith('/relatorios'))
+    : location.pathname.startsWith(href);
 
   const handleSignOut = async () => {
     await signOut();
