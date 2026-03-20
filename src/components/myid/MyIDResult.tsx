@@ -156,39 +156,39 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
             </Card>
 
             {/* Bio-alignment tips */}
-            <Card className="bg-blue-50 border-blue-200 shadow-sm border-l-4 border-l-blue-500 pt-2">
+            <Card className="bg-primary/5 border-primary/20 shadow-sm border-l-4 border-l-primary pt-2">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-blue-900 text-xl font-bold flex items-center gap-2">
+                    <CardTitle className="text-primary text-xl font-bold flex items-center gap-2">
                         <span>🚀</span> DICAS PARA SEU BIO-ALINHAMENTO
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-2">
-                    <div className="bg-white p-4 rounded-lg border border-blue-100 shadow-sm">
-                        <h4 className="font-bold text-blue-700 flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> SUA SAÚDE E SISTEMA:</h4>
+                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+                        <h4 className="font-bold text-primary flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> SUA SAÚDE E SISTEMA:</h4>
                         <p className="text-foreground/70 text-sm leading-relaxed">
                             Seu Score MyID-100 é de <strong>{Math.round(myidScoreValue)}/100</strong>, o que reflete um padrão de dor <strong>{pain_pattern}</strong>.
                             {red_flags_detected ? ' Identificamos sinais que precisam de atenção profissional.' : ' Sem sinais de alerta imediatos.'}
                         </p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-lg border border-purple-100 shadow-sm">
-                        <h4 className="font-bold text-purple-700 flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> SEU AMBIENTE:</h4>
+                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> SEU AMBIENTE:</h4>
                         <p className="text-foreground/70 text-sm leading-relaxed">
                             Ergonomia: <strong>{ERG.toFixed(1)}/10</strong>. Setup: <strong>{translateWorkspace(rawData.bloco_5h_workspace || 'atual')}</strong>.
                             {rawData.bloco_5h_sitting_continuous ? ` Você fica ${rawData.bloco_5h_sitting_continuous} min sentado(a) sem pausa.` : ''}
                         </p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-lg border border-orange-100 shadow-sm">
-                        <h4 className="font-bold text-orange-700 flex items-center gap-2 mb-2"><span className="text-lg">💪</span> MOVIMENTO:</h4>
+                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">💪</span> MOVIMENTO:</h4>
                         <p className="text-foreground/70 text-sm leading-relaxed">
                             Atividade física: <strong>{AF.toFixed(1)}/10</strong>. Estilo: <strong>{translateLifestyle(rawData.bloco_5e_lifestyle || 'atual')}</strong>.
                             {rawData.bloco_5e_intensity !== 'none' ? ` Intensidade: ${translateIntensity(rawData.bloco_5e_intensity)}.` : ''}
                         </p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-lg border border-green-100 shadow-sm">
-                        <h4 className="font-bold text-green-700 flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> NUTRIÇÃO E HIDRATAÇÃO:</h4>
+                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> NUTRIÇÃO E HIDRATAÇÃO:</h4>
                         <p className="text-foreground/70 text-sm leading-relaxed">
                             Nutrição: <strong>{NUT.toFixed(1)}/10</strong>. Hidratação: <strong>{HID.toFixed(1)}/10</strong>.
                             {rawData.bloco_5f_water_liters ? ` Consumo: ${rawData.bloco_5f_water_liters}L/dia.` : ''}
@@ -196,8 +196,8 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                     </div>
 
                     {hasWomenHealth && (
-                        <div className="bg-pink-50 p-4 rounded-lg border border-pink-200 shadow-sm">
-                            <h4 className="font-bold text-pink-700 flex items-center gap-2 mb-2"><span className="text-lg">👩</span> SAÚDE FEMININA:</h4>
+                        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
+                            <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">👩</span> SAÚDE FEMININA:</h4>
                             <p className="text-foreground/70 text-sm leading-relaxed">
                                 Ciclo menstrual <strong>{rawData.bloco_6_cycle_affects_pain ? 'influencia' : 'tem pouca influência'}</strong> na dor.
                                 Ruído sistêmico: <strong>{N.toFixed(1)}/10</strong>.
