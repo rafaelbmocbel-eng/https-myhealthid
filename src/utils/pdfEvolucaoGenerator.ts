@@ -47,7 +47,7 @@ function addPageHeader(doc: jsPDF) {
   doc.setTextColor(...WHITE);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Core Axis Pro — Relatório de Evolução', M, 8);
+  doc.text('MY HEALTH ID — Relatório de Evolução', M, 8);
 }
 
 function drawBar(doc: jsPDF, x: number, y: number, w: number, h: number, pct: number, color: C3) {
