@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import NotificationPreferences from '@/components/NotificationPreferences';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, ConfigAgenda } from '@/hooks/useAgenda';
@@ -209,6 +210,11 @@ export default function Configuracoes() {
             />
             <p className="text-[11px] text-muted-foreground mt-1">Tempo livre automático entre cada sessão (0 = sem intervalo)</p>
           </div>
+        </div>
+
+        {/* Preferências de Notificação */}
+        <div className="mb-6">
+          <NotificationPreferences />
         </div>
 
         {/* Link de Agendamento Online (Geral) */}
