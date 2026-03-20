@@ -355,14 +355,14 @@ export default function PacienteDiario() {
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={chartData} margin={{ top: 5, right: 10, left: -20, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                        <XAxis dataKey="date" tick={{ fontSize: 9 }} />
-                        <YAxis tick={{ fontSize: 9 }} domain={[0, 10]} />
-                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                        <XAxis dataKey="date" tick={{ fontSize: 9 }} className="fill-muted-foreground" />
+                        <YAxis tick={{ fontSize: 9 }} domain={[0, 10]} className="fill-muted-foreground" />
+                        <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }} />
                         <Legend wrapperStyle={{ fontSize: 9 }} />
-                        <Line type="monotone" dataKey="Humor" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2 }} />
-                        <Line type="monotone" dataKey="Dor" stroke="#ef4444" strokeWidth={2} dot={{ r: 2 }} />
-                        <Line type="monotone" dataKey="Energia" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2 }} />
-                        <Line type="monotone" dataKey="Sono" stroke="#3b82f6" strokeWidth={1.5} dot={{ r: 2 }} />
+                        <Line type="monotone" dataKey="Humor" stroke="#8b5cf6" strokeWidth={2.5} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} name="😊 Humor" />
+                        <Line type="monotone" dataKey="Dor" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} name="🔴 Dor" />
+                        <Line type="monotone" dataKey="Energia" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 4 }} name="⚡ Energia" />
+                        <Line type="monotone" dataKey="Sono" stroke="#3b82f6" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 4 }} strokeDasharray="4 3" name="🌙 Sono (h)" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

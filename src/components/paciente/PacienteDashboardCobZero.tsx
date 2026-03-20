@@ -414,16 +414,16 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   <div className="h-[300px] w-full mt-4">
                     <ResponsiveContainer width="100%" height="100%">
                       <LineChart data={evolucaoData}>
-                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" />
-                        <XAxis dataKey="data" fontSize={10} tickFormatter={(val) => format(parseISO(val), 'dd/MM', { locale: ptBR })} axisLine={false} tickLine={false} />
-                        <YAxis fontSize={10} axisLine={false} tickLine={false} />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-border" />
+                        <XAxis dataKey="data" fontSize={10} tickFormatter={(val) => format(parseISO(val), 'dd/MM', { locale: ptBR })} axisLine={false} tickLine={false} className="fill-muted-foreground" />
+                        <YAxis fontSize={10} axisLine={false} tickLine={false} className="fill-muted-foreground" />
                         <Tooltip
                           labelFormatter={(val) => format(parseISO(val as string), 'dd/MM/yyyy', { locale: ptBR })}
-                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)' }}
+                          contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }}
                         />
                         <Legend iconType="circle" wrapperStyle={{ fontSize: '10px', paddingTop: '10px' }} />
-                        <Line type="monotone" dataKey="Cobb" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: '#2563eb' }} activeDot={{ r: 6 }} name="Ângulo Cobb" />
-                        <Line type="monotone" dataKey="Risco" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b' }} activeDot={{ r: 6 }} name="% Risco" />
+                        <Line type="monotone" dataKey="Cobb" stroke="#2563eb" strokeWidth={3} dot={{ r: 4, fill: '#2563eb', strokeWidth: 2 }} activeDot={{ r: 6 }} name="Ângulo Cobb" />
+                        <Line type="monotone" dataKey="Risco" stroke="#f59e0b" strokeWidth={3} dot={{ r: 4, fill: '#f59e0b', strokeWidth: 2 }} activeDot={{ r: 6 }} name="% Risco" />
                       </LineChart>
                     </ResponsiveContainer>
                   </div>

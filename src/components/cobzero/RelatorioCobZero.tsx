@@ -117,11 +117,11 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
           <h3 className="font-semibold mb-4">Score E – Unidades Corporais</h3>
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={unidadeData}>
-              <CartesianGrid strokeDasharray="3 3" />
-              <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} />
-              <Tooltip />
-              <Bar dataKey="score" fill="hsl(187 76% 32%)" radius={[4, 4, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
+              <XAxis dataKey="name" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+              <YAxis domain={[0, 10]} tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+              <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }} />
+              <Bar dataKey="score" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
           <div className="mt-2 text-right text-sm text-muted-foreground">Score E médio: <strong className="text-primary">{scoreE.toFixed(1)}/10</strong></div>
