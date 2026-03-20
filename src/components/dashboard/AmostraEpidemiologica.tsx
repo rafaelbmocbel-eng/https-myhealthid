@@ -769,11 +769,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         </p>
         <div className="space-y-3">
           {[
-            { label: 'Alta Cinesiofobia (P > 7.5)', count: analysis.riskFactors.altaCinesiofobia, desc: '+2 ao ID final · Recomendado: educação em dor e graded exposure', icon: Brain, danger: true },
-            { label: 'Carga Contextual Excessiva (C > 8)', count: analysis.riskFactors.cargaExcessiva, desc: '+2 ao ID final · Fatores psicossociais dominantes', icon: Shield, danger: true },
-            { label: 'Regulação Crítica (R < 2)', count: analysis.riskFactors.regulacaoCritica, desc: '+3 ao ID final · Desregulação neurovegetativa severa', icon: Activity, danger: true },
-            { label: 'Dor Intensa (D > 8)', count: analysis.riskFactors.dorIntensa, desc: '+1 ao ID final · Componente nociceptivo significativo', icon: Heart, danger: false },
-            { label: 'Classificação ≥ SEVERO', count: analysis.riskFactors.severoOuPior, desc: 'Pacientes que demandam protocolo intensivo', icon: AlertTriangle, danger: true },
+            { label: 'Regulação Crítica (R ≥ 7.0)', count: analysis.riskFactors.regulacaoCritica, desc: 'Gatilho v2 · Desregulação neurovegetativa severa (sono/stress/energia)', icon: Activity, danger: true },
+            { label: 'Atividade Física Crítica (AF ≥ 7.0)', count: analysis.riskFactors.afCritica, desc: 'Gatilho v2 · Sedentarismo significativo com impacto sistêmico', icon: Zap, danger: true },
+            { label: 'Ergonomia Crítica (ERG ≥ 8.0)', count: analysis.riskFactors.ergCritica, desc: 'Gatilho v2 · Ambiente ergonômico severamente inadequado', icon: Shield, danger: true },
+            { label: 'Dor Intensa (D ≥ 7.0)', count: analysis.riskFactors.dorIntensa, desc: 'Componente nociceptivo significativo', icon: Heart, danger: true },
+            { label: 'Classificação Crítica (MyID < 50)', count: analysis.riskFactors.criticoOuPior, desc: 'Pacientes que demandam protocolo intensivo', icon: AlertTriangle, danger: true },
+            { label: 'Red Flags Detectadas', count: analysis.riskFactors.redFlagsDetected, desc: 'Perímetros de alerta que exigem rastreio médico', icon: Brain, danger: true },
           ].map(rf => {
             const Icon = rf.icon;
             const pct = analysis.n > 0 ? (rf.count / analysis.n) * 100 : 0;
