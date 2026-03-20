@@ -237,7 +237,7 @@ export default function AgendaPublica() {
         });
       const nonCancelled = (agsAtuais || []).filter((a: any) => a.status !== 'cancelado');
 
-      const sobreposicoes = agsAtuais ? agsAtuais.length : 0;
+      const sobreposicoes = nonCancelled ? nonCancelled.length : 0;
       if (sobreposicoes >= vagasMax) {
         setErroBooking('Oops! Outro paciente acabou de reservar esse horário. Por favor, escolha outro.');
         setConfirmando(false);
