@@ -381,9 +381,20 @@ export default function PacienteAgenda() {
                 <p className="text-xs text-green-700">
                   Seu terapeuta será notificado. Aguarde a confirmação.
                 </p>
+                {selectedSlot && (
+                  <a
+                    href={buildGoogleCalendarUrl('Consulta', selectedSlot.dataInicio, selectedSlot.dataFim)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Adicionar ao Google Calendar
+                  </a>
+                )}
                 <Button
                   variant="outline"
-                  className="mt-4 rounded-xl"
+                  className="mt-2 rounded-xl"
                   onClick={() => { setView('meus'); setConfirmado(false); }}
                 >
                   Ver minhas consultas
