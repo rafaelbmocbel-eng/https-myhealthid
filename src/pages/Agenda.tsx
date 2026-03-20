@@ -171,6 +171,7 @@ export default function Agenda() {
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(52);
+  const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
 
   // Drag-and-drop state
   const [dragging, setDragging] = useState<{
