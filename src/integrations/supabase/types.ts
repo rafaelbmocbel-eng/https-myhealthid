@@ -365,6 +365,80 @@ export type Database = {
           },
         ]
       }
+      body_composition: {
+        Row: {
+          arm_cm: number | null
+          bmi: number | null
+          body_fat_pct: number | null
+          chest_cm: number | null
+          created_at: string
+          date: string
+          height_cm: number | null
+          hip_cm: number | null
+          id: string
+          muscle_mass_kg: number | null
+          notes: string | null
+          paciente_id: string
+          source: string
+          terapeuta_id: string
+          thigh_cm: number | null
+          updated_at: string
+          visceral_fat: number | null
+          waist_cm: number | null
+          weight_kg: number | null
+        }
+        Insert: {
+          arm_cm?: number | null
+          bmi?: number | null
+          body_fat_pct?: number | null
+          chest_cm?: number | null
+          created_at?: string
+          date?: string
+          height_cm?: number | null
+          hip_cm?: number | null
+          id?: string
+          muscle_mass_kg?: number | null
+          notes?: string | null
+          paciente_id: string
+          source?: string
+          terapeuta_id: string
+          thigh_cm?: number | null
+          updated_at?: string
+          visceral_fat?: number | null
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Update: {
+          arm_cm?: number | null
+          bmi?: number | null
+          body_fat_pct?: number | null
+          chest_cm?: number | null
+          created_at?: string
+          date?: string
+          height_cm?: number | null
+          hip_cm?: number | null
+          id?: string
+          muscle_mass_kg?: number | null
+          notes?: string | null
+          paciente_id?: string
+          source?: string
+          terapeuta_id?: string
+          thigh_cm?: number | null
+          updated_at?: string
+          visceral_fat?: number | null
+          waist_cm?: number | null
+          weight_kg?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "body_composition_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_agenda: {
         Row: {
           created_at: string
@@ -839,6 +913,83 @@ export type Database = {
           },
         ]
       }
+      health_metrics: {
+        Row: {
+          active_minutes: number | null
+          calories_burned: number | null
+          created_at: string
+          date: string
+          distance_km: number | null
+          floors_climbed: number | null
+          heart_rate_avg: number | null
+          heart_rate_max: number | null
+          heart_rate_min: number | null
+          heart_rate_resting: number | null
+          id: string
+          paciente_id: string
+          source: string
+          spo2_avg: number | null
+          spo2_min: number | null
+          steps: number | null
+          stress_level: number | null
+          synced_at: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          active_minutes?: number | null
+          calories_burned?: number | null
+          created_at?: string
+          date?: string
+          distance_km?: number | null
+          floors_climbed?: number | null
+          heart_rate_avg?: number | null
+          heart_rate_max?: number | null
+          heart_rate_min?: number | null
+          heart_rate_resting?: number | null
+          id?: string
+          paciente_id: string
+          source?: string
+          spo2_avg?: number | null
+          spo2_min?: number | null
+          steps?: number | null
+          stress_level?: number | null
+          synced_at?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          active_minutes?: number | null
+          calories_burned?: number | null
+          created_at?: string
+          date?: string
+          distance_km?: number | null
+          floors_climbed?: number | null
+          heart_rate_avg?: number | null
+          heart_rate_max?: number | null
+          heart_rate_min?: number | null
+          heart_rate_resting?: number | null
+          id?: string
+          paciente_id?: string
+          source?: string
+          spo2_avg?: number | null
+          spo2_min?: number | null
+          steps?: number | null
+          stress_level?: number | null
+          synced_at?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_metrics_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       links_agenda_paciente: {
         Row: {
           acessos_totais: number | null
@@ -941,6 +1092,65 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "links_avaliacao_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meal_logs: {
+        Row: {
+          calories: number | null
+          carbs_g: number | null
+          created_at: string
+          date: string
+          description: string | null
+          fat_g: number | null
+          id: string
+          meal_type: string
+          paciente_id: string
+          photo_url: string | null
+          protein_g: number | null
+          terapeuta_id: string
+          time_eaten: string | null
+          updated_at: string
+        }
+        Insert: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          fat_g?: number | null
+          id?: string
+          meal_type?: string
+          paciente_id: string
+          photo_url?: string | null
+          protein_g?: number | null
+          terapeuta_id: string
+          time_eaten?: string | null
+          updated_at?: string
+        }
+        Update: {
+          calories?: number | null
+          carbs_g?: number | null
+          created_at?: string
+          date?: string
+          description?: string | null
+          fat_g?: number | null
+          id?: string
+          meal_type?: string
+          paciente_id?: string
+          photo_url?: string | null
+          protein_g?: number | null
+          terapeuta_id?: string
+          time_eaten?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meal_logs_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
@@ -1892,6 +2102,71 @@ export type Database = {
           },
         ]
       }
+      sleep_logs: {
+        Row: {
+          awake_minutes: number | null
+          bedtime: string | null
+          created_at: string
+          date: string
+          deep_sleep_hours: number | null
+          id: string
+          light_sleep_hours: number | null
+          notes: string | null
+          paciente_id: string
+          rem_sleep_hours: number | null
+          sleep_quality: number | null
+          source: string
+          terapeuta_id: string
+          total_hours: number
+          updated_at: string
+          wake_time: string | null
+        }
+        Insert: {
+          awake_minutes?: number | null
+          bedtime?: string | null
+          created_at?: string
+          date?: string
+          deep_sleep_hours?: number | null
+          id?: string
+          light_sleep_hours?: number | null
+          notes?: string | null
+          paciente_id: string
+          rem_sleep_hours?: number | null
+          sleep_quality?: number | null
+          source?: string
+          terapeuta_id: string
+          total_hours?: number
+          updated_at?: string
+          wake_time?: string | null
+        }
+        Update: {
+          awake_minutes?: number | null
+          bedtime?: string | null
+          created_at?: string
+          date?: string
+          deep_sleep_hours?: number | null
+          id?: string
+          light_sleep_hours?: number | null
+          notes?: string | null
+          paciente_id?: string
+          rem_sleep_hours?: number | null
+          sleep_quality?: number | null
+          source?: string
+          terapeuta_id?: string
+          total_hours?: number
+          updated_at?: string
+          wake_time?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sleep_logs_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       studio_execucao_exercicios: {
         Row: {
           carga_utilizada: number | null
@@ -2385,6 +2660,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "termos_consentimento_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      water_logs: {
+        Row: {
+          amount_ml: number
+          created_at: string
+          date: string
+          entries: Json
+          goal_ml: number
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          amount_ml?: number
+          created_at?: string
+          date?: string
+          entries?: Json
+          goal_ml?: number
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          amount_ml?: number
+          created_at?: string
+          date?: string
+          entries?: Json
+          goal_ml?: number
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "water_logs_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
