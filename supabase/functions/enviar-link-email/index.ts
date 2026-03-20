@@ -5,6 +5,9 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version',
 };
 
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
@@ -12,6 +15,8 @@ serve(async (req) => {
 
   try {
     const { patientName, patientEmail, linkUrl, linkType } = await req.json();
+    const safeName = esc(String(patientName || ''));
+    const safeUrl = esc(String(linkUrl || ''));
 
     if (!patientEmail || !linkUrl || !linkType) {
       return new Response(JSON.stringify({ error: 'Dados incompletos' }), {
@@ -60,11 +65,11 @@ serve(async (req) => {
         </tr>
         <tr>
           <td style="padding:40px 40px 32px;">
-            <p style="margin:0 0 8px;font-size:16px;color:#374151;">Olá, <strong>${patientName}</strong>! 👋</p>
+            <p style="margin:0 0 8px;font-size:16px;color:#374151;">Olá, <strong>${safeName}</strong>! 👋</p>
             <h2 style="margin:0 0 16px;font-size:20px;color:${tpl.color};font-weight:700;">${tpl.title}</h2>
             <p style="margin:0 0 24px;font-size:15px;color:#4b5563;line-height:1.6;">${tpl.subtitle}</p>
             <div style="text-align:center;margin:32px 0;">
-              <a href="${linkUrl}" style="display:inline-block;background:${tpl.color};color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:16px;font-weight:600;">${tpl.cta} →</a>
+              <a href="${safeUrl}" style="display:inline-block;background:${tpl.color};color:#ffffff;text-decoration:none;padding:14px 36px;border-radius:8px;font-size:16px;font-weight:600;">${tpl.cta} →</a>
             </div>
             <p style="margin:0;font-size:13px;color:#9ca3af;text-align:center;">${tpl.detail}</p>
           </td>
@@ -73,7 +78,7 @@ serve(async (req) => {
           <td style="padding:0 40px 32px;">
             <div style="background:#f9fafb;border:1px solid #e5e7eb;border-radius:8px;padding:16px;">
               <p style="margin:0 0 6px;font-size:12px;color:#6b7280;">Se o botão não funcionar, copie e cole este link:</p>
-              <p style="margin:0;font-size:12px;color:${tpl.color};word-break:break-all;">${linkUrl}</p>
+              <p style="margin:0;font-size:12px;color:${tpl.color};word-break:break-all;">${safeUrl}</p>
             </div>
           </td>
         </tr>
