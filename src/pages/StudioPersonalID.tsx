@@ -120,8 +120,7 @@ export default function StudioPersonalID() {
   };
 
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    setSelectedPacienteId(pac.id);
-    setShowDashboard(true);
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
   };
 
   // ─── Student Dashboard (Tab-based) ──────────────────────────────────────────
