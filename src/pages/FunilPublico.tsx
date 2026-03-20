@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useFunilPublico, ServicoFunil } from '@/hooks/useFunilConfig';
+import { useFunilPublico, ServicoFunil, fetchFunilPagamento } from '@/hooks/useFunilConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, MessageCircle, Send, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
