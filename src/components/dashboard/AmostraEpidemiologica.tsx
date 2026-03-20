@@ -267,13 +267,23 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       .sort((a, b) => b[1].count - a[1].count)
       .map(([nome, v]) => ({ nome, count: v.count, mediaIntensidade: v.count > 0 ? v.intensidadeTotal / v.count : 0 }));
 
-    // 7. Risk factor prevalence (aligned with calcularIDFinal thresholds)
+    // 7. Risk factor prevalence (aligned with MyID-100 v2.0 trigger thresholds)
+    // In v2, scores are loss-based (higher = worse for dimensions). Triggers: R≥7.0, AF≥7.0, ERG≥8.0
     const riskFactors = {
-      altaCinesiofobia: avaliacoes.filter(a => Number(a.score_p || 0) > 7.5).length,
-      cargaExcessiva: avaliacoes.filter(a => Number(a.score_c || 0) > 8).length,
-      regulacaoCritica: avaliacoes.filter(a => Number(a.score_r || 0) < 2).length,
-      dorIntensa: avaliacoes.filter(a => Number(a.score_d || 0) > 8).length,
-      severoOuPior: avaliacoes.filter(a => ['SEVERO', 'CRÍTICO', 'EXTREMO'].includes(a.classificacao || '')).length,
+      regulacaoCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.bloco5?.scoreR || a.score_r || 0) >= 7.0; } catch { return false; }
+      }).length,
+      afCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.AF || 0) >= 7.0; } catch { return false; }
+      }).length,
+      ergCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.ERG || 0) >= 8.0; } catch { return false; }
+      }).length,
+      dorIntensa: avaliacoes.filter(a => Number(a.score_d || 0) >= 7.0).length,
+      criticoOuPior: avaliacoes.filter(a => ['Crítico'].includes(a.classificacao || '')).length,
+      redFlagsDetected: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return d?.resultado?.redFlagsDetected || a.dados_avaliacao?.red_flags; } catch { return false; }
+      }).length,
     };
 
     // 8. Functionality breakdown by classification
