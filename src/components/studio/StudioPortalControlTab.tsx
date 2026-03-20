@@ -210,6 +210,74 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
     enabled: !!user && !!pacienteId,
   });
 
+  // ── Alertas do Paciente (espelha PacienteAlertasLembretes) ──────────
+  const { data: alertasData } = useQuery({
+    queryKey: ['portal-control-alertas', pacienteId],
+    queryFn: async () => {
+      const now = new Date();
+      const alerts: { id: string; tipo: string; titulo: string; descricao: string; urgencia: string }[] = [];
+
+      // Próxima consulta nas próximas 48h
+      const { data: proxConsultas } = await supabase
+        .from('agendamentos')
+        .select('id, data_inicio, titulo, tipo_atendimento, status')
+        .eq('paciente_id', pacienteId)
+        .gte('data_inicio', now.toISOString())
+        .in('status', ['confirmado', 'pendente'])
+        .order('data_inicio', { ascending: true })
+        .limit(3);
+
+      proxConsultas?.forEach(c => {
+        const horasAte = differenceInHours(parseISO(c.data_inicio), now);
+        if (horasAte <= 48) {
+          alerts.push({
+            id: `consulta-${c.id}`, tipo: 'consulta',
+            titulo: horasAte <= 2 ? '⏰ Consulta em breve!' : '📅 Consulta próxima',
+            descricao: `${c.titulo || c.tipo_atendimento || 'Consulta'} — ${format(parseISO(c.data_inicio), "EEEE, HH:mm", { locale: ptBR })}`,
+            urgencia: horasAte <= 2 ? 'alta' : horasAte <= 24 ? 'media' : 'baixa',
+          });
+        }
+      });
+
+      // Diário não preenchido hoje
+      const { count: diarioHoje } = await supabase
+        .from('daily_logs')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .gte('created_at', new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString());
+
+      if (!diarioHoje || diarioHoje === 0) {
+        alerts.push({
+          id: 'diario-hoje', tipo: 'diario',
+          titulo: '💊 Registre seu dia',
+          descricao: 'Diário de saúde não preenchido hoje.',
+          urgencia: now.getHours() >= 18 ? 'media' : 'baixa',
+        });
+      }
+
+      // Questionários pendentes
+      const { count: pendentes } = await supabase
+        .from('myid_avaliacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('paciente_id', pacienteId)
+        .neq('status', 'concluido');
+
+      if (pendentes && pendentes > 0) {
+        alerts.push({
+          id: 'quest-pendente', tipo: 'questionario',
+          titulo: '📋 Questionário pendente',
+          descricao: `${pendentes} questionário(s) aguardando resposta`,
+          urgencia: 'media',
+        });
+      }
+
+      const urgOrder: Record<string, number> = { alta: 0, media: 1, baixa: 2 };
+      alerts.sort((a, b) => (urgOrder[a.urgencia] ?? 2) - (urgOrder[b.urgencia] ?? 2));
+      return alerts;
+    },
+    enabled: !!pacienteId,
+  });
+
   const treinos = treinosData?.treinos || [];
   const execucoes = treinosData?.execucoes || [];
   const weekAgo = subDays(new Date(), 7);
