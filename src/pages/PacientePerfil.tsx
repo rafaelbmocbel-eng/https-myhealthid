@@ -34,6 +34,7 @@ import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
+import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
