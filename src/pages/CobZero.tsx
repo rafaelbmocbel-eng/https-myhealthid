@@ -90,6 +90,7 @@ export default function CobZero() {
   const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
   const { salvar: salvarAvaliacao } = useAvaliacoesCobZero();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
