@@ -101,12 +101,11 @@ export default function AgendaPublica() {
             .eq('terapeuta_id', linkData.terapeuta_id)
             .maybeSingle(),
           supabase
-            .from('agendamentos')
-            .select('data_inicio, data_fim, status')
-            .eq('terapeuta_id', linkData.terapeuta_id)
-            .gte('data_inicio', new Date().toISOString())
-            .lte('data_inicio', addDays(new Date(), 42).toISOString())
-            .order('data_inicio'),
+            .rpc('get_agenda_disponibilidade', {
+              p_terapeuta_id: linkData.terapeuta_id,
+              p_data_inicio: new Date().toISOString(),
+              p_data_fim: addDays(new Date(), 42).toISOString(),
+            }),
         ]);
 
         if (profileData) setTerapeuta(profileData as TerapeutaInfo);
