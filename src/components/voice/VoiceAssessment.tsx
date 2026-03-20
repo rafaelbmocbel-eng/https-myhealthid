@@ -211,6 +211,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
 
       setIsSaved(true);
+      onAssessmentComplete?.(assessment);
       toast({ title: '💾 Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
