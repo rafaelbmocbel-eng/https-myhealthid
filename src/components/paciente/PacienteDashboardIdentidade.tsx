@@ -313,6 +313,22 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
 
+  // Buscar avaliações por voz do paciente
+  const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
+    queryKey: ['avaliacoes-voz-presencial', user?.id, paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', paciente.id)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const handleRespostaCompleta = async () => {
     if (!user) return;
     setGerandoRespostaCompleta(true);
