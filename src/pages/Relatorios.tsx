@@ -1,6 +1,6 @@
 import { useState, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
-import PacientesSubNav from '@/components/PacientesSubNav';
+
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -729,7 +729,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <PacientesSubNav />
+        
 
         <Tabs defaultValue="links">
           <TabsList className="mb-6 h-10 bg-secondary p-1 rounded-xl">

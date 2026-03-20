@@ -34,6 +34,7 @@ import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
+import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -794,19 +795,41 @@ export default function PacientePerfil() {
           {/* ══════════════════════════════════════════════════════════════════
               TAB: ENGAJAMENTO DO PACIENTE (Portal)
           ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="engajamento" className="mt-4">
+          <TabsContent value="engajamento" className="mt-4 space-y-6">
             {paciente && (
               <PacienteEngajamentoTab
                 pacienteId={id!}
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
               />
             )}
+
+            {/* NPS do Paciente */}
+            <div>
+              <NpsSurveyCard pacienteId={id!} />
+            </div>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB: AGENDA
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="agenda" className="mt-4 space-y-4">
+            {/* Session Status Summary */}
+            {agendamentos.length > 0 && (
+              <div className="grid grid-cols-4 gap-2">
+                {[
+                  { label: 'Total', value: agendamentos.length, cls: 'text-foreground' },
+                  { label: 'Concluídos', value: agendamentos.filter((a: any) => a.status === 'concluido').length, cls: 'text-emerald-600' },
+                  { label: 'Faltas', value: agendamentos.filter((a: any) => a.status === 'faltou').length, cls: 'text-amber-600' },
+                  { label: 'Cancelados', value: agendamentos.filter((a: any) => a.status === 'cancelado').length, cls: 'text-red-600' },
+                ].map(s => (
+                  <div key={s.label} className="border rounded-xl p-2.5 text-center bg-card">
+                    <div className={`text-lg font-bold ${s.cls}`}>{s.value}</div>
+                    <div className="text-[10px] text-muted-foreground">{s.label}</div>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {/* Actions */}
             <div className="flex gap-2 flex-wrap">
               <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={agendarRapido}>

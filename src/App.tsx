@@ -2,7 +2,7 @@ import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
@@ -15,10 +15,10 @@ import Auth from "./pages/Auth";
 import Agenda from "./pages/Agenda";
 import Pacientes from "./pages/Pacientes";
 import PacientePerfil from "./pages/PacientePerfil";
-import Protocolos from "./pages/Protocolos";
+
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
 import AgendaPublica from "./pages/AgendaPublica";
-import Relatorios from "./pages/Relatorios";
+
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import FunilChat from "./pages/FunilChat";
@@ -83,13 +83,13 @@ const App = () => (
                 <Route path="/agenda" element={<Agenda />} />
                 <Route path="/pacientes" element={<Pacientes />} />
                 <Route path="/pacientes/:id" element={<PacientePerfil />} />
-                <Route path="/protocolos" element={<Protocolos />} />
+                <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
                 <Route path="/agenda/:token" element={<AgendaPublica />} />
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
                 <Route path="/funil/:slug" element={<FunilChat />} />
-                <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<GestaoVendas />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
 
