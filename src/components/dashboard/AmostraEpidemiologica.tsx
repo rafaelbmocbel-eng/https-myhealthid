@@ -500,9 +500,10 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <p className="text-[10px] text-muted-foreground">
-              <strong>Para estudos científicos:</strong> Δ negativo nos scores = melhora clínica. 
+              <strong>Para estudos científicos (MyID-100):</strong> Δ positivo no MyID-100 = melhora clínica (escala 0-100, maior=melhor). 
+              Δ negativo nas dimensões (D, R, P, etc.) = melhora (escala de perdas, menor=melhor). 
               Use estes dados para análise pareada (teste t pareado / Wilcoxon). 
-              A taxa de melhora do ID Final indica a efetividade do tratamento na amostra (n={analysis.deltas.length} pacientes com reavaliação).
+              Taxa de melhora na amostra (n={analysis.deltas.length} pacientes com reavaliação).
             </p>
           </div>
         </div>
