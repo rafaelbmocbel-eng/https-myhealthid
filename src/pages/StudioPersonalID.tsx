@@ -33,6 +33,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import StudioAvaliacaoTab from '@/components/studio/StudioAvaliacaoTab';
+import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 
 export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
