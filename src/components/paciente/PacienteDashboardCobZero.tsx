@@ -444,6 +444,11 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
           </Tabs>
         </TabsContent>
 
+        {/* --- Aba Portal --- */}
+        <TabsContent value="portal" className="mt-4">
+          <StudioPortalControlTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+        </TabsContent>
+
         {/* --- Aba 2: TREINOS --- */}
         <TabsContent value="treinos" className="mt-4">
           <StudioTreinosTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
