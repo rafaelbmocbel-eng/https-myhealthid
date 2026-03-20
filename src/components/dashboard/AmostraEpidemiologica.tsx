@@ -124,30 +124,31 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     const classReav = classDistrib(reavaliacoes);
 
     // Per-patient deltas (last - first)
-    const deltas: { E: number; P: number; C: number; F: number; D: number; R: number; ID: number }[] = [];
+    const deltas: { D: number; EFI: number; R: number; C: number; P: number; I: number; N: number; ID: number }[] = [];
     Object.values(byPaciente).forEach(arr => {
       if (arr.length < 2) return;
       const first = arr[0];
       const last = arr[arr.length - 1];
       deltas.push({
-        E: Number(last.score_e || 0) - Number(first.score_e || 0),
-        P: Number(last.score_p || 0) - Number(first.score_p || 0),
-        C: Number(last.score_c || 0) - Number(first.score_c || 0),
-        F: Number(last.score_f || 0) - Number(first.score_f || 0),
         D: Number(last.score_d || 0) - Number(first.score_d || 0),
+        EFI: Number(last.score_efi || 0) - Number(first.score_efi || 0),
         R: Number(last.score_r || 0) - Number(first.score_r || 0),
+        C: Number(last.score_c || 0) - Number(first.score_c || 0),
+        P: Number(last.score_p || 0) - Number(first.score_p || 0),
+        I: Number(last.score_i || 0) - Number(first.score_i || 0),
+        N: Number(last.score_n || 0) - Number(first.score_n || 0),
         ID: Number(last.id_final || 0) - Number(first.id_final || 0),
       });
     });
-    const avgDelta = (key: 'E' | 'P' | 'C' | 'F' | 'D' | 'R' | 'ID') => {
+    const avgDelta = (key: 'D' | 'EFI' | 'R' | 'C' | 'P' | 'I' | 'N' | 'ID') => {
       if (deltas.length === 0) return 0;
       return deltas.reduce((s, d) => s + d[key], 0) / deltas.length;
     };
-    const deltaMeans = { E: avgDelta('E'), P: avgDelta('P'), C: avgDelta('C'), F: avgDelta('F'), D: avgDelta('D'), R: avgDelta('R'), ID: avgDelta('ID') };
+    const deltaMeans = { D: avgDelta('D'), EFI: avgDelta('EFI'), R: avgDelta('R'), C: avgDelta('C'), P: avgDelta('P'), I: avgDelta('I'), N: avgDelta('N'), ID: avgDelta('ID') };
 
-    // Improvement rate (% of patients who improved ID)
-    const improved = deltas.filter(d => d.ID < 0).length;
-    const worsened = deltas.filter(d => d.ID > 0).length;
+    // Improvement rate (% of patients who improved ID) — MyID-100: higher = better, so positive delta = improvement
+    const improved = deltas.filter(d => d.ID > 0).length;
+    const worsened = deltas.filter(d => d.ID < 0).length;
     const stable = deltas.filter(d => d.ID === 0).length;
 
     // ── Original analyses (use ALL avaliacoes) ──────────────────────────
