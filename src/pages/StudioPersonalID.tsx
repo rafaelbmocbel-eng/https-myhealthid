@@ -205,12 +205,15 @@ export default function StudioPersonalID() {
 
           {/* Tabs */}
           <Tabs defaultValue="avaliacao" className="w-full">
-            <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60">
+            <TabsList className="grid w-full grid-cols-5 h-10 bg-muted/60">
               <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
                 <ClipboardList className="h-3.5 w-3.5" /> Avaliação
               </TabsTrigger>
               <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
                 <Dumbbell className="h-3.5 w-3.5" /> Treinos
+              </TabsTrigger>
+              <TabsTrigger value="portal" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
+                <Eye className="h-3.5 w-3.5" /> Portal
               </TabsTrigger>
               <TabsTrigger value="evolucao" className="text-xs gap-1 data-[state=active]:bg-gradient-studio data-[state=active]:text-white">
                 <BarChart3 className="h-3.5 w-3.5" /> Evolução
@@ -226,6 +229,10 @@ export default function StudioPersonalID() {
 
             <TabsContent value="treinos" className="mt-4">
               <StudioTreinosTab pacienteId={selectedPaciente.id} pacienteNome={selectedPaciente.nome} />
+            </TabsContent>
+
+            <TabsContent value="portal" className="mt-4">
+              <StudioPortalControlTab pacienteId={selectedPaciente.id} pacienteNome={selectedPaciente.nome} />
             </TabsContent>
 
             <TabsContent value="evolucao" className="mt-4">
