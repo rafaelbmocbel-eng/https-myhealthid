@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Link2, Copy, Trash2, Plus, Search, Clock, CheckCircle2,
   Activity, CalendarDays, Loader2, ExternalLink, MessageCircle, Mail,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Star,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
