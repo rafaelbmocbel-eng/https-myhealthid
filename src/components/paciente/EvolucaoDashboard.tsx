@@ -199,14 +199,23 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
             </div>
             <Badge variant="outline" className="text-[10px]">1ª vs Última</Badge>
           </div>
-          <p className="text-[9px] text-muted-foreground mb-2">Quanto mais expandido, maior o impacto negativo. Capacidades invertidas (déficit).</p>
+          <p className="text-[9px] text-muted-foreground mb-2">Quanto mais expandido, maior o impacto negativo.</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {DIMENSION_CONFIG.map(d => (
+              <span key={d.key} className="inline-flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
+                <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                {d.key}
+                <span className="opacity-50">{d.type === 'capacity' ? '🛡' : '🔥'}</span>
+              </span>
+            ))}
+          </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid className="stroke-border" />
                 <PolarAngleAxis dataKey="score" tick={{ fontSize: 10 }} />
-                <Radar name="Primeira" dataKey="inicial" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} strokeDasharray="4 4" />
-                <Radar name="Atual" dataKey="atual" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                <Radar name="Primeira" dataKey="inicial" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.1} strokeDasharray="4 4" strokeWidth={1.5} />
+                <Radar name="Atual" dataKey="atual" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
               </RadarChart>
