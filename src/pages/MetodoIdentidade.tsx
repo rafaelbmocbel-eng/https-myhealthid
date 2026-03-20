@@ -31,7 +31,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { useQuery } from '@tanstack/react-query';
