@@ -677,11 +677,11 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
                 <tr className="border-b">
                   <th className="text-left py-2 px-1 text-muted-foreground w-36">Comorbidade</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">n</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground">μ E</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground">μ P</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">μ D</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground">μ P</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">μ R</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground font-bold">μ ID</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground">μ C</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground font-bold">μ MyID</th>
                 </tr>
               </thead>
               <tbody>
@@ -689,10 +689,10 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
                   <tr key={c.nome} className="border-b border-border/30 hover:bg-accent/10">
                     <td className="py-1.5 px-1 font-medium text-foreground truncate max-w-[150px]">{c.nome}</td>
                     <td className="text-center py-1.5 px-1 font-bold">{c.count}</td>
-                    <td className="text-center py-1.5 px-1">{c.avgE.toFixed(1)}</td>
-                    <td className="text-center py-1.5 px-1">{c.avgP.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1">{c.avgD.toFixed(1)}</td>
+                    <td className="text-center py-1.5 px-1">{c.avgP.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1">{c.avgR.toFixed(1)}</td>
+                    <td className="text-center py-1.5 px-1">{c.avgC.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1 font-bold text-primary">{c.avgID.toFixed(1)}</td>
                   </tr>
                 ))}
@@ -707,9 +707,9 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
           <div className="flex items-start gap-2">
             <GitBranch className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <p className="text-[10px] text-muted-foreground">
-              <strong>Leitura:</strong> Compare os scores médios (μ) entre comorbidades. 
-              Comorbidades com ID Final mais alto indicam populações que demandam atenção clínica diferenciada.
-              R baixo sugere desregulação neurovegetativa associada; P alto indica comportamento de evitação.
+              <strong>Leitura (MyID-100):</strong> Compare os scores médios (μ) entre comorbidades. 
+              Comorbidades com MyID-100 mais baixo indicam populações com maior comprometimento global.
+              R alto sugere desregulação neurovegetativa associada; P alto indica comportamento evitativo.
             </p>
           </div>
         </div>
