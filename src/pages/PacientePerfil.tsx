@@ -796,7 +796,7 @@ export default function PacientePerfil() {
               TAB: DIRETRIZES / PROTOCOLOS DE TRATAMENTO
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="protocolos" className="mt-4 space-y-6">
-            <PacienteProtocolosTab pacienteId={id!} />
+            <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
