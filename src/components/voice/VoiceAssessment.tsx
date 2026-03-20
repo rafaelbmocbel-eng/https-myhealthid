@@ -185,16 +185,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     if (!assessment || !user) return;
     setIsSaving(true);
     try {
-      const { error: saveError } = await supabase.from('avaliacoes_voz' as any).insert({
+      const { error: saveError } = await supabase.from('avaliacoes_voz').insert({
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
         servico: serviceType,
         transcricao: editedTranscript || 'Avaliação por áudio',
-        resultado: assessment,
+        resultado: assessment as any,
         classificacao_severidade: assessment.classificacao_severidade,
         queixa_principal: assessment.queixa_principal,
-      } as any);
+      });
       if (saveError) throw saveError;
 
       if (pacienteId) {
