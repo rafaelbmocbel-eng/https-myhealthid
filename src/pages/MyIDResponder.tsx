@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
 import { useToast } from '@/components/ui/use-toast';
