@@ -831,6 +831,11 @@ export default function PacientePerfil() {
             <div>
               <NpsSurveyCard pacienteId={id!} />
             </div>
+
+            {/* Portal do Paciente — Monitoramento */}
+            <div>
+              <StudioPortalControlTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+            </div>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
