@@ -555,8 +555,53 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
         )}
       </div>
 
+      {/* ── Alertas & Lembretes (visão do paciente) ────────────────── */}
+      {(alertasData?.length ?? 0) > 0 && (
+        <div className="space-y-2">
+          <div className="flex items-center justify-between cursor-pointer" onClick={() => setShowAlertas(!showAlertas)}>
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-studio" />
+              <h4 className="font-bold text-sm text-foreground">Alertas do Paciente</h4>
+              <Badge variant="outline" className="text-[9px] h-4">{alertasData!.length} ativos</Badge>
+            </div>
+            {showAlertas ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+          </div>
+
+          {showAlertas && (
+            <div className="space-y-1.5">
+              {alertasData!.map(alerta => {
+                const urgColorMap: Record<string, string> = {
+                  alta: 'border-destructive/30 bg-destructive/5',
+                  media: 'border-amber-300 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20',
+                  baixa: 'border-primary/20 bg-primary/5',
+                };
+                const iconMap: Record<string, any> = { consulta: CalendarDays, diario: Heart, treino: Dumbbell, questionario: Bell };
+                const Icon = iconMap[alerta.tipo] || AlertCircle;
+                return (
+                  <div key={alerta.id} className={cn("p-2.5 rounded-xl border flex items-center gap-2.5", urgColorMap[alerta.urgencia] || urgColorMap.baixa)}>
+                    <div className="w-7 h-7 rounded-lg bg-background/60 flex items-center justify-center shrink-0">
+                      <Icon className="h-3.5 w-3.5 text-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-[11px] font-bold text-foreground truncate">{alerta.titulo}</p>
+                      <p className="text-[9px] text-muted-foreground truncate">{alerta.descricao}</p>
+                    </div>
+                    <Badge variant="outline" className={cn("text-[8px] h-4 shrink-0",
+                      alerta.urgencia === 'alta' ? 'border-destructive text-destructive' :
+                      alerta.urgencia === 'media' ? 'border-amber-500 text-amber-700 dark:text-amber-400' : 'text-muted-foreground'
+                    )}>
+                      {alerta.urgencia === 'alta' ? 'Urgente' : alerta.urgencia === 'media' ? 'Atenção' : 'Info'}
+                    </Badge>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Empty state if no MyID data */}
-      {!myidData && missoes.length === 0 && treinos.length === 0 && (
+      {!myidData && missoes.length === 0 && treinos.length === 0 && (alertasData?.length ?? 0) === 0 && (
         <Card className="border-dashed border-2 border-studio/20">
           <CardContent className="py-10 text-center">
             <Eye className="h-10 w-10 mx-auto mb-3 text-studio/30" />
