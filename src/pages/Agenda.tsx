@@ -1056,7 +1056,7 @@ export default function Agenda() {
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
                             >
-                              <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate">
+                              <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
@@ -1068,12 +1068,12 @@ export default function Agenda() {
                                       || 'Agendamento')
                                   }
                                 </span>
-                                {layout.totalCols > 1 && (
-                                  <span className="ml-auto text-[8px] opacity-60 shrink-0">{layout.col + 1}/{layout.totalCols}</span>
-                                )}
                               </div>
                               {layout.totalCols > 1 && (
-                                <div className="absolute top-1 right-1 flex items-center justify-center h-4 w-4 rounded-full bg-white/40 text-[10px] font-black border border-black/5 shadow-sm">
+                                <div className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black shadow-sm" style={{
+                                  backgroundColor: patientColor?.borderLeftColor || sc.border.replace('border-', ''),
+                                  color: '#fff',
+                                }}>
                                   {layout.col + 1}
                                 </div>
                               )}
