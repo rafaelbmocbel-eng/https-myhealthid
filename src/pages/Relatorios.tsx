@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Navigate } from 'react-router-dom';
 import PacientesSubNav from '@/components/PacientesSubNav';
 import AppLayout from '@/components/AppLayout';
