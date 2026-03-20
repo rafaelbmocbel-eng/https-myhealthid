@@ -15,7 +15,10 @@ interface AvaliacaoRaw {
   score_d: number | null;
   score_r: number | null;
   score_efi: number | null;
+  score_i: number | null;
+  score_n: number | null;
   id_final: number | null;
+  myid_score: number | null;
   classificacao: string | null;
   dados_avaliacao: any;
   paciente_id?: string;
@@ -52,11 +55,11 @@ function interpretR(r: number): { label: string; color: string } {
   return { label: 'Negligível', color: 'text-muted-foreground/60' };
 }
 
-const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi', 'id_final'] as const;
+const SCORE_KEYS = ['score_d', 'score_efi', 'score_r', 'score_c', 'score_p', 'score_i', 'score_n', 'id_final'] as const;
 const SCORE_LABELS: Record<string, string> = {
-  score_e: 'E (Estrutural)', score_p: 'P (Cinesiofobia)', score_c: 'C (Carga Contextual)',
-  score_f: 'F (Contextual)', score_d: 'D (Dor)', score_r: 'R (Regulação)',
-  score_efi: 'EFI (Funcionalidade)', id_final: 'ID Final',
+  score_d: 'D (Dor)', score_efi: 'EFI (Função)', score_r: 'R (Regulação)',
+  score_c: 'C (Contexto)', score_p: 'P (Comportamento)', score_i: 'I (Inércia)',
+  score_n: 'N (Ruído)', id_final: 'MyID-100',
 };
 
 // TSK-11 items
@@ -101,12 +104,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
 
     // Helper: compute avg scores for a subset
     const avgScores = (subset: AvaliacaoRaw[]) => {
-      if (subset.length === 0) return { E: 0, P: 0, C: 0, F: 0, D: 0, R: 0, EFI: 0, ID: 0 };
+      if (subset.length === 0) return { D: 0, EFI: 0, R: 0, C: 0, P: 0, I: 0, N: 0, ID: 0 };
       const avg = (key: string) => {
         const vals = subset.map(a => Number((a as any)[key] || 0));
         return vals.reduce((s, v) => s + v, 0) / vals.length;
       };
-      return { E: avg('score_e'), P: avg('score_p'), C: avg('score_c'), F: avg('score_f'), D: avg('score_d'), R: avg('score_r'), EFI: avg('score_efi'), ID: avg('id_final') };
+      return { D: avg('score_d'), EFI: avg('score_efi'), R: avg('score_r'), C: avg('score_c'), P: avg('score_p'), I: avg('score_i'), N: avg('score_n'), ID: avg('id_final') };
     };
     const scoresPrimeira = avgScores(primeiras);
     const scoresReav = avgScores(reavaliacoes);
@@ -121,30 +124,31 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     const classReav = classDistrib(reavaliacoes);
 
     // Per-patient deltas (last - first)
-    const deltas: { E: number; P: number; C: number; F: number; D: number; R: number; ID: number }[] = [];
+    const deltas: { D: number; EFI: number; R: number; C: number; P: number; I: number; N: number; ID: number }[] = [];
     Object.values(byPaciente).forEach(arr => {
       if (arr.length < 2) return;
       const first = arr[0];
       const last = arr[arr.length - 1];
       deltas.push({
-        E: Number(last.score_e || 0) - Number(first.score_e || 0),
-        P: Number(last.score_p || 0) - Number(first.score_p || 0),
-        C: Number(last.score_c || 0) - Number(first.score_c || 0),
-        F: Number(last.score_f || 0) - Number(first.score_f || 0),
         D: Number(last.score_d || 0) - Number(first.score_d || 0),
+        EFI: Number(last.score_efi || 0) - Number(first.score_efi || 0),
         R: Number(last.score_r || 0) - Number(first.score_r || 0),
+        C: Number(last.score_c || 0) - Number(first.score_c || 0),
+        P: Number(last.score_p || 0) - Number(first.score_p || 0),
+        I: Number(last.score_i || 0) - Number(first.score_i || 0),
+        N: Number(last.score_n || 0) - Number(first.score_n || 0),
         ID: Number(last.id_final || 0) - Number(first.id_final || 0),
       });
     });
-    const avgDelta = (key: 'E' | 'P' | 'C' | 'F' | 'D' | 'R' | 'ID') => {
+    const avgDelta = (key: 'D' | 'EFI' | 'R' | 'C' | 'P' | 'I' | 'N' | 'ID') => {
       if (deltas.length === 0) return 0;
       return deltas.reduce((s, d) => s + d[key], 0) / deltas.length;
     };
-    const deltaMeans = { E: avgDelta('E'), P: avgDelta('P'), C: avgDelta('C'), F: avgDelta('F'), D: avgDelta('D'), R: avgDelta('R'), ID: avgDelta('ID') };
+    const deltaMeans = { D: avgDelta('D'), EFI: avgDelta('EFI'), R: avgDelta('R'), C: avgDelta('C'), P: avgDelta('P'), I: avgDelta('I'), N: avgDelta('N'), ID: avgDelta('ID') };
 
-    // Improvement rate (% of patients who improved ID)
-    const improved = deltas.filter(d => d.ID < 0).length;
-    const worsened = deltas.filter(d => d.ID > 0).length;
+    // Improvement rate (% of patients who improved ID) — MyID-100: higher = better, so positive delta = improvement
+    const improved = deltas.filter(d => d.ID > 0).length;
+    const worsened = deltas.filter(d => d.ID < 0).length;
     const stable = deltas.filter(d => d.ID === 0).length;
 
     // ── Original analyses (use ALL avaliacoes) ──────────────────────────
@@ -192,19 +196,19 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     const allClasses = [...new Set(avaliacoes.map(a => a.classificacao || 'N/A'))].sort();
 
     // 4. Comorbidity × mean scores
-    const comorbScores: Record<string, { count: number; sumE: number; sumP: number; sumD: number; sumR: number; sumID: number }> = {};
+    const comorbScores: Record<string, { count: number; sumD: number; sumP: number; sumR: number; sumC: number; sumID: number }> = {};
     avaliacoes.forEach(a => {
       try {
         const d = a.dados_avaliacao as any;
         if (d?.bloco1?.historicoMedico) {
           (d.bloco1.historicoMedico as string[]).forEach(c => {
             if (!c) return;
-            if (!comorbScores[c]) comorbScores[c] = { count: 0, sumE: 0, sumP: 0, sumD: 0, sumR: 0, sumID: 0 };
+            if (!comorbScores[c]) comorbScores[c] = { count: 0, sumD: 0, sumP: 0, sumR: 0, sumC: 0, sumID: 0 };
             comorbScores[c].count++;
-            comorbScores[c].sumE += Number(a.score_e || 0);
-            comorbScores[c].sumP += Number(a.score_p || 0);
             comorbScores[c].sumD += Number(a.score_d || 0);
+            comorbScores[c].sumP += Number(a.score_p || 0);
             comorbScores[c].sumR += Number(a.score_r || 0);
+            comorbScores[c].sumC += Number(a.score_c || 0);
             comorbScores[c].sumID += Number(a.id_final || 0);
           });
         }
@@ -216,8 +220,8 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       .slice(0, 10)
       .map(([nome, v]) => ({
         nome, count: v.count,
-        avgE: v.sumE / v.count, avgP: v.sumP / v.count,
-        avgD: v.sumD / v.count, avgR: v.sumR / v.count,
+        avgD: v.sumD / v.count, avgP: v.sumP / v.count,
+        avgR: v.sumR / v.count, avgC: v.sumC / v.count,
         avgID: v.sumID / v.count,
       }));
 
@@ -263,13 +267,23 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       .sort((a, b) => b[1].count - a[1].count)
       .map(([nome, v]) => ({ nome, count: v.count, mediaIntensidade: v.count > 0 ? v.intensidadeTotal / v.count : 0 }));
 
-    // 7. Risk factor prevalence (aligned with calcularIDFinal thresholds)
+    // 7. Risk factor prevalence (aligned with MyID-100 v2.0 trigger thresholds)
+    // In v2, scores are loss-based (higher = worse for dimensions). Triggers: R≥7.0, AF≥7.0, ERG≥8.0
     const riskFactors = {
-      altaCinesiofobia: avaliacoes.filter(a => Number(a.score_p || 0) > 7.5).length,
-      cargaExcessiva: avaliacoes.filter(a => Number(a.score_c || 0) > 8).length,
-      regulacaoCritica: avaliacoes.filter(a => Number(a.score_r || 0) < 2).length,
-      dorIntensa: avaliacoes.filter(a => Number(a.score_d || 0) > 8).length,
-      severoOuPior: avaliacoes.filter(a => ['SEVERO', 'CRÍTICO', 'EXTREMO'].includes(a.classificacao || '')).length,
+      regulacaoCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.bloco5?.scoreR || a.score_r || 0) >= 7.0; } catch { return false; }
+      }).length,
+      afCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.AF || 0) >= 7.0; } catch { return false; }
+      }).length,
+      ergCritica: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.ERG || 0) >= 8.0; } catch { return false; }
+      }).length,
+      dorIntensa: avaliacoes.filter(a => Number(a.score_d || 0) >= 7.0).length,
+      criticoOuPior: avaliacoes.filter(a => ['Crítico'].includes(a.classificacao || '')).length,
+      redFlagsDetected: avaliacoes.filter(a => {
+        try { const d = a.dados_avaliacao as any; return d?.resultado?.redFlagsDetected || a.dados_avaliacao?.red_flags; } catch { return false; }
+      }).length,
     };
 
     // 8. Functionality breakdown by classification
@@ -312,13 +326,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     );
   }
 
-  const classOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
+  const classOrder = ['Excelente', 'Bom', 'Moderado', 'Crítico'];
   const classColors: Record<string, string> = {
-    LEVE: 'bg-green-200 text-green-800',
-    MODERADO: 'bg-amber-200 text-amber-800',
-    SEVERO: 'bg-orange-200 text-orange-800',
-    'CRÍTICO': 'bg-red-200 text-red-800',
-    EXTREMO: 'bg-purple-200 text-purple-800',
+    Excelente: 'bg-emerald-200 text-emerald-800',
+    Bom: 'bg-yellow-200 text-yellow-800',
+    Moderado: 'bg-orange-200 text-orange-800',
+    'Crítico': 'bg-red-200 text-red-800',
     'N/A': 'bg-slate-200 text-slate-600',
   };
 
@@ -357,11 +370,11 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             <div className="text-xl font-black text-primary">{analysis.pacientesComReav}</div>
           </div>
           <div className="rounded-xl border bg-card p-3 text-center">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">Melhoraram (ID↓)</div>
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Melhoraram (MyID↑)</div>
             <div className="text-xl font-black text-emerald-600">{analysis.improved} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.improved / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
           </div>
           <div className="rounded-xl border bg-card p-3 text-center">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pioraram (ID↑)</div>
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pioraram (MyID↓)</div>
             <div className="text-xl font-black text-red-600">{analysis.worsened} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.worsened / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
           </div>
         </div>
@@ -382,26 +395,30 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
               </tr>
             </thead>
             <tbody>
-              {(['E', 'P', 'C', 'F', 'D', 'R', 'EFI', 'ID'] as const).map(key => {
+              {(['D', 'EFI', 'R', 'C', 'P', 'I', 'N', 'ID'] as const).map(key => {
                 const first = analysis.scoresPrimeira[key];
                 const reav = analysis.reavaliacoes.length > 0 ? analysis.scoresReav[key] : null;
-                const deltaKey = key === 'EFI' ? null : analysis.deltaMeans[key as keyof typeof analysis.deltaMeans];
                 const delta = reav != null ? reav - first : null;
                 const labels: Record<string, string> = {
-                  E: 'Estrutural', P: 'Cinesiofobia', C: 'Carga', F: 'Contextual',
-                  D: 'Dor', R: 'Regulação', EFI: 'EFI', ID: 'ID Final',
+                  D: 'Dor', EFI: 'Função', R: 'Regulação', C: 'Contexto',
+                  P: 'Comportamento', I: 'Inércia', N: 'Ruído', ID: 'MyID-100',
                 };
+                // For MyID-100 (ID): higher = better, so positive delta = improvement
+                // For dimension scores (loss-based): lower = better, so negative delta = improvement
+                const isMyID = key === 'ID';
+                const isImproved = isMyID ? (delta != null && delta > 0.3) : (delta != null && delta < -0.3);
+                const isWorsened = isMyID ? (delta != null && delta < -0.3) : (delta != null && delta > 0.3);
                 return (
                   <tr key={key} className="border-b border-border/30 hover:bg-accent/10">
                     <td className="py-2 px-1 font-medium text-foreground">{labels[key]} ({key})</td>
                     <td className="text-center py-2 px-1 font-bold">{first.toFixed(1)}</td>
                     <td className="text-center py-2 px-1 font-bold">{reav != null ? reav.toFixed(1) : '—'}</td>
-                    <td className={`text-center py-2 px-1 font-bold ${delta != null && delta < 0 ? 'text-emerald-600' : delta != null && delta > 0 ? 'text-red-600' : ''}`}>
+                    <td className={`text-center py-2 px-1 font-bold ${isImproved ? 'text-emerald-600' : isWorsened ? 'text-red-600' : ''}`}>
                       {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}` : '—'}
                     </td>
                     <td className="text-center py-2 px-1">
-                      {delta != null && delta < -0.3 ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto rotate-180" /> :
-                       delta != null && delta > 0.3 ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto" /> :
+                      {isImproved ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto" /> :
+                       isWorsened ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto rotate-180" /> :
                        <span className="text-muted-foreground text-[10px]">≈</span>}
                     </td>
                   </tr>
@@ -418,16 +435,19 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
               <GitBranch className="h-3.5 w-3.5" /> Variação Média por Paciente (Última − 1ª)
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-5">
-              {(['E', 'P', 'C', 'F', 'D', 'R', 'ID'] as const).map(key => {
+              {(['D', 'EFI', 'R', 'C', 'P', 'I', 'N', 'ID'] as const).map(key => {
                 const d = analysis.deltaMeans[key];
+                const isMyID = key === 'ID';
+                const isImproved = isMyID ? d > 0.3 : d < -0.3;
+                const isWorsened = isMyID ? d < -0.3 : d > 0.3;
                 return (
                   <div key={key} className="rounded-xl border bg-card p-3 text-center">
                     <div className="text-[10px] font-semibold text-muted-foreground mb-1">{key}</div>
-                    <div className={`text-lg font-black ${d < -0.3 ? 'text-emerald-600' : d > 0.3 ? 'text-red-600' : 'text-foreground'}`}>
+                    <div className={`text-lg font-black ${isImproved ? 'text-emerald-600' : isWorsened ? 'text-red-600' : 'text-foreground'}`}>
                       {d > 0 ? '+' : ''}{d.toFixed(1)}
                     </div>
                     <div className="text-[9px] text-muted-foreground">
-                      {d < -0.3 ? '↓ melhora' : d > 0.3 ? '↑ piora' : '≈ estável'}
+                      {isImproved ? (isMyID ? '↑ melhora' : '↓ melhora') : isWorsened ? (isMyID ? '↓ piora' : '↑ piora') : '≈ estável'}
                     </div>
                   </div>
                 );
@@ -480,9 +500,10 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
           <div className="flex items-start gap-2">
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <p className="text-[10px] text-muted-foreground">
-              <strong>Para estudos científicos:</strong> Δ negativo nos scores = melhora clínica. 
+              <strong>Para estudos científicos (MyID-100):</strong> Δ positivo no MyID-100 = melhora clínica (escala 0-100, maior=melhor). 
+              Δ negativo nas dimensões (D, R, P, etc.) = melhora (escala de perdas, menor=melhor). 
               Use estes dados para análise pareada (teste t pareado / Wilcoxon). 
-              A taxa de melhora do ID Final indica a efetividade do tratamento na amostra (n={analysis.deltas.length} pacientes com reavaliação).
+              Taxa de melhora na amostra (n={analysis.deltas.length} pacientes com reavaliação).
             </p>
           </div>
         </div>
@@ -656,11 +677,11 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
                 <tr className="border-b">
                   <th className="text-left py-2 px-1 text-muted-foreground w-36">Comorbidade</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">n</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground">μ E</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground">μ P</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">μ D</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground">μ P</th>
                   <th className="text-center py-2 px-1 text-muted-foreground">μ R</th>
-                  <th className="text-center py-2 px-1 text-muted-foreground font-bold">μ ID</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground">μ C</th>
+                  <th className="text-center py-2 px-1 text-muted-foreground font-bold">μ MyID</th>
                 </tr>
               </thead>
               <tbody>
@@ -668,10 +689,10 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
                   <tr key={c.nome} className="border-b border-border/30 hover:bg-accent/10">
                     <td className="py-1.5 px-1 font-medium text-foreground truncate max-w-[150px]">{c.nome}</td>
                     <td className="text-center py-1.5 px-1 font-bold">{c.count}</td>
-                    <td className="text-center py-1.5 px-1">{c.avgE.toFixed(1)}</td>
-                    <td className="text-center py-1.5 px-1">{c.avgP.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1">{c.avgD.toFixed(1)}</td>
+                    <td className="text-center py-1.5 px-1">{c.avgP.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1">{c.avgR.toFixed(1)}</td>
+                    <td className="text-center py-1.5 px-1">{c.avgC.toFixed(1)}</td>
                     <td className="text-center py-1.5 px-1 font-bold text-primary">{c.avgID.toFixed(1)}</td>
                   </tr>
                 ))}
@@ -686,9 +707,9 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
           <div className="flex items-start gap-2">
             <GitBranch className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <p className="text-[10px] text-muted-foreground">
-              <strong>Leitura:</strong> Compare os scores médios (μ) entre comorbidades. 
-              Comorbidades com ID Final mais alto indicam populações que demandam atenção clínica diferenciada.
-              R baixo sugere desregulação neurovegetativa associada; P alto indica comportamento de evitação.
+              <strong>Leitura (MyID-100):</strong> Compare os scores médios (μ) entre comorbidades. 
+              Comorbidades com MyID-100 mais baixo indicam populações com maior comprometimento global.
+              R alto sugere desregulação neurovegetativa associada; P alto indica comportamento evitativo.
             </p>
           </div>
         </div>
@@ -748,11 +769,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         </p>
         <div className="space-y-3">
           {[
-            { label: 'Alta Cinesiofobia (P > 7.5)', count: analysis.riskFactors.altaCinesiofobia, desc: '+2 ao ID final · Recomendado: educação em dor e graded exposure', icon: Brain, danger: true },
-            { label: 'Carga Contextual Excessiva (C > 8)', count: analysis.riskFactors.cargaExcessiva, desc: '+2 ao ID final · Fatores psicossociais dominantes', icon: Shield, danger: true },
-            { label: 'Regulação Crítica (R < 2)', count: analysis.riskFactors.regulacaoCritica, desc: '+3 ao ID final · Desregulação neurovegetativa severa', icon: Activity, danger: true },
-            { label: 'Dor Intensa (D > 8)', count: analysis.riskFactors.dorIntensa, desc: '+1 ao ID final · Componente nociceptivo significativo', icon: Heart, danger: false },
-            { label: 'Classificação ≥ SEVERO', count: analysis.riskFactors.severoOuPior, desc: 'Pacientes que demandam protocolo intensivo', icon: AlertTriangle, danger: true },
+            { label: 'Regulação Crítica (R ≥ 7.0)', count: analysis.riskFactors.regulacaoCritica, desc: 'Gatilho v2 · Desregulação neurovegetativa severa (sono/stress/energia)', icon: Activity, danger: true },
+            { label: 'Atividade Física Crítica (AF ≥ 7.0)', count: analysis.riskFactors.afCritica, desc: 'Gatilho v2 · Sedentarismo significativo com impacto sistêmico', icon: Zap, danger: true },
+            { label: 'Ergonomia Crítica (ERG ≥ 8.0)', count: analysis.riskFactors.ergCritica, desc: 'Gatilho v2 · Ambiente ergonômico severamente inadequado', icon: Shield, danger: true },
+            { label: 'Dor Intensa (D ≥ 7.0)', count: analysis.riskFactors.dorIntensa, desc: 'Componente nociceptivo significativo', icon: Heart, danger: true },
+            { label: 'Classificação Crítica (MyID < 50)', count: analysis.riskFactors.criticoOuPior, desc: 'Pacientes que demandam protocolo intensivo', icon: AlertTriangle, danger: true },
+            { label: 'Red Flags Detectadas', count: analysis.riskFactors.redFlagsDetected, desc: 'Perímetros de alerta que exigem rastreio médico', icon: Brain, danger: true },
           ].map(rf => {
             const Icon = rf.icon;
             const pct = analysis.n > 0 ? (rf.count / analysis.n) * 100 : 0;

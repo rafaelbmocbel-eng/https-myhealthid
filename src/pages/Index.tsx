@@ -120,7 +120,7 @@ export default function Index() {
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
-        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, id_final, dados_avaliacao, classificacao, paciente_id, created_at, red_flags, pacientes(nome, sobrenome)')
+        .select('score_e, score_p, score_c, score_f, score_d, score_r, score_efi, score_i, score_n, id_final, myid_score, dados_avaliacao, classificacao, paciente_id, created_at, red_flags, pacientes(nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
         .order('created_at', { ascending: true });
       return data || [];
@@ -164,10 +164,20 @@ export default function Index() {
         const vals = avaliacoes.map(a => (a as any)[key]).filter((v: any) => v != null && !isNaN(v));
         return vals.length > 0 ? vals.reduce((s: number, v: number) => s + Number(v), 0) / vals.length : 0;
       };
+      // Extract v2 sub-dimensions from dados_avaliacao
+      const extractSubScore = (key: string) => {
+        const vals = avaliacoes.map(a => {
+          try { const d = a.dados_avaliacao as any; return Number(d?.resultado?.componentScores?.[key] || 0); } catch { return 0; }
+        }).filter(v => v > 0);
+        return vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : 0;
+      };
       const scores = {
-        E: avg('score_e'), P: avg('score_p'), C: avg('score_c'),
-        F: avg('score_f'), D: avg('score_d'), R: avg('score_r'),
-        EFI: avg('score_efi'), ID: avg('id_final'),
+        D: avg('score_d'), EFI: avg('score_efi'), R: avg('score_r'),
+        C: avg('score_c'), P: avg('score_p'), I: avg('score_i'),
+        N: avg('score_n'), MyID: avg('id_final'),
+        AF: extractSubScore('AF'), HID: extractSubScore('HID'),
+        NUT: extractSubScore('NUT'), ERG: extractSubScore('ERG'),
+        MED: extractSubScore('MED'),
       };
 
       const totalRedFlags = avaliacoes.filter(a => a.red_flags || (a.dados_avaliacao as any)?.resultado?.redFlagsDetected).length;
@@ -660,16 +670,17 @@ export default function Index() {
               <TabsContent value="scores">
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
                   {[
-                    { label: 'Estrutural (E)', value: amostraClinica.scores.E, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-                    { label: 'Cinesiofobia (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
-                    { label: 'Carga Contextual (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
-                    { label: 'Contextual (F)', value: amostraClinica.scores.F, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
                     { label: 'Dor (D)', value: amostraClinica.scores.D, icon: Heart, color: 'text-red-600', bg: 'bg-red-50 dark:bg-red-950/30' },
+                    { label: 'Função (EFI)', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
                     { label: 'Regulação (R)', value: amostraClinica.scores.R, icon: Activity, color: 'text-teal-600', bg: 'bg-teal-50 dark:bg-teal-950/30' },
-                    { label: 'Funcionalidade (EFI)', value: amostraClinica.scores.EFI, icon: TrendingUp, color: 'text-indigo-600', bg: 'bg-indigo-50 dark:bg-indigo-950/30' },
-                    { label: 'Dor Identidade (ID)', value: amostraClinica.scores.ID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30' },
+                    { label: 'Contexto (C)', value: amostraClinica.scores.C, icon: Shield, color: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/30' },
+                    { label: 'Comportamento (P)', value: amostraClinica.scores.P, icon: Brain, color: 'text-purple-600', bg: 'bg-purple-50 dark:bg-purple-950/30' },
+                    { label: 'Inércia (I)', value: amostraClinica.scores.I, icon: Zap, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
+                    { label: 'Ruído (N)', value: amostraClinica.scores.N, icon: Bone, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
+                    { label: 'MyID-100', value: amostraClinica.scores.MyID, icon: Gauge, color: 'text-rose-600', bg: 'bg-rose-50 dark:bg-rose-950/30', isMyID: true },
                   ].map(s => {
                     const Icon = s.icon;
+                    const isMyID = (s as any).isMyID;
                     return (
                       <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
                         <div className="flex items-center gap-1.5 mb-1">
@@ -677,10 +688,27 @@ export default function Index() {
                           <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
                         </div>
                         <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
-                        <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                        <Progress value={isMyID ? s.value : s.value * 10} className="h-1.5 mt-1" />
                       </div>
                     );
                   })}
+                  {/* V2 Sub-dimensions */}
+                  {(amostraClinica.scores.AF > 0 || amostraClinica.scores.HID > 0 || amostraClinica.scores.NUT > 0 || amostraClinica.scores.ERG > 0) && (
+                    <div className="col-span-2 sm:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Atividade Física (AF)', value: amostraClinica.scores.AF, color: 'text-orange-600' },
+                        { label: 'Hidratação (HID)', value: amostraClinica.scores.HID, color: 'text-cyan-600' },
+                        { label: 'Nutrição (NUT)', value: amostraClinica.scores.NUT, color: 'text-lime-600' },
+                        { label: 'Ergonomia (ERG)', value: amostraClinica.scores.ERG, color: 'text-slate-600' },
+                      ].filter(s => s.value > 0).map(s => (
+                        <div key={s.label} className="rounded-xl border bg-card p-3">
+                          <div className="text-[10px] font-medium text-muted-foreground mb-1">{s.label}</div>
+                          <div className={`text-lg font-black ${s.color}`}>{s.value.toFixed(1)}</div>
+                          <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Card Red Flags Epidemiologia */}
                   <div className="rounded-xl p-3 bg-red-50 dark:bg-red-950/30 col-span-2 sm:col-span-4 border border-red-100/50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
