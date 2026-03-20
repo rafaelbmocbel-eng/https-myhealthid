@@ -230,12 +230,12 @@ export default function AgendaPublica() {
       // 3. Checagem de concorrência antes de inserir
       const vagasMax = config.vagas_por_horario || 1;
       const { data: agsAtuais } = await supabase
-        .from('agendamentos')
-        .select('data_inicio, data_fim, status')
-        .eq('terapeuta_id', linkInfo.terapeuta_id)
-        .neq('status', 'cancelado')
-        .lt('data_inicio', selectedSlot.dataFim.toISOString())
-        .gt('data_fim', selectedSlot.dataInicio.toISOString());
+        .rpc('get_agenda_disponibilidade', {
+          p_terapeuta_id: linkInfo.terapeuta_id,
+          p_data_inicio: selectedSlot.dataInicio.toISOString(),
+          p_data_fim: selectedSlot.dataFim.toISOString(),
+        });
+      const nonCancelled = (agsAtuais || []).filter((a: any) => a.status !== 'cancelado');
 
       const sobreposicoes = agsAtuais ? agsAtuais.length : 0;
       if (sobreposicoes >= vagasMax) {
