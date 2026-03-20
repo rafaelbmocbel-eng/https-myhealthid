@@ -662,16 +662,16 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
             <BarChart3 className="h-4 w-4 text-primary" />
             <h4 className="font-semibold text-sm">Comparação: Primeiro vs Último Questionário Identidade</h4>
           </div>
-          <div className="h-48">
+           <div className="h-48">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={comparisonData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="score" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} />
-                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                <XAxis dataKey="score" tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                <YAxis tick={{ fontSize: 11 }} className="fill-muted-foreground" />
+                <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Bar dataKey="Primeiro" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} opacity={0.5} />
-                <Bar dataKey="Último" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="Primeiro" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} opacity={0.35} />
+                <Bar dataKey="Último" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>

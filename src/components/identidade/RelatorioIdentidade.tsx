@@ -214,17 +214,17 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           </div>
 
           {resultado.redFlagsDetected && (
-            <div className="mt-6 p-4 rounded-xl border-2 border-red-300 bg-red-50">
-              <h4 className="font-bold text-red-800 flex items-center gap-2 mb-2">
+            <div className="mt-6 p-4 rounded-xl border-2 border-destructive/50 bg-destructive/10">
+              <h4 className="font-bold text-destructive flex items-center gap-2 mb-2">
                 <ShieldAlert className="h-5 w-5" />
                 Red Flags Detectadas
               </h4>
-              <ul className="list-disc pl-5 text-sm text-red-700 space-y-1">
+              <ul className="list-disc pl-5 text-sm text-destructive/80 space-y-1">
                 {resultado.redFlagAlerts.map((alerta, idx) => (
                   <li key={idx}>{alerta}</li>
                 ))}
               </ul>
-              <p className="text-xs text-red-600 mt-3 font-medium">Recomendação: Avaliação médica mandatória.</p>
+              <p className="text-xs text-destructive/70 mt-3 font-medium">Recomendação: Avaliação médica mandatória.</p>
             </div>
           )}
         </div>
