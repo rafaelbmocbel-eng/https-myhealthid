@@ -86,13 +86,13 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
 
             {/* Red Flags Warning */}
             {red_flags_detected && (
-                <Card className="border-2 border-red-500 bg-red-50">
+                <Card className="border-2 border-destructive bg-destructive/10">
                     <CardContent className="p-6">
                         <div className="flex items-center gap-3">
                             <span className="text-3xl">🚨</span>
                             <div>
-                                <h3 className="text-lg font-black text-red-700">SINAIS DE ALERTA DETECTADOS</h3>
-                                <p className="text-sm text-red-600 mt-1">
+                                <h3 className="text-lg font-black text-destructive">SINAIS DE ALERTA DETECTADOS</h3>
+                                <p className="text-sm text-destructive/80 mt-1">
                                     Procure um profissional de saúde para avaliação complementar imediata.
                                 </p>
                             </div>
