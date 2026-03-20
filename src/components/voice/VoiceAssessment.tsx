@@ -172,7 +172,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         setEditedTranscript(data.transcricao);
       }
       setStep('result');
-      onAssessmentComplete?.(data.assessment);
       toast({ title: '✅ Avaliação gerada!', description: 'Revise e salve no prontuário.' });
     } catch (err: any) {
       toast({ title: 'Erro ao processar', description: err.message, variant: 'destructive' });
@@ -185,16 +184,16 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     if (!assessment || !user) return;
     setIsSaving(true);
     try {
-      const { error: saveError } = await supabase.from('avaliacoes_voz' as any).insert({
+      const { error: saveError } = await supabase.from('avaliacoes_voz').insert({
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
         servico: serviceType,
         transcricao: editedTranscript || 'Avaliação por áudio',
-        resultado: assessment,
+        resultado: assessment as any,
         classificacao_severidade: assessment.classificacao_severidade,
         queixa_principal: assessment.queixa_principal,
-      } as any);
+      });
       if (saveError) throw saveError;
 
       if (pacienteId) {
@@ -211,6 +210,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
 
       setIsSaved(true);
+      onAssessmentComplete?.(assessment);
       toast({ title: '💾 Avaliação salva!', description: pacienteId ? 'Salva no banco e no prontuário do paciente.' : 'Salva no banco de dados.' });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
