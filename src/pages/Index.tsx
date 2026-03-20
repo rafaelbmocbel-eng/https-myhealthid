@@ -692,6 +692,23 @@ export default function Index() {
                       </div>
                     );
                   })}
+                  {/* V2 Sub-dimensions */}
+                  {(amostraClinica.scores.AF > 0 || amostraClinica.scores.HID > 0 || amostraClinica.scores.NUT > 0 || amostraClinica.scores.ERG > 0) && (
+                    <div className="col-span-2 sm:col-span-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {[
+                        { label: 'Atividade Física (AF)', value: amostraClinica.scores.AF, color: 'text-orange-600' },
+                        { label: 'Hidratação (HID)', value: amostraClinica.scores.HID, color: 'text-cyan-600' },
+                        { label: 'Nutrição (NUT)', value: amostraClinica.scores.NUT, color: 'text-lime-600' },
+                        { label: 'Ergonomia (ERG)', value: amostraClinica.scores.ERG, color: 'text-slate-600' },
+                      ].filter(s => s.value > 0).map(s => (
+                        <div key={s.label} className="rounded-xl border bg-card p-3">
+                          <div className="text-[10px] font-medium text-muted-foreground mb-1">{s.label}</div>
+                          <div className={`text-lg font-black ${s.color}`}>{s.value.toFixed(1)}</div>
+                          <Progress value={s.value * 10} className="h-1.5 mt-1" />
+                        </div>
+                      ))}
+                    </div>
+                  )}
                   {/* Card Red Flags Epidemiologia */}
                   <div className="rounded-xl p-3 bg-red-50 dark:bg-red-950/30 col-span-2 sm:col-span-4 border border-red-100/50 flex items-center justify-between">
                     <div className="flex items-center gap-3">
