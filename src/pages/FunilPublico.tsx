@@ -310,32 +310,32 @@ export default function FunilPublico() {
     } else if (value === 'pix') {
       addUserMessage('Pagar via PIX');
       await delay(500);
-      if (config?.pix_chave && config?.pix_nome) {
+      if (paymentInfo?.pix_chave && paymentInfo?.pix_nome) {
         addBotMessage('📱 Escaneie o QR Code abaixo para pagar:');
         try {
           const qrUrl = await gerarPixQrCodeDataUrl({
-            chave: config.pix_chave,
-            nome: config.pix_nome,
+            chave: paymentInfo.pix_chave,
+            nome: paymentInfo.pix_nome,
             valor: servicoEscolhido?.valor,
             descricao: servicoEscolhido?.nome?.substring(0, 25),
           });
           const payload = gerarPixPayload({
-            chave: config.pix_chave,
-            nome: config.pix_nome,
+            chave: paymentInfo.pix_chave,
+            nome: paymentInfo.pix_nome,
             valor: servicoEscolhido?.valor,
             descricao: servicoEscolhido?.nome?.substring(0, 25),
           });
           addQrCode(qrUrl, payload);
         } catch {
-          addBotMessage(`**Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
+          addBotMessage(`**Chave PIX (${paymentInfo.pix_tipo?.toUpperCase()}):**\n\`${paymentInfo.pix_chave}\`\n${paymentInfo.pix_nome ? `Nome: ${paymentInfo.pix_nome}` : ''}`);
         }
         await delay(500);
         if (servicoEscolhido?.valor) {
           addBotMessage(`💰 Valor: **R$ ${servicoEscolhido.valor.toFixed(2)}**`);
         }
         addBotMessage('Após o pagamento, envie o comprovante pelo WhatsApp para confirmarmos! 🙌');
-      } else if (config?.pix_chave) {
-        addBotMessage(`📱 **Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
+      } else if (paymentInfo?.pix_chave) {
+        addBotMessage(`📱 **Chave PIX (${paymentInfo.pix_tipo?.toUpperCase()}):**\n\`${paymentInfo.pix_chave}\`\n${paymentInfo.pix_nome ? `Nome: ${paymentInfo.pix_nome}` : ''}`);
       } else {
         addBotMessage('Entre em contato para detalhes de pagamento via PIX.');
       }
