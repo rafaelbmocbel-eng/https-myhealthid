@@ -15,7 +15,6 @@ type ServiceKey = 'identidade' | 'cob_zero' | 'studio';
 const NAV_ITEMS: { label: string; href: string; icon: any; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Protocolos & Relatórios', href: '/protocolos', icon: BarChart3 },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, serviceKey: 'identidade' },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
