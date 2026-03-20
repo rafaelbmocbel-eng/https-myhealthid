@@ -157,7 +157,7 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 200, 225);
-  doc.text('Core Axis Pro · Acompanhamento Longitudinal', M, 26);
+  doc.text('MY HEALTH ID · Acompanhamento Longitudinal', M, 26);
   doc.setFontSize(8);
   doc.text(`${data.dataEmissao}  ·  Terapeuta: ${data.terapeutaNome}`, M, 33);
 
