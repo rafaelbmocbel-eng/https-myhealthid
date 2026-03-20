@@ -40,7 +40,9 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
   const isActive = (href: string) =>
-    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+    href === '/' ? location.pathname === '/'
+    : href === '/protocolos' ? (location.pathname.startsWith('/protocolos') || location.pathname.startsWith('/relatorios'))
+    : location.pathname.startsWith(href);
 
   const handleSignOut = async () => {
     await signOut();
