@@ -572,11 +572,15 @@ export default function Relatorios() {
           <TabsList className="mb-6 h-10 bg-secondary p-1 rounded-xl">
             <TabsTrigger value="links" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <Link2 className="h-4 w-4" />
-              Links de Acesso
+              Links
             </TabsTrigger>
             <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <CheckCircle2 className="h-4 w-4" />
-              Respostas e Relatórios
+              Respostas
+            </TabsTrigger>
+            <TabsTrigger value="nps" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
+              <Star className="h-4 w-4" />
+              NPS
             </TabsTrigger>
           </TabsList>
 
@@ -592,6 +596,10 @@ export default function Relatorios() {
               Pacientes que preencheram o questionário remotamente. Expanda para ver respostas e scores calculados.
             </div>
             <RespostasERelatorios />
+          </TabsContent>
+
+          <TabsContent value="nps">
+            <NpsDashboard />
           </TabsContent>
         </Tabs>
       </div>
