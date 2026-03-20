@@ -309,6 +309,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
   const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
+  const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
