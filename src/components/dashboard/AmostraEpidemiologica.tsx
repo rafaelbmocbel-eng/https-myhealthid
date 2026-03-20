@@ -15,7 +15,10 @@ interface AvaliacaoRaw {
   score_d: number | null;
   score_r: number | null;
   score_efi: number | null;
+  score_i: number | null;
+  score_n: number | null;
   id_final: number | null;
+  myid_score: number | null;
   classificacao: string | null;
   dados_avaliacao: any;
   paciente_id?: string;
