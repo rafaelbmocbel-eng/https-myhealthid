@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Link2, Copy, Trash2, Plus, Search, Clock, CheckCircle2,
   Activity, CalendarDays, Loader2, ExternalLink, MessageCircle, Mail,
-  ChevronDown, ChevronUp,
+  ChevronDown, ChevronUp, Star,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -20,6 +20,11 @@ import { usePacientes } from '@/hooks/usePacientes';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 
 import { getAvaliacaoUrl as getLinkUrl, getAgendaUrl } from '@/utils/linkUrls';
+import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+
+function NpsDashboard() {
+  return <NpsSurveyCard showDashboard />;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -572,11 +577,15 @@ export default function Relatorios() {
           <TabsList className="mb-6 h-10 bg-secondary p-1 rounded-xl">
             <TabsTrigger value="links" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <Link2 className="h-4 w-4" />
-              Links de Acesso
+              Links
             </TabsTrigger>
             <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <CheckCircle2 className="h-4 w-4" />
-              Respostas e Relatórios
+              Respostas
+            </TabsTrigger>
+            <TabsTrigger value="nps" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
+              <Star className="h-4 w-4" />
+              NPS
             </TabsTrigger>
           </TabsList>
 
@@ -592,6 +601,10 @@ export default function Relatorios() {
               Pacientes que preencheram o questionário remotamente. Expanda para ver respostas e scores calculados.
             </div>
             <RespostasERelatorios />
+          </TabsContent>
+
+          <TabsContent value="nps">
+            <NpsDashboard />
           </TabsContent>
         </Tabs>
       </div>
