@@ -435,16 +435,19 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
               <GitBranch className="h-3.5 w-3.5" /> Variação Média por Paciente (Última − 1ª)
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-5">
-              {(['E', 'P', 'C', 'F', 'D', 'R', 'ID'] as const).map(key => {
+              {(['D', 'EFI', 'R', 'C', 'P', 'I', 'N', 'ID'] as const).map(key => {
                 const d = analysis.deltaMeans[key];
+                const isMyID = key === 'ID';
+                const isImproved = isMyID ? d > 0.3 : d < -0.3;
+                const isWorsened = isMyID ? d < -0.3 : d > 0.3;
                 return (
                   <div key={key} className="rounded-xl border bg-card p-3 text-center">
                     <div className="text-[10px] font-semibold text-muted-foreground mb-1">{key}</div>
-                    <div className={`text-lg font-black ${d < -0.3 ? 'text-emerald-600' : d > 0.3 ? 'text-red-600' : 'text-foreground'}`}>
+                    <div className={`text-lg font-black ${isImproved ? 'text-emerald-600' : isWorsened ? 'text-red-600' : 'text-foreground'}`}>
                       {d > 0 ? '+' : ''}{d.toFixed(1)}
                     </div>
                     <div className="text-[9px] text-muted-foreground">
-                      {d < -0.3 ? '↓ melhora' : d > 0.3 ? '↑ piora' : '≈ estável'}
+                      {isImproved ? (isMyID ? '↑ melhora' : '↓ melhora') : isWorsened ? (isMyID ? '↓ piora' : '↑ piora') : '≈ estável'}
                     </div>
                   </div>
                 );
