@@ -94,45 +94,49 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
   const fpData = getMyIDFingerprintData(resultado?.componentScores || {});
 
   return (
-    <div className="container py-8 max-w-5xl space-y-6">
+    <div className="container py-4 sm:py-8 max-w-5xl space-y-4 sm:space-y-6 px-3 sm:px-6">
       {/* ── Header / Breadcrumb ── */}
-      <div className="flex items-center justify-between">
+      <div className="space-y-3">
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 -ml-2">
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <span>Avaliação Completa</span>
-          <span>›</span>
+          <span className="hidden sm:inline">Avaliação Completa</span>
+          <span className="hidden sm:inline">›</span>
           <span className="font-semibold text-foreground">Resultado MyID</span>
         </div>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           {pacienteId && (
-            <Button variant="outline" size="sm" className="gap-1.5" onClick={handleSalvar} disabled={salvando || salvo}>
+            <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm" onClick={handleSalvar} disabled={salvando || salvo}>
               {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-              {salvo ? 'Salvo ✓' : 'Salvar no Prontuário'}
+              <span className="hidden sm:inline">{salvo ? 'Salvo ✓' : 'Salvar no Prontuário'}</span>
+              <span className="sm:hidden">{salvo ? 'Salvo ✓' : 'Salvar'}</span>
             </Button>
           )}
           {pacienteId && (
-            <Button className="bg-gradient-primary text-white gap-1.5" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
+            <Button className="bg-gradient-primary text-white gap-1.5 text-xs sm:text-sm" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
               <Sparkles className="h-3.5 w-3.5" />
-              Gerar Diretriz
+              <span className="hidden sm:inline">Gerar Diretriz</span>
+              <span className="sm:hidden">Diretriz</span>
             </Button>
           )}
-          <Button variant="outline" size="sm" className="gap-1.5" onClick={() => {
+          <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm" onClick={() => {
             toast({ title: 'PDF do Relatório', description: 'Função de PDF está em adaptação para o novo MyID.' });
           }}>
             <Download className="h-3.5 w-3.5" />
-            PDF (Breve)
+            <span className="hidden sm:inline">PDF (Breve)</span>
+            <span className="sm:hidden">PDF</span>
           </Button>
           {pacienteId && (
             <Button
               size="sm"
-              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+              className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground text-xs sm:text-sm"
               onClick={handleRespostaCompleta}
               disabled={gerandoPDF}
             >
               {gerandoPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-              Resposta Completa
+              <span className="hidden sm:inline">Resposta Completa</span>
+              <span className="sm:hidden">Completa</span>
             </Button>
           )}
         </div>
