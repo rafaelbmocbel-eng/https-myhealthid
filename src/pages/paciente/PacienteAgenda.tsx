@@ -259,22 +259,32 @@ export default function PacienteAgenda() {
                           {format(parseISO(ag.data_inicio), "EEE, d MMM · HH:mm", { locale: ptBR })}
                         </p>
                       </div>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          ag.status === 'confirmado'
-                            ? 'bg-green-100 text-green-700'
-                            : ag.status === 'concluido'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        {ag.status === 'confirmado' ? 'Confirmado' : ag.status === 'concluido' ? 'Concluído' : 'Pendente'}
-                      </span>
-                    </CardContent>
-                  </Card>
-                ))
-              )}
-            </div>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            ag.status === 'confirmado'
+                              ? 'bg-green-100 text-green-700'
+                              : ag.status === 'concluido'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {ag.status === 'confirmado' ? 'Confirmado' : ag.status === 'concluido' ? 'Concluído' : 'Pendente'}
+                        </span>
+                        <a
+                          href={buildGoogleCalendarUrl(
+                            ag.titulo || ag.tipo_atendimento || 'Consulta',
+                            ag.data_inicio,
+                            ag.data_fim
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/10 transition-colors"
+                          title="Adicionar ao Google Calendar"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                        </a>
+                      </div>
           )}
 
           {/* Scheduling view with real calendar */}
