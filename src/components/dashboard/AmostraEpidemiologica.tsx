@@ -326,13 +326,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     );
   }
 
-  const classOrder = ['LEVE', 'MODERADO', 'SEVERO', 'CRÍTICO', 'EXTREMO'];
+  const classOrder = ['Excelente', 'Bom', 'Moderado', 'Crítico'];
   const classColors: Record<string, string> = {
-    LEVE: 'bg-green-200 text-green-800',
-    MODERADO: 'bg-amber-200 text-amber-800',
-    SEVERO: 'bg-orange-200 text-orange-800',
-    'CRÍTICO': 'bg-red-200 text-red-800',
-    EXTREMO: 'bg-purple-200 text-purple-800',
+    Excelente: 'bg-emerald-200 text-emerald-800',
+    Bom: 'bg-yellow-200 text-yellow-800',
+    Moderado: 'bg-orange-200 text-orange-800',
+    'Crítico': 'bg-red-200 text-red-800',
     'N/A': 'bg-slate-200 text-slate-600',
   };
 
