@@ -559,9 +559,9 @@ function ControleAtendimentos() {
   const { user } = useAuth();
   const { allPacientes } = usePacientes();
   const [search, setSearch] = useState('');
+  const [expandido, setExpandido] = useState<string | null>(null);
 
-  // Busca agendamentos (fonte real de todos os atendimentos)
-  const { data: agendamentos = [], isLoading: loadingAg } = useQuery({
+  const { data: agendamentos = [], isLoading } = useQuery({
     queryKey: ['agendamentos-relatorio', user?.id],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -576,30 +576,19 @@ function ControleAtendimentos() {
     enabled: !!user,
   });
 
-  // Busca controle_sessoes para dados financeiros complementares
-  const { data: sessoes = [], isLoading: loadingSe } = useQuery({
-    queryKey: ['controle-sessoes-relatorio', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('controle_sessoes')
-        .select('*')
-        .eq('terapeuta_id', user!.id);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user,
-  });
-
-  const isLoading = loadingAg || loadingSe;
-
-  const sessaoByAgendamento = useMemo(() => {
-    const map = new Map<string, typeof sessoes[0]>();
-    sessoes.forEach(s => { if (s.agendamento_id) map.set(s.agendamento_id, s); });
+  // Agrupa por paciente
+  const porPaciente = useMemo(() => {
+    const map = new Map<string, typeof agendamentos>();
+    agendamentos.forEach(a => {
+      if (!a.paciente_id) return;
+      const arr = map.get(a.paciente_id) || [];
+      arr.push(a);
+      map.set(a.paciente_id, arr);
+    });
     return map;
-  }, [sessoes]);
+  }, [agendamentos]);
 
-  const getNome = (pid: string | null) => {
-    if (!pid) return 'Horário bloqueado';
+  const getNome = (pid: string) => {
     const p = allPacientes.find(x => x.id === pid);
     return p ? `${p.nome} ${p.sobrenome}` : 'Paciente';
   };
@@ -609,18 +598,25 @@ function ControleAtendimentos() {
     confirmado: { label: 'Confirmado', cls: 'bg-blue-100 text-blue-700 border-blue-200' },
     faltou: { label: 'Faltou', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
     cancelado: { label: 'Cancelado', cls: 'bg-red-100 text-red-700 border-red-200' },
-    pendente: { label: 'Pendente', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
   };
 
-  const pacientesFiltrados = allPacientes.filter(p =>
-    `${p.nome} ${p.sobrenome}`.toLowerCase().includes(search.toLowerCase())
-  );
-  const pacienteIds = new Set(pacientesFiltrados.map(p => p.id));
-  const agendFiltrados = search
-    ? agendamentos.filter(a => a.paciente_id && pacienteIds.has(a.paciente_id))
-    : agendamentos;
+  // Lista de pacientes com agendamentos
+  const pacientesComAgend = Array.from(porPaciente.entries()).map(([pid, ags]) => ({
+    id: pid,
+    nome: getNome(pid),
+    total: ags.length,
+    concluidos: ags.filter(a => a.status === 'concluido').length,
+    confirmados: ags.filter(a => a.status === 'confirmado').length,
+    faltas: ags.filter(a => a.status === 'faltou').length,
+    cancelados: ags.filter(a => a.status === 'cancelado').length,
+    sessoes: ags,
+  }));
 
-  // Resumo
+  const filtrados = search
+    ? pacientesComAgend.filter(p => p.nome.toLowerCase().includes(search.toLowerCase()))
+    : pacientesComAgend;
+
+  // Resumo geral
   const totalConcluidos = agendamentos.filter(a => a.status === 'concluido').length;
   const totalConfirmados = agendamentos.filter(a => a.status === 'confirmado').length;
   const totalFaltas = agendamentos.filter(a => a.status === 'faltou').length;
@@ -629,7 +625,7 @@ function ControleAtendimentos() {
 
   return (
     <div className="space-y-4">
-      {/* Resumo */}
+      {/* Resumo geral */}
       <div className="grid grid-cols-3 gap-3">
         <div className="border rounded-xl p-3 text-center bg-card">
           <div className="text-xl font-bold text-emerald-600">{totalConcluidos}</div>
@@ -650,43 +646,61 @@ function ControleAtendimentos() {
         <Input placeholder="Buscar paciente..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
       </div>
 
-      {agendFiltrados.length === 0 ? (
+      {filtrados.length === 0 ? (
         <div className="text-center py-10 text-muted-foreground text-sm border rounded-xl border-dashed">
           Nenhum atendimento encontrado.
         </div>
       ) : (
         <div className="space-y-2">
-          {agendFiltrados.map(a => {
-            const st = statusLabel[a.status] || statusLabel.pendente;
-            const sessao = sessaoByAgendamento.get(a.id);
-            const inicio = parseISO(a.data_inicio);
-            const fim = parseISO(a.data_fim);
-            const duracaoMin = Math.round((fim.getTime() - inicio.getTime()) / 60000);
-
+          {filtrados.map(p => {
+            const aberto = expandido === p.id;
             return (
-              <div key={a.id} className="border rounded-xl p-4 bg-card flex flex-col sm:flex-row sm:items-center gap-3">
-                <div className="flex items-center gap-3 flex-1 min-w-0">
-                  <div className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-xs">
-                    {getNome(a.paciente_id).charAt(0)}
+              <div key={p.id} className="border rounded-xl overflow-hidden bg-card">
+                {/* Linha do paciente — clicável */}
+                <button
+                  onClick={() => setExpandido(aberto ? null : p.id)}
+                  className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                >
+                  <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                    {p.nome.charAt(0)}
                   </div>
-                  <div className="min-w-0">
-                    <div className="font-semibold text-sm truncate">{getNome(a.paciente_id)}</div>
-                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
-                      <span>{format(inicio, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                      {a.tipo_atendimento && <span>• {a.tipo_atendimento}</span>}
-                      <span>• {duracaoMin} min</span>
+                  <div className="flex-1 min-w-0">
+                    <div className="font-semibold text-sm truncate">{p.nome}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap mt-0.5">
+                      <span>{p.total} agendamento{p.total !== 1 ? 's' : ''}</span>
+                      {p.concluidos > 0 && <span className="text-emerald-600">• {p.concluidos} concl.</span>}
+                      {p.confirmados > 0 && <span className="text-blue-600">• {p.confirmados} conf.</span>}
+                      {p.faltas > 0 && <span className="text-amber-600">• {p.faltas} falta{p.faltas !== 1 ? 's' : ''}</span>}
+                      {p.cancelados > 0 && <span className="text-red-600">• {p.cancelados} canc.</span>}
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <Badge className={`text-xs ${st.cls}`}>{st.label}</Badge>
-                  {sessao?.valor_cobrado != null && Number(sessao.valor_cobrado) > 0 && (
-                    <Badge variant="outline" className="text-xs">R$ {Number(sessao.valor_cobrado).toFixed(2)}</Badge>
-                  )}
-                  {sessao?.forma_pagamento && (
-                    <Badge variant="outline" className="text-xs capitalize">{sessao.forma_pagamento}</Badge>
-                  )}
-                </div>
+                  {aberto ? <ChevronUp className="h-4 w-4 text-muted-foreground shrink-0" /> : <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />}
+                </button>
+
+                {/* Sessões expandidas */}
+                {aberto && (
+                  <div className="border-t divide-y">
+                    {p.sessoes.map(a => {
+                      const st = statusLabel[a.status] || { label: a.status, cls: 'bg-slate-100 text-slate-600 border-slate-200' };
+                      const inicio = parseISO(a.data_inicio);
+                      const fim = parseISO(a.data_fim);
+                      const duracaoMin = Math.round((fim.getTime() - inicio.getTime()) / 60000);
+
+                      return (
+                        <div key={a.id} className="px-4 py-3 flex items-center gap-3 text-sm">
+                          <div className="flex-1 min-w-0">
+                            <div className="text-xs font-medium">{format(inicio, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</div>
+                            <div className="text-xs text-muted-foreground">
+                              {a.tipo_atendimento && <span>{a.tipo_atendimento} • </span>}
+                              {duracaoMin} min
+                            </div>
+                          </div>
+                          <Badge className={`text-xs ${st.cls}`}>{st.label}</Badge>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
             );
           })}
