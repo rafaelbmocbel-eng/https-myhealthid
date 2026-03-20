@@ -793,6 +793,13 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
+              TAB: DIRETRIZES / PROTOCOLOS DE TRATAMENTO
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="protocolos" className="mt-4 space-y-6">
+            <PacienteProtocolosTab pacienteId={id!} />
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
               TAB: ENGAJAMENTO DO PACIENTE (Portal)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="engajamento" className="mt-4 space-y-6">
