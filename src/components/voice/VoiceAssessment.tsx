@@ -172,7 +172,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         setEditedTranscript(data.transcricao);
       }
       setStep('result');
-      onAssessmentComplete?.(data.assessment);
       toast({ title: '✅ Avaliação gerada!', description: 'Revise e salve no prontuário.' });
     } catch (err: any) {
       toast({ title: 'Erro ao processar', description: err.message, variant: 'destructive' });
