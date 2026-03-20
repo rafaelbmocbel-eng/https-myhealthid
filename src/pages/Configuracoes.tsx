@@ -212,6 +212,11 @@ export default function Configuracoes() {
           </div>
         </div>
 
+        {/* Preferências de Notificação */}
+        <div className="mb-6">
+          <NotificationPreferences />
+        </div>
+
         {/* Link de Agendamento Online (Geral) */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
