@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { PacienteSchema } from '@/lib/validations';
 import { Navigate, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
