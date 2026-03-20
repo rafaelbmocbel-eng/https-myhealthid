@@ -317,9 +317,15 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </Badge>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={() => { setStep('review'); }}>
+              <Edit3 className="h-4 w-4 mr-1" />Editar Texto
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => { setStep('record'); }}>
+              <Mic className="h-4 w-4 mr-1" />Adicionar Áudio
+            </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
             {!isSaved ? (
-              <Button size="sm" onClick={saveAssessment} disabled={isSaving} className="bg-primary text-primary-foreground">
+              <Button size="sm" onClick={() => saveAssessment()} disabled={isSaving} className="bg-primary text-primary-foreground">
                 {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
                 {isSaving ? 'Salvando...' : 'Salvar no Prontuário'}
               </Button>
