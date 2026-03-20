@@ -554,6 +554,96 @@ function RespostasERelatorios() {
   );
 }
 
+// ── Aba 4: Controle de Atendimentos ──────────────────────────────────────────
+function ControleAtendimentos() {
+  const { user } = useAuth();
+  const { allPacientes } = usePacientes();
+  const [search, setSearch] = useState('');
+
+  const { data: sessoes = [], isLoading } = useQuery({
+    queryKey: ['controle-sessoes-relatorio', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('controle_sessoes')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .order('data_sessao', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
+  const getNome = (pid: string) => {
+    const p = allPacientes.find(x => x.id === pid);
+    return p ? `${p.nome} ${p.sobrenome}` : 'Paciente';
+  };
+
+  const statusLabel: Record<string, { label: string; cls: string }> = {
+    realizada: { label: 'Realizada', cls: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+    cancelada: { label: 'Cancelada', cls: 'bg-red-100 text-red-700 border-red-200' },
+    faltou: { label: 'Faltou', cls: 'bg-amber-100 text-amber-700 border-amber-200' },
+    pendente: { label: 'Pendente', cls: 'bg-slate-100 text-slate-600 border-slate-200' },
+  };
+
+  const pacientesFiltrados = allPacientes.filter(p =>
+    `${p.nome} ${p.sobrenome}`.toLowerCase().includes(search.toLowerCase())
+  );
+  const pacienteIds = new Set(pacientesFiltrados.map(p => p.id));
+  const sessoesFiltradas = search
+    ? sessoes.filter(s => pacienteIds.has(s.paciente_id))
+    : sessoes;
+
+  if (isLoading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <Input placeholder="Buscar paciente..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+      </div>
+
+      {sessoesFiltradas.length === 0 ? (
+        <div className="text-center py-10 text-muted-foreground text-sm border rounded-xl border-dashed">
+          Nenhum atendimento registrado.
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {sessoesFiltradas.map(s => {
+            const st = statusLabel[s.status] || statusLabel.pendente;
+            return (
+              <div key={s.id} className="border rounded-xl p-4 bg-card flex flex-col sm:flex-row sm:items-center gap-3">
+                <div className="flex items-center gap-3 flex-1 min-w-0">
+                  <div className="h-8 w-8 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-xs">
+                    {getNome(s.paciente_id).charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <div className="font-semibold text-sm truncate">{getNome(s.paciente_id)}</div>
+                    <div className="text-xs text-muted-foreground flex items-center gap-2 flex-wrap">
+                      <span>{format(parseISO(s.data_sessao), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                      {s.tipo_atendimento && <span>• {s.tipo_atendimento}</span>}
+                      {s.duracao_minutos && <span>• {s.duracao_minutos} min</span>}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge className={`text-xs ${st.cls}`}>{st.label}</Badge>
+                  {s.valor_cobrado != null && s.valor_cobrado > 0 && (
+                    <Badge variant="outline" className="text-xs">R$ {Number(s.valor_cobrado).toFixed(2)}</Badge>
+                  )}
+                  {s.forma_pagamento && (
+                    <Badge variant="outline" className="text-xs capitalize">{s.forma_pagamento}</Badge>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Página Principal ──────────────────────────────────────────────────────────
 export default function Relatorios() {
   const { user, loading } = useAuth();
@@ -586,6 +676,10 @@ export default function Relatorios() {
               <CheckCircle2 className="h-4 w-4" />
               Respostas
             </TabsTrigger>
+            <TabsTrigger value="atendimentos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
+              <ClipboardCheck className="h-4 w-4" />
+              Atendimentos
+            </TabsTrigger>
             <TabsTrigger value="nps" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <Star className="h-4 w-4" />
               NPS
@@ -604,6 +698,13 @@ export default function Relatorios() {
               Pacientes que preencheram o questionário remotamente. Expanda para ver respostas e scores calculados.
             </div>
             <RespostasERelatorios />
+          </TabsContent>
+
+          <TabsContent value="atendimentos">
+            <div className="mb-4 p-4 rounded-xl bg-muted/40 border text-sm text-muted-foreground">
+              Histórico completo de atendimentos registrados — status, duração, valores e forma de pagamento.
+            </div>
+            <ControleAtendimentos />
           </TabsContent>
 
           <TabsContent value="nps">
