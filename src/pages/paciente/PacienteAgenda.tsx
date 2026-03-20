@@ -40,6 +40,20 @@ function getAllowedWeekdays(dias: Record<string, boolean>): number[] {
   return Object.entries(dias).filter(([, v]) => v).map(([k]) => DAY_MAP[k] ?? -1).filter((n) => n >= 0);
 }
 
+function buildGoogleCalendarUrl(titulo: string, dataInicio: string | Date, dataFim: string | Date): string {
+  const toGoogleDate = (d: string | Date) => {
+    const date = typeof d === 'string' ? parseISO(d) : d;
+    return format(date, "yyyyMMdd'T'HHmmss");
+  };
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: titulo,
+    dates: `${toGoogleDate(dataInicio)}/${toGoogleDate(dataFim)}`,
+    details: 'Sessão agendada via MyHealth ID',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
+}
+
 export default function PacienteAgenda() {
   const { user } = useAuth();
   const { toast } = useToast();
