@@ -237,9 +237,9 @@ export default function Agenda() {
     }
   }, [viewMode]);
 
-  // Force 6h-20h range as specified
-  const startHour = 6;
-  const endHour = 20;
+  // Extended range 5h-22h for early/late appointments
+  const startHour = 5;
+  const endHour = 22;
   const slots = generateSlots(startHour, endHour);
 
   // Days in view
