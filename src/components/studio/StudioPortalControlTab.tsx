@@ -97,6 +97,7 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
   const [showDicas, setShowDicas] = useState(false);
   const [showFases, setShowFases] = useState(false);
   const [showTreinos, setShowTreinos] = useState(true);
+  const [showAlertas, setShowAlertas] = useState(true);
 
   // ── Patient engagement stats ────────────────────────────────────────
   const { data: engagementStats } = useQuery({
