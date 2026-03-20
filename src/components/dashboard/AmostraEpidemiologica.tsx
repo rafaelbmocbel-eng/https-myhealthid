@@ -395,26 +395,30 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
               </tr>
             </thead>
             <tbody>
-              {(['E', 'P', 'C', 'F', 'D', 'R', 'EFI', 'ID'] as const).map(key => {
+              {(['D', 'EFI', 'R', 'C', 'P', 'I', 'N', 'ID'] as const).map(key => {
                 const first = analysis.scoresPrimeira[key];
                 const reav = analysis.reavaliacoes.length > 0 ? analysis.scoresReav[key] : null;
-                const deltaKey = key === 'EFI' ? null : analysis.deltaMeans[key as keyof typeof analysis.deltaMeans];
                 const delta = reav != null ? reav - first : null;
                 const labels: Record<string, string> = {
-                  E: 'Estrutural', P: 'Cinesiofobia', C: 'Carga', F: 'Contextual',
-                  D: 'Dor', R: 'Regulação', EFI: 'EFI', ID: 'ID Final',
+                  D: 'Dor', EFI: 'Função', R: 'Regulação', C: 'Contexto',
+                  P: 'Comportamento', I: 'Inércia', N: 'Ruído', ID: 'MyID-100',
                 };
+                // For MyID-100 (ID): higher = better, so positive delta = improvement
+                // For dimension scores (loss-based): lower = better, so negative delta = improvement
+                const isMyID = key === 'ID';
+                const isImproved = isMyID ? (delta != null && delta > 0.3) : (delta != null && delta < -0.3);
+                const isWorsened = isMyID ? (delta != null && delta < -0.3) : (delta != null && delta > 0.3);
                 return (
                   <tr key={key} className="border-b border-border/30 hover:bg-accent/10">
                     <td className="py-2 px-1 font-medium text-foreground">{labels[key]} ({key})</td>
                     <td className="text-center py-2 px-1 font-bold">{first.toFixed(1)}</td>
                     <td className="text-center py-2 px-1 font-bold">{reav != null ? reav.toFixed(1) : '—'}</td>
-                    <td className={`text-center py-2 px-1 font-bold ${delta != null && delta < 0 ? 'text-emerald-600' : delta != null && delta > 0 ? 'text-red-600' : ''}`}>
+                    <td className={`text-center py-2 px-1 font-bold ${isImproved ? 'text-emerald-600' : isWorsened ? 'text-red-600' : ''}`}>
                       {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}` : '—'}
                     </td>
                     <td className="text-center py-2 px-1">
-                      {delta != null && delta < -0.3 ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto rotate-180" /> :
-                       delta != null && delta > 0.3 ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto" /> :
+                      {isImproved ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto" /> :
+                       isWorsened ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto rotate-180" /> :
                        <span className="text-muted-foreground text-[10px]">≈</span>}
                     </td>
                   </tr>
