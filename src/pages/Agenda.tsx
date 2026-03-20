@@ -193,6 +193,51 @@ export default function Agenda() {
     label: string;
   } | null>(null);
 
+  // ── Auto-conclude past confirmed/pendente appointments ──
+  useEffect(() => {
+    if (!user || loading || agendamentos.length === 0) return;
+    const now = new Date();
+    const pastConfirmed = agendamentos.filter(ag =>
+      (ag.status === 'confirmado' || ag.status === 'pendente') &&
+      ag.paciente_id &&
+      parseISO(ag.data_fim) < now
+    );
+    if (pastConfirmed.length === 0) return;
+
+    let didUpdate = false;
+    (async () => {
+      for (const ag of pastConfirmed) {
+        try {
+          // Create controle_sessoes record if missing
+          const { data: existing } = await supabase
+            .from('controle_sessoes')
+            .select('id')
+            .eq('agendamento_id', ag.id)
+            .maybeSingle();
+
+          if (!existing) {
+            await supabase.from('controle_sessoes').insert({
+              paciente_id: ag.paciente_id!,
+              agendamento_id: ag.id,
+              terapeuta_id: user.id,
+              data_sessao: ag.data_inicio,
+              status: 'realizada',
+              valor_cobrado: 0,
+            });
+          }
+
+          // Update agendamento status
+          await supabase.from('agendamentos').update({ status: 'concluido' }).eq('id', ag.id);
+          didUpdate = true;
+        } catch (err) {
+          console.error('[AutoConclude] error for', ag.id, err);
+        }
+      }
+      if (didUpdate) refresh();
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, agendamentos.length]);
+
   // Current time indicator update
   useEffect(() => {
     const tick = () => {
