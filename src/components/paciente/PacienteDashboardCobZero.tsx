@@ -291,17 +291,19 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
       {/* Nível 1: Barra Principal de Ferramentas (Studio Mode) */}
       <Tabs defaultValue="avaliacao" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/60 mb-6">
+        <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60 mb-6">
           <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+          </TabsTrigger>
+          <TabsTrigger value="portal" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <Eye className="h-3.5 w-3.5" /> Portal
           </TabsTrigger>
           <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <Dumbbell className="h-3.5 w-3.5" /> Treinos
           </TabsTrigger>
           <TabsTrigger value="prontuario" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            <StickyNote className="h-3.5 w-3.5" /> Evoluções e Prontuário
+            <StickyNote className="h-3.5 w-3.5" /> Prontuário
           </TabsTrigger>
-
         </TabsList>
 
         {/* --- Aba 1: AVALIAÇÃO (Contém a interface antiga Inteira) --- */}
