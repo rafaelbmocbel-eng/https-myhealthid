@@ -52,11 +52,11 @@ function interpretR(r: number): { label: string; color: string } {
   return { label: 'Negligível', color: 'text-muted-foreground/60' };
 }
 
-const SCORE_KEYS = ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'score_efi', 'id_final'] as const;
+const SCORE_KEYS = ['score_d', 'score_efi', 'score_r', 'score_c', 'score_p', 'score_i', 'score_n', 'id_final'] as const;
 const SCORE_LABELS: Record<string, string> = {
-  score_e: 'E (Estrutural)', score_p: 'P (Cinesiofobia)', score_c: 'C (Carga Contextual)',
-  score_f: 'F (Contextual)', score_d: 'D (Dor)', score_r: 'R (Regulação)',
-  score_efi: 'EFI (Funcionalidade)', id_final: 'ID Final',
+  score_d: 'D (Dor)', score_efi: 'EFI (Função)', score_r: 'R (Regulação)',
+  score_c: 'C (Contexto)', score_p: 'P (Comportamento)', score_i: 'I (Inércia)',
+  score_n: 'N (Ruído)', id_final: 'MyID-100',
 };
 
 // TSK-11 items
