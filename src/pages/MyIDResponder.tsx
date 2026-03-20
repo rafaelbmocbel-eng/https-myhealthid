@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
+
 import { MyIDWizard } from '@/components/myid/MyIDWizard';
 import { MyIDResult } from '@/components/myid/MyIDResult';
 import { useToast } from '@/components/ui/use-toast';
@@ -20,28 +20,36 @@ export default function MyIDResponder() {
                 return;
             }
 
-            const { data, error } = await supabase
-                .from('myid_avaliacoes')
-                .select('*')
-                .eq('token_acesso', token)
-                .maybeSingle();
+            try {
+                const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                const res = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validar-myid-token`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': anonKey,
+                            'Authorization': `Bearer ${anonKey}`,
+                        },
+                        body: JSON.stringify({ token }),
+                    }
+                );
 
-            if (error || !data) {
-                toast({ title: "Erro", description: "Avaliação não encontrada ou já concluída/inválida.", variant: "destructive" });
-                setLoading(false);
-                return;
-            }
+                if (!res.ok) {
+                    toast({ title: "Erro", description: "Avaliação não encontrada ou já concluída/inválida.", variant: "destructive" });
+                    setLoading(false);
+                    return;
+                }
 
-            if (data.status === 'concluido') {
-                toast({ title: "Aviso", description: "Esta avaliação já foi concluída e não pode ser alterada.", variant: "default" });
-                setLoading(false);
+                const data = await res.json();
+
+                if (data.status === 'concluido') {
+                    toast({ title: "Aviso", description: "Esta avaliação já foi concluída e não pode ser alterada.", variant: "default" });
+                }
+
                 setEvalData(data);
-                return;
-            }
-
-            setEvalData(data);
-            if (data.status === 'pendente') {
-                await supabase.from('myid_avaliacoes').update({ status: 'em_andamento' }).eq('id', data.id);
+            } catch (err) {
+                toast({ title: "Erro", description: "Erro ao carregar avaliação.", variant: "destructive" });
             }
             setLoading(false);
         }
@@ -80,16 +88,7 @@ export default function MyIDResponder() {
             setEvalData({ ...evalData, status: 'concluido', resultado_processado: result, respostas_brutas: rawData });
 
         } catch (error: any) {
-            // Fallback: direct update
-            await supabase.from('myid_avaliacoes').update({
-                status: 'concluido',
-                respostas_brutas: rawData,
-                resultado_processado: result,
-                updated_at: new Date().toISOString(),
-            }).eq('id', evalData.id);
-
-            toast({ title: "Sucesso!", description: "Sua avaliação MyID foi enviada com sucesso." });
-            setEvalData({ ...evalData, status: 'concluido', resultado_processado: result, respostas_brutas: rawData });
+            toast({ title: "Erro", description: "Não foi possível processar a avaliação. Tente novamente.", variant: "destructive" });
         } finally {
             setSubmitting(false);
         }
