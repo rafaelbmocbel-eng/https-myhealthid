@@ -370,13 +370,13 @@ export default function FunilPublico() {
       } catch (err) {
         console.error('SumUp checkout error:', err);
         setMessages(prev => prev.filter(m => m.texto !== '⏳ Gerando seu link de pagamento...'));
-        if (config?.link_cartao) {
+        if (paymentInfo?.link_cartao) {
           addBotMessage('🔗 Clique no link abaixo para realizar o pagamento:');
           setTimeout(() => {
             setMessages(prev => [...prev, {
               id: crypto.randomUUID(),
               tipo: 'bot',
-              texto: `💳 [Pagar com Cartão](${config.link_cartao})`,
+              texto: `💳 [Pagar com Cartão](${paymentInfo.link_cartao})`,
             }]);
           }, 400);
         } else {
