@@ -49,6 +49,11 @@ const STEPS = [
     action: '/metodo-identidade',
     actionLabel: 'Explorar Serviços',
     checkKey: 'onb_studio',
+    subActions: [
+      { label: 'Método Identidade', href: '/metodo-identidade' },
+      { label: 'COB° ZERO', href: '/cob-zero' },
+      { label: 'Studio Personal ID', href: '/studio-personal-id' },
+    ],
   },
 ];
 
@@ -162,9 +167,19 @@ export default function OnboardingGuide() {
                     {isCurrent && !done && (
                       <>
                         <p className="text-[11px] text-muted-foreground mt-0.5">{step.description}</p>
-                        <Button size="sm" className="mt-2 gap-1.5 h-7 text-xs" onClick={() => handleAction(step)}>
-                          {step.actionLabel} <ArrowRight className="h-3 w-3" />
-                        </Button>
+                        {step.subActions ? (
+                          <div className="flex flex-wrap gap-1.5 mt-2">
+                            {step.subActions.map(sa => (
+                              <Button key={sa.href} size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => { handleAction(step); navigate(sa.href); }}>
+                                {sa.label} <ArrowRight className="h-3 w-3" />
+                              </Button>
+                            ))}
+                          </div>
+                        ) : (
+                          <Button size="sm" className="mt-2 gap-1.5 h-7 text-xs" onClick={() => handleAction(step)}>
+                            {step.actionLabel} <ArrowRight className="h-3 w-3" />
+                          </Button>
+                        )}
                       </>
                     )}
                   </div>
