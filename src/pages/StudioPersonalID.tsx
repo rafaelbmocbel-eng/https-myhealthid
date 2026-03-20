@@ -39,6 +39,7 @@ export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
   const { allPacientes: pacientes, isLoading: loadingPacientes } = usePacientes();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
