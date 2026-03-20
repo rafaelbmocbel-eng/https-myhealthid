@@ -20,6 +20,11 @@ import { usePacientes } from '@/hooks/usePacientes';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 
 import { getAvaliacaoUrl as getLinkUrl, getAgendaUrl } from '@/utils/linkUrls';
+import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+
+function NpsDashboard() {
+  return <NpsSurveyCard showDashboard />;
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
