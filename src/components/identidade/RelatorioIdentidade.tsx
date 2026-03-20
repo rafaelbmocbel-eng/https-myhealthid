@@ -142,7 +142,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         {/* LEFT: Gauge + Fingerprint */}
         <div className="lg:col-span-5 space-y-4">
           <div className="clinical-card border-none bg-gradient-to-br from-card to-primary/5 shadow-sm">

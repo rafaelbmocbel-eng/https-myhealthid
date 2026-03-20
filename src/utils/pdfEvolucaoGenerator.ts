@@ -410,7 +410,7 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    doc.text('Core Axis Pro · Relatório de Evolução · Documento confidencial', M, 293);
+    doc.text('My Health ID · Relatório de Evolução · Documento confidencial', M, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - M, 293, { align: 'right' });
   }
 
