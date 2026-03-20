@@ -101,12 +101,11 @@ export default function AgendaPublica() {
             .eq('terapeuta_id', linkData.terapeuta_id)
             .maybeSingle(),
           supabase
-            .from('agendamentos')
-            .select('data_inicio, data_fim, status')
-            .eq('terapeuta_id', linkData.terapeuta_id)
-            .gte('data_inicio', new Date().toISOString())
-            .lte('data_inicio', addDays(new Date(), 42).toISOString())
-            .order('data_inicio'),
+            .rpc('get_agenda_disponibilidade', {
+              p_terapeuta_id: linkData.terapeuta_id,
+              p_data_inicio: new Date().toISOString(),
+              p_data_fim: addDays(new Date(), 42).toISOString(),
+            }),
         ]);
 
         if (profileData) setTerapeuta(profileData as TerapeutaInfo);
@@ -231,25 +230,24 @@ export default function AgendaPublica() {
       // 3. Checagem de concorrência antes de inserir
       const vagasMax = config.vagas_por_horario || 1;
       const { data: agsAtuais } = await supabase
-        .from('agendamentos')
-        .select('data_inicio, data_fim, status')
-        .eq('terapeuta_id', linkInfo.terapeuta_id)
-        .neq('status', 'cancelado')
-        .lt('data_inicio', selectedSlot.dataFim.toISOString())
-        .gt('data_fim', selectedSlot.dataInicio.toISOString());
+        .rpc('get_agenda_disponibilidade', {
+          p_terapeuta_id: linkInfo.terapeuta_id,
+          p_data_inicio: selectedSlot.dataInicio.toISOString(),
+          p_data_fim: selectedSlot.dataFim.toISOString(),
+        });
+      const nonCancelled = (agsAtuais || []).filter((a: any) => a.status !== 'cancelado');
 
-      const sobreposicoes = agsAtuais ? agsAtuais.length : 0;
+      const sobreposicoes = nonCancelled ? nonCancelled.length : 0;
       if (sobreposicoes >= vagasMax) {
         setErroBooking('Oops! Outro paciente acabou de reservar esse horário. Por favor, escolha outro.');
         setConfirmando(false);
         // Atualizar lista de agendamentos localmente para sumir a vaga
         const { data: agsRefresh } = await supabase
-          .from('agendamentos')
-          .select('data_inicio, data_fim, status')
-          .eq('terapeuta_id', linkInfo.terapeuta_id)
-          .gte('data_inicio', new Date().toISOString())
-          .lte('data_inicio', addDays(new Date(), 42).toISOString())
-          .order('data_inicio');
+          .rpc('get_agenda_disponibilidade', {
+            p_terapeuta_id: linkInfo.terapeuta_id,
+            p_data_inicio: new Date().toISOString(),
+            p_data_fim: addDays(new Date(), 42).toISOString(),
+          });
         if (agsRefresh) setAgendamentos(agsRefresh as Slot[]);
         return;
       }

@@ -2397,6 +2397,18 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_agenda_disponibilidade: {
+        Args: {
+          p_data_fim: string
+          p_data_inicio: string
+          p_terapeuta_id: string
+        }
+        Returns: {
+          data_fim: string
+          data_inicio: string
+          status: string
+        }[]
+      }
       get_patient_by_portal_token: {
         Args: { p_token: string }
         Returns: {
