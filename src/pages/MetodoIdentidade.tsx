@@ -152,9 +152,10 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
-  // Abre o dashboard do paciente — redireciona para o perfil unificado
+  // Abre o dashboard interno do Método Identidade
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
+    setSelectedPacienteId(pac.id);
+    setShowDashboard(true);
   };
 
   // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário
