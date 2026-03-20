@@ -35,6 +35,9 @@ import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
+import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
+import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
