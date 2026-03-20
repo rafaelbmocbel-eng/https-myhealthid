@@ -11,9 +11,9 @@ import {
   CheckCircle2, Moon, Droplets, Apple, Dumbbell,
   Monitor, Brain, Shield, Zap, Heart, AlertTriangle,
   ChevronDown, ChevronUp, Sparkles, ArrowRight, Clock,
-  CalendarDays, BarChart3, Play
+  CalendarDays, BarChart3, Play, Bell, AlertCircle
 } from 'lucide-react';
-import { subDays, format, parseISO, isToday } from 'date-fns';
+import { subDays, format, parseISO, isToday, differenceInHours } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID } from '@/utils/myid/clinicalInsights';
