@@ -294,6 +294,10 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </SectionCard>
 
+        <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection}>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <div><span className="text-muted-foreground">Local:</span> <strong>{assessment.dor?.localizacao}</strong></div>
+            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg">{assessment.dor?.intensidade_eva}/10</strong></div>
             <div><span className="text-muted-foreground">Tipo:</span> <strong>{assessment.dor?.tipo}</strong></div>
             <div><span className="text-muted-foreground">Padrão:</span> <strong>{assessment.dor?.padrao_temporal || 'N/I'}</strong></div>
           </div>
