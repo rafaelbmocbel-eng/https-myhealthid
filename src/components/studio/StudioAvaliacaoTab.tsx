@@ -47,6 +47,22 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const { salvarMedida } = useStudioMedidas(pacienteId);
   const salvandoMedida = salvarMedida.isPending;
 
+  // Buscar avaliações por voz do paciente
+  const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
+    queryKey: ['avaliacoes-voz-studio', user?.id, pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const { data: linksAgenda = [] } = useQuery({
     queryKey: ['links_agenda_paciente', user?.id],
     queryFn: async () => {
