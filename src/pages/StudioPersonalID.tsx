@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { Navigate, useSearchParams, Link } from 'react-router-dom';
+import { Navigate, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
