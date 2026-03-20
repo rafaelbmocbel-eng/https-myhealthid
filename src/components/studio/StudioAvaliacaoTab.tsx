@@ -501,10 +501,15 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
               <div className="space-y-2">
                 {voiceAvaliacoes.map((av: any) => {
                   const resultado = av.resultado as any;
+                  const isExpanded = expandedVoiceId === av.id;
                   return (
-                    <div key={av.id} className="group border rounded-2xl p-4 bg-white/60 dark:bg-black/20 hover:bg-studio/5 hover:border-studio/30 transition-all duration-500 shadow-sm hover:shadow-md relative overflow-hidden">
+                    <div key={av.id} className="group border rounded-2xl bg-white/60 dark:bg-black/20 hover:bg-studio/5 hover:border-studio/30 transition-all duration-500 shadow-sm hover:shadow-md relative overflow-hidden">
                       <div className="absolute top-0 left-0 w-1 h-full bg-violet-500 opacity-0 group-hover:opacity-100 transition-all duration-500" />
-                      <div className="flex items-center gap-4">
+                      <button
+                        type="button"
+                        className="w-full flex items-center gap-4 p-4 text-left"
+                        onClick={() => setExpandedVoiceId(isExpanded ? null : av.id)}
+                      >
                         <div className="h-12 w-12 rounded-2xl bg-violet-500/10 flex items-center justify-center shrink-0 group-hover:bg-violet-500 transition-all duration-700 shadow-inner">
                           <Mic className="h-6 w-6 text-violet-600 group-hover:text-white transition-colors duration-500" />
                         </div>
@@ -529,7 +534,62 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
                             </div>
                           )}
                         </div>
-                      </div>
+                        <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                      </button>
+
+                      {isExpanded && (
+                        <div className="border-t px-4 py-3 space-y-3 text-xs bg-muted/10">
+                          {resultado?.resumo_clinico && (
+                            <div>
+                              <p className="font-semibold text-foreground mb-1">Resumo Clínico</p>
+                              <p className="text-muted-foreground whitespace-pre-wrap">{resultado.resumo_clinico}</p>
+                            </div>
+                          )}
+                          {resultado?.dor && (
+                            <div>
+                              <p className="font-semibold text-foreground mb-1">Dor</p>
+                              <div className="grid grid-cols-2 gap-1 text-muted-foreground">
+                                {resultado.dor.localizacao && <span>Local: {resultado.dor.localizacao}</span>}
+                                {resultado.dor.intensidade_eva && <span>EVA: {resultado.dor.intensidade_eva}/10</span>}
+                                {resultado.dor.tipo && <span>Tipo: {resultado.dor.tipo}</span>}
+                                {resultado.dor.padrao && <span>Padrão: {resultado.dor.padrao}</span>}
+                              </div>
+                            </div>
+                          )}
+                          {resultado?.funcionalidade && (
+                            <div>
+                              <p className="font-semibold text-foreground mb-1">Funcionalidade</p>
+                              <p className="text-muted-foreground">
+                                {typeof resultado.funcionalidade === 'string' ? resultado.funcionalidade : JSON.stringify(resultado.funcionalidade)}
+                              </p>
+                            </div>
+                          )}
+                          {resultado?.red_flags && resultado.red_flags.length > 0 && (
+                            <div>
+                              <p className="font-semibold text-destructive mb-1">🚩 Red Flags</p>
+                              <ul className="list-disc pl-4 text-destructive/80">
+                                {resultado.red_flags.map((rf: string, i: number) => <li key={i}>{rf}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {resultado?.hipoteses_diagnosticas && resultado.hipoteses_diagnosticas.length > 0 && (
+                            <div>
+                              <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
+                              <ul className="list-disc pl-4 text-muted-foreground">
+                                {resultado.hipoteses_diagnosticas.map((h: string, i: number) => <li key={i}>{h}</li>)}
+                              </ul>
+                            </div>
+                          )}
+                          {av.transcricao && (
+                            <div>
+                              <p className="font-semibold text-foreground mb-1">Transcrição</p>
+                              <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
+                                {av.transcricao}
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   );
                 })}
