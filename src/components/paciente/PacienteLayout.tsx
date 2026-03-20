@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início', shortLabel: 'Início', icon: LayoutDashboard, badgeKey: null },
+  { path: '/paciente/saude', label: 'Saúde', shortLabel: 'Saúde', icon: Watch, badgeKey: null },
   { path: '/paciente/diario', label: 'Diário', shortLabel: 'Diário', icon: Heart, badgeKey: 'diario' as const },
   { path: '/paciente/evolucao', label: 'Evolução e Prontuários', shortLabel: 'Evolução', icon: Flame, badgeKey: null },
   { path: '/paciente/exercicios', label: 'Treinos', shortLabel: 'Treinos', icon: Dumbbell, badgeKey: null },
@@ -17,8 +18,8 @@ const navItems = [
   { path: '/paciente/perfil', label: 'Perfil', shortLabel: 'Perfil', icon: User, badgeKey: null },
 ];
 
-// Show max 5 items in bottom nav
-const MOBILE_NAV_ITEMS = [0, 1, 3, 5, 7]; // Início, Diário, Treinos, Questionários, Perfil
+// Show max 5 items in bottom nav: Início, Saúde, Diário, Treinos, Perfil
+const MOBILE_NAV_ITEMS = [0, 1, 2, 4, 8];
 
 interface Props {
   children: ReactNode;
