@@ -2728,6 +2728,32 @@ export type Database = {
           status: string
         }[]
       }
+      get_funil_pagamento: {
+        Args: { p_funil_config_id: string; p_lead_id: string }
+        Returns: {
+          link_cartao: string
+          pix_chave: string
+          pix_nome: string
+          pix_tipo: string
+        }[]
+      }
+      get_funil_publico: {
+        Args: { p_slug: string }
+        Returns: {
+          ativo: boolean
+          diferenciais: Json
+          id: string
+          mensagem_agendamento: string
+          mensagem_boas_vindas: string
+          mensagem_confirmacao: string
+          mensagem_diferenciais: string
+          mensagem_pagamento: string
+          mensagem_servicos: string
+          servicos: Json
+          slug: string
+          terapeuta_id: string
+        }[]
+      }
       get_patient_by_portal_token: {
         Args: { p_token: string }
         Returns: {

@@ -1,6 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
-import { useFunilPublico, ServicoFunil } from '@/hooks/useFunilConfig';
+import { useFunilPublico, ServicoFunil, fetchFunilPagamento } from '@/hooks/useFunilConfig';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2, MessageCircle, Send, CheckCircle2, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -40,6 +40,7 @@ export default function FunilPublico() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const chatRef = useRef<HTMLDivElement>(null);
+  const [paymentInfo, setPaymentInfo] = useState<{ pix_chave: string; pix_tipo: string; pix_nome: string; link_cartao: string } | null>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
@@ -218,17 +219,29 @@ export default function FunilPublico() {
     }
 
     await delay(600);
-    // Move to payment
+    // Move to payment - fetch payment details securely
     addBotMessage(config?.mensagem_pagamento || 'Como deseja pagar?');
     await delay(400);
+    
+    let paymentData: { pix_chave: string; pix_tipo: string; pix_nome: string; link_cartao: string } | null = null;
+    if (leadId && config?.id) {
+      try {
+        paymentData = await fetchFunilPagamento(config.id, leadId);
+      } catch (e) {
+        console.error('Error fetching payment data:', e);
+      }
+    }
+    
     const payOpts: { label: string; value: string }[] = [];
-    if (config?.pix_chave) payOpts.push({ label: '📱 PIX (QR Code)', value: 'pix' });
+    if (paymentData?.pix_chave) payOpts.push({ label: '📱 PIX (QR Code)', value: 'pix' });
     payOpts.push({ label: '💳 Cartão de Crédito', value: 'cartao' });
     if (payOpts.length === 0) {
       addBotMessage('Entre em contato para combinar a forma de pagamento.');
       addBotMessage(config?.mensagem_confirmacao || 'Registramos seu interesse! ✅');
       setEtapa('confirmacao');
     } else {
+      // Store payment data for later use
+      setPaymentInfo(paymentData);
       addOptions(payOpts);
     }
   };
@@ -297,32 +310,32 @@ export default function FunilPublico() {
     } else if (value === 'pix') {
       addUserMessage('Pagar via PIX');
       await delay(500);
-      if (config?.pix_chave && config?.pix_nome) {
+      if (paymentInfo?.pix_chave && paymentInfo?.pix_nome) {
         addBotMessage('📱 Escaneie o QR Code abaixo para pagar:');
         try {
           const qrUrl = await gerarPixQrCodeDataUrl({
-            chave: config.pix_chave,
-            nome: config.pix_nome,
+            chave: paymentInfo.pix_chave,
+            nome: paymentInfo.pix_nome,
             valor: servicoEscolhido?.valor,
             descricao: servicoEscolhido?.nome?.substring(0, 25),
           });
           const payload = gerarPixPayload({
-            chave: config.pix_chave,
-            nome: config.pix_nome,
+            chave: paymentInfo.pix_chave,
+            nome: paymentInfo.pix_nome,
             valor: servicoEscolhido?.valor,
             descricao: servicoEscolhido?.nome?.substring(0, 25),
           });
           addQrCode(qrUrl, payload);
         } catch {
-          addBotMessage(`**Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
+          addBotMessage(`**Chave PIX (${paymentInfo.pix_tipo?.toUpperCase()}):**\n\`${paymentInfo.pix_chave}\`\n${paymentInfo.pix_nome ? `Nome: ${paymentInfo.pix_nome}` : ''}`);
         }
         await delay(500);
         if (servicoEscolhido?.valor) {
           addBotMessage(`💰 Valor: **R$ ${servicoEscolhido.valor.toFixed(2)}**`);
         }
         addBotMessage('Após o pagamento, envie o comprovante pelo WhatsApp para confirmarmos! 🙌');
-      } else if (config?.pix_chave) {
-        addBotMessage(`📱 **Chave PIX (${config.pix_tipo?.toUpperCase()}):**\n\`${config.pix_chave}\`\n${config.pix_nome ? `Nome: ${config.pix_nome}` : ''}`);
+      } else if (paymentInfo?.pix_chave) {
+        addBotMessage(`📱 **Chave PIX (${paymentInfo.pix_tipo?.toUpperCase()}):**\n\`${paymentInfo.pix_chave}\`\n${paymentInfo.pix_nome ? `Nome: ${paymentInfo.pix_nome}` : ''}`);
       } else {
         addBotMessage('Entre em contato para detalhes de pagamento via PIX.');
       }
@@ -357,13 +370,13 @@ export default function FunilPublico() {
       } catch (err) {
         console.error('SumUp checkout error:', err);
         setMessages(prev => prev.filter(m => m.texto !== '⏳ Gerando seu link de pagamento...'));
-        if (config?.link_cartao) {
+        if (paymentInfo?.link_cartao) {
           addBotMessage('🔗 Clique no link abaixo para realizar o pagamento:');
           setTimeout(() => {
             setMessages(prev => [...prev, {
               id: crypto.randomUUID(),
               tipo: 'bot',
-              texto: `💳 [Pagar com Cartão](${config.link_cartao})`,
+              texto: `💳 [Pagar com Cartão](${paymentInfo.link_cartao})`,
             }]);
           }, 400);
         } else {

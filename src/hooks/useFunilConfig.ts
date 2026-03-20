@@ -88,25 +88,31 @@ export function useFunilConfig() {
   return { config, isLoading, saveConfig };
 }
 
-// Public: load funil config by slug (no auth required)
+// Public: load funil config by slug via secure RPC (no payment data exposed)
 export function useFunilPublico(slug?: string) {
   return useQuery({
     queryKey: ['funil-publico', slug],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('funil_config')
-        .select('*')
-        .eq('slug', slug!)
-        .eq('ativo', true)
-        .maybeSingle();
+        .rpc('get_funil_publico', { p_slug: slug! });
       if (error) throw error;
-      if (!data) return null;
+      if (!data || data.length === 0) return null;
+      const row = data[0];
       return {
-        ...data,
-        diferenciais: (data.diferenciais as any) || [],
-        servicos: (data.servicos as any) || [],
+        ...row,
+        diferenciais: (row.diferenciais as any) || [],
+        servicos: (row.servicos as any) || [],
       } as FunilConfig & { id: string; terapeuta_id: string };
     },
     enabled: !!slug,
   });
+}
+
+// Fetch payment details only when lead reaches payment step
+export async function fetchFunilPagamento(funilConfigId: string, leadId: string) {
+  const { data, error } = await supabase
+    .rpc('get_funil_pagamento', { p_funil_config_id: funilConfigId, p_lead_id: leadId });
+  if (error) throw error;
+  if (!data || data.length === 0) return null;
+  return data[0] as { pix_chave: string; pix_tipo: string; pix_nome: string; link_cartao: string };
 }

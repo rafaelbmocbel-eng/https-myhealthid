@@ -103,19 +103,16 @@ export function useFunilPublico(slug?: string) {
     queryFn: async () => {
       return withAuthLockRetry(async () => {
         const { data, error } = await supabase
-          .from('funil_config')
-          .select('*')
-          .eq('slug', slug!)
-          .eq('ativo', true)
-          .maybeSingle();
+          .rpc('get_funil_publico', { p_slug: slug! });
 
         if (error) throw error;
-        if (!data) return null;
+        if (!data || data.length === 0) return null;
 
+        const row = data[0];
         return {
-          ...data,
-          diferenciais: (data.diferenciais as any) || [],
-          servicos: (data.servicos as any) || [],
+          ...row,
+          diferenciais: (row.diferenciais as any) || [],
+          servicos: (row.servicos as any) || [],
         } as FunilConfig & { id: string; terapeuta_id: string };
       }, { maxAttempts: 4, baseDelayMs: 300 });
     },
