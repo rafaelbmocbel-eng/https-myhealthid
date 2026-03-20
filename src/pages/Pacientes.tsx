@@ -517,7 +517,19 @@ export default function Pacientes() {
           </div>
         </div>
 
-        {/* Filters */}
+        {/* Sub-navigation */}
+        <div className="flex items-center gap-1 mb-5 border-b border-border pb-1">
+          <button className="px-3 py-1.5 text-sm font-semibold border-b-2 border-primary text-primary">
+            <Users className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />Clientes
+          </button>
+          <button onClick={() => navigate('/protocolos')} className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <ClipboardList className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />Protocolos
+          </button>
+          <button onClick={() => navigate('/relatorios')} className="px-3 py-1.5 text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+            <FileText className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />Relatórios
+          </button>
+        </div>
+
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
