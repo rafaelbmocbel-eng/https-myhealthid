@@ -214,14 +214,35 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
           </div>
         </div>
 
-        {/* Evolution Line — MyID-100 score + loss per dimension */}
+        {/* Evolution Line — MyID-100 score + toggleable dimension losses */}
         <div className="clinical-card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <h4 className="font-semibold text-sm">Evolução MyID-100</h4>
             </div>
             <Badge variant="outline" className="text-[10px]">{evolucaoData.length} avaliações</Badge>
+          </div>
+          {/* Dimension toggles */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {DIMENSION_CONFIG.map(dim => {
+              const active = visibleDims.has(dim.key);
+              return (
+                <button
+                  key={dim.key}
+                  onClick={() => toggleDim(dim.key)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                    active
+                      ? 'border-transparent text-white shadow-sm'
+                      : 'border-border/60 text-muted-foreground hover:border-border bg-transparent'
+                  }`}
+                  style={active ? { backgroundColor: dim.color } : undefined}
+                >
+                  {active ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5 opacity-40" />}
+                  {dim.key}
+                </button>
+              );
+            })}
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -231,9 +252,11 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                 <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name={scoreLabel} />
-                {DIMENSION_CONFIG.slice(0, 5).map(dim => (
-                  <Line key={dim.key} type="monotone" dataKey={dim.key} stroke={dim.color} strokeWidth={1.5} dot={{ r: 3 }} name={`${dim.label} (perda)`} />
+                <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 5, strokeWidth: 2 }} name={scoreLabel} activeDot={{ r: 7 }} />
+                {DIMENSION_CONFIG.map(dim => (
+                  visibleDims.has(dim.key) && (
+                    <Line key={dim.key} type="monotone" dataKey={dim.key} stroke={dim.color} strokeWidth={1.5} dot={{ r: 3 }} name={`${dim.label} (perda)`} strokeDasharray="4 3" />
+                  )
                 ))}
               </LineChart>
             </ResponsiveContainer>
