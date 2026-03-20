@@ -278,15 +278,48 @@ export default function Agenda() {
 
   useEffect(() => {
     if (!dragging) return;
+    let autoScrollId: number | null = null;
+    const EDGE_ZONE = 60; // px from top/bottom edge to trigger auto-scroll
+    const SCROLL_SPEED = 8; // px per frame
+
+    const startAutoScroll = (clientY: number) => {
+      if (autoScrollId) cancelAnimationFrame(autoScrollId);
+      const container = gridRef.current;
+      if (!container) return;
+      const rect = container.getBoundingClientRect();
+      const distFromTop = clientY - rect.top;
+      const distFromBottom = rect.bottom - clientY;
+
+      let scrollDir = 0;
+      if (distFromTop < EDGE_ZONE) scrollDir = -1; // scroll up
+      else if (distFromBottom < EDGE_ZONE) scrollDir = 1; // scroll down
+      
+      if (scrollDir !== 0) {
+        const speed = scrollDir * SCROLL_SPEED * (1 + (EDGE_ZONE - Math.min(distFromTop, distFromBottom)) / EDGE_ZONE);
+        const tick = () => {
+          if (!gridRef.current || !draggingRef.current) return;
+          gridRef.current.scrollTop += speed;
+          // Update drag delta to account for scroll movement
+          const d = draggingRef.current;
+          d.startY -= speed;
+          autoScrollId = requestAnimationFrame(tick);
+        };
+        autoScrollId = requestAnimationFrame(tick);
+      }
+    };
+
     const handleMove = (e: MouseEvent | TouchEvent) => {
-      e.preventDefault(); // prevent scroll during drag
+      e.preventDefault();
       const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
       const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
       const dy = clientY - draggingRef.current!.startY;
       const dx = clientX - draggingRef.current!.startX;
       setDragDelta({ dy, dx });
+      startAutoScroll(clientY);
     };
     const handleUp = () => {
+      if (autoScrollId) cancelAnimationFrame(autoScrollId);
+      autoScrollId = null;
       const d = draggingRef.current;
       const delta = dragDeltaRef.current;
       if (!d) return;
@@ -312,10 +345,8 @@ export default function Agenda() {
       setDragging(null);
       setDragDelta({ dy: 0, dx: 0 });
 
-      // If no actual change, skip
       if (newStart.getTime() === origStart.getTime()) return;
 
-      // Bloqueio rigoroso de limite de vagas
       const overlapping = countOverlapping(newStart.toISOString(), newEnd.toISOString(), d.ag.id);
       if (overlapping >= config.vagas_por_horario) {
         toast({
@@ -326,7 +357,6 @@ export default function Agenda() {
         return;
       }
 
-      // Show confirmation dialog instead of immediately updating
       const label = `${format(newStart, "dd/MM 'às' HH:mm")} – ${format(newEnd, 'HH:mm')}`;
       setPendingDrag({
         agId: d.ag.id,
@@ -340,6 +370,7 @@ export default function Agenda() {
     window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('touchend', handleUp);
     return () => {
+      if (autoScrollId) cancelAnimationFrame(autoScrollId);
       window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleUp);
       window.removeEventListener('touchmove', handleMove);
