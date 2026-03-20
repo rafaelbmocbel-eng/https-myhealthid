@@ -151,11 +151,11 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
-  const navigate = (await import('react-router-dom')).useNavigate ? undefined : undefined;
+  const navigateTo = useNavigate();
   // Abre o dashboard do paciente — redireciona para o perfil unificado
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    window.location.href = `/pacientes/${pac.id}?tab=avaliacoes`;
-    return;
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
+  };
   };
 
   // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário
