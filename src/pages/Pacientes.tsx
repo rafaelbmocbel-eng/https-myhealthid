@@ -636,6 +636,9 @@ export default function Pacientes() {
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
                         <Edit2 className="h-3.5 w-3.5" />
                       </Button>
+                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p)} title="Excluir">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </div>
                 </div>
