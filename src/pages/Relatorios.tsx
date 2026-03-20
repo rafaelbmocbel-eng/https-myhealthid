@@ -574,6 +574,8 @@ export default function Relatorios() {
           </div>
         </div>
 
+        <PacientesSubNav />
+
         <Tabs defaultValue="links">
           <TabsList className="mb-6 h-10 bg-secondary p-1 rounded-xl">
             <TabsTrigger value="links" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
