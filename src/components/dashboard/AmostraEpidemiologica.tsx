@@ -104,12 +104,12 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
 
     // Helper: compute avg scores for a subset
     const avgScores = (subset: AvaliacaoRaw[]) => {
-      if (subset.length === 0) return { E: 0, P: 0, C: 0, F: 0, D: 0, R: 0, EFI: 0, ID: 0 };
+      if (subset.length === 0) return { D: 0, EFI: 0, R: 0, C: 0, P: 0, I: 0, N: 0, ID: 0 };
       const avg = (key: string) => {
         const vals = subset.map(a => Number((a as any)[key] || 0));
         return vals.reduce((s, v) => s + v, 0) / vals.length;
       };
-      return { E: avg('score_e'), P: avg('score_p'), C: avg('score_c'), F: avg('score_f'), D: avg('score_d'), R: avg('score_r'), EFI: avg('score_efi'), ID: avg('id_final') };
+      return { D: avg('score_d'), EFI: avg('score_efi'), R: avg('score_r'), C: avg('score_c'), P: avg('score_p'), I: avg('score_i'), N: avg('score_n'), ID: avg('id_final') };
     };
     const scoresPrimeira = avgScores(primeiras);
     const scoresReav = avgScores(reavaliacoes);
