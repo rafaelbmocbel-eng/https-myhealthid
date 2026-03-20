@@ -1050,9 +1050,52 @@ export default function Agenda() {
                     const dayAgs = getAgForDay(day);
                     const totalHeight = slots.length * SLOT_HEIGHT;
                     const overlapLayout = getOverlapLayout(dayAgs);
+                    // Group appointments by cluster for stacked rendering
+                    const STACK_THRESHOLD = 4; // Switch to stacked mode when 4+ overlap
+                    const activeAgs = dayAgs.filter(ag => ag.status !== 'cancelado');
+
+                    // Identify which appointments are in "dense" clusters (4+)
+                    const denseClusters: Set<string> = new Set();
+                    activeAgs.forEach(ag => {
+                      const layout = overlapLayout[ag.id];
+                      if (layout && layout.totalCols >= STACK_THRESHOLD) {
+                        denseClusters.add(ag.id);
+                      }
+                    });
+
+                    // For dense clusters, group by overlapping time ranges
+                    const denseGroups: Map<string, Agendamento[]> = new Map();
+                    const normalAgs: Agendamento[] = [];
+
+                    activeAgs.forEach(ag => {
+                      if (denseClusters.has(ag.id)) {
+                        // Find which group this belongs to (by checking overlap with existing groups)
+                        let foundGroup = false;
+                        for (const [key, group] of denseGroups) {
+                          const agS = parseISO(ag.data_inicio).getTime();
+                          const agE = parseISO(ag.data_fim).getTime();
+                          if (group.some(g => {
+                            const gS = parseISO(g.data_inicio).getTime();
+                            const gE = parseISO(g.data_fim).getTime();
+                            return agS < gE && agE > gS;
+                          })) {
+                            group.push(ag);
+                            foundGroup = true;
+                            break;
+                          }
+                        }
+                        if (!foundGroup) {
+                          denseGroups.set(ag.id, [ag]);
+                        }
+                      } else {
+                        normalAgs.push(ag);
+                      }
+                    });
+
                     return (
                       <div key={`overlay-${di}`} className="relative pointer-events-none" style={{ height: totalHeight, overflow: 'hidden' }}>
-                        {dayAgs.filter(ag => ag.status !== 'cancelado').map(ag => {
+                        {/* Normal appointments (1-3 overlap) — side-by-side columns */}
+                        {normalAgs.map(ag => {
                           const pos = getAgPos(ag);
                           const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
                           const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
@@ -1113,41 +1156,111 @@ export default function Agenda() {
                                   {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] : ''}
                                 </div>
                               )}
-                              {/* Botões de Ação Rápida */}
                               {pos.height > 55 && ag.status === 'confirmado' && parseISO(ag.data_fim) < new Date() && (
                                 <div className="flex gap-0.5 mt-0.5">
-                                  <button
-                                    title="Atendido"
-                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-bold shadow-sm"
-                                    onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'atendido'); }}
-                                  >
-                                    <CheckCircle2 className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    title="Faltou"
-                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors font-bold shadow-sm"
-                                    onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'faltou'); }}
-                                  >
-                                    <X className="h-3 w-3" />
-                                  </button>
-                                  <button
-                                    title="Pagar"
-                                    className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors font-bold shadow-sm"
+                                  <button title="Atendido" className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-emerald-500 text-white hover:bg-emerald-600 transition-colors font-bold shadow-sm" onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'atendido'); }}><CheckCircle2 className="h-3 w-3" /></button>
+                                  <button title="Faltou" className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-orange-500 text-white hover:bg-orange-600 transition-colors font-bold shadow-sm" onClick={(e) => { e.stopPropagation(); handleSessaoStatus(ag, 'faltou'); }}><X className="h-3 w-3" /></button>
+                                  <button title="Pagar" className="text-[8px] h-5 w-5 flex items-center justify-center rounded bg-amber-500 text-white hover:bg-amber-600 transition-colors font-bold shadow-sm" onClick={(e) => { e.stopPropagation(); setPaymentModal({ open: true, patientId: ag.paciente_id || '', agendamentoId: ag.id, valor: '0', data: format(new Date(), 'yyyy-MM-dd') }); }}><DollarSign className="h-3 w-3" /></button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                        {/* Dense clusters (4+ overlap) — stacked view */}
+                        {Array.from(denseGroups.values()).map((group, gi) => {
+                          const sorted = [...group].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
+                          // Use earliest start and latest end for positioning
+                          const earliest = sorted[0];
+                          const pos = getAgPos(earliest);
+                          const VISIBLE_COUNT = 2;
+                          const visible = sorted.slice(0, VISIBLE_COUNT);
+                          const hiddenCount = sorted.length - VISIBLE_COUNT;
+                          const isExpanded = expandedSlots.has(`${di}-${gi}`);
+                          const displayList = isExpanded ? sorted : visible;
+
+                          return (
+                            <div
+                              key={`dense-${di}-${gi}`}
+                              className="absolute pointer-events-auto"
+                              style={{ top: pos.top, left: 0, right: 0, zIndex: isExpanded ? 40 : 15 }}
+                            >
+                              <div className={cn(
+                                'rounded-lg border shadow-md overflow-hidden',
+                                isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95'
+                              )}>
+                                {/* Header badge */}
+                                <div
+                                  className="flex items-center justify-between px-2 py-1 bg-primary/10 border-b cursor-pointer hover:bg-primary/15 transition-colors"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setExpandedSlots(prev => {
+                                      const next = new Set(prev);
+                                      const key = `${di}-${gi}`;
+                                      if (next.has(key)) next.delete(key); else next.add(key);
+                                      return next;
+                                    });
+                                  }}
+                                >
+                                  <span className="text-[10px] font-bold text-primary flex items-center gap-1">
+                                    <Users className="h-3 w-3" />
+                                    {sorted.length} pacientes • {format(parseISO(earliest.data_inicio), 'HH:mm')}
+                                  </span>
+                                  <span className="text-[9px] text-muted-foreground">
+                                    {isExpanded ? '▲ fechar' : '▼ expandir'}
+                                  </span>
+                                </div>
+
+                                {/* Stacked appointment rows */}
+                                <div className={cn('divide-y', isExpanded && 'max-h-60 overflow-y-auto')}>
+                                  {displayList.map(ag => {
+                                    const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                                    const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
+                                    const nome = ag.pacientes
+                                      ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}`
+                                      : ag.titulo || 'Agendamento';
+
+                                    return (
+                                      <div
+                                        key={ag.id}
+                                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/30 cursor-pointer transition-colors border-l-4"
+                                        style={{
+                                          borderLeftColor: patientColor?.borderLeftColor || undefined,
+                                          ...(patientColor ? { backgroundColor: patientColor.backgroundColor + '80' } : {}),
+                                        }}
+                                        onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
+                                      >
+                                        <div className={cn('flex items-center gap-0.5', sc.text)}>
+                                          {sc.icon}
+                                        </div>
+                                        <span className="text-[10px] font-semibold truncate flex-1" style={patientColor ? { color: patientColor.color } : {}}>
+                                          {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
+                                        </span>
+                                        <Badge variant="outline" className="text-[8px] h-4 px-1 shrink-0">
+                                          {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] || ag.tipo_atendimento : ''}
+                                        </Badge>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+
+                                {/* "+N mais" footer when collapsed */}
+                                {!isExpanded && hiddenCount > 0 && (
+                                  <div
+                                    className="text-center py-1 bg-muted/50 text-[9px] font-bold text-primary cursor-pointer hover:bg-primary/10 transition-colors"
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      setPaymentModal({
-                                        open: true,
-                                        patientId: ag.paciente_id || '',
-                                        agendamentoId: ag.id,
-                                        valor: '0',
-                                        data: format(new Date(), 'yyyy-MM-dd')
+                                      setExpandedSlots(prev => {
+                                        const next = new Set(prev);
+                                        next.add(`${di}-${gi}`);
+                                        return next;
                                       });
                                     }}
                                   >
-                                    <DollarSign className="h-3 w-3" />
-                                  </button>
-                                </div>
-                              )}
+                                    +{hiddenCount} mais
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           );
                         })}
