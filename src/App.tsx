@@ -89,7 +89,7 @@ const App = () => (
                 <Route path="/agenda/:token" element={<AgendaPublica />} />
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
                 <Route path="/funil/:slug" element={<FunilChat />} />
-                <Route path="/relatorios" element={<Relatorios />} />
+                <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<GestaoVendas />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
 

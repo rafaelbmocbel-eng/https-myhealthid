@@ -729,7 +729,7 @@ export default function Relatorios() {
           </div>
         </div>
 
-        <PacientesSubNav />
+        
 
         <Tabs defaultValue="links">
           <TabsList className="mb-6 h-10 bg-secondary p-1 rounded-xl">
