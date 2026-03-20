@@ -131,23 +131,23 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
             <MyIDDicasPessoais scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }} myidScore={myid_100 ?? MyID_score ?? 0} />
 
             {/* Hidden Factors */}
-            <Card className="border-slate-200 shadow-sm">
-                <CardHeader className="bg-slate-50/50 pb-4">
-                    <CardTitle className="text-slate-700 flex items-center gap-2 text-lg">
+            <Card className="border-border shadow-sm">
+                <CardHeader className="bg-muted/30 pb-4">
+                    <CardTitle className="text-foreground/80 flex items-center gap-2 text-lg">
                         <span>🔍</span> FATORES CONTEXTUAIS
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3 pt-4">
-                    <div className="flex justify-between text-sm py-2 border-b border-muted/50">
+                    <div className="flex justify-between text-sm py-2 border-b border-border/50">
                         <span className="font-bold text-foreground/70">Padrão da Dor:</span>
                         <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{pain_pattern}</span>
                     </div>
-                    <div className="flex justify-between text-sm py-2 border-b border-muted/50">
+                    <div className="flex justify-between text-sm py-2 border-b border-border/50">
                         <span className="font-bold text-foreground/70">Prognóstico:</span>
                         <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{healing_history?.prognosis || 'Normal'}</span>
                     </div>
                     {medications?.length > 0 && (
-                        <div className="flex justify-between text-sm py-2 border-b border-muted/50">
+                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
                             <span className="font-bold text-foreground/70">Medicações:</span>
                             <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{medications.join(', ')}</span>
                         </div>
