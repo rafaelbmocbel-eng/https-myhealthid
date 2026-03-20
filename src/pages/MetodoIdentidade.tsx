@@ -31,7 +31,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { getAgendaUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { useQuery } from '@tanstack/react-query';
@@ -67,6 +67,7 @@ export default function MetodoIdentidade() {
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { salvar: salvarAvaliacao } = useAvaliacoesIdentidade();
 
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
@@ -151,11 +152,9 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
-  // Abre o dashboard do paciente
+  // Abre o dashboard do paciente — redireciona para o perfil unificado
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    setSelectedPacienteId(pac.id);
-    setShowDashboard(true);
-    setShowRelatorio(false);
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
   };
 
   // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário

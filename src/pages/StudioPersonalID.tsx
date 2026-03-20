@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { Navigate, useSearchParams, Link } from 'react-router-dom';
+import { Navigate, useSearchParams, Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacientes } from '@/hooks/usePacientes';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
@@ -39,6 +39,7 @@ export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
   const { allPacientes: pacientes, isLoading: loadingPacientes } = usePacientes();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
@@ -119,8 +120,7 @@ export default function StudioPersonalID() {
   };
 
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    setSelectedPacienteId(pac.id);
-    setShowDashboard(true);
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
   };
 
   // ─── Student Dashboard (Tab-based) ──────────────────────────────────────────

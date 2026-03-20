@@ -35,6 +35,9 @@ import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
+import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
+import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -744,6 +747,15 @@ export default function PacientePerfil() {
               </>
             )}
 
+            {/* Avaliação por Voz */}
+            <div className="clinical-card">
+              <VoiceAssessment
+                serviceType="identidade"
+                pacienteId={id!}
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            </div>
+
             {/* Questionários Recebidos */}
             <div>
               <div className="flex items-center gap-2 mb-3">
@@ -793,6 +805,18 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
+              TAB: DIRETRIZES / PROTOCOLOS DE TRATAMENTO
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="protocolos" className="mt-4 space-y-6">
+            <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
+
+            {/* Treinos */}
+            <div>
+              <StudioTreinosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
               TAB: ENGAJAMENTO DO PACIENTE (Portal)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="engajamento" className="mt-4 space-y-6">
@@ -806,6 +830,11 @@ export default function PacientePerfil() {
             {/* NPS do Paciente */}
             <div>
               <NpsSurveyCard pacienteId={id!} />
+            </div>
+
+            {/* Portal do Paciente — Monitoramento */}
+            <div>
+              <StudioPortalControlTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
             </div>
           </TabsContent>
 

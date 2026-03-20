@@ -18,7 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent } from '@/components/ui/card';
 import { usePacientes } from '@/hooks/usePacientes';
-import { Navigate, useSearchParams } from 'react-router-dom';
+import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { useQuery } from '@tanstack/react-query';
@@ -90,6 +90,7 @@ export default function CobZero() {
   const { pacientes, isLoading: loadingPacientes } = usePacientes('cob_zero');
   const { salvar: salvarAvaliacao } = useAvaliacoesCobZero();
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
@@ -194,9 +195,7 @@ export default function CobZero() {
   );
 
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    setSelectedPacienteId(pac.id);
-    setShowDashboard(true);
-    setShowRelatorio(false);
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
   };
 
   const handleIniciarAvaliacao = () => {
