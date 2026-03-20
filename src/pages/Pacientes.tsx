@@ -26,6 +26,7 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
+import PacientesSubNav from '@/components/PacientesSubNav';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
