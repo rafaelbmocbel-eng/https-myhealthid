@@ -66,7 +66,7 @@ export default function AmostraIntegrada({ avaliacoesIdentidade, avaliacoesCobZe
 
         // Vetores para Correlação Isolada (Identidade)
         const scoreArrays: Record<string, number[]> = {};
-        ['score_e', 'score_p', 'score_c', 'score_f', 'score_d', 'score_r', 'id_final'].forEach(k => {
+        ['score_d', 'score_efi', 'score_r', 'score_c', 'score_p', 'score_i', 'score_n', 'id_final'].forEach(k => {
             scoreArrays[k] = avaliacoesIdentidade.map(a => Number(a[k] || 0));
         });
 
