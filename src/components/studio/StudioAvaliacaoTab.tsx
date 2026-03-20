@@ -46,6 +46,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
   const [iniciandoMedidas, setIniciandoMedidas] = useState(false);
   const { salvarMedida } = useStudioMedidas(pacienteId);
   const salvandoMedida = salvarMedida.isPending;
+  const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
 
   // Buscar avaliações por voz do paciente
   const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
