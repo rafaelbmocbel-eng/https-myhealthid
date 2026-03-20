@@ -40,6 +40,7 @@ export default function FunilPublico() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const chatRef = useRef<HTMLDivElement>(null);
+  const [paymentInfo, setPaymentInfo] = useState<{ pix_chave: string; pix_tipo: string; pix_nome: string; link_cartao: string } | null>(null);
 
   useEffect(() => {
     chatRef.current?.scrollTo({ top: chatRef.current.scrollHeight, behavior: 'smooth' });
