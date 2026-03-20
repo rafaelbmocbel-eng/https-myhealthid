@@ -1080,6 +1080,42 @@ export type Database = {
           },
         ]
       }
+      notificacoes: {
+        Row: {
+          created_at: string
+          descricao: string
+          id: string
+          lida: boolean
+          metadata: Json | null
+          rota: string | null
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao: string
+          id?: string
+          lida?: boolean
+          metadata?: Json | null
+          rota?: string | null
+          terapeuta_id: string
+          tipo?: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string
+          id?: string
+          lida?: boolean
+          metadata?: Json | null
+          rota?: string | null
+          terapeuta_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
@@ -1305,6 +1341,42 @@ export type Database = {
           nome?: string
           preco_mensal?: number
           stripe_price_id?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      preferencias_notificacao: {
+        Row: {
+          alerta_falta: boolean
+          created_at: string
+          diario_pendente: boolean
+          id: string
+          lembrete_consulta: boolean
+          nps_recebido: boolean
+          questionario_pendente: boolean
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          alerta_falta?: boolean
+          created_at?: string
+          diario_pendente?: boolean
+          id?: string
+          lembrete_consulta?: boolean
+          nps_recebido?: boolean
+          questionario_pendente?: boolean
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          alerta_falta?: boolean
+          created_at?: string
+          diario_pendente?: boolean
+          id?: string
+          lembrete_consulta?: boolean
+          nps_recebido?: boolean
+          questionario_pendente?: boolean
+          terapeuta_id?: string
           updated_at?: string
         }
         Relationships: []
