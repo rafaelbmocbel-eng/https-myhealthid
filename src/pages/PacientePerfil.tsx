@@ -795,13 +795,18 @@ export default function PacientePerfil() {
           {/* ══════════════════════════════════════════════════════════════════
               TAB: ENGAJAMENTO DO PACIENTE (Portal)
           ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="engajamento" className="mt-4">
+          <TabsContent value="engajamento" className="mt-4 space-y-6">
             {paciente && (
               <PacienteEngajamentoTab
                 pacienteId={id!}
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
               />
             )}
+
+            {/* NPS do Paciente */}
+            <div>
+              <NpsSurveyCard pacienteId={id!} />
+            </div>
           </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
