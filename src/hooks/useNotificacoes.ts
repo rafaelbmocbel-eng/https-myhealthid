@@ -10,7 +10,7 @@ export interface Notificacao {
   descricao: string;
   lida: boolean;
   rota: string | null;
-  metadata: Record<string, unknown>;
+  metadata: Record<string, string>;
   created_at: string;
 }
 
