@@ -116,6 +116,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-2">
+            <NotificationCenter />
             <QuickActions />
             <ThemeToggle />
           </div>
