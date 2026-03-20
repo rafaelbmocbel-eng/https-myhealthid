@@ -18,7 +18,7 @@ import PacientePerfil from "./pages/PacientePerfil";
 
 import AvaliacaoPublica from "./pages/AvaliacaoPublica";
 import AgendaPublica from "./pages/AgendaPublica";
-import Relatorios from "./pages/Relatorios";
+
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
 import FunilChat from "./pages/FunilChat";
