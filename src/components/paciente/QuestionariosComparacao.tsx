@@ -607,16 +607,16 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={evolucaoData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis dataKey="data" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
+                  <XAxis dataKey="data" tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+                  <YAxis tick={{ fontSize: 10 }} className="fill-muted-foreground" />
+                  <Tooltip contentStyle={{ fontSize: 11, borderRadius: 12, border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', background: 'hsl(var(--card))' }} />
                   <Legend wrapperStyle={{ fontSize: 10 }} />
-                  <Line type="monotone" dataKey="I" stroke="#FF8C42" strokeWidth={2} dot={{ r: 3 }} name="I" connectNulls />
-                  <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="D" connectNulls />
-                  <Line type="monotone" dataKey="EFI" stroke="#10b981" strokeWidth={2} dot={{ r: 3 }} name="EFI" connectNulls />
-                  <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="P" connectNulls />
-                  <Line type="monotone" dataKey="R" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 3 }} name="R" connectNulls />
-                  <Line type="monotone" dataKey="N" stroke="#4A90E2" strokeWidth={2} dot={{ r: 3 }} name="N" connectNulls />
+                  <Line type="monotone" dataKey="D" stroke="#ef4444" strokeWidth={2.5} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} name="Dor" connectNulls />
+                  <Line type="monotone" dataKey="EFI" stroke="#10b981" strokeWidth={2.5} dot={{ r: 3, strokeWidth: 2 }} activeDot={{ r: 5 }} name="Função" connectNulls />
+                  <Line type="monotone" dataKey="P" stroke="#f59e0b" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 4 }} name="Psico" connectNulls />
+                  <Line type="monotone" dataKey="R" stroke="#8b5cf6" strokeWidth={2} dot={{ r: 2.5 }} activeDot={{ r: 4 }} name="Regulação" connectNulls strokeDasharray="4 3" />
+                  <Line type="monotone" dataKey="I" stroke="#FF8C42" strokeWidth={1.5} dot={{ r: 2 }} name="Inércia" connectNulls strokeDasharray="6 3" />
+                  <Line type="monotone" dataKey="N" stroke="#4A90E2" strokeWidth={1.5} dot={{ r: 2 }} name="Ruído" connectNulls strokeDasharray="6 3" />
                 </LineChart>
               </ResponsiveContainer>
             </div>
