@@ -20,28 +20,36 @@ export default function MyIDResponder() {
                 return;
             }
 
-            const { data, error } = await supabase
-                .from('myid_avaliacoes')
-                .select('*')
-                .eq('token_acesso', token)
-                .maybeSingle();
+            try {
+                const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+                const res = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/validar-myid-token`,
+                    {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'apikey': anonKey,
+                            'Authorization': `Bearer ${anonKey}`,
+                        },
+                        body: JSON.stringify({ token }),
+                    }
+                );
 
-            if (error || !data) {
-                toast({ title: "Erro", description: "Avaliação não encontrada ou já concluída/inválida.", variant: "destructive" });
-                setLoading(false);
-                return;
-            }
+                if (!res.ok) {
+                    toast({ title: "Erro", description: "Avaliação não encontrada ou já concluída/inválida.", variant: "destructive" });
+                    setLoading(false);
+                    return;
+                }
 
-            if (data.status === 'concluido') {
-                toast({ title: "Aviso", description: "Esta avaliação já foi concluída e não pode ser alterada.", variant: "default" });
-                setLoading(false);
+                const data = await res.json();
+
+                if (data.status === 'concluido') {
+                    toast({ title: "Aviso", description: "Esta avaliação já foi concluída e não pode ser alterada.", variant: "default" });
+                }
+
                 setEvalData(data);
-                return;
-            }
-
-            setEvalData(data);
-            if (data.status === 'pendente') {
-                await supabase.from('myid_avaliacoes').update({ status: 'em_andamento' }).eq('id', data.id);
+            } catch (err) {
+                toast({ title: "Erro", description: "Erro ao carregar avaliação.", variant: "destructive" });
             }
             setLoading(false);
         }
