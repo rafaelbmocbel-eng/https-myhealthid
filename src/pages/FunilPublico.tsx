@@ -114,12 +114,11 @@ export default function FunilPublico() {
     const endOfDate = format(date, 'yyyy-MM-dd') + 'T23:59:59';
 
     const { data: existingAg } = await supabase
-      .from('agendamentos')
-      .select('data_inicio, data_fim, status')
-      .eq('terapeuta_id', config.terapeuta_id)
-      .gte('data_inicio', startOfDate)
-      .lte('data_inicio', endOfDate)
-      .in('status', ['confirmado', 'pendente']);
+      .rpc('get_agenda_disponibilidade', {
+        p_terapeuta_id: config.terapeuta_id,
+        p_data_inicio: startOfDate,
+        p_data_fim: endOfDate,
+      });
 
     // Generate all possible slots
     const slots: { label: string; inicio: string; fim: string }[] = [];
