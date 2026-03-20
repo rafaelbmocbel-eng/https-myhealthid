@@ -154,11 +154,11 @@ export default function StudioPortalControlTab({ pacienteId, pacienteNome }: Pro
         const cs = analysis?.componentScores || analysis?.component_scores || {};
         return {
           scores: {
-            D: cs.D ?? Number(a.score_d) || 0, EFI: cs.EFI ?? Number(a.score_efi) || 0,
-            P: cs.P ?? Number(a.score_p) || 0, I: cs.I ?? Number(a.score_i) || 0,
-            R: cs.R ?? Number(a.score_r) || 0, C: cs.C ?? Number(a.score_c) || 0,
+            D: cs.D ?? (Number(a.score_d) || 0), EFI: cs.EFI ?? (Number(a.score_efi) || 0),
+            P: cs.P ?? (Number(a.score_p) || 0), I: cs.I ?? (Number(a.score_i) || 0),
+            R: cs.R ?? (Number(a.score_r) || 0), C: cs.C ?? (Number(a.score_c) || 0),
             AF: cs.AF ?? 5, HID: cs.HID ?? 5, NUT: cs.NUT ?? 5, ERG: cs.ERG ?? 5,
-            N: cs.N ?? Number(a.score_n) || 0,
+            N: cs.N ?? (Number(a.score_n) || 0),
           },
           myidScore: Number(a.myid_score) || 0,
         };
