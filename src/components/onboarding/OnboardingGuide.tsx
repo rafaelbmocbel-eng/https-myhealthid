@@ -49,6 +49,11 @@ const STEPS = [
     action: '/metodo-identidade',
     actionLabel: 'Explorar Serviços',
     checkKey: 'onb_studio',
+    subActions: [
+      { label: 'Método Identidade', href: '/metodo-identidade' },
+      { label: 'COB° ZERO', href: '/cob-zero' },
+      { label: 'Studio Personal ID', href: '/studio-personal-id' },
+    ],
   },
 ];
 
