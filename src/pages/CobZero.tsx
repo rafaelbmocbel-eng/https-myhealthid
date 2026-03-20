@@ -195,9 +195,7 @@ export default function CobZero() {
   );
 
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
-    setSelectedPacienteId(pac.id);
-    setShowDashboard(true);
-    setShowRelatorio(false);
+    navigateTo(`/pacientes/${pac.id}?tab=avaliacoes`);
   };
 
   const handleIniciarAvaliacao = () => {
