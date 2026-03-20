@@ -28,6 +28,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
+import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 
 interface Paciente {
   id: string;
