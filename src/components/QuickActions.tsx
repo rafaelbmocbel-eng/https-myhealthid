@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ClipboardPlus, CalendarDays, BookOpen, FileText } from 'lucide-react';
+import { UserPlus, ClipboardPlus, CalendarDays } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -7,8 +7,6 @@ const actions = [
   { label: 'Novo Paciente', icon: UserPlus, href: '/pacientes', hint: 'Cadastrar paciente' },
   { label: 'Nova Avaliação', icon: ClipboardPlus, href: '/metodo-identidade', hint: 'Iniciar avaliação' },
   { label: 'Agenda Hoje', icon: CalendarDays, href: '/agenda', hint: 'Ver agenda do dia' },
-  { label: 'Protocolos', icon: BookOpen, href: '/protocolos', hint: 'Protocolos de tratamento' },
-  { label: 'Relatórios', icon: FileText, href: '/relatorios', hint: 'Relatórios e análises' },
 ];
 
 export default function QuickActions() {

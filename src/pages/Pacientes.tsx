@@ -475,6 +475,24 @@ export default function Pacientes() {
           <div className="flex items-center gap-2 shrink-0">
             <Tooltip delayDuration={0}>
               <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => navigate('/protocolos')} className="gap-1.5">
+                  <ClipboardList className="h-4 w-4" />
+                  <span className="hidden sm:inline">Protocolos</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Protocolos de tratamento</TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => navigate('/relatorios')} className="gap-1.5">
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Relatórios</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Relatórios e análises</TooltipContent>
+            </Tooltip>
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>
                 <Button
                   variant="outline"
                   size="sm"
