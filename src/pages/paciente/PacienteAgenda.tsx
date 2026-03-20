@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarDays, Clock, Loader2, CheckCircle2 } from 'lucide-react';
+import { CalendarDays, Clock, Loader2, CheckCircle2, ExternalLink } from 'lucide-react';
 import { format, parseISO, addMinutes, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -38,6 +38,20 @@ const DAY_MAP: Record<string, number> = { dom: 0, seg: 1, ter: 2, qua: 3, qui: 4
 
 function getAllowedWeekdays(dias: Record<string, boolean>): number[] {
   return Object.entries(dias).filter(([, v]) => v).map(([k]) => DAY_MAP[k] ?? -1).filter((n) => n >= 0);
+}
+
+function buildGoogleCalendarUrl(titulo: string, dataInicio: string | Date, dataFim: string | Date): string {
+  const toGoogleDate = (d: string | Date) => {
+    const date = typeof d === 'string' ? parseISO(d) : d;
+    return format(date, "yyyyMMdd'T'HHmmss");
+  };
+  const params = new URLSearchParams({
+    action: 'TEMPLATE',
+    text: titulo,
+    dates: `${toGoogleDate(dataInicio)}/${toGoogleDate(dataFim)}`,
+    details: 'Sessão agendada via MyHealth ID',
+  });
+  return `https://calendar.google.com/calendar/render?${params.toString()}`;
 }
 
 export default function PacienteAgenda() {
@@ -245,17 +259,32 @@ export default function PacienteAgenda() {
                           {format(parseISO(ag.data_inicio), "EEE, d MMM · HH:mm", { locale: ptBR })}
                         </p>
                       </div>
-                      <span
-                        className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
-                          ag.status === 'confirmado'
-                            ? 'bg-green-100 text-green-700'
-                            : ag.status === 'concluido'
-                            ? 'bg-blue-100 text-blue-700'
-                            : 'bg-amber-100 text-amber-700'
-                        }`}
-                      >
-                        {ag.status === 'confirmado' ? 'Confirmado' : ag.status === 'concluido' ? 'Concluído' : 'Pendente'}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span
+                          className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                            ag.status === 'confirmado'
+                              ? 'bg-green-100 text-green-700'
+                              : ag.status === 'concluido'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-amber-100 text-amber-700'
+                          }`}
+                        >
+                          {ag.status === 'confirmado' ? 'Confirmado' : ag.status === 'concluido' ? 'Concluído' : 'Pendente'}
+                        </span>
+                        <a
+                          href={buildGoogleCalendarUrl(
+                            ag.titulo || ag.tipo_atendimento || 'Consulta',
+                            ag.data_inicio,
+                            ag.data_fim
+                          )}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-7 h-7 rounded-lg bg-muted flex items-center justify-center hover:bg-primary/10 transition-colors"
+                          title="Adicionar ao Google Calendar"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
+                        </a>
+                      </div>
                     </CardContent>
                   </Card>
                 ))
@@ -352,9 +381,20 @@ export default function PacienteAgenda() {
                 <p className="text-xs text-green-700">
                   Seu terapeuta será notificado. Aguarde a confirmação.
                 </p>
+                {selectedSlot && (
+                  <a
+                    href={buildGoogleCalendarUrl('Consulta', selectedSlot.dataInicio, selectedSlot.dataFim)}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 mt-3 px-4 py-2 rounded-xl bg-primary text-primary-foreground text-xs font-semibold hover:opacity-90 transition-opacity"
+                  >
+                    <CalendarDays className="h-3.5 w-3.5" />
+                    Adicionar ao Google Calendar
+                  </a>
+                )}
                 <Button
                   variant="outline"
-                  className="mt-4 rounded-xl"
+                  className="mt-2 rounded-xl"
                   onClick={() => { setView('meus'); setConfirmado(false); }}
                 >
                   Ver minhas consultas
