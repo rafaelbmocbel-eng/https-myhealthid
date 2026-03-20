@@ -178,6 +178,10 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
             serviceType="studio"
             pacienteId={pacienteId}
             patientName={pacienteNome}
+            onAssessmentComplete={() => {
+              refetchVoice();
+              qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+            }}
           />
         </TabsContent>
 
