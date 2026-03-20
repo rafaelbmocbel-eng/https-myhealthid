@@ -44,10 +44,10 @@ const STEPS = [
   },
   {
     icon: Sparkles,
-    title: 'Explore o Studio Personal ID',
-    description: 'Prescreva treinos, acompanhe medidas e evolução corporal.',
-    action: '/studio-personal-id',
-    actionLabel: 'Abrir Studio',
+    title: 'Explore os Serviços',
+    description: 'Conheça o Método Identidade, COB° ZERO e Studio Personal ID.',
+    action: '/metodo-identidade',
+    actionLabel: 'Explorar Serviços',
     checkKey: 'onb_studio',
   },
 ];
