@@ -575,6 +575,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     serviceType="identidade"
                     pacienteId={paciente.id}
                     patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                    onAssessmentComplete={() => {
+                      refetchVoice();
+                      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+                    }}
                   />
                 </div>
 
