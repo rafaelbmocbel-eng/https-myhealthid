@@ -1,11 +1,11 @@
 import { useMemo, useState } from 'react';
-import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2 } from 'lucide-react';
+import { TrendingUp, TrendingDown, Minus, BarChart3, Activity, Calendar, Target, Award, Download, Loader2, Eye, EyeOff } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   RadarChart, PolarGrid, PolarAngleAxis, Radar, ResponsiveContainer,
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend,
-  BarChart, Bar,
+  BarChart, Bar, Cell,
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
 import { gerarPDFEvolucao } from '@/utils/pdfEvolucaoGenerator';
@@ -71,6 +71,12 @@ function isDimensionImprovement(dimKey: string, delta: number): boolean {
 
 export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNome }: Props) {
   const [exportando, setExportando] = useState(false);
+  const [visibleDims, setVisibleDims] = useState<Set<string>>(new Set());
+  const toggleDim = (key: string) => setVisibleDims(prev => {
+    const next = new Set(prev);
+    next.has(key) ? next.delete(key) : next.add(key);
+    return next;
+  });
 
   const handleExportPDF = async () => {
     setExportando(true);
@@ -193,14 +199,23 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
             </div>
             <Badge variant="outline" className="text-[10px]">1ª vs Última</Badge>
           </div>
-          <p className="text-[9px] text-muted-foreground mb-2">Quanto mais expandido, maior o impacto negativo. Capacidades invertidas (déficit).</p>
+          <p className="text-[9px] text-muted-foreground mb-2">Quanto mais expandido, maior o impacto negativo.</p>
+          <div className="flex flex-wrap gap-1.5 mb-2">
+            {DIMENSION_CONFIG.map(d => (
+              <span key={d.key} className="inline-flex items-center gap-1 text-[9px] font-bold text-muted-foreground">
+                <span className="h-2 w-2 rounded-full" style={{ background: d.color }} />
+                {d.key}
+                <span className="opacity-50">{d.type === 'capacity' ? '🛡' : '🔥'}</span>
+              </span>
+            ))}
+          </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
               <RadarChart data={radarData}>
                 <PolarGrid className="stroke-border" />
                 <PolarAngleAxis dataKey="score" tick={{ fontSize: 10 }} />
-                <Radar name="Primeira" dataKey="inicial" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.15} strokeDasharray="4 4" />
-                <Radar name="Atual" dataKey="atual" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} />
+                <Radar name="Primeira" dataKey="inicial" stroke="#94a3b8" fill="#94a3b8" fillOpacity={0.1} strokeDasharray="4 4" strokeWidth={1.5} />
+                <Radar name="Atual" dataKey="atual" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.15} strokeWidth={2} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
               </RadarChart>
@@ -208,14 +223,35 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
           </div>
         </div>
 
-        {/* Evolution Line — MyID-100 score + loss per dimension */}
+        {/* Evolution Line — MyID-100 score + toggleable dimension losses */}
         <div className="clinical-card">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-primary" />
               <h4 className="font-semibold text-sm">Evolução MyID-100</h4>
             </div>
             <Badge variant="outline" className="text-[10px]">{evolucaoData.length} avaliações</Badge>
+          </div>
+          {/* Dimension toggles */}
+          <div className="flex flex-wrap gap-1.5 mb-3">
+            {DIMENSION_CONFIG.map(dim => {
+              const active = visibleDims.has(dim.key);
+              return (
+                <button
+                  key={dim.key}
+                  onClick={() => toggleDim(dim.key)}
+                  className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold border transition-all ${
+                    active
+                      ? 'border-transparent text-white shadow-sm'
+                      : 'border-border/60 text-muted-foreground hover:border-border bg-transparent'
+                  }`}
+                  style={active ? { backgroundColor: dim.color } : undefined}
+                >
+                  {active ? <Eye className="h-2.5 w-2.5" /> : <EyeOff className="h-2.5 w-2.5 opacity-40" />}
+                  {dim.key}
+                </button>
+              );
+            })}
           </div>
           <div className="h-56">
             <ResponsiveContainer width="100%" height="100%">
@@ -225,9 +261,11 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                 <YAxis tick={{ fontSize: 10 }} domain={[0, 100]} />
                 <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
                 <Legend wrapperStyle={{ fontSize: 10 }} />
-                <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 4 }} name={scoreLabel} />
-                {DIMENSION_CONFIG.slice(0, 5).map(dim => (
-                  <Line key={dim.key} type="monotone" dataKey={dim.key} stroke={dim.color} strokeWidth={1.5} dot={{ r: 3 }} name={`${dim.label} (perda)`} />
+                <Line type="monotone" dataKey="Score" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ r: 5, strokeWidth: 2 }} name={scoreLabel} activeDot={{ r: 7 }} />
+                {DIMENSION_CONFIG.map(dim => (
+                  visibleDims.has(dim.key) && (
+                    <Line key={dim.key} type="monotone" dataKey={dim.key} stroke={dim.color} strokeWidth={1.5} dot={{ r: 3 }} name={`${dim.label} (perda)`} strokeDasharray="4 3" />
+                  )
                 ))}
               </LineChart>
             </ResponsiveContainer>
@@ -235,14 +273,14 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
         </div>
       </div>
 
-      {/* Comparison Bar — shows "impact" so bar reduction = improvement */}
+      {/* Comparison Bar — dimension-colored bars */}
       <div className="clinical-card">
         <div className="flex items-center gap-2 mb-2">
           <BarChart3 className="h-4 w-4 text-primary" />
           <h4 className="font-semibold text-sm">Comparação: Impacto Primeira vs Última</h4>
         </div>
-        <p className="text-[9px] text-muted-foreground mb-3">Barras menores = melhora. Capacidades mostradas como déficit (10 - valor).</p>
-        <div className="h-48">
+        <p className="text-[9px] text-muted-foreground mb-3">Barras menores = melhora. Cores por dimensão.</p>
+        <div className="h-52">
           <ResponsiveContainer width="100%" height="100%">
             <BarChart data={comparisonData} margin={{ top: 5, right: 10, left: -15, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
@@ -250,14 +288,22 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
               <YAxis tick={{ fontSize: 11 }} domain={[0, 10]} />
               <Tooltip contentStyle={{ fontSize: 11, borderRadius: 8 }} />
               <Legend wrapperStyle={{ fontSize: 10 }} />
-              <Bar dataKey="Primeira" fill="#94a3b8" radius={[4, 4, 0, 0]} opacity={0.6} />
-              <Bar dataKey="Última" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="Primeira" radius={[4, 4, 0, 0]} opacity={0.35} name="Primeira">
+                {comparisonData.map((entry, idx) => (
+                  <Cell key={idx} fill={DIMENSION_CONFIG[idx]?.color || '#94a3b8'} />
+                ))}
+              </Bar>
+              <Bar dataKey="Última" radius={[4, 4, 0, 0]} name="Última">
+                {comparisonData.map((entry, idx) => (
+                  <Cell key={idx} fill={DIMENSION_CONFIG[idx]?.color || 'hsl(var(--primary))'} />
+                ))}
+              </Bar>
             </BarChart>
           </ResponsiveContainer>
         </div>
       </div>
 
-      {/* Delta Indicators — color-coded per dimension type */}
+      {/* Delta Indicators — responsive grid */}
       <div className="clinical-card">
         <div className="flex items-center gap-2 mb-2">
           <Calendar className="h-4 w-4 text-primary" />
@@ -266,28 +312,29 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
         <p className="text-[9px] text-muted-foreground mb-3">
           🔻 Demanda: redução = melhora · 🔺 Capacidade: aumento = melhora
         </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2.5">
           {scoreDeltaData.map(s => (
-            <div key={s.key} className="bg-muted/50 rounded-xl p-3 text-center border border-border/50">
-              <div className="flex items-center justify-center gap-1 mb-1">
-                <div className="h-2.5 w-2.5 rounded-sm" style={{ background: s.color }} />
-                <span className="text-xs font-semibold text-muted-foreground">{s.key}</span>
-                <span className="text-[8px] text-muted-foreground/60">{s.type === 'capacity' ? '🛡' : '🔥'}</span>
+            <div key={s.key} className="rounded-xl p-3 text-center border transition-all hover:shadow-sm"
+              style={{ borderColor: `${s.color}30`, background: `${s.color}08` }}>
+              <div className="flex items-center justify-center gap-1.5 mb-1.5">
+                <div className="h-3 w-3 rounded-full" style={{ background: s.color }} />
+                <span className="text-xs font-bold" style={{ color: s.color }}>{s.label}</span>
+                <span className="text-[9px] text-muted-foreground/60">{s.type === 'capacity' ? '🛡' : '🔥'}</span>
               </div>
-              <div className="text-lg font-bold text-foreground">{s.last}</div>
-              <div className="flex items-center justify-center gap-1 mt-1">
+              <div className="text-2xl font-black text-foreground">{s.last}</div>
+              <div className="flex items-center justify-center gap-1 mt-1.5">
                 {s.delta === 0 ? (
                   <Minus className="h-3 w-3 text-muted-foreground" />
                 ) : s.improved ? (
-                  <TrendingUp className="h-3 w-3 text-emerald-600" />
+                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <TrendingDown className="h-3 w-3 text-red-500" />
+                  <TrendingDown className="h-3.5 w-3.5 text-destructive" />
                 )}
-                <span className={`text-xs font-bold ${s.delta === 0 ? 'text-muted-foreground' : s.improved ? 'text-emerald-600' : 'text-red-500'}`}>
+                <span className={`text-sm font-bold ${s.delta === 0 ? 'text-muted-foreground' : s.improved ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                   {s.delta > 0 ? '+' : ''}{s.delta}
                 </span>
               </div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">de {s.first}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">de {s.first}</div>
             </div>
           ))}
         </div>
