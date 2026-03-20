@@ -196,19 +196,19 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
     const allClasses = [...new Set(avaliacoes.map(a => a.classificacao || 'N/A'))].sort();
 
     // 4. Comorbidity × mean scores
-    const comorbScores: Record<string, { count: number; sumE: number; sumP: number; sumD: number; sumR: number; sumID: number }> = {};
+    const comorbScores: Record<string, { count: number; sumD: number; sumP: number; sumR: number; sumC: number; sumID: number }> = {};
     avaliacoes.forEach(a => {
       try {
         const d = a.dados_avaliacao as any;
         if (d?.bloco1?.historicoMedico) {
           (d.bloco1.historicoMedico as string[]).forEach(c => {
             if (!c) return;
-            if (!comorbScores[c]) comorbScores[c] = { count: 0, sumE: 0, sumP: 0, sumD: 0, sumR: 0, sumID: 0 };
+            if (!comorbScores[c]) comorbScores[c] = { count: 0, sumD: 0, sumP: 0, sumR: 0, sumC: 0, sumID: 0 };
             comorbScores[c].count++;
-            comorbScores[c].sumE += Number(a.score_e || 0);
-            comorbScores[c].sumP += Number(a.score_p || 0);
             comorbScores[c].sumD += Number(a.score_d || 0);
+            comorbScores[c].sumP += Number(a.score_p || 0);
             comorbScores[c].sumR += Number(a.score_r || 0);
+            comorbScores[c].sumC += Number(a.score_c || 0);
             comorbScores[c].sumID += Number(a.id_final || 0);
           });
         }
@@ -220,8 +220,8 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
       .slice(0, 10)
       .map(([nome, v]) => ({
         nome, count: v.count,
-        avgE: v.sumE / v.count, avgP: v.sumP / v.count,
-        avgD: v.sumD / v.count, avgR: v.sumR / v.count,
+        avgD: v.sumD / v.count, avgP: v.sumP / v.count,
+        avgR: v.sumR / v.count, avgC: v.sumC / v.count,
         avgID: v.sumID / v.count,
       }));
 
