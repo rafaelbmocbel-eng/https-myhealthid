@@ -67,6 +67,7 @@ export default function MetodoIdentidade() {
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { salvar: salvarAvaliacao } = useAvaliacoesIdentidade();
 
+  const navigateTo = useNavigate();
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
