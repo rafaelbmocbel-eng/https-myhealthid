@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone, Mic } from 'lucide-react';
+import { ArrowLeft, Target, AlignCenter, Link2, Copy, MessageCircle, Plus, Loader2, FileText, Trash2, TrendingUp, Calendar, BarChart3, Dumbbell, PersonStanding, Fingerprint, ExternalLink, Presentation, ClipboardList, StickyNote, Smartphone, Mic, Eye } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -28,6 +28,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
+import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 
 interface Paciente {
   id: string;
@@ -290,17 +291,19 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
 
       {/* Nível 1: Barra Principal de Ferramentas (Studio Mode) */}
       <Tabs defaultValue="avaliacao" className="w-full">
-        <TabsList className="grid w-full grid-cols-3 h-10 bg-muted/60 mb-6">
+        <TabsList className="grid w-full grid-cols-4 h-10 bg-muted/60 mb-6">
           <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+          </TabsTrigger>
+          <TabsTrigger value="portal" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
+            <Eye className="h-3.5 w-3.5" /> Portal
           </TabsTrigger>
           <TabsTrigger value="treinos" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
             <Dumbbell className="h-3.5 w-3.5" /> Treinos
           </TabsTrigger>
           <TabsTrigger value="prontuario" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            <StickyNote className="h-3.5 w-3.5" /> Evoluções e Prontuário
+            <StickyNote className="h-3.5 w-3.5" /> Prontuário
           </TabsTrigger>
-
         </TabsList>
 
         {/* --- Aba 1: AVALIAÇÃO (Contém a interface antiga Inteira) --- */}
@@ -439,6 +442,11 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               />
             </TabsContent>
           </Tabs>
+        </TabsContent>
+
+        {/* --- Aba Portal --- */}
+        <TabsContent value="portal" className="mt-4">
+          <StudioPortalControlTab pacienteId={paciente.id} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
         </TabsContent>
 
         {/* --- Aba 2: TREINOS --- */}
