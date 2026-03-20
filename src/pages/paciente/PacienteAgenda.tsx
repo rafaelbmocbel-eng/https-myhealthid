@@ -285,6 +285,11 @@ export default function PacienteAgenda() {
                           <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
                         </a>
                       </div>
+                    </CardContent>
+                  </Card>
+                ))
+              )}
+            </div>
           )}
 
           {/* Scheduling view with real calendar */}
