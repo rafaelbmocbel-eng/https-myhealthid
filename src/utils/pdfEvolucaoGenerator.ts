@@ -47,7 +47,7 @@ function addPageHeader(doc: jsPDF) {
   doc.setTextColor(...WHITE);
   doc.setFontSize(9);
   doc.setFont('helvetica', 'bold');
-  doc.text('Core Axis Pro — Relatório de Evolução', M, 8);
+  doc.text('MY HEALTH ID — Relatório de Evolução', M, 8);
 }
 
 function drawBar(doc: jsPDF, x: number, y: number, w: number, h: number, pct: number, color: C3) {
@@ -157,7 +157,7 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
   doc.setFontSize(9);
   doc.setFont('helvetica', 'normal');
   doc.setTextColor(180, 200, 225);
-  doc.text('Core Axis Pro · Acompanhamento Longitudinal', M, 26);
+  doc.text('MY HEALTH ID · Acompanhamento Longitudinal', M, 26);
   doc.setFontSize(8);
   doc.text(`${data.dataEmissao}  ·  Terapeuta: ${data.terapeutaNome}`, M, 33);
 
@@ -410,7 +410,7 @@ export async function gerarPDFEvolucao(data: PDFEvolucaoData): Promise<void> {
     doc.rect(0, 286, W, 11, 'F');
     doc.setFontSize(7);
     doc.setTextColor(...GRAY);
-    doc.text('Core Axis Pro · Relatório de Evolução · Documento confidencial', M, 293);
+    doc.text('My Health ID · Relatório de Evolução · Documento confidencial', M, 293);
     doc.text(`Página ${i} de ${totalPages}`, W - M, 293, { align: 'right' });
   }
 
