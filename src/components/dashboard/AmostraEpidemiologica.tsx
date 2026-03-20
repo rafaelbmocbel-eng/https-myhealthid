@@ -370,11 +370,11 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             <div className="text-xl font-black text-primary">{analysis.pacientesComReav}</div>
           </div>
           <div className="rounded-xl border bg-card p-3 text-center">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">Melhoraram (ID↓)</div>
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Melhoraram (MyID↑)</div>
             <div className="text-xl font-black text-emerald-600">{analysis.improved} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.improved / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
           </div>
           <div className="rounded-xl border bg-card p-3 text-center">
-            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pioraram (ID↑)</div>
+            <div className="text-[10px] font-medium text-muted-foreground mb-1">Pioraram (MyID↓)</div>
             <div className="text-xl font-black text-red-600">{analysis.worsened} <span className="text-xs font-normal text-muted-foreground">({analysis.deltas.length > 0 ? ((analysis.worsened / analysis.deltas.length) * 100).toFixed(0) : 0}%)</span></div>
           </div>
         </div>
