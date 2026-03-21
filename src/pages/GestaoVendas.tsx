@@ -46,7 +46,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'mensagens' | 'notas' | 'relatorios';
+type TabId = 'pipeline' | 'mensagens' | 'notas' | 'servicos' | 'relatorios';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
