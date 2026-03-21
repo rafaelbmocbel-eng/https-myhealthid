@@ -381,7 +381,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </Badge>
           {assessment.funcionalidade?.limitacoes_avds?.length > 0 && (
             <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-              {assessment.funcionalidade.limitacoes_avds.map((l: string, i: number) => <li key={i}>• {l}</li>)}
+              {assessment.funcionalidade.limitacoes_avds.map((l: any, i: number) => <li key={i}>• {typeof l === 'string' ? l : JSON.stringify(l)}</li>)}
             </ul>
           )}
         </SectionCard>
@@ -401,9 +401,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         {assessment.red_flags?.length > 0 && (
           <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
             <ul className="space-y-1">
-              {assessment.red_flags.map((rf: string, i: number) => (
+              {assessment.red_flags.map((rf: any, i: number) => (
                 <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{rf}
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
                 </li>
               ))}
             </ul>
@@ -415,12 +415,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
               <div key={i} className="border border-border/50 rounded-lg p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{h.diagnostico}</span>
+                  <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
                   <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
-                    {h.probabilidade}
+                    {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 italic">📖 {h.evidencia}</p>
+                {h.unidade_relacionada && <p className="text-xs text-muted-foreground mt-0.5">UC: {typeof h.unidade_relacionada === 'string' ? h.unidade_relacionada : JSON.stringify(h.unidade_relacionada)}</p>}
+                <p className="text-xs text-muted-foreground mt-1 italic">📖 {typeof h.evidencia === 'string' ? h.evidencia : JSON.stringify(h.evidencia)}</p>
               </div>
             ))}
           </div>
@@ -431,7 +432,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
               <ul className="text-sm space-y-1 mt-1">
-                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: string, i: number) => <li key={i}>• {o}</li>)}
+                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => <li key={i}>• {typeof o === 'string' ? o : JSON.stringify(o)}</li>)}
               </ul>
             </div>
           )}
