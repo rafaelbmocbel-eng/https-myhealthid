@@ -343,7 +343,8 @@ export default function PatientIntegratedDashboard({
   // Prefer stored 0-100 value, but recalculate from scores if stored value seems wrong (0 or old scale <11)
   const storedScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
   const myidScore = (storedScore > 10 ? storedScore : scores ? computeMyID100FromScores(scores) : storedScore);
-  const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
+  const rawRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
+  const hasRedFlags = Array.isArray(rawRedFlags) ? rawRedFlags.length > 0 : !!rawRedFlags;
 
   const dimScores = {
     D: scores?.D ?? 0,
@@ -358,9 +359,11 @@ export default function PatientIntegratedDashboard({
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const classificacao = interpretation.status;
   const label = interpretation.label;
-  const recommendation = interpretation.recommendation || myidLinkResult?.recommendation || '';
-  const painPattern = myidLinkResult?.pain_pattern ?? '';
-  const focusAreas = myidLinkResult?.focus_areas ?? [];
+  const rawRec = interpretation.recommendation || myidLinkResult?.recommendation || '';
+  const recommendation = typeof rawRec === 'string' ? rawRec : (rawRec && typeof rawRec === 'object' ? JSON.stringify(rawRec) : '');
+  const painPattern = typeof (myidLinkResult?.pain_pattern) === 'string' ? myidLinkResult.pain_pattern : '';
+  const rawFocus = myidLinkResult?.focus_areas ?? [];
+  const focusAreas: string[] = Array.isArray(rawFocus) ? rawFocus.map((a: any) => typeof a === 'string' ? a : (a?.label || a?.area || JSON.stringify(a))) : [];
   const redFlagsDetected = hasRedFlags;
 
   const rings = scores ? getMyIDFingerprintData(scores) : [];
