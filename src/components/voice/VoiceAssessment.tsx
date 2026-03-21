@@ -204,6 +204,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
 
       setIsSaved(true);
+      // Invalidate prontuário & evolução queries so data appears immediately
+      queryClient.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      queryClient.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+      queryClient.invalidateQueries({ queryKey: ['prontuario'] });
+      queryClient.invalidateQueries({ queryKey: ['evolucao'] });
       onAssessmentComplete?.(assessmentToSave);
 
       if (!options?.silent) {
