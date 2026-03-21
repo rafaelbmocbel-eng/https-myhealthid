@@ -142,11 +142,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
-    // Append new typed text to existing edited transcript
+    // Append new typed text to existing edited transcript (don't duplicate)
     const newText = transcript.trim();
-    if (newText && editedTranscript) {
+    if (newText && editedTranscript && newText !== editedTranscript.trim()) {
       setEditedTranscript(prev => prev + '\n\n' + newText);
-    } else if (newText) {
+    } else if (newText && !editedTranscript) {
       setEditedTranscript(newText);
     }
     setTranscript('');
