@@ -345,46 +345,6 @@ export default function GestaoVendas() {
         faltasMes, taxaFaltas, aniversariantes,
     } = computedMetrics;
 
-    // Patients without any evaluation (new leads)
-    const pacientesComAvaliacao = new Set(avaliacoes.map((a: any) => a.paciente_id));
-    const pacientesComMyID = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
-    const leads = patients.filter((p: any) => !pacientesComAvaliacao.has(p.id) && !pacientesComMyID.has(p.id));
-    const emAvaliacao = pendingLinks.map((l: any) => l.pacientes).filter(Boolean);
-    const avaliados = patients.filter((p: any) => pacientesComAvaliacao.has(p.id) || pacientesComMyID.has(p.id));
-
-    // Inactive patients (evaluated more than 30 days ago, no recent session)
-    const pacientesComSessaoRecente = new Set(agendamentos.map((a: any) => a.paciente_id));
-    const inativos = avaliados.filter((p: any) => !pacientesComSessaoRecente.has(p.id));
-
-    // Taxa conversão
-    const taxaConversao = totalPacientes > 0 ? Math.round((avaliados.length / totalPacientes) * 100) : 0;
-
-    // Receita mensal (controle_sessoes)
-    const receitaMes = sessoes
-        .filter((s: any) => new Date(s.data_sessao) >= startOfMonth && s.status === 'realizada')
-        .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
-
-    // Taxa de faltas
-    const agendamentosMes = agendamentos.filter((a: any) => new Date(a.data_inicio) >= startOfMonth);
-    const faltasMes = agendamentosMes.filter((a: any) => a.status === 'faltou').length;
-    const taxaFaltas = agendamentosMes.length > 0 ? Math.round((faltasMes / agendamentosMes.length) * 100) : 0;
-
-    // Aniversariantes próximos (próximos 30 dias)
-    const aniversariantes = patients.filter((p: any) => {
-        if (!p.data_nascimento) return false;
-        const nascimento = new Date(p.data_nascimento);
-        const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
-        if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
-        return differenceInCalendarDays(anivEsteAno, now) <= 30 && differenceInCalendarDays(anivEsteAno, now) >= 0;
-    }).sort((a: any, b: any) => {
-        const dA = new Date(a.data_nascimento);
-        const dB = new Date(b.data_nascimento);
-        const anivA = new Date(now.getFullYear(), dA.getMonth(), dA.getDate());
-        const anivB = new Date(now.getFullYear(), dB.getMonth(), dB.getDate());
-        if (anivA < now) anivA.setFullYear(now.getFullYear() + 1);
-        if (anivB < now) anivB.setFullYear(now.getFullYear() + 1);
-        return anivA.getTime() - anivB.getTime();
-    });
 
     const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>, templateId: string = 'acao-rapida') => {
         const p = patients.find((pat: any) => pat.id === patientId);
