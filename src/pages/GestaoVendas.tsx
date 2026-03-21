@@ -344,6 +344,7 @@ export default function GestaoVendas() {
         faltasMes, taxaFaltas, aniversariantes,
     } = computedMetrics;
 
+    if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
     const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>, templateId: string = 'acao-rapida') => {
         const p = patients.find((pat: any) => pat.id === patientId);
