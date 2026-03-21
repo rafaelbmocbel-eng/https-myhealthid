@@ -21,7 +21,7 @@ import AgendaPublica from "./pages/AgendaPublica";
 
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
-import FunilChat from "./pages/FunilChat";
+import FunilPublico from "./pages/FunilPublico";
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
