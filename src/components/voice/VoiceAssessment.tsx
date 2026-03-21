@@ -647,7 +647,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             )}
             {(audioBase64 || transcript.trim().length > 20 || editedTranscript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
-                <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
+                <Edit3 className="h-4 w-4 mr-2" />{appendMode ? 'Capturar e Adicionar' : 'Revisar e Processar'}
               </Button>
             )}
           </div>
