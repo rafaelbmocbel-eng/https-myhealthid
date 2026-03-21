@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown, Edit3, Save } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Textarea } from '@/components/ui/textarea';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { supabase } from '@/integrations/supabase/client';
 import { gerarNotaAvaliacaoProfissional } from '@/utils/prontuarioAutoNotes';
@@ -310,9 +311,84 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
   const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
   const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
+  const [editingVoiceId, setEditingVoiceId] = useState<string | null>(null);
+  const [editingVoiceText, setEditingVoiceText] = useState('');
+  const [savingVoiceEdit, setSavingVoiceEdit] = useState(false);
+  const [addingVoiceToId, setAddingVoiceToId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
+
+  // Save voice edit
+  const handleSaveVoiceEdit = async (avId: string) => {
+    setSavingVoiceEdit(true);
+    try {
+      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: editingVoiceText }).eq('id', avId);
+      if (error) throw error;
+      // Reprocess with AI
+      const av = voiceAvaliacoes.find((a: any) => a.id === avId);
+      if (av) {
+        const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', {
+          body: { transcription: editingVoiceText, serviceType: av.servico || 'identidade', patientName: patientName, patientAge: undefined, patientSex: undefined },
+        });
+        if (!fnErr && data?.assessment) {
+          const resultado = data.assessment;
+          const cleanResult = JSON.parse(JSON.stringify(resultado));
+          await (supabase as any).from('avaliacoes_voz').update({
+            resultado: cleanResult,
+            queixa_principal: resultado.resumo_clinico?.slice(0, 200) || av.queixa_principal,
+            classificacao_severidade: resultado.classificacao_severidade || av.classificacao_severidade,
+          }).eq('id', avId);
+        }
+      }
+      // Sync prontuario
+      if (user && av) {
+        try {
+          await (supabase as any).from('notas_prontuario').insert({
+            paciente_id: paciente.id,
+            terapeuta_id: user.id,
+            tipo: 'avaliacao_voz',
+            titulo: `Avaliação por Voz atualizada — ${av.classificacao_severidade || 'N/A'}`,
+            descricao: `📝 Transcrição editada e reprocessada.\n\n${editingVoiceText.slice(0, 500)}`,
+            dados_extras: { voice_assessment_id: avId },
+            referencia_id: avId,
+          });
+        } catch {}
+      }
+      qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      setEditingVoiceId(null);
+      toast({ title: 'Avaliação atualizada! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingVoiceEdit(false);
+    }
+  };
+
+  // Sync existing voice assessment to prontuário
+  const handleSyncVoiceToProntuario = async (av: any) => {
+    if (!user) return;
+    try {
+      const resultado = av.resultado as any;
+      await (supabase as any).from('notas_prontuario').insert({
+        paciente_id: paciente.id,
+        terapeuta_id: user.id,
+        tipo: 'avaliacao_voz',
+        titulo: `Avaliação por Voz — ${av.classificacao_severidade || 'N/A'} — ${format(new Date(av.created_at), 'dd/MM/yyyy', { locale: ptBR })}`,
+        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
+        dados_extras: { voice_assessment_id: av.id, resultado: resultado },
+        referencia_id: av.id,
+      });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      toast({ title: 'Adicionado ao prontuário! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const patientName = `${paciente.nome} ${paciente.sobrenome}`;
 
   // Buscar avaliações por voz do paciente
   const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
@@ -894,6 +970,78 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
                             {isExpanded && (
                               <div className="border-t px-4 py-3 space-y-3 text-xs bg-muted/10">
+                                {/* Action Buttons */}
+                                <div className="flex flex-wrap gap-2 pb-2 border-b">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => {
+                                      setEditingVoiceId(av.id);
+                                      setEditingVoiceText(av.transcricao || '');
+                                    }}
+                                  >
+                                    <Edit3 className="h-3 w-3" /> Editar Texto
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => setAddingVoiceToId(av.id)}
+                                  >
+                                    <Mic className="h-3 w-3" /> Adicionar Voz
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => handleSyncVoiceToProntuario(av)}
+                                  >
+                                    <FileText className="h-3 w-3" /> Enviar ao Prontuário
+                                  </Button>
+                                </div>
+
+                                {/* Editing mode */}
+                                {editingVoiceId === av.id && (
+                                  <div className="space-y-2 p-2 border rounded-lg bg-background">
+                                    <p className="font-semibold text-foreground text-xs">Editar Transcrição</p>
+                                    <Textarea
+                                      value={editingVoiceText}
+                                      onChange={e => setEditingVoiceText(e.target.value)}
+                                      className="min-h-[120px] text-xs"
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleSaveVoiceEdit(av.id)} disabled={savingVoiceEdit}>
+                                        {savingVoiceEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                        Salvar e Reprocessar
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditingVoiceId(null)}>Cancelar</Button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Add voice mode */}
+                                {addingVoiceToId === av.id && (
+                                  <div className="p-2 border rounded-lg bg-background">
+                                    <VoiceAssessment
+                                      serviceType={(av.servico || 'identidade') as any}
+                                      pacienteId={paciente.id}
+                                      patientName={patientName}
+                                      onAssessmentComplete={(newAssessment) => {
+                                        // Append new transcription to existing
+                                        const newText = newAssessment?.transcricao || '';
+                                        if (newText) {
+                                          const combined = (av.transcricao || '') + '\n\n' + newText;
+                                          setEditingVoiceId(av.id);
+                                          setEditingVoiceText(combined);
+                                        }
+                                        setAddingVoiceToId(null);
+                                        refetchVoice();
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
                                 {/* Resumo Clínico */}
                                 {resultado?.resumo_clinico && (
                                   <div>
@@ -919,9 +1067,24 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                 {resultado?.funcionalidade && (
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Funcionalidade</p>
-                                    <p className="text-muted-foreground">
-                                      {typeof resultado.funcionalidade === 'string' ? resultado.funcionalidade : JSON.stringify(resultado.funcionalidade)}
-                                    </p>
+                                    {typeof resultado.funcionalidade === 'string' ? (
+                                      <p className="text-muted-foreground">{resultado.funcionalidade}</p>
+                                    ) : (
+                                      <div className="space-y-1 text-muted-foreground">
+                                        {resultado.funcionalidade.limitacoes_trabalho && (
+                                          <p><strong>Trabalho:</strong> {resultado.funcionalidade.limitacoes_trabalho}</p>
+                                        )}
+                                        {resultado.funcionalidade.limitacoes_esporte && (
+                                          <p><strong>Esporte:</strong> {resultado.funcionalidade.limitacoes_esporte}</p>
+                                        )}
+                                        {resultado.funcionalidade.nivel_impacto && (
+                                          <p><strong>Impacto:</strong> {resultado.funcionalidade.nivel_impacto}</p>
+                                        )}
+                                        {Array.isArray(resultado.funcionalidade.limitacoes_avds) && resultado.funcionalidade.limitacoes_avds.length > 0 && (
+                                          <p><strong>AVDs:</strong> {resultado.funcionalidade.limitacoes_avds.join(', ')}</p>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
@@ -940,13 +1103,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
                                     <ul className="list-disc pl-4 text-muted-foreground">
-                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico} (${h.probabilidade || ''}) — ${h.evidencia || ''}` : JSON.stringify(h))}</li>)}
+                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico}${h.probabilidade ? ` (${h.probabilidade})` : ''}${h.evidencia ? ` — ${h.evidencia}` : ''}` : JSON.stringify(h))}</li>)}
                                     </ul>
                                   </div>
                                 )}
 
                                 {/* Transcrição */}
-                                {av.transcricao && (
+                                {av.transcricao && editingVoiceId !== av.id && (
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Transcrição</p>
                                     <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
