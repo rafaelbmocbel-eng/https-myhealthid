@@ -1425,7 +1425,7 @@ export default function GestaoVendas() {
                                                 <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                                                 <p className="text-xs text-muted-foreground">Nenhum atendimento para {isToday(currentDate) ? 'hoje' : 'esta data'}</p>
                                             </div>
-                                        )
+                                        )}
                                     </div>
                                 </>
                             ) : (
