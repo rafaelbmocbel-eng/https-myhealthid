@@ -1,4 +1,5 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -43,6 +44,7 @@ type Step = 'record' | 'review' | 'result';
 export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('record');
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -140,11 +142,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
-    // Append new typed text to existing edited transcript
+    // Append new typed text to existing edited transcript (don't duplicate)
     const newText = transcript.trim();
-    if (newText && editedTranscript) {
+    if (newText && editedTranscript && newText !== editedTranscript.trim()) {
       setEditedTranscript(prev => prev + '\n\n' + newText);
-    } else if (newText) {
+    } else if (newText && !editedTranscript) {
       setEditedTranscript(newText);
     }
     setTranscript('');
@@ -202,6 +204,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       }
 
       setIsSaved(true);
+      // Invalidate prontuário & evolução queries so data appears immediately
+      queryClient.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      queryClient.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+      queryClient.invalidateQueries({ queryKey: ['prontuario'] });
+      queryClient.invalidateQueries({ queryKey: ['evolucao'] });
       onAssessmentComplete?.(assessmentToSave);
 
       if (!options?.silent) {
@@ -328,7 +335,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <Button variant="outline" size="sm" onClick={() => setIsEditingTranscript(prev => !prev)}>
               <Edit3 className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Editor' : 'Ver/Editar Texto'}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+            <Button variant="outline" size="sm" onClick={() => { setAudioBase64(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
               <Mic className="h-4 w-4 mr-1" />Adicionar Áudio
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
@@ -363,7 +370,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 placeholder="Texto da transcrição..."
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
                   <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
                 </Button>
                 <Button
