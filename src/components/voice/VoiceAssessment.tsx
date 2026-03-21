@@ -335,7 +335,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <Button variant="outline" size="sm" onClick={() => setIsEditingTranscript(prev => !prev)}>
               <Edit3 className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Editor' : 'Ver/Editar Texto'}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+            <Button variant="outline" size="sm" onClick={() => { setAudioBase64(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
               <Mic className="h-4 w-4 mr-1" />Adicionar Áudio
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
