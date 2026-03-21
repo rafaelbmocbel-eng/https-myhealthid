@@ -381,7 +381,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </Badge>
           {assessment.funcionalidade?.limitacoes_avds?.length > 0 && (
             <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-              {assessment.funcionalidade.limitacoes_avds.map((l: string, i: number) => <li key={i}>• {l}</li>)}
+              {assessment.funcionalidade.limitacoes_avds.map((l: any, i: number) => <li key={i}>• {typeof l === 'string' ? l : JSON.stringify(l)}</li>)}
             </ul>
           )}
         </SectionCard>
