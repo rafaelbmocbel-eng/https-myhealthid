@@ -44,6 +44,7 @@ type Step = 'record' | 'review' | 'result';
 export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [step, setStep] = useState<Step>('record');
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
