@@ -1492,7 +1492,7 @@ export default function GestaoVendas() {
                                                             return (
                                                                 <div key={ag.id} className="relative">
                                                                     {/* Timeline dot */}
-                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`)}
+                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`} />
 
                                                                     <div className={`p-2 rounded-lg border text-xs ${status === 'atendido' ? 'bg-emerald-50/30 border-emerald-100 dark:border-emerald-900' : status === 'faltou' ? 'bg-red-50/30 border-red-100 dark:border-red-900 opacity-70' : 'bg-card'}`}>
                                                                         <div className="flex justify-between items-start mb-1">
