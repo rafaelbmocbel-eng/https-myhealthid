@@ -1114,9 +1114,9 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">🎯 Ações Recomendadas</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`)}}
-                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`)}}
-                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`)}}
+                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`} />}
+                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`} />}
+                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`} />}
                                     {leads.length === 0 && linksPendentes === 0 && inativos.length === 0 && (
                                         <p className="text-xs text-muted-foreground italic">Tudo em dia! 🎉</p>
                                     )}
