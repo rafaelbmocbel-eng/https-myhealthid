@@ -20,6 +20,9 @@ interface VoiceAssessmentProps {
   patientAge?: number;
   patientSex?: string;
   onAssessmentComplete?: (assessment: any) => void;
+  /** When true, only captures audio/text and returns via onAppendCapture without saving a new record */
+  appendMode?: boolean;
+  onAppendCapture?: (capturedText: string, capturedAudioBase64?: string, capturedAudioMimeType?: string) => void;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
