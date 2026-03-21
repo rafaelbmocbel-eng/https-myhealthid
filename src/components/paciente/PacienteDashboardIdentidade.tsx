@@ -930,7 +930,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <div>
                                     <p className="font-semibold text-destructive mb-1">🚩 Red Flags</p>
                                     <ul className="list-disc pl-4 text-destructive/80">
-                                      {resultado.red_flags.map((rf: string, i: number) => <li key={i}>{rf}</li>)}
+                                      {resultado.red_flags.map((rf: any, i: number) => <li key={i}>{typeof rf === 'string' ? rf : (rf?.descricao || rf?.diagnostico || JSON.stringify(rf))}</li>)}
                                     </ul>
                                   </div>
                                 )}
@@ -940,7 +940,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
                                     <ul className="list-disc pl-4 text-muted-foreground">
-                                      {resultado.hipoteses_diagnosticas.map((h: string, i: number) => <li key={i}>{h}</li>)}
+                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico} (${h.probabilidade || ''}) — ${h.evidencia || ''}` : JSON.stringify(h))}</li>)}
                                     </ul>
                                   </div>
                                 )}
