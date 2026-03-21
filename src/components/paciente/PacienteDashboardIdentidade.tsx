@@ -1051,16 +1051,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                       serviceType={(av.servico || 'identidade') as any}
                                       pacienteId={paciente.id}
                                       patientName={patientName}
-                                      onAssessmentComplete={(newAssessment) => {
-                                        // Append new transcription to existing
-                                        const newText = newAssessment?.transcricao || '';
-                                        if (newText) {
-                                          const combined = (av.transcricao || '') + '\n\n' + newText;
-                                          setEditingVoiceId(av.id);
-                                          setEditingVoiceText(combined);
-                                        }
+                                      appendMode={true}
+                                      onAppendCapture={(capturedText, capturedAudio, capturedMime) => {
+                                        // Combine existing transcription with new captured content
+                                        const combined = [av.transcricao || '', capturedText].filter(Boolean).join('\n\n---\n\n');
+                                        setEditingVoiceId(av.id);
+                                        setEditingVoiceText(combined);
                                         setAddingVoiceToId(null);
-                                        refetchVoice();
+                                        // Auto-trigger reprocess with captured audio
+                                        setTimeout(() => handleSaveVoiceEdit(av.id, capturedAudio, capturedMime), 100);
                                       }}
                                     />
                                   </div>
