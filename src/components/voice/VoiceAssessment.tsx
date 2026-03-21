@@ -136,11 +136,18 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   };
 
   const goToReview = () => {
-    if (!audioBase64 && transcript.trim().length < 20) {
+    if (!audioBase64 && transcript.trim().length < 20 && editedTranscript.trim().length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
-    setEditedTranscript(transcript.trim());
+    // Append new typed text to existing edited transcript
+    const newText = transcript.trim();
+    if (newText && editedTranscript) {
+      setEditedTranscript(prev => prev + '\n\n' + newText);
+    } else if (newText) {
+      setEditedTranscript(newText);
+    }
+    setTranscript('');
     setStep('review');
   };
 
