@@ -431,7 +431,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
               <ul className="text-sm space-y-1 mt-1">
-                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: string, i: number) => <li key={i}>• {o}</li>)}
+                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => <li key={i}>• {typeof o === 'string' ? o : JSON.stringify(o)}</li>)}
               </ul>
             </div>
           )}
