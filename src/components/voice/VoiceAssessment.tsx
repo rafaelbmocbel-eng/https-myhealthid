@@ -372,6 +372,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </Card>
         )}
 
+        <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
           <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {assessment.queixa_principal && <Badge variant="secondary">QP: {assessment.queixa_principal}</Badge>}
