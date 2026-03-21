@@ -339,7 +339,39 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </div>
 
-        <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
+        {isEditingTranscript && (
+          <Card className="border-primary/20">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">Transcrição / Texto Base</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>
+              </div>
+              <Textarea
+                value={editedTranscript}
+                onChange={(e) => { setEditedTranscript(e.target.value); setIsSaved(false); }}
+                className="min-h-[160px] text-sm"
+                placeholder="Texto da transcrição..."
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+                  <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => { setIsSaved(false); processAssessment(); }}
+                  disabled={isProcessing || editedTranscript.trim().length < 20}
+                  className="bg-primary text-primary-foreground"
+                >
+                  {isProcessing ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Reprocessando...</> : <><Brain className="h-4 w-4 mr-1" />Reprocessar com IA</>}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
           <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
           <div className="flex flex-wrap gap-2 mt-2">
             {assessment.queixa_principal && <Badge variant="secondary">QP: {assessment.queixa_principal}</Badge>}
