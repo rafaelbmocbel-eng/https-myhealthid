@@ -1045,7 +1045,7 @@ export default function GestaoVendas() {
                                                                         <div className="relative">
                                                                             <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
                                                                             <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
-                                                                                onChange={(e) => setCustomValue(e.target.value))}
+                                                                                onChange={(e) => setCustomValue(e.target.value)} />
                                                                         </div>
                                                                     </div>
                                                                     <Button className="h-8 bg-[#25D366] hover:bg-[#20BE5C] text-white gap-1 text-xs"
