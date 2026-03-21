@@ -536,13 +536,13 @@ export default function GestaoVendas() {
                     const inadimplentes = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'inadimplente');
                     const aPagar = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'a_pagar');
 
-                    const PatientRow = ({ p, actions }: { p: any; actions: React.ReactNode }) => {
+                    const renderPatientRow = (p: any, actions: React.ReactNode) => {
                         const tag = getClassificacao(p.id, p.created_at);
                         const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
                         const patientMsgs = mensagens.filter((m: any) => m.paciente_id === p.id);
                         const lastMsg = patientMsgs.length > 0 ? patientMsgs[0] : null;
                         return (
-                            <div className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
+                            <div key={p.id} className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
@@ -568,7 +568,6 @@ export default function GestaoVendas() {
                                         {actions}
                                     </div>
                                 </div>
-                                {/* WhatsApp history inline */}
                                 {lastMsg && (
                                     <div className="ml-9 flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
                                         <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
