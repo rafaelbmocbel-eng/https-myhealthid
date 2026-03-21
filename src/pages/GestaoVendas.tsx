@@ -402,7 +402,8 @@ export default function GestaoVendas() {
         { id: 'pipeline', label: 'Pacientes', icon: Users, desc: 'Veja todos os pacientes e seus status' },
         { id: 'mensagens', label: 'WhatsApp', icon: MessageCircle, desc: 'Envie mensagens e veja o histórico' },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck, desc: 'Checklist diário de atendimentos' },
-        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e configurações do funil' },
+        { id: 'servicos', label: 'Serviços', icon: Package, desc: 'Gerencie serviços, valores e pagamentos' },
+        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e desempenho' },
     ];
 
     return (
