@@ -604,7 +604,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
           </div>
 
-          <div className="flex gap-2 items-center mb-4">
+          {editedTranscript.trim().length > 0 && !isRecording && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-muted text-muted-foreground text-sm">
+              <FileText className="h-4 w-4 flex-shrink-0" />
+              <span>Texto existente: {editedTranscript.split(/\s+/).filter(Boolean).length} palavras — grave mais áudio ou adicione texto para complementar.</span>
+            </div>
+          )}
+
             {!isRecording ? (
               <Button onClick={startRecording} className="bg-primary text-primary-foreground">
                 <Mic className="h-4 w-4 mr-2" />Iniciar Gravação
