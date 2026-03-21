@@ -287,7 +287,6 @@ export default function GestaoVendas() {
         return counts;
     }, [patients, getClassificacao]);
 
-    if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
     // ── Computed metrics (memoized) ─────────────────────────────────
     const computedMetrics = useMemo(() => {
