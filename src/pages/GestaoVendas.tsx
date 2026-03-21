@@ -1691,7 +1691,7 @@ function MetricCard({ label, value, desc, icon: Icon, color }: { label: string; 
         <Card className="border">
             <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-1">
-                    <Icon className={`h-4 w-4 ${colors[color] || ''}`)}
+                    <Icon className={`h-4 w-4 ${colors[color] || ''}`} />
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">{label}</span>
                 </div>
                 <div className={`text-2xl font-black ${colors[color] || ''}`}>{value}</div>
