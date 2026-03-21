@@ -289,13 +289,61 @@ export default function GestaoVendas() {
 
     if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
-    // ── Computed metrics ─────────────────────────────────────────────
-    const totalPacientes = patients.length;
-    const linksPendentes = pendingLinks.length;
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sessoesMes = agendamentos.filter((a: any) => a.status === 'confirmado').length;
-    const avaliacoesMes = avaliacoes.filter((a: any) => new Date(a.created_at) >= startOfMonth).length;
+    // ── Computed metrics (memoized) ─────────────────────────────────
+    const computedMetrics = useMemo(() => {
+        const totalPacientes = patients.length;
+        const linksPendentes = pendingLinks.length;
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const sessoesMes = agendamentos.filter((a: any) => a.status === 'confirmado').length;
+        const avaliacoesMes = avaliacoes.filter((a: any) => new Date(a.created_at) >= startOfMonth).length;
+
+        const pacientesComAvaliacao = new Set(avaliacoes.map((a: any) => a.paciente_id));
+        const pacientesComMyID = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
+        const leads = patients.filter((p: any) => !pacientesComAvaliacao.has(p.id) && !pacientesComMyID.has(p.id));
+        const avaliados = patients.filter((p: any) => pacientesComAvaliacao.has(p.id) || pacientesComMyID.has(p.id));
+
+        const pacientesComSessaoRecente = new Set(agendamentos.map((a: any) => a.paciente_id));
+        const inativos = avaliados.filter((p: any) => !pacientesComSessaoRecente.has(p.id));
+
+        const taxaConversao = totalPacientes > 0 ? Math.round((avaliados.length / totalPacientes) * 100) : 0;
+
+        const receitaMes = sessoes
+            .filter((s: any) => new Date(s.data_sessao) >= startOfMonth && s.status === 'realizada')
+            .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
+
+        const agendamentosMes = agendamentos.filter((a: any) => new Date(a.data_inicio) >= startOfMonth);
+        const faltasMes = agendamentosMes.filter((a: any) => a.status === 'faltou').length;
+        const taxaFaltas = agendamentosMes.length > 0 ? Math.round((faltasMes / agendamentosMes.length) * 100) : 0;
+
+        const aniversariantes = patients.filter((p: any) => {
+            if (!p.data_nascimento) return false;
+            const nascimento = new Date(p.data_nascimento);
+            const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+            if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
+            return differenceInCalendarDays(anivEsteAno, now) <= 30 && differenceInCalendarDays(anivEsteAno, now) >= 0;
+        }).sort((a: any, b: any) => {
+            const dA = new Date(a.data_nascimento);
+            const dB = new Date(b.data_nascimento);
+            const anivA = new Date(now.getFullYear(), dA.getMonth(), dA.getDate());
+            const anivB = new Date(now.getFullYear(), dB.getMonth(), dB.getDate());
+            if (anivA < now) anivA.setFullYear(now.getFullYear() + 1);
+            if (anivB < now) anivB.setFullYear(now.getFullYear() + 1);
+            return anivA.getTime() - anivB.getTime();
+        });
+
+        return {
+            totalPacientes, linksPendentes, now, sessoesMes, avaliacoesMes,
+            leads, avaliados, inativos, taxaConversao, receitaMes,
+            faltasMes, taxaFaltas, aniversariantes,
+        };
+    }, [patients, pendingLinks, agendamentos, avaliacoes, myidAvaliacoes, sessoes]);
+
+    const {
+        totalPacientes, linksPendentes, now, sessoesMes, avaliacoesMes,
+        leads, avaliados, inativos, taxaConversao, receitaMes,
+        faltasMes, taxaFaltas, aniversariantes,
+    } = computedMetrics;
 
     // Patients without any evaluation (new leads)
     const pacientesComAvaliacao = new Set(avaliacoes.map((a: any) => a.paciente_id));
