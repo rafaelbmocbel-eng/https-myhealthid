@@ -415,12 +415,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
               <div key={i} className="border border-border/50 rounded-lg p-3">
                 <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{h.diagnostico}</span>
+                  <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
                   <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
-                    {h.probabilidade}
+                    {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
                   </Badge>
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 italic">📖 {h.evidencia}</p>
+                {h.unidade_relacionada && <p className="text-xs text-muted-foreground mt-0.5">UC: {typeof h.unidade_relacionada === 'string' ? h.unidade_relacionada : JSON.stringify(h.unidade_relacionada)}</p>}
+                <p className="text-xs text-muted-foreground mt-1 italic">📖 {typeof h.evidencia === 'string' ? h.evidencia : JSON.stringify(h.evidencia)}</p>
               </div>
             ))}
           </div>
