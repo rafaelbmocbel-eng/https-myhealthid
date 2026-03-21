@@ -996,7 +996,7 @@ export default function GestaoVendas() {
                                             <p className="text-[10px] text-destructive mt-2 text-center flex items-center justify-center gap-1 font-medium bg-destructive/10 py-1 rounded-md">
                                                 <AlertCircle className="h-3 w-3" /> Impossível enviar: paciente sem número de telefone.
                                             </p>
-                                        )
+                                        )}
                                     </div>
                                 </>
                             )}
