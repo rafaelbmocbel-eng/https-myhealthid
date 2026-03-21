@@ -44,6 +44,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const { toast } = useToast();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('record');
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcript, setTranscript] = useState('');
@@ -135,11 +136,18 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   };
 
   const goToReview = () => {
-    if (!audioBase64 && transcript.trim().length < 20) {
+    if (!audioBase64 && transcript.trim().length < 20 && editedTranscript.trim().length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
-    setEditedTranscript(transcript.trim());
+    // Append new typed text to existing edited transcript
+    const newText = transcript.trim();
+    if (newText && editedTranscript) {
+      setEditedTranscript(prev => prev + '\n\n' + newText);
+    } else if (newText) {
+      setEditedTranscript(newText);
+    }
+    setTranscript('');
     setStep('review');
   };
 
@@ -317,10 +325,10 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </Badge>
           </div>
           <div className="flex gap-2 flex-wrap">
-            <Button variant="outline" size="sm" onClick={() => { setStep('review'); }}>
-              <Edit3 className="h-4 w-4 mr-1" />Editar Texto
+            <Button variant="outline" size="sm" onClick={() => setIsEditingTranscript(prev => !prev)}>
+              <Edit3 className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Editor' : 'Ver/Editar Texto'}
             </Button>
-            <Button variant="outline" size="sm" onClick={() => { setStep('record'); }}>
+            <Button variant="outline" size="sm" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
               <Mic className="h-4 w-4 mr-1" />Adicionar Áudio
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
@@ -337,6 +345,39 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
+
+        {isEditingTranscript && (
+          <Card className="border-primary/20">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">Transcrição / Texto Base</span>
+                </div>
+                <p className="text-xs text-muted-foreground">{editedTranscript.split(/\s+/).filter(Boolean).length} palavras</p>
+              </div>
+              <Textarea
+                value={editedTranscript}
+                onChange={(e) => { setEditedTranscript(e.target.value); setIsSaved(false); }}
+                className="min-h-[160px] text-sm"
+                placeholder="Texto da transcrição..."
+              />
+              <div className="flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+                  <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={() => { setIsSaved(false); processAssessment(); }}
+                  disabled={isProcessing || editedTranscript.trim().length < 20}
+                  className="bg-primary text-primary-foreground"
+                >
+                  {isProcessing ? <><Loader2 className="h-4 w-4 mr-1 animate-spin" />Reprocessando...</> : <><Brain className="h-4 w-4 mr-1" />Reprocessar com IA</>}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
           <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
@@ -563,6 +604,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
           </div>
 
+          {editedTranscript.trim().length > 0 && !isRecording && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-muted text-muted-foreground text-sm">
+              <FileText className="h-4 w-4 flex-shrink-0" />
+              <span>Texto existente: {editedTranscript.split(/\s+/).filter(Boolean).length} palavras — grave mais áudio ou adicione texto para complementar.</span>
+            </div>
+          )}
+
           <div className="flex gap-2 items-center mb-4">
             {!isRecording ? (
               <Button onClick={startRecording} className="bg-primary text-primary-foreground">
@@ -579,7 +627,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 </div>
               </>
             )}
-            {(audioBase64 || transcript.trim().length > 20) && !isRecording && (
+            {(audioBase64 || transcript.trim().length > 20 || editedTranscript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
                 <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
               </Button>
