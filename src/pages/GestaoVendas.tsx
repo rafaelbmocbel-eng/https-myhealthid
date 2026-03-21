@@ -1103,10 +1103,10 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">📊 Resumo do Mês</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length)}
-                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes)}
-                                    <StatRow label="Sessões confirmadas" value={sessoesMes)}
-                                    <StatRow label="Links pendentes" value={linksPendentes)}
+                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length} />
+                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes} />
+                                    <StatRow label="Sessões confirmadas" value={sessoesMes} />
+                                    <StatRow label="Links pendentes" value={linksPendentes} />
                                 </CardContent>
                             </Card>
                             <Card className="border">
