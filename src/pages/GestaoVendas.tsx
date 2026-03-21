@@ -479,7 +479,7 @@ export default function GestaoVendas() {
                                                     onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph), 'aniversario')}>
                                                     <Send className="h-3 w-3" />
                                                 </Button>
-                                            )
+                                            )}
                                         </div>
                                     );
                                 })}
@@ -564,7 +564,7 @@ export default function GestaoVendas() {
                                                 }}>
                                                 <MessageCircle className="h-3 w-3" /> Chamar
                                             </Button>
-                                        )
+                                        )}
                                         {actions}
                                     </div>
                                 </div>
@@ -630,7 +630,7 @@ export default function GestaoVendas() {
                                                             onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
                                                             <MessageCircle className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    )
+                                                    )}
                                                 </div>
                                             </div>
                                         );
@@ -730,7 +730,7 @@ export default function GestaoVendas() {
                                                 </Button>
                                             </>
                                         ) : null
-                                    )}
+                                    )
                                 ))}
                             </FunnelStage>
 
@@ -781,7 +781,7 @@ export default function GestaoVendas() {
                                                                 Number(paymentModal.valor) === s.valor
                                                                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                                                     : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                                                            )
+                                                            )}
                                                         >
                                                             <div>
                                                                 <p className="text-sm font-semibold">{s.nome}</p>
@@ -794,7 +794,7 @@ export default function GestaoVendas() {
                                                     ))}
                                                 </div>
                                             </div>
-                                        )
+                                        )}
                                         <div className="space-y-2">
                                             <Label>Valor Recebido (R$)</Label>
                                             <Input
@@ -909,7 +909,7 @@ export default function GestaoVendas() {
                                                         <><Phone className="h-2.5 w-2.5" /> {selectedPatient.telefone}</>
                                                     ) : (
                                                         <><AlertCircle className="h-2.5 w-2.5 text-destructive" /> Sem telefone cadastrado</>
-                                                    )
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
@@ -996,7 +996,7 @@ export default function GestaoVendas() {
                                             <p className="text-[10px] text-destructive mt-2 text-center flex items-center justify-center gap-1 font-medium bg-destructive/10 py-1 rounded-md">
                                                 <AlertCircle className="h-3 w-3" /> Impossível enviar: paciente sem número de telefone.
                                             </p>
-                                        )
+                                        )}
                                     </div>
                                 </>
                             )}
@@ -1045,7 +1045,7 @@ export default function GestaoVendas() {
                                                                         <div className="relative">
                                                                             <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
                                                                             <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
-                                                                                onChange={(e) => setCustomValue(e.target.value))}
+                                                                                onChange={(e) => setCustomValue(e.target.value)} />
                                                                         </div>
                                                                     </div>
                                                                     <Button className="h-8 bg-[#25D366] hover:bg-[#20BE5C] text-white gap-1 text-xs"
@@ -1056,7 +1056,7 @@ export default function GestaoVendas() {
                                                                 </div>
                                                                 {!selectedPatient && <p className="text-[9px] text-destructive">⚠️ Selecione um paciente primeiro</p>}
                                                             </div>
-                                                        )
+                                                        )}
                                                     </div>
                                                 );
                                             })}
@@ -1103,10 +1103,10 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">📊 Resumo do Mês</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length)}
-                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes)}
-                                    <StatRow label="Sessões confirmadas" value={sessoesMes)}
-                                    <StatRow label="Links pendentes" value={linksPendentes)}
+                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length} />
+                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes} />
+                                    <StatRow label="Sessões confirmadas" value={sessoesMes} />
+                                    <StatRow label="Links pendentes" value={linksPendentes} />
                                 </CardContent>
                             </Card>
                             <Card className="border">
@@ -1114,9 +1114,9 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">🎯 Ações Recomendadas</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`)}}
-                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`)}}
-                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`)}}
+                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`} />}
+                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`} />}
+                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`} />}
                                     {leads.length === 0 && linksPendentes === 0 && inativos.length === 0 && (
                                         <p className="text-xs text-muted-foreground italic">Tudo em dia! 🎉</p>
                                     )}
@@ -1337,7 +1337,7 @@ export default function GestaoVendas() {
                                             {/* Progress bar */}
                                             <div className="flex items-center gap-3 mb-4">
                                                 <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` })}
+                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
                                                 </div>
                                                 <span className="text-xs font-black text-primary">{pctDone}%</span>
                                             </div>
@@ -1408,7 +1408,7 @@ export default function GestaoVendas() {
                                                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0" onClick={() => { window.open(`https://wa.me/55${pac.telefone.replace(/\D/g, '')}`, '_blank'); }}>
                                                                 <Phone className="h-3.5 w-3.5" />
                                                             </Button>
-                                                        )
+                                                        )}
                                                     </div>
                                                     <div className="mt-2 pl-[38px]">
                                                         <Input
@@ -1425,7 +1425,7 @@ export default function GestaoVendas() {
                                                 <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                                                 <p className="text-xs text-muted-foreground">Nenhum atendimento para {isToday(currentDate) ? 'hoje' : 'esta data'}</p>
                                             </div>
-                                        )
+                                        )}
                                     </div>
                                 </>
                             ) : (
@@ -1492,7 +1492,7 @@ export default function GestaoVendas() {
                                                             return (
                                                                 <div key={ag.id} className="relative">
                                                                     {/* Timeline dot */}
-                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`)}
+                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`} />
 
                                                                     <div className={`p-2 rounded-lg border text-xs ${status === 'atendido' ? 'bg-emerald-50/30 border-emerald-100 dark:border-emerald-900' : status === 'faltou' ? 'bg-red-50/30 border-red-100 dark:border-red-900 opacity-70' : 'bg-card'}`}>
                                                                         <div className="flex justify-between items-start mb-1">
@@ -1519,7 +1519,7 @@ export default function GestaoVendas() {
                                                             );
                                                         }) : (
                                                             <p className="text-xs text-muted-foreground italic">Nenhum agendamento encontrado.</p>
-                                                        )
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
@@ -1579,7 +1579,7 @@ export default function GestaoVendas() {
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     <div className="flex gap-2">
-                                        <Textarea placeholder="Lembretes, afazeres da clínica..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2)}
+                                        <Textarea placeholder="Lembretes, afazeres da clínica..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2} />
                                         <Button size="sm" className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0" disabled={!newNote.trim()}
                                             onClick={() => { saveNotes([{ id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() }, ...notes].slice(0, 50)); setNewNote(''); toast({ title: '📝 Salvo!' }); }}>
                                             <Plus className="h-4 w-4" />
@@ -1641,8 +1641,7 @@ export default function GestaoVendas() {
                     )
                 }
             </div>
-            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false))}
-            }
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
         </AppLayout>
     );
 }
@@ -1691,7 +1690,7 @@ function MetricCard({ label, value, desc, icon: Icon, color }: { label: string; 
         <Card className="border">
             <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-1">
-                    <Icon className={`h-4 w-4 ${colors[color] || ''}`)}
+                    <Icon className={`h-4 w-4 ${colors[color] || ''}`} />
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">{label}</span>
                 </div>
                 <div className={`text-2xl font-black ${colors[color] || ''}`}>{value}</div>
