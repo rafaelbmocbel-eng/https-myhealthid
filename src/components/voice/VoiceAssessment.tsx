@@ -44,7 +44,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 type Step = 'record' | 'review' | 'result';
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
