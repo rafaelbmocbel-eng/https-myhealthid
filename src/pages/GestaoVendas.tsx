@@ -1056,7 +1056,7 @@ export default function GestaoVendas() {
                                                                 </div>
                                                                 {!selectedPatient && <p className="text-[9px] text-destructive">⚠️ Selecione um paciente primeiro</p>}
                                                             </div>
-                                                        )
+                                                        )}
                                                     </div>
                                                 );
                                             })}
