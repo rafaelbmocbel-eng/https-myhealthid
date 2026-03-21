@@ -969,6 +969,78 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
                             {isExpanded && (
                               <div className="border-t px-4 py-3 space-y-3 text-xs bg-muted/10">
+                                {/* Action Buttons */}
+                                <div className="flex flex-wrap gap-2 pb-2 border-b">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => {
+                                      setEditingVoiceId(av.id);
+                                      setEditingVoiceText(av.transcricao || '');
+                                    }}
+                                  >
+                                    <Edit3 className="h-3 w-3" /> Editar Texto
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => setAddingVoiceToId(av.id)}
+                                  >
+                                    <Mic className="h-3 w-3" /> Adicionar Voz
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    className="h-7 text-[11px] gap-1"
+                                    onClick={() => handleSyncVoiceToProntuario(av)}
+                                  >
+                                    <FileText className="h-3 w-3" /> Enviar ao Prontuário
+                                  </Button>
+                                </div>
+
+                                {/* Editing mode */}
+                                {editingVoiceId === av.id && (
+                                  <div className="space-y-2 p-2 border rounded-lg bg-background">
+                                    <p className="font-semibold text-foreground text-xs">Editar Transcrição</p>
+                                    <Textarea
+                                      value={editingVoiceText}
+                                      onChange={e => setEditingVoiceText(e.target.value)}
+                                      className="min-h-[120px] text-xs"
+                                    />
+                                    <div className="flex gap-2">
+                                      <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleSaveVoiceEdit(av.id)} disabled={savingVoiceEdit}>
+                                        {savingVoiceEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                        Salvar e Reprocessar
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditingVoiceId(null)}>Cancelar</Button>
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Add voice mode */}
+                                {addingVoiceToId === av.id && (
+                                  <div className="p-2 border rounded-lg bg-background">
+                                    <VoiceAssessment
+                                      serviceType={(av.servico || 'identidade') as any}
+                                      pacienteId={paciente.id}
+                                      patientName={patientName}
+                                      onAssessmentComplete={(newAssessment) => {
+                                        // Append new transcription to existing
+                                        const newText = newAssessment?.transcricao || '';
+                                        if (newText) {
+                                          const combined = (av.transcricao || '') + '\n\n' + newText;
+                                          setEditingVoiceId(av.id);
+                                          setEditingVoiceText(combined);
+                                        }
+                                        setAddingVoiceToId(null);
+                                        refetchVoice();
+                                      }}
+                                    />
+                                  </div>
+                                )}
+
                                 {/* Resumo Clínico */}
                                 {resultado?.resumo_clinico && (
                                   <div>
@@ -994,9 +1066,24 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                 {resultado?.funcionalidade && (
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Funcionalidade</p>
-                                    <p className="text-muted-foreground">
-                                      {typeof resultado.funcionalidade === 'string' ? resultado.funcionalidade : JSON.stringify(resultado.funcionalidade)}
-                                    </p>
+                                    {typeof resultado.funcionalidade === 'string' ? (
+                                      <p className="text-muted-foreground">{resultado.funcionalidade}</p>
+                                    ) : (
+                                      <div className="space-y-1 text-muted-foreground">
+                                        {resultado.funcionalidade.limitacoes_trabalho && (
+                                          <p><strong>Trabalho:</strong> {resultado.funcionalidade.limitacoes_trabalho}</p>
+                                        )}
+                                        {resultado.funcionalidade.limitacoes_esporte && (
+                                          <p><strong>Esporte:</strong> {resultado.funcionalidade.limitacoes_esporte}</p>
+                                        )}
+                                        {resultado.funcionalidade.nivel_impacto && (
+                                          <p><strong>Impacto:</strong> {resultado.funcionalidade.nivel_impacto}</p>
+                                        )}
+                                        {Array.isArray(resultado.funcionalidade.limitacoes_avds) && resultado.funcionalidade.limitacoes_avds.length > 0 && (
+                                          <p><strong>AVDs:</strong> {resultado.funcionalidade.limitacoes_avds.join(', ')}</p>
+                                        )}
+                                      </div>
+                                    )}
                                   </div>
                                 )}
 
@@ -1015,13 +1102,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
                                     <ul className="list-disc pl-4 text-muted-foreground">
-                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico} (${h.probabilidade || ''}) — ${h.evidencia || ''}` : JSON.stringify(h))}</li>)}
+                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico}${h.probabilidade ? ` (${h.probabilidade})` : ''}${h.evidencia ? ` — ${h.evidencia}` : ''}` : JSON.stringify(h))}</li>)}
                                     </ul>
                                   </div>
                                 )}
 
                                 {/* Transcrição */}
-                                {av.transcricao && (
+                                {av.transcricao && editingVoiceId !== av.id && (
                                   <div>
                                     <p className="font-semibold text-foreground mb-1">Transcrição</p>
                                     <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
