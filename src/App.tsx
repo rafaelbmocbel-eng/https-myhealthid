@@ -21,7 +21,7 @@ import AgendaPublica from "./pages/AgendaPublica";
 
 import GestaoVendas from "./pages/GestaoVendas";
 import Configuracoes from "./pages/Configuracoes";
-import FunilChat from "./pages/FunilChat";
+import FunilPublico from "./pages/FunilPublico";
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -89,7 +89,7 @@ const App = () => (
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
                 <Route path="/agenda/:token" element={<AgendaPublica />} />
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
-                <Route path="/funil/:slug" element={<FunilChat />} />
+                <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<GestaoVendas />} />
                 <Route path="/configuracoes" element={<Configuracoes />} />
