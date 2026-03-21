@@ -1408,7 +1408,7 @@ export default function GestaoVendas() {
                                                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0" onClick={() => { window.open(`https://wa.me/55${pac.telefone.replace(/\D/g, '')}`, '_blank'); }}>
                                                                 <Phone className="h-3.5 w-3.5" />
                                                             </Button>
-                                                        )
+                                                        )}
                                                     </div>
                                                     <div className="mt-2 pl-[38px]">
                                                         <Input
