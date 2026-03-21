@@ -43,7 +43,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="min-h-[100dvh] bg-background relative overflow-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-background relative overflow-x-hidden">
       {/* Background decoration */}
       <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
