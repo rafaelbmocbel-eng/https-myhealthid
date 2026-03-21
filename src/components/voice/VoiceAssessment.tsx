@@ -401,9 +401,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         {assessment.red_flags?.length > 0 && (
           <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
             <ul className="space-y-1">
-              {assessment.red_flags.map((rf: string, i: number) => (
+              {assessment.red_flags.map((rf: any, i: number) => (
                 <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{rf}
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
                 </li>
               ))}
             </ul>
