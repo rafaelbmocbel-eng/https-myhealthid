@@ -909,7 +909,7 @@ export default function GestaoVendas() {
                                                         <><Phone className="h-2.5 w-2.5" /> {selectedPatient.telefone}</>
                                                     ) : (
                                                         <><AlertCircle className="h-2.5 w-2.5 text-destructive" /> Sem telefone cadastrado</>
-                                                    )
+                                                    )}
                                                 </p>
                                             </div>
                                         </div>
