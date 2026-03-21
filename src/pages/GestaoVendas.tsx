@@ -730,7 +730,7 @@ export default function GestaoVendas() {
                                                 </Button>
                                             </>
                                         ) : null
-                                    )}
+                                    )
                                 ))}
                             </FunnelStage>
 
