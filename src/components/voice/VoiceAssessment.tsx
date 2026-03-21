@@ -44,6 +44,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const { toast } = useToast();
   const { user } = useAuth();
   const [step, setStep] = useState<Step>('record');
+  const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
   const [recordingTime, setRecordingTime] = useState(0);
   const [transcript, setTranscript] = useState('');
