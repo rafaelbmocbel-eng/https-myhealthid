@@ -1337,7 +1337,7 @@ export default function GestaoVendas() {
                                             {/* Progress bar */}
                                             <div className="flex items-center gap-3 mb-4">
                                                 <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` })}
+                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
                                                 </div>
                                                 <span className="text-xs font-black text-primary">{pctDone}%</span>
                                             </div>
