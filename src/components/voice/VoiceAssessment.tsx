@@ -611,6 +611,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             </div>
           )}
 
+          <div className="flex gap-2 items-center mb-4">
             {!isRecording ? (
               <Button onClick={startRecording} className="bg-primary text-primary-foreground">
                 <Mic className="h-4 w-4 mr-2" />Iniciar Gravação
