@@ -781,7 +781,7 @@ export default function GestaoVendas() {
                                                                 Number(paymentModal.valor) === s.valor
                                                                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                                                     : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                                                            )
+                                                            )}
                                                         >
                                                             <div>
                                                                 <p className="text-sm font-semibold">{s.nome}</p>
