@@ -930,7 +930,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   <div>
                                     <p className="font-semibold text-destructive mb-1">🚩 Red Flags</p>
                                     <ul className="list-disc pl-4 text-destructive/80">
-                                      {resultado.red_flags.map((rf: string, i: number) => <li key={i}>{rf}</li>)}
+                                      {resultado.red_flags.map((rf: any, i: number) => <li key={i}>{typeof rf === 'string' ? rf : (rf?.descricao || rf?.diagnostico || JSON.stringify(rf))}</li>)}
                                     </ul>
                                   </div>
                                 )}
