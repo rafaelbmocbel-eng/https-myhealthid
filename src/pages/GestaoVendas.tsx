@@ -1125,10 +1125,20 @@ export default function GestaoVendas() {
                             </Card>
                         </div>
 
-                        {/* Funil Config */}
+                    </div>
+                )}
+
+                {/* ══════════════════ SERVIÇOS & PAGAMENTOS TAB ══════════════════ */}
+                {activeTab === 'servicos' && (
+                    <div className="space-y-4">
                         <Card className="border">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" /> Configurar Funil de Vendas</CardTitle>
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Package className="h-4 w-4 text-primary" /> Serviços, Valores & Funil de Vendas
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">
+                                    Os serviços e valores configurados aqui aparecerão automaticamente no portal do paciente na área de pagamentos.
+                                </p>
                             </CardHeader>
                             <CardContent>
                                 <FunilConfigPanel />
