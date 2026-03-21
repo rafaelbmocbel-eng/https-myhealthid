@@ -564,7 +564,7 @@ export default function GestaoVendas() {
                                                 }}>
                                                 <MessageCircle className="h-3 w-3" /> Chamar
                                             </Button>
-                                        )
+                                        )}
                                         {actions}
                                     </div>
                                 </div>
