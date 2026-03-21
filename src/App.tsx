@@ -6,22 +6,22 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
-import MyIDResponder from "./pages/MyIDResponder";
-import MetodoIdentidade from "./pages/MetodoIdentidade";
-import CobZero from "./pages/CobZero";
-import StudioPersonalID from "./pages/StudioPersonalID";
-import NotFound from "./pages/NotFound";
 import Auth from "./pages/Auth";
-import Agenda from "./pages/Agenda";
-import Pacientes from "./pages/Pacientes";
-import PacientePerfil from "./pages/PacientePerfil";
+import NotFound from "./pages/NotFound";
 
-import AvaliacaoPublica from "./pages/AvaliacaoPublica";
-import AgendaPublica from "./pages/AgendaPublica";
-
-import GestaoVendas from "./pages/GestaoVendas";
-import Configuracoes from "./pages/Configuracoes";
-import FunilPublico from "./pages/FunilPublico";
+// Lazy-loaded pages for better performance
+const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
+const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
+const CobZero = lazy(() => import("./pages/CobZero"));
+const StudioPersonalID = lazy(() => import("./pages/StudioPersonalID"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const Pacientes = lazy(() => import("./pages/Pacientes"));
+const PacientePerfil = lazy(() => import("./pages/PacientePerfil"));
+const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
+const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
+const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";

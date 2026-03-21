@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useCallback, memo } from 'react';
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import AppLayout from '@/components/AppLayout';
@@ -287,56 +287,64 @@ export default function GestaoVendas() {
         return counts;
     }, [patients, getClassificacao]);
 
+
+    // ── Computed metrics (memoized) ─────────────────────────────────
+    const computedMetrics = useMemo(() => {
+        const totalPacientes = patients.length;
+        const linksPendentes = pendingLinks.length;
+        const now = new Date();
+        const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+        const sessoesMes = agendamentos.filter((a: any) => a.status === 'confirmado').length;
+        const avaliacoesMes = avaliacoes.filter((a: any) => new Date(a.created_at) >= startOfMonth).length;
+
+        const pacientesComAvaliacao = new Set(avaliacoes.map((a: any) => a.paciente_id));
+        const pacientesComMyID = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
+        const leads = patients.filter((p: any) => !pacientesComAvaliacao.has(p.id) && !pacientesComMyID.has(p.id));
+        const avaliados = patients.filter((p: any) => pacientesComAvaliacao.has(p.id) || pacientesComMyID.has(p.id));
+
+        const pacientesComSessaoRecente = new Set(agendamentos.map((a: any) => a.paciente_id));
+        const inativos = avaliados.filter((p: any) => !pacientesComSessaoRecente.has(p.id));
+
+        const taxaConversao = totalPacientes > 0 ? Math.round((avaliados.length / totalPacientes) * 100) : 0;
+
+        const receitaMes = sessoes
+            .filter((s: any) => new Date(s.data_sessao) >= startOfMonth && s.status === 'realizada')
+            .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
+
+        const agendamentosMes = agendamentos.filter((a: any) => new Date(a.data_inicio) >= startOfMonth);
+        const faltasMes = agendamentosMes.filter((a: any) => a.status === 'faltou').length;
+        const taxaFaltas = agendamentosMes.length > 0 ? Math.round((faltasMes / agendamentosMes.length) * 100) : 0;
+
+        const aniversariantes = patients.filter((p: any) => {
+            if (!p.data_nascimento) return false;
+            const nascimento = new Date(p.data_nascimento);
+            const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
+            if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
+            return differenceInCalendarDays(anivEsteAno, now) <= 30 && differenceInCalendarDays(anivEsteAno, now) >= 0;
+        }).sort((a: any, b: any) => {
+            const dA = new Date(a.data_nascimento);
+            const dB = new Date(b.data_nascimento);
+            const anivA = new Date(now.getFullYear(), dA.getMonth(), dA.getDate());
+            const anivB = new Date(now.getFullYear(), dB.getMonth(), dB.getDate());
+            if (anivA < now) anivA.setFullYear(now.getFullYear() + 1);
+            if (anivB < now) anivB.setFullYear(now.getFullYear() + 1);
+            return anivA.getTime() - anivB.getTime();
+        });
+
+        return {
+            totalPacientes, linksPendentes, now, sessoesMes, avaliacoesMes,
+            leads, avaliados, inativos, taxaConversao, receitaMes,
+            faltasMes, taxaFaltas, aniversariantes,
+        };
+    }, [patients, pendingLinks, agendamentos, avaliacoes, myidAvaliacoes, sessoes]);
+
+    const {
+        totalPacientes, linksPendentes, now, sessoesMes, avaliacoesMes,
+        leads, avaliados, inativos, taxaConversao, receitaMes,
+        faltasMes, taxaFaltas, aniversariantes,
+    } = computedMetrics;
+
     if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
-    // ── Computed metrics ─────────────────────────────────────────────
-    const totalPacientes = patients.length;
-    const linksPendentes = pendingLinks.length;
-    const now = new Date();
-    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-    const sessoesMes = agendamentos.filter((a: any) => a.status === 'confirmado').length;
-    const avaliacoesMes = avaliacoes.filter((a: any) => new Date(a.created_at) >= startOfMonth).length;
-
-    // Patients without any evaluation (new leads)
-    const pacientesComAvaliacao = new Set(avaliacoes.map((a: any) => a.paciente_id));
-    const pacientesComMyID = new Set(myidAvaliacoes.filter((m: any) => m.status === 'concluido').map((m: any) => m.paciente_id));
-    const leads = patients.filter((p: any) => !pacientesComAvaliacao.has(p.id) && !pacientesComMyID.has(p.id));
-    const emAvaliacao = pendingLinks.map((l: any) => l.pacientes).filter(Boolean);
-    const avaliados = patients.filter((p: any) => pacientesComAvaliacao.has(p.id) || pacientesComMyID.has(p.id));
-
-    // Inactive patients (evaluated more than 30 days ago, no recent session)
-    const pacientesComSessaoRecente = new Set(agendamentos.map((a: any) => a.paciente_id));
-    const inativos = avaliados.filter((p: any) => !pacientesComSessaoRecente.has(p.id));
-
-    // Taxa conversão
-    const taxaConversao = totalPacientes > 0 ? Math.round((avaliados.length / totalPacientes) * 100) : 0;
-
-    // Receita mensal (controle_sessoes)
-    const receitaMes = sessoes
-        .filter((s: any) => new Date(s.data_sessao) >= startOfMonth && s.status === 'realizada')
-        .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
-
-    // Taxa de faltas
-    const agendamentosMes = agendamentos.filter((a: any) => new Date(a.data_inicio) >= startOfMonth);
-    const faltasMes = agendamentosMes.filter((a: any) => a.status === 'faltou').length;
-    const taxaFaltas = agendamentosMes.length > 0 ? Math.round((faltasMes / agendamentosMes.length) * 100) : 0;
-
-    // Aniversariantes próximos (próximos 30 dias)
-    const aniversariantes = patients.filter((p: any) => {
-        if (!p.data_nascimento) return false;
-        const nascimento = new Date(p.data_nascimento);
-        const anivEsteAno = new Date(now.getFullYear(), nascimento.getMonth(), nascimento.getDate());
-        if (anivEsteAno < now) anivEsteAno.setFullYear(now.getFullYear() + 1);
-        return differenceInCalendarDays(anivEsteAno, now) <= 30 && differenceInCalendarDays(anivEsteAno, now) >= 0;
-    }).sort((a: any, b: any) => {
-        const dA = new Date(a.data_nascimento);
-        const dB = new Date(b.data_nascimento);
-        const anivA = new Date(now.getFullYear(), dA.getMonth(), dA.getDate());
-        const anivB = new Date(now.getFullYear(), dB.getMonth(), dB.getDate());
-        if (anivA < now) anivA.setFullYear(now.getFullYear() + 1);
-        if (anivB < now) anivB.setFullYear(now.getFullYear() + 1);
-        return anivA.getTime() - anivB.getTime();
-    });
 
     const sendToPatient = async (patientId: string, callback: (name: string, phone: string) => Promise<{ success: boolean, error?: string }>, templateId: string = 'acao-rapida') => {
         const p = patients.find((pat: any) => pat.id === patientId);
@@ -528,13 +536,13 @@ export default function GestaoVendas() {
                     const inadimplentes = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'inadimplente');
                     const aPagar = patients.filter((p: any) => getClassificacao(p.id, p.created_at) === 'a_pagar');
 
-                    const PatientRow = ({ p, actions }: { p: any; actions: React.ReactNode }) => {
+                    const renderPatientRow = (p: any, actions: React.ReactNode) => {
                         const tag = getClassificacao(p.id, p.created_at);
                         const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
                         const patientMsgs = mensagens.filter((m: any) => m.paciente_id === p.id);
                         const lastMsg = patientMsgs.length > 0 ? patientMsgs[0] : null;
                         return (
-                            <div className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
+                            <div key={p.id} className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
                                 <div className="flex items-center justify-between">
                                     <div className="flex items-center gap-2 min-w-0">
                                         <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
@@ -560,7 +568,6 @@ export default function GestaoVendas() {
                                         {actions}
                                     </div>
                                 </div>
-                                {/* WhatsApp history inline */}
                                 {lastMsg && (
                                     <div className="ml-9 flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
                                         <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
@@ -579,7 +586,7 @@ export default function GestaoVendas() {
                             <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
                                 {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
                                     filteredLeads.map((p: any) => (
-                                        <PatientRow key={p.id} p={p} actions={
+                                        {renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
@@ -592,7 +599,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        } />
+                                        )}
                                     ))
                                 )}
                             </FunnelStage>
@@ -635,7 +642,7 @@ export default function GestaoVendas() {
                             {inadimplentes.length > 0 && (
                                 <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
                                     {inadimplentes.map((p: any) => (
-                                        <PatientRow key={p.id} p={p} actions={
+                                        {renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
@@ -662,7 +669,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        } />
+                                        )}
                                     ))}
                                 </FunnelStage>
                             )}
@@ -671,7 +678,7 @@ export default function GestaoVendas() {
                             {aPagar.length > 0 && (
                                 <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
                                     {aPagar.map((p: any) => (
-                                        <PatientRow key={p.id} p={p} actions={
+                                        {renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
@@ -698,7 +705,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        } />
+                                        )}
                                     ))}
                                 </FunnelStage>
                             )}
@@ -706,7 +713,7 @@ export default function GestaoVendas() {
                             {/* Avaliados (Ativos) */}
                             <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
                                 {filteredAvaliados.filter(p => !inativos.includes(p)).map((p: any) => (
-                                    <PatientRow key={p.id} p={p} actions={
+                                    {renderPatientRow(p, 
                                         p.telefone ? (
                                             <>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
@@ -723,7 +730,7 @@ export default function GestaoVendas() {
                                                 </Button>
                                             </>
                                         ) : null
-                                    } />
+                                    )}
                                 ))}
                             </FunnelStage>
 
@@ -731,7 +738,7 @@ export default function GestaoVendas() {
                             <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
                                 {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
                                     filteredInativos.map((p: any) => (
-                                        <PatientRow key={p.id} p={p} actions={
+                                        {renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
@@ -748,7 +755,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        } />
+                                        )}
                                     ))
                                 )}
                             </FunnelStage>
@@ -1038,7 +1045,7 @@ export default function GestaoVendas() {
                                                                         <div className="relative">
                                                                             <span className="absolute left-2 top-2 text-xs text-muted-foreground font-bold">R$</span>
                                                                             <Input className="pl-7 h-8 text-sm font-bold" value={customValue}
-                                                                                onChange={(e) => setCustomValue(e.target.value)} />
+                                                                                onChange={(e) => setCustomValue(e.target.value))}
                                                                         </div>
                                                                     </div>
                                                                     <Button className="h-8 bg-[#25D366] hover:bg-[#20BE5C] text-white gap-1 text-xs"
@@ -1096,10 +1103,10 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">📊 Resumo do Mês</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length} />
-                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes} />
-                                    <StatRow label="Sessões confirmadas" value={sessoesMes} />
-                                    <StatRow label="Links pendentes" value={linksPendentes} />
+                                    <StatRow label="Novos pacientes" value={patients.filter((p: any) => differenceInCalendarDays(now, new Date(p.created_at)) <= 30).length)}
+                                    <StatRow label="Avaliações realizadas" value={avaliacoesMes)}
+                                    <StatRow label="Sessões confirmadas" value={sessoesMes)}
+                                    <StatRow label="Links pendentes" value={linksPendentes)}
                                 </CardContent>
                             </Card>
                             <Card className="border">
@@ -1107,9 +1114,9 @@ export default function GestaoVendas() {
                                     <CardTitle className="text-sm font-bold">🎯 Ações Recomendadas</CardTitle>
                                 </CardHeader>
                                 <CardContent className="space-y-2">
-                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`} />}
-                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`} />}
-                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`} />}
+                                    {leads.length > 0 && <ActionItem icon="👋" text={`Enviar boas-vindas para ${leads.length} lead(s)`)}}
+                                    {linksPendentes > 0 && <ActionItem icon="📋" text={`Relembrar ${linksPendentes} questionário(s) pendente(s)`)}}
+                                    {inativos.length > 0 && <ActionItem icon="⏰" text={`Follow-up com ${inativos.length} paciente(s) inativo(s)`)}}
                                     {leads.length === 0 && linksPendentes === 0 && inativos.length === 0 && (
                                         <p className="text-xs text-muted-foreground italic">Tudo em dia! 🎉</p>
                                     )}
@@ -1330,7 +1337,7 @@ export default function GestaoVendas() {
                                             {/* Progress bar */}
                                             <div className="flex items-center gap-3 mb-4">
                                                 <div className="flex-1 h-3 bg-muted rounded-full overflow-hidden">
-                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` }} />
+                                                    <div className="h-full bg-gradient-to-r from-emerald-500 to-emerald-400 rounded-full transition-all duration-500" style={{ width: `${pctDone}%` })}
                                                 </div>
                                                 <span className="text-xs font-black text-primary">{pctDone}%</span>
                                             </div>
@@ -1485,7 +1492,7 @@ export default function GestaoVendas() {
                                                             return (
                                                                 <div key={ag.id} className="relative">
                                                                     {/* Timeline dot */}
-                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`} />
+                                                                    <div className={`absolute -left-[22px] top-1.5 h-2.5 w-2.5 rounded-full border-2 border-background ${status === 'atendido' ? 'bg-emerald-500' : status === 'faltou' ? 'bg-red-500' : 'bg-amber-400'}`)}
 
                                                                     <div className={`p-2 rounded-lg border text-xs ${status === 'atendido' ? 'bg-emerald-50/30 border-emerald-100 dark:border-emerald-900' : status === 'faltou' ? 'bg-red-50/30 border-red-100 dark:border-red-900 opacity-70' : 'bg-card'}`}>
                                                                         <div className="flex justify-between items-start mb-1">
@@ -1572,7 +1579,7 @@ export default function GestaoVendas() {
                                 </CardHeader>
                                 <CardContent className="space-y-2">
                                     <div className="flex gap-2">
-                                        <Textarea placeholder="Lembretes, afazeres da clínica..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2} />
+                                        <Textarea placeholder="Lembretes, afazeres da clínica..." value={newNote} onChange={e => setNewNote(e.target.value)} className="text-xs min-h-[50px] resize-none" rows={2)}
                                         <Button size="sm" className="h-auto px-3 bg-blue-600 hover:bg-blue-700 text-white shrink-0" disabled={!newNote.trim()}
                                             onClick={() => { saveNotes([{ id: Date.now().toString(), text: newNote.trim(), createdAt: new Date().toISOString() }, ...notes].slice(0, 50)); setNewNote(''); toast({ title: '📝 Salvo!' }); }}>
                                             <Plus className="h-4 w-4" />
@@ -1634,7 +1641,7 @@ export default function GestaoVendas() {
                     )
                 }
             </div>
-            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false))}
             }
         </AppLayout>
     );
@@ -1684,7 +1691,7 @@ function MetricCard({ label, value, desc, icon: Icon, color }: { label: string; 
         <Card className="border">
             <CardContent className="p-3">
                 <div className="flex items-center gap-2 mb-1">
-                    <Icon className={`h-4 w-4 ${colors[color] || ''}`} />
+                    <Icon className={`h-4 w-4 ${colors[color] || ''}`)}
                     <span className="text-[10px] uppercase font-bold text-muted-foreground">{label}</span>
                 </div>
                 <div className={`text-2xl font-black ${colors[color] || ''}`}>{value}</div>
