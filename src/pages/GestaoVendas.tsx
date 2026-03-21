@@ -794,7 +794,7 @@ export default function GestaoVendas() {
                                                     ))}
                                                 </div>
                                             </div>
-                                        )
+                                        )}
                                         <div className="space-y-2">
                                             <Label>Valor Recebido (R$)</Label>
                                             <Input
