@@ -479,7 +479,7 @@ export default function GestaoVendas() {
                                                     onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph), 'aniversario')}>
                                                     <Send className="h-3 w-3" />
                                                 </Button>
-                                            )}
+                                            )
                                         </div>
                                     );
                                 })}
@@ -564,7 +564,7 @@ export default function GestaoVendas() {
                                                 }}>
                                                 <MessageCircle className="h-3 w-3" /> Chamar
                                             </Button>
-                                        )}
+                                        )
                                         {actions}
                                     </div>
                                 </div>
@@ -586,7 +586,7 @@ export default function GestaoVendas() {
                             <FunnelStage title="Leads (Sem Avaliação)" icon={<UserPlus className="h-4 w-4 text-blue-600" />} count={filteredLeads.length} color="blue" defaultOpen={filteredLeads.length > 0}>
                                 {filteredLeads.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes já iniciaram avaliação 🎉</p> : (
                                     filteredLeads.map((p: any) => (
-                                        {renderPatientRow(p, 
+                                        renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-blue-600"
@@ -599,7 +599,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        )}
+                                        )
                                     ))
                                 )}
                             </FunnelStage>
@@ -630,7 +630,7 @@ export default function GestaoVendas() {
                                                             onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
                                                             <MessageCircle className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    )}
+                                                    )
                                                 </div>
                                             </div>
                                         );
@@ -642,7 +642,7 @@ export default function GestaoVendas() {
                             {inadimplentes.length > 0 && (
                                 <FunnelStage title="Inadimplentes (>30 dias)" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={inadimplentes.length} color="red" defaultOpen={true}>
                                     {inadimplentes.map((p: any) => (
-                                        {renderPatientRow(p, 
+                                        renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-red-600"
@@ -669,7 +669,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        )}
+                                        )
                                     ))}
                                 </FunnelStage>
                             )}
@@ -678,7 +678,7 @@ export default function GestaoVendas() {
                             {aPagar.length > 0 && (
                                 <FunnelStage title="A Pagar (Débito Recente)" icon={<DollarSign className="h-4 w-4 text-orange-600" />} count={aPagar.length} color="amber" defaultOpen={true}>
                                     {aPagar.map((p: any) => (
-                                        {renderPatientRow(p, 
+                                        renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-orange-600"
@@ -705,7 +705,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        )}
+                                        )
                                     ))}
                                 </FunnelStage>
                             )}
@@ -713,7 +713,7 @@ export default function GestaoVendas() {
                             {/* Avaliados (Ativos) */}
                             <FunnelStage title="Avaliados (Ativos)" icon={<CheckCircle2 className="h-4 w-4 text-emerald-600" />} count={filteredAvaliados.filter(p => !inativos.includes(p)).length} color="emerald" defaultOpen={false}>
                                 {filteredAvaliados.filter(p => !inativos.includes(p)).map((p: any) => (
-                                    {renderPatientRow(p, 
+                                    renderPatientRow(p, 
                                         p.telefone ? (
                                             <>
                                                 <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1"
@@ -738,7 +738,7 @@ export default function GestaoVendas() {
                             <FunnelStage title="Follow-up Necessário" icon={<AlertCircle className="h-4 w-4 text-red-600" />} count={filteredInativos.length} color="red" defaultOpen={filteredInativos.length > 0}>
                                 {filteredInativos.length === 0 ? <p className="text-xs text-muted-foreground italic p-3">Todos os pacientes estão em dia! 🎉</p> : (
                                     filteredInativos.map((p: any) => (
-                                        {renderPatientRow(p, 
+                                        renderPatientRow(p, 
                                             p.telefone ? (
                                                 <>
                                                     <Button size="sm" variant="ghost" className="h-7 text-[10px] gap-1 text-amber-600"
@@ -755,7 +755,7 @@ export default function GestaoVendas() {
                                                     </Button>
                                                 </>
                                             ) : null
-                                        )}
+                                        )
                                     ))
                                 )}
                             </FunnelStage>
@@ -781,7 +781,7 @@ export default function GestaoVendas() {
                                                                 Number(paymentModal.valor) === s.valor
                                                                     ? 'border-primary bg-primary/5 ring-1 ring-primary'
                                                                     : 'border-border hover:border-primary/50 hover:bg-primary/5'
-                                                            )}
+                                                            )
                                                         >
                                                             <div>
                                                                 <p className="text-sm font-semibold">{s.nome}</p>
@@ -794,7 +794,7 @@ export default function GestaoVendas() {
                                                     ))}
                                                 </div>
                                             </div>
-                                        )}
+                                        )
                                         <div className="space-y-2">
                                             <Label>Valor Recebido (R$)</Label>
                                             <Input
@@ -909,7 +909,7 @@ export default function GestaoVendas() {
                                                         <><Phone className="h-2.5 w-2.5" /> {selectedPatient.telefone}</>
                                                     ) : (
                                                         <><AlertCircle className="h-2.5 w-2.5 text-destructive" /> Sem telefone cadastrado</>
-                                                    )}
+                                                    )
                                                 </p>
                                             </div>
                                         </div>
@@ -996,7 +996,7 @@ export default function GestaoVendas() {
                                             <p className="text-[10px] text-destructive mt-2 text-center flex items-center justify-center gap-1 font-medium bg-destructive/10 py-1 rounded-md">
                                                 <AlertCircle className="h-3 w-3" /> Impossível enviar: paciente sem número de telefone.
                                             </p>
-                                        )}
+                                        )
                                     </div>
                                 </>
                             )}
@@ -1056,7 +1056,7 @@ export default function GestaoVendas() {
                                                                 </div>
                                                                 {!selectedPatient && <p className="text-[9px] text-destructive">⚠️ Selecione um paciente primeiro</p>}
                                                             </div>
-                                                        )}
+                                                        )
                                                     </div>
                                                 );
                                             })}
@@ -1408,7 +1408,7 @@ export default function GestaoVendas() {
                                                             <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0" onClick={() => { window.open(`https://wa.me/55${pac.telefone.replace(/\D/g, '')}`, '_blank'); }}>
                                                                 <Phone className="h-3.5 w-3.5" />
                                                             </Button>
-                                                        )}
+                                                        )
                                                     </div>
                                                     <div className="mt-2 pl-[38px]">
                                                         <Input
@@ -1425,7 +1425,7 @@ export default function GestaoVendas() {
                                                 <CalendarDays className="h-8 w-8 text-muted-foreground/30 mx-auto mb-2" />
                                                 <p className="text-xs text-muted-foreground">Nenhum atendimento para {isToday(currentDate) ? 'hoje' : 'esta data'}</p>
                                             </div>
-                                        )}
+                                        )
                                     </div>
                                 </>
                             ) : (
@@ -1519,7 +1519,7 @@ export default function GestaoVendas() {
                                                             );
                                                         }) : (
                                                             <p className="text-xs text-muted-foreground italic">Nenhum agendamento encontrado.</p>
-                                                        )}
+                                                        )
                                                     </div>
                                                 </div>
                                             );
