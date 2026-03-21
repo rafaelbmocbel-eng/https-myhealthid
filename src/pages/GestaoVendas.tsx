@@ -1519,7 +1519,7 @@ export default function GestaoVendas() {
                                                             );
                                                         }) : (
                                                             <p className="text-xs text-muted-foreground italic">Nenhum agendamento encontrado.</p>
-                                                        )
+                                                        )}
                                                     </div>
                                                 </div>
                                             );
