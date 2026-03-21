@@ -46,7 +46,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
     { key: 'a_pagar', label: 'A Pagar', emoji: '🟠', color: 'text-orange-700', bgColor: 'bg-orange-100 border-orange-300' },
 ];
 
-type TabId = 'pipeline' | 'mensagens' | 'notas' | 'relatorios';
+type TabId = 'pipeline' | 'mensagens' | 'notas' | 'servicos' | 'relatorios';
 
 export default function GestaoVendas() {
     const navigate = useNavigate();
@@ -402,7 +402,8 @@ export default function GestaoVendas() {
         { id: 'pipeline', label: 'Pacientes', icon: Users, desc: 'Veja todos os pacientes e seus status' },
         { id: 'mensagens', label: 'WhatsApp', icon: MessageCircle, desc: 'Envie mensagens e veja o histórico' },
         { id: 'notas', label: 'Controle', icon: ClipboardCheck, desc: 'Checklist diário de atendimentos' },
-        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e configurações do funil' },
+        { id: 'servicos', label: 'Serviços', icon: Package, desc: 'Gerencie serviços, valores e pagamentos' },
+        { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e desempenho' },
     ];
 
     return (
@@ -1124,10 +1125,20 @@ export default function GestaoVendas() {
                             </Card>
                         </div>
 
-                        {/* Funil Config */}
+                    </div>
+                )}
+
+                {/* ══════════════════ SERVIÇOS & PAGAMENTOS TAB ══════════════════ */}
+                {activeTab === 'servicos' && (
+                    <div className="space-y-4">
                         <Card className="border">
                             <CardHeader className="pb-2">
-                                <CardTitle className="text-sm font-bold flex items-center gap-2"><Zap className="h-4 w-4 text-amber-500" /> Configurar Funil de Vendas</CardTitle>
+                                <CardTitle className="text-sm font-bold flex items-center gap-2">
+                                    <Package className="h-4 w-4 text-primary" /> Serviços, Valores & Funil de Vendas
+                                </CardTitle>
+                                <p className="text-xs text-muted-foreground">
+                                    Os serviços e valores configurados aqui aparecerão automaticamente no portal do paciente na área de pagamentos.
+                                </p>
                             </CardHeader>
                             <CardContent>
                                 <FunilConfigPanel />
