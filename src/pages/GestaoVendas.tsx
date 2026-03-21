@@ -479,7 +479,7 @@ export default function GestaoVendas() {
                                                     onClick={() => sendToPatient(p.id, (n, ph) => shareAniversario(n, ph), 'aniversario')}>
                                                     <Send className="h-3 w-3" />
                                                 </Button>
-                                            )
+                                            )}
                                         </div>
                                     );
                                 })}
