@@ -630,7 +630,7 @@ export default function GestaoVendas() {
                                                             onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
                                                             <MessageCircle className="h-3.5 w-3.5" />
                                                         </Button>
-                                                    )
+                                                    )}
                                                 </div>
                                             </div>
                                         );
