@@ -343,7 +343,8 @@ export default function PatientIntegratedDashboard({
   // Prefer stored 0-100 value, but recalculate from scores if stored value seems wrong (0 or old scale <11)
   const storedScore = myidLinkResult?.MyID_score ?? (Number(ultimaMyID?.myid_score) || 0);
   const myidScore = (storedScore > 10 ? storedScore : scores ? computeMyID100FromScores(scores) : storedScore);
-  const hasRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
+  const rawRedFlags = myidLinkResult?.red_flags ?? (ultimaMyID?.dados_avaliacao as any)?.resultado?.redFlagsDetected ?? (!!ultimaMyID?.red_flags || false);
+  const hasRedFlags = Array.isArray(rawRedFlags) ? rawRedFlags.length > 0 : !!rawRedFlags;
 
   const dimScores = {
     D: scores?.D ?? 0,
