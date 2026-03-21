@@ -45,7 +45,7 @@ export default function PacienteLayout({ children }: Props) {
   };
 
   return (
-    <div className="min-h-[100dvh] flex flex-col bg-background">
+    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-background">
       {/* Top header */}
       <header
         className="flex items-center justify-between px-4 py-3 shrink-0"
