@@ -1641,7 +1641,7 @@ export default function GestaoVendas() {
                     )
                 }
             </div>
-            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false))}
+            {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
             }
         </AppLayout>
     );
