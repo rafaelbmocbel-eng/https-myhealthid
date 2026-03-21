@@ -310,9 +310,84 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
   const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
   const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
+  const [editingVoiceId, setEditingVoiceId] = useState<string | null>(null);
+  const [editingVoiceText, setEditingVoiceText] = useState('');
+  const [savingVoiceEdit, setSavingVoiceEdit] = useState(false);
+  const [addingVoiceToId, setAddingVoiceToId] = useState<string | null>(null);
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
+
+  // Save voice edit
+  const handleSaveVoiceEdit = async (avId: string) => {
+    setSavingVoiceEdit(true);
+    try {
+      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: editingVoiceText }).eq('id', avId);
+      if (error) throw error;
+      // Reprocess with AI
+      const av = voiceAvaliacoes.find((a: any) => a.id === avId);
+      if (av) {
+        const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', {
+          body: { transcription: editingVoiceText, serviceType: av.servico || 'identidade', patientName: patientName, patientAge: undefined, patientSex: undefined },
+        });
+        if (!fnErr && data?.assessment) {
+          const resultado = data.assessment;
+          const cleanResult = JSON.parse(JSON.stringify(resultado));
+          await (supabase as any).from('avaliacoes_voz').update({
+            resultado: cleanResult,
+            queixa_principal: resultado.resumo_clinico?.slice(0, 200) || av.queixa_principal,
+            classificacao_severidade: resultado.classificacao_severidade || av.classificacao_severidade,
+          }).eq('id', avId);
+        }
+      }
+      // Sync prontuario
+      if (user && av) {
+        try {
+          await (supabase as any).from('notas_prontuario').insert({
+            paciente_id: paciente.id,
+            terapeuta_id: user.id,
+            tipo: 'avaliacao_voz',
+            titulo: `Avaliação por Voz atualizada — ${av.classificacao_severidade || 'N/A'}`,
+            descricao: `📝 Transcrição editada e reprocessada.\n\n${editingVoiceText.slice(0, 500)}`,
+            dados_extras: { voice_assessment_id: avId },
+            referencia_id: avId,
+          });
+        } catch {}
+      }
+      qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      setEditingVoiceId(null);
+      toast({ title: 'Avaliação atualizada! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSavingVoiceEdit(false);
+    }
+  };
+
+  // Sync existing voice assessment to prontuário
+  const handleSyncVoiceToProntuario = async (av: any) => {
+    if (!user) return;
+    try {
+      const resultado = av.resultado as any;
+      await (supabase as any).from('notas_prontuario').insert({
+        paciente_id: paciente.id,
+        terapeuta_id: user.id,
+        tipo: 'avaliacao_voz',
+        titulo: `Avaliação por Voz — ${av.classificacao_severidade || 'N/A'} — ${format(new Date(av.created_at), 'dd/MM/yyyy', { locale: ptBR })}`,
+        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
+        dados_extras: { voice_assessment_id: av.id, resultado: resultado },
+        referencia_id: av.id,
+      });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      toast({ title: 'Adicionado ao prontuário! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const patientName = `${paciente.nome} ${paciente.sobrenome}`;
 
   // Buscar avaliações por voz do paciente
   const { data: voiceAvaliacoes = [], refetch: refetchVoice } = useQuery({
