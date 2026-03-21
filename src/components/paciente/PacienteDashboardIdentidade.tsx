@@ -319,29 +319,52 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
 
-  // Save voice edit
-  const handleSaveVoiceEdit = async (avId: string) => {
+  // Save voice edit and reprocess with AI
+  const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string) => {
     setSavingVoiceEdit(true);
     try {
+      // 1. Update transcription text
       const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: editingVoiceText }).eq('id', avId);
       if (error) throw error;
-      // Reprocess with AI
+
+      // 2. Reprocess with AI using correct parameter name
       const av = voiceAvaliacoes.find((a: any) => a.id === avId);
       if (av) {
-        const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', {
-          body: { transcription: editingVoiceText, serviceType: av.servico || 'identidade', patientName: patientName, patientAge: undefined, patientSex: undefined },
-        });
-        if (!fnErr && data?.assessment) {
+        const body: any = {
+          transcript: editingVoiceText,
+          serviceType: av.servico || 'identidade',
+          patientName: patientName,
+        };
+        // If new audio was captured, include it for richer analysis
+        if (extraAudioBase64) {
+          body.audioBase64 = extraAudioBase64;
+          body.audioMimeType = extraAudioMimeType || 'audio/webm';
+        }
+
+        toast({ title: '🧠 Reprocessando avaliação...', description: 'A IA está reanalisando com os dados atualizados.' });
+
+        const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', { body });
+        if (fnErr) throw fnErr;
+        if (data?.error) throw new Error(data.error);
+
+        if (data?.assessment) {
           const resultado = data.assessment;
           const cleanResult = JSON.parse(JSON.stringify(resultado));
+          // Update transcription with AI-generated one if it returned more content
+          const finalTranscript = data.transcricao && data.transcricao.length > editingVoiceText.length
+            ? data.transcricao
+            : editingVoiceText;
+
           await (supabase as any).from('avaliacoes_voz').update({
             resultado: cleanResult,
-            queixa_principal: resultado.resumo_clinico?.slice(0, 200) || av.queixa_principal,
+            transcricao: finalTranscript,
+            queixa_principal: resultado.queixa_principal || av.queixa_principal,
             classificacao_severidade: resultado.classificacao_severidade || av.classificacao_severidade,
           }).eq('id', avId);
         }
       }
-      // Sync prontuario
+
+      // 3. Sync to prontuário
       if (user && av) {
         try {
           await (supabase as any).from('notas_prontuario').insert({
@@ -355,13 +378,14 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           });
         } catch {}
       }
+
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
       qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
       setEditingVoiceId(null);
-      toast({ title: 'Avaliação atualizada! ✅' });
+      toast({ title: 'Avaliação atualizada! ✅', description: 'Dados clínicos reprocessados pela IA com sucesso.' });
     } catch (e: any) {
-      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+      toast({ title: 'Erro ao reprocessar', description: e.message, variant: 'destructive' });
     } finally {
       setSavingVoiceEdit(false);
     }
@@ -1027,16 +1051,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                       serviceType={(av.servico || 'identidade') as any}
                                       pacienteId={paciente.id}
                                       patientName={patientName}
-                                      onAssessmentComplete={(newAssessment) => {
-                                        // Append new transcription to existing
-                                        const newText = newAssessment?.transcricao || '';
-                                        if (newText) {
-                                          const combined = (av.transcricao || '') + '\n\n' + newText;
-                                          setEditingVoiceId(av.id);
-                                          setEditingVoiceText(combined);
-                                        }
+                                      appendMode={true}
+                                      onAppendCapture={(capturedText, capturedAudio, capturedMime) => {
+                                        // Combine existing transcription with new captured content
+                                        const combined = [av.transcricao || '', capturedText].filter(Boolean).join('\n\n---\n\n');
+                                        setEditingVoiceId(av.id);
+                                        setEditingVoiceText(combined);
                                         setAddingVoiceToId(null);
-                                        refetchVoice();
+                                        // Auto-trigger reprocess with captured audio
+                                        setTimeout(() => handleSaveVoiceEdit(av.id, capturedAudio, capturedMime), 100);
                                       }}
                                     />
                                   </div>

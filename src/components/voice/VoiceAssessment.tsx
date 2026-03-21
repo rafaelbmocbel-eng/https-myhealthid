@@ -20,6 +20,9 @@ interface VoiceAssessmentProps {
   patientAge?: number;
   patientSex?: string;
   onAssessmentComplete?: (assessment: any) => void;
+  /** When true, only captures audio/text and returns via onAppendCapture without saving a new record */
+  appendMode?: boolean;
+  onAppendCapture?: (capturedText: string, capturedAudioBase64?: string, capturedAudioMimeType?: string) => void;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -41,7 +44,7 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 type Step = 'record' | 'review' | 'result';
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -142,6 +145,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       toast({ title: 'Conteúdo insuficiente', description: 'Grave áudio ou digite/cole a transcrição.', variant: 'destructive' });
       return;
     }
+
+    // In append mode, just return the captured data without processing
+    if (appendMode && onAppendCapture) {
+      const combinedText = [editedTranscript.trim(), transcript.trim()].filter(Boolean).join('\n\n');
+      onAppendCapture(combinedText, audioBase64 || undefined, audioMimeType);
+      return;
+    }
+
     // Append new typed text to existing edited transcript (don't duplicate)
     const newText = transcript.trim();
     if (newText && editedTranscript && newText !== editedTranscript.trim()) {
@@ -636,7 +647,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             )}
             {(audioBase64 || transcript.trim().length > 20 || editedTranscript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
-                <Edit3 className="h-4 w-4 mr-2" />Revisar e Processar
+                <Edit3 className="h-4 w-4 mr-2" />{appendMode ? 'Capturar e Adicionar' : 'Revisar e Processar'}
               </Button>
             )}
           </div>
