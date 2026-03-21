@@ -370,7 +370,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 placeholder="Texto da transcrição..."
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { setTranscript(editedTranscript); setStep('record'); }}>
+                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
                   <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
                 </Button>
                 <Button
