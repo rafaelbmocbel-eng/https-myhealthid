@@ -261,7 +261,7 @@ const FunilConfigPanel = () => {
               <div className="space-y-2">
                 <Label>Nome do Favorecido (PIX)</Label>
                 <Input
-                  value={form.pix_nome}
+                  value={form.pix_nome || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, pix_nome: e.target.value }))}
                 />
               </div>
