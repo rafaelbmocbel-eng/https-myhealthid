@@ -2765,6 +2765,17 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_terapeuta_by_agenda_token: {
+        Args: { p_token: string }
+        Returns: {
+          bio: string
+          especialidade: string
+          nome: string
+          sobrenome: string
+          telefone: string
+          user_id: string
+        }[]
+      }
       has_active_agenda_link: {
         Args: { p_terapeuta_id: string }
         Returns: boolean
