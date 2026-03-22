@@ -150,7 +150,7 @@ const FunilConfigPanel = () => {
             <div className="space-y-2">
               <Label>Boas-vindas</Label>
               <Textarea
-                value={form.mensagem_boas_vindas}
+                value={form.mensagem_boas_vindas || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_boas_vindas: e.target.value }))}
               />
             </div>
