@@ -225,6 +225,11 @@ export default function PacienteAgenda() {
     if (!selectedSlot || !paciente) return;
     setSubmitting(true);
 
+    // If rescheduling, cancel the old one first
+    if (rescheduleId) {
+      await supabase.from('agendamentos').update({ status: 'cancelado' }).eq('id', rescheduleId);
+    }
+
     const { error } = await supabase.from('agendamentos').insert({
       terapeuta_id: paciente.terapeuta_id,
       paciente_id: paciente.id,
@@ -238,21 +243,37 @@ export default function PacienteAgenda() {
       toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' });
     } else {
       setConfirmado(true);
-      toast({ title: 'Agendado com sucesso! ✅', description: 'Aguarde a confirmação do seu terapeuta.' });
+      const actionLabel = rescheduleId ? 'Reagendado' : 'Agendado';
+      toast({ title: `${actionLabel} com sucesso! ✅`, description: 'Aguarde a confirmação do seu terapeuta.' });
 
       // Create notification for therapist
       await supabase.from('notificacoes').insert({
         terapeuta_id: paciente.terapeuta_id,
         tipo: 'agendamento',
-        titulo: 'Novo agendamento pendente',
-        descricao: `Paciente solicitou sessão em ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme ou recuse na agenda.`,
+        titulo: rescheduleId ? '🔄 Reagendamento solicitado' : 'Novo agendamento pendente',
+        descricao: `Paciente ${rescheduleId ? 're' : ''}solicitou sessão em ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme na agenda.`,
         rota: '/agenda',
         metadata: { paciente_id: paciente.id },
       });
 
+      setRescheduleId(null);
       fetchAgendamentos();
     }
     setSubmitting(false);
+  };
+
+  const canReschedule = (ag: Agendamento) => {
+    const hoursUntil = differenceInHours(parseISO(ag.data_inicio), new Date());
+    return hoursUntil >= 2 && (ag.status === 'pendente' || ag.status === 'confirmado');
+  };
+
+  const handleReschedule = (agId: string) => {
+    setRescheduleId(agId);
+    setView('agendar');
+    setConfirmado(false);
+    setSelectedSlot(null);
+    setSelectedDate(undefined);
+    toast({ title: '📅 Escolha o novo horário', description: 'Selecione uma data e horário para reagendar.' });
   };
 
   const handleCancelar = async (agId: string) => {
