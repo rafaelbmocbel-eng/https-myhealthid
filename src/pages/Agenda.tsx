@@ -654,6 +654,29 @@ export default function Agenda() {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'confirmado' });
 
+    // Auto-create controle_sessoes record to guarantee billing
+    if (ag?.paciente_id) {
+      const { data: existing } = await supabase
+        .from('controle_sessoes')
+        .select('id')
+        .eq('agendamento_id', id)
+        .maybeSingle();
+
+      if (!existing) {
+        const duracaoMin = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
+        await supabase.from('controle_sessoes').insert({
+          paciente_id: ag.paciente_id,
+          agendamento_id: id,
+          terapeuta_id: user!.id,
+          data_sessao: ag.data_inicio,
+          tipo_atendimento: ag.tipo_atendimento || 'retorno',
+          duracao_minutos: duracaoMin || 45,
+          status: 'realizada',
+          valor_cobrado: 0,
+        });
+      }
+    }
+
     // Notify patient about confirmation
     if (ag?.paciente_id) {
       const dataFormatada = format(parseISO(ag.data_inicio), "d MMM 'às' HH:mm", { locale: ptBR });
