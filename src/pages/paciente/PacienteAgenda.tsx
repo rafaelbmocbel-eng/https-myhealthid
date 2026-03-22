@@ -410,25 +410,26 @@ export default function PacienteAgenda() {
 
                               <div className="flex items-center gap-2 flex-wrap">
                                 {canChange && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-lg text-[11px] h-7 gap-1"
-                                    onClick={() => handleReschedule(ag.id)}
-                                  >
-                                    <Edit3 className="h-3 w-3" />
-                                    Reagendar
-                                  </Button>
-                                )}
-                                {isPendente && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                    onClick={() => handleCancelar(ag.id)}
-                                  >
-                                    Cancelar
-                                  </Button>
+                                  <>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg text-[11px] h-7 gap-1"
+                                      onClick={() => handleReschedule(ag.id)}
+                                    >
+                                      <Edit3 className="h-3 w-3" />
+                                      Editar horário
+                                    </Button>
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                      onClick={() => handleCancelar(ag.id)}
+                                    >
+                                      <XCircle className="h-3 w-3 mr-0.5" />
+                                      Cancelar
+                                    </Button>
+                                  </>
                                 )}
                                 <a
                                   href={buildGoogleCalendarUrl(
