@@ -91,9 +91,7 @@ export default function AgendaPublica() {
 
         const [{ data: profileData }, { data: cfg }, { data: ags }] = await Promise.all([
           supabase
-            .from('profiles')
-            .select('nome, sobrenome, telefone, especialidade, bio, user_id')
-            .eq('user_id', linkData.terapeuta_id)
+            .rpc('get_terapeuta_by_agenda_token', { p_token: token })
             .maybeSingle(),
           supabase
             .from('config_agenda')
