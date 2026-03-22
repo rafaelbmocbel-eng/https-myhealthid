@@ -334,8 +334,8 @@ const FunilConfigPanel = () => {
                         type="number"
                         min={1}
                         max={12}
-                        value={serv.parcelas_max}
-                        onChange={(e) => updateServico(idx, 'parcelas_max', parseInt(e.target.value))}
+                        value={serv.parcelas_max ?? 1}
+                        onChange={(e) => updateServico(idx, 'parcelas_max', parseInt(e.target.value) || 1)}
                       />
                     </div>
                   </div>
