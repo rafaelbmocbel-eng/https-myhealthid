@@ -387,8 +387,8 @@ export default function PacienteAgenda() {
                       {futuros.map((ag) => {
                         const cfg = STATUS_CONFIG[ag.status] || STATUS_CONFIG.pendente;
                         const StatusIcon = cfg.icon;
-                        const isPendente = ag.status === 'pendente';
-                        const canEdit = ['pendente', 'confirmado'].includes(ag.status) && parseISO(ag.data_inicio) > new Date();
+                        const hoursUntil = (parseISO(ag.data_inicio).getTime() - Date.now()) / (1000 * 60 * 60);
+                        const canChange = hoursUntil >= 2 && ['pendente', 'confirmado'].includes(ag.status);
                         return (
                           <Card key={ag.id}>
                             <CardContent className="p-3 space-y-2">
@@ -413,18 +413,8 @@ export default function PacienteAgenda() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
-                                {isPendente && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                    onClick={() => handleCancelar(ag.id)}
-                                  >
-                                    Cancelar
-                                  </Button>
-                                )}
-                                {canEdit && (
+                              {canChange && (
+                                <div className="flex items-center gap-2">
                                   <Button
                                     variant="outline"
                                     size="sm"
@@ -438,9 +428,19 @@ export default function PacienteAgenda() {
                                       setSelectedSlot({ dataInicio: agDate, dataFim: parseISO(ag.data_fim) });
                                     }}
                                   >
-                                    Editar agendamento
+                                    Editar horário
                                   </Button>
-                                )}
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    onClick={() => handleCancelar(ag.id)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                </div>
+                              )}
+                              <div className="flex items-center gap-2">
                                 <a
                                   href={buildGoogleCalendarUrl(
                                     ag.titulo || ag.tipo_atendimento || 'Consulta',
