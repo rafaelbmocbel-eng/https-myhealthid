@@ -157,7 +157,7 @@ const FunilConfigPanel = () => {
             <div className="space-y-2">
               <Label>Apresentação Diferenciais</Label>
               <Input
-                value={form.mensagem_diferenciais}
+                value={form.mensagem_diferenciais || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_diferenciais: e.target.value }))}
               />
             </div>
