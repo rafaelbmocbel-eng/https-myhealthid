@@ -8,6 +8,7 @@ import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PatientGuard from "./components/PatientGuard";
 
 // Lazy-loaded pages for better performance
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
