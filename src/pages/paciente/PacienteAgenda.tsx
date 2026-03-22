@@ -374,6 +374,8 @@ export default function PacienteAgenda() {
                         const cfg = STATUS_CONFIG[ag.status] || STATUS_CONFIG.pendente;
                         const StatusIcon = cfg.icon;
                         const isPendente = ag.status === 'pendente';
+                        const canChange = canReschedule(ag);
+                        const hoursLeft = differenceInHours(parseISO(ag.data_inicio), new Date());
                         return (
                           <Card key={ag.id}>
                             <CardContent className="p-3 space-y-2">
@@ -398,7 +400,26 @@ export default function PacienteAgenda() {
                                   </span>
                                 </div>
                               </div>
-                              <div className="flex items-center gap-2">
+
+                              {/* Time lock info */}
+                              {!canChange && hoursLeft < 2 && hoursLeft > 0 && (ag.status === 'confirmado' || ag.status === 'pendente') && (
+                                <p className="text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1">
+                                  🔒 Modificação bloqueada (menos de 2h para a sessão)
+                                </p>
+                              )}
+
+                              <div className="flex items-center gap-2 flex-wrap">
+                                {canChange && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg text-[11px] h-7 gap-1"
+                                    onClick={() => handleReschedule(ag.id)}
+                                  >
+                                    <Edit3 className="h-3 w-3" />
+                                    Reagendar
+                                  </Button>
+                                )}
                                 {isPendente && (
                                   <Button
                                     variant="outline"
@@ -418,6 +439,15 @@ export default function PacienteAgenda() {
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-[11px] text-muted-foreground hover:text-foreground transition-colors"
+                                >
+                                  <ExternalLink className="h-3 w-3" />
+                                  Google Calendar
+                                </a>
+                              </div>
+                            </CardContent>
+                          </Card>
+                        );
+                      })}
                                 >
                                   <ExternalLink className="h-3 w-3" />
                                   Google Calendar
