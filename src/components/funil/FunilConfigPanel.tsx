@@ -339,6 +339,15 @@ const FunilConfigPanel = () => {
                       />
                     </div>
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs">Link de Pagamento (opcional)</Label>
+                    <Input
+                      value={serv.link_pagamento || ''}
+                      onChange={(e) => updateServico(idx, 'link_pagamento', e.target.value)}
+                      placeholder="https://pay.mercadopago.com/..."
+                    />
+                    <p className="text-[9px] text-muted-foreground">Link específico para este serviço (sobrepõe o link geral)</p>
+                  </div>
                 </div>
               </div>
             ))}
