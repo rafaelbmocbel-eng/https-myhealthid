@@ -448,15 +448,6 @@ export default function PacienteAgenda() {
                           </Card>
                         );
                       })}
-                                >
-                                  <ExternalLink className="h-3 w-3" />
-                                  Google Calendar
-                                </a>
-                              </div>
-                            </CardContent>
-                          </Card>
-                        );
-                      })}
                     </div>
                   )}
 
