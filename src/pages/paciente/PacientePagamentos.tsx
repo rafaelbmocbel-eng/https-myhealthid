@@ -18,6 +18,7 @@ interface ServicoFunil {
   descricao: string;
   valor: number;
   parcelas_max: number;
+  link_pagamento?: string;
 }
 
 interface FunilConfig {
