@@ -31,7 +31,7 @@ export default function NotificationCenter() {
 
   const handleClick = (id: string, rota: string | null) => {
     marcarLida.mutate(id);
-    if (rota) navigate(rota);
+    if (rota && !rota.startsWith('/paciente')) navigate(rota);
   };
 
   return (
