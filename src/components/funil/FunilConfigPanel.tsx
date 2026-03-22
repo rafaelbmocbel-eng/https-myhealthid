@@ -93,50 +93,47 @@ const FunilConfigPanel = () => {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Sticky save bar */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-background/95 backdrop-blur py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-accent shrink-0" />
+          <span className="font-semibold text-sm">Funil</span>
+          <Switch
+            id="ativo"
+            checked={form.ativo ?? true}
+            onCheckedChange={(val) => setForm(prev => ({ ...prev, ativo: val }))}
+          />
+          <span className="text-xs font-medium">{form.ativo ? 'ATIVO' : 'INATIVO'}</span>
+        </div>
+        <Button onClick={handleSave} disabled={saveConfig.isPending} size="sm">
+          {saveConfig.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+          Salvar
+        </Button>
+      </div>
+
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Zap className="h-5 w-5 text-accent" /> Configuração do Funil
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="ativo" className="text-sm">Status:</Label>
-              <Switch
-                id="ativo"
-                checked={form.ativo}
-                onCheckedChange={(val) => setForm(prev => ({ ...prev, ativo: val }))}
-              />
-              <span className="text-xs font-medium">{form.ativo ? 'ATIVO' : 'INATIVO'}</span>
-            </div>
-            <Button onClick={handleSave} disabled={saveConfig.isPending} size="sm">
-              {saveConfig.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Salvar
-            </Button>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-sm">Link Público</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Slug do Link (ex: dr-joao-silva)</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={form.slug}
-                  onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                  placeholder="seu-nome"
-                />
-                <Button variant="outline" size="icon" onClick={copyToClipboard} title="Copiar Link">
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" asChild title="Ver Funil">
-                  <a href={publicUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">{publicUrl}</p>
+        <CardContent>
+          <div className="space-y-2">
+            <Label>Slug do Link (ex: dr-joao-silva)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={form.slug || ''}
+                onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                placeholder="seu-nome"
+              />
+              <Button variant="outline" size="icon" onClick={copyToClipboard} title="Copiar Link">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" asChild title="Ver Funil">
+                <a href={publicUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground break-all">{publicUrl}</p>
           </div>
         </CardContent>
       </Card>
