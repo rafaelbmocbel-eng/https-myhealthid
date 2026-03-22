@@ -74,6 +74,7 @@ export default function PacienteAgenda() {
   const [selectedSlot, setSelectedSlot] = useState<{ dataInicio: Date; dataFim: Date } | null>(null);
   const [view, setView] = useState<'meus' | 'agendar'>('meus');
   const [confirmado, setConfirmado] = useState(false);
+  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
 
   const fetchPatientAndConfig = useCallback(async () => {
     if (!user) return;
