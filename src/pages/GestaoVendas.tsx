@@ -105,7 +105,7 @@ export default function GestaoVendas() {
     const { data: patients = [] } = useQuery({
         queryKey: ['crm-patients', user?.id],
         queryFn: async () => {
-            const { data } = await supabase.from('pacientes').select('*').eq('terapeuta_id', user!.id).order('nome');
+            const { data } = await supabase.from('pacientes').select('*').eq('terapeuta_id', user!.id).eq('ativo', true).order('nome');
             return data || [];
         },
         enabled: !!user,
