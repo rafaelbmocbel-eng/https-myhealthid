@@ -109,23 +109,33 @@ export default function PacienteAgenda() {
   const fetchAgendamentos = useCallback(async () => {
     if (!paciente) return;
 
-    let from: Date, to: Date;
     if (view === 'agendar' && selectedDate) {
-      from = startOfDay(selectedDate);
-      to = endOfDay(selectedDate);
-    } else {
-      from = new Date();
-      from.setDate(from.getDate() - 30); // Show recent past too
-      to = new Date();
-      to.setDate(to.getDate() + 90);
+      const from = startOfDay(selectedDate);
+      const to = endOfDay(selectedDate);
+
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('id, data_inicio, data_fim, status, titulo, tipo_atendimento, paciente_id')
+        .eq('terapeuta_id', paciente.terapeuta_id)
+        .gte('data_inicio', from.toISOString())
+        .lte('data_inicio', to.toISOString());
+
+      setAgendamentos(data || []);
+      return;
     }
+
+    const from = new Date();
+    from.setDate(from.getDate() - 180);
+    const to = new Date();
+    to.setDate(to.getDate() + 730);
 
     const { data } = await supabase
       .from('agendamentos')
       .select('id, data_inicio, data_fim, status, titulo, tipo_atendimento, paciente_id')
-      .eq('terapeuta_id', paciente.terapeuta_id)
+      .eq('paciente_id', paciente.id)
       .gte('data_inicio', from.toISOString())
-      .lte('data_inicio', to.toISOString());
+      .lte('data_inicio', to.toISOString())
+      .order('data_inicio', { ascending: true });
 
     setAgendamentos(data || []);
   }, [paciente, view, selectedDate]);
