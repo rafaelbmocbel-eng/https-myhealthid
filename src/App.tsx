@@ -8,6 +8,7 @@ import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import PatientGuard from "./components/PatientGuard";
 
 // Lazy-loaded pages for better performance
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
@@ -76,14 +77,14 @@ const App = () => (
           <AuthProvider>
             <Suspense fallback={<LazyFallback />}>
               <Routes>
-                <Route path="/" element={<Index />} />
-                <Route path="/metodo-identidade" element={<MetodoIdentidade />} />
-                <Route path="/cob-zero" element={<CobZero />} />
+                <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
+                <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
+                <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
-                <Route path="/studio-personal-id" element={<StudioPersonalID />} />
-                <Route path="/agenda" element={<Agenda />} />
-                <Route path="/pacientes" element={<Pacientes />} />
-                <Route path="/pacientes/:id" element={<PacientePerfil />} />
+                <Route path="/studio-personal-id" element={<PatientGuard><StudioPersonalID /></PatientGuard>} />
+                <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
+                <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
+                <Route path="/pacientes/:id" element={<PatientGuard><PacientePerfil /></PatientGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />
 
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
@@ -91,8 +92,8 @@ const App = () => (
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
-                <Route path="/crm" element={<GestaoVendas />} />
-                <Route path="/configuracoes" element={<Configuracoes />} />
+                <Route path="/crm" element={<PatientGuard><GestaoVendas /></PatientGuard>} />
+                <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PacienteLogin />} />
