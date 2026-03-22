@@ -545,17 +545,29 @@ export default function PacienteAgenda() {
                   {selectedSlot && (
                     <Card className="border-primary/20 bg-primary/5">
                       <CardContent className="p-4">
-                        <p className="text-sm font-bold text-foreground mb-1">Confirmar agendamento</p>
+                        <p className="text-sm font-bold text-foreground mb-1">
+                          {rescheduleId ? '🔄 Confirmar reagendamento' : 'Confirmar agendamento'}
+                        </p>
                         <p className="text-xs text-muted-foreground mb-3">
                           {format(selectedSlot.dataInicio, "EEEE, d 'de' MMMM · HH:mm", { locale: ptBR })} –{' '}
                           {format(selectedSlot.dataFim, 'HH:mm')}
                         </p>
                         <p className="text-[10px] text-muted-foreground mb-3">
-                          ⏳ Após agendar, o terapeuta receberá uma notificação e confirmará o horário.
+                          ⏳ {rescheduleId ? 'O horário anterior será cancelado e o terapeuta notificado.' : 'Após agendar, o terapeuta receberá uma notificação e confirmará o horário.'}
                         </p>
                         <Button onClick={handleAgendar} disabled={submitting} className="w-full rounded-xl">
-                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Confirmar horário'}
+                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : rescheduleId ? 'Confirmar reagendamento' : 'Confirmar horário'}
                         </Button>
+                        {rescheduleId && (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="w-full mt-2 text-xs"
+                            onClick={() => { setRescheduleId(null); setView('meus'); }}
+                          >
+                            Cancelar reagendamento
+                          </Button>
+                        )}
                       </CardContent>
                     </Card>
                   )}
