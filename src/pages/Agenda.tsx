@@ -654,8 +654,19 @@ export default function Agenda() {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'confirmado' });
 
-    // Automação: Adicionar conduta automática se houver paciente
+    // Notify patient about confirmation
     if (ag?.paciente_id) {
+      const dataFormatada = format(parseISO(ag.data_inicio), "d MMM 'às' HH:mm", { locale: ptBR });
+      await supabase.from('notificacoes').insert({
+        terapeuta_id: user!.id,
+        tipo: 'consulta',
+        titulo: '✅ Consulta confirmada!',
+        descricao: `Sua sessão de ${dataFormatada} foi confirmada. Até lá!`,
+        rota: '/paciente/agenda',
+        metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
+      });
+
+      // Automação: Adicionar conduta automática
       const { data: prot } = await supabase
         .from('protocolos')
         .select('objetivo_geral')
@@ -681,7 +692,22 @@ export default function Agenda() {
   };
 
   const handleRecusar = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'cancelado' });
+
+    // Notify patient about rejection
+    if (ag?.paciente_id) {
+      const dataFormatada = format(parseISO(ag.data_inicio), "d MMM 'às' HH:mm", { locale: ptBR });
+      await supabase.from('notificacoes').insert({
+        terapeuta_id: user!.id,
+        tipo: 'consulta',
+        titulo: '❌ Horário não disponível',
+        descricao: `Sua solicitação para ${dataFormatada} não pôde ser atendida. Tente outro horário.`,
+        rota: '/paciente/agenda',
+        metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
+      });
+    }
+
     refetchNotifications();
     toast({ title: '❌ Agendamento recusado.' });
   };
