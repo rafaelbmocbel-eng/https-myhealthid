@@ -324,8 +324,8 @@ const FunilConfigPanel = () => {
                       <Label className="text-xs">Valor (R$)</Label>
                       <Input
                         type="number"
-                        value={serv.valor}
-                        onChange={(e) => updateServico(idx, 'valor', parseFloat(e.target.value))}
+                        value={serv.valor ?? 0}
+                        onChange={(e) => updateServico(idx, 'valor', parseFloat(e.target.value) || 0)}
                       />
                     </div>
                     <div className="space-y-1">
