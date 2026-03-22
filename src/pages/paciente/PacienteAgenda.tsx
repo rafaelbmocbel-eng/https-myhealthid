@@ -440,6 +440,7 @@ export default function PacienteAgenda() {
                                   </Button>
                                 </div>
                               )}
+                              <div className="flex items-center gap-2">
                                 <a
                                   href={buildGoogleCalendarUrl(
                                     ag.titulo || ag.tipo_atendimento || 'Consulta',
