@@ -282,6 +282,15 @@ export default function PacienteAgenda() {
     if (error) {
       toast({ title: 'Erro ao editar agendamento', description: error.message, variant: 'destructive' });
     } else {
+      // Update controle_sessoes if exists
+      await supabase
+        .from('controle_sessoes')
+        .update({
+          data_sessao: selectedSlot.dataInicio.toISOString(),
+          status: 'pendente',
+        })
+        .eq('agendamento_id', editingAgendamento.id);
+
       setConfirmacao('editar');
       setEditingAgendamento(null);
       toast({ title: 'Agendamento atualizado ✅', description: 'Seu terapeuta precisa confirmar o novo horário.' });
@@ -289,7 +298,7 @@ export default function PacienteAgenda() {
       await supabase.from('notificacoes').insert({
         terapeuta_id: paciente.terapeuta_id,
         tipo: 'agendamento',
-        titulo: 'Agendamento remarcado',
+        titulo: '📅 Agendamento remarcado pelo paciente',
         descricao: `Paciente solicitou alteração para ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme ou recuse na agenda.`,
         rota: '/agenda',
         metadata: { paciente_id: paciente.id, agendamento_id: editingAgendamento.id },
@@ -309,6 +318,22 @@ export default function PacienteAgenda() {
     if (error) {
       toast({ title: 'Erro ao cancelar', description: error.message, variant: 'destructive' });
     } else {
+      // Update controle_sessoes to cancelled
+      await supabase
+        .from('controle_sessoes')
+        .update({ status: 'cancelada' })
+        .eq('agendamento_id', agId);
+
+      // Notify therapist about cancellation
+      await supabase.from('notificacoes').insert({
+        terapeuta_id: paciente!.terapeuta_id,
+        tipo: 'agendamento',
+        titulo: '❌ Consulta cancelada pelo paciente',
+        descricao: `Paciente cancelou a sessão. Verifique na agenda e no controle de atendimento.`,
+        rota: '/agenda',
+        metadata: { paciente_id: paciente!.id, agendamento_id: agId },
+      });
+
       toast({ title: 'Consulta cancelada' });
       fetchAgendamentos();
     }
