@@ -171,7 +171,7 @@ const FunilConfigPanel = () => {
             <div className="space-y-2">
               <Label>Coleta de Dados</Label>
               <Input
-                value={form.mensagem_agendamento}
+                value={form.mensagem_agendamento || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_agendamento: e.target.value }))}
               />
             </div>
