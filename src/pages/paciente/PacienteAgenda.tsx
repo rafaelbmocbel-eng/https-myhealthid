@@ -4,8 +4,8 @@ import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarDays, Clock, Loader2, CheckCircle2, ExternalLink, XCircle, AlertCircle, Plus, Edit3 } from 'lucide-react';
-import { format, parseISO, addMinutes, startOfDay, endOfDay, differenceInHours } from 'date-fns';
+import { CalendarDays, Clock, Loader2, CheckCircle2, ExternalLink, XCircle, AlertCircle, Plus } from 'lucide-react';
+import { format, parseISO, addMinutes, startOfDay, endOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
@@ -73,8 +73,8 @@ export default function PacienteAgenda() {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const [selectedSlot, setSelectedSlot] = useState<{ dataInicio: Date; dataFim: Date } | null>(null);
   const [view, setView] = useState<'meus' | 'agendar'>('meus');
-  const [confirmado, setConfirmado] = useState(false);
-  const [rescheduleId, setRescheduleId] = useState<string | null>(null);
+  const [confirmacao, setConfirmacao] = useState<'novo' | 'editar' | null>(null);
+  const [editingAgendamento, setEditingAgendamento] = useState<Agendamento | null>(null);
 
   const fetchPatientAndConfig = useCallback(async () => {
     if (!user) return;
@@ -208,6 +208,7 @@ export default function PacienteAgenda() {
       const ocupados = agendamentos.filter(
         (ag) =>
           ag.status !== 'cancelado' &&
+          ag.id !== editingAgendamento?.id &&
           parseISO(ag.data_inicio) < slotFim &&
           parseISO(ag.data_fim) > slotInicio
       ).length;
@@ -219,16 +220,11 @@ export default function PacienteAgenda() {
       slotInicio = slotFim;
     }
     return slots;
-  }, [config, selectedDate, agendamentos, allowedDays]);
+  }, [config, selectedDate, agendamentos, allowedDays, editingAgendamento]);
 
   const handleAgendar = async () => {
     if (!selectedSlot || !paciente) return;
     setSubmitting(true);
-
-    // If rescheduling, cancel the old one first
-    if (rescheduleId) {
-      await supabase.from('agendamentos').update({ status: 'cancelado' }).eq('id', rescheduleId);
-    }
 
     const { error } = await supabase.from('agendamentos').insert({
       terapeuta_id: paciente.terapeuta_id,
@@ -242,38 +238,56 @@ export default function PacienteAgenda() {
     if (error) {
       toast({ title: 'Erro ao agendar', description: error.message, variant: 'destructive' });
     } else {
-      setConfirmado(true);
-      const actionLabel = rescheduleId ? 'Reagendado' : 'Agendado';
-      toast({ title: `${actionLabel} com sucesso! ✅`, description: 'Aguarde a confirmação do seu terapeuta.' });
+      setConfirmacao('novo');
+      toast({ title: 'Agendado com sucesso! ✅', description: 'Aguarde a confirmação do seu terapeuta.' });
 
       // Create notification for therapist
       await supabase.from('notificacoes').insert({
         terapeuta_id: paciente.terapeuta_id,
         tipo: 'agendamento',
-        titulo: rescheduleId ? '🔄 Reagendamento solicitado' : 'Novo agendamento pendente',
-        descricao: `Paciente ${rescheduleId ? 're' : ''}solicitou sessão em ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme na agenda.`,
+        titulo: 'Novo agendamento pendente',
+        descricao: `Paciente solicitou sessão em ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme ou recuse na agenda.`,
         rota: '/agenda',
         metadata: { paciente_id: paciente.id },
       });
 
-      setRescheduleId(null);
       fetchAgendamentos();
     }
     setSubmitting(false);
   };
 
-  const canReschedule = (ag: Agendamento) => {
-    const hoursUntil = differenceInHours(parseISO(ag.data_inicio), new Date());
-    return hoursUntil >= 2 && (ag.status === 'pendente' || ag.status === 'confirmado');
-  };
+  const handleReagendar = async () => {
+    if (!selectedSlot || !paciente || !editingAgendamento) return;
+    setSubmitting(true);
 
-  const handleReschedule = (agId: string) => {
-    setRescheduleId(agId);
-    setView('agendar');
-    setConfirmado(false);
-    setSelectedSlot(null);
-    setSelectedDate(undefined);
-    toast({ title: '📅 Escolha o novo horário', description: 'Selecione uma data e horário para reagendar.' });
+    const { error } = await supabase
+      .from('agendamentos')
+      .update({
+        data_inicio: selectedSlot.dataInicio.toISOString(),
+        data_fim: selectedSlot.dataFim.toISOString(),
+        status: 'pendente',
+      })
+      .eq('id', editingAgendamento.id);
+
+    if (error) {
+      toast({ title: 'Erro ao editar agendamento', description: error.message, variant: 'destructive' });
+    } else {
+      setConfirmacao('editar');
+      setEditingAgendamento(null);
+      toast({ title: 'Agendamento atualizado ✅', description: 'Seu terapeuta precisa confirmar o novo horário.' });
+
+      await supabase.from('notificacoes').insert({
+        terapeuta_id: paciente.terapeuta_id,
+        tipo: 'agendamento',
+        titulo: 'Agendamento remarcado',
+        descricao: `Paciente solicitou alteração para ${format(selectedSlot.dataInicio, "d MMM 'às' HH:mm", { locale: ptBR })}. Confirme ou recuse na agenda.`,
+        rota: '/agenda',
+        metadata: { paciente_id: paciente.id, agendamento_id: editingAgendamento.id },
+      });
+
+      fetchAgendamentos();
+    }
+    setSubmitting(false);
   };
 
   const handleCancelar = async (agId: string) => {
@@ -319,7 +333,7 @@ export default function PacienteAgenda() {
               <Button
                 size="sm"
                 className="rounded-xl gap-1.5"
-                onClick={() => { setView('agendar'); setConfirmado(false); setSelectedSlot(null); }}
+                onClick={() => { setView('agendar'); setConfirmacao(null); setSelectedSlot(null); setEditingAgendamento(null); }}
               >
                 <Plus className="h-4 w-4" />
                 Agendar
@@ -335,7 +349,7 @@ export default function PacienteAgenda() {
             ]).map((t) => (
               <button
                 key={t.key}
-                onClick={() => { setView(t.key); setConfirmado(false); setSelectedSlot(null); }}
+                onClick={() => { setView(t.key); setConfirmacao(null); setSelectedSlot(null); if (t.key === 'meus') setEditingAgendamento(null); }}
                 className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
                   view === t.key
                     ? 'bg-primary text-primary-foreground shadow-sm'
@@ -359,7 +373,7 @@ export default function PacienteAgenda() {
                     <Button
                       size="sm"
                       className="rounded-xl"
-                      onClick={() => setView('agendar')}
+                      onClick={() => { setView('agendar'); setConfirmacao(null); setSelectedSlot(null); setEditingAgendamento(null); }}
                     >
                       Agendar sessão
                     </Button>
@@ -374,8 +388,7 @@ export default function PacienteAgenda() {
                         const cfg = STATUS_CONFIG[ag.status] || STATUS_CONFIG.pendente;
                         const StatusIcon = cfg.icon;
                         const isPendente = ag.status === 'pendente';
-                        const canChange = canReschedule(ag);
-                        const hoursLeft = differenceInHours(parseISO(ag.data_inicio), new Date());
+                        const canEdit = ['pendente', 'confirmado'].includes(ag.status) && parseISO(ag.data_inicio) > new Date();
                         return (
                           <Card key={ag.id}>
                             <CardContent className="p-3 space-y-2">
@@ -400,36 +413,33 @@ export default function PacienteAgenda() {
                                   </span>
                                 </div>
                               </div>
-
-                              {/* Time lock info */}
-                              {!canChange && hoursLeft < 2 && hoursLeft > 0 && (ag.status === 'confirmado' || ag.status === 'pendente') && (
-                                <p className="text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1">
-                                  🔒 Modificação bloqueada (menos de 2h para a sessão)
-                                </p>
-                              )}
-
-                              <div className="flex items-center gap-2 flex-wrap">
-                                {canChange && (
-                                  <>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-lg text-[11px] h-7 gap-1"
-                                      onClick={() => handleReschedule(ag.id)}
-                                    >
-                                      <Edit3 className="h-3 w-3" />
-                                      Editar horário
-                                    </Button>
-                                    <Button
-                                      variant="outline"
-                                      size="sm"
-                                      className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
-                                      onClick={() => handleCancelar(ag.id)}
-                                    >
-                                      <XCircle className="h-3 w-3 mr-0.5" />
-                                      Cancelar
-                                    </Button>
-                                  </>
+                              <div className="flex items-center gap-2">
+                                {isPendente && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg text-[11px] h-7 text-destructive border-destructive/30 hover:bg-destructive/10"
+                                    onClick={() => handleCancelar(ag.id)}
+                                  >
+                                    Cancelar
+                                  </Button>
+                                )}
+                                {canEdit && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="rounded-lg text-[11px] h-7"
+                                    onClick={() => {
+                                      setEditingAgendamento(ag);
+                                      setView('agendar');
+                                      setConfirmacao(null);
+                                      const agDate = parseISO(ag.data_inicio);
+                                      setSelectedDate(agDate);
+                                      setSelectedSlot({ dataInicio: agDate, dataFim: parseISO(ag.data_fim) });
+                                    }}
+                                  >
+                                    Editar agendamento
+                                  </Button>
                                 )}
                                 <a
                                   href={buildGoogleCalendarUrl(
@@ -486,7 +496,7 @@ export default function PacienteAgenda() {
           )}
 
           {/* Scheduling view */}
-          {view === 'agendar' && !confirmado && (
+          {view === 'agendar' && !confirmacao && (
             <div className="space-y-4">
               {!config ? (
                 <Card>
@@ -496,6 +506,27 @@ export default function PacienteAgenda() {
                 </Card>
               ) : (
                 <>
+                  {editingAgendamento && (
+                    <Card className="border-primary/20 bg-primary/5">
+                      <CardContent className="p-4">
+                        <p className="text-sm font-bold text-foreground mb-1">Editar agendamento</p>
+                        <p className="text-xs text-muted-foreground">
+                          Atual: {format(parseISO(editingAgendamento.data_inicio), "d MMM 'às' HH:mm", { locale: ptBR })} –{' '}
+                          {format(parseISO(editingAgendamento.data_fim), 'HH:mm')}
+                        </p>
+                        <div className="mt-3">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-lg"
+                            onClick={() => { setEditingAgendamento(null); setSelectedSlot(null); }}
+                          >
+                            Cancelar edição
+                          </Button>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  )}
                   <Card>
                     <CardContent className="p-3 flex justify-center">
                       <Calendar
@@ -543,46 +574,42 @@ export default function PacienteAgenda() {
                     </div>
                   )}
 
-                  {selectedSlot && (
-                    <Card className="border-primary/20 bg-primary/5">
-                      <CardContent className="p-4">
+                   {selectedSlot && (
+                     <Card className="border-primary/20 bg-primary/5">
+                       <CardContent className="p-4">
                         <p className="text-sm font-bold text-foreground mb-1">
-                          {rescheduleId ? '🔄 Confirmar reagendamento' : 'Confirmar agendamento'}
+                          {editingAgendamento ? 'Confirmar alteração' : 'Confirmar agendamento'}
                         </p>
                         <p className="text-xs text-muted-foreground mb-3">
                           {format(selectedSlot.dataInicio, "EEEE, d 'de' MMMM · HH:mm", { locale: ptBR })} –{' '}
                           {format(selectedSlot.dataFim, 'HH:mm')}
                         </p>
                         <p className="text-[10px] text-muted-foreground mb-3">
-                          ⏳ {rescheduleId ? 'O horário anterior será cancelado e o terapeuta notificado.' : 'Após agendar, o terapeuta receberá uma notificação e confirmará o horário.'}
+                          ⏳ Após confirmar, o terapeuta receberá uma notificação e confirmará o horário.
                         </p>
-                        <Button onClick={handleAgendar} disabled={submitting} className="w-full rounded-xl">
-                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : rescheduleId ? 'Confirmar reagendamento' : 'Confirmar horário'}
+                        <Button
+                          onClick={editingAgendamento ? handleReagendar : handleAgendar}
+                          disabled={submitting}
+                          className="w-full rounded-xl"
+                        >
+                          {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : editingAgendamento ? 'Confirmar alteração' : 'Confirmar horário'}
                         </Button>
-                        {rescheduleId && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="w-full mt-2 text-xs"
-                            onClick={() => { setRescheduleId(null); setView('meus'); }}
-                          >
-                            Cancelar reagendamento
-                          </Button>
-                        )}
-                      </CardContent>
-                    </Card>
-                  )}
+                       </CardContent>
+                     </Card>
+                   )}
                 </>
               )}
             </div>
           )}
 
           {/* Confirmation */}
-          {view === 'agendar' && confirmado && (
+          {view === 'agendar' && confirmacao && (
             <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
               <CardContent className="p-6 text-center">
                 <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400 mx-auto mb-3" />
-                <h2 className="text-lg font-bold text-green-800 dark:text-green-300 mb-1">Agendado! ✅</h2>
+                <h2 className="text-lg font-bold text-green-800 dark:text-green-300 mb-1">
+                  {confirmacao === 'editar' ? 'Agendamento atualizado! ✅' : 'Agendado! ✅'}
+                </h2>
                 <p className="text-xs text-green-700 dark:text-green-400 mb-1">
                   Seu terapeuta receberá uma notificação e confirmará o horário.
                 </p>
@@ -604,7 +631,7 @@ export default function PacienteAgenda() {
                   <Button
                     variant="outline"
                     className="rounded-xl"
-                    onClick={() => { setView('meus'); setConfirmado(false); }}
+                    onClick={() => { setView('meus'); setConfirmacao(null); }}
                   >
                     Ver minhas consultas
                   </Button>
