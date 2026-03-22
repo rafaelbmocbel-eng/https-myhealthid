@@ -269,7 +269,7 @@ const FunilConfigPanel = () => {
               <div className="space-y-2">
                 <Label>Link de Pagamento (Cartão)</Label>
                 <Input
-                  value={form.link_cartao}
+                  value={form.link_cartao || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, link_cartao: e.target.value }))}
                   placeholder="https://pay.mercadopago.com/..."
                 />
