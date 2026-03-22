@@ -191,8 +191,9 @@ export default function PacientePagamentos() {
   const handleSelectCartao = () => {
     setPaymentMethod('cartao');
     setPixQr(null);
-    // Use static link directly from funil_config
-    setSumupUrl(config?.link_cartao || null);
+    // Use per-service link if available, otherwise fall back to global link
+    const serviceLink = selectedServico?.link_pagamento;
+    setSumupUrl(serviceLink || config?.link_cartao || null);
   };
 
   const handleConfirmPayment = async () => {
