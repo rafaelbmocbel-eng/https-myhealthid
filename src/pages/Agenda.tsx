@@ -685,7 +685,7 @@ export default function Agenda() {
         tipo: 'consulta',
         titulo: '✅ Consulta confirmada!',
         descricao: `Sua sessão de ${dataFormatada} foi confirmada. Até lá!`,
-        rota: '/paciente/agenda',
+        rota: '/agenda',
         metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
       });
 
@@ -726,7 +726,7 @@ export default function Agenda() {
         tipo: 'consulta',
         titulo: '❌ Horário não disponível',
         descricao: `Sua solicitação para ${dataFormatada} não pôde ser atendida. Tente outro horário.`,
-        rota: '/paciente/agenda',
+        rota: '/agenda',
         metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
       });
     }
