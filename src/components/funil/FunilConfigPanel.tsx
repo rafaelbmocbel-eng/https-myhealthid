@@ -93,50 +93,47 @@ const FunilConfigPanel = () => {
 
   return (
     <div className="space-y-6 pb-20">
+      {/* Sticky save bar */}
+      <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-2 bg-background/95 backdrop-blur py-3 border-b border-border">
+        <div className="flex items-center gap-2">
+          <Zap className="h-5 w-5 text-accent shrink-0" />
+          <span className="font-semibold text-sm">Funil</span>
+          <Switch
+            id="ativo"
+            checked={form.ativo ?? true}
+            onCheckedChange={(val) => setForm(prev => ({ ...prev, ativo: val }))}
+          />
+          <span className="text-xs font-medium">{form.ativo ? 'ATIVO' : 'INATIVO'}</span>
+        </div>
+        <Button onClick={handleSave} disabled={saveConfig.isPending} size="sm">
+          {saveConfig.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+          Salvar
+        </Button>
+      </div>
+
       <Card>
-        <CardHeader className="flex flex-row items-center justify-between space-y-0">
-          <div>
-            <CardTitle className="text-xl flex items-center gap-2">
-              <Zap className="h-5 w-5 text-accent" /> Configuração do Funil
-            </CardTitle>
-          </div>
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Label htmlFor="ativo" className="text-sm">Status:</Label>
-              <Switch
-                id="ativo"
-                checked={form.ativo}
-                onCheckedChange={(val) => setForm(prev => ({ ...prev, ativo: val }))}
-              />
-              <span className="text-xs font-medium">{form.ativo ? 'ATIVO' : 'INATIVO'}</span>
-            </div>
-            <Button onClick={handleSave} disabled={saveConfig.isPending} size="sm">
-              {saveConfig.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
-              Salvar
-            </Button>
-          </div>
+        <CardHeader>
+          <CardTitle className="text-sm">Link Público</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Slug do Link (ex: dr-joao-silva)</Label>
-              <div className="flex gap-2">
-                <Input
-                  value={form.slug}
-                  onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
-                  placeholder="seu-nome"
-                />
-                <Button variant="outline" size="icon" onClick={copyToClipboard} title="Copiar Link">
-                  <Copy className="h-4 w-4" />
-                </Button>
-                <Button variant="outline" size="icon" asChild title="Ver Funil">
-                  <a href={publicUrl} target="_blank" rel="noreferrer">
-                    <ExternalLink className="h-4 w-4" />
-                  </a>
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground">{publicUrl}</p>
+        <CardContent>
+          <div className="space-y-2">
+            <Label>Slug do Link (ex: dr-joao-silva)</Label>
+            <div className="flex gap-2">
+              <Input
+                value={form.slug || ''}
+                onChange={(e) => setForm(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                placeholder="seu-nome"
+              />
+              <Button variant="outline" size="icon" onClick={copyToClipboard} title="Copiar Link">
+                <Copy className="h-4 w-4" />
+              </Button>
+              <Button variant="outline" size="icon" asChild title="Ver Funil">
+                <a href={publicUrl} target="_blank" rel="noreferrer">
+                  <ExternalLink className="h-4 w-4" />
+                </a>
+              </Button>
             </div>
+            <p className="text-[10px] text-muted-foreground break-all">{publicUrl}</p>
           </div>
         </CardContent>
       </Card>
@@ -153,42 +150,42 @@ const FunilConfigPanel = () => {
             <div className="space-y-2">
               <Label>Boas-vindas</Label>
               <Textarea
-                value={form.mensagem_boas_vindas}
+                value={form.mensagem_boas_vindas || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_boas_vindas: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Apresentação Diferenciais</Label>
               <Input
-                value={form.mensagem_diferenciais}
+                value={form.mensagem_diferenciais || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_diferenciais: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Apresentação Serviços</Label>
               <Input
-                value={form.mensagem_servicos}
+                value={form.mensagem_servicos || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_servicos: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Coleta de Dados</Label>
               <Input
-                value={form.mensagem_agendamento}
+                value={form.mensagem_agendamento || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_agendamento: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Pagamento</Label>
               <Input
-                value={form.mensagem_pagamento}
+                value={form.mensagem_pagamento || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_pagamento: e.target.value }))}
               />
             </div>
             <div className="space-y-2">
               <Label>Confirmação Final</Label>
               <Textarea
-                value={form.mensagem_confirmacao}
+                value={form.mensagem_confirmacao || ''}
                 onChange={(e) => setForm(prev => ({ ...prev, mensagem_confirmacao: e.target.value }))}
               />
             </div>
@@ -255,7 +252,7 @@ const FunilConfigPanel = () => {
                 <div className="space-y-2">
                   <Label>Chave PIX</Label>
                   <Input
-                    value={form.pix_chave}
+                    value={form.pix_chave || ''}
                     onChange={(e) => setForm(prev => ({ ...prev, pix_chave: e.target.value }))}
                     placeholder="Sua chave"
                   />
@@ -264,7 +261,7 @@ const FunilConfigPanel = () => {
               <div className="space-y-2">
                 <Label>Nome do Favorecido (PIX)</Label>
                 <Input
-                  value={form.pix_nome}
+                  value={form.pix_nome || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, pix_nome: e.target.value }))}
                 />
               </div>
@@ -272,7 +269,7 @@ const FunilConfigPanel = () => {
               <div className="space-y-2">
                 <Label>Link de Pagamento (Cartão)</Label>
                 <Input
-                  value={form.link_cartao}
+                  value={form.link_cartao || ''}
                   onChange={(e) => setForm(prev => ({ ...prev, link_cartao: e.target.value }))}
                   placeholder="https://pay.mercadopago.com/..."
                 />
@@ -327,8 +324,8 @@ const FunilConfigPanel = () => {
                       <Label className="text-xs">Valor (R$)</Label>
                       <Input
                         type="number"
-                        value={serv.valor}
-                        onChange={(e) => updateServico(idx, 'valor', parseFloat(e.target.value))}
+                        value={serv.valor ?? 0}
+                        onChange={(e) => updateServico(idx, 'valor', parseFloat(e.target.value) || 0)}
                       />
                     </div>
                     <div className="space-y-1">
@@ -337,8 +334,8 @@ const FunilConfigPanel = () => {
                         type="number"
                         min={1}
                         max={12}
-                        value={serv.parcelas_max}
-                        onChange={(e) => updateServico(idx, 'parcelas_max', parseInt(e.target.value))}
+                        value={serv.parcelas_max ?? 1}
+                        onChange={(e) => updateServico(idx, 'parcelas_max', parseInt(e.target.value) || 1)}
                       />
                     </div>
                   </div>
