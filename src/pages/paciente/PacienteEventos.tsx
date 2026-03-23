@@ -196,7 +196,7 @@ export default function PacienteEventos() {
                       <div className="flex items-start justify-between gap-2">
                         <h2 className="text-sm font-bold text-foreground">{ev.titulo}</h2>
                         {jaInscrito && (
-                          <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] shrink-0">
+                          <Badge variant="outline" className="bg-accent/10 text-accent-foreground border-accent/20 text-[10px] shrink-0">
                             <CheckCircle2 className="h-3 w-3 mr-0.5" /> Inscrito
                           </Badge>
                         )}
