@@ -20,7 +20,7 @@ const navItems = [
 ];
 
 // Show max 5 items in bottom nav: Início, Agenda, Diário, Treinos, Perfil
-const MOBILE_NAV_ITEMS = [0, 5, 2, 4, 8];
+const MOBILE_NAV_ITEMS = [0, 5, 2, 4, 9];
 
 interface Props {
   children: ReactNode;
