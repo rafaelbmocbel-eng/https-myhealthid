@@ -150,6 +150,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+      await requestWakeLock();
     } catch (err) {
       console.error('Failed to start recording:', err);
       toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
