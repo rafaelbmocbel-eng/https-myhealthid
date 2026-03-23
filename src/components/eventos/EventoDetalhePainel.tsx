@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Users, UserPlus, UserCheck, Copy, Eye } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, UserCheck, Copy, ChevronRight } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -61,14 +61,14 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <UserPlus className="h-5 w-5 mx-auto mb-1 text-success" />
+            <UserPlus className="h-5 w-5 mx-auto mb-1 text-emerald-500" />
             <div className="text-2xl font-bold">{novos}</div>
             <div className="text-xs text-muted-foreground">Novos clientes</div>
           </CardContent>
         </Card>
         <Card>
           <CardContent className="pt-4 text-center">
-            <UserCheck className="h-5 w-5 mx-auto mb-1 text-accent" />
+            <UserCheck className="h-5 w-5 mx-auto mb-1 text-primary" />
             <div className="text-2xl font-bold">{ativos}</div>
             <div className="text-xs text-muted-foreground">Já eram pacientes</div>
           </CardContent>
@@ -86,12 +86,17 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
           ) : !inscritos.length ? (
             <p className="text-sm text-muted-foreground text-center py-6">Nenhuma inscrição ainda</p>
           ) : (
-            <ScrollArea className="max-h-[400px]">
+            <ScrollArea className="max-h-[500px]">
               <div className="space-y-2">
-                {inscritos.map(ins => (
-                  <div key={ins.id} className="flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors">
-                    <div className="min-w-0">
-                      <div className="flex items-center gap-2">
+                {inscritos.map((ins, idx) => (
+                  <button
+                    key={ins.id}
+                    onClick={() => setSelectedInscricao(ins.id)}
+                    className="w-full flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}.</span>
                         <span className="font-medium text-sm truncate">{ins.nome}</span>
                         <Badge variant={ins.ja_era_paciente ? 'default' : 'secondary'} className="text-[10px] shrink-0">
                           {ins.ja_era_paciente ? 'Paciente ativo' : 'Novo'}
@@ -102,18 +107,16 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
                           </Badge>
                         )}
                       </div>
-                      <div className="text-xs text-muted-foreground mt-0.5">
+                      <div className="text-xs text-muted-foreground mt-0.5 pl-7">
                         {ins.email && <span>{ins.email}</span>}
                         {ins.telefone && <span> · {ins.telefone}</span>}
                         <span> · {format(new Date(ins.created_at), 'dd/MM HH:mm')}</span>
                       </div>
                     </div>
                     {perguntas.length > 0 && (
-                      <Button variant="ghost" size="sm" onClick={() => setSelectedInscricao(ins.id)}>
-                        <Eye className="h-4 w-4" />
-                      </Button>
+                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
                     )}
-                  </div>
+                  </button>
                 ))}
               </div>
             </ScrollArea>
@@ -152,14 +155,24 @@ function RespostasDialog({ inscricaoId, perguntas, inscrito, open, onClose }: {
 
   return (
     <Dialog open={open} onOpenChange={() => onClose()}>
-      <DialogContent>
+      <DialogContent className="max-w-md max-h-[85dvh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Respostas — {inscrito?.nome}</DialogTitle>
+          <DialogTitle className="text-base">Respostas — {inscrito?.nome}</DialogTitle>
         </DialogHeader>
+
+        {/* Contact info */}
+        {inscrito && (
+          <div className="text-xs text-muted-foreground space-y-0.5 pb-2 border-b border-border">
+            {inscrito.email && <p>📧 {inscrito.email}</p>}
+            {inscrito.telefone && <p>📱 {inscrito.telefone}</p>}
+            <p>📅 Inscrito em {format(new Date(inscrito.created_at), "dd/MM/yyyy 'às' HH:mm")}</p>
+          </div>
+        )}
+
         <div className="space-y-3">
-          {perguntas.map(p => (
+          {perguntas.map((p, idx) => (
             <div key={p.id} className="space-y-1">
-              <div className="text-sm font-medium">{p.pergunta}</div>
+              <div className="text-sm font-medium">{idx + 1}. {p.pergunta}</div>
               <div className="text-sm text-muted-foreground bg-muted/50 rounded-md px-3 py-2">
                 {getResp(p.id)}
               </div>
