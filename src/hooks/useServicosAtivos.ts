@@ -6,12 +6,14 @@ export interface ServicosAtivos {
   identidade: boolean;
   cob_zero: boolean;
   studio: boolean;
+  eventos: boolean;
 }
 
 const DEFAULT_SERVICOS: ServicosAtivos = {
   identidade: true,
   cob_zero: true,
   studio: true,
+  eventos: true,
 };
 
 export function useServicosAtivos() {

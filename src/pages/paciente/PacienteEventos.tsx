@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { Checkbox } from '@/components/ui/checkbox';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Slider } from '@/components/ui/slider';
 import { Badge } from '@/components/ui/badge';
@@ -30,6 +31,7 @@ interface Evento {
   cobrar_pagamento: boolean;
   valor: number;
   link_pagamento: string | null;
+  descricao_formulario: string | null;
 }
 
 interface Pergunta {
@@ -75,7 +77,7 @@ export default function PacienteEventos() {
     const today = new Date().toISOString().split('T')[0];
     const { data: evts } = await supabase
       .from('eventos')
-      .select('id, titulo, descricao, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento')
+        .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento')
       .eq('terapeuta_id', pac.terapeuta_id)
       .eq('ativo', true)
       .gte('data_evento', today)
@@ -128,7 +130,9 @@ export default function PacienteEventos() {
     if (!selectedEvento || !paciente) return;
 
     for (const p of perguntas) {
-      if (p.obrigatoria && (respostas[p.id] === undefined || respostas[p.id] === '')) {
+      const value = respostas[p.id];
+      const isEmptyArray = Array.isArray(value) && value.length === 0;
+      if (p.obrigatoria && (value === undefined || value === '' || value === null || isEmptyArray)) {
         toast.error(`Responda: "${p.pergunta}"`);
         return;
       }
@@ -264,6 +268,12 @@ export default function PacienteEventos() {
 
             {perguntas.length > 0 ? (
               <div className="space-y-4">
+                {selectedEvento?.descricao_formulario && (
+                  <div className="rounded-lg border border-border bg-muted/40 px-3 py-3 text-sm text-muted-foreground whitespace-pre-line">
+                    {selectedEvento.descricao_formulario}
+                  </div>
+                )}
+
                 {perguntas.map(p => (
                   <div key={p.id} className="space-y-2">
                     <Label className="text-sm">{p.pergunta}{p.obrigatoria && ' *'}</Label>
@@ -300,6 +310,31 @@ export default function PacienteEventos() {
                           <span className="font-medium text-foreground">{respostas[p.id] ?? 5}</span>
                           <span>10</span>
                         </div>
+                      </div>
+                    )}
+
+                    {p.tipo === 'multiple_select' && (
+                      <div className="space-y-2">
+                        {(p.opcoes as string[]).filter(Boolean).map((op, idx) => {
+                          const current = Array.isArray(respostas[p.id]) ? respostas[p.id] : [];
+                          const checked = current.includes(op);
+
+                          return (
+                            <label key={idx} className="flex items-center gap-2 text-sm font-normal cursor-pointer">
+                              <Checkbox
+                                checked={checked}
+                                onCheckedChange={(nextChecked) => {
+                                  const nextValues = nextChecked
+                                    ? [...current, op]
+                                    : current.filter((item: string) => item !== op);
+
+                                  setRespostas({ ...respostas, [p.id]: nextValues });
+                                }}
+                              />
+                              <span>{op}</span>
+                            </label>
+                          );
+                        })}
                       </div>
                     )}
 
