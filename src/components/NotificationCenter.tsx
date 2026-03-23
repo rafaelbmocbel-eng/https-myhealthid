@@ -29,9 +29,19 @@ export default function NotificationCenter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClick = (id: string, rota: string | null) => {
+  const rotaMap: Record<string, string> = {
+    consulta: '/agenda',
+    questionario: '/pacientes',
+    nps: '/relatorios',
+    geral: '/',
+    reagendamento: '/agenda',
+    cancelamento: '/agenda',
+  };
+
+  const handleClick = (id: string, rota: string | null, tipo?: string) => {
     marcarLida.mutate(id);
-    if (rota && !rota.startsWith('/paciente')) navigate(rota);
+    const destino = rota && !rota.startsWith('/paciente') ? rota : rotaMap[tipo || ''] || null;
+    if (destino) navigate(destino);
   };
 
   return (
