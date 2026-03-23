@@ -29,9 +29,19 @@ export default function NotificationCenter() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleClick = (id: string, rota: string | null) => {
+  const rotaMap: Record<string, string> = {
+    consulta: '/agenda',
+    questionario: '/pacientes',
+    nps: '/relatorios',
+    geral: '/',
+    reagendamento: '/agenda',
+    cancelamento: '/agenda',
+  };
+
+  const handleClick = (id: string, rota: string | null, tipo?: string) => {
     marcarLida.mutate(id);
-    if (rota && !rota.startsWith('/paciente')) navigate(rota);
+    const destino = rota && !rota.startsWith('/paciente') ? rota : rotaMap[tipo || ''] || null;
+    if (destino) navigate(destino);
   };
 
   return (
@@ -46,7 +56,7 @@ export default function NotificationCenter() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 max-h-[70vh] flex flex-col" align="end">
         <div className="flex items-center justify-between p-3 border-b border-border/50">
           <h3 className="text-sm font-bold text-foreground">Notificações</h3>
           {naoLidas > 0 && (
@@ -61,18 +71,18 @@ export default function NotificationCenter() {
           )}
         </div>
 
-        <ScrollArea className="max-h-80">
+        <ScrollArea className="flex-1 overflow-auto" style={{ maxHeight: 'calc(70vh - 48px)' }}>
           {notificacoes.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               Nenhuma notificação
             </div>
           ) : (
-            notificacoes.slice(0, 20).map(n => {
+            notificacoes.map(n => {
               const Icon = iconMap[n.tipo] || Bell;
               return (
                 <button
                   key={n.id}
-                  onClick={() => handleClick(n.id, n.rota)}
+                  onClick={() => handleClick(n.id, n.rota, n.tipo)}
                   className={cn(
                     'w-full flex items-start gap-3 p-3 text-left hover:bg-accent/50 transition-colors border-b border-border/30 last:border-b-0',
                     !n.lida && 'bg-primary/5'
