@@ -64,14 +64,48 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     resumo: true, dor: true, funcionalidade: true, psicossocial: false,
     redflags: true, hipoteses: true, plano: true, insights: true,
   });
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editFieldValue, setEditFieldValue] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  // Wake Lock helpers
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        wakeLockRef.current.addEventListener('release', () => {
+          wakeLockRef.current = null;
+        });
+      }
+    } catch (e) {
+      console.warn('Wake Lock não disponível:', e);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release();
+    wakeLockRef.current = null;
+  }, []);
+
+  // Re-acquire wake lock when page becomes visible again during recording
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isRecording) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isRecording, requestWakeLock]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopRecording();
+      releaseWakeLock();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
