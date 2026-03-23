@@ -15,6 +15,7 @@ const navItems = [
   { path: '/paciente/agenda', label: 'Agenda', shortLabel: 'Agenda', icon: CalendarDays, badgeKey: 'agenda' as const },
   { path: '/paciente/questionarios', label: 'Questionários', shortLabel: 'Quest.', icon: ClipboardList, badgeKey: 'questionarios' as const },
   { path: '/paciente/pagamentos', label: 'Pagamentos', shortLabel: 'Pagam.', icon: Wallet, badgeKey: 'pagamentos' as const },
+  { path: '/paciente/eventos', label: 'Eventos', shortLabel: 'Eventos', icon: Ticket, badgeKey: null },
   { path: '/paciente/perfil', label: 'Perfil', shortLabel: 'Perfil', icon: User, badgeKey: null },
 ];
 
