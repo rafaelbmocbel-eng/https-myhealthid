@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ClipboardPlus, CalendarDays } from 'lucide-react';
+import { UserPlus, ClipboardPlus, CalendarDays, PartyPopper } from 'lucide-react';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 
@@ -8,6 +8,7 @@ const ACTIONS = [
   { key: 'pacientes', label: 'Novo Paciente', icon: UserPlus, href: '/pacientes', hint: 'Cadastrar paciente' },
   { key: 'avaliacao', label: 'Nova Avaliação', icon: ClipboardPlus, href: '/metodo-identidade', hint: 'Iniciar avaliação' },
   { key: 'agenda', label: 'Agenda Hoje', icon: CalendarDays, href: '/agenda', hint: 'Ver agenda do dia' },
+  { key: 'eventos', label: 'Eventos', icon: PartyPopper, href: '/eventos', hint: 'Abrir eventos' },
 ];
 
 const FREQ_KEY = 'quick_actions_freq';

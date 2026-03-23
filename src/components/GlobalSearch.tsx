@@ -6,7 +6,7 @@ import {
 } from '@/components/ui/command';
 import {
   LayoutDashboard, Users, CalendarDays, ClipboardList, AlignCenter,
-  Settings, Sparkles, MessageSquare, FileText, Search, User,
+  Settings, Sparkles, MessageSquare, FileText, Search, User, PartyPopper,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ const PAGES = [
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, keywords: 'treino exercício' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendário horário' },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare, keywords: 'vendas funil leads' },
+  { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'evento workshop recovery inscrição' },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, keywords: 'report pdf' },
   { label: 'Configurações', href: '/configuracoes', icon: Settings, keywords: 'config perfil conta' },
 ];
