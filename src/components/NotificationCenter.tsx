@@ -18,6 +18,7 @@ const iconMap: Record<string, typeof Bell> = {
   questionario: ClipboardList,
   nps: Star,
   geral: MessageSquare,
+  evento: Star,
 };
 
 export default function NotificationCenter() {
