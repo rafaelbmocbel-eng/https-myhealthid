@@ -741,6 +741,7 @@ export type Database = {
           created_at: string
           data_evento: string
           descricao: string | null
+          descricao_formulario: string | null
           horario_fim: string
           horario_inicio: string
           id: string
@@ -761,6 +762,7 @@ export type Database = {
           created_at?: string
           data_evento: string
           descricao?: string | null
+          descricao_formulario?: string | null
           horario_fim?: string
           horario_inicio?: string
           id?: string
@@ -781,6 +783,7 @@ export type Database = {
           created_at?: string
           data_evento?: string
           descricao?: string | null
+          descricao_formulario?: string | null
           horario_fim?: string
           horario_inicio?: string
           id?: string
@@ -1576,6 +1579,7 @@ export type Database = {
           id: string
           nome: string
           observacoes: string | null
+          origem: string | null
           portal_token: string | null
           sexo: string | null
           sobrenome: string
@@ -1595,6 +1599,7 @@ export type Database = {
           id?: string
           nome: string
           observacoes?: string | null
+          origem?: string | null
           portal_token?: string | null
           sexo?: string | null
           sobrenome?: string
@@ -1614,6 +1619,7 @@ export type Database = {
           id?: string
           nome?: string
           observacoes?: string | null
+          origem?: string | null
           portal_token?: string | null
           sexo?: string | null
           sobrenome?: string

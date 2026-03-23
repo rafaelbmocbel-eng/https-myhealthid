@@ -145,6 +145,7 @@ function RespostasDialog({ inscricaoId, perguntas, inscrito, open, onClose }: {
     if (typeof val === 'boolean') return val ? 'Sim' : 'Não';
     if (typeof val === 'number') return String(val);
     if (typeof val === 'string') return val;
+    if (Array.isArray(val)) return val.join(', ');
     if (val && typeof val === 'object' && 'value' in val) return String(val.value);
     return JSON.stringify(val);
   };

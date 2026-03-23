@@ -8,6 +8,7 @@ export interface Evento {
   terapeuta_id: string;
   titulo: string;
   descricao: string | null;
+  descricao_formulario: string | null;
   data_evento: string;
   horario_inicio: string;
   horario_fim: string;
@@ -27,7 +28,7 @@ export interface EventoPergunta {
   id: string;
   evento_id: string;
   ordem: number;
-  tipo: 'text' | 'multiple_choice' | 'scale' | 'boolean';
+  tipo: 'text' | 'multiple_choice' | 'multiple_select' | 'scale' | 'boolean';
   pergunta: string;
   opcoes: string[];
   obrigatoria: boolean;
@@ -94,6 +95,42 @@ export function useEventos() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const editarEvento = useMutation({
+    mutationFn: async ({ id, ...eventoData }: Partial<Evento> & { id: string }) => {
+      const { error } = await supabase.from('eventos').update(eventoData as any).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('Evento atualizado!');
+      qc.invalidateQueries({ queryKey: ['eventos'] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const salvarPerguntas = useMutation({
+    mutationFn: async ({ eventoId, perguntas }: { eventoId: string; perguntas: Omit<EventoPergunta, 'id' | 'evento_id'>[] }) => {
+      // Delete existing questions then re-insert
+      await supabase.from('evento_perguntas').delete().eq('evento_id', eventoId);
+      if (perguntas.length > 0) {
+        const rows = perguntas.map((p, i) => ({
+          evento_id: eventoId,
+          ordem: i + 1,
+          tipo: p.tipo,
+          pergunta: p.pergunta,
+          opcoes: p.opcoes || [],
+          obrigatoria: p.obrigatoria,
+        }));
+        const { error } = await supabase.from('evento_perguntas').insert(rows as any);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success('Questionário salvo!');
+      qc.invalidateQueries({ queryKey: ['evento-detalhe'] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   const toggleEvento = useMutation({
     mutationFn: async ({ id, ativo }: { id: string; ativo: boolean }) => {
       const { error } = await supabase.from('eventos').update({ ativo } as any).eq('id', id);
@@ -113,7 +150,7 @@ export function useEventos() {
     },
   });
 
-  return { ...eventosQuery, criarEvento, toggleEvento, deletarEvento };
+  return { ...eventosQuery, criarEvento, editarEvento, salvarPerguntas, toggleEvento, deletarEvento };
 }
 
 export function useEventoDetalhe(eventoId: string | null) {

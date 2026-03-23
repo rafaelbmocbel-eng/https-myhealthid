@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Slider } from '@/components/ui/slider';
 import { Calendar, Clock, MapPin, Users, CheckCircle2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -14,8 +15,8 @@ import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 
 interface Evento {
-  id: string; titulo: string; descricao: string | null; data_evento: string;
-  horario_inicio: string; horario_fim: string; local: string | null;
+  id: string; titulo: string; descricao: string | null; descricao_formulario: string | null;
+  data_evento: string; horario_inicio: string; horario_fim: string; local: string | null;
   vagas_max: number | null; cobrar_pagamento: boolean; valor: number;
   pix_chave: string | null; link_pagamento: string | null; ativo: boolean;
 }
@@ -34,7 +35,6 @@ export default function EventoPublico() {
   const [submitting, setSubmitting] = useState(false);
   const [vagasRestantes, setVagasRestantes] = useState<number | null>(null);
 
-  // Form
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
@@ -46,8 +46,6 @@ export default function EventoPublico() {
   }, [eventoId]);
 
   const loadEvento = async () => {
-    // Load event (anon can read via RLS? No - only terapeuta. Use edge function or make public select)
-    // We'll use a simple approach: create a public function
     const { data: ev } = await supabase
       .from('eventos')
       .select('*')
@@ -78,10 +76,15 @@ export default function EventoPublico() {
 
   const handleSubmit = async () => {
     if (!nome.trim()) { toast.error('Informe seu nome'); return; }
-    // Check required
+    if (!telefone.trim()) { toast.error('Informe seu WhatsApp'); return; }
+    if (!email.trim()) { toast.error('Informe seu e-mail'); return; }
+
     for (const p of perguntas) {
-      if (p.obrigatoria && (respostas[p.id] === undefined || respostas[p.id] === '')) {
-        toast.error(`Responda: "${p.pergunta}"`); return;
+      if (p.obrigatoria) {
+        const val = respostas[p.id];
+        if (val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
+          toast.error(`Responda: "${p.pergunta}"`); return;
+        }
       }
     }
 
@@ -103,6 +106,15 @@ export default function EventoPublico() {
       toast.error(e.message || 'Erro ao inscrever');
     }
     setSubmitting(false);
+  };
+
+  const toggleMultiSelect = (perguntaId: string, option: string) => {
+    const current: string[] = respostas[perguntaId] || [];
+    if (current.includes(option)) {
+      setRespostas({ ...respostas, [perguntaId]: current.filter(o => o !== option) });
+    } else {
+      setRespostas({ ...respostas, [perguntaId]: [...current, option] });
+    }
   };
 
   if (loading) {
@@ -131,7 +143,7 @@ export default function EventoPublico() {
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
         <Card className="max-w-md w-full">
           <CardContent className="pt-8 text-center space-y-3">
-            <CheckCircle2 className="h-14 w-14 mx-auto text-success" />
+            <CheckCircle2 className="h-14 w-14 mx-auto text-green-500" />
             <h2 className="text-xl font-bold">Inscrição Confirmada!</h2>
             <p className="text-sm text-muted-foreground">
               Você está inscrito(a) no evento <strong>{evento.titulo}</strong>.
@@ -157,6 +169,9 @@ export default function EventoPublico() {
           </CardHeader>
           <CardContent className="space-y-2 text-sm text-muted-foreground">
             {evento.descricao && <p className="text-foreground text-sm mb-3">{evento.descricao}</p>}
+            {(evento as any).descricao_formulario && (
+              <p className="text-foreground text-sm mb-3 whitespace-pre-line">{(evento as any).descricao_formulario}</p>
+            )}
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-primary" />
               {format(new Date(evento.data_evento + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })}
@@ -201,15 +216,15 @@ export default function EventoPublico() {
               <CardContent className="space-y-3">
                 <div>
                   <Label>Nome completo *</Label>
-                  <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome" />
+                  <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" />
                 </div>
                 <div>
-                  <Label>E-mail</Label>
-                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
-                </div>
-                <div>
-                  <Label>Telefone</Label>
+                  <Label>WhatsApp *</Label>
                   <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+                </div>
+                <div>
+                  <Label>E-mail *</Label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
                 </div>
               </CardContent>
             </Card>
@@ -220,10 +235,10 @@ export default function EventoPublico() {
                 <CardHeader>
                   <CardTitle className="text-base">Questionário</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-5">
                   {perguntas.map(p => (
                     <div key={p.id} className="space-y-2">
-                      <Label>{p.pergunta}{p.obrigatoria && ' *'}</Label>
+                      <Label className="text-sm font-medium">{p.pergunta}{p.obrigatoria && ' *'}</Label>
 
                       {p.tipo === 'text' && (
                         <Textarea
@@ -243,6 +258,21 @@ export default function EventoPublico() {
                             </div>
                           ))}
                         </RadioGroup>
+                      )}
+
+                      {p.tipo === 'multiple_select' && (
+                        <div className="space-y-2">
+                          {(p.opcoes as string[]).filter(Boolean).map((op, i) => (
+                            <div key={i} className="flex items-center space-x-2">
+                              <Checkbox
+                                id={`${p.id}-ms-${i}`}
+                                checked={(respostas[p.id] || []).includes(op)}
+                                onCheckedChange={() => toggleMultiSelect(p.id, op)}
+                              />
+                              <Label htmlFor={`${p.id}-ms-${i}`} className="font-normal">{op}</Label>
+                            </div>
+                          ))}
+                        </div>
                       )}
 
                       {p.tipo === 'scale' && (
