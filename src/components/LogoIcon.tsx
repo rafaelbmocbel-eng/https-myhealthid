@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import logoSrc from '@/assets/logo-myhealthid.jpg';
 
 export default function LogoIcon({
@@ -9,24 +10,38 @@ export default function LogoIcon({
   className?: string;
   glow?: boolean
 }) {
+  const [imageFailed, setImageFailed] = useState(false);
+
   return (
     <div
-      className={`relative inline-block ${glow ? 'animate-pulse-slow' : ''}`}
+      className={`relative inline-flex items-center justify-center overflow-hidden rounded-full ${glow ? 'animate-pulse-slow' : ''}`}
       style={{ width: size, height: size }}
     >
       {glow && (
         <div
-          className="absolute inset-0 rounded-full blur-md opacity-50 transition-all duration-1000"
-          style={{ background: 'hsl(40 95% 52%)' }}
+          className="absolute inset-0 rounded-full bg-accent/40 blur-md transition-all duration-1000"
         />
       )}
-      <img
-        src={logoSrc}
-        alt="My Health ID"
-        width={size}
-        height={size}
-        className={`relative rounded-full object-cover border-2 border-white/10 shadow-lg ${className}`}
-      />
+
+      {!imageFailed ? (
+        <img
+          src={logoSrc}
+          alt="My Health ID"
+          width={size}
+          height={size}
+          loading="eager"
+          decoding="async"
+          onError={() => setImageFailed(true)}
+          className={`relative h-full w-full rounded-full border border-border/60 object-cover shadow-lg ${className}`}
+        />
+      ) : (
+        <div
+          aria-label="My Health ID"
+          className={`relative flex h-full w-full items-center justify-center rounded-full border border-border/60 bg-primary text-primary-foreground shadow-lg ${className}`}
+        >
+          <span className="text-[0.42em] font-black tracking-[0.2em]">MH</span>
+        </div>
+      )}
     </div>
   );
 }
