@@ -23,6 +23,8 @@ const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
 const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const FunilPublico = lazy(() => import("./pages/FunilPublico"));
+const Eventos = lazy(() => import("./pages/Eventos"));
+const EventoPublico = lazy(() => import("./pages/EventoPublico"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
