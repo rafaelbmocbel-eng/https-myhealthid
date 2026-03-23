@@ -71,7 +71,7 @@ export default function NotificationCenter() {
           )}
         </div>
 
-        <ScrollArea className="max-h-80">
+        <ScrollArea className="flex-1 overflow-auto" style={{ maxHeight: 'calc(70vh - 48px)' }}>
           {notificacoes.length === 0 ? (
             <div className="p-6 text-center text-sm text-muted-foreground">
               Nenhuma notificação
