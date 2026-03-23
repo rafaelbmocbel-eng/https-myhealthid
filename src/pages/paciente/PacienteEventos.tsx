@@ -61,31 +61,22 @@ export default function PacienteEventos() {
   }, [user]);
 
   const loadData = async () => {
-    // Get patient info
+    // Get patient info including terapeuta_id in one query
     const { data: pac } = await supabase
       .from('pacientes')
-      .select('id, nome, email, telefone')
+      .select('id, nome, email, telefone, terapeuta_id')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     if (!pac) { setLoading(false); return; }
     setPaciente(pac);
 
-    // Get terapeuta_id from paciente
-    const { data: pacFull } = await supabase
-      .from('pacientes')
-      .select('terapeuta_id')
-      .eq('id', pac.id)
-      .single();
-
-    if (!pacFull) { setLoading(false); return; }
-
     // Get active events from this therapist
     const today = new Date().toISOString().split('T')[0];
     const { data: evts } = await supabase
       .from('eventos')
       .select('id, titulo, descricao, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento')
-      .eq('terapeuta_id', pacFull.terapeuta_id)
+      .eq('terapeuta_id', pac.terapeuta_id)
       .eq('ativo', true)
       .gte('data_evento', today)
       .order('data_evento', { ascending: true });
