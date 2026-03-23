@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Auto-register as patient if new
+    // Auto-register as patient if new — mark origem as 'evento'
     if (!paciente_id) {
       const nameParts = nome.trim().split(" ");
       const firstName = nameParts[0];
@@ -106,6 +106,7 @@ Deno.serve(async (req) => {
           email: email || null,
           telefone: telefone || null,
           observacoes: `Cadastro via evento: ${evento.titulo}`,
+          origem: "evento",
         })
         .select("id")
         .single();
@@ -147,7 +148,7 @@ Deno.serve(async (req) => {
       terapeuta_id: evento.terapeuta_id,
       tipo: "evento",
       titulo: `Nova inscrição: ${evento.titulo}`,
-      descricao: `${nome} se inscreveu no evento "${evento.titulo}".${ja_era_paciente ? " (Paciente ativo)" : " (Novo paciente cadastrado)"}`,
+      descricao: `${nome} se inscreveu no evento "${evento.titulo}".${ja_era_paciente ? " (Paciente ativo)" : " (Novo cliente via evento)"}`,
       rota: "/eventos",
     });
 
