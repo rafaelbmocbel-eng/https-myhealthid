@@ -45,7 +45,7 @@ export default function PacienteEventos() {
   const { user } = useAuth();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null } | null>(null);
+  const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null; terapeuta_id: string } | null>(null);
   const [inscricoes, setInscricoes] = useState<Set<string>>(new Set());
 
   // Dialog state
@@ -61,31 +61,22 @@ export default function PacienteEventos() {
   }, [user]);
 
   const loadData = async () => {
-    // Get patient info
+    // Get patient info including terapeuta_id in one query
     const { data: pac } = await supabase
       .from('pacientes')
-      .select('id, nome, email, telefone')
+      .select('id, nome, email, telefone, terapeuta_id')
       .eq('user_id', user!.id)
       .maybeSingle();
 
     if (!pac) { setLoading(false); return; }
     setPaciente(pac);
 
-    // Get terapeuta_id from paciente
-    const { data: pacFull } = await supabase
-      .from('pacientes')
-      .select('terapeuta_id')
-      .eq('id', pac.id)
-      .single();
-
-    if (!pacFull) { setLoading(false); return; }
-
     // Get active events from this therapist
     const today = new Date().toISOString().split('T')[0];
     const { data: evts } = await supabase
       .from('eventos')
       .select('id, titulo, descricao, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento')
-      .eq('terapeuta_id', pacFull.terapeuta_id)
+      .eq('terapeuta_id', pac.terapeuta_id)
       .eq('ativo', true)
       .gte('data_evento', today)
       .order('data_evento', { ascending: true });
@@ -205,7 +196,7 @@ export default function PacienteEventos() {
                       <div className="flex items-start justify-between gap-2">
                         <h2 className="text-sm font-bold text-foreground">{ev.titulo}</h2>
                         {jaInscrito && (
-                          <Badge variant="outline" className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] shrink-0">
+                          <Badge variant="outline" className="bg-accent/10 text-accent-foreground border-accent/20 text-[10px] shrink-0">
                             <CheckCircle2 className="h-3 w-3 mr-0.5" /> Inscrito
                           </Badge>
                         )}
