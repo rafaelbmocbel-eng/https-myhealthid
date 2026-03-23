@@ -1,0 +1,1 @@
+ALTER TABLE public.evento_perguntas ADD COLUMN IF NOT EXISTS limite_por_opcao integer DEFAULT NULL;
