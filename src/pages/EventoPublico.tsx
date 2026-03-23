@@ -1,0 +1,289 @@
+import { useState, useEffect } from 'react';
+import { useParams } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Slider } from '@/components/ui/slider';
+import { Calendar, Clock, MapPin, Users, CheckCircle2, AlertCircle } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
+
+interface Evento {
+  id: string; titulo: string; descricao: string | null; data_evento: string;
+  horario_inicio: string; horario_fim: string; local: string | null;
+  vagas_max: number | null; cobrar_pagamento: boolean; valor: number;
+  pix_chave: string | null; link_pagamento: string | null; ativo: boolean;
+}
+
+interface Pergunta {
+  id: string; ordem: number; tipo: string; pergunta: string; opcoes: string[]; obrigatoria: boolean;
+}
+
+export default function EventoPublico() {
+  const { eventoId } = useParams<{ eventoId: string }>();
+  const [evento, setEvento] = useState<Evento | null>(null);
+  const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [vagasRestantes, setVagasRestantes] = useState<number | null>(null);
+
+  // Form
+  const [nome, setNome] = useState('');
+  const [email, setEmail] = useState('');
+  const [telefone, setTelefone] = useState('');
+  const [respostas, setRespostas] = useState<Record<string, any>>({});
+
+  useEffect(() => {
+    if (!eventoId) return;
+    loadEvento();
+  }, [eventoId]);
+
+  const loadEvento = async () => {
+    // Load event (anon can read via RLS? No - only terapeuta. Use edge function or make public select)
+    // We'll use a simple approach: create a public function
+    const { data: ev } = await supabase
+      .from('eventos')
+      .select('*')
+      .eq('id', eventoId!)
+      .eq('ativo', true)
+      .single() as any;
+
+    if (!ev) { setError('Evento não encontrado ou já encerrado'); setLoading(false); return; }
+    setEvento(ev);
+
+    const { data: pergs } = await supabase
+      .from('evento_perguntas')
+      .select('*')
+      .eq('evento_id', eventoId!)
+      .order('ordem') as any;
+    setPerguntas(pergs || []);
+
+    if (ev.vagas_max) {
+      const { count } = await supabase
+        .from('evento_inscricoes')
+        .select('*', { count: 'exact', head: true })
+        .eq('evento_id', eventoId!)
+        .neq('status', 'cancelado') as any;
+      setVagasRestantes(ev.vagas_max - (count || 0));
+    }
+    setLoading(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!nome.trim()) { toast.error('Informe seu nome'); return; }
+    // Check required
+    for (const p of perguntas) {
+      if (p.obrigatoria && (respostas[p.id] === undefined || respostas[p.id] === '')) {
+        toast.error(`Responda: "${p.pergunta}"`); return;
+      }
+    }
+
+    setSubmitting(true);
+    try {
+      const resp = await supabase.functions.invoke('evento-inscricao', {
+        body: {
+          evento_id: eventoId,
+          nome: nome.trim(),
+          email: email.trim() || null,
+          telefone: telefone.trim() || null,
+          respostas: perguntas.map(p => ({ pergunta_id: p.id, resposta: respostas[p.id] ?? null })),
+        },
+      });
+      if (resp.error) throw new Error(resp.error.message);
+      if (resp.data?.error) throw new Error(resp.data.error);
+      setSubmitted(true);
+    } catch (e: any) {
+      toast.error(e.message || 'Erro ao inscrever');
+    }
+    setSubmitting(false);
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted">
+        <div className="animate-pulse text-muted-foreground">Carregando evento...</div>
+      </div>
+    );
+  }
+
+  if (error || !evento) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-8 text-center">
+            <AlertCircle className="h-12 w-12 mx-auto mb-3 text-destructive" />
+            <p className="font-medium">{error || 'Evento não encontrado'}</p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (submitted) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-background to-muted p-4">
+        <Card className="max-w-md w-full">
+          <CardContent className="pt-8 text-center space-y-3">
+            <CheckCircle2 className="h-14 w-14 mx-auto text-success" />
+            <h2 className="text-xl font-bold">Inscrição Confirmada!</h2>
+            <p className="text-sm text-muted-foreground">
+              Você está inscrito(a) no evento <strong>{evento.titulo}</strong>.
+            </p>
+            {evento.cobrar_pagamento && evento.link_pagamento && (
+              <Button asChild className="w-full mt-4">
+                <a href={evento.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8 px-4">
+      <div className="max-w-lg mx-auto space-y-6">
+        {/* Event info */}
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="text-xl">{evento.titulo}</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2 text-sm text-muted-foreground">
+            {evento.descricao && <p className="text-foreground text-sm mb-3">{evento.descricao}</p>}
+            <div className="flex items-center gap-2">
+              <Calendar className="h-4 w-4 text-primary" />
+              {format(new Date(evento.data_evento + 'T12:00:00'), "EEEE, dd 'de' MMMM", { locale: ptBR })}
+            </div>
+            <div className="flex items-center gap-2">
+              <Clock className="h-4 w-4 text-primary" />
+              {evento.horario_inicio?.slice(0, 5)} – {evento.horario_fim?.slice(0, 5)}
+            </div>
+            {evento.local && (
+              <div className="flex items-center gap-2">
+                <MapPin className="h-4 w-4 text-primary" />
+                {evento.local}
+              </div>
+            )}
+            {vagasRestantes !== null && (
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                {vagasRestantes > 0 ? `${vagasRestantes} vaga${vagasRestantes > 1 ? 's' : ''} restante${vagasRestantes > 1 ? 's' : ''}` : 'Vagas esgotadas'}
+              </div>
+            )}
+            {evento.cobrar_pagamento && evento.valor > 0 && (
+              <div className="mt-2 p-2 rounded-lg bg-accent/10 text-accent-foreground font-medium">
+                Valor: R$ {Number(evento.valor).toFixed(2)}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {vagasRestantes !== null && vagasRestantes <= 0 ? (
+          <Card>
+            <CardContent className="py-8 text-center text-muted-foreground">
+              Vagas esgotadas para este evento.
+            </CardContent>
+          </Card>
+        ) : (
+          <>
+            {/* Registration form */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base">Sua inscrição</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div>
+                  <Label>Nome completo *</Label>
+                  <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome" />
+                </div>
+                <div>
+                  <Label>E-mail</Label>
+                  <Input type="email" value={email} onChange={e => setEmail(e.target.value)} placeholder="seu@email.com" />
+                </div>
+                <div>
+                  <Label>Telefone</Label>
+                  <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="(11) 99999-9999" />
+                </div>
+              </CardContent>
+            </Card>
+
+            {/* Questionnaire */}
+            {perguntas.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-base">Questionário</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {perguntas.map(p => (
+                    <div key={p.id} className="space-y-2">
+                      <Label>{p.pergunta}{p.obrigatoria && ' *'}</Label>
+
+                      {p.tipo === 'text' && (
+                        <Textarea
+                          value={respostas[p.id] || ''}
+                          onChange={e => setRespostas({ ...respostas, [p.id]: e.target.value })}
+                          placeholder="Sua resposta..."
+                          rows={2}
+                        />
+                      )}
+
+                      {p.tipo === 'multiple_choice' && (
+                        <RadioGroup value={respostas[p.id] || ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
+                          {(p.opcoes as string[]).filter(Boolean).map((op, i) => (
+                            <div key={i} className="flex items-center space-x-2">
+                              <RadioGroupItem value={op} id={`${p.id}-${i}`} />
+                              <Label htmlFor={`${p.id}-${i}`} className="font-normal">{op}</Label>
+                            </div>
+                          ))}
+                        </RadioGroup>
+                      )}
+
+                      {p.tipo === 'scale' && (
+                        <div className="space-y-2">
+                          <Slider
+                            value={[respostas[p.id] ?? 5]}
+                            onValueChange={([v]) => setRespostas({ ...respostas, [p.id]: v })}
+                            max={10} min={0} step={1}
+                          />
+                          <div className="flex justify-between text-xs text-muted-foreground">
+                            <span>0</span>
+                            <span className="font-medium text-foreground">{respostas[p.id] ?? 5}</span>
+                            <span>10</span>
+                          </div>
+                        </div>
+                      )}
+
+                      {p.tipo === 'boolean' && (
+                        <RadioGroup value={respostas[p.id] ?? ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="sim" id={`${p.id}-sim`} />
+                            <Label htmlFor={`${p.id}-sim`} className="font-normal">Sim</Label>
+                          </div>
+                          <div className="flex items-center space-x-2">
+                            <RadioGroupItem value="nao" id={`${p.id}-nao`} />
+                            <Label htmlFor={`${p.id}-nao`} className="font-normal">Não</Label>
+                          </div>
+                        </RadioGroup>
+                      )}
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
+
+            <Button onClick={handleSubmit} disabled={submitting} className="w-full" size="lg">
+              {submitting ? 'Inscrevendo...' : 'Confirmar Inscrição'}
+            </Button>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}

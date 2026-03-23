@@ -1,7 +1,7 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, BookOpen
+  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, BookOpen, PartyPopper
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,7 @@ const NAV_ITEMS: { label: string; href: string; icon: any; hasBadge?: boolean; s
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
+  { label: 'Eventos', href: '/eventos', icon: PartyPopper },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 

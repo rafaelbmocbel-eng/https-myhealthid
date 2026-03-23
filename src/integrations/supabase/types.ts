@@ -597,6 +597,206 @@ export type Database = {
           },
         ]
       }
+      evento_inscricoes: {
+        Row: {
+          created_at: string
+          email: string | null
+          evento_id: string
+          id: string
+          ja_era_paciente: boolean
+          nome: string
+          paciente_id: string | null
+          pago: boolean
+          status: string
+          telefone: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          evento_id: string
+          id?: string
+          ja_era_paciente?: boolean
+          nome: string
+          paciente_id?: string | null
+          pago?: boolean
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          evento_id?: string
+          id?: string
+          ja_era_paciente?: boolean
+          nome?: string
+          paciente_id?: string | null
+          pago?: boolean
+          status?: string
+          telefone?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_inscricoes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_inscricoes_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evento_perguntas: {
+        Row: {
+          created_at: string
+          evento_id: string
+          id: string
+          obrigatoria: boolean
+          opcoes: Json | null
+          ordem: number
+          pergunta: string
+          tipo: string
+        }
+        Insert: {
+          created_at?: string
+          evento_id: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          pergunta: string
+          tipo?: string
+        }
+        Update: {
+          created_at?: string
+          evento_id?: string
+          id?: string
+          obrigatoria?: boolean
+          opcoes?: Json | null
+          ordem?: number
+          pergunta?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_perguntas_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evento_respostas: {
+        Row: {
+          created_at: string
+          id: string
+          inscricao_id: string
+          pergunta_id: string
+          resposta: Json | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inscricao_id: string
+          pergunta_id: string
+          resposta?: Json | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inscricao_id?: string
+          pergunta_id?: string
+          resposta?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_respostas_inscricao_id_fkey"
+            columns: ["inscricao_id"]
+            isOneToOne: false
+            referencedRelation: "evento_inscricoes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_respostas_pergunta_id_fkey"
+            columns: ["pergunta_id"]
+            isOneToOne: false
+            referencedRelation: "evento_perguntas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      eventos: {
+        Row: {
+          ativo: boolean
+          cobrar_pagamento: boolean
+          created_at: string
+          data_evento: string
+          descricao: string | null
+          horario_fim: string
+          horario_inicio: string
+          id: string
+          link_pagamento: string | null
+          local: string | null
+          pix_chave: string | null
+          pix_nome: string | null
+          pix_tipo: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+          vagas_max: number | null
+          valor: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          cobrar_pagamento?: boolean
+          created_at?: string
+          data_evento: string
+          descricao?: string | null
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          link_pagamento?: string | null
+          local?: string | null
+          pix_chave?: string | null
+          pix_nome?: string | null
+          pix_tipo?: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+          vagas_max?: number | null
+          valor?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          cobrar_pagamento?: boolean
+          created_at?: string
+          data_evento?: string
+          descricao?: string | null
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          link_pagamento?: string | null
+          local?: string | null
+          pix_chave?: string | null
+          pix_nome?: string | null
+          pix_tipo?: string | null
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+          vagas_max?: number | null
+          valor?: number | null
+        }
+        Relationships: []
+      }
       evolucao_paciente: {
         Row: {
           avaliacao_anterior_id: string | null
