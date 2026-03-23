@@ -9,7 +9,7 @@ export interface ServicosAtivos {
   eventos: boolean;
 }
 
-const DEFAULT_SERVICOS: ServicosAtivos = {
+export const DEFAULT_SERVICOS: ServicosAtivos = {
   identidade: true,
   cob_zero: true,
   studio: true,
@@ -28,9 +28,7 @@ export function useServicosAtivos() {
       .select('servicos_ativos')
       .eq('terapeuta_id', user.id)
       .maybeSingle();
-    if (data?.servicos_ativos) {
-      setServicos({ ...DEFAULT_SERVICOS, ...(data.servicos_ativos as unknown as ServicosAtivos) });
-    }
+    setServicos({ ...DEFAULT_SERVICOS, ...((data?.servicos_ativos as unknown as Partial<ServicosAtivos>) || {}) });
     setLoading(false);
   }, [user]);
 
@@ -38,7 +36,8 @@ export function useServicosAtivos() {
 
   const saveServicos = useCallback(async (next: ServicosAtivos) => {
     if (!user) return;
-    setServicos(next);
+    const normalized = { ...DEFAULT_SERVICOS, ...next };
+    setServicos(normalized);
 
     const { data: existingConfig } = await supabase
       .from('config_agenda')
@@ -49,14 +48,14 @@ export function useServicosAtivos() {
     if (existingConfig?.id) {
       await supabase
         .from('config_agenda')
-        .update({ servicos_ativos: next as any })
+        .update({ servicos_ativos: normalized as any })
         .eq('id', existingConfig.id);
       return;
     }
 
     await supabase
       .from('config_agenda')
-      .insert({ terapeuta_id: user.id, servicos_ativos: next as any });
+      .insert({ terapeuta_id: user.id, servicos_ativos: normalized as any });
   }, [user]);
 
   return { servicos, saveServicos, loading };
