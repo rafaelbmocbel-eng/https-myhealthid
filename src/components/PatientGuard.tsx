@@ -1,5 +1,6 @@
 import { ReactNode, useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
+import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -42,8 +43,13 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
     check();
   }, [user, profile, loading]);
 
-  // Still checking
-  if (loading || isPatient === null) return null;
+  if (loading || isPatient === null) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   if (isPatient) {
     return <Navigate to="/paciente/dashboard" replace />;
