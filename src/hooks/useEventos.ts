@@ -108,7 +108,7 @@ export function useEventos() {
   });
 
   const salvarPerguntas = useMutation({
-    mutationFn: async ({ eventoId, perguntas }: { eventoId: string; perguntas: Omit<EventoPergunta, 'id' | 'evento_id'>[] }) => {
+    mutationFn: async ({ eventoId, perguntas }: { eventoId: string; perguntas: (Omit<EventoPergunta, 'id' | 'evento_id'> & { limite_por_opcao?: number | null })[] }) => {
       // Delete existing questions then re-insert
       await supabase.from('evento_perguntas').delete().eq('evento_id', eventoId);
       if (perguntas.length > 0) {
@@ -119,6 +119,7 @@ export function useEventos() {
           pergunta: p.pergunta,
           opcoes: p.opcoes || [],
           obrigatoria: p.obrigatoria,
+          limite_por_opcao: (p as any).limite_por_opcao ?? null,
         }));
         const { error } = await supabase.from('evento_perguntas').insert(rows as any);
         if (error) throw error;
