@@ -167,7 +167,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
     mediaRecorderRef.current = null;
     setIsRecording(false);
-  }, []);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
