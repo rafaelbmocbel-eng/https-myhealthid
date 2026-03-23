@@ -1,0 +1,337 @@
+import { useState } from 'react';
+import AppLayout from '@/components/AppLayout';
+import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta } from '@/hooks/useEventos';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, ChevronDown, ChevronUp, MapPin, Clock, DollarSign } from 'lucide-react';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+import { toast } from 'sonner';
+import EventoDetalhePainel from '@/components/eventos/EventoDetalhePainel';
+
+interface PerguntaForm {
+  tipo: 'text' | 'multiple_choice' | 'scale' | 'boolean';
+  pergunta: string;
+  opcoes: string[];
+  obrigatoria: boolean;
+}
+
+const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true };
+
+export default function Eventos() {
+  const { data: eventos, isLoading, criarEvento, toggleEvento, deletarEvento } = useEventos();
+  const [openCreate, setOpenCreate] = useState(false);
+  const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
+
+  // Form state
+  const [titulo, setTitulo] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [dataEvento, setDataEvento] = useState('');
+  const [horarioInicio, setHorarioInicio] = useState('09:00');
+  const [horarioFim, setHorarioFim] = useState('12:00');
+  const [local, setLocal] = useState('');
+  const [vagasMax, setVagasMax] = useState<number | ''>('');
+  const [cobrarPagamento, setCobrarPagamento] = useState(false);
+  const [valor, setValor] = useState<number>(0);
+  const [pixChave, setPixChave] = useState('');
+  const [linkPagamento, setLinkPagamento] = useState('');
+  const [perguntas, setPerguntas] = useState<PerguntaForm[]>([{ ...DEFAULT_PERGUNTA }]);
+
+  const resetForm = () => {
+    setTitulo(''); setDescricao(''); setDataEvento(''); setHorarioInicio('09:00');
+    setHorarioFim('12:00'); setLocal(''); setVagasMax(''); setCobrarPagamento(false);
+    setValor(0); setPixChave(''); setLinkPagamento('');
+    setPerguntas([{ ...DEFAULT_PERGUNTA }]);
+  };
+
+  const handleCreate = () => {
+    if (!titulo || !dataEvento) { toast.error('Título e data são obrigatórios'); return; }
+    const validPerguntas = perguntas.filter(p => p.pergunta.trim());
+    criarEvento.mutate({
+      titulo, descricao: descricao || null, data_evento: dataEvento,
+      horario_inicio: horarioInicio, horario_fim: horarioFim,
+      local: local || null, vagas_max: vagasMax || null,
+      cobrar_pagamento: cobrarPagamento, valor: cobrarPagamento ? valor : 0,
+      pix_chave: pixChave || null, pix_tipo: 'cpf', pix_nome: null,
+      link_pagamento: linkPagamento || null, ativo: true,
+      perguntas: validPerguntas,
+    } as any, {
+      onSuccess: () => { setOpenCreate(false); resetForm(); },
+    });
+  };
+
+  const addPergunta = () => setPerguntas([...perguntas, { ...DEFAULT_PERGUNTA }]);
+  const removePergunta = (i: number) => setPerguntas(perguntas.filter((_, idx) => idx !== i));
+  const updatePergunta = (i: number, field: keyof PerguntaForm, value: any) => {
+    const next = [...perguntas];
+    (next[i] as any)[field] = value;
+    if (field === 'tipo' && value !== 'multiple_choice') next[i].opcoes = [''];
+    setPerguntas(next);
+  };
+  const addOpcao = (i: number) => {
+    const next = [...perguntas];
+    next[i].opcoes = [...next[i].opcoes, ''];
+    setPerguntas(next);
+  };
+  const updateOpcao = (pi: number, oi: number, val: string) => {
+    const next = [...perguntas];
+    next[pi].opcoes[oi] = val;
+    setPerguntas(next);
+  };
+
+  const copyLink = (eventoId: string) => {
+    const url = `${window.location.origin}/evento/${eventoId}`;
+    navigator.clipboard.writeText(url);
+    toast.success('Link copiado!');
+  };
+
+  if (selectedEvento) {
+    return (
+      <AppLayout>
+        <EventoDetalhePainel
+          eventoId={selectedEvento}
+          evento={eventos?.find(e => e.id === selectedEvento) || null}
+          onBack={() => setSelectedEvento(null)}
+        />
+      </AppLayout>
+    );
+  }
+
+  return (
+    <AppLayout>
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Eventos</h1>
+            <p className="text-sm text-muted-foreground">Crie eventos, colete inscrições e questionários</p>
+          </div>
+          <Dialog open={openCreate} onOpenChange={setOpenCreate}>
+            <DialogTrigger asChild>
+              <Button className="gap-2"><Plus className="h-4 w-4" /> Novo Evento</Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-2xl max-h-[90vh]">
+              <DialogHeader>
+                <DialogTitle>Criar Evento</DialogTitle>
+              </DialogHeader>
+              <ScrollArea className="max-h-[70vh] pr-4">
+                <div className="space-y-4 pb-4">
+                  {/* Basic info */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="sm:col-span-2">
+                      <Label>Título *</Label>
+                      <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Descrição</Label>
+                      <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
+                    </div>
+                    <div>
+                      <Label>Data *</Label>
+                      <Input type="date" value={dataEvento} onChange={e => setDataEvento(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Local</Label>
+                      <Input value={local} onChange={e => setLocal(e.target.value)} placeholder="Endereço ou online" />
+                    </div>
+                    <div>
+                      <Label>Horário Início</Label>
+                      <Input type="time" value={horarioInicio} onChange={e => setHorarioInicio(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Horário Fim</Label>
+                      <Input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} />
+                    </div>
+                    <div>
+                      <Label>Vagas (vazio = ilimitado)</Label>
+                      <Input type="number" value={vagasMax} onChange={e => setVagasMax(e.target.value ? Number(e.target.value) : '')} min={1} />
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Payment */}
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <Switch checked={cobrarPagamento} onCheckedChange={setCobrarPagamento} />
+                      <Label>Cobrar pagamento</Label>
+                    </div>
+                    {cobrarPagamento && (
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2 border-l-2 border-accent/30">
+                        <div>
+                          <Label>Valor (R$)</Label>
+                          <Input type="number" value={valor} onChange={e => setValor(Number(e.target.value))} min={0} step={0.01} />
+                        </div>
+                        <div>
+                          <Label>Chave PIX</Label>
+                          <Input value={pixChave} onChange={e => setPixChave(e.target.value)} placeholder="CPF, e-mail ou telefone" />
+                        </div>
+                        <div className="sm:col-span-2">
+                          <Label>Link de pagamento (opcional)</Label>
+                          <Input value={linkPagamento} onChange={e => setLinkPagamento(e.target.value)} placeholder="https://..." />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <Separator />
+
+                  {/* Questions */}
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-base font-semibold">Questionário</Label>
+                      <Button type="button" variant="outline" size="sm" onClick={addPergunta} className="gap-1">
+                        <Plus className="h-3 w-3" /> Pergunta
+                      </Button>
+                    </div>
+                    {perguntas.map((p, i) => (
+                      <Card key={i} className="border-dashed">
+                        <CardContent className="pt-4 space-y-2">
+                          <div className="flex items-start gap-2">
+                            <div className="flex-1 space-y-2">
+                              <Input value={p.pergunta} onChange={e => updatePergunta(i, 'pergunta', e.target.value)} placeholder={`Pergunta ${i + 1}`} />
+                              <div className="flex items-center gap-3">
+                                <Select value={p.tipo} onValueChange={v => updatePergunta(i, 'tipo', v)}>
+                                  <SelectTrigger className="w-44">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="text">Texto livre</SelectItem>
+                                    <SelectItem value="multiple_choice">Múltipla escolha</SelectItem>
+                                    <SelectItem value="scale">Escala (0-10)</SelectItem>
+                                    <SelectItem value="boolean">Sim/Não</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <div className="flex items-center gap-1">
+                                  <Switch checked={p.obrigatoria} onCheckedChange={v => updatePergunta(i, 'obrigatoria', v)} />
+                                  <span className="text-xs text-muted-foreground">Obrigatória</span>
+                                </div>
+                              </div>
+                              {p.tipo === 'multiple_choice' && (
+                                <div className="space-y-1 pl-2">
+                                  {p.opcoes.map((op, oi) => (
+                                    <Input key={oi} value={op} onChange={e => updateOpcao(i, oi, e.target.value)} placeholder={`Opção ${oi + 1}`} className="h-8 text-sm" />
+                                  ))}
+                                  <Button type="button" variant="ghost" size="sm" onClick={() => addOpcao(i)} className="text-xs">+ Opção</Button>
+                                </div>
+                              )}
+                            </div>
+                            {perguntas.length > 1 && (
+                              <Button type="button" variant="ghost" size="icon" onClick={() => removePergunta(i)} className="text-destructive shrink-0">
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            )}
+                          </div>
+                        </CardContent>
+                      </Card>
+                    ))}
+                  </div>
+
+                  <Button onClick={handleCreate} disabled={criarEvento.isPending} className="w-full">
+                    {criarEvento.isPending ? 'Criando...' : 'Criar Evento'}
+                  </Button>
+                </div>
+              </ScrollArea>
+            </DialogContent>
+          </Dialog>
+        </div>
+
+        {/* Event list */}
+        {isLoading ? (
+          <div className="text-center py-12 text-muted-foreground">Carregando...</div>
+        ) : !eventos?.length ? (
+          <Card>
+            <CardContent className="py-12 text-center text-muted-foreground">
+              <Calendar className="h-12 w-12 mx-auto mb-3 opacity-30" />
+              <p>Nenhum evento criado ainda</p>
+              <p className="text-xs mt-1">Clique em "Novo Evento" para começar</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {eventos.map(ev => (
+              <EventoCard
+                key={ev.id}
+                evento={ev}
+                onView={() => setSelectedEvento(ev.id)}
+                onCopy={() => copyLink(ev.id)}
+                onToggle={() => toggleEvento.mutate({ id: ev.id, ativo: !ev.ativo })}
+                onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+    </AppLayout>
+  );
+}
+
+function EventoCard({ evento, onView, onCopy, onToggle, onDelete }: {
+  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void;
+}) {
+  const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
+  return (
+    <Card className="group hover:shadow-md transition-shadow">
+      <CardHeader className="pb-2">
+        <div className="flex items-start justify-between">
+          <CardTitle className="text-base leading-tight">{evento.titulo}</CardTitle>
+          <Badge variant={evento.ativo && !isPast ? 'default' : 'secondary'}>
+            {isPast ? 'Encerrado' : evento.ativo ? 'Ativo' : 'Inativo'}
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="space-y-1 text-sm text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <Calendar className="h-3.5 w-3.5" />
+            {format(new Date(evento.data_evento + 'T12:00:00'), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+          </div>
+          <div className="flex items-center gap-2">
+            <Clock className="h-3.5 w-3.5" />
+            {evento.horario_inicio?.slice(0, 5)} – {evento.horario_fim?.slice(0, 5)}
+          </div>
+          {evento.local && (
+            <div className="flex items-center gap-2">
+              <MapPin className="h-3.5 w-3.5" />
+              <span className="truncate">{evento.local}</span>
+            </div>
+          )}
+          {evento.cobrar_pagamento && (
+            <div className="flex items-center gap-2">
+              <DollarSign className="h-3.5 w-3.5" />
+              R$ {Number(evento.valor).toFixed(2)}
+            </div>
+          )}
+          {evento.vagas_max && (
+            <div className="flex items-center gap-2">
+              <Users className="h-3.5 w-3.5" />
+              {evento.vagas_max} vagas
+            </div>
+          )}
+        </div>
+        <div className="flex items-center gap-1 pt-1">
+          <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1">
+            <Eye className="h-3.5 w-3.5" /> Ver
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCopy} className="gap-1">
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onToggle}>
+            {evento.ativo ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+          </Button>
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
