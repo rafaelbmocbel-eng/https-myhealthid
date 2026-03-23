@@ -23,15 +23,16 @@ interface PerguntaForm {
   pergunta: string;
   opcoes: string[];
   obrigatoria: boolean;
+  limite_por_opcao?: number | null;
 }
 
-const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true };
+const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true, limite_por_opcao: null };
 
 const RECOVERY_TEMPLATE: PerguntaForm[] = [
-  { tipo: 'boolean', pergunta: 'VOCÊ CONFIRMA SUA PRESENÇA?', opcoes: [], obrigatoria: true },
-  { tipo: 'multiple_choice', pergunta: 'ESCOLHA SEU HORÁRIO PARA INÍCIO (montagem de lista por ordem de preenchimento)', opcoes: ['8H', '9H', '10H', '11H', '12H'], obrigatoria: true },
-  { tipo: 'multiple_select', pergunta: 'Qual seu objetivo com o RECOVERY? (marque até 2)', opcoes: ['Alívio de dores musculares', 'Melhorar mobilidade articular', 'Aprender técnicas de autocuidado', 'Socializar com colegas'], obrigatoria: true },
-  { tipo: 'text', pergunta: 'Alguma área específica do corpo que gostaria de trabalhar? (Ex.: lombar, ombros, joelhos)', opcoes: [], obrigatoria: true },
+  { tipo: 'boolean', pergunta: 'VOCÊ CONFIRMA SUA PRESENÇA?', opcoes: [], obrigatoria: true, limite_por_opcao: null },
+  { tipo: 'multiple_choice', pergunta: 'ESCOLHA SEU HORÁRIO PARA INÍCIO (montagem de lista por ordem de preenchimento)', opcoes: ['8H', '9H', '10H', '11H', '12H'], obrigatoria: true, limite_por_opcao: 5 },
+  { tipo: 'multiple_select', pergunta: 'Qual seu objetivo com o RECOVERY? (marque até 2)', opcoes: ['Alívio de dores musculares', 'Melhorar mobilidade articular', 'Aprender técnicas de autocuidado', 'Socializar com colegas'], obrigatoria: true, limite_por_opcao: null },
+  { tipo: 'text', pergunta: 'Alguma área específica do corpo que gostaria de trabalhar? (Ex.: lombar, ombros, joelhos)', opcoes: [], obrigatoria: true, limite_por_opcao: null },
 ];
 
 export default function Eventos() {
@@ -39,6 +40,7 @@ export default function Eventos() {
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
   const [editingQuestionario, setEditingQuestionario] = useState<string | null>(null);
+  const [editingEvento, setEditingEvento] = useState<string | null>(null);
 
   // Form state
   const [titulo, setTitulo] = useState('');
@@ -52,13 +54,15 @@ export default function Eventos() {
   const [cobrarPagamento, setCobrarPagamento] = useState(false);
   const [valor, setValor] = useState<number>(0);
   const [pixChave, setPixChave] = useState('');
+  const [pixTipo, setPixTipo] = useState('cpf');
+  const [pixNome, setPixNome] = useState('');
   const [linkPagamento, setLinkPagamento] = useState('');
   const [perguntas, setPerguntas] = useState<PerguntaForm[]>([{ ...DEFAULT_PERGUNTA }]);
 
   const resetForm = () => {
     setTitulo(''); setDescricao(''); setDescricaoFormulario(''); setDataEvento(''); setHorarioInicio('09:00');
     setHorarioFim('12:00'); setLocal(''); setVagasMax(''); setCobrarPagamento(false);
-    setValor(0); setPixChave(''); setLinkPagamento('');
+    setValor(0); setPixChave(''); setPixTipo('cpf'); setPixNome(''); setLinkPagamento('');
     setPerguntas([{ ...DEFAULT_PERGUNTA }]);
   };
 
@@ -77,7 +81,7 @@ export default function Eventos() {
       horario_inicio: horarioInicio, horario_fim: horarioFim,
       local: local || null, vagas_max: vagasMax || null,
       cobrar_pagamento: cobrarPagamento, valor: cobrarPagamento ? valor : 0,
-      pix_chave: pixChave || null, pix_tipo: 'cpf', pix_nome: null,
+      pix_chave: pixChave || null, pix_tipo: pixTipo || 'cpf', pix_nome: pixNome || null,
       link_pagamento: linkPagamento || null, ativo: true,
       perguntas: validPerguntas,
     } as any, {
@@ -145,67 +149,22 @@ export default function Eventos() {
               </DialogHeader>
               <ScrollArea className="max-h-[70vh] pr-4">
                 <div className="space-y-4 pb-4">
-                  {/* Basic info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    <div className="sm:col-span-2">
-                      <Label>Título *</Label>
-                      <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label>Descrição do evento</Label>
-                      <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
-                    </div>
-                    <div className="sm:col-span-2">
-                      <Label>Texto introdutório do formulário</Label>
-                      <Textarea value={descricaoFormulario} onChange={e => setDescricaoFormulario(e.target.value)} placeholder="Texto que aparecerá no topo do formulário de inscrição..." rows={3} />
-                    </div>
-                    <div>
-                      <Label>Data *</Label>
-                      <Input type="date" value={dataEvento} onChange={e => setDataEvento(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Local</Label>
-                      <Input value={local} onChange={e => setLocal(e.target.value)} placeholder="Endereço ou online" />
-                    </div>
-                    <div>
-                      <Label>Horário Início</Label>
-                      <Input type="time" value={horarioInicio} onChange={e => setHorarioInicio(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Horário Fim</Label>
-                      <Input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} />
-                    </div>
-                    <div>
-                      <Label>Vagas (vazio = ilimitado)</Label>
-                      <Input type="number" value={vagasMax} onChange={e => setVagasMax(e.target.value ? Number(e.target.value) : '')} min={1} />
-                    </div>
-                  </div>
-
-                  <Separator />
-
-                  {/* Payment */}
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <Switch checked={cobrarPagamento} onCheckedChange={setCobrarPagamento} />
-                      <Label>Cobrar pagamento</Label>
-                    </div>
-                    {cobrarPagamento && (
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2 border-l-2 border-accent/30">
-                        <div>
-                          <Label>Valor (R$)</Label>
-                          <Input type="number" value={valor} onChange={e => setValor(Number(e.target.value))} min={0} step={0.01} />
-                        </div>
-                        <div>
-                          <Label>Chave PIX</Label>
-                          <Input value={pixChave} onChange={e => setPixChave(e.target.value)} placeholder="CPF, e-mail ou telefone" />
-                        </div>
-                        <div className="sm:col-span-2">
-                          <Label>Link de pagamento (opcional)</Label>
-                          <Input value={linkPagamento} onChange={e => setLinkPagamento(e.target.value)} placeholder="https://..." />
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                  <EventoFormFields
+                    titulo={titulo} setTitulo={setTitulo}
+                    descricao={descricao} setDescricao={setDescricao}
+                    descricaoFormulario={descricaoFormulario} setDescricaoFormulario={setDescricaoFormulario}
+                    dataEvento={dataEvento} setDataEvento={setDataEvento}
+                    horarioInicio={horarioInicio} setHorarioInicio={setHorarioInicio}
+                    horarioFim={horarioFim} setHorarioFim={setHorarioFim}
+                    local={local} setLocal={setLocal}
+                    vagasMax={vagasMax} setVagasMax={setVagasMax}
+                    cobrarPagamento={cobrarPagamento} setCobrarPagamento={setCobrarPagamento}
+                    valor={valor} setValor={setValor}
+                    pixChave={pixChave} setPixChave={setPixChave}
+                    pixTipo={pixTipo} setPixTipo={setPixTipo}
+                    pixNome={pixNome} setPixNome={setPixNome}
+                    linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+                  />
 
                   <Separator />
 
@@ -264,6 +223,7 @@ export default function Eventos() {
                 onToggle={() => toggleEvento.mutate({ id: ev.id, ativo: !ev.ativo })}
                 onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
                 onEditQuestionario={() => setEditingQuestionario(ev.id)}
+                onEditEvento={() => setEditingEvento(ev.id)}
               />
             ))}
           </div>
@@ -278,11 +238,129 @@ export default function Eventos() {
             salvarPerguntas={salvarPerguntas}
           />
         )}
+
+        {/* Edit Evento Dialog */}
+        {editingEvento && (
+          <EditarEventoDialog
+            evento={eventos?.find(e => e.id === editingEvento) || null}
+            open={!!editingEvento}
+            onClose={() => setEditingEvento(null)}
+            editarEvento={editarEvento}
+          />
+        )}
       </div>
     </AppLayout>
   );
 }
 
+/* ─── Shared form fields component ─── */
+function EventoFormFields({
+  titulo, setTitulo, descricao, setDescricao, descricaoFormulario, setDescricaoFormulario,
+  dataEvento, setDataEvento, horarioInicio, setHorarioInicio, horarioFim, setHorarioFim,
+  local, setLocal, vagasMax, setVagasMax,
+  cobrarPagamento, setCobrarPagamento, valor, setValor,
+  pixChave, setPixChave, pixTipo, setPixTipo, pixNome, setPixNome,
+  linkPagamento, setLinkPagamento,
+}: {
+  titulo: string; setTitulo: (v: string) => void;
+  descricao: string; setDescricao: (v: string) => void;
+  descricaoFormulario: string; setDescricaoFormulario: (v: string) => void;
+  dataEvento: string; setDataEvento: (v: string) => void;
+  horarioInicio: string; setHorarioInicio: (v: string) => void;
+  horarioFim: string; setHorarioFim: (v: string) => void;
+  local: string; setLocal: (v: string) => void;
+  vagasMax: number | ''; setVagasMax: (v: number | '') => void;
+  cobrarPagamento: boolean; setCobrarPagamento: (v: boolean) => void;
+  valor: number; setValor: (v: number) => void;
+  pixChave: string; setPixChave: (v: string) => void;
+  pixTipo: string; setPixTipo: (v: string) => void;
+  pixNome: string; setPixNome: (v: string) => void;
+  linkPagamento: string; setLinkPagamento: (v: string) => void;
+}) {
+  return (
+    <>
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="sm:col-span-2">
+          <Label>Título *</Label>
+          <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Descrição do evento</Label>
+          <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
+        </div>
+        <div className="sm:col-span-2">
+          <Label>Texto introdutório do formulário</Label>
+          <Textarea value={descricaoFormulario} onChange={e => setDescricaoFormulario(e.target.value)} placeholder="Texto que aparecerá no topo do formulário de inscrição..." rows={3} />
+        </div>
+        <div>
+          <Label>Data *</Label>
+          <Input type="date" value={dataEvento} onChange={e => setDataEvento(e.target.value)} />
+        </div>
+        <div>
+          <Label>Local</Label>
+          <Input value={local} onChange={e => setLocal(e.target.value)} placeholder="Endereço ou online" />
+        </div>
+        <div>
+          <Label>Horário Início</Label>
+          <Input type="time" value={horarioInicio} onChange={e => setHorarioInicio(e.target.value)} />
+        </div>
+        <div>
+          <Label>Horário Fim</Label>
+          <Input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} />
+        </div>
+        <div>
+          <Label>Vagas (vazio = ilimitado)</Label>
+          <Input type="number" value={vagasMax} onChange={e => setVagasMax(e.target.value ? Number(e.target.value) : '')} min={1} />
+        </div>
+      </div>
+
+      <Separator />
+
+      {/* Payment */}
+      <div className="space-y-3">
+        <div className="flex items-center gap-3">
+          <Switch checked={cobrarPagamento} onCheckedChange={setCobrarPagamento} />
+          <Label>Cobrar pagamento</Label>
+        </div>
+        {cobrarPagamento && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2 border-l-2 border-accent/30">
+            <div>
+              <Label>Valor (R$)</Label>
+              <Input type="number" value={valor} onChange={e => setValor(Number(e.target.value))} min={0} step={0.01} />
+            </div>
+            <div>
+              <Label>Chave PIX</Label>
+              <Input value={pixChave} onChange={e => setPixChave(e.target.value)} placeholder="CPF, e-mail ou telefone" />
+            </div>
+            <div>
+              <Label>Tipo PIX</Label>
+              <Select value={pixTipo} onValueChange={setPixTipo}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="cpf">CPF</SelectItem>
+                  <SelectItem value="cnpj">CNPJ</SelectItem>
+                  <SelectItem value="email">E-mail</SelectItem>
+                  <SelectItem value="telefone">Telefone</SelectItem>
+                  <SelectItem value="aleatoria">Chave aleatória</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Nome do beneficiário</Label>
+              <Input value={pixNome} onChange={e => setPixNome(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div className="sm:col-span-2">
+              <Label>Link de pagamento (opcional)</Label>
+              <Input value={linkPagamento} onChange={e => setLinkPagamento(e.target.value)} placeholder="https://..." />
+            </div>
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/* ─── Perguntas Editor ─── */
 function PerguntasEditor({ perguntas, onUpdate, onRemove, onAddOpcao, onUpdateOpcao, onRemoveOpcao }: {
   perguntas: PerguntaForm[];
   onUpdate: (i: number, field: keyof PerguntaForm, value: any) => void;
@@ -330,6 +408,17 @@ function PerguntasEditor({ perguntas, onUpdate, onRemove, onAddOpcao, onUpdateOp
                       </div>
                     ))}
                     <Button type="button" variant="ghost" size="sm" onClick={() => onAddOpcao(i)} className="text-xs">+ Opção</Button>
+                    <div className="flex items-center gap-2 mt-1">
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Vagas por opção:</Label>
+                      <Input
+                        type="number"
+                        value={p.limite_por_opcao ?? ''}
+                        onChange={e => onUpdate(i, 'limite_por_opcao', e.target.value ? Number(e.target.value) : null)}
+                        placeholder="Ilimitado"
+                        className="h-7 w-28 text-xs"
+                        min={1}
+                      />
+                    </div>
                   </div>
                 )}
               </div>
@@ -346,6 +435,7 @@ function PerguntasEditor({ perguntas, onUpdate, onRemove, onAddOpcao, onUpdateOp
   );
 }
 
+/* ─── Edit Questionario Dialog ─── */
 function EditarQuestionarioDialog({ eventoId, open, onClose, salvarPerguntas }: {
   eventoId: string; open: boolean; onClose: () => void; salvarPerguntas: any;
 }) {
@@ -360,6 +450,7 @@ function EditarQuestionarioDialog({ eventoId, open, onClose, salvarPerguntas }: 
         pergunta: p.pergunta,
         opcoes: Array.isArray(p.opcoes) ? [...(p.opcoes as string[])] : [''],
         obrigatoria: p.obrigatoria,
+        limite_por_opcao: (p as any).limite_por_opcao ?? null,
       })));
       setInitialized(true);
     }
@@ -433,8 +524,107 @@ function EditarQuestionarioDialog({ eventoId, open, onClose, salvarPerguntas }: 
   );
 }
 
-function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario }: {
-  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void;
+/* ─── Edit Evento Dialog (ALL fields) ─── */
+function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
+  evento: Evento | null; open: boolean; onClose: () => void; editarEvento: any;
+}) {
+  const [titulo, setTitulo] = useState('');
+  const [descricao, setDescricao] = useState('');
+  const [descricaoFormulario, setDescricaoFormulario] = useState('');
+  const [dataEvento, setDataEvento] = useState('');
+  const [horarioInicio, setHorarioInicio] = useState('09:00');
+  const [horarioFim, setHorarioFim] = useState('12:00');
+  const [local, setLocal] = useState('');
+  const [vagasMax, setVagasMax] = useState<number | ''>('');
+  const [cobrarPagamento, setCobrarPagamento] = useState(false);
+  const [valor, setValor] = useState<number>(0);
+  const [pixChave, setPixChave] = useState('');
+  const [pixTipo, setPixTipo] = useState('cpf');
+  const [pixNome, setPixNome] = useState('');
+  const [linkPagamento, setLinkPagamento] = useState('');
+
+  useEffect(() => {
+    if (evento) {
+      setTitulo(evento.titulo || '');
+      setDescricao(evento.descricao || '');
+      setDescricaoFormulario(evento.descricao_formulario || '');
+      setDataEvento(evento.data_evento || '');
+      setHorarioInicio(evento.horario_inicio?.slice(0, 5) || '09:00');
+      setHorarioFim(evento.horario_fim?.slice(0, 5) || '12:00');
+      setLocal(evento.local || '');
+      setVagasMax(evento.vagas_max ?? '');
+      setCobrarPagamento(evento.cobrar_pagamento);
+      setValor(evento.valor || 0);
+      setPixChave(evento.pix_chave || '');
+      setPixTipo(evento.pix_tipo || 'cpf');
+      setPixNome(evento.pix_nome || '');
+      setLinkPagamento(evento.link_pagamento || '');
+    }
+  }, [evento]);
+
+  const handleSave = () => {
+    if (!evento) return;
+    if (!titulo || !dataEvento) { toast.error('Título e data são obrigatórios'); return; }
+    editarEvento.mutate({
+      id: evento.id,
+      titulo,
+      descricao: descricao || null,
+      descricao_formulario: descricaoFormulario || null,
+      data_evento: dataEvento,
+      horario_inicio: horarioInicio,
+      horario_fim: horarioFim,
+      local: local || null,
+      vagas_max: vagasMax || null,
+      cobrar_pagamento: cobrarPagamento,
+      valor: cobrarPagamento ? valor : 0,
+      pix_chave: pixChave || null,
+      pix_tipo: pixTipo || 'cpf',
+      pix_nome: pixNome || null,
+      link_pagamento: linkPagamento || null,
+    }, {
+      onSuccess: () => onClose(),
+    });
+  };
+
+  if (!evento) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={() => onClose()}>
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>Editar Evento</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[70vh] pr-4">
+          <div className="space-y-4 pb-4">
+            <EventoFormFields
+              titulo={titulo} setTitulo={setTitulo}
+              descricao={descricao} setDescricao={setDescricao}
+              descricaoFormulario={descricaoFormulario} setDescricaoFormulario={setDescricaoFormulario}
+              dataEvento={dataEvento} setDataEvento={setDataEvento}
+              horarioInicio={horarioInicio} setHorarioInicio={setHorarioInicio}
+              horarioFim={horarioFim} setHorarioFim={setHorarioFim}
+              local={local} setLocal={setLocal}
+              vagasMax={vagasMax} setVagasMax={setVagasMax}
+              cobrarPagamento={cobrarPagamento} setCobrarPagamento={setCobrarPagamento}
+              valor={valor} setValor={setValor}
+              pixChave={pixChave} setPixChave={setPixChave}
+              pixTipo={pixTipo} setPixTipo={setPixTipo}
+              pixNome={pixNome} setPixNome={setPixNome}
+              linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+            />
+            <Button onClick={handleSave} disabled={editarEvento.isPending} className="w-full">
+              {editarEvento.isPending ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ─── Event Card ─── */
+function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento }: {
+  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void;
 }) {
   const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
   return (
@@ -476,12 +666,15 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1 pt-1">
+        <div className="flex items-center gap-1 pt-1 flex-wrap">
           <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1">
             <Eye className="h-3.5 w-3.5" /> Ver
           </Button>
-          <Button variant="outline" size="sm" onClick={onEditQuestionario} title="Editar questionário">
+          <Button variant="outline" size="sm" onClick={onEditEvento} title="Editar evento">
             <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onEditQuestionario} title="Editar questionário">
+            <FileText className="h-3.5 w-3.5" />
           </Button>
           <Button variant="outline" size="sm" onClick={onCopy} title="Copiar link">
             <Copy className="h-3.5 w-3.5" />

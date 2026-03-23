@@ -23,6 +23,7 @@ interface Evento {
 
 interface Pergunta {
   id: string; ordem: number; tipo: string; pergunta: string; opcoes: string[]; obrigatoria: boolean;
+  limite_por_opcao: number | null;
 }
 
 export default function EventoPublico() {
@@ -34,6 +35,8 @@ export default function EventoPublico() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [vagasRestantes, setVagasRestantes] = useState<number | null>(null);
+  // Track how many times each option was chosen per question
+  const [optionCounts, setOptionCounts] = useState<Record<string, Record<string, number>>>({});
 
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
@@ -61,8 +64,14 @@ export default function EventoPublico() {
       .select('*')
       .eq('evento_id', eventoId!)
       .order('ordem') as any;
-    setPerguntas(pergs || []);
+    
+    const perguntasList: Pergunta[] = (pergs || []).map((p: any) => ({
+      ...p,
+      limite_por_opcao: p.limite_por_opcao ?? null,
+    }));
+    setPerguntas(perguntasList);
 
+    // Check global vagas
     if (ev.vagas_max) {
       const { count } = await supabase
         .from('evento_inscricoes')
@@ -71,7 +80,54 @@ export default function EventoPublico() {
         .neq('status', 'cancelado') as any;
       setVagasRestantes(ev.vagas_max - (count || 0));
     }
+
+    // Load option counts for questions with limits
+    const questionsWithLimits = perguntasList.filter(p => p.limite_por_opcao && (p.tipo === 'multiple_choice' || p.tipo === 'multiple_select'));
+    if (questionsWithLimits.length > 0) {
+      const { data: allRespostas } = await supabase
+        .from('evento_respostas')
+        .select('pergunta_id, resposta, inscricao_id')
+        .in('pergunta_id', questionsWithLimits.map(q => q.id)) as any;
+
+      // Only count responses from non-cancelled inscriptions
+      const { data: activeInscricoes } = await supabase
+        .from('evento_inscricoes')
+        .select('id')
+        .eq('evento_id', eventoId!)
+        .neq('status', 'cancelado') as any;
+      const activeIds = new Set((activeInscricoes || []).map((i: any) => i.id));
+
+      const counts: Record<string, Record<string, number>> = {};
+      for (const r of (allRespostas || [])) {
+        if (!activeIds.has(r.inscricao_id)) continue;
+        const pid = r.pergunta_id;
+        if (!counts[pid]) counts[pid] = {};
+        const val = r.resposta;
+        if (typeof val === 'string') {
+          counts[pid][val] = (counts[pid][val] || 0) + 1;
+        } else if (val && typeof val === 'object' && 'value' in val) {
+          const sv = String(val.value);
+          counts[pid][sv] = (counts[pid][sv] || 0) + 1;
+        } else if (Array.isArray(val)) {
+          for (const v of val) {
+            counts[pid][v] = (counts[pid][v] || 0) + 1;
+          }
+        }
+      }
+      setOptionCounts(counts);
+    }
+
     setLoading(false);
+  };
+
+  const isOptionFull = (pergunta: Pergunta, option: string): boolean => {
+    if (!pergunta.limite_por_opcao) return false;
+    const count = optionCounts[pergunta.id]?.[option] || 0;
+    return count >= pergunta.limite_por_opcao;
+  };
+
+  const getAvailableOptions = (pergunta: Pergunta): string[] => {
+    return (pergunta.opcoes as string[]).filter(Boolean).filter(op => !isOptionFull(pergunta, op));
   };
 
   const handleSubmit = async () => {
@@ -81,6 +137,9 @@ export default function EventoPublico() {
 
     for (const p of perguntas) {
       if (p.obrigatoria) {
+        const available = getAvailableOptions(p);
+        // If all options are full for a required choice question, skip validation
+        if ((p.tipo === 'multiple_choice' || p.tipo === 'multiple_select') && available.length === 0) continue;
         const val = respostas[p.id];
         if (val === undefined || val === '' || (Array.isArray(val) && val.length === 0)) {
           toast.error(`Responda: "${p.pergunta}"`); return;
@@ -236,74 +295,107 @@ export default function EventoPublico() {
                   <CardTitle className="text-base">Questionário</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-5">
-                  {perguntas.map(p => (
-                    <div key={p.id} className="space-y-2">
-                      <Label className="text-sm font-medium">{p.pergunta}{p.obrigatoria && ' *'}</Label>
+                  {perguntas.map(p => {
+                    const availableOpts = getAvailableOptions(p);
+                    const allOpts = (p.opcoes as string[]).filter(Boolean);
 
-                      {p.tipo === 'text' && (
-                        <Textarea
-                          value={respostas[p.id] || ''}
-                          onChange={e => setRespostas({ ...respostas, [p.id]: e.target.value })}
-                          placeholder="Sua resposta..."
-                          rows={2}
-                        />
-                      )}
+                    return (
+                      <div key={p.id} className="space-y-2">
+                        <Label className="text-sm font-medium">{p.pergunta}{p.obrigatoria && ' *'}</Label>
 
-                      {p.tipo === 'multiple_choice' && (
-                        <RadioGroup value={respostas[p.id] || ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
-                          {(p.opcoes as string[]).filter(Boolean).map((op, i) => (
-                            <div key={i} className="flex items-center space-x-2">
-                              <RadioGroupItem value={op} id={`${p.id}-${i}`} />
-                              <Label htmlFor={`${p.id}-${i}`} className="font-normal">{op}</Label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      )}
-
-                      {p.tipo === 'multiple_select' && (
-                        <div className="space-y-2">
-                          {(p.opcoes as string[]).filter(Boolean).map((op, i) => (
-                            <div key={i} className="flex items-center space-x-2">
-                              <Checkbox
-                                id={`${p.id}-ms-${i}`}
-                                checked={(respostas[p.id] || []).includes(op)}
-                                onCheckedChange={() => toggleMultiSelect(p.id, op)}
-                              />
-                              <Label htmlFor={`${p.id}-ms-${i}`} className="font-normal">{op}</Label>
-                            </div>
-                          ))}
-                        </div>
-                      )}
-
-                      {p.tipo === 'scale' && (
-                        <div className="space-y-2">
-                          <Slider
-                            value={[respostas[p.id] ?? 5]}
-                            onValueChange={([v]) => setRespostas({ ...respostas, [p.id]: v })}
-                            max={10} min={0} step={1}
+                        {p.tipo === 'text' && (
+                          <Textarea
+                            value={respostas[p.id] || ''}
+                            onChange={e => setRespostas({ ...respostas, [p.id]: e.target.value })}
+                            placeholder="Sua resposta..."
+                            rows={2}
                           />
-                          <div className="flex justify-between text-xs text-muted-foreground">
-                            <span>0</span>
-                            <span className="font-medium text-foreground">{respostas[p.id] ?? 5}</span>
-                            <span>10</span>
-                          </div>
-                        </div>
-                      )}
+                        )}
 
-                      {p.tipo === 'boolean' && (
-                        <RadioGroup value={respostas[p.id] ?? ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="sim" id={`${p.id}-sim`} />
-                            <Label htmlFor={`${p.id}-sim`} className="font-normal">Sim</Label>
+                        {p.tipo === 'multiple_choice' && (
+                          availableOpts.length === 0 ? (
+                            <p className="text-sm text-muted-foreground italic">Todas as opções estão esgotadas.</p>
+                          ) : (
+                            <RadioGroup value={respostas[p.id] || ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
+                              {allOpts.map((op, i) => {
+                                const full = isOptionFull(p, op);
+                                if (full) return null;
+                                const remaining = p.limite_por_opcao ? p.limite_por_opcao - (optionCounts[p.id]?.[op] || 0) : null;
+                                return (
+                                  <div key={i} className="flex items-center space-x-2">
+                                    <RadioGroupItem value={op} id={`${p.id}-${i}`} />
+                                    <Label htmlFor={`${p.id}-${i}`} className="font-normal">
+                                      {op}
+                                      {remaining !== null && (
+                                        <span className="text-xs text-muted-foreground ml-1">({remaining} vaga{remaining > 1 ? 's' : ''})</span>
+                                      )}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </RadioGroup>
+                          )
+                        )}
+
+                        {p.tipo === 'multiple_select' && (
+                          availableOpts.length === 0 && p.limite_por_opcao ? (
+                            <p className="text-sm text-muted-foreground italic">Todas as opções estão esgotadas.</p>
+                          ) : (
+                            <div className="space-y-2">
+                              {allOpts.map((op, i) => {
+                                const full = isOptionFull(p, op);
+                                if (full) return null;
+                                const remaining = p.limite_por_opcao ? p.limite_por_opcao - (optionCounts[p.id]?.[op] || 0) : null;
+                                return (
+                                  <div key={i} className="flex items-center space-x-2">
+                                    <Checkbox
+                                      id={`${p.id}-ms-${i}`}
+                                      checked={(respostas[p.id] || []).includes(op)}
+                                      onCheckedChange={() => toggleMultiSelect(p.id, op)}
+                                    />
+                                    <Label htmlFor={`${p.id}-ms-${i}`} className="font-normal">
+                                      {op}
+                                      {remaining !== null && (
+                                        <span className="text-xs text-muted-foreground ml-1">({remaining} vaga{remaining > 1 ? 's' : ''})</span>
+                                      )}
+                                    </Label>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )
+                        )}
+
+                        {p.tipo === 'scale' && (
+                          <div className="space-y-2">
+                            <Slider
+                              value={[respostas[p.id] ?? 5]}
+                              onValueChange={([v]) => setRespostas({ ...respostas, [p.id]: v })}
+                              max={10} min={0} step={1}
+                            />
+                            <div className="flex justify-between text-xs text-muted-foreground">
+                              <span>0</span>
+                              <span className="font-medium text-foreground">{respostas[p.id] ?? 5}</span>
+                              <span>10</span>
+                            </div>
                           </div>
-                          <div className="flex items-center space-x-2">
-                            <RadioGroupItem value="nao" id={`${p.id}-nao`} />
-                            <Label htmlFor={`${p.id}-nao`} className="font-normal">Não</Label>
-                          </div>
-                        </RadioGroup>
-                      )}
-                    </div>
-                  ))}
+                        )}
+
+                        {p.tipo === 'boolean' && (
+                          <RadioGroup value={respostas[p.id] ?? ''} onValueChange={v => setRespostas({ ...respostas, [p.id]: v })}>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="sim" id={`${p.id}-sim`} />
+                              <Label htmlFor={`${p.id}-sim`} className="font-normal">Sim</Label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <RadioGroupItem value="nao" id={`${p.id}-nao`} />
+                              <Label htmlFor={`${p.id}-nao`} className="font-normal">Não</Label>
+                            </div>
+                          </RadioGroup>
+                        )}
+                      </div>
+                    );
+                  })}
                 </CardContent>
               </Card>
             )}
