@@ -83,6 +83,7 @@ export function useEventos() {
           pergunta: p.pergunta,
           opcoes: p.opcoes || [],
           obrigatoria: p.obrigatoria,
+          limite_por_opcao: (p as any).limite_por_opcao ?? null,
         }));
         await supabase.from('evento_perguntas').insert(rows as any);
       }
