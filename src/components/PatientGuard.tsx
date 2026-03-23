@@ -12,7 +12,7 @@ import { supabase } from '@/integrations/supabase/client';
  * For non-authenticated users or professionals, children render normally.
  */
 export default function PatientGuard({ children }: { children: ReactNode }) {
-  const { user, profile, loading } = useAuth();
+  const { user, loading } = useAuth();
   const [isPatient, setIsPatient] = useState<boolean | null>(null);
 
   useEffect(() => {
@@ -24,24 +24,33 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
       return;
     }
 
-    // If AuthContext already loaded a professional profile, this is NOT a patient
-    if (profile) {
-      setIsPatient(false);
-      return;
-    }
-
-    // No profile — check if user_id exists in pacientes table
     const check = async () => {
-      const { data } = await supabase
-        .from('pacientes')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
+      const [{ data: profissional, error: profissionalError }, { data: paciente, error: pacienteError }] = await Promise.all([
+        supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+        supabase
+          .from('pacientes')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle(),
+      ]);
 
-      setIsPatient(!!data);
+      if (profissionalError) {
+        console.error('[PatientGuard] Erro ao verificar perfil profissional:', profissionalError);
+      }
+
+      if (pacienteError) {
+        console.error('[PatientGuard] Erro ao verificar perfil de paciente:', pacienteError);
+      }
+
+      setIsPatient(Boolean(paciente) && !profissional);
     };
+
     check();
-  }, [user, profile, loading]);
+  }, [user, loading]);
 
   if (loading || isPatient === null) {
     return (
