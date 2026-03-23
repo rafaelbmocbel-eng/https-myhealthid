@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
 import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta } from '@/hooks/useEventos';
 import { Button } from '@/components/ui/button';
@@ -12,14 +12,14 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, ChevronDown, ChevronUp, MapPin, Clock, DollarSign } from 'lucide-react';
+import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import EventoDetalhePainel from '@/components/eventos/EventoDetalhePainel';
 
 interface PerguntaForm {
-  tipo: 'text' | 'multiple_choice' | 'scale' | 'boolean';
+  tipo: 'text' | 'multiple_choice' | 'multiple_select' | 'scale' | 'boolean';
   pergunta: string;
   opcoes: string[];
   obrigatoria: boolean;
@@ -27,14 +27,23 @@ interface PerguntaForm {
 
 const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true };
 
+const RECOVERY_TEMPLATE: PerguntaForm[] = [
+  { tipo: 'boolean', pergunta: 'VOCÊ CONFIRMA SUA PRESENÇA?', opcoes: [], obrigatoria: true },
+  { tipo: 'multiple_choice', pergunta: 'ESCOLHA SEU HORÁRIO PARA INÍCIO (montagem de lista por ordem de preenchimento)', opcoes: ['8H', '9H', '10H', '11H', '12H'], obrigatoria: true },
+  { tipo: 'multiple_select', pergunta: 'Qual seu objetivo com o RECOVERY? (marque até 2)', opcoes: ['Alívio de dores musculares', 'Melhorar mobilidade articular', 'Aprender técnicas de autocuidado', 'Socializar com colegas'], obrigatoria: true },
+  { tipo: 'text', pergunta: 'Alguma área específica do corpo que gostaria de trabalhar? (Ex.: lombar, ombros, joelhos)', opcoes: [], obrigatoria: true },
+];
+
 export default function Eventos() {
-  const { data: eventos, isLoading, criarEvento, toggleEvento, deletarEvento } = useEventos();
+  const { data: eventos, isLoading, criarEvento, editarEvento, salvarPerguntas, toggleEvento, deletarEvento } = useEventos();
   const [openCreate, setOpenCreate] = useState(false);
   const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
+  const [editingQuestionario, setEditingQuestionario] = useState<string | null>(null);
 
   // Form state
   const [titulo, setTitulo] = useState('');
   const [descricao, setDescricao] = useState('');
+  const [descricaoFormulario, setDescricaoFormulario] = useState('');
   const [dataEvento, setDataEvento] = useState('');
   const [horarioInicio, setHorarioInicio] = useState('09:00');
   const [horarioFim, setHorarioFim] = useState('12:00');
@@ -47,17 +56,24 @@ export default function Eventos() {
   const [perguntas, setPerguntas] = useState<PerguntaForm[]>([{ ...DEFAULT_PERGUNTA }]);
 
   const resetForm = () => {
-    setTitulo(''); setDescricao(''); setDataEvento(''); setHorarioInicio('09:00');
+    setTitulo(''); setDescricao(''); setDescricaoFormulario(''); setDataEvento(''); setHorarioInicio('09:00');
     setHorarioFim('12:00'); setLocal(''); setVagasMax(''); setCobrarPagamento(false);
     setValor(0); setPixChave(''); setLinkPagamento('');
     setPerguntas([{ ...DEFAULT_PERGUNTA }]);
+  };
+
+  const applyTemplate = () => {
+    setPerguntas(RECOVERY_TEMPLATE.map(p => ({ ...p, opcoes: [...p.opcoes] })));
+    setDescricaoFormulario('Para finalidade de registro das pessoas que virão participar da sessão de RECOVERY, estamos coletando informações para organização de uma lista de participantes.\n\nSUGESTÃO: TRAZER TOALHA E MUDA DE ROUPA');
+    toast.success('Template Recovery aplicado!');
   };
 
   const handleCreate = () => {
     if (!titulo || !dataEvento) { toast.error('Título e data são obrigatórios'); return; }
     const validPerguntas = perguntas.filter(p => p.pergunta.trim());
     criarEvento.mutate({
-      titulo, descricao: descricao || null, data_evento: dataEvento,
+      titulo, descricao: descricao || null, descricao_formulario: descricaoFormulario || null,
+      data_evento: dataEvento,
       horario_inicio: horarioInicio, horario_fim: horarioFim,
       local: local || null, vagas_max: vagasMax || null,
       cobrar_pagamento: cobrarPagamento, valor: cobrarPagamento ? valor : 0,
@@ -74,7 +90,7 @@ export default function Eventos() {
   const updatePergunta = (i: number, field: keyof PerguntaForm, value: any) => {
     const next = [...perguntas];
     (next[i] as any)[field] = value;
-    if (field === 'tipo' && value !== 'multiple_choice') next[i].opcoes = [''];
+    if (field === 'tipo' && value !== 'multiple_choice' && value !== 'multiple_select') next[i].opcoes = [''];
     setPerguntas(next);
   };
   const addOpcao = (i: number) => {
@@ -85,6 +101,11 @@ export default function Eventos() {
   const updateOpcao = (pi: number, oi: number, val: string) => {
     const next = [...perguntas];
     next[pi].opcoes[oi] = val;
+    setPerguntas(next);
+  };
+  const removeOpcao = (pi: number, oi: number) => {
+    const next = [...perguntas];
+    next[pi].opcoes = next[pi].opcoes.filter((_, idx) => idx !== oi);
     setPerguntas(next);
   };
 
@@ -131,8 +152,12 @@ export default function Eventos() {
                       <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
                     </div>
                     <div className="sm:col-span-2">
-                      <Label>Descrição</Label>
+                      <Label>Descrição do evento</Label>
                       <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
+                    </div>
+                    <div className="sm:col-span-2">
+                      <Label>Texto introdutório do formulário</Label>
+                      <Textarea value={descricaoFormulario} onChange={e => setDescricaoFormulario(e.target.value)} placeholder="Texto que aparecerá no topo do formulário de inscrição..." rows={3} />
                     </div>
                     <div>
                       <Label>Data *</Label>
@@ -188,51 +213,24 @@ export default function Eventos() {
                   <div className="space-y-3">
                     <div className="flex items-center justify-between">
                       <Label className="text-base font-semibold">Questionário</Label>
-                      <Button type="button" variant="outline" size="sm" onClick={addPergunta} className="gap-1">
-                        <Plus className="h-3 w-3" /> Pergunta
-                      </Button>
+                      <div className="flex gap-2">
+                        <Button type="button" variant="outline" size="sm" onClick={applyTemplate} className="gap-1 text-xs">
+                          <FileText className="h-3 w-3" /> Template Recovery
+                        </Button>
+                        <Button type="button" variant="outline" size="sm" onClick={addPergunta} className="gap-1">
+                          <Plus className="h-3 w-3" /> Pergunta
+                        </Button>
+                      </div>
                     </div>
-                    {perguntas.map((p, i) => (
-                      <Card key={i} className="border-dashed">
-                        <CardContent className="pt-4 space-y-2">
-                          <div className="flex items-start gap-2">
-                            <div className="flex-1 space-y-2">
-                              <Input value={p.pergunta} onChange={e => updatePergunta(i, 'pergunta', e.target.value)} placeholder={`Pergunta ${i + 1}`} />
-                              <div className="flex items-center gap-3">
-                                <Select value={p.tipo} onValueChange={v => updatePergunta(i, 'tipo', v)}>
-                                  <SelectTrigger className="w-44">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="text">Texto livre</SelectItem>
-                                    <SelectItem value="multiple_choice">Múltipla escolha</SelectItem>
-                                    <SelectItem value="scale">Escala (0-10)</SelectItem>
-                                    <SelectItem value="boolean">Sim/Não</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <div className="flex items-center gap-1">
-                                  <Switch checked={p.obrigatoria} onCheckedChange={v => updatePergunta(i, 'obrigatoria', v)} />
-                                  <span className="text-xs text-muted-foreground">Obrigatória</span>
-                                </div>
-                              </div>
-                              {p.tipo === 'multiple_choice' && (
-                                <div className="space-y-1 pl-2">
-                                  {p.opcoes.map((op, oi) => (
-                                    <Input key={oi} value={op} onChange={e => updateOpcao(i, oi, e.target.value)} placeholder={`Opção ${oi + 1}`} className="h-8 text-sm" />
-                                  ))}
-                                  <Button type="button" variant="ghost" size="sm" onClick={() => addOpcao(i)} className="text-xs">+ Opção</Button>
-                                </div>
-                              )}
-                            </div>
-                            {perguntas.length > 1 && (
-                              <Button type="button" variant="ghost" size="icon" onClick={() => removePergunta(i)} className="text-destructive shrink-0">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            )}
-                          </div>
-                        </CardContent>
-                      </Card>
-                    ))}
+
+                    <PerguntasEditor
+                      perguntas={perguntas}
+                      onUpdate={updatePergunta}
+                      onRemove={removePergunta}
+                      onAddOpcao={addOpcao}
+                      onUpdateOpcao={updateOpcao}
+                      onRemoveOpcao={removeOpcao}
+                    />
                   </div>
 
                   <Button onClick={handleCreate} disabled={criarEvento.isPending} className="w-full">
@@ -265,17 +263,178 @@ export default function Eventos() {
                 onCopy={() => copyLink(ev.id)}
                 onToggle={() => toggleEvento.mutate({ id: ev.id, ativo: !ev.ativo })}
                 onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
+                onEditQuestionario={() => setEditingQuestionario(ev.id)}
               />
             ))}
           </div>
+        )}
+
+        {/* Edit Questionario Dialog */}
+        {editingQuestionario && (
+          <EditarQuestionarioDialog
+            eventoId={editingQuestionario}
+            open={!!editingQuestionario}
+            onClose={() => setEditingQuestionario(null)}
+            salvarPerguntas={salvarPerguntas}
+          />
         )}
       </div>
     </AppLayout>
   );
 }
 
-function EventoCard({ evento, onView, onCopy, onToggle, onDelete }: {
-  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void;
+function PerguntasEditor({ perguntas, onUpdate, onRemove, onAddOpcao, onUpdateOpcao, onRemoveOpcao }: {
+  perguntas: PerguntaForm[];
+  onUpdate: (i: number, field: keyof PerguntaForm, value: any) => void;
+  onRemove: (i: number) => void;
+  onAddOpcao: (i: number) => void;
+  onUpdateOpcao: (pi: number, oi: number, val: string) => void;
+  onRemoveOpcao: (pi: number, oi: number) => void;
+}) {
+  return (
+    <>
+      {perguntas.map((p, i) => (
+        <Card key={i} className="border-dashed">
+          <CardContent className="pt-4 space-y-2">
+            <div className="flex items-start gap-2">
+              <div className="flex-1 space-y-2">
+                <Input value={p.pergunta} onChange={e => onUpdate(i, 'pergunta', e.target.value)} placeholder={`Pergunta ${i + 1}`} />
+                <div className="flex items-center gap-3 flex-wrap">
+                  <Select value={p.tipo} onValueChange={v => onUpdate(i, 'tipo', v)}>
+                    <SelectTrigger className="w-48">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="text">Texto livre</SelectItem>
+                      <SelectItem value="multiple_choice">Escolha única</SelectItem>
+                      <SelectItem value="multiple_select">Múltipla escolha</SelectItem>
+                      <SelectItem value="scale">Escala (0-10)</SelectItem>
+                      <SelectItem value="boolean">Sim/Não</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <div className="flex items-center gap-1">
+                    <Switch checked={p.obrigatoria} onCheckedChange={v => onUpdate(i, 'obrigatoria', v)} />
+                    <span className="text-xs text-muted-foreground">Obrigatória</span>
+                  </div>
+                </div>
+                {(p.tipo === 'multiple_choice' || p.tipo === 'multiple_select') && (
+                  <div className="space-y-1 pl-2">
+                    {p.opcoes.map((op, oi) => (
+                      <div key={oi} className="flex items-center gap-1">
+                        <Input value={op} onChange={e => onUpdateOpcao(i, oi, e.target.value)} placeholder={`Opção ${oi + 1}`} className="h-8 text-sm" />
+                        {p.opcoes.length > 1 && (
+                          <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => onRemoveOpcao(i, oi)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        )}
+                      </div>
+                    ))}
+                    <Button type="button" variant="ghost" size="sm" onClick={() => onAddOpcao(i)} className="text-xs">+ Opção</Button>
+                  </div>
+                )}
+              </div>
+              {perguntas.length > 1 && (
+                <Button type="button" variant="ghost" size="icon" onClick={() => onRemove(i)} className="text-destructive shrink-0">
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      ))}
+    </>
+  );
+}
+
+function EditarQuestionarioDialog({ eventoId, open, onClose, salvarPerguntas }: {
+  eventoId: string; open: boolean; onClose: () => void; salvarPerguntas: any;
+}) {
+  const { data } = useEventoDetalhe(eventoId);
+  const [perguntas, setPerguntas] = useState<PerguntaForm[]>([]);
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (data?.perguntas && !initialized) {
+      setPerguntas(data.perguntas.map(p => ({
+        tipo: p.tipo as PerguntaForm['tipo'],
+        pergunta: p.pergunta,
+        opcoes: Array.isArray(p.opcoes) ? [...(p.opcoes as string[])] : [''],
+        obrigatoria: p.obrigatoria,
+      })));
+      setInitialized(true);
+    }
+  }, [data, initialized]);
+
+  const addPergunta = () => setPerguntas([...perguntas, { ...DEFAULT_PERGUNTA }]);
+  const removePergunta = (i: number) => setPerguntas(perguntas.filter((_, idx) => idx !== i));
+  const updatePergunta = (i: number, field: keyof PerguntaForm, value: any) => {
+    const next = [...perguntas];
+    (next[i] as any)[field] = value;
+    if (field === 'tipo' && value !== 'multiple_choice' && value !== 'multiple_select') next[i].opcoes = [''];
+    setPerguntas(next);
+  };
+  const addOpcao = (i: number) => {
+    const next = [...perguntas];
+    next[i].opcoes = [...next[i].opcoes, ''];
+    setPerguntas(next);
+  };
+  const updateOpcao = (pi: number, oi: number, val: string) => {
+    const next = [...perguntas];
+    next[pi].opcoes[oi] = val;
+    setPerguntas(next);
+  };
+  const removeOpcao = (pi: number, oi: number) => {
+    const next = [...perguntas];
+    next[pi].opcoes = next[pi].opcoes.filter((_, idx) => idx !== oi);
+    setPerguntas(next);
+  };
+
+  const handleSave = () => {
+    const validPerguntas = perguntas.filter(p => p.pergunta.trim());
+    salvarPerguntas.mutate({ eventoId, perguntas: validPerguntas }, {
+      onSuccess: () => { setInitialized(false); onClose(); },
+    });
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={() => { setInitialized(false); onClose(); }}>
+      <DialogContent className="max-w-2xl max-h-[90vh]">
+        <DialogHeader>
+          <DialogTitle>Editar Questionário</DialogTitle>
+        </DialogHeader>
+        <ScrollArea className="max-h-[70vh] pr-4">
+          <div className="space-y-3 pb-4">
+            <div className="flex justify-end">
+              <Button type="button" variant="outline" size="sm" onClick={addPergunta} className="gap-1">
+                <Plus className="h-3 w-3" /> Pergunta
+              </Button>
+            </div>
+
+            {perguntas.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhuma pergunta. Clique em "+ Pergunta" para adicionar.</p>
+            )}
+
+            <PerguntasEditor
+              perguntas={perguntas}
+              onUpdate={updatePergunta}
+              onRemove={removePergunta}
+              onAddOpcao={addOpcao}
+              onUpdateOpcao={updateOpcao}
+              onRemoveOpcao={removeOpcao}
+            />
+
+            <Button onClick={handleSave} disabled={salvarPerguntas.isPending} className="w-full">
+              {salvarPerguntas.isPending ? 'Salvando...' : 'Salvar Questionário'}
+            </Button>
+          </div>
+        </ScrollArea>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario }: {
+  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void;
 }) {
   const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
   return (
@@ -321,13 +480,16 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete }: {
           <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1">
             <Eye className="h-3.5 w-3.5" /> Ver
           </Button>
-          <Button variant="outline" size="sm" onClick={onCopy} className="gap-1">
+          <Button variant="outline" size="sm" onClick={onEditQuestionario} title="Editar questionário">
+            <Pencil className="h-3.5 w-3.5" />
+          </Button>
+          <Button variant="outline" size="sm" onClick={onCopy} title="Copiar link">
             <Copy className="h-3.5 w-3.5" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={onToggle}>
+          <Button variant="ghost" size="sm" onClick={onToggle} title={evento.ativo ? 'Desativar' : 'Ativar'}>
             {evento.ativo ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
           </Button>
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive">
+          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive" title="Deletar">
             <Trash2 className="h-3.5 w-3.5" />
           </Button>
         </div>
