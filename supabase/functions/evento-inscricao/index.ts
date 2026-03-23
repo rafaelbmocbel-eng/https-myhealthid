@@ -2,14 +2,14 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { evento_id, nome, email, telefone, respostas } = await req.json();
+    const { evento_id, nome, email, telefone, respostas, paciente_id: body_paciente_id } = await req.json();
     if (!evento_id || !nome) {
       return new Response(JSON.stringify({ error: "nome e evento_id obrigatórios" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
@@ -43,11 +43,26 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Check if already a patient
-    let paciente_id: string | null = null;
+    // Determine paciente_id
+    let paciente_id: string | null = body_paciente_id || null;
     let ja_era_paciente = false;
 
-    if (email) {
+    // If paciente_id was passed (from patient portal), verify it exists
+    if (paciente_id) {
+      const { data: existingPac } = await supabase
+        .from("pacientes")
+        .select("id")
+        .eq("id", paciente_id)
+        .maybeSingle();
+      if (existingPac) {
+        ja_era_paciente = true;
+      } else {
+        paciente_id = null;
+      }
+    }
+
+    // If no paciente_id yet, try to find by email
+    if (!paciente_id && email) {
       const { data: existing } = await supabase
         .from("pacientes")
         .select("id")
@@ -58,6 +73,21 @@ Deno.serve(async (req) => {
       if (existing) {
         paciente_id = existing.id;
         ja_era_paciente = true;
+      }
+    }
+
+    // Check if already inscribed
+    if (paciente_id) {
+      const { data: existingInsc } = await supabase
+        .from("evento_inscricoes")
+        .select("id")
+        .eq("evento_id", evento_id)
+        .eq("paciente_id", paciente_id)
+        .neq("status", "cancelado")
+        .maybeSingle();
+
+      if (existingInsc) {
+        return new Response(JSON.stringify({ error: "Você já está inscrito neste evento" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
     }
 

@@ -45,7 +45,7 @@ export default function PacienteEventos() {
   const { user } = useAuth();
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [loading, setLoading] = useState(true);
-  const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null } | null>(null);
+  const [paciente, setPaciente] = useState<{ id: string; nome: string; email: string | null; telefone: string | null; terapeuta_id: string } | null>(null);
   const [inscricoes, setInscricoes] = useState<Set<string>>(new Set());
 
   // Dialog state
