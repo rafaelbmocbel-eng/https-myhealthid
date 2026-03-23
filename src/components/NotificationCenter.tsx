@@ -56,7 +56,7 @@ export default function NotificationCenter() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-80 p-0" align="end">
+      <PopoverContent className="w-80 p-0 max-h-[70vh] flex flex-col" align="end">
         <div className="flex items-center justify-between p-3 border-b border-border/50">
           <h3 className="text-sm font-bold text-foreground">Notificações</h3>
           {naoLidas > 0 && (
