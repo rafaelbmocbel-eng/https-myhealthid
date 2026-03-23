@@ -2,7 +2,7 @@ import { ReactNode, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
-import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { cn } from '@/lib/utils';
 
