@@ -77,12 +77,12 @@ export default function NotificationCenter() {
               Nenhuma notificação
             </div>
           ) : (
-            notificacoes.slice(0, 20).map(n => {
+            notificacoes.map(n => {
               const Icon = iconMap[n.tipo] || Bell;
               return (
                 <button
                   key={n.id}
-                  onClick={() => handleClick(n.id, n.rota)}
+                  onClick={() => handleClick(n.id, n.rota, n.tipo)}
                   className={cn(
                     'w-full flex items-start gap-3 p-3 text-left hover:bg-accent/50 transition-colors border-b border-border/30 last:border-b-0',
                     !n.lida && 'bg-primary/5'
