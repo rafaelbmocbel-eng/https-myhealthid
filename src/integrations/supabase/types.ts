@@ -659,6 +659,7 @@ export type Database = {
           created_at: string
           evento_id: string
           id: string
+          limite_por_opcao: number | null
           obrigatoria: boolean
           opcoes: Json | null
           ordem: number
@@ -669,6 +670,7 @@ export type Database = {
           created_at?: string
           evento_id: string
           id?: string
+          limite_por_opcao?: number | null
           obrigatoria?: boolean
           opcoes?: Json | null
           ordem?: number
@@ -679,6 +681,7 @@ export type Database = {
           created_at?: string
           evento_id?: string
           id?: string
+          limite_por_opcao?: number | null
           obrigatoria?: boolean
           opcoes?: Json | null
           ordem?: number
