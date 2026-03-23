@@ -3,6 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { isAuthLockTimeoutError, withAuthLockRetry } from '@/lib/authLock';
+import { DEFAULT_SERVICOS } from '@/hooks/useServicosAtivos';
 
 export interface Paciente {
   id: string;
@@ -187,7 +188,20 @@ export function useAgenda() {
   const saveConfig = async (cfg: ConfigAgenda) => {
     if (!user) return;
 
-    const payload = { ...cfg, terapeuta_id: user.id };
+    const { data: existingConfig } = await supabase
+      .from('config_agenda')
+      .select('servicos_ativos')
+      .eq('terapeuta_id', user.id)
+      .maybeSingle();
+
+    const payload = {
+      ...cfg,
+      terapeuta_id: user.id,
+      servicos_ativos: {
+        ...DEFAULT_SERVICOS,
+        ...((existingConfig?.servicos_ativos as Record<string, boolean> | null) || {}),
+      },
+    };
 
     try {
       const { error } = await withAuthLockRetry(async () => {
