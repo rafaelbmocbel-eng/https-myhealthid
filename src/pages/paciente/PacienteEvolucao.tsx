@@ -138,6 +138,7 @@ export default function PacienteEvolucao() {
   const TIPO_ICON: Record<string, string> = {
     myid_resposta: '📋', avaliacao_profissional: '🩺', sessao_confirmada: '✅',
     diario_paciente: '📱', treino_executado: '🏋️', conduta_diretriz: '🧠', geral: '📝',
+    avaliacao_voz: '🎙️',
   };
 
   return (

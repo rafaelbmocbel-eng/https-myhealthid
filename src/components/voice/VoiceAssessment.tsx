@@ -64,14 +64,48 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     resumo: true, dor: true, funcionalidade: true, psicossocial: false,
     redflags: true, hipoteses: true, plano: true, insights: true,
   });
+  const [editingField, setEditingField] = useState<string | null>(null);
+  const [editFieldValue, setEditFieldValue] = useState('');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+
+  // Wake Lock helpers
+  const requestWakeLock = useCallback(async () => {
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLockRef.current = await navigator.wakeLock.request('screen');
+        wakeLockRef.current.addEventListener('release', () => {
+          wakeLockRef.current = null;
+        });
+      }
+    } catch (e) {
+      console.warn('Wake Lock não disponível:', e);
+    }
+  }, []);
+
+  const releaseWakeLock = useCallback(() => {
+    wakeLockRef.current?.release();
+    wakeLockRef.current = null;
+  }, []);
+
+  // Re-acquire wake lock when page becomes visible again during recording
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && isRecording) {
+        requestWakeLock();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [isRecording, requestWakeLock]);
 
   // Cleanup on unmount
   useEffect(() => {
     return () => {
       stopRecording();
+      releaseWakeLock();
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
@@ -116,6 +150,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setIsRecording(true);
       setRecordingTime(0);
       timerRef.current = setInterval(() => setRecordingTime(t => t + 1), 1000);
+      await requestWakeLock();
     } catch (err) {
       console.error('Failed to start recording:', err);
       toast({ title: 'Erro ao acessar microfone', description: 'Permita o acesso ao microfone nas configurações do navegador.', variant: 'destructive' });
@@ -132,7 +167,8 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
     mediaRecorderRef.current = null;
     setIsRecording(false);
-  }, []);
+    releaseWakeLock();
+  }, [releaseWakeLock]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
@@ -327,7 +363,79 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setAssessment(null);
     setIsSaved(false);
     setRecordingTime(0);
+    setEditingField(null);
     setStep('record');
+  };
+
+  // Inline edit helpers for AI fields
+  const startEditField = (field: string, currentValue: string) => {
+    setEditingField(field);
+    setEditFieldValue(currentValue);
+  };
+
+  const saveFieldEdit = (field: string) => {
+    if (!assessment) return;
+    const updated = { ...assessment };
+
+    if (field === 'resumo_clinico') {
+      updated.resumo_clinico = editFieldValue;
+    } else if (field === 'dor_localizacao') {
+      updated.dor = { ...updated.dor, localizacao: editFieldValue };
+    } else if (field === 'dor_eva') {
+      updated.dor = { ...updated.dor, intensidade_eva: editFieldValue };
+    } else if (field === 'dor_tipo') {
+      updated.dor = { ...updated.dor, tipo: editFieldValue };
+    } else if (field === 'funcionalidade_impacto') {
+      updated.funcionalidade = { ...updated.funcionalidade, nivel_impacto: editFieldValue };
+    } else if (field === 'funcionalidade_limitacoes') {
+      updated.funcionalidade = { ...updated.funcionalidade, limitacoes_avds: editFieldValue.split('\n').filter(Boolean) };
+    } else if (field === 'red_flags') {
+      updated.red_flags = editFieldValue.split('\n').filter(Boolean);
+    } else if (field === 'hipoteses') {
+      // Parse "diagnostico | probabilidade | evidencia" per line
+      updated.hipoteses_diagnosticas = editFieldValue.split('\n').filter(Boolean).map((line: string) => {
+        const parts = line.split('|').map((p: string) => p.trim());
+        return { diagnostico: parts[0] || line, probabilidade: parts[1] || 'Média', evidencia: parts[2] || '' };
+      });
+    } else if (field === 'classificacao') {
+      updated.classificacao_severidade = editFieldValue;
+    } else if (field === 'queixa_principal') {
+      updated.queixa_principal = editFieldValue;
+    }
+
+    setAssessment(updated);
+    setIsSaved(false);
+    setEditingField(null);
+  };
+
+  const EditableInline = ({ field, value, multiline }: { field: string; value: string; multiline?: boolean }) => {
+    if (editingField === field) {
+      return (
+        <div className="space-y-1">
+          {multiline ? (
+            <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus />
+          ) : (
+            <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
+              className="w-full text-sm border rounded px-2 py-1 bg-background" autoFocus
+              onKeyDown={e => { if (e.key === 'Enter' && !multiline) saveFieldEdit(field); }}
+            />
+          )}
+          <div className="flex gap-1">
+            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit(field)}>
+              <CheckCircle2 className="h-3 w-3 mr-1" />OK
+            </Button>
+            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
+          </div>
+        </div>
+      );
+    }
+    return (
+      <span className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group inline-flex items-center gap-1"
+        onClick={() => startEditField(field, value)}>
+        {value}
+        <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+      </span>
+    );
   };
 
   // ‚îÄ‚îÄ Step 3: Assessment Results ‚îÄ‚îÄ
@@ -398,18 +506,34 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         )}
 
         <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
-          <p className="text-sm text-muted-foreground leading-relaxed">{assessment.resumo_clinico}</p>
+          <div className="text-sm text-muted-foreground leading-relaxed">
+            <EditableInline field="resumo_clinico" value={assessment.resumo_clinico || 'N/I'} multiline />
+          </div>
           <div className="flex flex-wrap gap-2 mt-2">
-            {assessment.queixa_principal && <Badge variant="secondary">QP: {assessment.queixa_principal}</Badge>}
+            {assessment.queixa_principal && (
+              <Badge variant="secondary" className="cursor-pointer" onClick={() => startEditField('queixa_principal', assessment.queixa_principal)}>
+                QP: {editingField === 'queixa_principal' ? '' : assessment.queixa_principal}
+                {editingField === 'queixa_principal' && (
+                  <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
+                    className="ml-1 bg-transparent border-b text-xs w-32" autoFocus
+                    onKeyDown={e => { if (e.key === 'Enter') saveFieldEdit('queixa_principal'); }}
+                    onBlur={() => saveFieldEdit('queixa_principal')} />
+                )}
+              </Badge>
+            )}
             {assessment.tempo_evolucao && <Badge variant="outline">⏱ {assessment.tempo_evolucao}</Badge>}
+          </div>
+          <div className="mt-2">
+            <span className="text-xs text-muted-foreground">Classificação: </span>
+            <EditableInline field="classificacao" value={assessment.classificacao_severidade || 'N/I'} />
           </div>
         </SectionCard>
 
         <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection}>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Local:</span> <strong>{assessment.dor?.localizacao}</strong></div>
-            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg">{assessment.dor?.intensidade_eva}/10</strong></div>
-            <div><span className="text-muted-foreground">Tipo:</span> <strong>{assessment.dor?.tipo}</strong></div>
+            <div><span className="text-muted-foreground">Local:</span> <strong><EditableInline field="dor_localizacao" value={assessment.dor?.localizacao || 'N/I'} /></strong></div>
+            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg"><EditableInline field="dor_eva" value={String(assessment.dor?.intensidade_eva ?? 'N/I')} />/10</strong></div>
+            <div><span className="text-muted-foreground">Tipo:</span> <strong><EditableInline field="dor_tipo" value={assessment.dor?.tipo || 'N/I'} /></strong></div>
             <div><span className="text-muted-foreground">Padrão:</span> <strong>{assessment.dor?.padrao_temporal || 'N/I'}</strong></div>
           </div>
           {assessment.dor?.fatores_agravantes?.length > 0 && (
@@ -435,13 +559,33 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         </SectionCard>
 
         <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection}>
-          <Badge className={cn('text-xs mb-2', assessment.funcionalidade?.nivel_impacto === 'Incapacitante' ? 'bg-destructive text-white' : 'bg-secondary')}>
-            Impacto: {assessment.funcionalidade?.nivel_impacto}
-          </Badge>
+          <div className="mb-2">
+            <span className="text-xs text-muted-foreground">Impacto: </span>
+            <EditableInline field="funcionalidade_impacto" value={assessment.funcionalidade?.nivel_impacto || 'N/I'} />
+          </div>
           {assessment.funcionalidade?.limitacoes_avds?.length > 0 && (
-            <ul className="text-sm text-muted-foreground space-y-1 mt-2">
-              {assessment.funcionalidade.limitacoes_avds.map((l: any, i: number) => <li key={i}>• {typeof l === 'string' ? l : JSON.stringify(l)}</li>)}
-            </ul>
+            <div className="mt-2">
+              <div className="flex items-center justify-between mb-1">
+                <span className="text-xs text-muted-foreground">Limitações AVDs:</span>
+                <Button variant="ghost" size="sm" className="h-5 text-[10px] text-primary"
+                  onClick={() => startEditField('funcionalidade_limitacoes', assessment.funcionalidade.limitacoes_avds.map((l: any) => typeof l === 'string' ? l : JSON.stringify(l)).join('\n'))}>
+                  <Edit3 className="h-3 w-3 mr-1" />Editar
+                </Button>
+              </div>
+              {editingField === 'funcionalidade_limitacoes' ? (
+                <div className="space-y-1">
+                  <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[60px]" autoFocus placeholder="Uma limitação por linha" />
+                  <div className="flex gap-1">
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit('funcionalidade_limitacoes')}><CheckCircle2 className="h-3 w-3 mr-1" />OK</Button>
+                    <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
+                  </div>
+                </div>
+              ) : (
+                <ul className="text-sm text-muted-foreground space-y-1">
+                  {assessment.funcionalidade.limitacoes_avds.map((l: any, i: number) => <li key={i}>• {typeof l === 'string' ? l : JSON.stringify(l)}</li>)}
+                </ul>
+              )}
+            </div>
           )}
         </SectionCard>
 
@@ -457,8 +601,23 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           )}
         </SectionCard>
 
-        {assessment.red_flags?.length > 0 && (
-          <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
+        <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
+          <div className="flex items-center justify-between mb-1">
+            <span className="text-xs text-muted-foreground">{assessment.red_flags?.length || 0} red flag(s)</span>
+            <Button variant="ghost" size="sm" className="h-5 text-[10px] text-primary"
+              onClick={() => startEditField('red_flags', (assessment.red_flags || []).map((rf: any) => typeof rf === 'string' ? rf : (rf?.descricao || JSON.stringify(rf))).join('\n'))}>
+              <Edit3 className="h-3 w-3 mr-1" />Editar
+            </Button>
+          </div>
+          {editingField === 'red_flags' ? (
+            <div className="space-y-1">
+              <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[60px]" autoFocus placeholder="Uma red flag por linha" />
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit('red_flags')}><CheckCircle2 className="h-3 w-3 mr-1" />OK</Button>
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
+              </div>
+            </div>
+          ) : assessment.red_flags?.length > 0 ? (
             <ul className="space-y-1">
               {assessment.red_flags.map((rf: any, i: number) => (
                 <li key={i} className="text-sm text-destructive flex items-start gap-2">
@@ -466,24 +625,44 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 </li>
               ))}
             </ul>
-          </SectionCard>
-        )}
+          ) : (
+            <p className="text-xs text-muted-foreground italic">Nenhuma red flag identificada</p>
+          )}
+        </SectionCard>
 
         <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection}>
-          <div className="space-y-3">
-            {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
-              <div key={i} className="border border-border/50 rounded-lg p-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
-                  <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
-                    {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
-                  </Badge>
-                </div>
-                {h.unidade_relacionada && <p className="text-xs text-muted-foreground mt-0.5">UC: {typeof h.unidade_relacionada === 'string' ? h.unidade_relacionada : JSON.stringify(h.unidade_relacionada)}</p>}
-                <p className="text-xs text-muted-foreground mt-1 italic">📖 {typeof h.evidencia === 'string' ? h.evidencia : JSON.stringify(h.evidencia)}</p>
-              </div>
-            ))}
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-xs text-muted-foreground">{assessment.hipoteses_diagnosticas?.length || 0} hipótese(s)</span>
+            <Button variant="ghost" size="sm" className="h-5 text-[10px] text-primary"
+              onClick={() => startEditField('hipoteses', (assessment.hipoteses_diagnosticas || []).map((h: any) => `${h.diagnostico} | ${h.probabilidade} | ${h.evidencia || ''}`).join('\n'))}>
+              <Edit3 className="h-3 w-3 mr-1" />Editar
+            </Button>
           </div>
+          {editingField === 'hipoteses' ? (
+            <div className="space-y-1">
+              <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus
+                placeholder="Formato: Diagnóstico | Probabilidade | Evidência (uma por linha)" />
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit('hipoteses')}><CheckCircle2 className="h-3 w-3 mr-1" />OK</Button>
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
+                <div key={i} className="border border-border/50 rounded-lg p-3">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
+                    <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
+                      {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
+                    </Badge>
+                  </div>
+                  {h.unidade_relacionada && <p className="text-xs text-muted-foreground mt-0.5">UC: {typeof h.unidade_relacionada === 'string' ? h.unidade_relacionada : JSON.stringify(h.unidade_relacionada)}</p>}
+                  <p className="text-xs text-muted-foreground mt-1 italic">📖 {typeof h.evidencia === 'string' ? h.evidencia : JSON.stringify(h.evidencia)}</p>
+                </div>
+              ))}
+            </div>
+          )}
         </SectionCard>
 
         <SectionCard icon={CheckCircle2} title="Plano de Tratamento" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
