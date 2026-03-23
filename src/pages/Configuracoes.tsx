@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid, PartyPopper } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { getAgendaUrl } from '@/utils/linkUrls';
@@ -88,11 +88,12 @@ export default function Configuracoes() {
           <p className="text-xs text-muted-foreground mb-4">
             Escolha quais serviços ficam <strong>visíveis</strong> no menu lateral. Desmarcar um módulo apenas oculta-o da navegação.
           </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             {([
-              { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, color: 'hsl(var(--primary))' },
-              { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, color: 'hsl(200 70% 50%)' },
-              { key: 'studio' as const, label: 'Studio Personal ID', icon: Sparkles, color: 'hsl(280 60% 55%)' },
+              { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, iconClassName: 'text-primary' },
+              { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, iconClassName: 'text-primary' },
+              { key: 'studio' as const, label: 'Studio Personal ID', icon: Sparkles, iconClassName: 'text-primary' },
+              { key: 'eventos' as const, label: 'Eventos', icon: PartyPopper, iconClassName: 'text-primary' },
             ]).map(mod => {
               const ativo = servicos[mod.key];
               return (
@@ -107,7 +108,7 @@ export default function Configuracoes() {
                   )}
                 >
                   <Switch checked={ativo} onCheckedChange={(v) => saveServicos({ ...servicos, [mod.key]: v })} />
-                  <mod.icon className="h-4 w-4 shrink-0" style={{ color: ativo ? mod.color : undefined }} />
+                  <mod.icon className={cn('h-4 w-4 shrink-0', ativo ? mod.iconClassName : 'text-muted-foreground')} />
                   <span className={cn('text-sm font-medium', ativo ? 'text-foreground' : 'text-muted-foreground')}>
                     {mod.label}
                   </span>

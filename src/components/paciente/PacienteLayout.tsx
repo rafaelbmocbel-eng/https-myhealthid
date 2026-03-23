@@ -19,8 +19,8 @@ const navItems = [
   { path: '/paciente/perfil', label: 'Perfil', shortLabel: 'Perfil', icon: User, badgeKey: null },
 ];
 
-// Show max 5 items in bottom nav: Início, Agenda, Diário, Treinos, Perfil
-const MOBILE_NAV_ITEMS = [0, 5, 2, 4, 9];
+// Show max 5 items in bottom nav: Início, Eventos, Agenda, Treinos, Perfil
+const MOBILE_NAV_ITEMS = [0, 8, 5, 4, 9];
 
 interface Props {
   children: ReactNode;
