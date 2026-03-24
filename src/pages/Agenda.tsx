@@ -1276,7 +1276,13 @@ export default function Agenda() {
                         {/* Normal appointments (1-3 overlap) — side-by-side columns */}
                         {normalAgs.map(ag => {
                           const pos = getAgPos(ag);
-                          const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                          const membro = equipe.find(m => m.id === (ag as any).membro_equipe_id);
+                          const memberColor = membro ? {
+                            backgroundColor: membro.cor + '18',
+                            borderColor: membro.cor + '60',
+                            color: membro.cor,
+                            borderLeftColor: membro.cor,
+                          } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
                           const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
                           const colWidth = 100 / layout.totalCols;
                           const leftPct = layout.col * colWidth;
