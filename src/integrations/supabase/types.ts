@@ -23,6 +23,7 @@ export type Database = {
           id: string
           observacoes: string | null
           paciente_id: string | null
+          recorrencia_grupo_id: string | null
           status: string
           terapeuta_id: string
           tipo_atendimento: string | null
@@ -37,6 +38,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           paciente_id?: string | null
+          recorrencia_grupo_id?: string | null
           status?: string
           terapeuta_id: string
           tipo_atendimento?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           id?: string
           observacoes?: string | null
           paciente_id?: string | null
+          recorrencia_grupo_id?: string | null
           status?: string
           terapeuta_id?: string
           tipo_atendimento?: string | null
