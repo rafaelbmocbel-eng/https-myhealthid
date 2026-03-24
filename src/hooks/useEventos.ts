@@ -32,6 +32,7 @@ export interface EventoPergunta {
   pergunta: string;
   opcoes: string[];
   obrigatoria: boolean;
+  limite_por_opcao: number | null;
 }
 
 export interface EventoInscricao {
