@@ -1068,6 +1068,21 @@ export default function Agenda() {
                 ))}
               </div>
             </div>
+
+            {/* Equipe legend */}
+            {equipe.length > 0 && (
+              <div className="clinical-card p-3">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Equipe</div>
+                <div className="space-y-1.5">
+                  {equipe.filter(m => m.ativo).map(m => (
+                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                      <span className="text-muted-foreground">{m.nome}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right: calendar grid */}
