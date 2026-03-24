@@ -1299,18 +1299,18 @@ export default function Agenda() {
                                 'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
                                 'hover:brightness-95 hover:shadow-md transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
-                                !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
+                                !memberColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
                                 top: pos.top,
                                 height: pos.height,
                                 left: `${leftPct}%`,
                                 width: `${colWidth - 1}%`,
-                                ...(patientColor ? {
-                                  backgroundColor: patientColor.backgroundColor,
-                                  borderColor: patientColor.borderColor,
-                                  color: patientColor.color,
-                                  borderLeftColor: patientColor.borderLeftColor,
+                                ...(memberColor ? {
+                                  backgroundColor: memberColor.backgroundColor,
+                                  borderColor: memberColor.borderColor,
+                                  color: memberColor.color,
+                                  borderLeftColor: memberColor.borderLeftColor,
                                 } : {}),
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
@@ -1331,7 +1331,7 @@ export default function Agenda() {
                               </div>
                               {layout.totalCols > 1 && (
                                 <div className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black shadow-sm" style={{
-                                  backgroundColor: patientColor?.borderLeftColor || sc.border.replace('border-', ''),
+                                  backgroundColor: memberColor?.borderLeftColor || sc.border.replace('border-', ''),
                                   color: '#fff',
                                 }}>
                                   {layout.col + 1}
