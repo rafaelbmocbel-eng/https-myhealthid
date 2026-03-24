@@ -442,11 +442,14 @@ export default function Agenda() {
     };
   }, [dragging, viewMode, updateAgendamento]);
 
+  const { membros: equipe } = useEquipe();
+
   const [form, setForm] = useState<FormData>({
     paciente_id: '', titulo: '',
     data_inicio: '', data_fim: '',
     status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
     recorrencia: 'none', recorrencia_semanas: 4,
+    membro_equipe_id: '',
   });
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
@@ -563,6 +566,7 @@ export default function Agenda() {
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
       recorrencia: 'none', recorrencia_semanas: 4,
+      membro_equipe_id: '',
     });
     setModal({ open: true });
   };
@@ -578,6 +582,7 @@ export default function Agenda() {
       observacoes: ag.observacoes || '',
       recorrencia: 'none',
       recorrencia_semanas: 4,
+      membro_equipe_id: (ag as any).membro_equipe_id || '',
     });
     setModal({ open: true, agendamento: ag });
   };
