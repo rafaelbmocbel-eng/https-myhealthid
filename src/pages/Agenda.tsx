@@ -1400,7 +1400,12 @@ export default function Agenda() {
                                 {/* Stacked appointment rows */}
                                 <div className={cn('divide-y', isExpanded && 'max-h-60 overflow-y-auto')}>
                                   {displayList.map(ag => {
-                                    const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                                    const membroDense = equipe.find(m => m.id === (ag as any).membro_equipe_id);
+                                    const denseColor = membroDense ? {
+                                      backgroundColor: membroDense.cor + '18',
+                                      borderLeftColor: membroDense.cor,
+                                      color: membroDense.cor,
+                                    } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
                                     const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
                                     const nome = ag.pacientes
                                       ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}`
@@ -1411,15 +1416,15 @@ export default function Agenda() {
                                         key={ag.id}
                                         className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/30 cursor-pointer transition-colors border-l-4"
                                         style={{
-                                          borderLeftColor: patientColor?.borderLeftColor || undefined,
-                                          ...(patientColor ? { backgroundColor: patientColor.backgroundColor + '80' } : {}),
+                                          borderLeftColor: denseColor?.borderLeftColor || undefined,
+                                          ...(denseColor ? { backgroundColor: denseColor.backgroundColor + '80' } : {}),
                                         }}
                                         onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
                                       >
                                         <div className={cn('flex items-center gap-0.5', sc.text)}>
                                           {sc.icon}
                                         </div>
-                                        <span className="text-[10px] font-semibold truncate flex-1" style={patientColor ? { color: patientColor.color } : {}}>
+                                        <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
                                           {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
                                         </span>
                                         <Badge variant="outline" className="text-[8px] h-4 px-1 shrink-0">
