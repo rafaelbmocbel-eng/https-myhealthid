@@ -78,6 +78,7 @@ interface FormData {
   status: string; tipo_atendimento: string; observacoes: string;
   recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal';
   recorrencia_semanas: number;
+  membro_equipe_id: string;
 }
 
 // Mini calendar component
