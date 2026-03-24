@@ -187,7 +187,7 @@ export default function Agenda() {
 
   // Drag confirmation state
   const [pendingDrag, setPendingDrag] = useState<{
-    agId: string;
+    ag: Agendamento;
     newStart: string;
     newEnd: string;
     label: string;
@@ -196,9 +196,17 @@ export default function Agenda() {
   // Recurrence edit modal state
   const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
     open: boolean;
-    action: 'save' | 'delete';
+    action: 'save' | 'delete' | 'drag';
     agendamento: Agendamento;
-    payload?: any;
+    payload?: {
+      paciente_id?: string;
+      titulo?: string;
+      data_inicio?: string;
+      data_fim?: string;
+      status?: Agendamento['status'];
+      tipo_atendimento?: string;
+      observacoes?: string;
+    };
   } | null>(null);
 
   // ── Auto-conclude past confirmed/pendente appointments ──
