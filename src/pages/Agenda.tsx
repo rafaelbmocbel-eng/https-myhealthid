@@ -1803,7 +1803,19 @@ export default function Agenda() {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={async () => {
               if (!pendingDrag) return;
-              await updateAgendamento(pendingDrag.agId, {
+              if (pendingDrag.ag.recorrencia_grupo_id) {
+                setRecurrenceEditModal({
+                  open: true,
+                  action: 'drag',
+                  agendamento: pendingDrag.ag,
+                  payload: {
+                    data_inicio: pendingDrag.newStart,
+                    data_fim: pendingDrag.newEnd,
+                  },
+                });
+                return;
+              }
+              await updateAgendamento(pendingDrag.ag.id, {
                 data_inicio: pendingDrag.newStart,
                 data_fim: pendingDrag.newEnd,
               });
