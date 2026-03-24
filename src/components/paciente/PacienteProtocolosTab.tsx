@@ -338,10 +338,15 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       <ProtocoloEditor
         avaliacao={analisandoAvaliacao}
         pacienteNome={pacienteNome}
-        onSave={() => {
+        onSave={(protocoloId?: string) => {
           setAnalisandoAvaliacao(null);
           qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
           qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo-paciente'] });
+          qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+          // Auto-navigate to the saved directive viewer
+          if (protocoloId) {
+            setViewingId(protocoloId);
+          }
         }}
         onCancel={() => setAnalisandoAvaliacao(null)}
       />

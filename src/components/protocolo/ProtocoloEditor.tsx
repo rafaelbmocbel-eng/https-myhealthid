@@ -37,7 +37,7 @@ interface Avaliacao {
 interface ProtocoloEditorProps {
     avaliacao: Avaliacao;
     pacienteNome: string;
-    onSave?: () => void;
+    onSave?: (protocoloId?: string) => void;
     onCancel: () => void;
 }
 
@@ -221,8 +221,9 @@ Diretriz montada automaticamente a partir da avaliação MyID.`;
             qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo'] });
             qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo-paciente'] });
             qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+            qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
             toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada, registrada no prontuário e pronta para uso.' });
-            if (onSave) onSave();
+            if (onSave) onSave((prot as any).id);
         } catch (err: any) {
             console.error(err);
             toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });
