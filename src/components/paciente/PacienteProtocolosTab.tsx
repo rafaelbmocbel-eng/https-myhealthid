@@ -328,6 +328,10 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
             const p = protocolos.find((x: any) => x.id === viewingId);
             if (p) handleExportPDF(p);
           }}
+          onNewDiretriz={() => {
+            setViewingId(null);
+            handleNovaDiretrizManual();
+          }}
         />
       </div>
     );
@@ -338,10 +342,15 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       <ProtocoloEditor
         avaliacao={analisandoAvaliacao}
         pacienteNome={pacienteNome}
-        onSave={() => {
+        onSave={(protocoloId?: string) => {
           setAnalisandoAvaliacao(null);
           qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
           qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo-paciente'] });
+          qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+          // Auto-navigate to the saved directive viewer
+          if (protocoloId) {
+            setViewingId(protocoloId);
+          }
         }}
         onCancel={() => setAnalisandoAvaliacao(null)}
       />

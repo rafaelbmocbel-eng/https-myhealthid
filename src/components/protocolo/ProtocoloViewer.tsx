@@ -21,9 +21,10 @@ interface Props {
   protocoloId: string;
   onBack: () => void;
   onExportPDF: () => void;
+  onNewDiretriz?: () => void;
 }
 
-export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Props) {
+export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNewDiretriz }: Props) {
   const [fasesAbertas, setFasesAbertas] = useState<Set<number>>(new Set([0]));
   const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'tratamento' | 'progressao'>('fases');
 
@@ -171,10 +172,18 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF }: Pr
           <ArrowLeft className="h-4 w-4" />
           <span className="hidden sm:inline">Voltar</span>
         </Button>
-        <Button onClick={onExportPDF} className="bg-gradient-primary text-white gap-2" size="sm">
-          <Download className="h-4 w-4" />
-          <span className="hidden sm:inline">Exportar PDF</span>
-        </Button>
+        <div className="flex items-center gap-2">
+          {onNewDiretriz && (
+            <Button variant="outline" onClick={onNewDiretriz} className="gap-2" size="sm">
+              <Zap className="h-4 w-4" />
+              <span className="hidden sm:inline">Nova Diretriz</span>
+            </Button>
+          )}
+          <Button onClick={onExportPDF} className="bg-gradient-primary text-white gap-2" size="sm">
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">Exportar PDF</span>
+          </Button>
+        </div>
       </div>
 
       {/* Cabeçalho protocolo */}
