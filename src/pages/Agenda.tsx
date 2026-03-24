@@ -587,7 +587,13 @@ export default function Agenda() {
     };
 
     if (modal.agendamento) {
-      // Editar existente: Validar limite checando overlaps excluindo o ID atual
+      // Check if this is a recurring appointment
+      if (modal.agendamento.recorrencia_grupo_id) {
+        setRecurrenceEditModal({ open: true, action: 'save', agendamento: modal.agendamento, payload });
+        setSubmitting(false);
+        return;
+      }
+      // Editar existente
       const overlapping = countOverlapping(payload.data_inicio, payload.data_fim, modal.agendamento.id);
       if (overlapping >= config.vagas_por_horario) {
         toast({ title: '⚠️ Horário lotado!', description: `Limites de ${config.vagas_por_horario} excedidos para nova hora.`, variant: 'destructive' });
@@ -603,29 +609,33 @@ export default function Agenda() {
         setSubmitting(false);
         return;
       }
-      // Create initial appointment
-      await createAgendamento(payload as Omit<Agendamento, 'id'>);
 
-      // Create recurring appointments if configured
       if (form.recorrencia !== 'none') {
+        // Batch create all recurring appointments in one insert
+        const grupoId = crypto.randomUUID();
         const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
         const totalWeeks = form.recorrencia_semanas;
         const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
 
-        for (let i = 1; i <= totalSlots; i++) {
+        const allItems: Omit<Agendamento, 'id'>[] = [];
+        for (let i = 0; i <= totalSlots; i++) {
           const newStart = new Date(form.data_inicio);
           newStart.setDate(newStart.getDate() + (intervalDays * i));
           const newEnd = new Date(form.data_fim);
           newEnd.setDate(newEnd.getDate() + (intervalDays * i));
 
-          await createAgendamento({
+          allItems.push({
             ...payload,
             data_inicio: newStart.toISOString(),
             data_fim: newEnd.toISOString(),
+            recorrencia_grupo_id: grupoId,
           } as Omit<Agendamento, 'id'>);
         }
 
-        toast({ title: `✅ ${totalSlots + 1} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+        await createBatchAgendamentos(allItems);
+        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+      } else {
+        await createAgendamento(payload as Omit<Agendamento, 'id'>);
       }
     }
 
@@ -635,8 +645,57 @@ export default function Agenda() {
 
   const handleDelete = async () => {
     if (!modal.agendamento) return;
+    // Check if recurring
+    if (modal.agendamento.recorrencia_grupo_id) {
+      setRecurrenceEditModal({ open: true, action: 'delete', agendamento: modal.agendamento });
+      return;
+    }
     setSubmitting(true);
     await deleteAgendamento(modal.agendamento.id);
+    setModal({ open: false });
+    setSubmitting(false);
+  };
+
+  const handleRecurrenceAction = async (scope: 'single' | 'future') => {
+    if (!recurrenceEditModal) return;
+    setSubmitting(true);
+    const { action, agendamento, payload } = recurrenceEditModal;
+
+    if (action === 'save') {
+      if (scope === 'single') {
+        await updateAgendamento(agendamento.id, payload);
+      } else {
+        // Calculate time delta and apply to all future
+        const origStart = parseISO(agendamento.data_inicio);
+        const newStart = new Date(payload.data_inicio);
+        const timeDelta = newStart.getTime() - origStart.getTime();
+
+        // For "all future", update common fields (status, tipo, obs, paciente) on all future
+        const commonPayload: any = {};
+        if (payload.paciente_id !== undefined) commonPayload.paciente_id = payload.paciente_id;
+        if (payload.titulo) commonPayload.titulo = payload.titulo;
+        if (payload.status) commonPayload.status = payload.status;
+        if (payload.tipo_atendimento) commonPayload.tipo_atendimento = payload.tipo_atendimento;
+        if (payload.observacoes !== undefined) commonPayload.observacoes = payload.observacoes;
+
+        if (Object.keys(commonPayload).length > 0) {
+          await updateFutureAgendamentos(agendamento.recorrencia_grupo_id!, agendamento.data_inicio, commonPayload);
+        }
+
+        // If time changed, update this single one's time (can't batch-shift all future easily)
+        if (timeDelta !== 0) {
+          await updateAgendamento(agendamento.id, { data_inicio: payload.data_inicio, data_fim: payload.data_fim });
+        }
+      }
+    } else if (action === 'delete') {
+      if (scope === 'single') {
+        await deleteAgendamento(agendamento.id);
+      } else {
+        await deleteFutureAgendamentos(agendamento.recorrencia_grupo_id!, agendamento.data_inicio);
+      }
+    }
+
+    setRecurrenceEditModal(null);
     setModal({ open: false });
     setSubmitting(false);
   };
