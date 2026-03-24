@@ -148,18 +148,59 @@ export function useAgenda() {
     }
   };
 
-  const updateFutureAgendamentos = async (grupoId: string, fromDate: string, data: Partial<Agendamento>) => {
+  const updateFutureAgendamentos = async (
+    grupoId: string,
+    fromDate: string,
+    data: Partial<Agendamento>,
+    shift?: {
+      oldStart: string;
+      oldEnd: string;
+      newStart: string;
+      newEnd: string;
+    },
+  ) => {
     if (!user) return;
     try {
-      const { error } = await withAuthLockRetry(async () => {
+      const { data: futuros, error: fetchError } = await withAuthLockRetry(async () => {
         return await supabase
           .from('agendamentos')
-          .update(data)
+          .select('id, data_inicio, data_fim')
           .eq('recorrencia_grupo_id', grupoId)
           .eq('terapeuta_id', user.id)
-          .gte('data_inicio', fromDate);
+          .gte('data_inicio', fromDate)
+          .order('data_inicio');
       });
-      if (error) throw error;
+
+      if (fetchError) throw fetchError;
+
+      const startDeltaMs = shift
+        ? new Date(shift.newStart).getTime() - new Date(shift.oldStart).getTime()
+        : 0;
+      const endDeltaMs = shift
+        ? new Date(shift.newEnd).getTime() - new Date(shift.oldEnd).getTime()
+        : 0;
+
+      const results = await Promise.all(
+        (futuros || []).map((item) => {
+          const updatePayload: Partial<Agendamento> = {
+            ...data,
+            ...(shift
+              ? {
+                  data_inicio: new Date(new Date(item.data_inicio).getTime() + startDeltaMs).toISOString(),
+                  data_fim: new Date(new Date(item.data_fim).getTime() + endDeltaMs).toISOString(),
+                }
+              : {}),
+          };
+
+          return withAuthLockRetry(async () => {
+            return await supabase.from('agendamentos').update(updatePayload).eq('id', item.id);
+          });
+        }),
+      );
+
+      const firstError = results.find((result) => result.error)?.error;
+      if (firstError) throw firstError;
+
       await fetchAll();
     } catch (error) {
       toast({

@@ -1,7 +1,8 @@
+import { forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, AlignCenter, CalendarDays, Users, FileText,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, BookOpen, PartyPopper
+  LayoutDashboard, AlignCenter, CalendarDays, Users,
+  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, PartyPopper
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -30,7 +31,7 @@ interface AppSidebarProps {
   onNavClick?: () => void;
 }
 
-export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSidebarProps) {
+const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar({ collapsed, onToggle, onNavClick }, ref) {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, profile, signOut } = useAuth();
@@ -49,6 +50,7 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
 
   return (
     <aside
+      ref={ref}
       className={cn(
         'fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300',
         collapsed ? 'w-[72px]' : 'w-56',
@@ -186,4 +188,6 @@ export default function AppSidebar({ collapsed, onToggle, onNavClick }: AppSideb
       </div>
     </aside>
   );
-}
+});
+
+export default AppSidebar;
