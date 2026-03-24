@@ -21,6 +21,7 @@ export type Database = {
           data_fim: string
           data_inicio: string
           id: string
+          membro_equipe_id: string | null
           observacoes: string | null
           paciente_id: string | null
           recorrencia_grupo_id: string | null
@@ -36,6 +37,7 @@ export type Database = {
           data_fim: string
           data_inicio: string
           id?: string
+          membro_equipe_id?: string | null
           observacoes?: string | null
           paciente_id?: string | null
           recorrencia_grupo_id?: string | null
@@ -51,6 +53,7 @@ export type Database = {
           data_fim?: string
           data_inicio?: string
           id?: string
+          membro_equipe_id?: string | null
           observacoes?: string | null
           paciente_id?: string | null
           recorrencia_grupo_id?: string | null
@@ -61,6 +64,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "agendamentos_membro_equipe_id_fkey"
+            columns: ["membro_equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipe_membros"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "agendamentos_paciente_id_fkey"
             columns: ["paciente_id"]
@@ -599,6 +609,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      equipe_membros: {
+        Row: {
+          ativo: boolean
+          cor: string
+          created_at: string
+          id: string
+          nome: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cor?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       evento_inscricoes: {
         Row: {
