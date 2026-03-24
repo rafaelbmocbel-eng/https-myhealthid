@@ -669,31 +669,31 @@ export default function Agenda() {
     setSubmitting(true);
     const { action, agendamento, payload } = recurrenceEditModal;
 
-    if (action === 'save') {
+    if (action === 'save' || action === 'drag') {
       if (scope === 'single') {
-        await updateAgendamento(agendamento.id, payload);
-      } else {
-        // Calculate time delta and apply to all future
-        const origStart = parseISO(agendamento.data_inicio);
-        const newStart = new Date(payload.data_inicio);
-        const timeDelta = newStart.getTime() - origStart.getTime();
+        await updateAgendamento(agendamento.id, payload || {});
+      } else if (payload) {
+        const commonPayload: Partial<Agendamento> = {
+          paciente_id: payload.paciente_id,
+          titulo: payload.titulo,
+          status: payload.status,
+          tipo_atendimento: payload.tipo_atendimento,
+          observacoes: payload.observacoes,
+        };
 
-        // For "all future", update common fields (status, tipo, obs, paciente) on all future
-        const commonPayload: any = {};
-        if (payload.paciente_id !== undefined) commonPayload.paciente_id = payload.paciente_id;
-        if (payload.titulo) commonPayload.titulo = payload.titulo;
-        if (payload.status) commonPayload.status = payload.status;
-        if (payload.tipo_atendimento) commonPayload.tipo_atendimento = payload.tipo_atendimento;
-        if (payload.observacoes !== undefined) commonPayload.observacoes = payload.observacoes;
-
-        if (Object.keys(commonPayload).length > 0) {
-          await updateFutureAgendamentos(agendamento.recorrencia_grupo_id!, agendamento.data_inicio, commonPayload);
-        }
-
-        // If time changed, update this single one's time (can't batch-shift all future easily)
-        if (timeDelta !== 0) {
-          await updateAgendamento(agendamento.id, { data_inicio: payload.data_inicio, data_fim: payload.data_fim });
-        }
+        await updateFutureAgendamentos(
+          agendamento.recorrencia_grupo_id!,
+          agendamento.data_inicio,
+          commonPayload,
+          payload.data_inicio && payload.data_fim
+            ? {
+                oldStart: agendamento.data_inicio,
+                oldEnd: agendamento.data_fim,
+                newStart: payload.data_inicio,
+                newEnd: payload.data_fim,
+              }
+            : undefined,
+        );
       }
     } else if (action === 'delete') {
       if (scope === 'single') {
@@ -704,6 +704,7 @@ export default function Agenda() {
     }
 
     setRecurrenceEditModal(null);
+    setPendingDrag(null);
     setModal({ open: false });
     setSubmitting(false);
   };
