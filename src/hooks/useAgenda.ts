@@ -24,6 +24,7 @@ export interface Agendamento {
   tipo_atendimento?: string;
   observacoes?: string;
   cor?: string;
+  recorrencia_grupo_id?: string;
   pacientes?: Paciente;
 }
 
