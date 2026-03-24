@@ -591,7 +591,7 @@ export default function Agenda() {
     setSubmitting(true);
     const pacienteIdFinal = form.paciente_id === 'bloqueio' ? undefined : (form.paciente_id || undefined);
     const pac = pacientes.find(p => p.id === pacienteIdFinal);
-    const payload = {
+    const payload: any = {
       paciente_id: pacienteIdFinal,
       titulo: form.titulo || (pac ? `${pac.nome} ${pac.sobrenome}` : form.tipo_atendimento === 'bloqueio' ? 'Bloqueado' : 'Agendamento'),
       data_inicio: new Date(form.data_inicio).toISOString(),
@@ -599,6 +599,7 @@ export default function Agenda() {
       status: form.status as Agendamento['status'],
       tipo_atendimento: form.tipo_atendimento,
       observacoes: form.observacoes,
+      membro_equipe_id: form.membro_equipe_id || null,
     };
 
     if (modal.agendamento) {
