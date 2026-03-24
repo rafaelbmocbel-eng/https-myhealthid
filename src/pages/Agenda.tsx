@@ -193,6 +193,14 @@ export default function Agenda() {
     label: string;
   } | null>(null);
 
+  // Recurrence edit modal state
+  const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
+    open: boolean;
+    action: 'save' | 'delete';
+    agendamento: Agendamento;
+    payload?: any;
+  } | null>(null);
+
   // ── Auto-conclude past confirmed/pendente appointments ──
   useEffect(() => {
     if (!user || loading || agendamentos.length === 0) return;
