@@ -13,13 +13,18 @@ const updateSW = registerSW({
 
     const triggerUpdateCheck = () => registration.update().catch(() => undefined);
 
-    window.setInterval(triggerUpdateCheck, 60 * 1000);
+    window.setInterval(triggerUpdateCheck, 30 * 1000);
     window.addEventListener("focus", triggerUpdateCheck);
     document.addEventListener("visibilitychange", () => {
       if (document.visibilityState === "visible") triggerUpdateCheck();
     });
   },
   onNeedRefresh() {
+    if ("caches" in window) {
+      caches.keys().then((names) => {
+        for (const name of names) caches.delete(name);
+      });
+    }
     updateSW(true);
   },
 });
