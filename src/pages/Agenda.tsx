@@ -1798,6 +1798,39 @@ export default function Agenda() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Recurrence edit/delete scope dialog */}
+      <AlertDialog open={!!recurrenceEditModal?.open} onOpenChange={(open) => { if (!open) setRecurrenceEditModal(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir agendamento recorrente' : 'Editar agendamento recorrente'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de uma série recorrente. O que deseja fazer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleRecurrenceAction('single')}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir apenas este' : 'Alterar apenas este'}
+            </Button>
+            <Button
+              variant={recurrenceEditModal?.action === 'delete' ? 'destructive' : 'default'}
+              onClick={() => handleRecurrenceAction('future')}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir este e futuros' : 'Alterar este e futuros'}
+            </Button>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </AppLayout>
   );
 }
