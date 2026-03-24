@@ -421,7 +421,7 @@ export default function Agenda() {
 
       const label = `${format(newStart, "dd/MM 'às' HH:mm")} – ${format(newEnd, 'HH:mm')}`;
       setPendingDrag({
-        agId: d.ag.id,
+        ag: d.ag,
         newStart: newStart.toISOString(),
         newEnd: newEnd.toISOString(),
         label,
