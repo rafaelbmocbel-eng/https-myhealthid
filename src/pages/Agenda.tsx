@@ -1447,6 +1447,13 @@ export default function Agenda() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Recurring indicator */}
+            {modal.agendamento?.recorrencia_grupo_id && (
+              <div className="flex items-center gap-2 text-xs bg-accent/30 border border-border rounded-lg px-3 py-2">
+                <Repeat className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium text-muted-foreground">Agendamento recorrente — alterações podem afetar toda a série</span>
+              </div>
+            )}
 
             {/* ===== AÇÕES RÁPIDAS DE STATUS (só para edição de sessões passadas confirmadas) ===== */}
             {modal.agendamento && modal.agendamento.paciente_id && ['confirmado'].includes(modal.agendamento.status) && parseISO(modal.agendamento.data_fim) < new Date() && (
