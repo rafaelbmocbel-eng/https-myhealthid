@@ -24,6 +24,7 @@ export interface Agendamento {
   tipo_atendimento?: string;
   observacoes?: string;
   cor?: string;
+  recorrencia_grupo_id?: string;
   pacientes?: Paciente;
 }
 
@@ -123,6 +124,70 @@ export function useAgenda() {
       toast({
         title: 'Erro ao agendar',
         description: error instanceof Error ? error.message : 'Falha ao criar agendamento.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const createBatchAgendamentos = async (items: Omit<Agendamento, 'id'>[]) => {
+    if (!user || items.length === 0) return;
+
+    try {
+      const rows = items.map(d => ({ ...d, terapeuta_id: user.id }));
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase.from('agendamentos').insert(rows);
+      });
+      if (error) throw error;
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao agendar',
+        description: error instanceof Error ? error.message : 'Falha ao criar agendamentos.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const updateFutureAgendamentos = async (grupoId: string, fromDate: string, data: Partial<Agendamento>) => {
+    if (!user) return;
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase
+          .from('agendamentos')
+          .update(data)
+          .eq('recorrencia_grupo_id', grupoId)
+          .eq('terapeuta_id', user.id)
+          .gte('data_inicio', fromDate);
+      });
+      if (error) throw error;
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao atualizar',
+        description: error instanceof Error ? error.message : 'Falha ao atualizar agendamentos.',
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const deleteFutureAgendamentos = async (grupoId: string, fromDate: string) => {
+    if (!user) return;
+    try {
+      const { error } = await withAuthLockRetry(async () => {
+        return await supabase
+          .from('agendamentos')
+          .delete()
+          .eq('recorrencia_grupo_id', grupoId)
+          .eq('terapeuta_id', user.id)
+          .gte('data_inicio', fromDate);
+      });
+      if (error) throw error;
+      toast({ title: 'Agendamentos futuros removidos' });
+      await fetchAll();
+    } catch (error) {
+      toast({
+        title: 'Erro ao excluir',
+        description: error instanceof Error ? error.message : 'Falha ao excluir agendamentos.',
         variant: 'destructive',
       });
     }
@@ -229,8 +294,11 @@ export function useAgenda() {
     config,
     loading,
     createAgendamento,
+    createBatchAgendamentos,
     updateAgendamento,
+    updateFutureAgendamentos,
     deleteAgendamento,
+    deleteFutureAgendamentos,
     createPaciente,
     saveConfig,
     refresh: fetchAll,

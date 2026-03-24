@@ -1,0 +1,1 @@
+ALTER TABLE public.agendamentos ADD COLUMN IF NOT EXISTS recorrencia_grupo_id uuid DEFAULT NULL;

@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign
+  Smartphone, CreditCard, Info, DollarSign, Repeat
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -152,7 +152,7 @@ function MiniCalendar({
 
 export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
-  const { agendamentos, pacientes, config, loading, createAgendamento, updateAgendamento, deleteAgendamento, createPaciente, refresh } = useAgenda();
+  const { agendamentos, pacientes, config, loading, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
   const { toast } = useToast();
 
@@ -191,6 +191,14 @@ export default function Agenda() {
     newStart: string;
     newEnd: string;
     label: string;
+  } | null>(null);
+
+  // Recurrence edit modal state
+  const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
+    open: boolean;
+    action: 'save' | 'delete';
+    agendamento: Agendamento;
+    payload?: any;
   } | null>(null);
 
   // ── Auto-conclude past confirmed/pendente appointments ──
@@ -579,7 +587,13 @@ export default function Agenda() {
     };
 
     if (modal.agendamento) {
-      // Editar existente: Validar limite checando overlaps excluindo o ID atual
+      // Check if this is a recurring appointment
+      if (modal.agendamento.recorrencia_grupo_id) {
+        setRecurrenceEditModal({ open: true, action: 'save', agendamento: modal.agendamento, payload });
+        setSubmitting(false);
+        return;
+      }
+      // Editar existente
       const overlapping = countOverlapping(payload.data_inicio, payload.data_fim, modal.agendamento.id);
       if (overlapping >= config.vagas_por_horario) {
         toast({ title: '⚠️ Horário lotado!', description: `Limites de ${config.vagas_por_horario} excedidos para nova hora.`, variant: 'destructive' });
@@ -595,29 +609,33 @@ export default function Agenda() {
         setSubmitting(false);
         return;
       }
-      // Create initial appointment
-      await createAgendamento(payload as Omit<Agendamento, 'id'>);
 
-      // Create recurring appointments if configured
       if (form.recorrencia !== 'none') {
+        // Batch create all recurring appointments in one insert
+        const grupoId = crypto.randomUUID();
         const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
         const totalWeeks = form.recorrencia_semanas;
         const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
 
-        for (let i = 1; i <= totalSlots; i++) {
+        const allItems: Omit<Agendamento, 'id'>[] = [];
+        for (let i = 0; i <= totalSlots; i++) {
           const newStart = new Date(form.data_inicio);
           newStart.setDate(newStart.getDate() + (intervalDays * i));
           const newEnd = new Date(form.data_fim);
           newEnd.setDate(newEnd.getDate() + (intervalDays * i));
 
-          await createAgendamento({
+          allItems.push({
             ...payload,
             data_inicio: newStart.toISOString(),
             data_fim: newEnd.toISOString(),
+            recorrencia_grupo_id: grupoId,
           } as Omit<Agendamento, 'id'>);
         }
 
-        toast({ title: `✅ ${totalSlots + 1} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+        await createBatchAgendamentos(allItems);
+        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+      } else {
+        await createAgendamento(payload as Omit<Agendamento, 'id'>);
       }
     }
 
@@ -627,8 +645,57 @@ export default function Agenda() {
 
   const handleDelete = async () => {
     if (!modal.agendamento) return;
+    // Check if recurring
+    if (modal.agendamento.recorrencia_grupo_id) {
+      setRecurrenceEditModal({ open: true, action: 'delete', agendamento: modal.agendamento });
+      return;
+    }
     setSubmitting(true);
     await deleteAgendamento(modal.agendamento.id);
+    setModal({ open: false });
+    setSubmitting(false);
+  };
+
+  const handleRecurrenceAction = async (scope: 'single' | 'future') => {
+    if (!recurrenceEditModal) return;
+    setSubmitting(true);
+    const { action, agendamento, payload } = recurrenceEditModal;
+
+    if (action === 'save') {
+      if (scope === 'single') {
+        await updateAgendamento(agendamento.id, payload);
+      } else {
+        // Calculate time delta and apply to all future
+        const origStart = parseISO(agendamento.data_inicio);
+        const newStart = new Date(payload.data_inicio);
+        const timeDelta = newStart.getTime() - origStart.getTime();
+
+        // For "all future", update common fields (status, tipo, obs, paciente) on all future
+        const commonPayload: any = {};
+        if (payload.paciente_id !== undefined) commonPayload.paciente_id = payload.paciente_id;
+        if (payload.titulo) commonPayload.titulo = payload.titulo;
+        if (payload.status) commonPayload.status = payload.status;
+        if (payload.tipo_atendimento) commonPayload.tipo_atendimento = payload.tipo_atendimento;
+        if (payload.observacoes !== undefined) commonPayload.observacoes = payload.observacoes;
+
+        if (Object.keys(commonPayload).length > 0) {
+          await updateFutureAgendamentos(agendamento.recorrencia_grupo_id!, agendamento.data_inicio, commonPayload);
+        }
+
+        // If time changed, update this single one's time (can't batch-shift all future easily)
+        if (timeDelta !== 0) {
+          await updateAgendamento(agendamento.id, { data_inicio: payload.data_inicio, data_fim: payload.data_fim });
+        }
+      }
+    } else if (action === 'delete') {
+      if (scope === 'single') {
+        await deleteAgendamento(agendamento.id);
+      } else {
+        await deleteFutureAgendamentos(agendamento.recorrencia_grupo_id!, agendamento.data_inicio);
+      }
+    }
+
+    setRecurrenceEditModal(null);
     setModal({ open: false });
     setSubmitting(false);
   };
@@ -1226,6 +1293,7 @@ export default function Agenda() {
                               }}
                             >
                               <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
+                                {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
@@ -1379,6 +1447,13 @@ export default function Agenda() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
+            {/* Recurring indicator */}
+            {modal.agendamento?.recorrencia_grupo_id && (
+              <div className="flex items-center gap-2 text-xs bg-accent/30 border border-border rounded-lg px-3 py-2">
+                <Repeat className="h-3.5 w-3.5 text-primary" />
+                <span className="font-medium text-muted-foreground">Agendamento recorrente — alterações podem afetar toda a série</span>
+              </div>
+            )}
 
             {/* ===== AÇÕES RÁPIDAS DE STATUS (só para edição de sessões passadas confirmadas) ===== */}
             {modal.agendamento && modal.agendamento.paciente_id && ['confirmado'].includes(modal.agendamento.status) && parseISO(modal.agendamento.data_fim) < new Date() && (
@@ -1728,6 +1803,39 @@ export default function Agenda() {
             }}>
               Confirmar
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Recurrence edit/delete scope dialog */}
+      <AlertDialog open={!!recurrenceEditModal?.open} onOpenChange={(open) => { if (!open) setRecurrenceEditModal(null); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir agendamento recorrente' : 'Editar agendamento recorrente'}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Este agendamento faz parte de uma série recorrente. O que deseja fazer?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <Button
+              variant="outline"
+              onClick={() => handleRecurrenceAction('single')}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir apenas este' : 'Alterar apenas este'}
+            </Button>
+            <Button
+              variant={recurrenceEditModal?.action === 'delete' ? 'destructive' : 'default'}
+              onClick={() => handleRecurrenceAction('future')}
+              disabled={submitting}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+              {recurrenceEditModal?.action === 'delete' ? 'Excluir este e futuros' : 'Alterar este e futuros'}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
