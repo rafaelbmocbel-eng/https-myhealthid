@@ -1606,6 +1606,50 @@ export default function Agenda() {
               </Select>
             </div>
 
+            {/* Profissional da equipe */}
+            {equipe.length > 0 && (
+              <div>
+                <Label>Profissional</Label>
+                <div className="flex gap-1.5 flex-wrap mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, membro_equipe_id: '' }))}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                      !form.membro_equipe_id
+                        ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                        : 'bg-card border-border text-muted-foreground hover:bg-accent/30',
+                    )}
+                  >
+                    Nenhum
+                  </button>
+                  {equipe.filter(m => m.ativo).map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, membro_equipe_id: m.id }))}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                        form.membro_equipe_id === m.id
+                          ? 'ring-1 ring-offset-1'
+                          : 'bg-card border-border text-muted-foreground hover:bg-accent/30',
+                      )}
+                      style={form.membro_equipe_id === m.id ? {
+                        backgroundColor: m.cor + '18',
+                        borderColor: m.cor,
+                        color: m.cor,
+                        // @ts-ignore
+                        '--tw-ring-color': m.cor,
+                      } : {}}
+                    >
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: m.cor }} />
+                      {m.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Horário + Duração rápida */}
             <div className="space-y-3">
               <div>
