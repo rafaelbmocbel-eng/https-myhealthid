@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
+import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
@@ -77,6 +78,7 @@ interface FormData {
   status: string; tipo_atendimento: string; observacoes: string;
   recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal';
   recorrencia_semanas: number;
+  membro_equipe_id: string;
 }
 
 // Mini calendar component
@@ -440,11 +442,14 @@ export default function Agenda() {
     };
   }, [dragging, viewMode, updateAgendamento]);
 
+  const { membros: equipe } = useEquipe();
+
   const [form, setForm] = useState<FormData>({
     paciente_id: '', titulo: '',
     data_inicio: '', data_fim: '',
     status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
     recorrencia: 'none', recorrencia_semanas: 4,
+    membro_equipe_id: '',
   });
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
@@ -561,6 +566,7 @@ export default function Agenda() {
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
       recorrencia: 'none', recorrencia_semanas: 4,
+      membro_equipe_id: '',
     });
     setModal({ open: true });
   };
@@ -576,6 +582,7 @@ export default function Agenda() {
       observacoes: ag.observacoes || '',
       recorrencia: 'none',
       recorrencia_semanas: 4,
+      membro_equipe_id: (ag as any).membro_equipe_id || '',
     });
     setModal({ open: true, agendamento: ag });
   };
@@ -584,7 +591,7 @@ export default function Agenda() {
     setSubmitting(true);
     const pacienteIdFinal = form.paciente_id === 'bloqueio' ? undefined : (form.paciente_id || undefined);
     const pac = pacientes.find(p => p.id === pacienteIdFinal);
-    const payload = {
+    const payload: any = {
       paciente_id: pacienteIdFinal,
       titulo: form.titulo || (pac ? `${pac.nome} ${pac.sobrenome}` : form.tipo_atendimento === 'bloqueio' ? 'Bloqueado' : 'Agendamento'),
       data_inicio: new Date(form.data_inicio).toISOString(),
@@ -592,6 +599,7 @@ export default function Agenda() {
       status: form.status as Agendamento['status'],
       tipo_atendimento: form.tipo_atendimento,
       observacoes: form.observacoes,
+      membro_equipe_id: form.membro_equipe_id || null,
     };
 
     if (modal.agendamento) {
@@ -1060,6 +1068,21 @@ export default function Agenda() {
                 ))}
               </div>
             </div>
+
+            {/* Equipe legend */}
+            {equipe.length > 0 && (
+              <div className="clinical-card p-3">
+                <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-2">Equipe</div>
+                <div className="space-y-1.5">
+                  {equipe.filter(m => m.ativo).map(m => (
+                    <div key={m.id} className="flex items-center gap-2 text-xs">
+                      <div className="h-3 w-3 rounded-full" style={{ backgroundColor: m.cor }} />
+                      <span className="text-muted-foreground">{m.nome}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Right: calendar grid */}
@@ -1268,7 +1291,13 @@ export default function Agenda() {
                         {/* Normal appointments (1-3 overlap) — side-by-side columns */}
                         {normalAgs.map(ag => {
                           const pos = getAgPos(ag);
-                          const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                          const membro = equipe.find(m => m.id === (ag as any).membro_equipe_id);
+                          const memberColor = membro ? {
+                            backgroundColor: membro.cor + '18',
+                            borderColor: membro.cor + '60',
+                            color: membro.cor,
+                            borderLeftColor: membro.cor,
+                          } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
                           const layout = overlapLayout[ag.id] || { col: 0, totalCols: 1 };
                           const colWidth = 100 / layout.totalCols;
                           const leftPct = layout.col * colWidth;
@@ -1285,18 +1314,18 @@ export default function Agenda() {
                                 'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
                                 'hover:brightness-95 hover:shadow-md transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
-                                !patientColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
+                                !memberColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
                               style={{
                                 top: pos.top,
                                 height: pos.height,
                                 left: `${leftPct}%`,
                                 width: `${colWidth - 1}%`,
-                                ...(patientColor ? {
-                                  backgroundColor: patientColor.backgroundColor,
-                                  borderColor: patientColor.borderColor,
-                                  color: patientColor.color,
-                                  borderLeftColor: patientColor.borderLeftColor,
+                                ...(memberColor ? {
+                                  backgroundColor: memberColor.backgroundColor,
+                                  borderColor: memberColor.borderColor,
+                                  color: memberColor.color,
+                                  borderLeftColor: memberColor.borderLeftColor,
                                 } : {}),
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
@@ -1317,7 +1346,7 @@ export default function Agenda() {
                               </div>
                               {layout.totalCols > 1 && (
                                 <div className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black shadow-sm" style={{
-                                  backgroundColor: patientColor?.borderLeftColor || sc.border.replace('border-', ''),
+                                  backgroundColor: memberColor?.borderLeftColor || sc.border.replace('border-', ''),
                                   color: '#fff',
                                 }}>
                                   {layout.col + 1}
@@ -1386,7 +1415,12 @@ export default function Agenda() {
                                 {/* Stacked appointment rows */}
                                 <div className={cn('divide-y', isExpanded && 'max-h-60 overflow-y-auto')}>
                                   {displayList.map(ag => {
-                                    const patientColor = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
+                                    const membroDense = equipe.find(m => m.id === (ag as any).membro_equipe_id);
+                                    const denseColor = membroDense ? {
+                                      backgroundColor: membroDense.cor + '18',
+                                      borderLeftColor: membroDense.cor,
+                                      color: membroDense.cor,
+                                    } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
                                     const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
                                     const nome = ag.pacientes
                                       ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}`
@@ -1397,15 +1431,15 @@ export default function Agenda() {
                                         key={ag.id}
                                         className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/30 cursor-pointer transition-colors border-l-4"
                                         style={{
-                                          borderLeftColor: patientColor?.borderLeftColor || undefined,
-                                          ...(patientColor ? { backgroundColor: patientColor.backgroundColor + '80' } : {}),
+                                          borderLeftColor: denseColor?.borderLeftColor || undefined,
+                                          ...(denseColor ? { backgroundColor: denseColor.backgroundColor + '80' } : {}),
                                         }}
                                         onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
                                       >
                                         <div className={cn('flex items-center gap-0.5', sc.text)}>
                                           {sc.icon}
                                         </div>
-                                        <span className="text-[10px] font-semibold truncate flex-1" style={patientColor ? { color: patientColor.color } : {}}>
+                                        <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
                                           {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
                                         </span>
                                         <Badge variant="outline" className="text-[8px] h-4 px-1 shrink-0">
@@ -1586,6 +1620,50 @@ export default function Agenda() {
                 </SelectContent>
               </Select>
             </div>
+
+            {/* Profissional da equipe */}
+            {equipe.length > 0 && (
+              <div>
+                <Label>Profissional</Label>
+                <div className="flex gap-1.5 flex-wrap mt-1.5">
+                  <button
+                    type="button"
+                    onClick={() => setForm(f => ({ ...f, membro_equipe_id: '' }))}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                      !form.membro_equipe_id
+                        ? 'border-primary bg-primary/10 text-primary ring-1 ring-primary/30'
+                        : 'bg-card border-border text-muted-foreground hover:bg-accent/30',
+                    )}
+                  >
+                    Nenhum
+                  </button>
+                  {equipe.filter(m => m.ativo).map(m => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setForm(f => ({ ...f, membro_equipe_id: m.id }))}
+                      className={cn(
+                        'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all',
+                        form.membro_equipe_id === m.id
+                          ? 'ring-1 ring-offset-1'
+                          : 'bg-card border-border text-muted-foreground hover:bg-accent/30',
+                      )}
+                      style={form.membro_equipe_id === m.id ? {
+                        backgroundColor: m.cor + '18',
+                        borderColor: m.cor,
+                        color: m.cor,
+                        // @ts-ignore
+                        '--tw-ring-color': m.cor,
+                      } : {}}
+                    >
+                      <div className="h-3 w-3 rounded-full shrink-0" style={{ backgroundColor: m.cor }} />
+                      {m.nome}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* Horário + Duração rápida */}
             <div className="space-y-3">

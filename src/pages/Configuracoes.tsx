@@ -17,6 +17,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServicosAtivos, ServicosAtivos } from '@/hooks/useServicosAtivos';
+import EquipeManager from '@/components/equipe/EquipeManager';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -117,6 +118,9 @@ export default function Configuracoes() {
             })}
           </div>
         </div>
+
+        {/* Equipe / Profissionais */}
+        <EquipeManager />
 
         {/* Dias de atendimento */}
         <div className="clinical-card mb-6">
