@@ -1293,6 +1293,7 @@ export default function Agenda() {
                               }}
                             >
                               <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
+                                {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
                                 {sc.icon}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
