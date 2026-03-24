@@ -188,4 +188,6 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
       </div>
     </aside>
   );
-}
+});
+
+export default AppSidebar;
