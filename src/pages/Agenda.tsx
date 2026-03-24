@@ -33,6 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
+import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
 
