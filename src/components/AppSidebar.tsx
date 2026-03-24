@@ -50,6 +50,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
 
   return (
     <aside
+      ref={ref}
       className={cn(
         'fixed left-0 top-0 h-screen z-40 flex flex-col transition-all duration-300',
         collapsed ? 'w-[72px]' : 'w-56',
