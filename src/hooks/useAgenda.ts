@@ -48,7 +48,7 @@ const DEFAULT_CONFIG: ConfigAgenda = {
 };
 
 export function useAgenda() {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const { toast } = useToast();
   const [agendamentos, setAgendamentos] = useState<Agendamento[]>([]);
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
@@ -56,6 +56,7 @@ export function useAgenda() {
   const [loading, setLoading] = useState(true);
 
   const fetchAll = useCallback(async () => {
+    if (!authReady) return;
     if (!user) {
       setAgendamentos([]);
       setPacientes([]);
@@ -103,7 +104,7 @@ export function useAgenda() {
     } finally {
       setLoading(false);
     }
-  }, [user, toast]);
+  }, [user, authReady, toast]);
 
   useEffect(() => {
     void fetchAll();

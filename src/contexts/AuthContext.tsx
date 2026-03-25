@@ -20,6 +20,7 @@ interface AuthContextType {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  authReady: boolean;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
@@ -32,14 +33,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [authReady, setAuthReady] = useState(false);
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('user_id', userId)
-        .maybeSingle();
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', userId)
+          .maybeSingle()
+      );
 
       if (error) {
         throw error;
@@ -59,6 +63,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       async (_event, nextSession) => {
         setSession(nextSession);
         setUser(nextSession?.user ?? null);
+        setAuthReady(true);
 
         if (nextSession?.user) {
           setLoading(true);
@@ -74,10 +79,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const bootstrapSession = async () => {
       try {
-        // Single attempt – don't block the UI for 30s on lock contention
-        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        const { data: { session: currentSession } } = await withAuthLockRetry(
+          () => supabase.auth.getSession(),
+          { maxAttempts: 5, baseDelayMs: 300 }
+        );
+
         setSession(currentSession);
         setUser(currentSession?.user ?? null);
+        setAuthReady(true);
 
         if (currentSession?.user) {
           await fetchProfile(currentSession.user.id);
@@ -91,6 +100,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(null);
         setProfile(null);
         setLoading(false);
+        setAuthReady(true);
       }
     };
 
@@ -134,7 +144,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, authReady, signIn, signUp, signOut }}>
       {children}
     </AuthContext.Provider>
   );

@@ -2,22 +2,25 @@ import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export function useAgendamentoNotifications() {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const { toast } = useToast();
   const [pendingCount, setPendingCount] = useState(0);
 
   // Fetch initial count of pending auto-agendamentos
   const fetchPendingCount = useCallback(async () => {
-    if (!user) return;
-    const { count } = await supabase
-      .from('agendamentos')
-      .select('*', { count: 'exact', head: true })
-      .eq('terapeuta_id', user.id)
-      .eq('status', 'pendente');
+    if (!authReady || !user) return;
+    const { count } = await withAuthLockRetry(async () =>
+      await supabase
+        .from('agendamentos')
+        .select('*', { count: 'exact', head: true })
+        .eq('terapeuta_id', user.id)
+        .eq('status', 'pendente')
+    );
     setPendingCount(count || 0);
-  }, [user]);
+  }, [user, authReady]);
 
   useEffect(() => {
     fetchPendingCount();
@@ -25,7 +28,7 @@ export function useAgendamentoNotifications() {
 
   // Subscribe to realtime INSERT on agendamentos
   useEffect(() => {
-    if (!user) return;
+    if (!authReady || !user) return;
 
     const channel = supabase
       .channel('agendamentos-notifications')
@@ -80,7 +83,7 @@ export function useAgendamentoNotifications() {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [user, toast]);
+  }, [user, authReady, toast]);
 
   const clearCount = useCallback(() => setPendingCount(0), []);
 

@@ -29,7 +29,7 @@ export interface PacienteServico {
 }
 
 export function usePacientes(filtroServico?: string) {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
 
   // Busca pacientes com seus serviços em uma única query JOIN
   const { data: pacientesRaw = [], isLoading } = useQuery({
@@ -47,7 +47,7 @@ export function usePacientes(filtroServico?: string) {
         return data || [];
       }, { maxAttempts: 4, baseDelayMs: 300 });
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   // Normaliza os dados: extrai a lista de serviços ativos para cada paciente

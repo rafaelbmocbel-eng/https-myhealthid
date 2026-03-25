@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Notificacao {
   id: string;
@@ -15,23 +16,25 @@ export interface Notificacao {
 }
 
 export function useNotificacoes() {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const qc = useQueryClient();
 
   const { data: notificacoes = [], isLoading } = useQuery({
     queryKey: ['notificacoes', user?.id],
     queryFn: async () => {
       if (!user) return [];
-      const { data, error } = await supabase
-        .from('notificacoes')
-        .select('*')
-        .eq('terapeuta_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(50);
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('notificacoes')
+          .select('*')
+          .eq('terapeuta_id', user.id)
+          .order('created_at', { ascending: false })
+          .limit(50)
+      );
       if (error) throw error;
       return (data ?? []) as Notificacao[];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const naoLidas = notificacoes.filter(n => !n.lida).length;
