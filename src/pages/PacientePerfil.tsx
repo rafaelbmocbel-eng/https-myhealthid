@@ -415,19 +415,19 @@ export default function PacientePerfil() {
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
+              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Visão Integrada</span><span className="sm:hidden">Visão</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evolução</span><span className="sm:hidden">Evol.</span>
+            <TabsTrigger value="historico-avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
+              <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Hist. Avaliações</span><span className="sm:hidden">Hist.</span>
             </TabsTrigger>
             <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
+              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes e Tratamentos</span><span className="sm:hidden">Dir.</span>
+            </TabsTrigger>
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
+              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
             </TabsTrigger>
             <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <Heart className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Engajamento</span><span className="sm:hidden">Engaj.</span>
-            </TabsTrigger>
-            <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
             </TabsTrigger>
           </TabsList>
 
