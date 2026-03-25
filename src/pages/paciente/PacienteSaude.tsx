@@ -73,11 +73,11 @@ export default function PacienteSaude() {
           <HealthSyncCard onSyncComplete={handleSyncComplete} />
 
           <Tabs value={tab} onValueChange={setTab}>
-            <TabsList className="w-full overflow-x-auto flex-nowrap justify-start gap-0 h-9 bg-muted/50 p-0.5">
+           <TabsList className="w-full overflow-x-auto flex-nowrap justify-start gap-0 h-9 bg-muted/50 p-0.5 scrollbar-none">
               {tabs.map(t => (
-                <TabsTrigger key={t.value} value={t.value} className="text-[10px] gap-1 px-2 flex-shrink-0 data-[state=active]:shadow-sm">
-                  <t.icon className="h-3 w-3" />
-                  {t.label}
+                <TabsTrigger key={t.value} value={t.value} className="text-[10px] gap-1 px-2 min-w-0 flex-shrink-0 data-[state=active]:shadow-sm whitespace-nowrap">
+                  <t.icon className="h-3 w-3 shrink-0" />
+                  <span className="truncate">{t.label}</span>
                 </TabsTrigger>
               ))}
             </TabsList>
