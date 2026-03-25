@@ -245,7 +245,10 @@ export default function Protocolos() {
           <ProtocoloEditor
             avaliacao={analiseAvaliacao}
             pacienteNome={getPacienteNome(analiseAvaliacao.paciente_id)}
-            onSave={() => setAnaliseAvaliacao(null)}
+            onSave={(protocoloId) => {
+              setAnaliseAvaliacao(null);
+              if (protocoloId) setViewingId(protocoloId);
+            }}
             onCancel={() => setAnaliseAvaliacao(null)}
           />
         </div>
@@ -263,6 +266,10 @@ export default function Protocolos() {
           onExportPDF={() => {
             const p = protocolos.find(x => x.id === viewingId);
             if (p) handleExportPDF(p);
+          }}
+          onNewDiretriz={() => {
+            setViewingId(null);
+            navigate('/metodo-identidade');
           }}
         />
       </AppLayout>
