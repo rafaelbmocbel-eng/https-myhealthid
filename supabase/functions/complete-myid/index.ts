@@ -292,32 +292,18 @@ serve(async (req) => {
           : `Componente psicológico elevado (${scoreP}/10) — sugere-se investigação de crenças disfuncionais e estratégias de coping.`;
       }
 
-      const descricao = `📋 QUESTIONÁRIO MyID RESPONDIDO PELO PACIENTE — ${pacienteNome}
-
-🎯 RESULTADO GERAL: Score MyID-100 ${myidFormatted}/100 — ${classificacao}
-📌 ${severityDesc}
-${flagsText}
-
-📊 PERFIL MULTIDIMENSIONAL:
-• Dor (D): ${scoreD}/10 — ${dNum >= 7 ? "dor intensa" : dNum >= 4 ? "dor moderada" : "dor leve/controlada"}${painLocation !== "não especificada" ? `, localizada em ${painLocation}` : ""}${painType !== "não especificado" ? `, tipo ${painType}` : ""}${painFrequency !== "não informada" ? `, frequência: ${painFrequency}` : ""}${painDuration !== "não informada" ? `, duração: ${painDuration}` : ""}
-• Funcionalidade (EFI): ${scoreEFI}/10 — ${efiNum >= 7 ? "limitação funcional severa" : efiNum >= 4 ? "limitação funcional moderada" : "funcionalidade preservada"}${funcText ? ` (impacto: ${funcText})` : ""}
-• Psicológico (P): ${scoreP}/10 — ${pNum >= 7 ? "componente emocional significativo" : pNum >= 4 ? "influência psicológica moderada" : "perfil emocional estável"}
-• Demanda (I): ${scoreI}/10 — ${iNum >= 7 ? "sobrecarga de demandas elevada" : iNum >= 4 ? "demandas moderadas" : "demandas controladas"}
-• Ruído Sistêmico (N): ${scoreN}/10 — ${nNum >= 7 ? "múltiplos fatores de estilo de vida comprometidos" : nNum >= 4 ? "alguns fatores de regulação afetados" : "estilo de vida favorável à recuperação"}
-• Regulação (R): ${scoreR}/10
-• Contexto (C): ${scoreC}/10
-
-🔍 DOMÍNIOS PRIORITÁRIOS (scores ≥ 5):
-${topConcernsText}
-
-🧬 ESTILO DE VIDA REPORTADO:
-Paciente refere ${lifestyleText}. Intensidade de dor reportada (NRS): ${painIntensity}/10.
-${psychText ? `\n🧠 PERFIL PSICOLÓGICO:\n${psychText}` : ""}
-
-📝 INTERPRETAÇÃO CLÍNICA:
-O paciente ${pacienteNome} apresenta um índice MyID-100 de ${myidFormatted}/100, classificado como "${classificacao}". ${topConcerns.length >= 3 ? "O perfil revela comprometimento em múltiplas dimensões, sugerindo uma condição de complexidade elevada que demanda abordagem integrada e multidisciplinar." : topConcerns.length >= 1 ? `Os domínios de ${topConcerns.map(d => d.name).join(" e ")} requerem atenção prioritária nas condutas terapêuticas.` : "O perfil sistêmico encontra-se em faixa favorável, com foco recomendado em manutenção e prevenção."} ${dNum >= 6 && efiNum >= 6 ? "A combinação de dor intensa com limitação funcional significativa indica necessidade de intervenção analgésica associada à reabilitação funcional progressiva." : ""} ${pNum >= 6 ? "O componente psicológico elevado sugere que estratégias de educação em dor, terapia cognitivo-comportamental ou técnicas de regulação emocional devem ser incorporadas ao plano terapêutico." : ""} ${nNum >= 6 ? "Os fatores de estilo de vida comprometidos (ruído sistêmico) podem estar perpetuando o quadro — orientações sobre higiene do sono, manejo do estresse e hábitos saudáveis são essenciais." : ""}
-
-🔄 Avaliação preenchida pelo paciente via link público (MyID-100 v2.0). Dados completos disponíveis para análise detalhada no dashboard.`;
+      // Build concise 8-line summary for prontuário
+      const topDomains = dimensions.filter(d => d.score >= 5).slice(0, 3).map(d => `${d.name} ${d.score.toFixed(1)}`).join(", ");
+      const flagsSummary = redFlags && redFlagAlerts.length > 0 ? ` ⚠️ Red flags detectadas.` : "";
+      
+      const descricao = `MyID-100: ${myidFormatted}/100 — ${classificacao}.${flagsSummary}
+Dor (D): ${scoreD}/10 | Funcionalidade (EFI): ${scoreEFI}/10 | Psicológico (P): ${scoreP}/10
+Demanda (I): ${scoreI}/10 | Ruído (N): ${scoreN}/10 | Regulação (R): ${scoreR}/10
+Domínios prioritários: ${topDomains || "nenhum em nível crítico"}.
+Dor: ${painLocation !== "não especificada" ? painLocation : "local não especificado"}, NRS ${painIntensity}/10, ${painType !== "não especificado" ? painType : ""} ${painFrequency !== "não informada" ? `(${painFrequency})` : ""}.
+Estilo de vida: ${lifestyleText}.${psychText ? `\nPerfil psicológico: ${pNum >= 7 ? "componente emocional significativo" : "influência psicológica moderada"}.` : ""}
+${severityDesc.split("—")[0].trim()} — ${myidNum <= 49 ? "intervenção prioritária" : myidNum <= 69 ? "monitoramento e ajustes" : "manutenção e prevenção"}.
+Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
 
       await supabase.from("notas_prontuario").insert({
         paciente_id: pacienteId,
