@@ -192,6 +192,36 @@
     min-height: 100vh;
     min-height: 100dvh;
     min-height: -webkit-fill-available;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Ensure all containers respect viewport width on mobile */
+  #root {
+    overflow-x: hidden;
+    width: 100%;
+    max-width: 100vw;
+  }
+
+  /* Fix for iOS input zoom — prevent zoom on focus for inputs smaller than 16px */
+  @media screen and (max-width: 767px) {
+    input, select, textarea {
+      font-size: 16px !important;
+    }
+  }
+
+  /* Ensure images and media never overflow their containers */
+  img, video, canvas, svg {
+    max-width: 100%;
+    height: auto;
+  }
+
+  /* Fix tables on mobile */
+  table {
+    display: block;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    max-width: 100%;
   }
 }
 
@@ -298,7 +328,22 @@
   }
 }
 
-@layer utilities {
+  /* Hide scrollbar utility for horizontal scroll tabs */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Responsive text truncation */
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+
   .text-gradient-primary {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
