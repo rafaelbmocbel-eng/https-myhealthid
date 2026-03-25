@@ -25,8 +25,8 @@ export function useServicosAtivos() {
   const fetch = useCallback(async () => {
     if (!authReady) return;
     if (!user) { setLoading(false); return; }
-    const { data } = await withAuthLockRetry(() =>
-      supabase
+    const { data } = await withAuthLockRetry(async () =>
+      await supabase
         .from('config_agenda')
         .select('servicos_ativos')
         .eq('terapeuta_id', user.id)
@@ -43,8 +43,8 @@ export function useServicosAtivos() {
     const normalized = { ...DEFAULT_SERVICOS, ...next };
     setServicos(normalized);
 
-    const { data: existingConfig } = await withAuthLockRetry(() =>
-      supabase
+    const { data: existingConfig } = await withAuthLockRetry(async () =>
+      await supabase
         .from('config_agenda')
         .select('id')
         .eq('terapeuta_id', user.id)
@@ -52,8 +52,8 @@ export function useServicosAtivos() {
     );
 
     if (existingConfig?.id) {
-      await withAuthLockRetry(() =>
-        supabase
+      await withAuthLockRetry(async () =>
+        await supabase
           .from('config_agenda')
           .update({ servicos_ativos: normalized as any })
           .eq('id', existingConfig.id)
@@ -61,8 +61,8 @@ export function useServicosAtivos() {
       return;
     }
 
-    await withAuthLockRetry(() =>
-      supabase
+    await withAuthLockRetry(async () =>
+      await supabase
         .from('config_agenda')
         .insert({ terapeuta_id: user.id, servicos_ativos: normalized as any })
     );

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface Evento {
   id: string;
@@ -49,21 +50,23 @@ export interface EventoInscricao {
 }
 
 export function useEventos() {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const qc = useQueryClient();
 
   const eventosQuery = useQuery({
     queryKey: ['eventos', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('eventos')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('data_evento', { ascending: false });
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('eventos')
+          .select('*')
+          .eq('terapeuta_id', user!.id)
+          .order('data_evento', { ascending: false })
+      );
       if (error) throw error;
       return data as unknown as Evento[];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const criarEvento = useMutation({

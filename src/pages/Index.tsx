@@ -25,7 +25,7 @@ import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 
 export default function Index() {
-  const { user, profile, loading } = useAuth();
+  const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const { servicos } = useServicosAtivos();
 
@@ -35,7 +35,7 @@ export default function Index() {
       const { data } = await supabase.from('pacientes').select('id, nome, sobrenome').eq('terapeuta_id', user!.id).eq('ativo', true);
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: agendamentosHoje = [] } = useQuery({
@@ -50,7 +50,7 @@ export default function Index() {
         .order('data_inicio');
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: avaliacoesPendentes = [] } = useQuery({
@@ -59,7 +59,7 @@ export default function Index() {
       const { data } = await supabase.from('avaliacoes').select('id').eq('terapeuta_id', user!.id).eq('status', 'pendente');
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: pacienteServicos = [] } = useQuery({
@@ -68,7 +68,7 @@ export default function Index() {
       const { data } = await supabase.from('paciente_servicos').select('paciente_id, servico').eq('ativo', true);
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: statsData } = useQuery({
@@ -112,7 +112,7 @@ export default function Index() {
         taxaPresenca,
       };
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: avaliacoesRaw = [] } = useQuery({
@@ -125,7 +125,7 @@ export default function Index() {
         .order('created_at', { ascending: true });
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: avaliacoesCobZero = [] } = useQuery({
@@ -138,7 +138,7 @@ export default function Index() {
         .order('created_at', { ascending: true });
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: medidasStudio = [] } = useQuery({
@@ -151,7 +151,7 @@ export default function Index() {
         .order('data_medida', { ascending: true });
       return data || [];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const { data: amostraClinica } = useQuery({

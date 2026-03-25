@@ -35,8 +35,8 @@ export function useEquipe() {
   const fetch = useCallback(async () => {
     if (!authReady) return;
     if (!user) { setMembros([]); setLoading(false); return; }
-    const { data, error } = await withAuthLockRetry(() =>
-      supabase
+    const { data, error } = await withAuthLockRetry(async () =>
+      await supabase
         .from('equipe_membros')
         .select('*')
         .eq('terapeuta_id', user.id)
@@ -51,8 +51,8 @@ export function useEquipe() {
 
   const addMembro = async (nome: string, cor: string) => {
     if (!user) return;
-    const { error } = await withAuthLockRetry(() =>
-      supabase.from('equipe_membros').insert({ terapeuta_id: user.id, nome, cor })
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('equipe_membros').insert({ terapeuta_id: user.id, nome, cor })
     );
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Membro adicionado! 👥' });
@@ -60,16 +60,16 @@ export function useEquipe() {
   };
 
   const updateMembro = async (id: string, data: Partial<Pick<MembroEquipe, 'nome' | 'cor' | 'ativo'>>) => {
-    const { error } = await withAuthLockRetry(() =>
-      supabase.from('equipe_membros').update(data).eq('id', id)
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('equipe_membros').update(data).eq('id', id)
     );
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     await fetch();
   };
 
   const removeMembro = async (id: string) => {
-    const { error } = await withAuthLockRetry(() =>
-      supabase.from('equipe_membros').delete().eq('id', id)
+    const { error } = await withAuthLockRetry(async () =>
+      await supabase.from('equipe_membros').delete().eq('id', id)
     );
     if (error) { toast({ title: 'Erro', description: error.message, variant: 'destructive' }); return; }
     toast({ title: 'Membro removido' });

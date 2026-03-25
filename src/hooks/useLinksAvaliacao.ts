@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { getAvaliacaoUrl } from '@/utils/linkUrls';
+import { withAuthLockRetry } from '@/lib/authLock';
 
 export interface LinkAvaliacao {
   id: string;
@@ -20,7 +21,7 @@ export interface LinkAvaliacao {
 }
 
 export function useLinksAvaliacao() {
-  const { user } = useAuth();
+  const { user, authReady } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [gerando, setGerando] = useState(false);
@@ -28,15 +29,17 @@ export function useLinksAvaliacao() {
   const { data: links = [], isLoading } = useQuery({
     queryKey: ['links_avaliacao', user?.id],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('links_avaliacao')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: false });
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
+          .from('links_avaliacao')
+          .select('*')
+          .eq('terapeuta_id', user!.id)
+          .order('created_at', { ascending: false })
+      );
       if (error) throw error;
       return data as LinkAvaliacao[];
     },
-    enabled: !!user,
+    enabled: authReady && !!user,
   });
 
   const gerarLink = async (pacienteId: string): Promise<LinkAvaliacao | null> => {

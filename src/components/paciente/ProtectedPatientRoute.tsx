@@ -9,13 +9,13 @@ interface Props {
 }
 
 export default function ProtectedPatientRoute({ children }: Props) {
-  const { user, loading: authLoading } = useAuth();
+  const { user, loading: authLoading, authReady } = useAuth();
   const [role, setRole] = useState<'patient' | 'professional' | 'unknown' | null>(null);
   const [checking, setChecking] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
 
   useEffect(() => {
-    if (authLoading) return;
+    if (authLoading || !authReady) return;
     if (!user) {
       setChecking(false);
       return;
@@ -63,9 +63,9 @@ export default function ProtectedPatientRoute({ children }: Props) {
     };
 
     detectRole();
-  }, [user, authLoading, retryCount]);
+  }, [user, authLoading, authReady, retryCount]);
 
-  if (authLoading || checking) {
+  if (authLoading || !authReady || checking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

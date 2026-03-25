@@ -37,8 +37,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchProfile = useCallback(async (userId: string) => {
     try {
-      const { data, error } = await withAuthLockRetry(() =>
-        supabase
+      const { data, error } = await withAuthLockRetry(async () =>
+        await supabase
           .from('profiles')
           .select('*')
           .eq('user_id', userId)

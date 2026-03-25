@@ -12,11 +12,11 @@ import { supabase } from '@/integrations/supabase/client';
  * For non-authenticated users or professionals, children render normally.
  */
 export default function PatientGuard({ children }: { children: ReactNode }) {
-  const { user, loading } = useAuth();
+  const { user, loading, authReady } = useAuth();
   const [isPatient, setIsPatient] = useState<boolean | null>(null);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || !authReady) return;
 
     // Not logged in — let the page handle its own auth redirect
     if (!user) {
@@ -50,9 +50,9 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
     };
 
     check();
-  }, [user, loading]);
+  }, [user, loading, authReady]);
 
-  if (loading || isPatient === null) {
+  if (loading || !authReady || isPatient === null) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
