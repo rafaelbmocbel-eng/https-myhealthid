@@ -722,6 +722,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         toast({ title: 'Avaliação Estrutural salva! ✅', description: `Score geral: ${Number(sData.scoreStructuralGeneral).toFixed(1)}` });
                       }
                     }}
+                    pacienteId={paciente.id}
+                    terapeutaId={user?.id}
+                    pacienteNome={patientName}
                     onBack={() => setShowStructural(false)}
                   />
                 ) : lastSavedData ? (
@@ -751,7 +754,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         </div>
                       </div>
                     </div>
-                    <StructuralResultsSummary data={lastSavedData} />
+                    <StructuralResultsSummary data={lastSavedData} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
                   </div>
                 ) : (
                   <div className="clinical-card">
@@ -819,7 +822,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                               </div>
                               {isExpanded && (
                                 <div className="p-3 pt-0">
-                                  <StructuralResultsSummary data={dados} />
+                                  <StructuralResultsSummary data={dados} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
                                 </div>
                               )}
                             </div>

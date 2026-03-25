@@ -6,7 +6,7 @@ import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Download, Activity, Target, CheckCircle2,
   Dumbbell, Clock, RotateCcw, ChevronDown, ChevronUp, Loader2, Brain, Zap,
-  Shield, Beaker, TrendingUp, AlertTriangle, BookOpen, Layers
+  Shield, Beaker, TrendingUp, AlertTriangle, BookOpen, Layers, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
@@ -255,6 +255,18 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           <p className="text-sm text-muted-foreground">{scores.prognose || 'Moderado – com aderência ao tratamento.'}</p>
         </div>
       </div>
+
+      {protocolo.descricao && (
+        <div className="clinical-card border-l-4 border-primary/40 bg-primary/5 mb-6">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <h3 className="font-semibold text-sm">Resumo e Insights</h3>
+          </div>
+          <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
+            {protocolo.descricao}
+          </pre>
+        </div>
+      )}
 
       {/* Scores */}
       <ProtocoloScores scores={scores} />

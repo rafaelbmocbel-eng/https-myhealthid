@@ -201,7 +201,7 @@ Diretriz montada automaticamente a partir da avaliação MyID.`;
                     .insert({
                         paciente_id: avaliacao.paciente_id,
                         terapeuta_id: user.id,
-                        tipo: 'diretriz_tratamento',
+                        tipo: 'conduta_diretriz',
                         titulo: `Diretriz de Tratamento — ${analisePersonalizada.duracaoTotal}`,
                         descricao: notaDescricao,
                         referencia_id: (prot as any).id,

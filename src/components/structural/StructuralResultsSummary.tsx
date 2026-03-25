@@ -2,6 +2,10 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { useToast } from '@/hooks/use-toast';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   StructuralAssessmentData, UNIT_CONFIGS,
   classifyScore, classifyScoreColor, classifyScoreBg,
@@ -9,13 +13,16 @@ import {
 import {
   AlertTriangle, ArrowRight, Target, TrendingDown, Zap,
   FileText, Sparkles, Printer, Check, Dumbbell, Brain,
-  ChevronDown, ChevronUp, Copy, Clock, Heart, Shield,
+  ChevronDown, ChevronUp, Copy, Clock, Heart, Shield, Save, Loader2, Plus,
 } from 'lucide-react';
 import StructuralConnectionMap from './StructuralConnectionMap';
-import { generateRehabInsights, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
+import { generateRehabInsights, generateEngagementSummary, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
 
 interface Props {
   data: StructuralAssessmentData;
+  pacienteId?: string;
+  terapeutaId?: string;
+  pacienteNome?: string;
 }
 
 // ── Evidence-based Techniques Menu ────────────────────────────────────
@@ -114,12 +121,17 @@ const PHASE_COLORS = [
   { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500' },
 ];
 
-export default function StructuralResultsSummary({ data }: Props) {
+export default function StructuralResultsSummary({ data, pacienteId, terapeutaId, pacienteNome }: Props) {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const qc = useQueryClient();
   const [showGuidelines, setShowGuidelines] = useState(false);
   const [guidelines, setGuidelines] = useState('');
   const [copied, setCopied] = useState(false);
   const [openPhases, setOpenPhases] = useState<Set<number>>(new Set([0]));
   const [openRehabDetails, setOpenRehabDetails] = useState<Set<number>>(new Set());
+  const [saving, setSaving] = useState(false);
+  const [savedProtocoloId, setSavedProtocoloId] = useState<string | null>(null);
 
   const phases = buildPhases(data);
   const rehabInsights = generateRehabInsights(data.units);
@@ -195,6 +207,143 @@ export default function StructuralResultsSummary({ data }: Props) {
     lines.push('  Gerado pelo Método Identidade · MyHealth ID');
     setGuidelines(lines.join('\n'));
     setShowGuidelines(true);
+  };
+
+  const parseWeeks = (input: string) => {
+    const nums = input.match(/\d+/g) || [];
+    const start = Number(nums[0] || 1);
+    const end = Number(nums[1] || nums[0] || 1);
+    return { start, end };
+  };
+
+  const parseSessions = (input: string) => {
+    const m = input.match(/(\d+)/);
+    return m ? Number(m[1]) : 2;
+  };
+
+  const resetDiretriz = () => {
+    setSelectedTecnicas(() => {
+      const init: Record<number, Set<number>> = {};
+      phases.forEach((_, i) => { init[i] = new Set(); });
+      return init;
+    });
+    setSelectedExercicios(() => {
+      const init: Record<number, Set<number>> = {};
+      phases.forEach((_, i) => { init[i] = new Set(); });
+      return init;
+    });
+    setGuidelines('');
+    setShowGuidelines(false);
+    setCopied(false);
+    setSavedProtocoloId(null);
+  };
+
+  const handleSaveGuideline = async () => {
+    if (!guidelines) return;
+    const terapeutaFinal = terapeutaId || user?.id;
+    if (!pacienteId || !terapeutaFinal) {
+      toast({ title: 'Erro ao salvar diretriz', description: 'Paciente ou terapeuta não identificado.', variant: 'destructive' });
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const insightsSummary = generateEngagementSummary(rehabInsights);
+      const descricao = `${guidelines}\n\n${insightsSummary ? `💡 INSIGHTS DE TRATAMENTO\n\n${insightsSummary}` : ''}`.trim();
+
+      const objetivosTop = data.clinicalPriorities.length > 0
+        ? `Prioridades: ${data.clinicalPriorities.slice(0, 3).map(p => p.unitId).join(', ')}`
+        : 'Reabilitação estrutural baseada em evidências.';
+
+      const duracaoEstimada = rehabInsights.length > 0
+        ? `${rehabInsights[0].maxWeeks} semanas`
+        : '8 semanas';
+
+      const { data: prot, error: errProt } = await supabase
+        .from('protocolos' as any)
+        .insert({
+          paciente_id: pacienteId,
+          terapeuta_id: terapeutaFinal,
+          titulo: `Diretriz Estrutural — ${pacienteNome || 'Paciente'}`,
+          descricao,
+          duracao_total: duracaoEstimada,
+          frequencia: '2-3x por semana',
+          objetivo_geral: objetivosTop,
+          perfil_dominante: data.primaryDriver ? [data.primaryDriver] : [],
+          hierarquia_terapeutica: data.clinicalPriorities.map(p => ({
+            foco: p.unitId,
+            prioridade: p.priority,
+            severidade: p.score,
+            motivo: p.action,
+          })),
+          scores_avaliacao: {
+            score_estrutural: data.scoreStructuralGeneral,
+            classificacao: data.classification,
+          },
+          status: 'ativo',
+          data_inicio: new Date().toISOString().split('T')[0],
+        })
+        .select('id')
+        .single();
+
+      if (errProt) throw errProt;
+
+      const fasesRows = phases.map((phase, pi) => {
+        const selTec = selectedTecnicas[pi] || new Set();
+        const selEx = selectedExercicios[pi] || new Set();
+        const objetivos = [phase.objetivo];
+        if (selTec.size > 0) {
+          const nomes = phase.tecnicas.filter((_, ti) => selTec.has(ti)).map(t => t.nome);
+          objetivos.push(`Técnicas: ${nomes.join(', ')}`);
+        }
+        if (selEx.size > 0) {
+          const nomes = phase.exercicios.filter((_, ei) => selEx.has(ei)).map(e => e.nome);
+          objetivos.push(`Exercícios: ${nomes.join(', ')}`);
+        }
+        const weeks = parseWeeks(phase.semanas);
+        return {
+          protocolo_id: (prot as any).id,
+          numero_fase: pi + 1,
+          titulo: phase.titulo,
+          semanas_inicio: weeks.start,
+          semanas_fim: weeks.end,
+          objetivos,
+          sessoes_por_semana: parseSessions(phase.frequencia),
+        };
+      });
+
+      const { error: errFases } = await supabase
+        .from('protocolo_fases' as any)
+        .insert(fasesRows);
+      if (errFases) throw errFases;
+
+      await (supabase as any).from('notas_prontuario').insert({
+        paciente_id: pacienteId,
+        terapeuta_id: terapeutaFinal,
+        tipo: 'conduta_diretriz',
+        titulo: `Diretriz Estrutural — ${data.classification || 'Estrutural'}`,
+        descricao,
+        referencia_id: (prot as any).id,
+        dados_extras: {
+          protocolo_id: (prot as any).id,
+          score_estrutural: data.scoreStructuralGeneral,
+          fases: phases.length,
+        },
+      });
+
+      setSavedProtocoloId((prot as any).id);
+      qc.invalidateQueries({ queryKey: ['protocolos'] });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+      qc.invalidateQueries({ queryKey: ['resumo-protocolos', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      toast({ title: '✅ Diretriz salva', description: 'Diretriz registrada e enviada para o prontuário.' });
+    } catch (err: any) {
+      console.error(err);
+      toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleCopy = () => { navigator.clipboard.writeText(guidelines); setCopied(true); setTimeout(() => setCopied(false), 2000); };
@@ -587,10 +736,28 @@ export default function StructuralResultsSummary({ data }: Props) {
                 <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
                   <Printer className="h-3.5 w-3.5" /> Imprimir
                 </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowGuidelines(false)} className="gap-1.5 ml-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleSaveGuideline}
+                  disabled={saving || !pacienteId || !(terapeutaId || user?.id)}
+                  className="gap-1.5"
+                >
+                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                  Salvar Diretriz
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => setShowGuidelines(false)} className="gap-1.5">
                   Editar Seleção
                 </Button>
+                <Button variant="outline" size="sm" onClick={resetDiretriz} className="gap-1.5 ml-auto">
+                  <Plus className="h-3.5 w-3.5" /> Nova Diretriz
+                </Button>
               </div>
+              {savedProtocoloId && (
+                <div className="text-[10px] text-emerald-600 flex items-center gap-1">
+                  <Check className="h-3 w-3" /> Diretriz salva e vinculada ao prontuário.
+                </div>
+              )}
               <pre className="text-[10px] leading-relaxed p-4 bg-card rounded-lg border overflow-x-auto whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">{guidelines}</pre>
             </div>
           )}

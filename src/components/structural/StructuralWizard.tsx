@@ -22,11 +22,14 @@ interface Props {
   initialData?: StructuralAssessmentData;
   onComplete: (data: StructuralAssessmentData) => void;
   onBack?: () => void;
+  pacienteId?: string;
+  terapeutaId?: string;
+  pacienteNome?: string;
 }
 
 type ViewMode = 'map' | 'preferences' | 'results';
 
-export default function StructuralWizard({ initialData, onComplete, onBack }: Props) {
+export default function StructuralWizard({ initialData, onComplete, onBack, pacienteId, terapeutaId, pacienteNome }: Props) {
   const [data, setData] = useState<StructuralAssessmentData>(initialData || createDefaultAssessment());
   const [selectedUnit, setSelectedUnit] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>('map');
@@ -78,7 +81,7 @@ export default function StructuralWizard({ initialData, onComplete, onBack }: Pr
   if (viewMode === 'results') {
     return (
       <div className="space-y-4">
-        <StructuralResultsSummary data={data} />
+        <StructuralResultsSummary data={data} pacienteId={pacienteId} terapeutaId={terapeutaId} pacienteNome={pacienteNome} />
         <div className="flex justify-between items-center bg-card p-4 rounded-xl shadow-sm border">
           <Button variant="outline" onClick={() => setViewMode('map')} className="gap-2">
             <ArrowLeft className="h-4 w-4" /> Voltar ao Mapa
