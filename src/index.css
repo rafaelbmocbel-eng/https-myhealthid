@@ -328,7 +328,22 @@
   }
 }
 
-@layer utilities {
+  /* Hide scrollbar utility for horizontal scroll tabs */
+  .scrollbar-none {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
+  .scrollbar-none::-webkit-scrollbar {
+    display: none;
+  }
+
+  /* Responsive text truncation */
+  .break-anywhere {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+
   .text-gradient-primary {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
