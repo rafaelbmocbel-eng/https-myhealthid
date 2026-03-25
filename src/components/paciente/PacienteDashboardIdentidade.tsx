@@ -1188,20 +1188,111 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   </div>
                                 </div>
                               ) : (
-                                <div className="space-y-2">
-                                  <div>
-                                    <p className="font-semibold text-foreground mb-1">Resumo</p>
-                                    <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border">
-                                      {resultado?.resumo_clinico || 'Resumo não disponível'}
-                                    </p>
+                              <div className="space-y-3">
+                                  {/* Queixa Principal & Classificação */}
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Queixa Principal</p>
+                                      <p className="text-sm text-foreground">{resultado?.queixa_principal || 'N/I'}</p>
+                                    </div>
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-0.5">Classificação</p>
+                                      <p className="text-sm text-foreground">{resultado?.classificacao_severidade || 'N/I'}</p>
+                                    </div>
                                   </div>
-                                  {av.transcricao && (
-                                    <div>
-                                      <p className="font-semibold text-foreground mb-1">Transcrição</p>
-                                      <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
-                                        {av.transcricao}
+
+                                  {/* Dor */}
+                                  {resultado?.dor && (
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">🩹 Dor</p>
+                                      <div className="text-xs text-foreground space-y-0.5">
+                                        <p>📍 Local: {resultado.dor.localizacao || 'N/I'}</p>
+                                        <p>📊 EVA: {resultado.dor.intensidade_eva || '?'}/10 — {resultado.dor.tipo || 'N/I'}</p>
+                                        {resultado.dor.padroes_agravamento && <p>⚡ Padrões: {resultado.dor.padroes_agravamento}</p>}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Resumo Clínico */}
+                                  <div className="bg-background rounded-lg p-2 border">
+                                    <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📋 Resumo Clínico</p>
+                                    <p className="text-xs text-muted-foreground whitespace-pre-wrap">{resultado?.resumo_clinico || 'N/A'}</p>
+                                  </div>
+
+                                  {/* Hipóteses Diagnósticas */}
+                                  {resultado?.hipoteses_diagnosticas?.length > 0 && (
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">🔍 Hipóteses Diagnósticas</p>
+                                      <div className="space-y-1.5">
+                                        {resultado.hipoteses_diagnosticas.map((h: any, idx: number) => (
+                                          <div key={idx} className="text-xs border-l-2 border-primary/30 pl-2">
+                                            <span className="font-semibold text-foreground">{h.diagnostico}</span>
+                                            {h.probabilidade && <Badge variant="outline" className="ml-1.5 text-[9px] h-4">{h.probabilidade}</Badge>}
+                                            {h.evidencia && <p className="text-muted-foreground mt-0.5 italic">{h.evidencia}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Insights Baseados em Evidências */}
+                                  {resultado?.insights_baseados_evidencia?.length > 0 && (
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">📚 Insights Baseados em Evidências</p>
+                                      <div className="space-y-1.5">
+                                        {resultado.insights_baseados_evidencia.map((i: any, idx: number) => (
+                                          <div key={idx} className="text-xs border-l-2 border-violet-300 pl-2">
+                                            <p className="text-foreground">{i.insight}</p>
+                                            {i.referencia && <p className="text-muted-foreground text-[10px] italic mt-0.5">📖 {i.referencia}</p>}
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Red Flags */}
+                                  {resultado?.red_flags?.length > 0 && (
+                                    <div className="bg-red-50 dark:bg-red-950/20 rounded-lg p-2 border border-red-200 dark:border-red-800">
+                                      <p className="text-[10px] font-bold text-red-700 dark:text-red-400 uppercase tracking-wider mb-1">⚠️ Red Flags</p>
+                                      <ul className="text-xs text-red-600 dark:text-red-400 space-y-0.5">
+                                        {resultado.red_flags.map((rf: string, idx: number) => (
+                                          <li key={idx}>• {rf}</li>
+                                        ))}
+                                      </ul>
+                                    </div>
+                                  )}
+
+                                  {/* Funcionalidade */}
+                                  {resultado?.funcionalidade && (
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">🏃 Funcionalidade</p>
+                                      <div className="text-xs text-foreground space-y-0.5">
+                                        {resultado.funcionalidade.nivel_impacto && <p>Impacto: {resultado.funcionalidade.nivel_impacto}</p>}
+                                        {resultado.funcionalidade.limitacoes_avds?.length > 0 && (
+                                          <p>Limitações: {resultado.funcionalidade.limitacoes_avds.join(', ')}</p>
+                                        )}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Plano / Conduta */}
+                                  {resultado?.plano_conduta && (
+                                    <div className="bg-background rounded-lg p-2 border">
+                                      <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider mb-1">🎯 Plano de Conduta</p>
+                                      <p className="text-xs text-muted-foreground whitespace-pre-wrap">
+                                        {typeof resultado.plano_conduta === 'string' ? resultado.plano_conduta : JSON.stringify(resultado.plano_conduta, null, 2)}
                                       </p>
                                     </div>
+                                  )}
+
+                                  {/* Transcrição (colapsada) */}
+                                  {av.transcricao && (
+                                    <details className="bg-background rounded-lg p-2 border">
+                                      <summary className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider cursor-pointer">📝 Transcrição</summary>
+                                      <p className="text-muted-foreground whitespace-pre-wrap text-xs mt-1 max-h-32 overflow-y-auto">
+                                        {av.transcricao}
+                                      </p>
+                                    </details>
                                   )}
                                 </div>
                               )}
