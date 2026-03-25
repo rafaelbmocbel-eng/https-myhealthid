@@ -385,6 +385,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const [lastSavedData, setLastSavedData] = useState<StructuralAssessmentData | null>(null);
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
+  const [criandoDiretrizHistorico, setCriandoDiretrizHistorico] = useState(false);
+  const [avaliacaoParaDiretriz, setAvaliacaoParaDiretriz] = useState<any | null>(null);
+  const [subTabAtiva, setSubTabAtiva] = useState('integrada');
 
   // Save voice edit and reprocess with AI
   const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string) => {
