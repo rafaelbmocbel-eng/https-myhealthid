@@ -34,6 +34,9 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
+import ProntuarioTimeline from './ProntuarioTimeline';
+import ResumoProntuario from './ResumoProntuario';
+import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 
 interface Paciente {
   id: string;
@@ -67,6 +70,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
+  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(paciente.id);
 
   const linkAtivo = links.find(l => l.paciente_id === paciente.id && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
 
@@ -1347,8 +1351,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
 
         {/* --- Aba 4: EVOLUÇÕES E PRONTUÁRIO --- */}
-        <TabsContent value="prontuario" className="mt-4">
-          <StudioNotasTab pacienteId={paciente.id} showSummary={true} />
+        <TabsContent value="prontuario" className="mt-4 space-y-6">
+          <ResumoProntuario pacienteId={paciente.id} />
+          <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
+          <StudioNotasTab pacienteId={paciente.id} />
         </TabsContent>
 
       </Tabs>
