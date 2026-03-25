@@ -1,10 +1,11 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Zap, Brain, CheckCircle2, Save, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const FASE_NOMES = ['Controle & Proteção', 'Mobilização & Proliferação', 'Remodelação & Força', 'Funcionalidade & Retorno'];
 const FASE_CORES_BG = ['bg-indigo-50', 'bg-amber-50', 'bg-emerald-50', 'bg-red-50'];
@@ -39,6 +40,7 @@ interface Props {
 export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   const [salvando, setSalvando] = useState(false);
   const qc = useQueryClient();
+  const { user } = useAuth();
 
   const { data: tratamentos = [], isLoading } = useQuery({
     queryKey: ['protocolo-tratamentos', protocoloId],
@@ -57,12 +59,50 @@ export default function ProtocoloTratamento({ protocoloId, faseAtual }: Props) {
   const salvarProtocolo = async () => {
     setSalvando(true);
     try {
-      const { error } = await (supabase as any)
+      const { data: prot, error } = await (supabase as any)
         .from('protocolos')
         .update({ status: 'ativo', updated_at: new Date().toISOString() })
-        .eq('id', protocoloId);
+        .eq('id', protocoloId)
+        .select('id, paciente_id, terapeuta_id, titulo, objetivo_geral, duracao_total, frequencia')
+        .single();
       if (error) throw error;
+      if (prot?.id && prot.paciente_id) {
+        const { data: existente } = await (supabase as any)
+          .from('notas_prontuario')
+          .select('id')
+          .eq('referencia_id', prot.id)
+          .eq('tipo', 'conduta_diretriz')
+          .limit(1)
+          .maybeSingle();
+
+        if (!existente) {
+          const descricao = `🧠 DIRETRIZ DE TRATAMENTO REGISTRADA
+
+📋 Diretriz: ${prot.titulo || 'Diretriz de Tratamento'}
+🎯 Objetivo: ${prot.objetivo_geral || 'Reabilitação e evolução terapêutica'}
+⏱️ Duração: ${prot.duracao_total || '12 semanas'} · ${prot.frequencia || '2-3x por semana'}
+
+Diretriz criada no cardápio de técnicas e salva automaticamente no prontuário.`;
+
+          await (supabase as any).from('notas_prontuario').insert({
+            paciente_id: prot.paciente_id,
+            terapeuta_id: prot.terapeuta_id || user?.id,
+            tipo: 'conduta_diretriz',
+            titulo: `Diretriz de Tratamento — ${prot.duracao_total || 'Plano Atual'}`,
+            descricao,
+            referencia_id: prot.id,
+            dados_extras: {
+              protocolo_id: prot.id,
+              objetivo: prot.objetivo_geral || null,
+              frequencia: prot.frequencia || null,
+            },
+          });
+        }
+      }
       qc.invalidateQueries({ queryKey: ['protocolos'] });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
       toast({ title: '✅ Diretriz salva com sucesso!', description: 'A diretriz está disponível na aba Diretrizes do paciente.' });
     } catch (err: any) {
       toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });

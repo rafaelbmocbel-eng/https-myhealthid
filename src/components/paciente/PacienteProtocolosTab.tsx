@@ -209,7 +209,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
 
   const handleGerarDiretrizCobZero = async (av: any) => {
     try {
-      const { error } = await supabase
+      const { data: prot, error } = await supabase
         .from('protocolos_cob_zero' as any)
         .insert({
           paciente_id: pacienteId,
@@ -219,11 +219,40 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
           risco_progressao: av.risco_percentage,
           status: 'ativo',
           dados_protocolo: av.dados_avaliacao
-        });
+        })
+        .select('id')
+        .single();
 
       if (error) throw error;
+
+      if (prot?.id) {
+        const descricao = `🧠 DIRETRIZ COB° ZERO REGISTRADA
+
+📋 Classificação Lenke: ${av.lenke_type || 'N/A'}
+📐 Ângulo de Cobb: ${av.cobb_angle ?? 'N/A'}°
+📈 Risco de progressão: ${av.risco_percentage ?? 'N/A'}%
+
+Diretriz registrada automaticamente após avaliação COB° ZERO.`;
+
+        await (supabase as any).from('notas_prontuario').insert({
+          paciente_id: pacienteId,
+          terapeuta_id: user!.id,
+          tipo: 'conduta_diretriz',
+          titulo: `Diretriz COB° ZERO — Lenke ${av.lenke_type || 'N/A'}`,
+          descricao,
+          referencia_id: prot.id,
+          dados_extras: {
+            protocolo_id: prot.id,
+            cobb_angle: av.cobb_angle ?? null,
+            risco_progressao: av.risco_percentage ?? null,
+            lenke_type: av.lenke_type || null,
+          },
+        });
+      }
       toast({ title: 'Diretriz CobZero gerada!' });
       qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
     } catch (err) {
       console.error(err);
       toast({ title: 'Erro ao gerar diretriz', variant: 'destructive' });
