@@ -384,7 +384,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       {/* Cabeçalho de Ações Superiores */}
       <div className="flex justify-between items-center bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
         <div>
-          <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Serviços</h3>
+          <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Tratamentos</h3>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">Repositório de Condutas</p>
         </div>
         <Button

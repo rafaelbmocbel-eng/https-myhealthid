@@ -52,7 +52,7 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || 'avaliacoes';
-  const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab;
+  const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' ? 'historico-avaliacoes' : rawTab;
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -415,24 +415,27 @@ export default function PacientePerfil() {
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
+              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Visão Integrada</span><span className="sm:hidden">Visão</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Evolução</span><span className="sm:hidden">Evol.</span>
+            <TabsTrigger value="historico-avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
+              <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Hist. Avaliações</span><span className="sm:hidden">Hist.</span>
             </TabsTrigger>
             <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
+              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes e Tratamentos</span><span className="sm:hidden">Dir.</span>
+            </TabsTrigger>
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
+              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
             </TabsTrigger>
             <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
               <Heart className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Engajamento</span><span className="sm:hidden">Engaj.</span>
-            </TabsTrigger>
-            <TabsTrigger value="agenda" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-2 py-1.5">
-              <CalendarDays className="h-3.5 w-3.5 shrink-0" /> Agenda
             </TabsTrigger>
           </TabsList>
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB 1: AVALIAÇÕES & QUESTIONÁRIOS (unificada)
+          ══════════════════════════════════════════════════════════════════ */}
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB 1: VISÃO INTEGRADA (resumo, KPIs, links, pontos críticos)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="avaliacoes" className="mt-4 space-y-6">
             {/* Action Buttons */}
@@ -516,25 +519,17 @@ export default function PacientePerfil() {
                 idFinal: ult.id_final || 0,
               };
 
-              // Build critical alerts from scores
               const alertas: Array<{ icon: any; label: string; valor: string; status: 'critico' | 'alerta' | 'ok'; dica: string }> = [];
-
-              // Score-based alerts
               if (scores.p > 7.5) alertas.push({ icon: AlertTriangle, label: 'Cinesiofobia', valor: `${scores.p.toFixed(1)}/10`, status: 'critico', dica: 'Psicoeducação em dor + exposição gradual' });
               else if (scores.p > 5) alertas.push({ icon: AlertTriangle, label: 'Cinesiofobia', valor: `${scores.p.toFixed(1)}/10`, status: 'alerta', dica: 'Educação sobre movimento seguro' });
-
               if (scores.r < 3) alertas.push({ icon: Shield, label: 'Regulação', valor: `${scores.r.toFixed(1)}/10`, status: 'critico', dica: 'Avaliação neurovegetativa urgente' });
               else if (scores.r < 5) alertas.push({ icon: Shield, label: 'Regulação', valor: `${scores.r.toFixed(1)}/10`, status: 'alerta', dica: 'Técnicas de regulação + higiene do sono' });
-
               if (scores.d > 8) alertas.push({ icon: Heart, label: 'Dor', valor: `${scores.d.toFixed(1)}/10`, status: 'critico', dica: 'Dor intensa/neuropática — TENS + terapia manual' });
               else if (scores.d > 5) alertas.push({ icon: Heart, label: 'Dor', valor: `${scores.d.toFixed(1)}/10`, status: 'alerta', dica: 'Modulação de dor ativa' });
-
               if (scores.c > 8) alertas.push({ icon: AlertTriangle, label: 'Carga Contextual', valor: `${scores.c.toFixed(1)}/10`, status: 'critico', dica: 'Encaminhamento psicológico recomendado' });
               else if (scores.c > 5) alertas.push({ icon: AlertTriangle, label: 'Contexto', valor: `${scores.c.toFixed(1)}/10`, status: 'alerta', dica: 'Suporte emocional + escuta ativa' });
-
               if (scores.e > 6) alertas.push({ icon: Activity, label: 'Estrutural', valor: `${scores.e.toFixed(1)}/10`, status: 'critico', dica: 'Intervenção manual intensiva' });
 
-              // Lifestyle alerts from dados_avaliacao
               if (dados?.bloco1) {
                 const b1 = dados.bloco1;
                 if (b1.atividadeFisica === 'nenhuma') alertas.push({ icon: Footprints, label: 'Sedentário', valor: 'Sem atividade', status: 'critico', dica: 'Iniciar caminhadas 20min 3×/sem' });
@@ -544,7 +539,6 @@ export default function PacientePerfil() {
                 if (b1.horasSedentario >= 10) alertas.push({ icon: Armchair, label: 'Horas sentado', valor: `${b1.horasSedentario}h/dia`, status: 'critico', dica: 'Pausas ativas a cada 45min' });
               }
               if (dados?.bloco5) {
-                // R1/R2/R3 are INVERTED: high = bad (10 = worst)
                 const r1 = dados.bloco5.scoreR1 ?? 5;
                 const r2 = dados.bloco5.scoreR2 ?? 5;
                 const r3 = dados.bloco5.scoreR3 ?? 5;
@@ -555,10 +549,8 @@ export default function PacientePerfil() {
               }
 
               if (alertas.length === 0) return null;
-
               const criticos = alertas.filter(a => a.status === 'critico');
               const alertasList = alertas.filter(a => a.status === 'alerta');
-
               const getStyle = (s: 'critico' | 'alerta' | 'ok') =>
                 s === 'critico' ? 'border-red-200 bg-red-50/60' : s === 'alerta' ? 'border-amber-200 bg-amber-50/60' : 'border-green-200 bg-green-50/60';
               const getIconStyle = (s: 'critico' | 'alerta' | 'ok') =>
@@ -580,7 +572,6 @@ export default function PacientePerfil() {
                       )}
                     </div>
                   </div>
-
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
                     {[...criticos, ...alertasList].map((al, i) => {
                       const Icon = al.icon;
@@ -600,14 +591,12 @@ export default function PacientePerfil() {
               );
             })()}
 
-            {/* Índices de Risco Biopsicossocial — do questionário ou avaliação */}
+            {/* Índices de Risco Biopsicossocial */}
             {(() => {
-              // Prefer latest evaluation scores, fallback to questionnaire responses
               if (avaliacoesId.length > 0) {
                 const ult = avaliacoesId[0] as any;
                 return <IndicesRiscoComprometimento scores={ult} dadosAvaliacao={ult?.dados_avaliacao} />;
               }
-              // Check if there are questionnaire responses with scores
               if (respostasPaciente.length > 0) {
                 const scoresFromResponses: Record<string, number> = {};
                 respostasPaciente.forEach((r: any) => {
@@ -626,11 +615,65 @@ export default function PacientePerfil() {
               return null;
             })()}
 
-            {/* Avaliações Salvas: Método Identidade */}
+            {/* Resumo rápido de avaliações */}
+            <div className="grid grid-cols-3 gap-2">
+              <div className="border rounded-xl p-3 text-center bg-card">
+                <Activity className="h-4 w-4 mx-auto mb-1 text-primary" />
+                <div className="text-lg font-bold">{avaliacoesId.length}</div>
+                <div className="text-[10px] text-muted-foreground">Identidade</div>
+              </div>
+              <div className="border rounded-xl p-3 text-center bg-card">
+                <AlignCenter className="h-4 w-4 mx-auto mb-1 text-blue-600" />
+                <div className="text-lg font-bold">{avaliacoesCob.length}</div>
+                <div className="text-[10px] text-muted-foreground">COB° ZERO</div>
+              </div>
+              <div className="border rounded-xl p-3 text-center bg-card">
+                <Stethoscope className="h-4 w-4 mx-auto mb-1 text-indigo-600" />
+                <div className="text-lg font-bold">{avaliacoesVoz.length}</div>
+                <div className="text-[10px] text-muted-foreground">Voz</div>
+              </div>
+            </div>
+
+            {/* Diretriz vigente (resumo) */}
+            {protocolos.length > 0 && (() => {
+              const vigente = protocolos.find((p: any) => p.status === 'ativo') || protocolos[0];
+              return (
+                <div className="clinical-card border-l-4 border-primary">
+                  <div className="flex items-center gap-2 mb-2">
+                    <ClipboardList className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Diretriz Vigente</h3>
+                    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] ml-auto">{vigente.status}</Badge>
+                  </div>
+                  <p className="text-sm font-medium">{vigente.titulo}</p>
+                  {vigente.objetivo_geral && <p className="text-xs text-muted-foreground mt-1">{vigente.objetivo_geral}</p>}
+                  <p className="text-[10px] text-muted-foreground mt-1">{vigente.duracao_total} · {vigente.frequencia}</p>
+                </div>
+              );
+            })()}
+
+            {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && (
+              <EmptyState icon={<Activity />} title="Nenhuma avaliação registrada" subtitle="Realize uma avaliação para visualizar a visão integrada do paciente." />
+            )}
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: HISTÓRICO DE AVALIAÇÕES (todas as avaliações detalhadas)
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="historico-avaliacoes" className="mt-4 space-y-6">
+            {/* Avaliação por Voz */}
+            <div className="clinical-card">
+              <VoiceAssessment
+                serviceType="identidade"
+                pacienteId={id!}
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+            </div>
+
             {(loadingId || loadingCob) ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : (
               <>
+                {/* MyID / Identidade */}
                 {avaliacoesId.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
@@ -651,7 +694,6 @@ export default function PacientePerfil() {
                               <span className="text-sm font-semibold">{av.data_avaliacao}</span>
                               {av.classificacao && <Badge variant="outline" className="text-[10px] h-4">{av.classificacao}</Badge>}
                               {idx === 0 && <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] h-4">Mais recente</Badge>}
-                              {idx === avaliacoesId.length - 1 && avaliacoesId.length > 1 && <Badge variant="outline" className="text-[10px] h-4 text-muted-foreground">1ª Avaliação</Badge>}
                             </div>
                             <div className="text-xs text-muted-foreground mt-0.5">
                               ID: {av.id_final?.toFixed(1)}/50 · E:{av.score_e?.toFixed(1)} P:{av.score_p?.toFixed(1)} D:{av.score_d?.toFixed(1)} F:{av.score_f?.toFixed(1)} R:{av.score_r?.toFixed(1)}
@@ -664,6 +706,7 @@ export default function PacientePerfil() {
                   </div>
                 )}
 
+                {/* COB° ZERO */}
                 {avaliacoesCob.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
@@ -693,6 +736,7 @@ export default function PacientePerfil() {
                   </div>
                 )}
 
+                {/* Avaliações por Voz */}
                 {avaliacoesVoz.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
@@ -747,16 +791,7 @@ export default function PacientePerfil() {
               </>
             )}
 
-            {/* Avaliação por Voz */}
-            <div className="clinical-card">
-              <VoiceAssessment
-                serviceType="identidade"
-                pacienteId={id!}
-                patientName={`${paciente.nome} ${paciente.sobrenome}`}
-              />
-            </div>
-
-            {/* Questionários Recebidos */}
+            {/* Questionários Remotos Recebidos */}
             <div>
               <div className="flex items-center gap-2 mb-3">
                 <FileText className="h-4 w-4 text-primary" />
@@ -836,115 +871,6 @@ export default function PacientePerfil() {
             <div>
               <StudioPortalControlTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
             </div>
-          </TabsContent>
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: AGENDA
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="agenda" className="mt-4 space-y-4">
-            {/* Session Status Summary */}
-            {agendamentos.length > 0 && (
-              <div className="grid grid-cols-4 gap-2">
-                {[
-                  { label: 'Total', value: agendamentos.length, cls: 'text-foreground' },
-                  { label: 'Concluídos', value: agendamentos.filter((a: any) => a.status === 'concluido').length, cls: 'text-emerald-600' },
-                  { label: 'Faltas', value: agendamentos.filter((a: any) => a.status === 'faltou').length, cls: 'text-amber-600' },
-                  { label: 'Cancelados', value: agendamentos.filter((a: any) => a.status === 'cancelado').length, cls: 'text-red-600' },
-                ].map(s => (
-                  <div key={s.label} className="border rounded-xl p-2.5 text-center bg-card">
-                    <div className={`text-lg font-bold ${s.cls}`}>{s.value}</div>
-                    <div className="text-[10px] text-muted-foreground">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Actions */}
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={agendarRapido}>
-                <Plus className="h-3.5 w-3.5" /> Agendar Sessão
-              </Button>
-            </div>
-
-            {/* Link de Automarcação */}
-            <div className="clinical-card">
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarDays className="h-4 w-4 text-amber-600" />
-                <h3 className="font-semibold text-sm">Link de Automarcação</h3>
-              </div>
-              {linkAgendaAtivo ? (
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-xs text-emerald-600 mb-2">
-                    <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                    <span>Link ativo — expira em {differenceInDays(new Date(linkAgendaAtivo.data_expiracao), new Date())} dias</span>
-                  </div>
-                  <div className="bg-muted/50 rounded-lg p-2 text-xs font-mono text-muted-foreground truncate">
-                    {getAgendaUrl(linkAgendaAtivo.token)}
-                  </div>
-                  <div className="flex gap-2 flex-wrap">
-                    <Button size="sm" variant="outline" className="h-8 text-xs gap-1" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)}>
-                      <Copy className="h-3 w-3" /> Copiar
-                    </Button>
-                    {paciente.telefone && (
-                      <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-[#25D366] text-[#25D366] hover:bg-[#25D366]/10"
-                        onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))}>
-                        <MessageCircle className="h-3 w-3" /> WhatsApp
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <p className="text-sm text-muted-foreground flex-1">Nenhum link de automarcação ativo.</p>
-                  <Button size="sm" variant="outline" className="gap-1 border-amber-400 text-amber-700 hover:bg-amber-50" disabled={gerandoAgenda}
-                    onClick={gerarLinkAgenda}>
-                    {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <CalendarDays className="h-3 w-3" />}
-                    Gerar Link (90 dias)
-                  </Button>
-                </div>
-              )}
-            </div>
-
-            {/* Sessões Futuras */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4 text-emerald-600" />
-                <h3 className="font-semibold text-sm">Próximas Sessões ({agendamentosFuturos.length})</h3>
-              </div>
-              {loadingAg ? (
-                <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin text-primary" /></div>
-              ) : agendamentosFuturos.length === 0 ? (
-                <div className="text-center py-6 text-muted-foreground border rounded-xl border-dashed">
-                  <CalendarDays className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                  <p className="text-sm">Nenhuma sessão futura agendada.</p>
-                </div>
-              ) : (
-                <div className="space-y-2">
-                  {agendamentosFuturos.map((ag: any) => (
-                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Sessões Passadas */}
-            {agendamentosPassados.length > 0 && (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <Calendar className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-semibold text-sm text-muted-foreground">Histórico de Sessões ({agendamentosPassados.length})</h3>
-                </div>
-                <div className="space-y-2">
-                  {agendamentosPassados.map((ag: any) => (
-                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {!loadingAg && agendamentos.length === 0 && (
-              <EmptyState icon={<CalendarDays />} title="Nenhum agendamento" subtitle="Este paciente não possui sessões agendadas." />
-            )}
           </TabsContent>
 
 
