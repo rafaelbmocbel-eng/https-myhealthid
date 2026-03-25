@@ -6,12 +6,13 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Textarea } from '@/components/ui/textarea';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
-  Dumbbell, Calendar, AlertTriangle, Brain, Zap, RefreshCw, Loader2,
+  Dumbbell, Calendar, AlertTriangle, Brain, Zap, RefreshCw, Loader2, Edit3, Save, X,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
@@ -70,8 +71,34 @@ interface Props {
 
 export default function ProntuarioTimeline({ notas, isLoading }: Props) {
   const [syncing, setSyncing] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editText, setEditText] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
   const { toast } = useToast();
   const qc = useQueryClient();
+
+  const handleEditNote = (nota: NotaProntuario) => {
+    setEditingId(nota.id);
+    setEditText(nota.descricao);
+  };
+
+  const handleSaveEdit = async (notaId: string) => {
+    setSavingEdit(true);
+    try {
+      const { error } = await (supabase as any)
+        .from('notas_prontuario')
+        .update({ descricao: editText })
+        .eq('id', notaId);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      setEditingId(null);
+      toast({ title: 'Nota atualizada! ✅' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar', description: err.message, variant: 'destructive' });
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   const handleBackfill = async () => {
     setSyncing(true);
