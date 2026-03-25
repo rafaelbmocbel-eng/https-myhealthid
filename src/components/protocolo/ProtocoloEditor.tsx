@@ -173,28 +173,19 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
 
             // ── Auto-create prontuário note with technique summary ──
             try {
-                const tecnicasResumo = analisePersonalizada.fases.map((fase) => {
-                    const tecsSelecionadas = fase.tecnicas.map(t => t.nome).join(', ');
-                    const exsSelecionados = fase.exercicios.map(e => e.nome).join(', ');
-                    return `Fase ${fase.numero} — ${fase.titulo}:\n  Técnicas: ${tecsSelecionadas || 'Nenhuma'}\n  Exercícios: ${exsSelecionados || 'Nenhum'}`;
-                }).join('\n\n');
+            const totalFases = analisePersonalizada.fases.length;
+                const totalTecs = analisePersonalizada.fases.reduce((s, f) => s + f.tecnicas.length, 0);
+                const totalExs = analisePersonalizada.fases.reduce((s, f) => s + f.exercicios.length, 0);
+                const demandas = analisePersonalizada.demandasIdentificadas.slice(0, 3).map(d => `${d.area} (${d.severidade})`).join(', ');
+                const fasesResumo = analisePersonalizada.fases.map(f => `Fase ${f.numero}: ${f.titulo}`).join(' | ');
 
-                const notaDescricao = `📋 DIRETRIZ DE TRATAMENTO CRIADA
-
-🎯 Objetivo: ${analisePersonalizada.objetivoGeral}
-⏱️ Duração: ${analisePersonalizada.duracaoTotal} · ${analisePersonalizada.frequencia}
-📊 Prognóstico: ${analisePersonalizada.prognose}
-
-📌 DEMANDAS IDENTIFICADAS:
-${analisePersonalizada.demandasIdentificadas.map(d => `  • ${d.area} (${d.severidade}) — ${d.motivo}`).join('\n')}
-
-🔬 TÉCNICAS E EXERCÍCIOS POR FASE:
-${tecnicasResumo}
-
-💡 INSIGHTS BASEADOS EM EVIDÊNCIA:
-${analisePersonalizada.fases.flatMap(f => f.tecnicas.map(t => `  ✅ ${t.nome}: ${t.descricao}`)).slice(0, 5).join('\n') || '  Consulte as técnicas selecionadas para detalhes.'}
-
-Diretriz montada automaticamente a partir da avaliação MyID.`;
+                const notaDescricao = `Diretriz de Tratamento — ${analisePersonalizada.duracaoTotal}, ${analisePersonalizada.frequencia}.
+Objetivo: ${analisePersonalizada.objetivoGeral}
+Prognóstico: ${analisePersonalizada.prognose}
+Demandas: ${demandas || 'N/I'}.
+Estrutura: ${totalFases} fases, ${totalTecs} técnicas, ${totalExs} exercícios.
+${fasesResumo}
+Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
 
                 await (supabase as any)
                     .from('notas_prontuario')

@@ -233,7 +233,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       let noteWarning: string | null = null;
 
       if (pacienteId) {
-        const descricao = `${assessmentToSave.resumo_clinico}\n\nQueixa: ${assessmentToSave.queixa_principal || 'N/I'}\nDor EVA: ${assessmentToSave.dor?.intensidade_eva || '?'}/10 — ${assessmentToSave.dor?.tipo || 'N/I'}\nClassificação: ${assessmentToSave.classificacao_severidade}\n\nHipóteses: ${assessmentToSave.hipoteses_diagnosticas?.map((h: any) => h.diagnostico).join(', ') || 'N/I'}`;
+        const hipoteses = assessmentToSave.hipoteses_diagnosticas?.slice(0, 3).map((h: any) => h.diagnostico).join(', ') || 'N/I';
+        const descricao = `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}
+Queixa: ${assessmentToSave.queixa_principal || 'N/I'}
+Dor EVA: ${assessmentToSave.dor?.intensidade_eva || '?'}/10 — ${assessmentToSave.dor?.tipo || 'N/I'}
+Classificação: ${assessmentToSave.classificacao_severidade || 'N/I'}
+Hipóteses: ${hipoteses}
+${assessmentToSave.resumo_clinico?.substring(0, 200) || ''}
+Detalhes completos no Histórico de Avaliações.`;
 
         const { error: noteError } = await supabase.from('notas_prontuario').insert({
           paciente_id: pacienteId,
