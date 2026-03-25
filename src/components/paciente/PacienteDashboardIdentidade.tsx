@@ -323,7 +323,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
       const missing = myidAvaliacoes.filter((av: any) => av.resultado_processado && !existingIds.has(av.id));
 
       for (const av of missing) {
-        const result = av.resultado_processado || {};
+        const result = (av.resultado_processado || {}) as any;
         const scores = result.componentScores || result.component_scores || {};
         const myidScoreRaw = result.myidScore ?? result.MyID_score ?? result.myid_100?.score ?? result.myid_100?.myid_score ?? 0;
         const classificacao = result.classificacao || result.myidStatus || result.myid_100?.classificacao || 'N/A';
