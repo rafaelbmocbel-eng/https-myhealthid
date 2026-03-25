@@ -209,9 +209,39 @@ export default function ProntuarioTimeline({ notas, isLoading }: Props) {
                               )}
                             </div>
                             <h4 className="text-sm font-semibold text-foreground mb-1">{nota.titulo}</h4>
-                            <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
-                              {nota.descricao}
-                            </pre>
+                            {editingId === nota.id ? (
+                              <div className="space-y-2">
+                                <Textarea
+                                  value={editText}
+                                  onChange={(e) => setEditText(e.target.value)}
+                                  className="text-[11px] min-h-[100px] font-sans"
+                                />
+                                <div className="flex gap-1.5">
+                                  <Button size="sm" className="h-6 text-[10px] gap-1" onClick={() => handleSaveEdit(nota.id)} disabled={savingEdit}>
+                                    {savingEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                    Salvar
+                                  </Button>
+                                  <Button size="sm" variant="ghost" className="h-6 text-[10px] gap-1" onClick={() => setEditingId(null)}>
+                                    <X className="h-3 w-3" /> Cancelar
+                                  </Button>
+                                </div>
+                              </div>
+                            ) : (
+                              <div className="group/note relative">
+                                <pre className="text-[11px] text-muted-foreground leading-relaxed whitespace-pre-wrap font-sans">
+                                  {nota.descricao}
+                                </pre>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="absolute top-0 right-0 h-6 w-6 p-0 opacity-0 group-hover/note:opacity-100 transition-opacity"
+                                  onClick={() => handleEditNote(nota)}
+                                  title="Editar nota"
+                                >
+                                  <Edit3 className="h-3 w-3 text-muted-foreground" />
+                                </Button>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </CardContent>
