@@ -209,8 +209,8 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
 
   const handleGerarDiretrizCobZero = async (av: any) => {
     try {
-      const { data: prot, error } = await supabase
-        .from('protocolos_cob_zero' as any)
+      const { data: prot, error } = await (supabase as any)
+        .from('protocolos_cob_zero')
         .insert({
           paciente_id: pacienteId,
           terapeuta_id: user!.id,
