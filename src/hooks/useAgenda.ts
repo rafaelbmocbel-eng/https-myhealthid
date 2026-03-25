@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
@@ -54,6 +54,7 @@ export function useAgenda() {
   const [pacientes, setPacientes] = useState<Paciente[]>([]);
   const [config, setConfig] = useState<ConfigAgenda>(DEFAULT_CONFIG);
   const [loading, setLoading] = useState(true);
+  const refreshTimeoutRef = useRef<number | null>(null);
 
   const fetchAll = useCallback(async () => {
     if (!authReady) return;
@@ -109,6 +110,51 @@ export function useAgenda() {
   useEffect(() => {
     void fetchAll();
   }, [fetchAll]);
+
+  useEffect(() => {
+    if (!authReady || !user) return;
+
+    const scheduleRefresh = () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+      }
+
+      refreshTimeoutRef.current = window.setTimeout(() => {
+        void fetchAll();
+      }, 150);
+    };
+
+    const channel = supabase
+      .channel(`agenda-sync-${user.id}`)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'agendamentos',
+        filter: `terapeuta_id=eq.${user.id}`,
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'pacientes',
+        filter: `terapeuta_id=eq.${user.id}`,
+      }, scheduleRefresh)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'config_agenda',
+        filter: `terapeuta_id=eq.${user.id}`,
+      }, scheduleRefresh)
+      .subscribe();
+
+    return () => {
+      if (refreshTimeoutRef.current) {
+        window.clearTimeout(refreshTimeoutRef.current);
+        refreshTimeoutRef.current = null;
+      }
+
+      void supabase.removeChannel(channel);
+    };
+  }, [authReady, user, fetchAll]);
 
   const createAgendamento = async (data: Omit<Agendamento, 'id'>) => {
     if (!user) return;
@@ -295,11 +341,13 @@ export function useAgenda() {
   const saveConfig = async (cfg: ConfigAgenda) => {
     if (!user) return;
 
-    const { data: existingConfig } = await supabase
-      .from('config_agenda')
-      .select('servicos_ativos')
-      .eq('terapeuta_id', user.id)
-      .maybeSingle();
+    const { data: existingConfig } = await withAuthLockRetry(async () => {
+      return await supabase
+        .from('config_agenda')
+        .select('servicos_ativos')
+        .eq('terapeuta_id', user.id)
+        .maybeSingle();
+    });
 
     const payload = {
       ...cfg,
