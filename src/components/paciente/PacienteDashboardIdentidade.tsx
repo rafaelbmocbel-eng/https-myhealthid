@@ -70,6 +70,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   const { links, gerarLink, copiarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const [enviandoEmail, setEnviandoEmail] = useState(false);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
+  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(paciente.id);
 
   const linkAtivo = links.find(l => l.paciente_id === paciente.id && l.status === 'ativo' && new Date(l.data_expiracao) > new Date());
 
