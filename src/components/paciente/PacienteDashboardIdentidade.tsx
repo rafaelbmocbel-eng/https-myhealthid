@@ -32,6 +32,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
+import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 import ProntuarioTimeline from './ProntuarioTimeline';
