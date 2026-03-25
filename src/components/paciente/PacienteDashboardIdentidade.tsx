@@ -34,6 +34,9 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
+import ProntuarioTimeline from './ProntuarioTimeline';
+import ResumoProntuario from './ResumoProntuario';
+import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 
 interface Paciente {
   id: string;
