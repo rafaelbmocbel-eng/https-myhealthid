@@ -693,7 +693,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
         {/* --- Aba 1: AVALIAÇÃO (Contém a interface antiga Inteira) --- */}
         <TabsContent value="avaliacao" className="mt-0">
-          <Tabs defaultValue="integrada">
+          <Tabs value={subTabAtiva} onValueChange={setSubTabAtiva}>
             <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
               <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
