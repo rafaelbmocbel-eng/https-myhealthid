@@ -1404,6 +1404,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   myidAvaliacoes={myidAvaliacoes}
                 />
               </div>
+              </>
+              )}
             </TabsContent>
 
             {/* Aba: Diretrizes e Tratamentos (Repositório) */}
