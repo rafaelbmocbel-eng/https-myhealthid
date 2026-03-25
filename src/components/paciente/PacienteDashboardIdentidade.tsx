@@ -305,6 +305,68 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     };
   }, [paciente.id, refetchMyID, refetchLinksMyID, qc]);
 
+  // Auto-sync MyID results to prontuário (online e presencial)
+  useEffect(() => {
+    if (!user || myidAvaliacoes.length === 0) return;
+    const syncMyIDNotes = async () => {
+      const ids = myidAvaliacoes.filter((av: any) => av.resultado_processado).map((av: any) => av.id);
+      if (ids.length === 0) return;
+
+      const { data: existing } = await supabase
+        .from('notas_prontuario')
+        .select('referencia_id')
+        .eq('paciente_id', paciente.id)
+        .eq('tipo', 'myid_resposta')
+        .in('referencia_id', ids);
+
+      const existingIds = new Set((existing || []).map((n: any) => n.referencia_id));
+      const missing = myidAvaliacoes.filter((av: any) => av.resultado_processado && !existingIds.has(av.id));
+
+      for (const av of missing) {
+        const result = av.resultado_processado || {};
+        const scores = result.componentScores || result.component_scores || {};
+        const myidScoreRaw = result.myidScore ?? result.MyID_score ?? result.myid_100?.score ?? result.myid_100?.myid_score ?? 0;
+        const classificacao = result.classificacao || result.myidStatus || result.myid_100?.classificacao || 'N/A';
+        const redFlagsDetected = result.redFlagsDetected ?? result.red_flags_detected ?? false;
+        const redFlagsList = result.redFlagAlerts || result.red_flag_alerts || result.red_flags || [];
+
+        const scoreD = Number(scores.D ?? scores.D_pain ?? 0).toFixed(1);
+        const scoreEFI = Number(scores.EFI ?? scores.EFI_functionality ?? 0).toFixed(1);
+        const scoreP = Number(scores.P ?? scores.P_psychological ?? 0).toFixed(1);
+        const scoreI = Number(scores.I ?? scores.I_inertia ?? 0).toFixed(1);
+        const scoreN = Number(scores.N ?? scores.N_noise ?? 0).toFixed(1);
+        const scoreR = Number(scores.R ?? scores.R_regulation ?? 0).toFixed(1);
+        const scoreC = Number(scores.C ?? scores.C_context ?? 0).toFixed(1);
+
+        const flagsText = redFlagsDetected && redFlagsList.length > 0
+          ? `\n⚠️ Red Flags: ${redFlagsList.join(', ')}`
+          : '';
+
+        const descricao = `🧬 MyID (online/presencial)\n\n🎯 Score MyID-100: ${Number(myidScoreRaw).toFixed(1)}/100 — ${classificacao}${flagsText}\n\n📊 Componentes:\n• Dor (D): ${scoreD}/10\n• Funcionalidade (EFI): ${scoreEFI}/10\n• Psicológico (P): ${scoreP}/10\n• Demanda (I): ${scoreI}/10\n• Ruído (N): ${scoreN}/10\n• Regulação (R): ${scoreR}/10\n• Contexto (C): ${scoreC}/10`;
+
+        try {
+          await (supabase as any).from('notas_prontuario').insert({
+            paciente_id: paciente.id,
+            terapeuta_id: user.id,
+            tipo: 'myid_resposta',
+            titulo: `MyID — Score ${Number(myidScoreRaw).toFixed(1)}/100 (${classificacao})`,
+            descricao,
+            dados_extras: { myid_score: myidScoreRaw, classificacao, scores },
+            referencia_id: av.id,
+          });
+        } catch (err) {
+          console.warn('Erro ao sincronizar MyID no prontuário:', err);
+        }
+      }
+
+      if (missing.length > 0) {
+        qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      }
+    };
+
+    syncMyIDNotes();
+  }, [user, myidAvaliacoes, paciente.id, qc]);
+
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
@@ -628,14 +690,14 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
               <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
               </TabsTrigger>
-              <TabsTrigger value="respostas" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+              <TabsTrigger value="historico" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
+                <FileText className="h-4 w-4" /> Histórico de Avaliações
               </TabsTrigger>
               <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial
               </TabsTrigger>
               <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <Target className="h-4 w-4" /> Diretrizes e Serviços
+                <Target className="h-4 w-4" /> Diretrizes e Tratamentos
               </TabsTrigger>
             </TabsList>
 
@@ -858,319 +920,320 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         }} />
                       </div>
                     ) : (
-                      <div className="space-y-6">
+                      <div className="space-y-4">
                         <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
                           <div>
-                            <h3 className="font-bold text-lg text-primary">Avaliações MyID</h3>
-                            <p className="text-sm text-gray-500">Histórico da impressão digital sistêmica.</p>
+                            <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
+                            <p className="text-sm text-gray-500">Preencha um novo MyID durante a sessão.</p>
                           </div>
                           <Button onClick={() => setIniciandoMyID(true)}>Nova Avaliação</Button>
                         </div>
-
-                        {myidAvaliacoes.length > 0 ? (
-                          <div className="space-y-3">
-                            {myidAvaliacoes.map((av: any) => {
-                              const isExpanded = expandedMyIDId === av.id;
-                              const result = av.resultado_processado;
-                              return (
-                                <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
-                                  <div
-                                    className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-slate-50 border-b' : ''}`}
-                                    onClick={() => setExpandedMyIDId(isExpanded ? null : av.id)}
-                                  >
-                                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                                      <Fingerprint className="h-5 w-5 text-primary" />
-                                    </div>
-                                    <div className="flex-1 min-w-0">
-                                      <div className="flex items-center gap-2">
-                                        <span className="text-sm font-bold">
-                                          {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                        </span>
-                                        <Badge variant="outline" className="text-[10px] h-4">ID #{av.id.slice(0, 4)}</Badge>
-                                      </div>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${getMyIDSeverityColor(result?.classificacao || '')}`}>
-                                          {result?.myidStatus || 'Processando...'}
-                                        </div>
-                                      </div>
-                                    </div>
-                                    <div className="text-right shrink-0 mr-2">
-                                      <div className="text-2xl font-black text-primary">
-                                        {result?.myidScore?.toFixed(1) || '0.0'}
-                                      </div>
-                                      <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MyID Score</div>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
-                                    </Button>
-                                  </div>
-                                  {isExpanded && result && (
-                                    <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
-                                      <MyIDResult result={result} rawData={av.respostas_brutas} />
-                                      <div className="mt-4 flex justify-end">
-                                        <Button
-                                          size="sm"
-                                          variant="outline"
-                                          className="text-xs gap-2"
-                                          onClick={(e) => {
-                                            e.stopPropagation();
-                                            setShowReport({ myid: result });
-                                          }}
-                                        >
-                                          <FileText className="h-3.5 w-3.5" />
-                                          Gerar PDF
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed bg-white/50">
-                            <UserCircle className="h-10 w-10 mx-auto mb-3 opacity-30 text-primary" />
-                            <p className="font-medium text-lg text-gray-700">Nenhum MyID registrado</p>
-                            <p className="text-sm mt-1 mb-6 max-w-md mx-auto">O questionário MyID é a base do Método Identidade para mapear Numerador e Denominador sistêmico.</p>
-                            <Button onClick={() => setIniciandoMyID(true)} className="px-8">Preencher Novo MyID</Button>
-                          </div>
-                        )}
+                        <p className="text-xs text-muted-foreground">O histórico completo fica na aba "Histórico de Avaliações".</p>
                       </div>
                     )}
                   </>
                 )}
 
-                {/* ── Histórico de Avaliações por Voz ── */}
-                <div className="clinical-card mt-6">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                      <Mic className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm">Histórico de Avaliações por Voz</h3>
-                      <p className="text-xs text-muted-foreground">{voiceAvaliacoes.length} avaliação(ões) registrada(s)</p>
-                    </div>
-                  </div>
+              </div>
+            </TabsContent>
 
-                  {voiceAvaliacoes.length > 0 ? (
-                    <div className="space-y-3">
-                      {voiceAvaliacoes.map((av: any) => {
-                        const resultado = av.resultado as any;
-                        const isExpanded = expandedVoiceId === av.id;
-                        return (
-                          <div key={av.id} className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
-                            <button
-                              type="button"
-                              className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
-                              onClick={() => setExpandedVoiceId(isExpanded ? null : av.id)}
-                            >
-                              <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
-                                <Mic className="h-5 w-5 text-violet-600" />
+            {/* Aba: Histórico de Avaliações */}
+            <TabsContent value="historico" className="mt-4 space-y-6">
+              <div className="clinical-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <Fingerprint className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">MyID (Online e Presencial)</h3>
+                </div>
+                {myidAvaliacoes.length > 0 ? (
+                  <div className="space-y-3">
+                    {myidAvaliacoes.map((av: any) => {
+                      const isExpanded = expandedMyIDId === av.id;
+                      const result = av.resultado_processado;
+                      return (
+                        <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                          <div
+                            className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-slate-50 border-b' : ''}`}
+                            onClick={() => setExpandedMyIDId(isExpanded ? null : av.id)}
+                          >
+                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                              <Fingerprint className="h-5 w-5 text-primary" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-bold">
+                                  {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </span>
+                                <Badge variant="outline" className="text-[10px] h-4">ID #{av.id.slice(0, 4)}</Badge>
                               </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 flex-wrap">
-                                  <span className="text-sm font-bold">
-                                    {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-                                  </span>
-                                  {av.classificacao_severidade && (
-                                    <Badge variant="outline" className="text-[10px] h-4 py-0">
-                                      {av.classificacao_severidade}
-                                    </Badge>
+                              <div className="flex items-center gap-2 mt-1">
+                                <div className={`text-xs font-bold px-2 py-0.5 rounded-full ${getMyIDSeverityColor(result?.classificacao || '')}`}>
+                                  {result?.myidStatus || 'Processando...'}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 mr-2">
+                              <div className="text-2xl font-black text-primary">
+                                {result?.myidScore?.toFixed(1) || '0.0'}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MyID Score</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-8 w-8 p-0"
+                            >
+                              <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
+                            </Button>
+                          </div>
+                          {isExpanded && result && (
+                            <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
+                              <MyIDResult result={result} rawData={av.respostas_brutas} />
+                              <div className="mt-4 flex justify-end">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="text-xs gap-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setShowReport({ myid: result });
+                                  }}
+                                >
+                                  <FileText className="h-3.5 w-3.5" />
+                                  Gerar PDF
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Fingerprint className="h-8 w-8 mx-auto mb-2 opacity-30 text-primary" />
+                    <p className="text-sm">Nenhum MyID registrado</p>
+                    <p className="text-xs mt-1">As respostas online e presenciais aparecerão aqui.</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="clinical-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <Activity className="h-4 w-4 text-emerald-600" />
+                  <h3 className="font-semibold text-sm">Avaliações Estruturais</h3>
+                </div>
+                {structuralAvaliacoes.length > 0 ? (
+                  <div className="space-y-3">
+                    {structuralAvaliacoes.slice(0, 5).map((av: any) => {
+                      const dados = av.dados_avaliacao as any as StructuralAssessmentData | null;
+                      if (!dados) return null;
+                      const score = dados?.scoreStructuralGeneral ?? Number(av.score_e || 0);
+                      const isExpanded = expandedStructuralId === av.id;
+                      return (
+                        <div key={av.id} className="rounded-lg border bg-muted/20">
+                          <div className="flex items-center gap-3 p-3">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
+                              <div className="min-w-0">
+                                <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação'}</span>
+                                <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
+                                  {dados.units && Object.entries(dados.units).slice(0, 4).map(([unitId, unit]: [string, any]) => {
+                                    const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
+                                    return (
+                                      <span key={unitId} className="flex items-center gap-0.5">
+                                        {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{Number(unit.score).toFixed(1)}</span>
+                                      </span>
+                                    );
+                                  })}
+                                  {dados.units && Object.keys(dados.units).length > 4 && (
+                                    <span className="text-muted-foreground">+{Object.keys(dados.units).length - 4}</span>
                                   )}
                                 </div>
-                                <div className="text-xs text-muted-foreground mt-0.5 truncate">
-                                  {av.queixa_principal || resultado?.resumo_clinico?.slice(0, 80) || 'Avaliação por voz'}
-                                </div>
-                                {resultado?.dor?.intensidade_eva && (
-                                  <div className="flex items-center gap-2 mt-1 text-[10px] text-muted-foreground">
-                                    <span>Dor EVA: <strong className="text-foreground">{resultado.dor.intensidade_eva}/10</strong></span>
-                                    {resultado.dor?.localizacao && <span>• {resultado.dor.localizacao}</span>}
-                                  </div>
+                              </div>
+                            </div>
+                            <div className="text-right shrink-0 mr-2">
+                              <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{Number(score).toFixed(1)}</div>
+                              <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
+                            </div>
+                            <Button
+                              size="sm"
+                              variant={isExpanded ? 'outline' : 'default'}
+                              className={isExpanded ? 'gap-1 text-xs' : 'bg-identidade hover:bg-identidade/90 text-white gap-1 text-xs'}
+                              onClick={() => setExpandedStructuralId(isExpanded ? null : av.id)}
+                            >
+                              <FileText className="h-3 w-3" />
+                              {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
+                            </Button>
+                          </div>
+                          {isExpanded && (
+                            <div className="p-3 pt-0">
+                              <StructuralResultsSummary data={dados} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma avaliação estrutural registrada</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="clinical-card">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
+                    <Mic className="h-5 w-5 text-white" />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Histórico de Avaliações por Voz</h3>
+                    <p className="text-xs text-muted-foreground">{voiceAvaliacoes.length} avaliação(ões) registrada(s)</p>
+                  </div>
+                </div>
+
+                {voiceAvaliacoes.length > 0 ? (
+                  <div className="space-y-3">
+                    {voiceAvaliacoes.map((av: any) => {
+                      const resultado = av.resultado as any;
+                      const isExpanded = expandedVoiceId === av.id;
+                      return (
+                        <div key={av.id} className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
+                          <button
+                            type="button"
+                            className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
+                            onClick={() => setExpandedVoiceId(isExpanded ? null : av.id)}
+                          >
+                            <div className="h-10 w-10 rounded-full bg-violet-100 flex items-center justify-center shrink-0">
+                              <Mic className="h-5 w-5 text-violet-600" />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-bold">
+                                  {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </span>
+                                {av.classificacao_severidade && (
+                                  <Badge variant="outline" className="text-[10px] h-4 py-0">
+                                    {av.classificacao_severidade}
+                                  </Badge>
                                 )}
                               </div>
-                              <ChevronDown className={`h-4 w-4 shrink-0 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
-                            </button>
+                              <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                                {av.queixa_principal ? `Queixa: ${av.queixa_principal}` : 'Sem queixa registrada'}
+                              </div>
+                            </div>
+                            <ChevronDown className={`h-4 w-4 text-muted-foreground transition-transform ${isExpanded ? 'rotate-180' : ''}`} />
+                          </button>
 
-                            {isExpanded && (
-                              <div className="border-t px-4 py-3 space-y-3 text-xs bg-muted/10">
-                                {/* Action Buttons */}
-                                <div className="flex flex-wrap gap-2 pb-2 border-b">
+                          {isExpanded && (
+                            <div className="p-4 pt-0 space-y-3">
+                              <div className="flex items-center justify-between gap-2 flex-wrap">
+                                <div className="flex items-center gap-2">
+                                  <Badge className="bg-violet-100 text-violet-700 border-violet-200 text-[10px]">{av.servico || 'identidade'}</Badge>
+                                  {resultado?.classificacao_severidade && (
+                                    <Badge variant="outline" className="text-[10px] h-4">{resultado.classificacao_severidade}</Badge>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-[11px] gap-1"
+                                    className="text-xs gap-1"
                                     onClick={() => {
                                       setEditingVoiceId(av.id);
                                       setEditingVoiceText(av.transcricao || '');
                                     }}
                                   >
-                                    <Edit3 className="h-3 w-3" /> Editar Texto
+                                    <Edit3 className="h-3 w-3" /> Editar
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-[11px] gap-1"
+                                    className="text-xs gap-1"
                                     onClick={() => setAddingVoiceToId(av.id)}
                                   >
-                                    <Mic className="h-3 w-3" /> Adicionar Voz
+                                    <Mic className="h-3 w-3" /> Adicionar Áudio
                                   </Button>
                                   <Button
                                     size="sm"
                                     variant="outline"
-                                    className="h-7 text-[11px] gap-1"
+                                    className="text-xs gap-1"
                                     onClick={() => handleSyncVoiceToProntuario(av)}
                                   >
-                                    <FileText className="h-3 w-3" /> Enviar ao Prontuário
+                                    <Save className="h-3 w-3" /> Prontuário
                                   </Button>
                                 </div>
+                              </div>
 
-                                {/* Editing mode */}
-                                {editingVoiceId === av.id && (
-                                  <div className="space-y-2 p-2 border rounded-lg bg-background">
-                                    <p className="font-semibold text-foreground text-xs">Editar Transcrição</p>
-                                    <Textarea
-                                      value={editingVoiceText}
-                                      onChange={e => setEditingVoiceText(e.target.value)}
-                                      className="min-h-[120px] text-xs"
-                                    />
-                                    <div className="flex gap-2">
-                                      <Button size="sm" className="h-7 text-[11px] gap-1" onClick={() => handleSaveVoiceEdit(av.id)} disabled={savingVoiceEdit}>
-                                        {savingVoiceEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                                        Salvar e Reprocessar
-                                      </Button>
-                                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={() => setEditingVoiceId(null)}>Cancelar</Button>
-                                    </div>
+                              {editingVoiceId === av.id ? (
+                                <div className="space-y-2">
+                                  <Textarea
+                                    value={editingVoiceText}
+                                    onChange={(e) => setEditingVoiceText(e.target.value)}
+                                    className="min-h-[120px] text-sm"
+                                    placeholder="Edite a transcrição..."
+                                  />
+                                  <div className="flex gap-2">
+                                    <Button
+                                      size="sm"
+                                      className="gap-1"
+                                      onClick={() => handleSaveVoiceEdit(av.id)}
+                                      disabled={savingVoiceEdit}
+                                    >
+                                      {savingVoiceEdit ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                      Salvar
+                                    </Button>
+                                    <Button size="sm" variant="outline" onClick={() => setEditingVoiceId(null)}>Cancelar</Button>
                                   </div>
-                                )}
-
-                                {/* Add voice mode */}
-                                {addingVoiceToId === av.id && (
-                                  <div className="p-2 border rounded-lg bg-background">
-                                    <VoiceAssessment
-                                      serviceType={(av.servico || 'identidade') as any}
-                                      pacienteId={paciente.id}
-                                      patientName={patientName}
-                                      appendMode={true}
-                                      onAppendCapture={(capturedText, capturedAudio, capturedMime) => {
-                                        // Combine existing transcription with new captured content
-                                        const combined = [av.transcricao || '', capturedText].filter(Boolean).join('\n\n---\n\n');
-                                        setEditingVoiceId(av.id);
-                                        setEditingVoiceText(combined);
-                                        setAddingVoiceToId(null);
-                                        // Auto-trigger reprocess with captured audio
-                                        setTimeout(() => handleSaveVoiceEdit(av.id, capturedAudio, capturedMime), 100);
-                                      }}
-                                    />
-                                  </div>
-                                )}
-
-                                {/* Resumo Clínico */}
-                                {resultado?.resumo_clinico && (
+                                </div>
+                              ) : (
+                                <div className="space-y-2">
                                   <div>
-                                    <p className="font-semibold text-foreground mb-1">Resumo Clínico</p>
-                                    <p className="text-muted-foreground whitespace-pre-wrap">{resultado.resumo_clinico}</p>
-                                  </div>
-                                )}
-
-                                {/* Dor */}
-                                {resultado?.dor && (
-                                  <div>
-                                    <p className="font-semibold text-foreground mb-1">Dor</p>
-                                    <div className="grid grid-cols-2 gap-1 text-muted-foreground">
-                                      {resultado.dor.localizacao && <span>Local: {resultado.dor.localizacao}</span>}
-                                      {resultado.dor.intensidade_eva && <span>EVA: {resultado.dor.intensidade_eva}/10</span>}
-                                      {resultado.dor.tipo && <span>Tipo: {resultado.dor.tipo}</span>}
-                                      {resultado.dor.padrao && <span>Padrão: {resultado.dor.padrao}</span>}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Funcionalidade */}
-                                {resultado?.funcionalidade && (
-                                  <div>
-                                    <p className="font-semibold text-foreground mb-1">Funcionalidade</p>
-                                    {typeof resultado.funcionalidade === 'string' ? (
-                                      <p className="text-muted-foreground">{resultado.funcionalidade}</p>
-                                    ) : (
-                                      <div className="space-y-1 text-muted-foreground">
-                                        {resultado.funcionalidade.limitacoes_trabalho && (
-                                          <p><strong>Trabalho:</strong> {resultado.funcionalidade.limitacoes_trabalho}</p>
-                                        )}
-                                        {resultado.funcionalidade.limitacoes_esporte && (
-                                          <p><strong>Esporte:</strong> {resultado.funcionalidade.limitacoes_esporte}</p>
-                                        )}
-                                        {resultado.funcionalidade.nivel_impacto && (
-                                          <p><strong>Impacto:</strong> {resultado.funcionalidade.nivel_impacto}</p>
-                                        )}
-                                        {Array.isArray(resultado.funcionalidade.limitacoes_avds) && resultado.funcionalidade.limitacoes_avds.length > 0 && (
-                                          <p><strong>AVDs:</strong> {resultado.funcionalidade.limitacoes_avds.join(', ')}</p>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                )}
-
-                                {/* Red Flags */}
-                                {resultado?.red_flags && resultado.red_flags.length > 0 && (
-                                  <div>
-                                    <p className="font-semibold text-destructive mb-1">🚩 Red Flags</p>
-                                    <ul className="list-disc pl-4 text-destructive/80">
-                                      {resultado.red_flags.map((rf: any, i: number) => <li key={i}>{typeof rf === 'string' ? rf : (rf?.descricao || rf?.diagnostico || JSON.stringify(rf))}</li>)}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {/* Hipóteses */}
-                                {resultado?.hipoteses_diagnosticas && resultado.hipoteses_diagnosticas.length > 0 && (
-                                  <div>
-                                    <p className="font-semibold text-foreground mb-1">Hipóteses Diagnósticas</p>
-                                    <ul className="list-disc pl-4 text-muted-foreground">
-                                      {resultado.hipoteses_diagnosticas.map((h: any, i: number) => <li key={i}>{typeof h === 'string' ? h : (h?.diagnostico ? `${h.diagnostico}${h.probabilidade ? ` (${h.probabilidade})` : ''}${h.evidencia ? ` — ${h.evidencia}` : ''}` : JSON.stringify(h))}</li>)}
-                                    </ul>
-                                  </div>
-                                )}
-
-                                {/* Transcrição */}
-                                {av.transcricao && editingVoiceId !== av.id && (
-                                  <div>
-                                    <p className="font-semibold text-foreground mb-1">Transcrição</p>
-                                    <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
-                                      {av.transcricao}
+                                    <p className="font-semibold text-foreground mb-1">Resumo</p>
+                                    <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border">
+                                      {resultado?.resumo_clinico || 'Resumo não disponível'}
                                     </p>
                                   </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <div className="text-center py-6 text-muted-foreground">
-                      <Mic className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                      <p className="text-sm">Nenhuma avaliação por voz registrada</p>
-                      <p className="text-xs mt-1">Use a ferramenta de avaliação por voz acima para registrar.</p>
-                    </div>
-                  )}
-                </div>
+                                  {av.transcricao && (
+                                    <div>
+                                      <p className="font-semibold text-foreground mb-1">Transcrição</p>
+                                      <p className="text-muted-foreground whitespace-pre-wrap bg-background rounded-lg p-2 border max-h-32 overflow-y-auto">
+                                        {av.transcricao}
+                                      </p>
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Mic className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma avaliação por voz registrada</p>
+                    <p className="text-xs mt-1">Use a ferramenta de avaliação por voz para registrar.</p>
+                  </div>
+                )}
+              </div>
 
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Questionários Remotos Recebidos</h3>
+                </div>
+                <QuestionariosComparacao
+                  linksAvPaciente={linksAvPaciente}
+                  respostas={respostas}
+                  myidAvaliacoes={myidAvaliacoes}
+                />
               </div>
             </TabsContent>
 
-            {/* Aba: Questionários Remotos */}
-            <TabsContent value="respostas" className="mt-4">
-              <QuestionariosComparacao
-                linksAvPaciente={linksAvPaciente}
-                respostas={respostas}
-                myidAvaliacoes={myidAvaliacoes}
-              />
-            </TabsContent>
-
-            {/* Aba: Diretrizes e Serviços (Repositório) */}
+            {/* Aba: Diretrizes e Tratamentos (Repositório) */}
             <TabsContent value="avaliacoes" className="mt-4">
               <PacienteProtocolosTab
                 pacienteId={paciente.id}

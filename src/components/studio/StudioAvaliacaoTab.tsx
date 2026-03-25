@@ -164,7 +164,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
             <Mic className="h-4 w-4" /> Avaliação por Voz
           </TabsTrigger>
           <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-studio">
-            <Dumbbell className="h-4 w-4" /> Diretrizes e Serviços
+            <Dumbbell className="h-4 w-4" /> Diretrizes e Tratamentos
           </TabsTrigger>
         </TabsList>
 
@@ -607,7 +607,7 @@ export default function StudioAvaliacaoTab({ pacienteId, pacienteNome, pacienteT
           </p>
         </TabsContent>
 
-        {/* Tab: Diretrizes e Serviços (Repositório) */}
+        {/* Tab: Diretrizes e Tratamentos (Repositório) */}
         <TabsContent value="protocolos" className="mt-4">
           <PacienteProtocolosTab
             pacienteId={pacienteId}

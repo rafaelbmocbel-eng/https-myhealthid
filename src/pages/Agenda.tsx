@@ -31,6 +31,7 @@ import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
+import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
@@ -773,15 +774,37 @@ export default function Agenda() {
         metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
       });
 
-      // Automação: Adicionar conduta automática
+      // Automação: Atualizar diretriz vigente no prontuário
       const { data: prot } = await supabase
         .from('protocolos')
-        .select('objetivo_geral')
+        .select('id, titulo, objetivo_geral')
         .eq('paciente_id', ag.paciente_id)
         .eq('status', 'ativo')
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
+
+      const { data: protCob } = await supabase
+        .from('protocolos_cob_zero')
+        .select('id, classificacao_lenke, cobb_angle')
+        .eq('paciente_id', ag.paciente_id)
+        .eq('status', 'ativo')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const diretrizTitulo = prot?.titulo
+        || (protCob ? `COB° ZERO — Lenke ${protCob.classificacao_lenke || '?'}` : null);
+
+      if (diretrizTitulo) {
+        await gerarNotaConduta({
+          pacienteId: ag.paciente_id,
+          terapeutaId: user.id,
+          diretrizTitulo,
+          observacoes: 'Sessão confirmada. Diretriz vigente mantida no prontuário.',
+          protocoloId: prot?.id || protCob?.id,
+        });
+      }
 
       if (prot?.objetivo_geral) {
         await supabase.from('studio_notas').insert({

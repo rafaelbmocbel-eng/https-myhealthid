@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { AvaliacaoMyID } from '@/types/myid';
 import { AvaliacaoCobZero } from '@/types/cobzero';
+import { gerarNotaAvaliacaoProfissional } from '@/utils/prontuarioAutoNotes';
 
 // ── Método Identidade ─────────────────────────────────────────────────────────
 
@@ -272,6 +273,25 @@ export function useAvaliacoesCobZero(pacienteId?: string) {
         .select()
         .single();
       if (error) throw error;
+
+      try {
+        await gerarNotaAvaliacaoProfissional({
+          pacienteId,
+          terapeutaId: user!.id,
+          tipoAvaliacao: 'cob_zero',
+          resumoScores: {
+            'Score E': Number(avaliacao.scoreE || 0),
+            Cobb: Number(avaliacao.etapaLenke.cobbAngle || 0),
+            'Risco %': Number(avaliacao.etapaRisco.riskPercentage || 0),
+          },
+          classificacao: avaliacao.etapaRisco.riskLevel || undefined,
+          observacoes: `Lenke: ${avaliacao.etapaLenke.lenkeType || 'N/A'} · Risco: ${avaliacao.etapaRisco.riskPercentage || 0}%`,
+          avaliacaoId: data.id,
+        });
+      } catch (noteErr) {
+        console.warn('Nota de prontuário CobZero não registrada:', noteErr);
+      }
+
       return data;
     },
     onSuccess: () => {

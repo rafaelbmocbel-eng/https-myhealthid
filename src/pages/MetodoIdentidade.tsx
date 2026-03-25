@@ -257,7 +257,7 @@ export default function MetodoIdentidade() {
             avaliacao={editorAvaliacao}
             pacienteNome={avaliacao.pacienteNome}
             onSave={() => {
-              toast({ title: '✅ Diretriz salva!', description: 'Diretriz disponível em Diretrizes e Serviços e no prontuário do paciente.' });
+              toast({ title: '✅ Diretriz salva!', description: 'Diretriz disponível em Diretrizes e Tratamentos e no prontuário do paciente.' });
               setShowDiretrizBuilder(false);
               setShowDashboard(true);
             }}

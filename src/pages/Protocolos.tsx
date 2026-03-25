@@ -238,7 +238,7 @@ export default function Protocolos() {
               Voltar
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-foreground">Análise Automática de Diretrizes e Serviços</h1>
+              <h1 className="text-xl font-bold text-foreground">Análise Automática de Diretrizes e Tratamentos</h1>
               <p className="text-sm text-muted-foreground">Baseada nos scores da avaliação · {getPacienteNome(analiseAvaliacao.paciente_id)}</p>
             </div>
           </div>
@@ -287,7 +287,7 @@ export default function Protocolos() {
               <ClipboardList className="h-6 w-6 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-foreground">Diretrizes e Serviços</h1>
+              <h1 className="text-2xl font-bold text-foreground">Diretrizes e Tratamentos</h1>
               <p className="text-muted-foreground text-sm">
                 {protocolos.length} diretriz{protocolos.length !== 1 ? 'es' : ''} · {avaliacoesSemProtocolo.length} avaliação{avaliacoesSemProtocolo.length !== 1 ? 'ões' : ''} pendente{avaliacoesSemProtocolo.length !== 1 ? 's' : ''}
               </p>
@@ -308,7 +308,7 @@ export default function Protocolos() {
           <div className="mb-6">
             <div className="flex items-center gap-2 mb-3">
               <Zap className="h-4 w-4 text-amber-500" />
-              <h2 className="font-semibold text-sm text-foreground">Avaliações Prontas para Diretrizes e Serviços</h2>
+              <h2 className="font-semibold text-sm text-foreground">Avaliações Prontas para Diretrizes e Tratamentos</h2>
               <Badge className="bg-amber-100 text-amber-700 border-0">{avaliacoesSemProtocolo.length}</Badge>
             </div>
             <div className="space-y-2">

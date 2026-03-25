@@ -820,7 +820,7 @@ export default function PatientIntegratedDashboard({
             >
               <div className="flex items-center gap-2">
                 <FileText className="h-4 w-4 text-violet-600" />
-                <span className="font-bold text-sm">Diretrizes e Serviços</span>
+                <span className="font-bold text-sm">Diretrizes e Tratamentos</span>
               </div>
               {showDiretrizes ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </Button>
@@ -921,7 +921,7 @@ function StructuralDiretrizButton({ data, pacienteId }: { data: StructuralAssess
         onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
       >
         <Sparkles className="h-4 w-4" />
-        Montar Diretrizes e Serviços (Painel)
+        Montar Diretrizes e Tratamentos (Painel)
       </Button>
     </div>
   );

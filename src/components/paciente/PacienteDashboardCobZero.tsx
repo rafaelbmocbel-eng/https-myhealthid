@@ -161,6 +161,22 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
     enabled: linksAv.length > 0,
   });
 
+  const { data: voiceAvaliacoes = [] } = useQuery({
+    queryKey: ['avaliacoes-voz-cobzero', user?.id, paciente.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', paciente.id)
+        .eq('servico', 'cobzero')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user,
+  });
+
   const getLinkUrl = (token: string) => getAvaliacaoUrl(token);
 
   const gerarLink = async () => {
@@ -313,8 +329,8 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
               </TabsTrigger>
-              <TabsTrigger value="remota" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-                <FileText className="h-4 w-4" /> Avaliação Remota & Agenda
+              <TabsTrigger value="historico" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
+                <FileText className="h-4 w-4" /> Histórico de Avaliações
               </TabsTrigger>
               <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
                 <Presentation className="h-4 w-4" /> Avaliação Presencial {avaliacoes.length > 0 && `(${avaliacoes.length})`}
@@ -328,7 +344,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                 <Mic className="h-4 w-4" /> Avaliação por Voz
               </TabsTrigger>
               <TabsTrigger value="protocolos" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-blue-600">
-                <Target className="h-4 w-4" /> Diretrizes e Serviços
+                <Target className="h-4 w-4" /> Diretrizes e Tratamentos
               </TabsTrigger>
             </TabsList>
 
@@ -344,11 +360,74 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               />
             </TabsContent>
 
-            {/* Aba: Avaliação Remota */}
-            <TabsContent value="remota" className="mt-4 space-y-4">
+            {/* Aba: Histórico de Avaliações */}
+            <TabsContent value="historico" className="mt-4 space-y-6">
+              <div className="clinical-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <Presentation className="h-4 w-4 text-blue-600" />
+                  <h3 className="font-semibold text-sm">Avaliações Presenciais COB° ZERO</h3>
+                </div>
+                {avaliacoes.length === 0 ? (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <AlignCenter className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma avaliação presencial registrada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {avaliacoes.map((av: any, i: number) => (
+                      <div key={av.id} className="rounded-lg border p-3 flex items-center justify-between">
+                        <div>
+                          <p className="font-semibold text-sm">Avaliação {avaliacoes.length - i}</p>
+                          <p className="text-xs text-muted-foreground">{format(parseISO(av.data_avaliacao), 'dd/MM/yyyy', { locale: ptBR })}</p>
+                          <div className="flex flex-wrap gap-1 mt-1">
+                            {av.cobb_angle && <Badge variant="outline">Cobb: {av.cobb_angle}°</Badge>}
+                            {av.lenke_type && <Badge variant="secondary">Lenke {av.lenke_type}</Badge>}
+                            {av.risco_level && <Badge className={RISCO_COLOR[av.risco_level] || ''}>{av.risco_level}</Badge>}
+                          </div>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => onVerRelatorio(av)}>
+                          <FileText className="h-3.5 w-3.5 mr-1" /> Relatório
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
 
+              <div className="clinical-card">
+                <div className="flex items-center gap-2 mb-3">
+                  <Mic className="h-4 w-4 text-violet-600" />
+                  <h3 className="font-semibold text-sm">Avaliações por Voz</h3>
+                </div>
+                {voiceAvaliacoes.length > 0 ? (
+                  <div className="space-y-2">
+                    {voiceAvaliacoes.map((av: any) => (
+                      <div key={av.id} className="rounded-lg border p-3 flex items-center justify-between">
+                        <div className="min-w-0">
+                          <p className="text-sm font-semibold truncate">{format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
+                          <p className="text-xs text-muted-foreground truncate">{av.queixa_principal || 'Avaliação por voz'}</p>
+                        </div>
+                        {av.classificacao_severidade && (
+                          <Badge variant="outline" className="text-[10px] h-4">{av.classificacao_severidade}</Badge>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-center py-6 text-muted-foreground">
+                    <Mic className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                    <p className="text-sm">Nenhuma avaliação por voz registrada</p>
+                  </div>
+                )}
+              </div>
 
-              <QuestionariosComparacao linksAvPaciente={linksAv} respostas={respostas} />
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Questionários Remotos</h3>
+                </div>
+                <QuestionariosComparacao linksAvPaciente={linksAv} respostas={respostas} />
+              </div>
             </TabsContent>
 
             {/* Aba: Avaliação em Consultório */}
@@ -433,7 +512,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                 </Card>
               </TabsContent>
             )}
-            {/* Aba: Diretrizes e Serviços (Repositório) */}
+            {/* Aba: Diretrizes e Tratamentos (Repositório) */}
             <TabsContent value="protocolos" className="mt-4">
               <PacienteProtocolosTab
                 pacienteId={paciente.id}
