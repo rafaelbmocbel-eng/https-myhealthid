@@ -893,12 +893,28 @@ export default function Agenda() {
             const duracao = differenceInMinutes(parseISO(ag.data_fim), parseISO(ag.data_inicio));
 
             if (status === 'atendido') {
+              // Fetch current active guideline for the patient
+              let diretrizResumo = '';
+              try {
+                const { data: diretrizAtual } = await supabase
+                  .from('protocolos')
+                  .select('titulo, objetivo_geral, frequencia, duracao_total')
+                  .eq('paciente_id', ag.paciente_id)
+                  .eq('status', 'ativo')
+                  .order('created_at', { ascending: false })
+                  .limit(1)
+                  .maybeSingle();
+                if (diretrizAtual) {
+                  diretrizResumo = `\n\n📋 Diretriz vigente: ${diretrizAtual.titulo}\nObjetivo: ${diretrizAtual.objetivo_geral || 'N/A'}\nFrequência: ${diretrizAtual.frequencia || 'N/A'} · Duração: ${diretrizAtual.duracao_total || 'N/A'}\n✅ Conduta mantida/executada nesta sessão.`;
+                }
+              } catch (_) { /* ignore */ }
+
               await supabase.from('notas_prontuario').insert({
                 paciente_id: ag.paciente_id,
                 terapeuta_id: user.id,
                 tipo: 'sessao_confirmada',
                 titulo: `Sessão ${tipo} — ${dataFormatted}`,
-                descricao: `✅ ATENDIMENTO CONFIRMADO\n\n📅 Data: ${dataFormatted}\n⏱️ Duração: ${duracao} minutos\n🏷️ Tipo: ${tipo}\n👤 Paciente: ${pacNome}\n${ag.observacoes ? `\n📝 Observações:\n${ag.observacoes}` : ''}`,
+                descricao: `✅ ATENDIMENTO CONFIRMADO\n\n📅 Data: ${dataFormatted}\n⏱️ Duração: ${duracao} minutos\n🏷️ Tipo: ${tipo}\n👤 Paciente: ${pacNome}${ag.observacoes ? `\n📝 Observações:\n${ag.observacoes}` : ''}${diretrizResumo}`,
                 dados_extras: { agendamento_id: ag.id, duracao, tipo },
                 referencia_id: ag.id,
               });
