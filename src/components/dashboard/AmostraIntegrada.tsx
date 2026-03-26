@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, forwardRef } from 'react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
@@ -41,7 +41,7 @@ function interpretR(r: number): { label: string; color: string } {
     return { label: 'Negligível', color: 'text-muted-foreground/60' };
 }
 
-export default function AmostraIntegrada({ avaliacoesIdentidade, avaliacoesCobZero, medidasStudio }: Props) {
+const AmostraIntegrada = forwardRef<HTMLDivElement, Props>(function AmostraIntegrada({ avaliacoesIdentidade, avaliacoesCobZero, medidasStudio }, ref) {
     const [activeTab, setActiveTab] = useState("cruzamento");
 
     const analysis = useMemo(() => {
@@ -187,7 +187,7 @@ ${analysis.execSummary}
     };
 
     return (
-        <div className="space-y-4">
+        <div ref={ref} className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid grid-cols-4 mb-4 bg-slate-900 text-slate-300">
                     <TabsTrigger value="cruzamento" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Network className="h-3.5 w-3.5 mr-1" /> Multi-Serviço</TabsTrigger>
@@ -319,4 +319,6 @@ ${analysis.execSummary}
             </Tabs>
         </div>
     );
-}
+});
+
+export default AmostraIntegrada;
