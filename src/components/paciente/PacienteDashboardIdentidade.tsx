@@ -989,22 +989,48 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     if (avaliacoes && avaliacoes.length > 0) {
                       setAvaliacaoParaDiretriz(avaliacoes[0]);
                       setCriandoDiretrizHistorico(true);
+                    } else if (structuralAvaliacoes.length > 0) {
+                      const sa = structuralAvaliacoes[0] as any;
+                      setAvaliacaoParaDiretriz({
+                        id: sa.id,
+                        paciente_id: paciente.id,
+                        created_at: sa.created_at,
+                        score_e: sa.score_e || 0,
+                        score_p: sa.score_p || 0,
+                        score_c: sa.score_c || 0,
+                        score_f: sa.score_f || 0,
+                        score_d: sa.score_d || 0,
+                        score_r: sa.score_r || 0,
+                        score_efi: sa.score_efi || 0,
+                        dor_identidade: sa.id_final || 0,
+                        status: 'concluida',
+                      });
+                      setCriandoDiretrizHistorico(true);
                     } else {
-                      // Tentar com avaliação estrutural mais recente
-                      if (structuralAvaliacoes.length > 0) {
-                        const sa = structuralAvaliacoes[0] as any;
+                      // Tentar com avaliação por voz mais recente
+                      const { data: avaliacoesVoz } = await supabase
+                        .from('avaliacoes_voz')
+                        .select('*')
+                        .eq('terapeuta_id', user!.id)
+                        .eq('paciente_id', paciente.id)
+                        .order('created_at', { ascending: false })
+                        .limit(1);
+
+                      if (avaliacoesVoz && avaliacoesVoz.length > 0) {
+                        const av = avaliacoesVoz[0] as any;
+                        const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
                         setAvaliacaoParaDiretriz({
-                          id: sa.id,
+                          id: av.id,
                           paciente_id: paciente.id,
-                          created_at: sa.created_at,
-                          score_e: sa.score_e || 0,
-                          score_p: sa.score_p || 0,
-                          score_c: sa.score_c || 0,
-                          score_f: sa.score_f || 0,
-                          score_d: sa.score_d || 0,
-                          score_r: sa.score_r || 0,
-                          score_efi: sa.score_efi || 0,
-                          dor_identidade: sa.id_final || 0,
+                          created_at: av.created_at,
+                          score_e: resultado?.scores?.estrutural || 0,
+                          score_p: resultado?.scores?.psicologico || 0,
+                          score_c: resultado?.scores?.contexto || 0,
+                          score_f: resultado?.scores?.funcionalidade || 0,
+                          score_d: resultado?.scores?.dor || resultado?.intensidade_dor || 0,
+                          score_r: resultado?.scores?.regulacao || 0,
+                          score_efi: resultado?.scores?.efi || 0,
+                          dor_identidade: resultado?.intensidade_dor || 0,
                           status: 'concluida',
                         });
                         setCriandoDiretrizHistorico(true);
