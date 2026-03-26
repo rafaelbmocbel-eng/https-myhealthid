@@ -23,6 +23,8 @@ interface Props {
   pacienteId?: string;
   terapeutaId?: string;
   pacienteNome?: string;
+  readOnly?: boolean;
+  onNavigateDiretrizes?: () => void;
 }
 
 // ── Evidence-based Techniques Menu ────────────────────────────────────
@@ -121,7 +123,7 @@ const PHASE_COLORS = [
   { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500' },
 ];
 
-export default function StructuralResultsSummary({ data, pacienteId, terapeutaId, pacienteNome }: Props) {
+export default function StructuralResultsSummary({ data, pacienteId, terapeutaId, pacienteNome, readOnly, onNavigateDiretrizes }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -719,49 +721,61 @@ export default function StructuralResultsSummary({ data, pacienteId, terapeutaId
           })}
         </div>
 
-        {/* Generate/Print */}
-        <div className="mt-4 pt-4 border-t">
-          {!showGuidelines ? (
-            <Button className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2" onClick={handleGenerateGuidelines}
-              disabled={totalTecSel === 0 && totalExSel === 0}>
-              <Sparkles className="h-4 w-4" />
-              Gerar Diretriz com {totalTecSel + totalExSel} Itens Selecionados
+        {/* Generate/Print — hidden in readOnly mode */}
+        {readOnly ? (
+          <div className="mt-4 pt-4 border-t">
+            <Button
+              className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2"
+              onClick={onNavigateDiretrizes}
+            >
+              <Target className="h-4 w-4" />
+              Criar Diretriz em "Diretrizes e Tratamento"
             </Button>
-          ) : (
-            <div className="space-y-3">
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
-                  <Copy className="h-3.5 w-3.5" /> {copied ? 'Copiado!' : 'Copiar'}
-                </Button>
-                <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
-                  <Printer className="h-3.5 w-3.5" /> Imprimir
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSaveGuideline}
-                  disabled={saving || !pacienteId || !(terapeutaId || user?.id)}
-                  className="gap-1.5"
-                >
-                  {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                  Salvar Diretriz
-                </Button>
-                <Button variant="outline" size="sm" onClick={() => setShowGuidelines(false)} className="gap-1.5">
-                  Editar Seleção
-                </Button>
-                <Button variant="outline" size="sm" onClick={resetDiretriz} className="gap-1.5 ml-auto">
-                  <Plus className="h-3.5 w-3.5" /> Nova Diretriz
-                </Button>
-              </div>
-              {savedProtocoloId && (
-                <div className="text-[10px] text-emerald-600 flex items-center gap-1">
-                  <Check className="h-3 w-3" /> Diretriz salva e vinculada ao prontuário.
+          </div>
+        ) : (
+          <div className="mt-4 pt-4 border-t">
+            {!showGuidelines ? (
+              <Button className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2" onClick={handleGenerateGuidelines}
+                disabled={totalTecSel === 0 && totalExSel === 0}>
+                <Sparkles className="h-4 w-4" />
+                Gerar Diretriz com {totalTecSel + totalExSel} Itens Selecionados
+              </Button>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
+                    <Copy className="h-3.5 w-3.5" /> {copied ? 'Copiado!' : 'Copiar'}
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
+                    <Printer className="h-3.5 w-3.5" /> Imprimir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleSaveGuideline}
+                    disabled={saving || !pacienteId || !(terapeutaId || user?.id)}
+                    className="gap-1.5"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+                    Salvar Diretriz
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => setShowGuidelines(false)} className="gap-1.5">
+                    Editar Seleção
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={resetDiretriz} className="gap-1.5 ml-auto">
+                    <Plus className="h-3.5 w-3.5" /> Nova Diretriz
+                  </Button>
                 </div>
-              )}
-              <pre className="text-[10px] leading-relaxed p-4 bg-card rounded-lg border overflow-x-auto whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">{guidelines}</pre>
-            </div>
-          )}
-        </div>
+                {savedProtocoloId && (
+                  <div className="text-[10px] text-emerald-600 flex items-center gap-1">
+                    <Check className="h-3 w-3" /> Diretriz salva e vinculada ao prontuário.
+                  </div>
+                )}
+                <pre className="text-[10px] leading-relaxed p-4 bg-card rounded-lg border overflow-x-auto whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">{guidelines}</pre>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
