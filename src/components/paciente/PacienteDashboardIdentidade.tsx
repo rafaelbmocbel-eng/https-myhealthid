@@ -956,7 +956,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   className="bg-identidade hover:bg-identidade/90 text-white gap-2 font-bold px-4 h-9 shadow-lg transition-all rounded-xl"
                   onClick={() => setSubTabAtiva('avaliacoes')}
                 >
-                  <Target className="h-4 w-4" /> Ir para Diretrizes
+                  <Target className="h-4 w-4" /> Criar Diretriz
                 </Button>
               </div>
               <div className="clinical-card">
