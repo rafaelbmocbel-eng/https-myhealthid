@@ -229,7 +229,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
         </Button>
       </div>
 
-      <ScrollArea className="max-h-[700px]">
+      <ScrollArea className="max-h-[calc(100vh-200px)]">
         <div className="space-y-8 pr-2">
           {Object.entries(grouped).map(([dateKey, dayNotas]) => (
             <div key={dateKey}>
