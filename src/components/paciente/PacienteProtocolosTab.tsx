@@ -102,30 +102,71 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     enabled: !!user && tipo === 'cob_zero',
   });
 
-  const handleNovaDiretrizManual = () => {
-    const pendentes = tipo === 'cob_zero' ? avaliacoesCobZeroSemProtocolo : avaliacoesSemProtocolo;
+  const handleNovaDiretrizManual = async () => {
+    if (tipo === 'cob_zero') {
+      const pendentes = avaliacoesCobZeroSemProtocolo;
+      if (pendentes.length === 0) {
+        toast({ title: "Nenhuma avaliação disponível", description: "Conclua uma avaliação COB° ZERO para gerar uma diretriz.", variant: "destructive" });
+        return;
+      }
+      if (pendentes.length === 1) { handleGerarDiretrizCobZero(pendentes[0]); return; }
+      const element = document.getElementById('secao-pendencias');
+      if (element) { element.scrollIntoView({ behavior: 'smooth' }); toast({ title: "Selecione uma avaliação" }); }
+      return;
+    }
 
-    if (pendentes.length === 0) {
-      toast({
-        title: "Nenhuma avaliação disponível",
-        description: `Conclua uma avaliação ${tipo === 'cob_zero' ? 'COB° ZERO' : 'Identidade'} para gerar uma diretriz.`,
-        variant: "destructive"
+    // Identidade/Studio: check avaliacoes, then structural, then voice
+    if (avaliacoesSemProtocolo.length > 0) {
+      if (avaliacoesSemProtocolo.length === 1) { setAnalisandoAvaliacao(avaliacoesSemProtocolo[0]); return; }
+      const element = document.getElementById('secao-pendencias');
+      if (element) { element.scrollIntoView({ behavior: 'smooth' }); toast({ title: "Selecione uma avaliação" }); }
+      return;
+    }
+
+    // Fallback: structural assessments
+    const { data: structuralAvs } = await supabase
+      .from('avaliacoes_identidade')
+      .select('*')
+      .eq('paciente_id', pacienteId)
+      .eq('terapeuta_id', user!.id)
+      .not('score_e', 'is', null)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (structuralAvs && structuralAvs.length > 0) {
+      const sa = structuralAvs[0] as any;
+      setAnalisandoAvaliacao({
+        id: sa.id, paciente_id: pacienteId, created_at: sa.created_at,
+        score_e: sa.score_e || 0, score_p: sa.score_p || 0, score_c: sa.score_c || 0,
+        score_f: sa.score_f || 0, score_d: sa.score_d || 0, score_r: sa.score_r || 0,
+        score_efi: sa.score_efi || 0, dor_identidade: sa.id_final || 0, status: 'concluida',
       });
       return;
     }
 
-    if (pendentes.length === 1) {
-      if (tipo === 'cob_zero') handleGerarDiretrizCobZero(pendentes[0]);
-      else setAnalisandoAvaliacao(pendentes[0]);
+    // Fallback: voice assessments
+    const { data: voiceAvs } = await supabase
+      .from('avaliacoes_voz')
+      .select('*')
+      .eq('paciente_id', pacienteId)
+      .eq('terapeuta_id', user!.id)
+      .order('created_at', { ascending: false })
+      .limit(1);
+
+    if (voiceAvs && voiceAvs.length > 0) {
+      const av = voiceAvs[0] as any;
+      const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
+      setAnalisandoAvaliacao({
+        id: av.id, paciente_id: pacienteId, created_at: av.created_at,
+        score_e: resultado?.scores?.estrutural || 0, score_p: resultado?.scores?.psicologico || 0,
+        score_c: resultado?.scores?.contexto || 0, score_f: resultado?.scores?.funcionalidade || 0,
+        score_d: resultado?.scores?.dor || resultado?.intensidade_dor || 0, score_r: resultado?.scores?.regulacao || 0,
+        score_efi: resultado?.scores?.efi || 0, dor_identidade: resultado?.intensidade_dor || 0, status: 'concluida',
+      });
       return;
     }
 
-    // Se houver múltiplas, rolar para a seção de pendências
-    const element = document.getElementById('secao-pendencias');
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' });
-      toast({ title: "Selecione uma avaliação", description: "Escolha qual avaliação deseja usar para a nova diretriz." });
-    }
+    toast({ title: "Nenhuma avaliação disponível", description: "Conclua uma avaliação presencial ou por voz antes de criar uma diretriz.", variant: "destructive" });
   };
 
   const deleteMutation = useMutation({
