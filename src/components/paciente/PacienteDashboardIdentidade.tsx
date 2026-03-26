@@ -759,8 +759,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     onComplete={async (sData) => {
                       setStructuralData(sData);
                       setShowStructural(false);
-                      setLastSavedData(sData); // Show results immediately from memory
-                      // Salvar no Supabase
+                      setLastSavedData(sData);
                       const { error } = await (supabase as any).from('avaliacoes_identidade').insert({
                         paciente_id: paciente.id,
                         terapeuta_id: user?.id,
@@ -774,7 +773,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         console.error('Erro ao salvar avaliação estrutural:', error);
                         toast({ title: 'Erro ao salvar no banco', description: error.message, variant: 'destructive' });
                       } else {
-                        // Auto-generate prontuário note with rehab timeline
                         const { generateRehabInsights, generateEngagementSummary } = await import('@/utils/tissueHealingTimelines');
                         const rehabInsights = generateRehabInsights(sData.units);
                         const rehabSummary = generateEngagementSummary(rehabInsights);
@@ -797,7 +795,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                     onBack={() => setShowStructural(false)}
                   />
                 ) : lastSavedData ? (
-                  /* Show results directly from memory after saving */
                   <div className="space-y-4">
                     <div className="clinical-card bg-gradient-to-br from-emerald-50 to-emerald-100/50 border-emerald-200">
                       <div className="flex items-center justify-between">
@@ -807,13 +804,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                           </div>
                           <div>
                             <h3 className="font-bold text-sm text-emerald-800">Avaliação Estrutural Salva</h3>
-                            <p className="text-xs text-emerald-600">Resultados completos e Cardápio de Técnicas</p>
+                            <p className="text-xs text-emerald-600">Veja os resultados no Histórico de Avaliações</p>
                           </div>
                         </div>
                         <div className="flex gap-2">
-                          <Button size="sm" variant="outline" className="text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50" onClick={() => setShowReport({ structural: lastSavedData, myid: myidAvaliacoes[0]?.resultado_processado })}>
-                            <FileText className="h-3 w-3" /> Gerar PDF
-                          </Button>
                           <Button size="sm" variant="outline" className="text-xs gap-1" onClick={() => { setLastSavedData(null); setShowStructural(true); }}>
                             <Activity className="h-3 w-3" /> Nova Avaliação
                           </Button>
@@ -823,7 +817,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         </div>
                       </div>
                     </div>
-                    <StructuralResultsSummary data={lastSavedData} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
                   </div>
                 ) : (
                   <div className="clinical-card">
@@ -842,76 +835,21 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                         className="bg-identidade hover:bg-identidade/90 text-white gap-2"
                       >
                         <Activity className="h-4 w-4" />
-                        {structuralAvaliacoes.length > 0 ? 'Nova Avaliação' : 'Iniciar Avaliação'}
+                        Iniciar Avaliação
                       </Button>
                     </div>
-
-                    {structuralAvaliacoes.length > 0 ? (
-                      <div className="space-y-3">
-                        {structuralAvaliacoes.slice(0, 3).map((av: any) => {
-                          const dados = av.dados_avaliacao as any as StructuralAssessmentData | null;
-                          if (!dados) return null;
-                          const score = dados?.scoreStructuralGeneral ?? Number(av.score_e || 0);
-                          const isExpanded = expandedStructuralId === av.id;
-                          return (
-                            <div key={av.id} className="rounded-lg border bg-muted/20">
-                              <div className="flex items-center gap-3 p-3">
-                                <div className="flex items-center gap-2 flex-1 min-w-0">
-                                  <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                                  <div className="min-w-0">
-                                    <span className="text-sm font-medium">{av.data_avaliacao || 'Avaliação'}</span>
-                                    <div className="flex gap-2 text-[10px] text-muted-foreground mt-0.5 flex-wrap">
-                                      {dados.units && Object.entries(dados.units).slice(0, 4).map(([unitId, unit]: [string, any]) => {
-                                        const cfg = UNIT_CONFIGS.find(c => c.id === unitId);
-                                        return (
-                                          <span key={unitId} className="flex items-center gap-0.5">
-                                            {cfg?.emoji} <span className={classifyScoreColor(unit.score)}>{Number(unit.score).toFixed(1)}</span>
-                                          </span>
-                                        );
-                                      })}
-                                      {dados.units && Object.keys(dados.units).length > 4 && (
-                                        <span className="text-muted-foreground">+{Object.keys(dados.units).length - 4}</span>
-                                      )}
-                                    </div>
-                                  </div>
-                                </div>
-                                <div className="text-right shrink-0 mr-2">
-                                  <div className={`text-lg font-black ${classifyScoreColor(score)}`}>{Number(score).toFixed(1)}</div>
-                                  <div className="text-[10px] text-muted-foreground">{classifyScore(score)}</div>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant={isExpanded ? 'outline' : 'default'}
-                                  className={isExpanded ? 'gap-1 text-xs' : 'bg-identidade hover:bg-identidade/90 text-white gap-1 text-xs'}
-                                  onClick={() => setExpandedStructuralId(isExpanded ? null : av.id)}
-                                >
-                              <FileText className="h-3 w-3" />
-                                  {isExpanded ? 'Fechar' : 'Ver Resultados'}
-                                </Button>
-                              </div>
-                              {isExpanded && (
-                                <div className="p-3 pt-0">
-                                  <StructuralResultsSummary data={dados} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
-                                </div>
-                              )}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    ) : (
-                      <div className="text-center py-6 text-muted-foreground">
-                        <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Nenhuma avaliação estrutural registrada</p>
-                        <p className="text-xs mt-1">Avalie as 8 unidades corporais do paciente individualmente.</p>
-                      </div>
-                    )}
+                    <div className="text-center py-6 text-muted-foreground">
+                      <Activity className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                      <p className="text-sm">Avalie as 8 unidades corporais do paciente</p>
+                      <p className="text-xs mt-1">O histórico completo fica na aba "Histórico de Avaliações".</p>
+                    </div>
                   </div>
                 )}
 
-                {!showStructural && (
+                {!showStructural && !lastSavedData && (
                   <>
                     {iniciandoMyID ? (
-                      <div className="bg-white rounded-xl shadow-sm border p-4 relative">
+                      <div className="bg-card rounded-xl shadow-sm border p-4 relative">
                         <Button variant="ghost" className="mb-4 absolute top-2 right-2" size="sm" onClick={() => setIniciandoMyID(false)}>Voltar</Button>
                         <MyIDWizard onComplete={async (result, rawData) => {
                           await supabase.from('myid_avaliacoes').insert({
@@ -928,10 +866,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                       </div>
                     ) : (
                       <div className="space-y-4">
-                          <div className="flex justify-between items-center bg-card p-4 rounded-xl border shadow-sm">
-                           <div>
-                             <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
-                             <p className="text-sm text-muted-foreground">Preencha um novo MyID durante a sessão.</p>
+                        <div className="flex justify-between items-center bg-card p-4 rounded-xl border shadow-sm">
+                          <div>
+                            <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
+                            <p className="text-sm text-muted-foreground">Preencha um novo MyID durante a sessão.</p>
                           </div>
                           <Button onClick={() => setIniciandoMyID(true)}>Nova Avaliação</Button>
                         </div>
