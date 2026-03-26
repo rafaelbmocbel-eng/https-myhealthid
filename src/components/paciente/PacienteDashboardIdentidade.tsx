@@ -1082,12 +1082,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                               onClick={() => setExpandedStructuralId(isExpanded ? null : av.id)}
                             >
                               <FileText className="h-3 w-3" />
-                              {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
+                              {isExpanded ? 'Fechar' : 'Ver Resultados'}
                             </Button>
                           </div>
                           {isExpanded && (
                             <div className="p-3 pt-0">
-                              <StructuralResultsSummary data={dados} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} />
+                              <StructuralResultsSummary data={dados} pacienteId={paciente.id} terapeutaId={user?.id} pacienteNome={patientName} readOnly onNavigateDiretrizes={() => setSubTabAtiva('avaliacoes')} />
                             </div>
                           )}
                         </div>
