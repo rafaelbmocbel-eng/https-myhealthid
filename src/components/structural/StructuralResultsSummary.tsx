@@ -2,20 +2,16 @@ import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
-import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   StructuralAssessmentData, UNIT_CONFIGS,
   classifyScore, classifyScoreColor, classifyScoreBg,
 } from '@/types/structural';
 import {
   AlertTriangle, ArrowRight, Target, TrendingDown, Zap,
-  FileText, Sparkles, Printer, Check, Dumbbell, Brain,
-  ChevronDown, ChevronUp, Copy, Clock, Heart, Shield, Save, Loader2, Plus,
+  ChevronDown, ChevronUp, Clock, Heart, Shield,
 } from 'lucide-react';
 import StructuralConnectionMap from './StructuralConnectionMap';
+import { generateRehabInsights, generateEngagementSummary, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
 import { generateRehabInsights, generateEngagementSummary, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
 
 interface Props {
@@ -117,247 +113,13 @@ function buildPhases(data: StructuralAssessmentData): Phase[] {
 }
 
 // ── Fancy color by phase index ─────────────────────────────────────────
-const PHASE_COLORS = [
-  { bg: 'bg-red-50', border: 'border-red-200', text: 'text-red-700', badge: 'bg-red-500' },
-  { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-700', badge: 'bg-amber-500' },
-  { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-700', badge: 'bg-emerald-500' },
-];
-
 export default function StructuralResultsSummary({ data, pacienteId, terapeutaId, pacienteNome, readOnly, onNavigateDiretrizes }: Props) {
-  const { user } = useAuth();
-  const { toast } = useToast();
-  const qc = useQueryClient();
-  const [showGuidelines, setShowGuidelines] = useState(false);
-  const [guidelines, setGuidelines] = useState('');
-  const [copied, setCopied] = useState(false);
-  const [openPhases, setOpenPhases] = useState<Set<number>>(new Set([0]));
   const [openRehabDetails, setOpenRehabDetails] = useState<Set<number>>(new Set());
-  const [saving, setSaving] = useState(false);
-  const [savedProtocoloId, setSavedProtocoloId] = useState<string | null>(null);
 
-  const phases = buildPhases(data);
   const rehabInsights = generateRehabInsights(data.units);
-
-  // Selection state — starts empty, therapist picks what they want
-  const [selectedTecnicas, setSelectedTecnicas] = useState<Record<number, Set<number>>>(() => {
-    const init: Record<number, Set<number>> = {};
-    phases.forEach((_, i) => { init[i] = new Set(); });
-    return init;
-  });
-  const [selectedExercicios, setSelectedExercicios] = useState<Record<number, Set<number>>>(() => {
-    const init: Record<number, Set<number>> = {};
-    phases.forEach((_, i) => { init[i] = new Set(); });
-    return init;
-  });
-
-  const togglePhase = (i: number) => {
-    setOpenPhases(prev => { const s = new Set(prev); if (s.has(i)) s.delete(i); else s.add(i); return s; });
-  };
-  const toggleTec = (p: number, t: number) => {
-    setSelectedTecnicas(prev => { const s = new Set(prev[p] || []); if (s.has(t)) s.delete(t); else s.add(t); return { ...prev, [p]: s }; });
-  };
-  const toggleEx = (p: number, e: number) => {
-    setSelectedExercicios(prev => { const s = new Set(prev[p] || []); if (s.has(e)) s.delete(e); else s.add(e); return { ...prev, [p]: s }; });
-  };
 
   const driverConfig = data.primaryDriver ? UNIT_CONFIGS.find(u => u.id === data.primaryDriver) : null;
   const driverUnit = data.primaryDriver ? data.units[data.primaryDriver] : null;
-
-  const handleGenerateGuidelines = () => {
-    const lines: string[] = [];
-    const date = new Date().toLocaleDateString('pt-BR');
-    lines.push('═══════════════════════════════════════');
-    lines.push('  DIRETRIZ ESTRUTURAL — MÉTODO IDENTIDADE');
-    lines.push(`  Data: ${date}`);
-    lines.push('═══════════════════════════════════════');
-    lines.push('');
-    lines.push(`Score Geral: ${data.scoreStructuralGeneral.toFixed(1)}/10 — ${data.classification}`);
-    lines.push('');
-    if (data.primaryDriver) {
-      const cfg = UNIT_CONFIGS.find(u => u.id === data.primaryDriver);
-      const unit = data.units[data.primaryDriver];
-      if (cfg && unit) lines.push(`⚠️ DRIVER: ${cfg.id} (${cfg.name}) — ${unit.score.toFixed(1)}\n`);
-    }
-    // Include selected techniques/exercises per phase
-    phases.forEach((phase, pi) => {
-      lines.push(`─── ${phase.titulo.toUpperCase()} (Sem ${phase.semanas}) ───`);
-      lines.push(`Objetivo: ${phase.objetivo}`);
-      lines.push(`Frequência: ${phase.frequencia}\n`);
-      const selTec = selectedTecnicas[pi] || new Set();
-      const selEx = selectedExercicios[pi] || new Set();
-      if (selTec.size > 0) {
-        lines.push('TÉCNICAS:');
-        phase.tecnicas.forEach((t, ti) => {
-          if (selTec.has(ti)) lines.push(`  ✓ ${t.nome} (${t.categoria}) · ${t.duracao} · Evidência ${t.evidencia}`);
-        });
-        lines.push('');
-      }
-      if (selEx.size > 0) {
-        lines.push('EXERCÍCIOS:');
-        phase.exercicios.forEach((e, ei) => {
-          if (selEx.has(ei)) lines.push(`  ✓ ${e.nome} · ${e.series}x${e.repeticoes} · ${e.motivo}`);
-        });
-        lines.push('');
-      }
-    });
-    if (data.relationships.direct.length > 0) {
-      lines.push('─── CONEXÕES ───');
-      data.relationships.direct.forEach(r => lines.push(`  ${r.source} → ${r.target} · ${r.mechanism}`));
-      lines.push('');
-    }
-    lines.push('═══════════════════════════════════════');
-    lines.push('  Gerado pelo Método Identidade · MyHealth ID');
-    setGuidelines(lines.join('\n'));
-    setShowGuidelines(true);
-  };
-
-  const parseWeeks = (input: string) => {
-    const nums = input.match(/\d+/g) || [];
-    const start = Number(nums[0] || 1);
-    const end = Number(nums[1] || nums[0] || 1);
-    return { start, end };
-  };
-
-  const parseSessions = (input: string) => {
-    const m = input.match(/(\d+)/);
-    return m ? Number(m[1]) : 2;
-  };
-
-  const resetDiretriz = () => {
-    setSelectedTecnicas(() => {
-      const init: Record<number, Set<number>> = {};
-      phases.forEach((_, i) => { init[i] = new Set(); });
-      return init;
-    });
-    setSelectedExercicios(() => {
-      const init: Record<number, Set<number>> = {};
-      phases.forEach((_, i) => { init[i] = new Set(); });
-      return init;
-    });
-    setGuidelines('');
-    setShowGuidelines(false);
-    setCopied(false);
-    setSavedProtocoloId(null);
-  };
-
-  const handleSaveGuideline = async () => {
-    if (!guidelines) return;
-    const terapeutaFinal = terapeutaId || user?.id;
-    if (!pacienteId || !terapeutaFinal) {
-      toast({ title: 'Erro ao salvar diretriz', description: 'Paciente ou terapeuta não identificado.', variant: 'destructive' });
-      return;
-    }
-
-    setSaving(true);
-    try {
-      const insightsSummary = generateEngagementSummary(rehabInsights);
-      const descricao = `${guidelines}\n\n${insightsSummary ? `💡 INSIGHTS DE TRATAMENTO\n\n${insightsSummary}` : ''}`.trim();
-
-      const objetivosTop = data.clinicalPriorities.length > 0
-        ? `Prioridades: ${data.clinicalPriorities.slice(0, 3).map(p => p.unitId).join(', ')}`
-        : 'Reabilitação estrutural baseada em evidências.';
-
-      const duracaoEstimada = rehabInsights.length > 0
-        ? `${rehabInsights[0].maxWeeks} semanas`
-        : '8 semanas';
-
-      const { data: prot, error: errProt } = await supabase
-        .from('protocolos' as any)
-        .insert({
-          paciente_id: pacienteId,
-          terapeuta_id: terapeutaFinal,
-          titulo: `Diretriz Estrutural — ${pacienteNome || 'Paciente'}`,
-          descricao,
-          duracao_total: duracaoEstimada,
-          frequencia: '2-3x por semana',
-          objetivo_geral: objetivosTop,
-          perfil_dominante: data.primaryDriver ? [data.primaryDriver] : [],
-          hierarquia_terapeutica: data.clinicalPriorities.map(p => ({
-            foco: p.unitId,
-            prioridade: p.priority,
-            severidade: p.score,
-            motivo: p.action,
-          })),
-          scores_avaliacao: {
-            score_estrutural: data.scoreStructuralGeneral,
-            classificacao: data.classification,
-          },
-          status: 'ativo',
-          data_inicio: new Date().toISOString().split('T')[0],
-        })
-        .select('id')
-        .single();
-
-      if (errProt) throw errProt;
-
-      const fasesRows = phases.map((phase, pi) => {
-        const selTec = selectedTecnicas[pi] || new Set();
-        const selEx = selectedExercicios[pi] || new Set();
-        const objetivos = [phase.objetivo];
-        if (selTec.size > 0) {
-          const nomes = phase.tecnicas.filter((_, ti) => selTec.has(ti)).map(t => t.nome);
-          objetivos.push(`Técnicas: ${nomes.join(', ')}`);
-        }
-        if (selEx.size > 0) {
-          const nomes = phase.exercicios.filter((_, ei) => selEx.has(ei)).map(e => e.nome);
-          objetivos.push(`Exercícios: ${nomes.join(', ')}`);
-        }
-        const weeks = parseWeeks(phase.semanas);
-        return {
-          protocolo_id: (prot as any).id,
-          numero_fase: pi + 1,
-          titulo: phase.titulo,
-          semanas_inicio: weeks.start,
-          semanas_fim: weeks.end,
-          objetivos,
-          sessoes_por_semana: parseSessions(phase.frequencia),
-        };
-      });
-
-      const { error: errFases } = await supabase
-        .from('protocolo_fases' as any)
-        .insert(fasesRows);
-      if (errFases) throw errFases;
-
-      await (supabase as any).from('notas_prontuario').insert({
-        paciente_id: pacienteId,
-        terapeuta_id: terapeutaFinal,
-        tipo: 'conduta_diretriz',
-        titulo: `Diretriz Estrutural — ${data.classification || 'Estrutural'}`,
-        descricao,
-        referencia_id: (prot as any).id,
-        dados_extras: {
-          protocolo_id: (prot as any).id,
-          score_estrutural: data.scoreStructuralGeneral,
-          fases: phases.length,
-        },
-      });
-
-      setSavedProtocoloId((prot as any).id);
-      qc.invalidateQueries({ queryKey: ['protocolos'] });
-      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
-      qc.invalidateQueries({ queryKey: ['resumo-protocolos', pacienteId] });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
-      toast({ title: '✅ Diretriz salva', description: 'Diretriz registrada e enviada para o prontuário.' });
-    } catch (err: any) {
-      console.error(err);
-      toast({ title: 'Erro ao salvar diretriz', description: err.message, variant: 'destructive' });
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  const handleCopy = () => { navigator.clipboard.writeText(guidelines); setCopied(true); setTimeout(() => setCopied(false), 2000); };
-  const handlePrint = () => {
-    const w = window.open('', '_blank');
-    if (w) { w.document.write(`<pre style="font-family:monospace;font-size:12px;padding:20px;white-space:pre-wrap;">${guidelines}</pre>`); w.document.close(); w.print(); }
-  };
-
-  const totalTecSel = Object.values(selectedTecnicas).reduce((s, v) => s + v.size, 0);
-  const totalExSel = Object.values(selectedExercicios).reduce((s, v) => s + v.size, 0);
-  const totalTec = phases.reduce((s, p) => s + p.tecnicas.length, 0);
-  const totalEx = phases.reduce((s, p) => s + p.exercicios.length, 0);
 
   return (
     <div className="space-y-4">
