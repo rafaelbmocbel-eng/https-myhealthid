@@ -4,7 +4,6 @@ import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Textarea } from '@/components/ui/textarea';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -229,8 +228,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
         </Button>
       </div>
 
-      <ScrollArea className="max-h-[calc(100vh-200px)]">
-        <div className="space-y-8 pr-2">
+      <div className="space-y-8">
           {Object.entries(grouped).map(([dateKey, dayNotas]) => (
             <div key={dateKey}>
               {/* Date header */}
@@ -307,7 +305,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                             <Textarea
                               value={editText}
                               onChange={(e) => setEditText(e.target.value)}
-                              className="text-xs min-h-[120px] font-sans bg-background/80 border-border/60 rounded-xl focus:ring-primary/30"
+                              className="min-h-[120px] break-words text-xs font-sans bg-background/80 border-border/60 rounded-xl focus:ring-primary/30"
                             />
                             <div className="flex gap-2">
                               <Button size="sm" className="h-7 text-[11px] gap-1.5 rounded-lg px-3" onClick={() => handleSaveEdit(nota.id)} disabled={savingEdit}>
@@ -320,7 +318,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                             </div>
                           </div>
                         ) : (
-                          <pre className="text-[11px] text-foreground/70 leading-relaxed whitespace-pre-wrap font-sans">
+                          <pre className="whitespace-pre-wrap break-words text-[11px] text-foreground/70 leading-relaxed font-sans">
                             {nota.descricao}
                           </pre>
                         )}
@@ -332,7 +330,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
             </div>
           ))}
         </div>
-      </ScrollArea>
+      </div>
 
       {/* Delete confirmation dialog */}
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => !open && setDeleteTarget(null)}>
