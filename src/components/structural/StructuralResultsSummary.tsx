@@ -12,7 +12,6 @@ import {
 } from 'lucide-react';
 import StructuralConnectionMap from './StructuralConnectionMap';
 import { generateRehabInsights, generateEngagementSummary, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
-import { generateRehabInsights, generateEngagementSummary, RehabInsight, TISSUE_TIMELINES } from '@/utils/tissueHealingTimelines';
 
 interface Props {
   data: StructuralAssessmentData;
