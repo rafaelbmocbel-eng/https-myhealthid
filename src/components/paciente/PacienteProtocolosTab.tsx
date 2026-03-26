@@ -438,14 +438,29 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
 
   if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0) {
     return (
-      <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
-        <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
-        <p className="font-medium">Nenhuma diretriz criada</p>
-        <p className="text-sm mt-1">
-          {tipo === 'identidade'
-            ? 'Conclua uma avaliação para gerar uma diretriz automaticamente.'
-            : 'Conclua uma avaliação COB° ZERO para gerar uma diretriz.'}
-        </p>
+      <div className="space-y-4">
+        <div className="flex justify-between items-center bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
+          <div>
+            <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Tratamentos</h3>
+            <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">Repositório de Condutas</p>
+          </div>
+          <Button
+            size="sm"
+            className="bg-gradient-primary text-white gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
+            onClick={handleNovaDiretrizManual}
+          >
+            <Plus className="h-4 w-4" /> Nova Diretriz
+          </Button>
+        </div>
+        <div className="text-center py-12 text-muted-foreground border rounded-xl border-dashed">
+          <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
+          <p className="font-medium">Nenhuma diretriz criada</p>
+          <p className="text-sm mt-1">
+            {tipo === 'identidade'
+              ? 'Conclua uma avaliação presencial ou por voz e clique em "Nova Diretriz".'
+              : 'Conclua uma avaliação COB° ZERO para gerar uma diretriz.'}
+          </p>
+        </div>
       </div>
     );
   }
