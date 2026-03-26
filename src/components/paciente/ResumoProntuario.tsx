@@ -115,7 +115,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                     <FileText className="h-4 w-4 text-primary" />
                     <h3 className="text-xs font-black uppercase tracking-wider text-primary">Resumo de Prontuário Automático</h3>
                 </div>
-                <Badge variant="outline" className="bg-white text-[10px] font-bold">
+                <Badge variant="outline" className="bg-background text-[10px] font-bold">
                     {format(new Date(), "dd/MM/yyyy")}
                 </Badge>
             </div>

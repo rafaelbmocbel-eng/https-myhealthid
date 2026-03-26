@@ -8,6 +8,11 @@ import {
   Eye, Download, Trash2, Calendar, Activity, Loader2,
   Zap, FileText, User, Plus, Send
 } from 'lucide-react';
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel,
+  AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
+  AlertDialogHeader, AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { gerarPDFProtocolo, PDFProtocolo } from '@/utils/pdfGenerator';
@@ -40,6 +45,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
+  const [deletingProtocoloId, setDeletingProtocoloId] = useState<string | null>(null);
 
   // Protocolos do paciente
   const { data: protocolos = [], isLoading } = useQuery({
@@ -439,7 +445,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
   if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0) {
     return (
       <div className="space-y-4">
-        <div className="flex justify-between items-center bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
+        <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
           <div>
             <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Tratamentos</h3>
             <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">Repositório de Condutas</p>
@@ -468,7 +474,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
   return (
     <div className="space-y-4">
       {/* Cabeçalho de Ações Superiores */}
-      <div className="flex justify-between items-center bg-white/40 dark:bg-black/20 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
+      <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
         <div>
           <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Diretrizes e Tratamentos</h3>
           <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">Repositório de Condutas</p>
@@ -610,7 +616,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                     </Button>
                   )}
                   <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-destructive hover:text-destructive"
-                    onClick={() => { if (confirm('Excluir esta diretriz?')) deleteMutation.mutate(protocolo.id); }}>
+                    onClick={() => setDeletingProtocoloId(protocolo.id)}>
                     <Trash2 className="h-3 w-3" />
                   </Button>
                 </div>
@@ -619,6 +625,27 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           );
         })}
       </div>
+
+      {/* Delete confirmation dialog */}
+      <AlertDialog open={!!deletingProtocoloId} onOpenChange={(open) => !open && setDeletingProtocoloId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Confirmar exclusão</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir esta diretriz? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => { if (deletingProtocoloId) deleteMutation.mutate(deletingProtocoloId); setDeletingProtocoloId(null); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
