@@ -1367,7 +1367,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
 
         {/* --- Aba 4: PRONTUÁRIO --- */}
-        <TabsContent value="prontuario" className="mt-4 space-y-4">
+        <TabsContent value="prontuario" className="mt-4 space-y-4 overflow-visible min-h-0">
           <ResumoProntuario pacienteId={paciente.id} />
           <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`.trim()} />
         </TabsContent>
