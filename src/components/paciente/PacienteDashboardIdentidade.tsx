@@ -885,8 +885,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                                   className={isExpanded ? 'gap-1 text-xs' : 'bg-identidade hover:bg-identidade/90 text-white gap-1 text-xs'}
                                   onClick={() => setExpandedStructuralId(isExpanded ? null : av.id)}
                                 >
-                                  <FileText className="h-3 w-3" />
-                                  {isExpanded ? 'Fechar' : 'Resultados & Diretriz'}
+                              <FileText className="h-3 w-3" />
+                                  {isExpanded ? 'Fechar' : 'Ver Resultados'}
                                 </Button>
                               </div>
                               {isExpanded && (
@@ -928,10 +928,10 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
-                          <div>
-                            <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
-                            <p className="text-sm text-gray-500">Preencha um novo MyID durante a sessão.</p>
+                          <div className="flex justify-between items-center bg-card p-4 rounded-xl border shadow-sm">
+                           <div>
+                             <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
+                             <p className="text-sm text-muted-foreground">Preencha um novo MyID durante a sessão.</p>
                           </div>
                           <Button onClick={() => setIniciandoMyID(true)}>Nova Avaliação</Button>
                         </div>
@@ -970,9 +970,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                       const isExpanded = expandedMyIDId === av.id;
                       const result = av.resultado_processado;
                       return (
-                        <div key={av.id} className="rounded-xl border bg-white shadow-sm overflow-hidden">
+                        <div key={av.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
                           <div
-                            className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-slate-50 ${isExpanded ? 'bg-slate-50 border-b' : ''}`}
+                            className={`flex items-center gap-3 p-4 cursor-pointer transition-all hover:bg-muted/40 ${isExpanded ? 'bg-muted/40 border-b' : ''}`}
                             onClick={() => setExpandedMyIDId(isExpanded ? null : av.id)}
                           >
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -1006,7 +1006,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                             </Button>
                           </div>
                           {isExpanded && result && (
-                            <div className="p-4 bg-white animate-in fade-in slide-in-from-top-2 duration-300">
+                            <div className="p-4 bg-card animate-in fade-in slide-in-from-top-2 duration-300">
                               <MyIDResult result={result} rawData={av.respostas_brutas} />
                               <div className="mt-4 flex justify-end">
                                 <Button
@@ -1119,7 +1119,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                       const resultado = av.resultado as any;
                       const isExpanded = expandedVoiceId === av.id;
                       return (
-                        <div key={av.id} className="rounded-xl border bg-white dark:bg-card shadow-sm overflow-hidden">
+                        <div key={av.id} className="rounded-xl border bg-card shadow-sm overflow-hidden">
                           <button
                             type="button"
                             className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
