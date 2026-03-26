@@ -123,13 +123,14 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
       return;
     }
 
-    // Fallback: structural assessments
+    // Fallback: structural assessments (exclude MyID questionnaires)
     const { data: structuralAvs } = await supabase
       .from('avaliacoes_identidade')
       .select('*')
       .eq('paciente_id', pacienteId)
       .eq('terapeuta_id', user!.id)
       .not('score_e', 'is', null)
+      .is('myid_score', null)
       .order('created_at', { ascending: false })
       .limit(1);
 
