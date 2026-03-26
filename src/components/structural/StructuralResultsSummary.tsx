@@ -623,159 +623,24 @@ export default function StructuralResultsSummary({ data, pacienteId, terapeutaId
         </div>
       )}
 
-      {/* ═══ TECHNIQUE & EXERCISE MENU ═══ */}
+      {/* ═══ NAVEGAÇÃO PARA DIRETRIZES ═══ */}
       <div className="clinical-card border-primary/30">
-        <div className="flex items-center gap-3 mb-4">
+        <div className="flex items-center gap-3 mb-3">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center">
-            <FileText className="h-5 w-5 text-primary-foreground" />
+            <Target className="h-5 w-5 text-primary-foreground" />
           </div>
           <div>
-            <h3 className="font-bold text-sm">Cardápio de Técnicas e Exercícios</h3>
-            <p className="text-[10px] text-muted-foreground">Baseado em evidência e no Método Identidade · Selecione os itens desejados</p>
+            <h3 className="font-bold text-sm">Diretrizes de Tratamento</h3>
+            <p className="text-[10px] text-muted-foreground">Monte a diretriz completa com técnicas e exercícios na aba dedicada</p>
           </div>
         </div>
-
-        <div className="flex items-center gap-4 mb-3 text-xs text-muted-foreground">
-          <span className="flex items-center gap-1"><Dumbbell className="h-3.5 w-3.5" /> <strong className="text-foreground">{totalExSel}</strong>/{totalEx} exercícios</span>
-          <span className="flex items-center gap-1"><Brain className="h-3.5 w-3.5" /> <strong className="text-foreground">{totalTecSel}</strong>/{totalTec} técnicas</span>
-        </div>
-
-        <div className="space-y-3">
-          {phases.map((phase, pi) => {
-            const col = PHASE_COLORS[pi] || PHASE_COLORS[2];
-            const open = openPhases.has(pi);
-            return (
-              <div key={pi} className={cn('rounded-xl border-2 overflow-hidden', col.border)}>
-                <button className={cn('w-full flex items-center justify-between p-3', col.bg, 'text-left')} onClick={() => togglePhase(pi)}>
-                  <div className="flex items-center gap-3">
-                    <div className={cn('w-7 h-7 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0', col.badge)}>{pi + 1}</div>
-                    <div>
-                      <div className={cn('font-semibold text-sm', col.text)}>{phase.titulo}</div>
-                      <div className="text-[10px] text-muted-foreground">Sem {phase.semanas} · {phase.frequencia} · {phase.objetivo}</div>
-                    </div>
-                  </div>
-                  {open ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-                </button>
-                {open && (
-                  <div className="p-3 space-y-4 bg-background">
-                    {/* Técnicas */}
-                    <div>
-                      <h4 className="font-medium text-xs mb-2 flex items-center gap-1.5"><Brain className="h-3.5 w-3.5 text-muted-foreground" /> Técnicas ({selectedTecnicas[pi]?.size || 0}/{phase.tecnicas.length})</h4>
-                      <div className="space-y-1.5">
-                        {phase.tecnicas.map((tec, ti) => {
-                          const sel = selectedTecnicas[pi]?.has(ti);
-                          return (
-                            <div key={ti} className={cn('p-2.5 rounded-lg border transition-all cursor-pointer', sel ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50')} onClick={() => toggleTec(pi, ti)}>
-                              <div className="flex items-start gap-2">
-                                <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5', sel ? 'bg-primary border-primary' : 'border-muted-foreground/30')}>
-                                  {sel && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-xs">{tec.nome}</div>
-                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <Badge variant="outline" className="text-[9px]">{tec.categoria}</Badge>
-                                    <span className="text-[9px] text-muted-foreground">{tec.duracao}</span>
-                                    <Badge className="text-[9px] bg-blue-100 text-blue-700 border-0">{tec.evidencia}</Badge>
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">{tec.descricao}</p>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                    {/* Exercícios */}
-                    <div>
-                      <h4 className="font-medium text-xs mb-2 flex items-center gap-1.5"><Dumbbell className="h-3.5 w-3.5 text-muted-foreground" /> Exercícios ({selectedExercicios[pi]?.size || 0}/{phase.exercicios.length})</h4>
-                      <div className="space-y-1.5">
-                        {phase.exercicios.map((ex, ei) => {
-                          const sel = selectedExercicios[pi]?.has(ei);
-                          return (
-                            <div key={ei} className={cn('p-2.5 rounded-lg border transition-all cursor-pointer', sel ? 'bg-card border-primary/30' : 'bg-muted/30 border-dashed opacity-50')} onClick={() => toggleEx(pi, ei)}>
-                              <div className="flex items-start gap-2">
-                                <div className={cn('w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 mt-0.5', sel ? 'bg-primary border-primary' : 'border-muted-foreground/30')}>
-                                  {sel && <Check className="h-2.5 w-2.5 text-primary-foreground" />}
-                                </div>
-                                <div className="flex-1 min-w-0">
-                                  <div className="font-medium text-xs">{ex.nome}</div>
-                                  <div className="flex items-center gap-2 mt-0.5 flex-wrap">
-                                    <Badge variant="outline" className="text-[9px]">{ex.categoria}</Badge>
-                                    <span className="text-[9px] text-muted-foreground">{ex.series}x {ex.repeticoes}</span>
-                                  </div>
-                                  <p className="text-[10px] text-muted-foreground mt-0.5">{ex.descricao}</p>
-                                  <div className="mt-1 p-1 rounded bg-amber-50 border border-amber-100">
-                                    <p className="text-[9px] text-amber-700">💡 {ex.motivo}</p>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
-        </div>
-
-        {/* Generate/Print — hidden in readOnly mode */}
-        {readOnly ? (
-          <div className="mt-4 pt-4 border-t">
-            <Button
-              className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2"
-              onClick={onNavigateDiretrizes}
-            >
-              <Target className="h-4 w-4" />
-              Criar Diretriz em "Diretrizes e Tratamento"
-            </Button>
-          </div>
-        ) : (
-          <div className="mt-4 pt-4 border-t">
-            {!showGuidelines ? (
-              <Button className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2" onClick={handleGenerateGuidelines}
-                disabled={totalTecSel === 0 && totalExSel === 0}>
-                <Sparkles className="h-4 w-4" />
-                Gerar Diretriz com {totalTecSel + totalExSel} Itens Selecionados
-              </Button>
-            ) : (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleCopy} className="gap-1.5">
-                    <Copy className="h-3.5 w-3.5" /> {copied ? 'Copiado!' : 'Copiar'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handlePrint} className="gap-1.5">
-                    <Printer className="h-3.5 w-3.5" /> Imprimir
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleSaveGuideline}
-                    disabled={saving || !pacienteId || !(terapeutaId || user?.id)}
-                    className="gap-1.5"
-                  >
-                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
-                    Salvar Diretriz
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => setShowGuidelines(false)} className="gap-1.5">
-                    Editar Seleção
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={resetDiretriz} className="gap-1.5 ml-auto">
-                    <Plus className="h-3.5 w-3.5" /> Nova Diretriz
-                  </Button>
-                </div>
-                {savedProtocoloId && (
-                  <div className="text-[10px] text-emerald-600 flex items-center gap-1">
-                    <Check className="h-3 w-3" /> Diretriz salva e vinculada ao prontuário.
-                  </div>
-                )}
-                <pre className="text-[10px] leading-relaxed p-4 bg-card rounded-lg border overflow-x-auto whitespace-pre-wrap font-mono max-h-96 overflow-y-auto">{guidelines}</pre>
-              </div>
-            )}
-          </div>
-        )}
+        <Button
+          className="w-full bg-gradient-to-r from-primary to-primary/80 text-primary-foreground gap-2"
+          onClick={onNavigateDiretrizes}
+        >
+          <Target className="h-4 w-4" />
+          Ir para Diretrizes e Tratamento
+        </Button>
       </div>
     </div>
   );
