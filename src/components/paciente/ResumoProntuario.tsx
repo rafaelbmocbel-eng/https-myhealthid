@@ -109,7 +109,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
         : null;
 
     return (
-        <Card className="border-2 border-primary/10 shadow-sm bg-slate-50/50 overflow-hidden">
+        <Card className="border-2 border-primary/10 shadow-sm bg-muted/30 overflow-hidden">
             <div className="bg-primary/5 px-4 py-2 border-b border-primary/10 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                     <FileText className="h-4 w-4 text-primary" />
@@ -146,7 +146,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                                 {myidInterp.label}
                             </Badge>
                         </div>
-                        <p className="text-[11px] leading-relaxed text-slate-600 italic">
+                        <p className="text-[11px] leading-relaxed text-muted-foreground italic">
                             {myidInterp.recommendation}
                         </p>
                     </div>
@@ -201,7 +201,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
 
                 {/* Assinatura e Carimbo */}
                 <div className="mt-8 pt-6 border-t border-dashed relative">
-                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-slate-50 px-2">
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-muted/30 px-2">
                         <Award className="h-5 w-5 text-muted-foreground/30" />
                     </div>
 
