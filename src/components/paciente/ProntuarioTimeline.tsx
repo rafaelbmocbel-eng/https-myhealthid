@@ -329,7 +329,6 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
               </div>
             </div>
           ))}
-        </div>
       </div>
 
       {/* Delete confirmation dialog */}
