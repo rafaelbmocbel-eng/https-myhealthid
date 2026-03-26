@@ -178,14 +178,6 @@ const TECNICAS_POR_DEMANDA: Record<string, TecnicaSugerida[]> = {
     { nome: 'Orientação sobre Atividade Física Regular', descricao: 'Prescrição de atividade física aeróbica adaptada às condições do paciente.', duracao: '20 min', frequencia: '1 sessão + follow-up', motivo: 'Sedentarismo agrava fatores biológicos de risco' },
   ],
 };
-      categoria: 'Respiração',
-      series: 1,
-      repeticoes: 10,
-      duracao: '10 min',
-      motivo: 'Ativa o sistema parassimpático, reduz hiperativação neurovegetativa',
-      descricao: 'Respiração abdominal profunda para restaurar equilíbrio do sistema nervoso autônomo.',
-      instrucoes: ['Deite-se com joelhos flexionados', 'Mão no abdômen', 'Inspire 4s expandindo abdômen', 'Expire 6s lentamente'],
-    },
     {
       nome: 'Relaxamento Muscular Progressivo (Jacobson)',
       categoria: 'Relaxamento',
