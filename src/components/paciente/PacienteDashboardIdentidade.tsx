@@ -946,26 +946,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
             {/* Aba: Histórico de Avaliações */}
             <TabsContent value="historico" className="mt-4 space-y-6">
-              {/* Botão Criar Diretriz */}
-              {criandoDiretrizHistorico && avaliacaoParaDiretriz ? (
-                <ProtocoloEditor
-                  avaliacao={avaliacaoParaDiretriz}
-                  pacienteNome={patientName}
-                  onSave={(protocoloId) => {
-                    setCriandoDiretrizHistorico(false);
-                    setAvaliacaoParaDiretriz(null);
-                    qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
-                    qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-                    setSubTabAtiva('avaliacoes');
-                    toast({ title: 'Diretriz criada! ✅', description: 'Disponível em Diretrizes e Tratamentos.' });
-                  }}
-                  onCancel={() => {
-                    setCriandoDiretrizHistorico(false);
-                    setAvaliacaoParaDiretriz(null);
-                  }}
-                />
-              ) : (
-              <>
               <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20">
                 <div>
                   <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Histórico de Avaliações</h3>
@@ -974,76 +954,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <Button
                   size="sm"
                   className="bg-identidade hover:bg-identidade/90 text-white gap-2 font-bold px-4 h-9 shadow-lg transition-all rounded-xl"
-                  onClick={async () => {
-                    // Buscar última avaliação concluída (avaliacoes table)
-                    const { data: avaliacoes } = await supabase
-                      .from('avaliacoes')
-                      .select('*')
-                      .eq('terapeuta_id', user!.id)
-                      .eq('paciente_id', paciente.id)
-                      .eq('status', 'concluida')
-                      .order('created_at', { ascending: false })
-                      .limit(1);
-
-                    if (avaliacoes && avaliacoes.length > 0) {
-                      setAvaliacaoParaDiretriz(avaliacoes[0]);
-                      setCriandoDiretrizHistorico(true);
-                    } else if (structuralAvaliacoes.length > 0) {
-                      const sa = structuralAvaliacoes[0] as any;
-                      setAvaliacaoParaDiretriz({
-                        id: sa.id,
-                        paciente_id: paciente.id,
-                        created_at: sa.created_at,
-                        score_e: sa.score_e || 0,
-                        score_p: sa.score_p || 0,
-                        score_c: sa.score_c || 0,
-                        score_f: sa.score_f || 0,
-                        score_d: sa.score_d || 0,
-                        score_r: sa.score_r || 0,
-                        score_efi: sa.score_efi || 0,
-                        dor_identidade: sa.id_final || 0,
-                        status: 'concluida',
-                      });
-                      setCriandoDiretrizHistorico(true);
-                    } else {
-                      // Tentar com avaliação por voz mais recente
-                      const { data: avaliacoesVoz } = await supabase
-                        .from('avaliacoes_voz')
-                        .select('*')
-                        .eq('terapeuta_id', user!.id)
-                        .eq('paciente_id', paciente.id)
-                        .order('created_at', { ascending: false })
-                        .limit(1);
-
-                      if (avaliacoesVoz && avaliacoesVoz.length > 0) {
-                        const av = avaliacoesVoz[0] as any;
-                        const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
-                        setAvaliacaoParaDiretriz({
-                          id: av.id,
-                          paciente_id: paciente.id,
-                          created_at: av.created_at,
-                          score_e: resultado?.scores?.estrutural || 0,
-                          score_p: resultado?.scores?.psicologico || 0,
-                          score_c: resultado?.scores?.contexto || 0,
-                          score_f: resultado?.scores?.funcionalidade || 0,
-                          score_d: resultado?.scores?.dor || resultado?.intensidade_dor || 0,
-                          score_r: resultado?.scores?.regulacao || 0,
-                          score_efi: resultado?.scores?.efi || 0,
-                          dor_identidade: resultado?.intensidade_dor || 0,
-                          status: 'concluida',
-                        });
-                        setCriandoDiretrizHistorico(true);
-                      } else {
-                        toast({
-                          title: 'Nenhuma avaliação disponível',
-                          description: 'Conclua uma avaliação presencial ou por voz antes de criar uma diretriz.',
-                          variant: 'destructive',
-                        });
-                      }
-                    }
-                  }}
+                  onClick={() => setSubTabAtiva('avaliacoes')}
                 >
-                  <Plus className="h-4 w-4" /> Criar Diretriz
+                  <Target className="h-4 w-4" /> Ir para Diretrizes
                 </Button>
               </div>
               <div className="clinical-card">
