@@ -15,22 +15,68 @@ export async function gerarNotaSessaoConfirmada(params: {
 }) {
   const { pacienteId, terapeutaId, dataAtendimento, tipoAtendimento, duracaoMinutos, observacoes, condutaRealizada, agendamentoId } = params;
 
-  const descricao = `✅ ATENDIMENTO CONFIRMADO
+  try {
+    // Check if there's already a diretriz note in the prontuário
+    const { data: notasExistentes } = await (supabase as any)
+      .from('notas_prontuario')
+      .select('id, tipo, descricao')
+      .eq('paciente_id', pacienteId)
+      .eq('terapeuta_id', terapeutaId)
+      .in('tipo', ['conduta_diretriz', 'sessao_confirmada'])
+      .order('created_at', { ascending: false })
+      .limit(20);
+
+    const temDiretrizDescrita = (notasExistentes || []).some(
+      (n: any) => n.tipo === 'conduta_diretriz'
+    );
+
+    // Check if a previous session already described the diretriz in full
+    const sessaoAnteriorComConduta = (notasExistentes || []).some(
+      (n: any) =>
+        n.tipo === 'sessao_confirmada' &&
+        n.descricao &&
+        !n.descricao.includes('CONDUTA TERAPÊUTICA MANTIDA') &&
+        (n.descricao.includes('CONDUTA REALIZADA') || n.descricao.includes('DIRETRIZ DE TRATAMENTO'))
+    );
+
+    // If there's already a diretriz AND a previous session described the full conduct,
+    // use "conduta mantida" instead of repeating everything
+    const usarCondutaMantida = temDiretrizDescrita && sessaoAnteriorComConduta && !condutaRealizada;
+
+    let descricao: string;
+
+    if (usarCondutaMantida) {
+      descricao = `✅ ATENDIMENTO CONFIRMADO
+
+📅 Data: ${new Date(dataAtendimento).toLocaleDateString('pt-BR')}
+⏱️ Duração: ${duracaoMinutos || 45} minutos
+🏷️ Tipo: ${tipoAtendimento || 'Retorno'}
+
+📋 CONDUTA TERAPÊUTICA MANTIDA
+Conduta terapêutica mantida conforme diretriz de tratamento vigente. Sem alterações no plano terapêutico.
+${observacoes ? `\n📝 Observações:\n${observacoes}` : ''}`;
+    } else {
+      descricao = `✅ ATENDIMENTO CONFIRMADO
 
 📅 Data: ${new Date(dataAtendimento).toLocaleDateString('pt-BR')}
 ⏱️ Duração: ${duracaoMinutos || 45} minutos
 🏷️ Tipo: ${tipoAtendimento || 'Retorno'}
 
 ${condutaRealizada ? `📋 CONDUTA REALIZADA:\n${condutaRealizada}\n` : ''}${observacoes ? `📝 Observações:\n${observacoes}` : ''}`;
+    }
 
-  try {
     await (supabase as any).from('notas_prontuario').insert({
       paciente_id: pacienteId,
       terapeuta_id: terapeutaId,
       tipo: 'sessao_confirmada',
       titulo: `Sessão ${tipoAtendimento || 'Retorno'} — ${new Date(dataAtendimento).toLocaleDateString('pt-BR')}`,
       descricao,
-      dados_extras: { agendamento_id: agendamentoId, duracao: duracaoMinutos, tipo: tipoAtendimento },
+      dados_extras: {
+        agendamento_id: agendamentoId,
+        duracao: duracaoMinutos,
+        tipo: tipoAtendimento,
+        conduta_mantida: usarCondutaMantida,
+      },
       referencia_id: agendamentoId || null,
     });
   } catch (err) {

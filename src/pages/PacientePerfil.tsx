@@ -38,6 +38,7 @@ import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
+import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -805,6 +806,9 @@ export default function PacientePerfil() {
               TAB: EVOLUÇÃO E PRONTUÁRIOS
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
+            {/* Resumo Narrativo */}
+            <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
+
             {/* SOAP Note + Prontuário */}
             <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
