@@ -62,18 +62,17 @@ export default function MyIDFingerprint({
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  // Full-bleed viewBox — fingerprint as hero element, maximum size
-  const vw = 800;
-  const vh = 800;
+  // HD viewBox for maximum sharpness and detail
+  const vw = 1200;
+  const vh = 1200;
   const cx = vw / 2;
   const cy = vh / 2;
 
   const ridgeData = useMemo(() => {
-    const baseR = 58;
-    // Dynamic spacing: fill available radius (max ~360px from center to edge)
-    const maxRadius = 370;
+    const baseR = 90;
+    const maxRadius = 560;
     const totalRings = allRings.length || 1;
-    const spacing = Math.min(32, (maxRadius - baseR) / totalRings);
+    const spacing = Math.min(42, (maxRadius - baseR) / totalRings);
 
     return allRings.map((ring, i) => {
       const r = baseR + i * spacing;
@@ -90,8 +89,8 @@ export default function MyIDFingerprint({
       return {
         ...ring, rx, ry, startAngle, availableSweep, filledSweep,
         gapPositions: i < 3 ? [] : [0.3, 0.7],
-        gapSize: 3.5, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(24 - i * 0.8, 14),
+        gapSize: 4, isInner: ring.type === 'inner', index: i,
+        strokeWidth: Math.max(34 - i * 1, 18),
         computedColor: color, computedOpacity: opacity,
       };
     });
@@ -124,8 +123,7 @@ export default function MyIDFingerprint({
   const activeIdx = highlightedIdx !== null && highlightedIdx >= 0
     ? highlightedIdx : selectedIdx !== null ? selectedIdx : hoveredIdx;
 
-  const progressCircumference = 2 * Math.PI * 56;
-  const progressOffset = progressCircumference - (progressCircumference * Math.min(myidScore, 100)) / 100;
+  // progress values now computed inline in SVG with r=84
 
   return (
     <div className={`relative w-full ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
@@ -171,30 +169,30 @@ export default function MyIDFingerprint({
           </filter>
         </defs>
 
-        <ellipse cx={cx} cy={cy} rx={390} ry={390} fill="url(#fp-bg-g)" />
+        <ellipse cx={cx} cy={cy} rx={580} ry={580} fill="url(#fp-bg-g)" />
 
         {/* ── Center: progress ring + score + status ── */}
-        <circle cx={cx} cy={cy} r={66} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+        <circle cx={cx} cy={cy} r={100} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
 
         {/* Background track */}
-        <circle cx={cx} cy={cy} r={56} fill="none" stroke={centerColor} strokeWidth="4" opacity="0.1"
+        <circle cx={cx} cy={cy} r={84} fill="none" stroke={centerColor} strokeWidth="5" opacity="0.1"
           transform={`rotate(-90, ${cx}, ${cy})`} />
         {/* Progress arc */}
-        <circle cx={cx} cy={cy} r={56} fill="none" stroke={centerColor} strokeWidth="5"
-          strokeDasharray={progressCircumference} strokeDashoffset={progressOffset}
+        <circle cx={cx} cy={cy} r={84} fill="none" stroke={centerColor} strokeWidth="7"
+          strokeDasharray={2 * Math.PI * 84} strokeDashoffset={(2 * Math.PI * 84) - (2 * Math.PI * 84 * Math.min(myidScore, 100)) / 100}
           strokeLinecap="round" opacity="0.65"
           transform={`rotate(-90, ${cx}, ${cy})`}
           style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)' }} />
 
-        <text x={cx} y={cy - 14} textAnchor="middle" fontSize="44" fontWeight="900" fill={centerColor} dominantBaseline="central"
+        <text x={cx} y={cy - 20} textAnchor="middle" fontSize="66" fontWeight="900" fill={centerColor} dominantBaseline="central"
           style={{ transition: 'fill 0.3s ease' }}>
           {Math.round(myidScore)}
         </text>
-        <text x={cx} y={cy + 16} textAnchor="middle" fontSize="14" fontWeight="700" fill={centerColor} opacity="0.5">
+        <text x={cx} y={cy + 24} textAnchor="middle" fontSize="20" fontWeight="700" fill={centerColor} opacity="0.5">
           /100
         </text>
-        <text x={cx} y={cy + 38} textAnchor="middle" fontSize="13" fontWeight="800" fill={centerColor} opacity="0.85"
-          letterSpacing="1.5">
+        <text x={cx} y={cy + 56} textAnchor="middle" fontSize="19" fontWeight="800" fill={centerColor} opacity="0.85"
+          letterSpacing="2">
           {label.toUpperCase()}
         </text>
 
@@ -272,12 +270,12 @@ export default function MyIDFingerprint({
                 <text
                   x={lx} y={ly}
                   textAnchor="start"
-                  fontSize="12"
+                  fontSize="18"
                   fontWeight="800"
                   fill={ridge.computedColor}
-                  opacity={isActive ? 1 : 0.6}
+                  opacity={isActive ? 1 : 0.7}
                   dominantBaseline="central"
-                  letterSpacing="0.6"
+                  letterSpacing="0.8"
                   filter="url(#fp-label-shadow)"
                   style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
                 >
@@ -289,18 +287,18 @@ export default function MyIDFingerprint({
               {isActive && (() => {
                 const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
                 const tipRad = (tipAngleDeg * Math.PI) / 180;
-                const dist = ridge.rx + 56;
+                const dist = ridge.rx + 72;
                 const tx = cx + dist * Math.cos(tipRad);
                 const ty = cy + dist * Math.sin(tipRad);
                 const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
                 const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
-                const textWidth = displayText.length * 8.5 + 32;
+                const textWidth = displayText.length * 12 + 40;
                 return (
                   <g style={{ pointerEvents: 'none' }}>
-                    <rect x={tx - textWidth / 2} y={ty - 20} width={textWidth} height={40} rx={12}
-                      fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2" />
-                    <text x={tx} y={ty + 1} textAnchor="middle" fontSize="15" fontWeight="800"
-                      fill="white" letterSpacing="0.3" dominantBaseline="central">{displayText}</text>
+                    <rect x={tx - textWidth / 2} y={ty - 26} width={textWidth} height={52} rx={14}
+                      fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2.5" />
+                    <text x={tx} y={ty + 1} textAnchor="middle" fontSize="21" fontWeight="800"
+                      fill="white" letterSpacing="0.4" dominantBaseline="central">{displayText}</text>
                   </g>
                 );
               })()}
@@ -322,22 +320,22 @@ export default function MyIDFingerprint({
         <style>{`@keyframes fpPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }`}</style>
 
         {/* ── Legend bar ── */}
-        <g transform={`translate(60, ${vh - 40})`}>
-          <text x={0} y={10} fontSize="11" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="1.5" opacity="0.6">ESCALA:</text>
+        <g transform={`translate(80, ${vh - 55})`}>
+          <text x={0} y={14} fontSize="16" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="2" opacity="0.6">ESCALA:</text>
           {[
-            { color: 'hsl(270, 60%, 75%)', x: 70 },
-            { color: 'hsl(230, 70%, 60%)', x: 90 },
-            { color: 'hsl(210, 75%, 55%)', x: 110 },
-            { color: 'hsl(35, 85%, 55%)', x: 130 },
-            { color: 'hsl(0, 85%, 50%)', x: 150 },
-          ].map((c, i) => <rect key={i} x={c.x} y={0} width={18} height={12} rx={3} fill={c.color} opacity={0.8} />)}
-          <text x={70} y={26} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
-          <text x={155} y={26} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
+            { color: 'hsl(270, 60%, 75%)', x: 110 },
+            { color: 'hsl(230, 70%, 60%)', x: 140 },
+            { color: 'hsl(210, 75%, 55%)', x: 170 },
+            { color: 'hsl(35, 85%, 55%)', x: 200 },
+            { color: 'hsl(0, 85%, 50%)', x: 230 },
+          ].map((c, i) => <rect key={i} x={c.x} y={0} width={26} height={18} rx={4} fill={c.color} opacity={0.8} />)}
+          <text x={110} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
+          <text x={235} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
 
-          <circle cx={200} cy={6} r={5} fill="hsl(0, 85%, 50%)" opacity={0.75} />
-          <text x={210} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
-          <circle cx={290} cy={6} r={5} fill="hsl(210, 75%, 55%)" opacity={0.75} />
-          <text x={300} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
+          <circle cx={310} cy={9} r={7} fill="hsl(0, 85%, 50%)" opacity={0.75} />
+          <text x={322} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
+          <circle cx={430} cy={9} r={7} fill="hsl(210, 75%, 55%)" opacity={0.75} />
+          <text x={442} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
         </g>
       </svg>
 
