@@ -62,15 +62,15 @@ export default function MyIDFingerprint({
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  // Larger viewBox for HD rendering
-  const vw = 1200;
-  const vh = 1200;
+  // Full-bleed viewBox — fingerprint as hero element
+  const vw = 1000;
+  const vh = 1000;
   const cx = vw / 2;
-  const cy = 520;
+  const cy = 460;
 
   const ridgeData = useMemo(() => {
-    const baseR = 88;
-    const spacing = 30;
+    const baseR = 70;
+    const spacing = 28;
 
     return allRings.map((ring, i) => {
       const r = baseR + i * (spacing + 3);
@@ -88,7 +88,7 @@ export default function MyIDFingerprint({
         ...ring, rx, ry, startAngle, availableSweep, filledSweep,
         gapPositions: i < 3 ? [] : [0.3, 0.7],
         gapSize: 3.5, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(20 - i * 0.5, 12),
+        strokeWidth: Math.max(22 - i * 0.5, 13),
         computedColor: color, computedOpacity: opacity,
       };
     });
@@ -131,7 +131,6 @@ export default function MyIDFingerprint({
         className="w-full max-w-none mx-auto"
         style={{
           filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
-          minHeight: compact ? 280 : 380,
         }}
         preserveAspectRatio="xMidYMid meet"
       >
@@ -169,7 +168,7 @@ export default function MyIDFingerprint({
           </filter>
         </defs>
 
-        <ellipse cx={cx} cy={cy} rx={540} ry={560} fill="url(#fp-bg-g)" />
+        <ellipse cx={cx} cy={cy} rx={480} ry={480} fill="url(#fp-bg-g)" />
 
         {/* ── Center: progress ring + score + status ── */}
         <circle cx={cx} cy={cy} r={66} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
@@ -215,7 +214,8 @@ export default function MyIDFingerprint({
           }
 
           const isActive = activeIdx === ridgeIdx;
-          const isDimmed = activeIdx !== null && activeIdx !== ridgeIdx;
+          // Never fully dim — always keep other rings visible
+          const isDimmed = false;
           const isRevealed = revealProgress > ridgeIdx;
 
           // Label position at the end of the filled arc
@@ -259,7 +259,7 @@ export default function MyIDFingerprint({
                 if (!path) return null;
                 return <path key={`fill-${si}`} d={path} fill="none" stroke={ridge.computedColor}
                   strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth} strokeLinecap="round"
-                  opacity={isActive ? 1 : isDimmed ? 0.08 : ridge.computedOpacity}
+                  opacity={isActive ? 1 : ridge.computedOpacity}
                   filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                   style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
               })}
