@@ -85,7 +85,7 @@ export default function MetodoIdentidade() {
 
 
   const { servicos: servicosAtivos } = useServicosAtivos();
-  const myidDraftKey = `metodo-identidade:${user?.id ?? 'anon'}:${selectedPacienteId ?? 'sem-paciente'}`;
+  const myidDraftKey = `metodo-identidade:${user?.id ?? 'anon'}`;
 
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
@@ -220,7 +220,6 @@ export default function MetodoIdentidade() {
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
     setSelectedPacienteId(pac.id);
     setShowDashboard(true);
-    void clearDraft(`metodo-identidade:${user?.id ?? 'anon'}:sem-paciente`);
   };
 
   // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário

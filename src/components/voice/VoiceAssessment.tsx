@@ -99,13 +99,28 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   // Re-acquire wake lock when page becomes visible again during recording
   useEffect(() => {
     const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && isRecording) {
+        stopRecording();
+        return;
+      }
+
       if (document.visibilityState === 'visible' && isRecording) {
         requestWakeLock();
       }
     };
+
+    const handlePageHide = () => {
+      if (isRecording) stopRecording();
+    };
+
     document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [isRecording, requestWakeLock]);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [isRecording, requestWakeLock, stopRecording]);
 
   // Cleanup on unmount
   useEffect(() => {
