@@ -134,7 +134,6 @@ export default function MyIDFingerprint({
         className="w-full mx-auto"
         style={{
           filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
-          maxHeight: '85vh',
         }}
         preserveAspectRatio="xMidYMid meet"
       >

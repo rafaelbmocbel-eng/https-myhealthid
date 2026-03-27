@@ -155,7 +155,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
                 <div className="text-xs uppercase tracking-widest mt-1 opacity-80">{classificacao}</div>
               </div>
 
-              <div className="w-full max-w-sm mx-auto">
+              <div className="w-full max-w-2xl mx-auto">
                 <MyIDFingerprint rings={fpData} myidScore={resultado.myidScore} />
               </div>
 
