@@ -443,7 +443,7 @@ export default function PatientIntegratedDashboard({
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 items-center">
+              <div className="flex flex-col gap-8">
                 {/* Fingerprint — Mapa Principal */}
                 <div className="relative group p-4 bg-white/30 dark:bg-black/10 rounded-3xl border border-white/50 dark:border-white/5 backdrop-blur-sm">
                   <div className="absolute top-4 left-4 p-2 bg-white/80 dark:bg-black/50 rounded-lg shadow-sm z-10">
