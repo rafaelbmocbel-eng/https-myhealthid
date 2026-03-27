@@ -91,7 +91,7 @@ export default function MyIDFingerprint({
         ...ring, rx, ry, startAngle, availableSweep, filledSweep,
         gapPositions: i < 3 ? [] : [0.3, 0.7],
         gapSize: 3.5, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(22 - i * 0.5, 13),
+        strokeWidth: Math.max(24 - i * 0.8, 14),
         computedColor: color, computedOpacity: opacity,
       };
     });
@@ -131,9 +131,10 @@ export default function MyIDFingerprint({
     <div className={`relative w-full ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
       <svg
         viewBox={`0 0 ${vw} ${vh}`}
-        className="w-full max-w-none mx-auto"
+        className="w-full mx-auto"
         style={{
           filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
+          maxHeight: '85vh',
         }}
         preserveAspectRatio="xMidYMid meet"
       >
