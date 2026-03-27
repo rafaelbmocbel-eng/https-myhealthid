@@ -62,20 +62,23 @@ export default function MyIDFingerprint({
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  // Full-bleed viewBox — fingerprint as hero element
-  const vw = 1000;
-  const vh = 1000;
+  // Full-bleed viewBox — fingerprint as hero element, maximum size
+  const vw = 800;
+  const vh = 800;
   const cx = vw / 2;
-  const cy = 460;
+  const cy = vh / 2;
 
   const ridgeData = useMemo(() => {
-    const baseR = 70;
-    const spacing = 28;
+    const baseR = 58;
+    // Dynamic spacing: fill available radius (max ~360px from center to edge)
+    const maxRadius = 370;
+    const totalRings = allRings.length || 1;
+    const spacing = Math.min(32, (maxRadius - baseR) / totalRings);
 
     return allRings.map((ring, i) => {
-      const r = baseR + i * (spacing + 3);
-      const rx = r * 1.02;
-      const ry = r * 1.02;
+      const r = baseR + i * spacing;
+      const rx = r;
+      const ry = r;
       const valuePct = Math.max(ring.value / 10, 0.08);
       const color = ring.color || getThermalColor(ring.value);
       const opacity = 0.55 + (ring.value / 10) * 0.45;
@@ -88,7 +91,7 @@ export default function MyIDFingerprint({
         ...ring, rx, ry, startAngle, availableSweep, filledSweep,
         gapPositions: i < 3 ? [] : [0.3, 0.7],
         gapSize: 3.5, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(22 - i * 0.5, 13),
+        strokeWidth: Math.max(24 - i * 0.8, 14),
         computedColor: color, computedOpacity: opacity,
       };
     });
@@ -128,9 +131,10 @@ export default function MyIDFingerprint({
     <div className={`relative w-full ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
       <svg
         viewBox={`0 0 ${vw} ${vh}`}
-        className="w-full max-w-none mx-auto"
+        className="w-full mx-auto"
         style={{
           filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
+          maxHeight: '85vh',
         }}
         preserveAspectRatio="xMidYMid meet"
       >
@@ -168,7 +172,7 @@ export default function MyIDFingerprint({
           </filter>
         </defs>
 
-        <ellipse cx={cx} cy={cy} rx={480} ry={480} fill="url(#fp-bg-g)" />
+        <ellipse cx={cx} cy={cy} rx={390} ry={390} fill="url(#fp-bg-g)" />
 
         {/* ── Center: progress ring + score + status ── */}
         <circle cx={cx} cy={cy} r={66} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
@@ -319,22 +323,22 @@ export default function MyIDFingerprint({
         <style>{`@keyframes fpPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }`}</style>
 
         {/* ── Legend bar ── */}
-        <g transform={`translate(80, ${vh - 50})`}>
+        <g transform={`translate(60, ${vh - 40})`}>
           <text x={0} y={10} fontSize="11" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="1.5" opacity="0.6">ESCALA:</text>
           {[
-            { color: 'hsl(270, 60%, 75%)', x: 80 },
-            { color: 'hsl(230, 70%, 60%)', x: 102 },
-            { color: 'hsl(210, 75%, 55%)', x: 124 },
-            { color: 'hsl(35, 85%, 55%)', x: 146 },
-            { color: 'hsl(0, 85%, 50%)', x: 168 },
-          ].map((c, i) => <rect key={i} x={c.x} y={0} width={20} height={14} rx={4} fill={c.color} opacity={0.8} />)}
-          <text x={80} y={28} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
-          <text x={175} y={28} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
+            { color: 'hsl(270, 60%, 75%)', x: 70 },
+            { color: 'hsl(230, 70%, 60%)', x: 90 },
+            { color: 'hsl(210, 75%, 55%)', x: 110 },
+            { color: 'hsl(35, 85%, 55%)', x: 130 },
+            { color: 'hsl(0, 85%, 50%)', x: 150 },
+          ].map((c, i) => <rect key={i} x={c.x} y={0} width={18} height={12} rx={3} fill={c.color} opacity={0.8} />)}
+          <text x={70} y={26} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
+          <text x={155} y={26} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
 
-          <circle cx={225} cy={7} r={5.5} fill="hsl(0, 85%, 50%)" opacity={0.75} />
-          <text x={236} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
-          <circle cx={320} cy={7} r={5.5} fill="hsl(210, 75%, 55%)" opacity={0.75} />
-          <text x={331} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
+          <circle cx={200} cy={6} r={5} fill="hsl(0, 85%, 50%)" opacity={0.75} />
+          <text x={210} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
+          <circle cx={290} cy={6} r={5} fill="hsl(210, 75%, 55%)" opacity={0.75} />
+          <text x={300} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
         </g>
       </svg>
 
