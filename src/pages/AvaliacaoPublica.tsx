@@ -204,7 +204,7 @@ export default function AvaliacaoPublica() {
         </div>
 
         {/* Fingerprint */}
-        <div className="w-full max-w-md">
+        <div className="w-full max-w-2xl">
           <MyIDFingerprint rings={fpData} myidScore={resultado.MyID_score} />
         </div>
 
