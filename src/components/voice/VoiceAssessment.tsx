@@ -10,6 +10,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
@@ -44,6 +45,8 @@ const SEVERITY_COLORS: Record<string, string> = {
 
 type Step = 'record' | 'review' | 'result';
 
+const VOICE_DRAFT_VERSION = 1;
+
 export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -70,6 +73,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
+  const hasRestoredDraftRef = useRef(false);
+
+  const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
   // Wake Lock helpers
   const requestWakeLock = useCallback(async () => {
@@ -109,6 +115,77 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!user || appendMode || hasRestoredDraftRef.current) return;
+
+    hasRestoredDraftRef.current = true;
+
+    void readDraft<{
+      step: Step;
+      transcript: string;
+      editedTranscript: string;
+      audioBase64: string | null;
+      audioMimeType: string;
+      recordingTime: number;
+      assessment: any;
+      expandedSections: Record<string, boolean>;
+      isSaved: boolean;
+    }>(draftKey, VOICE_DRAFT_VERSION).then((draft) => {
+      if (!draft) return;
+
+      setStep(draft.step ?? 'record');
+      setTranscript(draft.transcript ?? '');
+      setEditedTranscript(draft.editedTranscript ?? '');
+      setAudioBase64(draft.audioBase64 ?? null);
+      setAudioMimeType(draft.audioMimeType ?? 'audio/webm');
+      setRecordingTime(draft.recordingTime ?? 0);
+      setAssessment(draft.assessment ?? null);
+      setExpandedSections(draft.expandedSections ?? {
+        resumo: true, dor: true, funcionalidade: true, psicossocial: false,
+        redflags: true, hipoteses: true, plano: true, insights: true,
+      });
+      setIsSaved(Boolean(draft.isSaved));
+
+      toast({
+        title: 'Rascunho restaurado',
+        description: 'Recuperamos sua avaliação em andamento após o descanso do aparelho.',
+      });
+    });
+  }, [appendMode, draftKey, toast, user]);
+
+  useEffect(() => {
+    if (!user || appendMode) return;
+
+    const hasMeaningfulDraft = Boolean(
+      transcript.trim() ||
+      editedTranscript.trim() ||
+      audioBase64 ||
+      assessment ||
+      step !== 'record'
+    );
+
+    if (!hasMeaningfulDraft) {
+      void clearDraft(draftKey);
+      return;
+    }
+
+    void writeDraft(
+      draftKey,
+      {
+        step,
+        transcript,
+        editedTranscript,
+        audioBase64,
+        audioMimeType,
+        recordingTime,
+        assessment,
+        expandedSections,
+        isSaved,
+      },
+      VOICE_DRAFT_VERSION,
+    );
+  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
 
   const startRecording = useCallback(async () => {
     try {
@@ -276,6 +353,8 @@ Detalhes completos no Histórico de Avaliações.`;
         });
       }
 
+      await clearDraft(draftKey);
+
       return { saved: true, noteWarning };
     } catch (err: any) {
       if (!options?.silent) {
@@ -372,6 +451,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setRecordingTime(0);
     setEditingField(null);
     setStep('record');
+    void clearDraft(draftKey);
   };
 
   // Inline edit helpers for AI fields

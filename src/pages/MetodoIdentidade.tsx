@@ -36,6 +36,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
+
+const MYID_DRAFT_VERSION = 1;
 
 const blocos = [
   { id: 1, label: 'Identificação', sublabel: 'Gatilho I', icon: ClipboardList, time: '2 min' },
@@ -78,9 +81,11 @@ export default function MetodoIdentidade() {
   const [showDiretrizBuilder, setShowDiretrizBuilder] = useState(false);
   const [savedAvaliacaoId, setSavedAvaliacaoId] = useState<string | null>(null);
   const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
+  const [draftReady, setDraftReady] = useState(false);
 
 
   const { servicos: servicosAtivos } = useServicosAtivos();
+  const myidDraftKey = `metodo-identidade:${user?.id ?? 'anon'}:${selectedPacienteId ?? 'sem-paciente'}`;
 
   // Stats queries (always called for hook order)
   const { data: agendamentosHoje = [] } = useQuery({
@@ -152,10 +157,70 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
+  useEffect(() => {
+    if (!user) return;
+
+    let active = true;
+
+    void readDraft<{
+      selectedPacienteId: string | null;
+      showDashboard: boolean;
+      avaliacao: AvaliacaoMyID;
+      showRelatorio: boolean;
+      blocosConcluidos: number[];
+    }>(myidDraftKey, MYID_DRAFT_VERSION).then((draft) => {
+      if (!active) return;
+      if (draft) {
+        setSelectedPacienteId(draft.selectedPacienteId);
+        setShowDashboard(draft.showDashboard);
+        setAvaliacao(draft.avaliacao);
+        setShowRelatorio(draft.showRelatorio);
+        setBlocosConcluidos(new Set(draft.blocosConcluidos ?? []));
+        toast({
+          title: 'Avaliação restaurada',
+          description: 'Seu progresso do MyID foi recuperado automaticamente.',
+        });
+      }
+      setDraftReady(true);
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [myidDraftKey, toast, user]);
+
+  useEffect(() => {
+    if (!user || !draftReady || showDiretrizBuilder) return;
+
+    const hasProgress = Boolean(
+      selectedPacienteId ||
+      showRelatorio ||
+      !showDashboard ||
+      blocosConcluidos.size > 0 ||
+      avaliacao.blocoAtual > 1 ||
+      avaliacao.concluido ||
+      avaliacao.resultado?.myidScore
+    );
+
+    if (!hasProgress) {
+      void clearDraft(myidDraftKey);
+      return;
+    }
+
+    void writeDraft(myidDraftKey, {
+      selectedPacienteId,
+      showDashboard,
+      avaliacao,
+      showRelatorio,
+      blocosConcluidos: Array.from(blocosConcluidos),
+    }, MYID_DRAFT_VERSION);
+  }, [avaliacao, blocosConcluidos, draftReady, myidDraftKey, selectedPacienteId, showDashboard, showDiretrizBuilder, showRelatorio, user]);
+
   // Abre o dashboard interno do Método Identidade
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
     setSelectedPacienteId(pac.id);
     setShowDashboard(true);
+    void clearDraft(`metodo-identidade:${user?.id ?? 'anon'}:sem-paciente`);
   };
 
   // Inicia avaliação a partir do dashboard — com pré-carga de respostas do questionário
@@ -208,6 +273,7 @@ export default function MetodoIdentidade() {
         try {
           const savedData = await salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
           setSavedAvaliacaoId(savedData?.id || null);
+          await clearDraft(myidDraftKey);
           toast({ title: '✅ Avaliação salva automaticamente!', description: 'Agora monte a Diretriz de Tratamento.' });
           setShowDiretrizBuilder(true);
         } catch (err) {
@@ -232,6 +298,16 @@ export default function MetodoIdentidade() {
 
   // React Hook rules: All hooks must be defined before any early return based on conditions
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
+
+  if (!draftReady && user) {
+    return (
+      <AppLayout>
+        <div className="container py-10 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
     // Build a compatible avaliacao object for ProtocoloEditor
