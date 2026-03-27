@@ -121,7 +121,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                     <MyIDFingerprint
                         rings={buildFingerprintRings(component_scores)}
                         myidScore={myidScoreValue}
-                        className="w-full max-w-2xl"
+                        className="w-full"
                         hasRedFlags={red_flags_detected}
                     />
                 </CardContent>
