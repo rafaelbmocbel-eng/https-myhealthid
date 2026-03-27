@@ -173,10 +173,52 @@ export default function PacienteLogin() {
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      {/* Header */}
-      <div className="w-full py-6 px-6 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 12%) 100%)' }}>
-        <LogoIcon size={36} />
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background">
+      {/* Left panel – branding (desktop/tablet) */}
+      <div
+        className="hidden md:flex flex-col lg:w-1/2 p-8 lg:p-12 justify-between"
+        style={{ background: 'linear-gradient(160deg, hsl(213 55% 16%) 0%, hsl(213 55% 8%) 100%)' }}
+      >
+        <div className="flex items-center gap-3">
+          <LogoIcon size={44} />
+          <div>
+            <div className="text-sm font-black text-white tracking-wide">
+              My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
+            </div>
+            <div className="text-xs text-white/50">Portal do Paciente</div>
+          </div>
+        </div>
+        <div>
+          <h2 className="text-3xl lg:text-4xl font-black text-white leading-tight mb-4">
+            Seu portal de<br />
+            <span style={{ color: 'hsl(40 95% 52%)' }}>saúde integrada</span>
+          </h2>
+          <p className="text-white/60 text-sm leading-relaxed max-w-md">
+            Acompanhe sua evolução, acesse exercícios personalizados, registre seu diário de saúde e gerencie seus agendamentos — tudo em um só lugar.
+          </p>
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            {[
+              { icon: '📊', label: 'Evolução & MyID' },
+              { icon: '🏋️', label: 'Exercícios Guiados' },
+              { icon: '📅', label: 'Agenda Interativa' },
+              { icon: '💊', label: 'Diário de Saúde' },
+            ].map(f => (
+              <div key={f.label} className="flex items-center gap-2 text-white/50 text-xs bg-white/5 rounded-lg px-3 py-2">
+                <span>{f.icon}</span>
+                <span>{f.label}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+        <p className="text-white/20 text-xs">My Health ID © 2026 · Portal do Paciente</p>
+      </div>
+
+      {/* Mobile header */}
+      <div
+        className="md:hidden w-full py-4 px-4 flex items-center gap-3 shrink-0"
+        style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 12%) 100%)' }}
+      >
+        <LogoIcon size={32} />
         <div>
           <div className="text-sm font-black text-white tracking-wide">
             My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
@@ -185,14 +227,14 @@ export default function PacienteLogin() {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="flex-1 flex items-center justify-center p-6">
+      {/* Right panel – form */}
+      <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="w-full max-w-sm">
-          <div className="text-center mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10 mb-3">
-              <Heart className="h-7 w-7 text-primary" />
+          <div className="text-center mb-5">
+            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/10 mb-3">
+              <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
             </div>
-            <h1 className="text-xl font-black text-foreground">
+            <h1 className="text-lg sm:text-xl font-black text-foreground">
               {tab === 'login' ? 'Acesse seu portal' : 'Criar conta'}
             </h1>
             <p className="text-muted-foreground text-xs mt-1">
@@ -203,12 +245,12 @@ export default function PacienteLogin() {
           </div>
 
           {/* Tabs */}
-          <div className="flex rounded-xl bg-muted p-1 mb-5">
+          <div className="flex rounded-xl bg-muted p-1 mb-4">
             {(['login', 'register'] as const).map((t) => (
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`flex-1 py-2 rounded-lg text-xs font-semibold transition-all ${
+                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all ${
                   tab === t
                     ? 'bg-primary text-primary-foreground shadow-md'
                     : 'text-muted-foreground hover:text-foreground'
@@ -229,7 +271,7 @@ export default function PacienteLogin() {
                   value={form.nome}
                   onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
                   required
-                  className="h-10 rounded-xl text-sm"
+                  className="h-11 rounded-xl text-[16px] sm:text-sm"
                 />
               </div>
             )}
@@ -242,7 +284,7 @@ export default function PacienteLogin() {
                 value={form.email}
                 onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
                 required
-                className="h-10 rounded-xl text-sm"
+                className="h-11 rounded-xl text-[16px] sm:text-sm"
               />
             </div>
             <div className="space-y-1">
@@ -255,7 +297,7 @@ export default function PacienteLogin() {
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   required
-                  className="pr-10 h-10 rounded-xl text-sm"
+                  className="pr-10 h-11 rounded-xl text-[16px] sm:text-sm"
                 />
                 <button
                   type="button"
@@ -268,7 +310,7 @@ export default function PacienteLogin() {
             </div>
             <Button
               type="submit"
-              className="w-full h-10 rounded-xl font-bold text-sm"
+              className="w-full h-11 rounded-xl font-bold text-sm"
               disabled={submitting}
             >
               {submitting ? (
@@ -300,7 +342,8 @@ export default function PacienteLogin() {
         </div>
       </div>
 
-      <p className="text-center text-[10px] text-muted-foreground/40 py-4">
+      {/* Mobile footer */}
+      <p className="md:hidden text-center text-[10px] text-muted-foreground/40 py-3 shrink-0">
         My Health ID © 2026 · Portal do Paciente
       </p>
     </div>
