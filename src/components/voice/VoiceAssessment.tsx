@@ -96,41 +96,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     wakeLockRef.current = null;
   }, []);
 
-  // Re-acquire wake lock when page becomes visible again during recording
-  useEffect(() => {
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden' && isRecording) {
-        stopRecording();
-        return;
-      }
-
-      if (document.visibilityState === 'visible' && isRecording) {
-        requestWakeLock();
-      }
-    };
-
-    const handlePageHide = () => {
-      if (isRecording) stopRecording();
-    };
-
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('pagehide', handlePageHide);
-
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('pagehide', handlePageHide);
-    };
-  }, [isRecording, requestWakeLock, stopRecording]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      stopRecording();
-      releaseWakeLock();
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, []);
-
   useEffect(() => {
     if (!user || appendMode || hasRestoredDraftRef.current) return;
 
@@ -261,6 +226,41 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     setIsRecording(false);
     releaseWakeLock();
   }, [releaseWakeLock]);
+
+  // Re-acquire wake lock when page becomes visible again during recording
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden' && isRecording) {
+        stopRecording();
+        return;
+      }
+
+      if (document.visibilityState === 'visible' && isRecording) {
+        requestWakeLock();
+      }
+    };
+
+    const handlePageHide = () => {
+      if (isRecording) stopRecording();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('pagehide', handlePageHide);
+    };
+  }, [isRecording, requestWakeLock, stopRecording]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      stopRecording();
+      releaseWakeLock();
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [releaseWakeLock, stopRecording]);
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
