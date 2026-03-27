@@ -62,20 +62,23 @@ export default function MyIDFingerprint({
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  // Full-bleed viewBox — fingerprint as hero element
-  const vw = 1000;
-  const vh = 1000;
+  // Full-bleed viewBox — fingerprint as hero element, maximum size
+  const vw = 800;
+  const vh = 800;
   const cx = vw / 2;
-  const cy = 460;
+  const cy = vh / 2;
 
   const ridgeData = useMemo(() => {
-    const baseR = 70;
-    const spacing = 28;
+    const baseR = 58;
+    // Dynamic spacing: fill available radius (max ~360px from center to edge)
+    const maxRadius = 370;
+    const totalRings = allRings.length || 1;
+    const spacing = Math.min(32, (maxRadius - baseR) / totalRings);
 
     return allRings.map((ring, i) => {
-      const r = baseR + i * (spacing + 3);
-      const rx = r * 1.02;
-      const ry = r * 1.02;
+      const r = baseR + i * spacing;
+      const rx = r;
+      const ry = r;
       const valuePct = Math.max(ring.value / 10, 0.08);
       const color = ring.color || getThermalColor(ring.value);
       const opacity = 0.55 + (ring.value / 10) * 0.45;
