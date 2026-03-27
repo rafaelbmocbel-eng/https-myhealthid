@@ -26,6 +26,12 @@ const SHORT_LABELS: Record<string, string> = {
   AF: 'AF', HID: 'HID', NUT: 'NUT', ERG: 'ERG', N: 'N', MED: 'MED',
 };
 
+const FULL_LABELS: Record<string, string> = {
+  D: 'Dor', EFI: 'Eficiência', P: 'Psicossocial', I: 'Incapacidade',
+  R: 'Regulação', C: 'Cinesiofobia', AF: 'Ativ. Física', HID: 'Hidratação',
+  NUT: 'Nutrição', ERG: 'Ergonomia', N: 'Neurológico', MED: 'Medicação',
+};
+
 export default function MyIDFingerprint({
   rings, myidScore, className = '', onRingClick, onRingHover,
   highlightedKey, hasRedFlags = false, compact = false,
@@ -35,7 +41,6 @@ export default function MyIDFingerprint({
   const [revealed, setRevealed] = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
 
-  // Sequential reveal animation
   useEffect(() => {
     const timer = setTimeout(() => setRevealed(true), 100);
     return () => clearTimeout(timer);
@@ -57,33 +62,33 @@ export default function MyIDFingerprint({
   const outerRings = rings.filter(r => r.type === 'outer');
   const allRings = [...innerRings, ...outerRings];
 
-  const vw = 1000;
-  const vh = 1000;
+  // Larger viewBox for HD rendering
+  const vw = 1200;
+  const vh = 1200;
   const cx = vw / 2;
-  const cy = 440;
+  const cy = 520;
 
   const ridgeData = useMemo(() => {
-    const baseR = 72;
-    const spacing = 24;
+    const baseR = 88;
+    const spacing = 30;
 
     return allRings.map((ring, i) => {
-      const r = baseR + i * (spacing + 2);
+      const r = baseR + i * (spacing + 3);
       const rx = r * 1.02;
       const ry = r * 1.02;
       const valuePct = Math.max(ring.value / 10, 0.08);
       const color = ring.color || getThermalColor(ring.value);
-      const opacity = 0.5 + (ring.value / 10) * 0.5;
+      const opacity = 0.55 + (ring.value / 10) * 0.45;
       const openingAngle = Math.max(16 - i * 0.7, 3);
       const startAngle = 90 + openingAngle;
       const availableSweep = 360 - openingAngle * 2;
-      // Minimum fill of 20% so low values remain visible
       const filledSweep = availableSweep * Math.max(valuePct, 0.20);
 
       return {
         ...ring, rx, ry, startAngle, availableSweep, filledSweep,
         gapPositions: i < 3 ? [] : [0.3, 0.7],
-        gapSize: 3, isInner: ring.type === 'inner', index: i,
-        strokeWidth: Math.max(15 - i * 0.35, 9),
+        gapSize: 3.5, isInner: ring.type === 'inner', index: i,
+        strokeWidth: Math.max(20 - i * 0.5, 12),
         computedColor: color, computedOpacity: opacity,
       };
     });
@@ -116,78 +121,82 @@ export default function MyIDFingerprint({
   const activeIdx = highlightedIdx !== null && highlightedIdx >= 0
     ? highlightedIdx : selectedIdx !== null ? selectedIdx : hoveredIdx;
 
-  // Progress ring for center
-  const progressCircumference = 2 * Math.PI * 44;
+  const progressCircumference = 2 * Math.PI * 56;
   const progressOffset = progressCircumference - (progressCircumference * Math.min(myidScore, 100)) / 100;
 
   return (
-    <div className={`relative ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
-      <svg viewBox={`0 0 ${vw} ${vh}`} className="w-full mx-auto"
-        style={{ filter: 'drop-shadow(0 4px 24px rgba(0,0,0,0.06))' }}
+    <div className={`relative w-full ${className}`} role="img" aria-label={`Impressão digital MyID com score ${Math.round(myidScore)} de 100 - ${label}`}>
+      <svg
+        viewBox={`0 0 ${vw} ${vh}`}
+        className="w-full max-w-none mx-auto"
+        style={{
+          filter: 'drop-shadow(0 8px 32px rgba(0,0,0,0.08))',
+          minHeight: compact ? 280 : 380,
+        }}
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
           <filter id="fp-glow-hi" x="-20%" y="-20%" width="140%" height="140%">
-            <feGaussianBlur stdDeviation="3" result="blur" />
+            <feGaussianBlur stdDeviation="4" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-glow-med" x="-10%" y="-10%" width="120%" height="120%">
-            <feGaussianBlur stdDeviation="1.5" result="blur" />
+            <feGaussianBlur stdDeviation="2" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-core-glow">
-            <feGaussianBlur stdDeviation="14" result="blur" />
+            <feGaussianBlur stdDeviation="18" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-highlight-glow">
-            <feGaussianBlur stdDeviation="5" result="blur" />
+            <feGaussianBlur stdDeviation="6" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%" stopColor={centerColor} stopOpacity="0.2" />
+            <stop offset="0%" stopColor={centerColor} stopOpacity="0.25" />
             <stop offset="100%" stopColor={centerColor} stopOpacity="0" />
           </radialGradient>
           <radialGradient id="fp-bg-g" cx="50%" cy="44%" r="50%">
-            <stop offset="0%" stopColor="hsl(220, 20%, 50%)" stopOpacity="0.03" />
+            <stop offset="0%" stopColor="hsl(220, 20%, 50%)" stopOpacity="0.04" />
             <stop offset="100%" stopColor="hsl(220, 20%, 50%)" stopOpacity="0" />
           </radialGradient>
           <filter id="fp-pulse-glow">
-            <feGaussianBlur stdDeviation="8" result="blur" />
+            <feGaussianBlur stdDeviation="10" result="blur" />
             <feComposite in="SourceGraphic" in2="blur" operator="over" />
           </filter>
           <filter id="fp-label-shadow">
-            <feDropShadow dx="0" dy="1" stdDeviation="2" floodOpacity="0.15" />
+            <feDropShadow dx="0" dy="1" stdDeviation="3" floodOpacity="0.2" />
           </filter>
         </defs>
 
-        <ellipse cx={cx} cy={cy} rx={440} ry={460} fill="url(#fp-bg-g)" />
+        <ellipse cx={cx} cy={cy} rx={540} ry={560} fill="url(#fp-bg-g)" />
 
-        {/* Center: progress ring + score + status */}
-        <circle cx={cx} cy={cy} r={52} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
-        
+        {/* ── Center: progress ring + score + status ── */}
+        <circle cx={cx} cy={cy} r={66} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+
         {/* Background track */}
-        <circle cx={cx} cy={cy} r={44} fill="none" stroke={centerColor} strokeWidth="3" opacity="0.1"
+        <circle cx={cx} cy={cy} r={56} fill="none" stroke={centerColor} strokeWidth="4" opacity="0.1"
           transform={`rotate(-90, ${cx}, ${cy})`} />
         {/* Progress arc */}
-        <circle cx={cx} cy={cy} r={44} fill="none" stroke={centerColor} strokeWidth="3.5"
+        <circle cx={cx} cy={cy} r={56} fill="none" stroke={centerColor} strokeWidth="5"
           strokeDasharray={progressCircumference} strokeDashoffset={progressOffset}
-          strokeLinecap="round" opacity="0.6"
+          strokeLinecap="round" opacity="0.65"
           transform={`rotate(-90, ${cx}, ${cy})`}
           style={{ transition: 'stroke-dashoffset 1s cubic-bezier(0.16, 1, 0.3, 1)' }} />
 
-        <text x={cx} y={cy - 10} textAnchor="middle" fontSize="34" fontWeight="900" fill={centerColor} dominantBaseline="central"
+        <text x={cx} y={cy - 14} textAnchor="middle" fontSize="44" fontWeight="900" fill={centerColor} dominantBaseline="central"
           style={{ transition: 'fill 0.3s ease' }}>
           {Math.round(myidScore)}
         </text>
-        <text x={cx} y={cy + 14} textAnchor="middle" fontSize="10" fontWeight="700" fill={centerColor} opacity="0.5">
+        <text x={cx} y={cy + 16} textAnchor="middle" fontSize="14" fontWeight="700" fill={centerColor} opacity="0.5">
           /100
         </text>
-        <text x={cx} y={cy + 30} textAnchor="middle" fontSize="9.5" fontWeight="800" fill={centerColor} opacity="0.85"
-          letterSpacing="1.2">
+        <text x={cx} y={cy + 38} textAnchor="middle" fontSize="13" fontWeight="800" fill={centerColor} opacity="0.85"
+          letterSpacing="1.5">
           {label.toUpperCase()}
         </text>
 
-        {/* Ridges */}
+        {/* ── Ridges ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
           const segments: { start: number; sweep: number }[] = [];
           const gaps = [...ridge.gapPositions].sort();
@@ -209,10 +218,10 @@ export default function MyIDFingerprint({
           const isDimmed = activeIdx !== null && activeIdx !== ridgeIdx;
           const isRevealed = revealProgress > ridgeIdx;
 
-          // Permanent label position: at the end of the filled arc
+          // Label position at the end of the filled arc
           const labelAngleDeg = ridge.startAngle + ridge.filledSweep + 8;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + 2;
+          const labelDist = ridge.rx + 4;
           const lx = cx + labelDist * Math.cos(labelRad);
           const ly = cy + labelDist * Math.sin(labelRad);
 
@@ -236,7 +245,7 @@ export default function MyIDFingerprint({
                 if (!path) return null;
                 return <path key={`bg-${si}`} d={path} fill="none" stroke={ridge.computedColor}
                   strokeWidth={ridge.strokeWidth} strokeLinecap="round"
-                  opacity={isDimmed ? 0.03 : 0.08} style={{ transition: 'opacity 0.3s ease' }} />;
+                  opacity={isDimmed ? 0.03 : 0.09} style={{ transition: 'opacity 0.3s ease' }} />;
               })}
 
               {/* Filled arc */}
@@ -249,23 +258,24 @@ export default function MyIDFingerprint({
                 const path = arcPath(ridge.rx, ridge.ry, seg.start, filledPortion);
                 if (!path) return null;
                 return <path key={`fill-${si}`} d={path} fill="none" stroke={ridge.computedColor}
-                  strokeWidth={isActive ? ridge.strokeWidth + 5 : ridge.strokeWidth} strokeLinecap="round"
+                  strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth} strokeLinecap="round"
                   opacity={isActive ? 1 : isDimmed ? 0.08 : ridge.computedOpacity}
                   filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                   style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
               })}
 
-              {/* Permanent abbreviated label on each ridge */}
+              {/* Permanent label */}
               {!compact && !isDimmed && (
                 <text
                   x={lx} y={ly}
                   textAnchor="start"
-                  fontSize="9"
+                  fontSize="12"
                   fontWeight="800"
                   fill={ridge.computedColor}
-                  opacity={isActive ? 1 : 0.55}
+                  opacity={isActive ? 1 : 0.6}
                   dominantBaseline="central"
-                  letterSpacing="0.5"
+                  letterSpacing="0.6"
+                  filter="url(#fp-label-shadow)"
                   style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
                 >
                   {SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey}
@@ -276,17 +286,18 @@ export default function MyIDFingerprint({
               {isActive && (() => {
                 const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
                 const tipRad = (tipAngleDeg * Math.PI) / 180;
-                const dist = ridge.rx + 48;
+                const dist = ridge.rx + 56;
                 const tx = cx + dist * Math.cos(tipRad);
                 const ty = cy + dist * Math.sin(tipRad);
-                const displayText = `${ridge.label}: ${ridge.value.toFixed(1)}`;
-                const textWidth = displayText.length * 7 + 24;
+                const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
+                const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
+                const textWidth = displayText.length * 8.5 + 32;
                 return (
                   <g style={{ pointerEvents: 'none' }}>
-                    <rect x={tx - textWidth / 2} y={ty - 16} width={textWidth} height={32} rx={10}
-                      fill={ridge.computedColor} opacity={0.92} stroke="white" strokeWidth="1.5" />
-                    <text x={tx} y={ty + 1} textAnchor="middle" fontSize="12" fontWeight="800"
-                      fill="white" letterSpacing="0.2" dominantBaseline="central">{displayText}</text>
+                    <rect x={tx - textWidth / 2} y={ty - 20} width={textWidth} height={40} rx={12}
+                      fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2" />
+                    <text x={tx} y={ty + 1} textAnchor="middle" fontSize="15" fontWeight="800"
+                      fill="white" letterSpacing="0.3" dominantBaseline="central">{displayText}</text>
                   </g>
                 );
               })()}
@@ -297,9 +308,9 @@ export default function MyIDFingerprint({
         {/* Red flags pulse */}
         {hasRedFlags && (
           <g style={{ animation: 'fpPulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite' }}>
-            <circle cx={cx} cy={cy} r={410} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="2" strokeDasharray="4 8" opacity="0.5" />
-            <circle cx={cx} cy={cy} r={418} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="6" opacity="0.12" filter="url(#fp-pulse-glow)" />
-            <text x={cx} y={cy - 435} textAnchor="middle" fill="hsl(0, 72%, 51%)" fontSize="13" fontWeight="900" letterSpacing="2">
+            <circle cx={cx} cy={cy} r={500} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="2.5" strokeDasharray="5 10" opacity="0.5" />
+            <circle cx={cx} cy={cy} r={510} fill="none" stroke="hsl(0, 72%, 51%)" strokeWidth="8" opacity="0.12" filter="url(#fp-pulse-glow)" />
+            <text x={cx} y={cy - 530} textAnchor="middle" fill="hsl(0, 72%, 51%)" fontSize="16" fontWeight="900" letterSpacing="2.5">
               SINAIS DE ALERTA DETECTADOS
             </text>
           </g>
@@ -307,37 +318,37 @@ export default function MyIDFingerprint({
 
         <style>{`@keyframes fpPulse { 0%, 100% { opacity: 0.3; } 50% { opacity: 0.9; } }`}</style>
 
-        {/* Legend bar */}
-        <g transform={`translate(60, ${vh - 46})`}>
-          <text x={0} y={9} fontSize="9" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="1.2" opacity="0.6">ESCALA:</text>
+        {/* ── Legend bar ── */}
+        <g transform={`translate(80, ${vh - 50})`}>
+          <text x={0} y={10} fontSize="11" fontWeight="700" fill="hsl(var(--foreground))" letterSpacing="1.5" opacity="0.6">ESCALA:</text>
           {[
-            { color: 'hsl(270, 60%, 75%)', x: 62 },
-            { color: 'hsl(230, 70%, 60%)', x: 80 },
-            { color: 'hsl(210, 75%, 55%)', x: 98 },
-            { color: 'hsl(35, 85%, 55%)', x: 116 },
-            { color: 'hsl(0, 85%, 50%)', x: 134 },
-          ].map((c, i) => <rect key={i} x={c.x} y={0} width={16} height={12} rx={3} fill={c.color} opacity={0.8} />)}
-          <text x={62} y={24} fontSize="7.5" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
-          <text x={140} y={24} fontSize="7.5" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
+            { color: 'hsl(270, 60%, 75%)', x: 80 },
+            { color: 'hsl(230, 70%, 60%)', x: 102 },
+            { color: 'hsl(210, 75%, 55%)', x: 124 },
+            { color: 'hsl(35, 85%, 55%)', x: 146 },
+            { color: 'hsl(0, 85%, 50%)', x: 168 },
+          ].map((c, i) => <rect key={i} x={c.x} y={0} width={20} height={14} rx={4} fill={c.color} opacity={0.8} />)}
+          <text x={80} y={28} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
+          <text x={175} y={28} fontSize="9" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
 
-          <circle cx={185} cy={6} r={4.5} fill="hsl(0, 85%, 50%)" opacity={0.75} />
-          <text x={194} y={9} fontSize="8.5" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
-          <circle cx={265} cy={6} r={4.5} fill="hsl(210, 75%, 55%)" opacity={0.75} />
-          <text x={274} y={9} fontSize="8.5" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
+          <circle cx={225} cy={7} r={5.5} fill="hsl(0, 85%, 50%)" opacity={0.75} />
+          <text x={236} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
+          <circle cx={320} cy={7} r={5.5} fill="hsl(210, 75%, 55%)" opacity={0.75} />
+          <text x={331} y={10} fontSize="10" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
         </g>
       </svg>
 
-      {/* Synchronized sidebar legend */}
+      {/* ── Sidebar legend grid ── */}
       {!compact && (
-        <div className="mt-3 grid grid-cols-3 sm:grid-cols-4 gap-1.5 px-1">
+        <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2 px-1">
           {ridgeData.map((ridge, idx) => {
             const isActive = activeIdx === idx;
             return (
               <button
                 key={ridge.scoreKey}
-                className={`flex items-center gap-1.5 px-2 py-1 rounded-md text-left transition-all duration-200 border ${
+                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border ${
                   isActive
-                    ? 'border-border bg-card shadow-sm scale-[1.02]'
+                    ? 'border-border bg-card shadow-md scale-[1.03]'
                     : 'border-transparent hover:bg-muted/50'
                 }`}
                 onMouseEnter={() => { setHoveredIdx(idx); onRingHover?.(ridge.scoreKey); }}
@@ -346,18 +357,18 @@ export default function MyIDFingerprint({
                 aria-label={`${ridge.label}: ${ridge.value.toFixed(1)}`}
               >
                 <div
-                  className="w-2.5 h-2.5 rounded-full shrink-0 transition-transform duration-200"
+                  className="w-3 h-3 rounded-full shrink-0 transition-transform duration-200"
                   style={{
                     backgroundColor: ridge.computedColor,
-                    transform: isActive ? 'scale(1.3)' : 'scale(1)',
-                    boxShadow: isActive ? `0 0 6px ${ridge.computedColor}` : 'none',
+                    transform: isActive ? 'scale(1.4)' : 'scale(1)',
+                    boxShadow: isActive ? `0 0 8px ${ridge.computedColor}` : 'none',
                   }}
                 />
                 <div className="min-w-0">
-                  <div className="text-[9px] font-bold text-foreground/80 truncate leading-tight">
+                  <div className="text-[10px] font-bold text-foreground/80 truncate leading-tight">
                     {SHORT_LABELS[ridge.scoreKey]}
                   </div>
-                  <div className="text-[8px] font-semibold tabular-nums" style={{ color: ridge.computedColor }}>
+                  <div className="text-[9px] font-semibold tabular-nums" style={{ color: ridge.computedColor }}>
                     {ridge.value.toFixed(1)}
                   </div>
                 </div>
