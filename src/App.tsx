@@ -7,12 +7,12 @@ import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
+import MetodoIdentidade from "./pages/MetodoIdentidade";
 import NotFound from "./pages/NotFound";
 import PatientGuard from "./components/PatientGuard";
 
 // Lazy-loaded pages for better performance
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
-const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const CobZero = lazy(() => import("./pages/CobZero"));
 const StudioPersonalID = lazy(() => import("./pages/StudioPersonalID"));
 const Agenda = lazy(() => import("./pages/Agenda"));
