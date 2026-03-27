@@ -806,6 +806,9 @@ export default function PacientePerfil() {
               TAB: EVOLUÇÃO E PRONTUÁRIOS
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
+            {/* Resumo Narrativo */}
+            <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
+
             {/* SOAP Note + Prontuário */}
             <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
