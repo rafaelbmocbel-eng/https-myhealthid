@@ -9,6 +9,8 @@ declare const __APP_VERSION__: string;
 installSupabaseLockPatch();
 
 const APP_VERSION_STORAGE_KEY = "myhealthid.app.version";
+const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
+const DYNAMIC_IMPORT_ERROR_PATTERN = /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
 
 const clearBrowserCaches = async () => {
   if (!("caches" in window)) return;
@@ -30,6 +32,14 @@ const forceLoadLatestVersion = async (registration?: ServiceWorkerRegistration) 
   window.location.replace(url.toString());
 };
 
+const reloadOnDynamicImportFailure = () => {
+  const hasRetried = window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY);
+  if (hasRetried) return;
+
+  window.sessionStorage.setItem(DYNAMIC_IMPORT_RELOAD_KEY, "1");
+  void forceLoadLatestVersion();
+};
+
 const syncBuildVersion = async () => {
   const currentVersion = __APP_VERSION__;
   const savedVersion = window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
@@ -43,9 +53,30 @@ const syncBuildVersion = async () => {
     window.localStorage.setItem(APP_VERSION_STORAGE_KEY, currentVersion);
     await forceLoadLatestVersion();
   }
+
+  window.sessionStorage.removeItem(DYNAMIC_IMPORT_RELOAD_KEY);
 };
 
 void syncBuildVersion();
+
+window.addEventListener("vite:preloadError", (event) => {
+  event.preventDefault();
+  reloadOnDynamicImportFailure();
+});
+
+window.addEventListener("unhandledrejection", (event) => {
+  const message =
+    event.reason instanceof Error
+      ? event.reason.message
+      : typeof event.reason === "string"
+        ? event.reason
+        : "";
+
+  if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message)) return;
+
+  event.preventDefault();
+  reloadOnDynamicImportFailure();
+});
 
 const updateSW = registerSW({
   immediate: true,
