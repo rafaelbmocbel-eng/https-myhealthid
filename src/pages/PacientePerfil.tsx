@@ -38,6 +38,7 @@ import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
+import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
