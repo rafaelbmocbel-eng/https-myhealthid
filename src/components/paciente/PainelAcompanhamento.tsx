@@ -4,16 +4,18 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Users, UserCheck, AlertTriangle, Phone, Clock,
   TrendingUp, ChevronRight, CalendarDays, Activity,
   UserX, PhoneCall, Eye, EyeOff, CalendarCheck, CalendarPlus,
-  RefreshCw, Target, Repeat, X
+  RefreshCw, Target, Repeat, X, Download, Filter
 } from 'lucide-react';
 import { differenceInDays, format, formatDistanceToNow, addDays, addMonths, isFuture, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { exportToCsv } from '@/utils/exportCsv';
 
 interface MembroEquipe {
   id: string;
@@ -72,8 +74,44 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
   const [expanded, setExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabView>('resumo');
   const [expandedKpi, setExpandedKpi] = useState<string | null>(null);
+  const [filtroProfissional, setFiltroProfissional] = useState<string>('todos');
 
   const now = new Date();
+
+  // ── Build paciente->membro mapping ──────────────────────────────────
+  const pacienteMembro = useMemo(() => {
+    const map: Record<string, string> = {};
+    Object.entries(agendamentosPorMembro).forEach(([membroId, pIds]) => {
+      pIds.forEach(pid => { map[pid] = membroId; });
+    });
+    return map;
+  }, [agendamentosPorMembro]);
+
+  // ── Filter pacientes by professional ────────────────────────────────
+  const pacientesFiltrados = useMemo(() => {
+    if (filtroProfissional === 'todos') return pacientes;
+    return pacientes.filter(p => pacienteMembro[p.id] === filtroProfissional);
+  }, [pacientes, filtroProfissional, pacienteMembro]);
+
+  // ── Group agendamentos by paciente ──────────────────────────────────
+  const agsPorPaciente = useMemo(() => {
+    const map: Record<string, AgendamentoData[]> = {};
+    todosAgendamentos.forEach(a => {
+      if (!a.paciente_id) return;
+      if (!map[a.paciente_id]) map[a.paciente_id] = [];
+      map[a.paciente_id].push(a);
+    });
+    return map;
+  }, [todosAgendamentos]);
+
+  // ── Get próximo agendamento for a paciente ──────────────────────────
+  const getProximoAgendamento = (pid: string) => {
+    const ags = agsPorPaciente[pid] || [];
+    const futuros = ags
+      .filter(a => isFuture(new Date(a.data_inicio)) && (a.status === 'confirmado' || a.status === 'pendente'))
+      .sort((a, b) => new Date(a.data_inicio).getTime() - new Date(b.data_inicio).getTime());
+    return futuros[0] || null;
+  };
 
   // ── Derived data ──────────────────────────────────────────────────
   const {
@@ -90,20 +128,6 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
     const servCount: Record<string, number> = {};
     const profCount: Record<string, { nome: string; cor: string; count: number }> = {};
 
-    // Build paciente->membro mapping
-    const pacienteMembro: Record<string, string> = {};
-    Object.entries(agendamentosPorMembro).forEach(([membroId, pIds]) => {
-      pIds.forEach(pid => { pacienteMembro[pid] = membroId; });
-    });
-
-    // Group all agendamentos by paciente
-    const agsPorPaciente: Record<string, AgendamentoData[]> = {};
-    todosAgendamentos.forEach(a => {
-      if (!a.paciente_id) return;
-      if (!agsPorPaciente[a.paciente_id]) agsPorPaciente[a.paciente_id] = [];
-      agsPorPaciente[a.paciente_id].push(a);
-    });
-
     // Future confirmed appointments
     const proxConf: { paciente: PacienteData; ag: AgendamentoData }[] = [];
     // Patients with no future confirmed appointment
@@ -119,7 +143,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
       proximoConfirmado?: string;
     }[] = [];
 
-    pacientes.forEach(p => {
+    pacientesFiltrados.forEach(p => {
       const ultimo = ultimosAgendamentos[p.id];
       const ags = agsPorPaciente[p.id] || [];
       const agsFuturos = ags.filter(a =>
@@ -196,7 +220,6 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
         });
 
         if (agsFuturos.length === 0 && ultimo) {
-          const diasDesde = differenceInDays(now, new Date(ultimo.data));
           const sugestao = format(proximoIdeal, "dd/MM/yyyy", { locale: ptBR });
           semFut.push({ paciente: p, ultimaData: ultimo.data, sugestao, ciclo });
         }
@@ -237,16 +260,16 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
       semFuturo: semFut,
       ciclosPacientes: ciclos,
     };
-  }, [pacientes, ultimosAgendamentos, todosAgendamentos, membrosEquipe, agendamentosPorMembro]);
+  }, [pacientesFiltrados, ultimosAgendamentos, agsPorPaciente, membrosEquipe, pacienteMembro]);
 
   const getUrgencyLevel = (pid: string) => {
     const ultimo = ultimosAgendamentos[pid];
-    if (!ultimo) return { color: 'text-muted-foreground', label: 'Sem consultas' };
+    if (!ultimo) return { color: 'text-muted-foreground', label: 'Sem consultas', severity: 'none' as const };
     const dias = differenceInDays(now, new Date(ultimo.data));
-    if (dias >= 60) return { color: 'text-destructive', label: `${dias}d sem contato` };
-    if (dias >= 30) return { color: 'text-orange-600', label: `${dias}d sem contato` };
-    if (dias >= 15) return { color: 'text-amber-600', label: `${dias}d sem contato` };
-    return { color: 'text-emerald-600', label: 'Ativo' };
+    if (dias >= 60) return { color: 'text-destructive', label: `${dias}d sem contato`, severity: 'critical' as const };
+    if (dias >= 30) return { color: 'text-orange-600', label: `${dias}d sem contato`, severity: 'warning' as const };
+    if (dias >= 15) return { color: 'text-amber-600', label: `${dias}d sem contato`, severity: 'attention' as const };
+    return { color: 'text-emerald-600', label: 'Ativo', severity: 'ok' as const };
   };
 
   const totalServicos = Object.values(porServico).reduce((a, b) => a + b, 0);
@@ -257,6 +280,67 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
     { key: 'agenda', label: 'Agenda', icon: CalendarCheck, badge: proximosConfirmados.length > 0 ? proximosConfirmados.length : undefined },
     { key: 'ciclos', label: 'Ciclos', icon: Repeat, badge: vencidos > 0 ? vencidos : undefined },
   ];
+
+  // ── Export current panel data ──────────────────────────────────────
+  const handleExport = () => {
+    const rows = pacientesFiltrados.map(p => {
+      const ultimo = ultimosAgendamentos[p.id];
+      const proximo = getProximoAgendamento(p.id);
+      const ciclo = ciclosPacientes.find(c => c.paciente.id === p.id);
+      const urgency = getUrgencyLevel(p.id);
+      return {
+        nome: `${p.nome} ${p.sobrenome}`,
+        telefone: p.telefone || '',
+        email: p.email || '',
+        status: urgency.label,
+        ultima_consulta: ultimo ? format(new Date(ultimo.data), 'dd/MM/yyyy') : 'Nunca',
+        proxima_consulta: proximo ? format(new Date(proximo.data_inicio), 'dd/MM/yyyy HH:mm') : 'Sem agenda',
+        ciclo: ciclo ? CICLO_CONFIG[ciclo.cicloDetectado].label : '-',
+        ciclo_vencido: ciclo?.vencido && !ciclo.proximoConfirmado ? 'Sim' : 'Não',
+        servicos: (p._servicos || []).map(s => SERVICO_LABELS[s]?.label || s).join(', '),
+      };
+    });
+    exportToCsv(`painel_acompanhamento_${format(new Date(), 'yyyy-MM-dd')}.csv`, rows, [
+      { key: 'nome', label: 'Nome' },
+      { key: 'telefone', label: 'Telefone' },
+      { key: 'email', label: 'E-mail' },
+      { key: 'status', label: 'Status' },
+      { key: 'ultima_consulta', label: 'Última Consulta' },
+      { key: 'proxima_consulta', label: 'Próxima Consulta' },
+      { key: 'ciclo', label: 'Ciclo' },
+      { key: 'ciclo_vencido', label: 'Vencido' },
+      { key: 'servicos', label: 'Serviços' },
+    ]);
+  };
+
+  // ── Render mini-history for expanded KPI lists ──────────────────────
+  const renderMiniHistorico = (pid: string) => {
+    const ultimo = ultimosAgendamentos[pid];
+    const proximo = getProximoAgendamento(pid);
+    return (
+      <div className="flex items-center gap-2 text-[9px] text-muted-foreground mt-0.5 flex-wrap">
+        {ultimo && (
+          <span>Última: {formatDistanceToNow(new Date(ultimo.data), { addSuffix: true, locale: ptBR })}</span>
+        )}
+        {proximo && (
+          <span className="text-blue-600">Próxima: {format(new Date(proximo.data_inicio), "dd/MM HH:mm")}</span>
+        )}
+      </div>
+    );
+  };
+
+  // ── Urgency indicator dot ──────────────────────────────────────────
+  const getUrgencyDot = (pid: string) => {
+    const { severity } = getUrgencyLevel(pid);
+    const dotColors = {
+      critical: 'bg-destructive animate-pulse',
+      warning: 'bg-orange-500',
+      attention: 'bg-amber-400',
+      ok: 'bg-emerald-500',
+      none: 'bg-muted-foreground/30',
+    };
+    return <div className={cn('h-2 w-2 rounded-full shrink-0', dotColors[severity])} />;
+  };
 
   return (
     <div className="space-y-3">
@@ -290,13 +374,46 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
             className="overflow-hidden"
           >
             <div className="space-y-3">
+              {/* Filters Row: Professional + Export */}
+              <div className="flex items-center gap-2 flex-wrap">
+                {membrosEquipe.length > 0 && (
+                  <Select value={filtroProfissional} onValueChange={setFiltroProfissional}>
+                    <SelectTrigger className="h-8 text-xs w-44">
+                      <Filter className="h-3 w-3 mr-1.5" />
+                      <SelectValue placeholder="Profissional" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="todos">Todos os profissionais</SelectItem>
+                      {membrosEquipe.filter(m => m.ativo).map(m => (
+                        <SelectItem key={m.id} value={m.id}>
+                          <div className="flex items-center gap-1.5">
+                            <div className="h-2 w-2 rounded-full" style={{ backgroundColor: m.cor }} />
+                            {m.nome}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-8 text-xs gap-1.5 ml-auto"
+                  onClick={handleExport}
+                  disabled={pacientesFiltrados.length === 0}
+                >
+                  <Download className="h-3 w-3" />
+                  Exportar
+                </Button>
+              </div>
+
               {/* KPI Cards Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
                   { key: 'ativos', icon: UserCheck, label: 'Ativos', value: ativos, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', list: ativosList },
                   { key: 'inativos', icon: UserX, label: 'Inativos', value: inativos, color: 'text-muted-foreground', bg: 'bg-muted/50', list: inativosList },
                   { key: 'agendados', icon: CalendarCheck, label: 'Agendados', value: proximosConfirmados.length, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', list: proximosConfirmados.map(c => c.paciente) },
-                  { key: 'vencidos', icon: AlertTriangle, label: 'Vencidos', value: vencidos, color: 'text-destructive', bg: 'bg-destructive/5', list: ciclosPacientes.filter(c => c.vencido && !c.proximoConfirmado).map(c => c.paciente) },
+                  { key: 'vencidos', icon: AlertTriangle, label: 'Vencidos', value: vencidos, color: 'text-destructive', bg: vencidos > 0 ? 'bg-destructive/10 border-destructive/20' : 'bg-destructive/5', list: ciclosPacientes.filter(c => c.vencido && !c.proximoConfirmado).map(c => c.paciente) },
                 ].map(kpi => {
                   const Icon = kpi.icon;
                   const isOpen = expandedKpi === kpi.key;
@@ -351,15 +468,16 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                           {current.list.length === 0 ? (
                             <p className="text-[10px] text-muted-foreground italic">Nenhum cliente nesta categoria</p>
                           ) : (
-                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                            <div className="space-y-1 max-h-56 overflow-y-auto">
                               {current.list.map(p => {
                                 const urgency = getUrgencyLevel(p.id);
                                 return (
                                   <div
                                     key={p.id}
                                     className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
-                                    onClick={() => navigate(`/paciente-perfil/${p.id}`)}
+                                    onClick={() => navigate(`/pacientes/${p.id}`)}
                                   >
+                                    {getUrgencyDot(p.id)}
                                     <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
                                       <span className="text-[10px] font-bold text-primary">
                                         {p.nome[0]}{p.sobrenome?.[0] || ''}
@@ -368,21 +486,35 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                                     <div className="flex-1 min-w-0">
                                       <div className="text-xs font-semibold truncate">{p.nome} {p.sobrenome}</div>
                                       <div className={cn('text-[10px]', urgency.color)}>{urgency.label}</div>
+                                      {renderMiniHistorico(p.id)}
                                     </div>
-                                    {p.telefone && (
+                                    <div className="flex items-center gap-1 shrink-0">
+                                      {p.telefone && (
+                                        <Button
+                                          size="sm"
+                                          variant="ghost"
+                                          className="h-6 w-6 p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}`, '_blank');
+                                          }}
+                                        >
+                                          <Phone className="h-3 w-3 text-emerald-600" />
+                                        </Button>
+                                      )}
                                       <Button
                                         size="sm"
                                         variant="ghost"
                                         className="h-6 w-6 p-0"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}`, '_blank');
+                                          navigate('/agenda');
                                         }}
                                       >
-                                        <Phone className="h-3 w-3 text-emerald-600" />
+                                        <CalendarPlus className="h-3 w-3 text-blue-600" />
                                       </Button>
-                                    )}
-                                    <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                      <ChevronRight className="h-3 w-3 text-muted-foreground" />
+                                    </div>
                                   </div>
                                 );
                               })}
@@ -505,6 +637,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                                   ? `Última: ${formatDistanceToNow(new Date(ultimo.data), { addSuffix: true, locale: ptBR })}`
                                   : 'Nunca consultou'}
                                 subtitleColor={urgency.color}
+                                urgencyDot={getUrgencyDot(p.id)}
                                 onNavigate={() => navigate(`/pacientes/${p.id}`)}
                               />
                             );
@@ -622,6 +755,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                                 className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer group/item"
                                 onClick={() => navigate(`/pacientes/${c.paciente.id}`)}
                               >
+                                {getUrgencyDot(c.paciente.id)}
                                 <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
                                   {c.paciente.nome[0]}{c.paciente.sobrenome?.[0] || ''}
                                 </div>
@@ -694,7 +828,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
 
 // ── Reusable row component ──────────────────────────────────────────────────
 function PacienteRow({
-  paciente, subtitle, subtitleColor, badge, badgeColor, onNavigate, showWhatsApp,
+  paciente, subtitle, subtitleColor, badge, badgeColor, onNavigate, showWhatsApp, urgencyDot,
 }: {
   paciente: PacienteData;
   subtitle: string;
@@ -703,12 +837,14 @@ function PacienteRow({
   badgeColor?: string;
   onNavigate: () => void;
   showWhatsApp?: boolean;
+  urgencyDot?: React.ReactNode;
 }) {
   return (
     <div
       className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-muted/60 transition-colors cursor-pointer group/item"
       onClick={onNavigate}
     >
+      {urgencyDot}
       <div className="h-7 w-7 rounded-full bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center text-[10px] font-bold text-primary shrink-0">
         {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
       </div>
@@ -721,16 +857,16 @@ function PacienteRow({
             </span>
           )}
         </div>
-        <span className={cn('text-[10px] font-medium', subtitleColor)}>{subtitle}</span>
+        <span className={cn('text-[10px] block truncate', subtitleColor)}>{subtitle}</span>
       </div>
       <div className="flex items-center gap-1 shrink-0">
-        {(showWhatsApp ?? false) && paciente.telefone && (
+        {showWhatsApp && paciente.telefone && (
           <Tooltip delayDuration={0}>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-6 w-6 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                className="h-6 w-6"
                 onClick={e => {
                   e.stopPropagation();
                   window.open(`https://wa.me/55${paciente.telefone?.replace(/\D/g, '')}`, '_blank');
