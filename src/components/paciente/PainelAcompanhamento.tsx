@@ -77,7 +77,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
 
   // ── Derived data ──────────────────────────────────────────────────
   const {
-    ativos, inativos, precisamContato, semConsulta,
+    ativos, inativos, ativosList, inativosList, precisamContato, semConsulta,
     porServico, porProfissional, alertas,
     proximosConfirmados, semFuturo, ciclosPacientes,
   } = useMemo(() => {
