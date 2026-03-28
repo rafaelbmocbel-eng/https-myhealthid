@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
+import { useEquipe } from '@/hooks/useEquipe';
+import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
 
 // ── Classificação automática de pacientes ───────────────────────────────────
@@ -161,6 +163,7 @@ export default function Pacientes() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { membros: membrosEquipe } = useEquipe();
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
@@ -224,7 +227,29 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
-  // Fetch controle_sessoes for payment classification
+  // Fetch agendamentos por membro de equipe
+  const { data: agendamentosPorMembro = {} } = useQuery({
+    queryKey: ['agendamentos-por-membro', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('paciente_id, membro_equipe_id')
+        .eq('terapeuta_id', user!.id)
+        .not('membro_equipe_id', 'is', null)
+        .not('paciente_id', 'is', null);
+      const map: Record<string, string[]> = {};
+      (data || []).forEach((a: any) => {
+        if (!map[a.membro_equipe_id]) map[a.membro_equipe_id] = [];
+        if (!map[a.membro_equipe_id].includes(a.paciente_id)) {
+          map[a.membro_equipe_id].push(a.paciente_id);
+        }
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
+
+
   const { data: sessoes = [] } = useQuery({
     queryKey: ['pacientes-sessoes', user?.id],
     queryFn: async () => {
@@ -560,6 +585,17 @@ export default function Pacientes() {
             </button>
           ))}
         </div>
+
+        {/* Painel de Acompanhamento */}
+        <div className="mb-5">
+          <PainelAcompanhamento
+            pacientes={pacientes}
+            ultimosAgendamentos={ultimosAgendamentos}
+            membrosEquipe={membrosEquipe}
+            agendamentosPorMembro={agendamentosPorMembro}
+          />
+        </div>
+
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
