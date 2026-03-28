@@ -293,25 +293,107 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
               {/* KPI Cards Row */}
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
                 {[
-                  { icon: UserCheck, label: 'Ativos', value: ativos, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30' },
-                  { icon: UserX, label: 'Inativos', value: inativos, color: 'text-muted-foreground', bg: 'bg-muted/50' },
-                  { icon: CalendarCheck, label: 'Agendados', value: proximosConfirmados.length, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30' },
-                  { icon: AlertTriangle, label: 'Vencidos', value: vencidos, color: 'text-destructive', bg: 'bg-destructive/5' },
+                  { key: 'ativos', icon: UserCheck, label: 'Ativos', value: ativos, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/30', list: ativosList },
+                  { key: 'inativos', icon: UserX, label: 'Inativos', value: inativos, color: 'text-muted-foreground', bg: 'bg-muted/50', list: inativosList },
+                  { key: 'agendados', icon: CalendarCheck, label: 'Agendados', value: proximosConfirmados.length, color: 'text-blue-600', bg: 'bg-blue-50 dark:bg-blue-950/30', list: proximosConfirmados.map(c => c.paciente) },
+                  { key: 'vencidos', icon: AlertTriangle, label: 'Vencidos', value: vencidos, color: 'text-destructive', bg: 'bg-destructive/5', list: ciclosPacientes.filter(c => c.vencido && !c.proximoConfirmado).map(c => c.paciente) },
                 ].map(kpi => {
                   const Icon = kpi.icon;
+                  const isOpen = expandedKpi === kpi.key;
                   return (
-                    <Card key={kpi.label} className={cn('border-0 shadow-sm', kpi.bg)}>
-                      <CardContent className="p-3 flex items-center gap-2.5">
-                        <Icon className={cn('h-4 w-4 shrink-0', kpi.color)} />
-                        <div>
-                          <div className={cn('text-lg font-black leading-none', kpi.color)}>{kpi.value}</div>
-                          <div className="text-[10px] text-muted-foreground mt-0.5">{kpi.label}</div>
-                        </div>
-                      </CardContent>
-                    </Card>
+                    <div key={kpi.key}>
+                      <Card
+                        className={cn('border-0 shadow-sm cursor-pointer transition-all hover:ring-1 hover:ring-primary/30', kpi.bg, isOpen && 'ring-1 ring-primary/40')}
+                        onClick={() => setExpandedKpi(isOpen ? null : kpi.key)}
+                      >
+                        <CardContent className="p-3 flex items-center gap-2.5">
+                          <Icon className={cn('h-4 w-4 shrink-0', kpi.color)} />
+                          <div className="flex-1">
+                            <div className={cn('text-lg font-black leading-none', kpi.color)}>{kpi.value}</div>
+                            <div className="text-[10px] text-muted-foreground mt-0.5">{kpi.label}</div>
+                          </div>
+                          <ChevronRight className={cn('h-3 w-3 text-muted-foreground transition-transform', isOpen && 'rotate-90')} />
+                        </CardContent>
+                      </Card>
+                    </div>
                   );
                 })}
               </div>
+
+              {/* Expanded KPI Patient List */}
+              <AnimatePresence>
+                {expandedKpi && (() => {
+                  const kpiMap: Record<string, { label: string; list: PacienteData[] }> = {
+                    ativos: { label: 'Clientes Ativos', list: ativosList },
+                    inativos: { label: 'Clientes Inativos', list: inativosList },
+                    agendados: { label: 'Clientes Agendados', list: proximosConfirmados.map(c => c.paciente) },
+                    vencidos: { label: 'Ciclos Vencidos', list: ciclosPacientes.filter(c => c.vencido && !c.proximoConfirmado).map(c => c.paciente) },
+                  };
+                  const current = kpiMap[expandedKpi];
+                  if (!current) return null;
+                  return (
+                    <motion.div
+                      key={expandedKpi}
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="overflow-hidden"
+                    >
+                      <Card className="border shadow-sm">
+                        <CardContent className="p-3">
+                          <div className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center justify-between">
+                            <span>{current.label} ({current.list.length})</span>
+                            <button onClick={() => setExpandedKpi(null)} className="text-muted-foreground hover:text-foreground">
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                          {current.list.length === 0 ? (
+                            <p className="text-[10px] text-muted-foreground italic">Nenhum cliente nesta categoria</p>
+                          ) : (
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              {current.list.map(p => {
+                                const urgency = getUrgencyLevel(p.id);
+                                return (
+                                  <div
+                                    key={p.id}
+                                    className="flex items-center gap-2 py-1.5 px-2 rounded-md hover:bg-muted/50 cursor-pointer transition-colors"
+                                    onClick={() => navigate(`/paciente-perfil/${p.id}`)}
+                                  >
+                                    <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                                      <span className="text-[10px] font-bold text-primary">
+                                        {p.nome[0]}{p.sobrenome?.[0] || ''}
+                                      </span>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                      <div className="text-xs font-semibold truncate">{p.nome} {p.sobrenome}</div>
+                                      <div className={cn('text-[10px]', urgency.color)}>{urgency.label}</div>
+                                    </div>
+                                    {p.telefone && (
+                                      <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        className="h-6 w-6 p-0"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}`, '_blank');
+                                        }}
+                                      >
+                                        <Phone className="h-3 w-3 text-emerald-600" />
+                                      </Button>
+                                    )}
+                                    <ChevronRight className="h-3 w-3 text-muted-foreground shrink-0" />
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    </motion.div>
+                  );
+                })()}
+              </AnimatePresence>
 
               {/* Tab Navigation */}
               <div className="flex gap-1 bg-muted/50 rounded-lg p-1">
