@@ -83,6 +83,8 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
   } = useMemo(() => {
     let ativosCount = 0;
     let inativosCount = 0;
+    const ativosList: PacienteData[] = [];
+    const inativosList: PacienteData[] = [];
     const precisam: PacienteData[] = [];
     const sem: PacienteData[] = [];
     const servCount: Record<string, number> = {};
