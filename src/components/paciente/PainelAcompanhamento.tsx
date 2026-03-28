@@ -226,6 +226,8 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
     return {
       ativos: ativosCount,
       inativos: inativosCount,
+      ativosList,
+      inativosList,
       precisamContato: precisam,
       semConsulta: sem,
       porServico: servCount,
