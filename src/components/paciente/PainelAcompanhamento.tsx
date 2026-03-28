@@ -135,10 +135,16 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
       if (!ultimo) {
         sem.push(p);
         inativosCount++;
+        inativosList.push(p);
       } else {
         const dias = differenceInDays(now, new Date(ultimo.data));
-        if (dias <= 30) ativosCount++;
-        else inativosCount++;
+        if (dias <= 30) {
+          ativosCount++;
+          ativosList.push(p);
+        } else {
+          inativosCount++;
+          inativosList.push(p);
+        }
         if (dias >= 15 && dias <= 90) precisam.push(p);
       }
 
