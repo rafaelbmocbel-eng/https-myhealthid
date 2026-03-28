@@ -96,16 +96,13 @@ export default function PacienteEventos() {
       const inscSet = new Set((insc || []).map(i => i.evento_id));
       setInscricoes(inscSet);
 
-      // Get vacancy counts
+      // Get vacancy counts using secure RPC (no PII exposed)
       const vMap: Record<string, number> = {};
       for (const ev of evts) {
         if (ev.vagas_max) {
-          const { count } = await supabase
-            .from('evento_inscricoes')
-            .select('*', { count: 'exact', head: true })
-            .eq('evento_id', ev.id)
-            .neq('status', 'cancelado');
-          vMap[ev.id] = ev.vagas_max - (count || 0);
+          const { data: inscCount } = await supabase
+            .rpc('count_evento_inscricoes', { p_evento_id: ev.id });
+          vMap[ev.id] = ev.vagas_max - (Number(inscCount) || 0);
         }
       }
       setVagasMap(vMap);
