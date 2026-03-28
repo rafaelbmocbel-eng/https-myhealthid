@@ -36,6 +36,7 @@ export interface ConfigAgenda {
   dias_semana: Record<string, boolean>;
   intervalo_entre_sessoes: number;
   vagas_por_horario: number;
+  slug?: string;
 }
 
 const DEFAULT_CONFIG: ConfigAgenda = {

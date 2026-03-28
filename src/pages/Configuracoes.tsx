@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid, PartyPopper } from 'lucide-react';
+import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid, PartyPopper, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
 import { getAgendaUrl } from '@/utils/linkUrls';
