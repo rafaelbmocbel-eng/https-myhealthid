@@ -71,6 +71,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
   const navigate = useNavigate();
   const [expanded, setExpanded] = useState(true);
   const [activeTab, setActiveTab] = useState<TabView>('resumo');
+  const [expandedKpi, setExpandedKpi] = useState<string | null>(null);
 
   const now = new Date();
 
