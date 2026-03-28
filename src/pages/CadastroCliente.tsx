@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -13,41 +13,10 @@ export default function CadastroCliente() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
-  const [loading, setLoading] = useState(true);
-  const [terapeutaNome, setTerapeutaNome] = useState('');
-  const [valid, setValid] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
-
-  // Validate slug
-  useEffect(() => {
-    if (!slug) return;
-    const check = async () => {
-      // Look up config_agenda by slug to confirm it's valid
-      const { data } = await supabase
-        .from('config_agenda')
-        .select('terapeuta_id')
-        .eq('slug', slug)
-        .maybeSingle();
-
-      if (data) {
-        setValid(true);
-        // Try to get therapist name
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('nome, sobrenome')
-          .eq('user_id', data.terapeuta_id)
-          .maybeSingle();
-        if (profile) {
-          setTerapeutaNome(`${profile.nome} ${profile.sobrenome}`.trim());
-        }
-      }
-      setLoading(false);
-    };
-    check();
-  }, [slug]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -60,9 +29,10 @@ export default function CadastroCliente() {
       });
 
       if (res.error || res.data?.error) {
+        const msg = res.data?.error || 'Tente novamente.';
         toast({
-          title: 'Erro no cadastro',
-          description: res.data?.error || 'Tente novamente.',
+          title: msg.includes('inválido') ? 'Link inválido' : 'Erro no cadastro',
+          description: msg,
           variant: 'destructive',
         });
         setSubmitting(false);
@@ -92,29 +62,6 @@ export default function CadastroCliente() {
       setSubmitting(false);
     }
   };
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (!valid) {
-    return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background p-6 text-center gap-4">
-        <LogoIcon size={48} />
-        <h1 className="text-xl font-bold text-foreground">Link inválido</h1>
-        <p className="text-sm text-muted-foreground max-w-xs">
-          Este link de cadastro não existe ou está desativado. Verifique com seu profissional.
-        </p>
-        <Button variant="outline" onClick={() => navigate('/paciente/login')}>
-          Ir para o login
-        </Button>
-      </div>
-    );
-  }
 
   if (success) {
     return (
@@ -153,12 +100,19 @@ export default function CadastroCliente() {
           <p className="text-white/60 text-sm leading-relaxed max-w-md">
             Cadastre-se para acessar seu portal personalizado com evolução, exercícios guiados, agenda interativa e muito mais.
           </p>
-          {terapeutaNome && (
-            <div className="mt-6 bg-white/5 rounded-xl px-4 py-3 border border-white/10">
-              <p className="text-white/40 text-xs">Profissional responsável</p>
-              <p className="text-white font-semibold text-sm">{terapeutaNome}</p>
-            </div>
-          )}
+          <div className="mt-8 grid grid-cols-2 gap-3">
+            {[
+              { icon: '📊', label: 'Evolução & MyID' },
+              { icon: '🏋️', label: 'Exercícios Guiados' },
+              { icon: '📅', label: 'Agenda Interativa' },
+              { icon: '💊', label: 'Diário de Saúde' },
+            ].map(f => (
+              <div key={f.label} className="flex items-center gap-2 text-white/50 text-xs bg-white/5 rounded-lg px-3 py-2">
+                <span>{f.icon}</span>
+                <span>{f.label}</span>
+              </div>
+            ))}
+          </div>
         </div>
         <p className="text-white/20 text-xs">My Health ID © 2026</p>
       </div>
@@ -186,8 +140,7 @@ export default function CadastroCliente() {
             </div>
             <h1 className="text-lg sm:text-xl font-black text-foreground">Criar sua conta</h1>
             <p className="text-muted-foreground text-xs mt-1">
-              Preencha seus dados para acessar o portal
-              {terapeutaNome && <span className="block mt-0.5">Profissional: <strong>{terapeutaNome}</strong></span>}
+              Preencha seus dados para acessar o portal do paciente
             </p>
           </div>
 
