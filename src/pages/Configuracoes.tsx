@@ -235,6 +235,9 @@ export default function Configuracoes() {
           <GeneralLinkSection />
         </div>
 
+        {/* Link de Cadastro de Novo Cliente */}
+        <ClientRegistrationLink />
+
         {/* Vagas por horário */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
