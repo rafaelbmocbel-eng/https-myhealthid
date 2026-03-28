@@ -8,7 +8,7 @@ import {
   Users, UserCheck, AlertTriangle, Phone, Clock,
   TrendingUp, ChevronRight, CalendarDays, Activity,
   UserX, PhoneCall, Eye, EyeOff, CalendarCheck, CalendarPlus,
-  RefreshCw, Target, Repeat
+  RefreshCw, Target, Repeat, X
 } from 'lucide-react';
 import { differenceInDays, format, formatDistanceToNow, addDays, addMonths, isFuture, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
