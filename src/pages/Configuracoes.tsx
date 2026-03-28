@@ -391,3 +391,59 @@ function GeneralLinkSection() {
     </div>
   );
 }
+
+function ClientRegistrationLink() {
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const { config } = useAgenda();
+
+  const slug = config.slug;
+  const baseUrl = window.location.origin;
+  const link = slug ? `${baseUrl}/cadastro/${slug}` : '';
+
+  const copiarLink = () => {
+    if (!link) return;
+    navigator.clipboard.writeText(link);
+    toast({ title: 'Link copiado! 📋', description: 'Envie para seus novos clientes.' });
+  };
+
+  if (!slug) {
+    return (
+      <div className="clinical-card mb-6">
+        <div className="flex items-center gap-2 mb-4">
+          <UserPlus className="h-4 w-4 text-primary" />
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Cadastro de Cliente</h2>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          Configure um <strong>slug</strong> no campo acima (Link de Agendamento) para gerar seu link de cadastro de novos clientes.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="clinical-card mb-6">
+      <div className="flex items-center gap-2 mb-4">
+        <UserPlus className="h-4 w-4 text-primary" />
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Cadastro de Cliente</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-4">
+        Compartilhe este link para que novos clientes criem sua conta e entrem automaticamente no seu banco de dados com acesso ao portal.
+      </p>
+      <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border border-primary/10">
+        <div className="flex-1 min-w-0">
+          <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mb-1">Seu Link de Cadastro</p>
+          <p className="text-xs font-medium truncate text-primary">{link}</p>
+        </div>
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={copiarLink}>
+            <Copy className="h-4 w-4" />
+          </Button>
+          <Button size="sm" variant="ghost" className="h-8 w-8 p-0" onClick={() => window.open(link, '_blank')}>
+            <ExternalLink className="h-4 w-4" />
+          </Button>
+        </div>
+      </div>
+    </div>
+  );
+}
