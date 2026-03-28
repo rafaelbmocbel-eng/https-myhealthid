@@ -585,6 +585,17 @@ export default function Pacientes() {
             </button>
           ))}
         </div>
+
+        {/* Painel de Acompanhamento */}
+        <div className="mb-5">
+          <PainelAcompanhamento
+            pacientes={pacientes}
+            ultimosAgendamentos={ultimosAgendamentos}
+            membrosEquipe={membrosEquipe}
+            agendamentosPorMembro={agendamentosPorMembro}
+          />
+        </div>
+
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
