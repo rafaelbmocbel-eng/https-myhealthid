@@ -227,7 +227,29 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
-  // Fetch controle_sessoes for payment classification
+  // Fetch agendamentos por membro de equipe
+  const { data: agendamentosPorMembro = {} } = useQuery({
+    queryKey: ['agendamentos-por-membro', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('agendamentos')
+        .select('paciente_id, membro_equipe_id')
+        .eq('terapeuta_id', user!.id)
+        .not('membro_equipe_id', 'is', null)
+        .not('paciente_id', 'is', null);
+      const map: Record<string, string[]> = {};
+      (data || []).forEach((a: any) => {
+        if (!map[a.membro_equipe_id]) map[a.membro_equipe_id] = [];
+        if (!map[a.membro_equipe_id].includes(a.paciente_id)) {
+          map[a.membro_equipe_id].push(a.paciente_id);
+        }
+      });
+      return map;
+    },
+    enabled: !!user,
+  });
+
+
   const { data: sessoes = [] } = useQuery({
     queryKey: ['pacientes-sessoes', user?.id],
     queryFn: async () => {
