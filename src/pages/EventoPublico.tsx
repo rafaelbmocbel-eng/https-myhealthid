@@ -71,14 +71,11 @@ export default function EventoPublico() {
     }));
     setPerguntas(perguntasList);
 
-    // Check global vagas
+    // Check global vagas using secure RPC (no PII exposed)
     if (ev.vagas_max) {
-      const { count } = await supabase
-        .from('evento_inscricoes')
-        .select('*', { count: 'exact', head: true })
-        .eq('evento_id', eventoId!)
-        .neq('status', 'cancelado') as any;
-      setVagasRestantes(ev.vagas_max - (count || 0));
+      const { data: inscCount } = await supabase
+        .rpc('count_evento_inscricoes', { p_evento_id: eventoId! }) as any;
+      setVagasRestantes(ev.vagas_max - (inscCount || 0));
     }
 
     // Load option counts for questions with limits
@@ -89,12 +86,9 @@ export default function EventoPublico() {
         .select('pergunta_id, resposta, inscricao_id')
         .in('pergunta_id', questionsWithLimits.map(q => q.id)) as any;
 
-      // Only count responses from non-cancelled inscriptions
+      // Only count responses from non-cancelled inscriptions using secure RPC
       const { data: activeInscricoes } = await supabase
-        .from('evento_inscricoes')
-        .select('id')
-        .eq('evento_id', eventoId!)
-        .neq('status', 'cancelado') as any;
+        .rpc('get_active_inscricao_ids', { p_evento_id: eventoId! }) as any;
       const activeIds = new Set((activeInscricoes || []).map((i: any) => i.id));
 
       const counts: Record<string, Record<string, number>> = {};

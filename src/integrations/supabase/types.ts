@@ -2968,6 +2968,16 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      count_evento_inscricoes: {
+        Args: { p_evento_id: string }
+        Returns: number
+      }
+      get_active_inscricao_ids: {
+        Args: { p_evento_id: string }
+        Returns: {
+          id: string
+        }[]
+      }
       get_agenda_disponibilidade: {
         Args: {
           p_data_fim: string
