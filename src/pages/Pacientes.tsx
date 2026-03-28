@@ -26,6 +26,8 @@ import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
+import { useEquipe } from '@/hooks/useEquipe';
+import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
 
 // ── Classificação automática de pacientes ───────────────────────────────────
@@ -161,6 +163,7 @@ export default function Pacientes() {
   const qc = useQueryClient();
   const navigate = useNavigate();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
+  const { membros: membrosEquipe } = useEquipe();
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
