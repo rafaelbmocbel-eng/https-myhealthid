@@ -229,8 +229,23 @@ export default function Configuracoes() {
             <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Agendamento Online</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
-            Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento. Eles preencherão o cadastro automaticamente.
+            Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento.
           </p>
+
+          <div className="mb-4">
+            <Label className="text-xs font-medium mb-1.5 block">Slug personalizado (identificador único)</Label>
+            <div className="flex gap-2">
+              <Input
+                placeholder="ex: dr-joao"
+                value={form.slug || ''}
+                onChange={e => setForm(f => ({ ...f, slug: e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, '') }))}
+                className="flex-1"
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              Usado no link de cadastro de clientes: <strong>{window.location.origin}/cadastro/{form.slug || 'seu-slug'}</strong>
+            </p>
+          </div>
 
           <GeneralLinkSection />
         </div>
