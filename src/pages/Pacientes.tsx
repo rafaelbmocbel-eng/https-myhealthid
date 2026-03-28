@@ -193,23 +193,28 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
-  // Fetch ultimo agendamento for each paciente
-  const { data: ultimosAgendamentos = {} } = useQuery({
-    queryKey: ['ultimos-agendamentos', user?.id],
+  // Fetch all agendamentos for each paciente (for tracking panel)
+  const { data: todosAgendamentos = [] } = useQuery({
+    queryKey: ['todos-agendamentos-pacientes', user?.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('agendamentos')
-        .select('paciente_id, data_inicio, status')
+        .select('paciente_id, data_inicio, data_fim, status, tipo_atendimento, membro_equipe_id')
         .eq('terapeuta_id', user!.id)
         .order('data_inicio', { ascending: false });
-      const map: Record<string, { data: string; status: string }> = {};
-      (data || []).forEach((a: any) => {
-        if (!map[a.paciente_id]) map[a.paciente_id] = { data: a.data_inicio, status: a.status };
-      });
-      return map;
+      return data || [];
     },
     enabled: !!user,
   });
+
+  // Derive ultimo agendamento map from all agendamentos
+  const ultimosAgendamentos = useMemo(() => {
+    const map: Record<string, { data: string; status: string }> = {};
+    todosAgendamentos.forEach((a: any) => {
+      if (!map[a.paciente_id]) map[a.paciente_id] = { data: a.data_inicio, status: a.status };
+    });
+    return map;
+  }, [todosAgendamentos]);
 
   // Fetch pending evaluations
   const { data: avaliacoesPendentes = {} } = useQuery({
@@ -591,6 +596,7 @@ export default function Pacientes() {
           <PainelAcompanhamento
             pacientes={pacientes}
             ultimosAgendamentos={ultimosAgendamentos}
+            todosAgendamentos={todosAgendamentos}
             membrosEquipe={membrosEquipe}
             agendamentosPorMembro={agendamentosPorMembro}
           />
