@@ -26,6 +26,7 @@ const Configuracoes = lazy(() => import("./pages/Configuracoes"));
 const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
+const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -100,6 +101,7 @@ const App = () => (
                 <Route path="/crm" element={<PatientGuard><GestaoVendas /></PatientGuard>} />
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
+                <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
 
                 {/* Patient Portal */}
