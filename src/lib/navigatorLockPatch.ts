@@ -34,7 +34,7 @@ export function installSupabaseLockPatch() {
 
       // Evita timeout de 10s no lock interno do auth token.
       if (typeof name === "string" && name.includes(SUPABASE_LOCK_PREFIX) && callback) {
-        return Promise.resolve().then(() => callback(undefined));
+        return Promise.resolve().then(() => callback(null));
       }
 
       if (typeof optionsOrCallback === "function") {
