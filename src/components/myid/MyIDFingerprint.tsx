@@ -196,7 +196,7 @@ export default function MyIDFingerprint({
           {label.toUpperCase()}
         </text>
 
-        {/* ── Ridges ── */}
+        {/* ── Ridges (arcs only) ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
           const segments: { start: number; sweep: number }[] = [];
           const gaps = [...ridge.gapPositions].sort();
@@ -215,16 +215,7 @@ export default function MyIDFingerprint({
           }
 
           const isActive = activeIdx === ridgeIdx;
-          // Never fully dim — always keep other rings visible
-          const isDimmed = false;
           const isRevealed = revealProgress > ridgeIdx;
-
-          // Label position at the end of the filled arc
-          const labelAngleDeg = ridge.startAngle + ridge.filledSweep + 8;
-          const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + 4;
-          const lx = cx + labelDist * Math.cos(labelRad);
-          const ly = cy + labelDist * Math.sin(labelRad);
 
           return (
             <g key={ridge.scoreKey}
@@ -246,7 +237,7 @@ export default function MyIDFingerprint({
                 if (!path) return null;
                 return <path key={`bg-${si}`} d={path} fill="none" stroke={ridge.computedColor}
                   strokeWidth={ridge.strokeWidth} strokeLinecap="round"
-                  opacity={isDimmed ? 0.03 : 0.09} style={{ transition: 'opacity 0.3s ease' }} />;
+                  opacity={0.09} style={{ transition: 'opacity 0.3s ease' }} />;
               })}
 
               {/* Filled arc */}
@@ -264,47 +255,61 @@ export default function MyIDFingerprint({
                   filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                   style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
               })}
-
-              {/* Permanent label */}
-              {!compact && !isDimmed && (
-                <text
-                  x={lx} y={ly}
-                  textAnchor="start"
-                  fontSize="18"
-                  fontWeight="800"
-                  fill={ridge.computedColor}
-                  opacity={isActive ? 1 : 0.7}
-                  dominantBaseline="central"
-                  letterSpacing="0.8"
-                  filter="url(#fp-label-shadow)"
-                  style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
-                >
-                  {SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey}
-                </text>
-              )}
-
-              {/* Active tooltip */}
-              {isActive && (() => {
-                const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
-                const tipRad = (tipAngleDeg * Math.PI) / 180;
-                const dist = ridge.rx + 72;
-                const tx = cx + dist * Math.cos(tipRad);
-                const ty = cy + dist * Math.sin(tipRad);
-                const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
-                const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
-                const textWidth = displayText.length * 12 + 40;
-                return (
-                  <g style={{ pointerEvents: 'none' }}>
-                    <rect x={tx - textWidth / 2} y={ty - 26} width={textWidth} height={52} rx={14}
-                      fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2.5" />
-                    <text x={tx} y={ty + 1} textAnchor="middle" fontSize="21" fontWeight="800"
-                      fill="white" letterSpacing="0.4" dominantBaseline="central">{displayText}</text>
-                  </g>
-                );
-              })()}
             </g>
           );
         })}
+
+        {/* ── Labels layer (rendered ABOVE all arcs) ── */}
+        {!compact && ridgeData.map((ridge, ridgeIdx) => {
+          const isActive = activeIdx === ridgeIdx;
+          const isRevealed = revealProgress > ridgeIdx;
+          if (!isRevealed) return null;
+
+          const labelAngleDeg = ridge.startAngle + ridge.filledSweep + 8;
+          const labelRad = (labelAngleDeg * Math.PI) / 180;
+          const labelDist = ridge.rx + 4;
+          const lx = cx + labelDist * Math.cos(labelRad);
+          const ly = cy + labelDist * Math.sin(labelRad);
+
+          return (
+            <text
+              key={`lbl-${ridge.scoreKey}`}
+              x={lx} y={ly}
+              textAnchor="start"
+              fontSize="18"
+              fontWeight="800"
+              fill={ridge.computedColor}
+              opacity={isActive ? 1 : 0.7}
+              dominantBaseline="central"
+              letterSpacing="0.8"
+              filter="url(#fp-label-shadow)"
+              style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
+            >
+              {SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey}
+            </text>
+          );
+        })}
+
+        {/* ── Tooltips layer (rendered on top of everything) ── */}
+        {activeIdx !== null && activeIdx >= 0 && activeIdx < ridgeData.length && (() => {
+          const ridge = ridgeData[activeIdx];
+          const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
+          const tipRad = (tipAngleDeg * Math.PI) / 180;
+          const dist = ridge.rx + 72;
+          const tx = cx + dist * Math.cos(tipRad);
+          const ty = cy + dist * Math.sin(tipRad);
+          const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
+          const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
+          const textWidth = displayText.length * 12 + 40;
+          return (
+            <g style={{ pointerEvents: 'none' }}>
+              <rect x={tx - textWidth / 2} y={ty - 26} width={textWidth} height={52} rx={14}
+                fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2.5" />
+              <text x={tx} y={ty + 1} textAnchor="middle" fontSize="21" fontWeight="800"
+                fill="white" letterSpacing="0.4" dominantBaseline="central">{displayText}</text>
+            </g>
+          );
+        })()}
 
         {/* Red flags pulse */}
         {hasRedFlags && (
