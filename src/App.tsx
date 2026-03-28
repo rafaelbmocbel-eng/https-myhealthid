@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import MetodoIdentidade from "./pages/MetodoIdentidade";
 import NotFound from "./pages/NotFound";
 import PatientGuard from "./components/PatientGuard";
+import ScrollToTop from "./components/ScrollToTop";
 
 // Lazy-loaded pages for better performance
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
@@ -77,6 +78,7 @@ const App = () => (
         <Toaster />
         <Sonner />
         <BrowserRouter>
+          <ScrollToTop />
           <AuthProvider>
             <Suspense fallback={<LazyFallback />}>
               <Routes>
