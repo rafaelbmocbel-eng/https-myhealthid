@@ -23,7 +23,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { cn } from '@/lib/utils';
 import { differenceInDays, format, parseISO, isToday, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -176,11 +176,11 @@ export default function StudioPersonalID() {
                     <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
                       <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(`${getBaseUrl()}/paciente/login?token=${selectedPaciente.portal_token}`); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
+                        <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
                           <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                         </Button>
                         {selectedPaciente.telefone && (
-                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = `${getBaseUrl()}/paciente/login?token=${selectedPaciente.portal_token}`; const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
+                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
                             <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           </Button>
                         )}

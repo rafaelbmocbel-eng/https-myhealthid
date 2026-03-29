@@ -1,5 +1,5 @@
 import { useState, useMemo, useCallback } from 'react';
-import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -351,7 +351,7 @@ export default function PacientePerfil() {
                   className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0"
                   title="Copiar link do Portal do Paciente"
                   onClick={() => {
-                    const url = `${getBaseUrl()}/paciente/login?token=${paciente.portal_token}`;
+                    const url = getPortalUrl(paciente.portal_token!);
                     navigator.clipboard.writeText(url);
                     toast({ title: 'Link copiado! 🔗', description: 'Envie este link ao paciente para acesso ao portal.' });
                   }}

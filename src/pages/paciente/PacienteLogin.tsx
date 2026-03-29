@@ -16,6 +16,7 @@ export default function PacienteLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const portalToken = searchParams.get('token');
+  const isPortalLink = searchParams.get('portal') === '1';
 
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,12 +24,41 @@ export default function PacienteLogin() {
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
   const [linking, setLinking] = useState(false);
   const linkAttempted = useRef(false);
+  const signOutAttempted = useRef(false);
 
-  // If already logged in, try to link and redirect
+  // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
-    if (!authLoading && user && !linkAttempted.current) {
-      linkAttempted.current = true;
-      handlePostLogin();
+    if (authLoading || !user || signOutAttempted.current) return;
+    
+    if (isPortalLink) {
+      // Check if current user is a professional — if so, sign out silently
+      const checkAndSignOut = async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (profile) {
+          signOutAttempted.current = true;
+          await supabase.auth.signOut();
+          // After sign out, user state will clear and they'll see the login form
+          return;
+        }
+        
+        // Not a professional — proceed with linking
+        if (!linkAttempted.current) {
+          linkAttempted.current = true;
+          handlePostLogin();
+        }
+      };
+      checkAndSignOut();
+    } else {
+      // Normal flow (no portal=1 flag)
+      if (!linkAttempted.current) {
+        linkAttempted.current = true;
+        handlePostLogin();
+      }
     }
   }, [authLoading, user]);
 
@@ -37,18 +67,6 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
-      // 0) Check if user is a professional — redirect them away from patient portal
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (profile) {
-        // Professional user — redirect to professional area
-        navigate('/agenda', { replace: true });
-        return;
-      }
 
       // 1) Try to link via portal_token (priority)
       if (portalToken) {

@@ -4,7 +4,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getAvaliacaoUrl, getBaseUrl } from '@/utils/linkUrls';
+import { getAvaliacaoUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { supabase } from '@/integrations/supabase/client';
@@ -279,11 +279,11 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                 <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
                   <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(`${getBaseUrl()}/paciente/login?token=${paciente.portal_token}`); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
+                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
                       <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                     </Button>
                     {paciente.telefone && (
-                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = `${getBaseUrl()}/paciente/login?token=${paciente.portal_token}`; const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
+                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
                         <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
                     )}
