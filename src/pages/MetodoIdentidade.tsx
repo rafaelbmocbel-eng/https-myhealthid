@@ -423,6 +423,7 @@ export default function MetodoIdentidade() {
   if (!selectedPacienteId) {
     return (
       <AppLayout>
+        {draftDialog}
         <div className="container py-6 max-w-4xl">
           {/* Module Header */}
           <div className="flex items-center gap-4 mb-6">
