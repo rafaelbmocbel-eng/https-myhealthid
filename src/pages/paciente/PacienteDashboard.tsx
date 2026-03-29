@@ -245,6 +245,9 @@ export default function PacienteDashboard() {
             </Card>
           </motion.div>
 
+          {/* PWA Install Banner */}
+          <PwaInstallBanner />
+
           {/* MyID Prompt — first time or monthly */}
           {showMyIdPrompt && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
