@@ -18,6 +18,10 @@ export function getBaseUrl() {
   return PRODUCTION_URL || '';
 }
 
+export function getPortalUrl(token: string) {
+  return `${getBaseUrl()}/paciente/login?token=${token}&portal=1`;
+}
+
 export function getAvaliacaoUrl(token: string) {
   return `${getBaseUrl()}/avaliacao/${token}`;
 }
