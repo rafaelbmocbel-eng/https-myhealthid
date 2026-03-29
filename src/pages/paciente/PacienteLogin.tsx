@@ -26,11 +26,39 @@ export default function PacienteLogin() {
   const linkAttempted = useRef(false);
   const signOutAttempted = useRef(false);
 
-  // If already logged in, try to link and redirect
+  // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
-    if (!authLoading && user && !linkAttempted.current) {
-      linkAttempted.current = true;
-      handlePostLogin();
+    if (authLoading || !user || signOutAttempted.current) return;
+    
+    if (isPortalLink) {
+      // Check if current user is a professional — if so, sign out silently
+      const checkAndSignOut = async () => {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+        
+        if (profile) {
+          signOutAttempted.current = true;
+          await supabase.auth.signOut();
+          // After sign out, user state will clear and they'll see the login form
+          return;
+        }
+        
+        // Not a professional — proceed with linking
+        if (!linkAttempted.current) {
+          linkAttempted.current = true;
+          handlePostLogin();
+        }
+      };
+      checkAndSignOut();
+    } else {
+      // Normal flow (no portal=1 flag)
+      if (!linkAttempted.current) {
+        linkAttempted.current = true;
+        handlePostLogin();
+      }
     }
   }, [authLoading, user]);
 
