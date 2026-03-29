@@ -4,11 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
