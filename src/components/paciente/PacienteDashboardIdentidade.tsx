@@ -39,6 +39,7 @@ import ProntuarioTimeline from './ProntuarioTimeline';
 import ResumoProntuario from './ResumoProntuario';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
+import { generateCIFSuggestions } from '@/utils/cifMapping';
 
 interface Paciente {
   id: string;
@@ -348,7 +349,21 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           ? `\n⚠️ Red Flags: ${redFlagsList.join(', ')}`
           : '';
 
-        const descricao = `🧬 MyID (online/presencial)\n\n🎯 Score MyID-100: ${Number(myidScoreRaw).toFixed(1)}/100 — ${classificacao}${flagsText}\n\n📊 Componentes:\n• Dor (D): ${scoreD}/10\n• Funcionalidade (EFI): ${scoreEFI}/10\n• Psicológico (P): ${scoreP}/10\n• Demanda (I): ${scoreI}/10\n• Ruído (N): ${scoreN}/10\n• Regulação (R): ${scoreR}/10\n• Contexto (C): ${scoreC}/10`;
+        // Generate CIF codes from available data
+        const cifResult = generateCIFSuggestions(
+          { component_scores: scores },
+          voiceAvaliacoes.length > 0 ? voiceAvaliacoes[0] : null,
+          (() => {
+            if (structuralAvaliacoes.length === 0) return null;
+            const dados = (structuralAvaliacoes[0] as any).dados_avaliacao;
+            return dados?._type === 'structural' ? dados : null;
+          })(),
+        );
+        const cifText = cifResult.codes.length > 0
+          ? `\n\n📋 CIF (Classificação Internacional de Funcionalidade):\n${cifResult.codes.slice(0, 10).map(c => `• ${c.code}.${c.qualifier} — ${c.description}`).join('\n')}`
+          : '';
+
+        const descricao = `🧬 MyID (online/presencial)\n\n🎯 Score MyID-100: ${Number(myidScoreRaw).toFixed(1)}/100 — ${classificacao}${flagsText}\n\n📊 Componentes:\n• Dor (D): ${scoreD}/10\n• Funcionalidade (EFI): ${scoreEFI}/10\n• Psicológico (P): ${scoreP}/10\n• Demanda (I): ${scoreI}/10\n• Ruído (N): ${scoreN}/10\n• Regulação (R): ${scoreR}/10\n• Contexto (C): ${scoreC}/10${cifText}`;
 
         try {
           await (supabase as any).from('notas_prontuario').insert({
@@ -357,7 +372,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
             tipo: 'myid_resposta',
             titulo: `MyID — Score ${Number(myidScoreRaw).toFixed(1)}/100 (${classificacao})`,
             descricao,
-            dados_extras: { myid_score: myidScoreRaw, classificacao, scores },
+            dados_extras: { myid_score: myidScoreRaw, classificacao, scores, cif_codes: cifResult.codes.map(c => ({ code: c.code, qualifier: c.qualifier, description: c.description, source: c.source })) },
             referencia_id: av.id,
           });
         } catch (err) {
@@ -466,13 +481,34 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     if (!user) return;
     try {
       const resultado = av.resultado as any;
+
+      // Generate CIF codes including voice data
+      const cifResult = generateCIFSuggestions(
+        ultimaMyID ? {
+          component_scores: {
+            D: ultimaMyID.score_d ?? 0, EFI: ultimaMyID.score_efi ?? 0,
+            P: ultimaMyID.score_p ?? 0, I: ultimaMyID.score_i ?? 0,
+            R: ultimaMyID.score_r ?? 0, C: ultimaMyID.score_c ?? 0,
+          },
+        } : null,
+        av,
+        (() => {
+          if (structuralAvaliacoes.length === 0) return null;
+          const dados = (structuralAvaliacoes[0] as any).dados_avaliacao;
+          return dados?._type === 'structural' ? dados : null;
+        })(),
+      );
+      const cifText = cifResult.codes.length > 0
+        ? `\n\n📋 CIF:\n${cifResult.codes.slice(0, 8).map(c => `• ${c.code}.${c.qualifier} — ${c.description}`).join('\n')}`
+        : '';
+
       await (supabase as any).from('notas_prontuario').insert({
         paciente_id: paciente.id,
         terapeuta_id: user.id,
         tipo: 'avaliacao_voz',
         titulo: `Avaliação por Voz — ${av.classificacao_severidade || 'N/A'} — ${format(new Date(av.created_at), 'dd/MM/yyyy', { locale: ptBR })}`,
-        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
-        dados_extras: { voice_assessment_id: av.id, resultado: resultado },
+        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}${cifText}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
+        dados_extras: { voice_assessment_id: av.id, resultado: resultado, cif_codes: cifResult.codes.map(c => ({ code: c.code, qualifier: c.qualifier, description: c.description, source: c.source })) },
         referencia_id: av.id,
       });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
