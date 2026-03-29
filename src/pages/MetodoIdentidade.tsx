@@ -157,6 +157,14 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
+  const [pendingDraft, setPendingDraft] = useState<{
+    selectedPacienteId: string | null;
+    showDashboard: boolean;
+    avaliacao: AvaliacaoMyID;
+    showRelatorio: boolean;
+    blocosConcluidos: number[];
+  } | null>(null);
+
   useEffect(() => {
     if (!user) return;
 
@@ -170,16 +178,10 @@ export default function MetodoIdentidade() {
       blocosConcluidos: number[];
     }>(myidDraftKey, MYID_DRAFT_VERSION).then((draft) => {
       if (!active) return;
-      if (draft) {
-        setSelectedPacienteId(draft.selectedPacienteId);
-        setShowDashboard(draft.showDashboard);
-        setAvaliacao(draft.avaliacao);
-        setShowRelatorio(draft.showRelatorio);
-        setBlocosConcluidos(new Set(draft.blocosConcluidos ?? []));
-        toast({
-          title: 'Avaliação restaurada',
-          description: 'Seu progresso do MyID foi recuperado automaticamente.',
-        });
+      if (draft && (draft.blocosConcluidos?.length > 0 || draft.avaliacao?.blocoAtual > 1 || draft.showRelatorio)) {
+        setPendingDraft(draft);
+      } else {
+        if (draft) void clearDraft(myidDraftKey);
       }
       setDraftReady(true);
     });
@@ -187,7 +189,24 @@ export default function MetodoIdentidade() {
     return () => {
       active = false;
     };
-  }, [myidDraftKey, toast, user]);
+  }, [myidDraftKey, user]);
+
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    setSelectedPacienteId(pendingDraft.selectedPacienteId);
+    setShowDashboard(pendingDraft.showDashboard);
+    setAvaliacao(pendingDraft.avaliacao);
+    setShowRelatorio(pendingDraft.showRelatorio);
+    setBlocosConcluidos(new Set(pendingDraft.blocosConcluidos ?? []));
+    setPendingDraft(null);
+    toast({ title: '✅ Avaliação restaurada', description: 'Continuando de onde você parou.' });
+  };
+
+  const handleDiscardDraft = async () => {
+    await clearDraft(myidDraftKey);
+    setPendingDraft(null);
+    toast({ title: 'Rascunho descartado', description: 'Você pode iniciar uma nova avaliação.' });
+  };
 
   useEffect(() => {
     if (!user || !draftReady || showDiretrizBuilder) return;
