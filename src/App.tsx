@@ -10,6 +10,7 @@ import Auth from "./pages/Auth";
 import MetodoIdentidade from "./pages/MetodoIdentidade";
 import NotFound from "./pages/NotFound";
 import PatientGuard from "./components/PatientGuard";
+import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
 
 // Lazy-loaded pages for better performance
@@ -106,16 +107,16 @@ const App = () => (
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PacienteLogin />} />
-                <Route path="/paciente/dashboard" element={<PacienteDashboard />} />
-                <Route path="/paciente/diario" element={<PacienteDiario />} />
-                <Route path="/paciente/evolucao" element={<PacienteEvolucao />} />
-                <Route path="/paciente/exercicios" element={<PacienteExercicios />} />
-                <Route path="/paciente/agenda" element={<PacienteAgenda />} />
-                <Route path="/paciente/questionarios" element={<PacienteQuestionarios />} />
-                <Route path="/paciente/pagamentos" element={<PacientePagamentos />} />
-                <Route path="/paciente/saude" element={<PacienteSaude />} />
-                <Route path="/paciente/eventos" element={<PacienteEventos />} />
-                <Route path="/paciente/perfil" element={<PacientePerfilPage />} />
+                <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
+                <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />
+                <Route path="/paciente/evolucao" element={<ProtectedPatientRoute><PacienteEvolucao /></ProtectedPatientRoute>} />
+                <Route path="/paciente/exercicios" element={<ProtectedPatientRoute><PacienteExercicios /></ProtectedPatientRoute>} />
+                <Route path="/paciente/agenda" element={<ProtectedPatientRoute><PacienteAgenda /></ProtectedPatientRoute>} />
+                <Route path="/paciente/questionarios" element={<ProtectedPatientRoute><PacienteQuestionarios /></ProtectedPatientRoute>} />
+                <Route path="/paciente/pagamentos" element={<ProtectedPatientRoute><PacientePagamentos /></ProtectedPatientRoute>} />
+                <Route path="/paciente/saude" element={<ProtectedPatientRoute><PacienteSaude /></ProtectedPatientRoute>} />
+                <Route path="/paciente/eventos" element={<ProtectedPatientRoute><PacienteEventos /></ProtectedPatientRoute>} />
+                <Route path="/paciente/perfil" element={<ProtectedPatientRoute><PacientePerfilPage /></ProtectedPatientRoute>} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
