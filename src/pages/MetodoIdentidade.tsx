@@ -198,6 +198,8 @@ export default function MetodoIdentidade() {
     setShowDashboard(pendingDraft.showDashboard);
     setAvaliacao(pendingDraft.avaliacao);
     setShowRelatorio(pendingDraft.showRelatorio);
+    setShowDiretrizBuilder(false);
+    setSavedAvaliacaoId(null);
     setBlocosConcluidos(new Set(pendingDraft.blocosConcluidos ?? []));
     setPendingDraft(null);
     toast({ title: '✅ Avaliação restaurada', description: 'Continuando de onde você parou.' });
@@ -205,17 +207,23 @@ export default function MetodoIdentidade() {
 
   const handleDiscardDraft = async () => {
     await clearDraft(myidDraftKey);
+    setSelectedPacienteId(null);
+    setShowDashboard(false);
+    setShowRelatorio(false);
+    setShowDiretrizBuilder(false);
+    setSavedAvaliacaoId(null);
+    setAvaliacao(makeDefaultAvaliacao());
+    setBlocosConcluidos(new Set());
     setPendingDraft(null);
     toast({ title: 'Rascunho descartado', description: 'Você pode iniciar uma nova avaliação.' });
   };
 
   useEffect(() => {
-    if (!user || !draftReady || showDiretrizBuilder) return;
+    if (!user || !draftReady || showDiretrizBuilder || pendingDraft) return;
 
     const hasProgress = Boolean(
       selectedPacienteId ||
       showRelatorio ||
-      !showDashboard ||
       blocosConcluidos.size > 0 ||
       avaliacao.blocoAtual > 1 ||
       avaliacao.concluido ||
@@ -234,7 +242,7 @@ export default function MetodoIdentidade() {
       showRelatorio,
       blocosConcluidos: Array.from(blocosConcluidos),
     }, MYID_DRAFT_VERSION);
-  }, [avaliacao, blocosConcluidos, draftReady, myidDraftKey, selectedPacienteId, showDashboard, showDiretrizBuilder, showRelatorio, user]);
+  }, [avaliacao, blocosConcluidos, draftReady, myidDraftKey, pendingDraft, selectedPacienteId, showDashboard, showDiretrizBuilder, showRelatorio, user]);
 
   // Abre o dashboard interno do Método Identidade
   const handleSelectPaciente = (pac: typeof pacientes[0]) => {
@@ -316,18 +324,6 @@ export default function MetodoIdentidade() {
   const progresso = (blocosConcluidos.size / 6) * 100;
 
   // React Hook rules: All hooks must be defined before any early return based on conditions
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
-  if (!draftReady && user) {
-    return (
-      <AppLayout>
-        <div className="container py-10 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
   const draftDialog = (
     <AlertDialog open={!!pendingDraft}>
       <AlertDialogContent>
@@ -344,6 +340,19 @@ export default function MetodoIdentidade() {
       </AlertDialogContent>
     </AlertDialog>
   );
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
+
+  if (!draftReady && user) {
+    return (
+      <AppLayout>
+        {draftDialog}
+        <div className="container py-10 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
     // Build a compatible avaliacao object for ProtocoloEditor
@@ -364,6 +373,7 @@ export default function MetodoIdentidade() {
 
     return (
       <AppLayout>
+        {draftDialog}
         <div className="container py-8">
           <ProtocoloEditor
             avaliacao={editorAvaliacao}
@@ -386,6 +396,7 @@ export default function MetodoIdentidade() {
   if (showRelatorio) {
     return (
       <AppLayout>
+        {draftDialog}
         <RelatorioIdentidade avaliacao={avaliacao} pacienteId={selectedPacienteId || undefined} onBack={() => {
           setShowRelatorio(false);
           if (showDashboard || selectedPacienteId) setShowDashboard(true);
@@ -406,6 +417,7 @@ export default function MetodoIdentidade() {
 
     return (
       <AppLayout>
+        {draftDialog}
         <div className="container py-6 max-w-4xl">
           <PacienteDashboardIdentidade
             paciente={selectedPaciente}
@@ -588,6 +600,7 @@ export default function MetodoIdentidade() {
   // Assessment screen
   return (
     <AppLayout>
+      {draftDialog}
       <div className="container py-8">
         {/* Header */}
         <div className="mb-8">
