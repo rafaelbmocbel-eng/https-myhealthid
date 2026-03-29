@@ -37,6 +37,19 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
+      // 0) Check if user is a professional — redirect them away from patient portal
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+
+      if (profile) {
+        // Professional user — redirect to professional area
+        navigate('/agenda', { replace: true });
+        return;
+      }
+
       // 1) Try to link via portal_token (priority)
       if (portalToken) {
         const { data, error } = await supabase.rpc('link_patient_user_by_token', {
@@ -79,13 +92,13 @@ export default function PacienteLogin() {
         // Reset all states so user can try again
         linkAttempted.current = false;
         setLinking(false);
-        setSubmitting(false); // ← FIX: reset submitting to unlock form
+        setSubmitting(false);
       }
     } catch (err) {
       console.error('[Portal] Erro:', err);
       linkAttempted.current = false;
       setLinking(false);
-      setSubmitting(false); // ← FIX: reset submitting on error
+      setSubmitting(false);
     }
   };
 
