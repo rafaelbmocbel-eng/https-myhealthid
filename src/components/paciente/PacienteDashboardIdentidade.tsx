@@ -39,6 +39,7 @@ import ProntuarioTimeline from './ProntuarioTimeline';
 import ResumoProntuario from './ResumoProntuario';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
+import { generateCIFSuggestions } from '@/utils/cifMapping';
 
 interface Paciente {
   id: string;
