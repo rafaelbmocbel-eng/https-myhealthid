@@ -898,6 +898,33 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   <Target className="h-4 w-4" /> Criar Diretriz
                 </Button>
               </div>
+
+              {/* CIF Suggestion Panel */}
+              <CIFSuggestionPanel
+                myidResult={(() => {
+                  if (!ultimaMyID) return null;
+                  return {
+                    component_scores: {
+                      D: ultimaMyID.score_d ?? 0,
+                      EFI: ultimaMyID.score_efi ?? 0,
+                      P: ultimaMyID.score_p ?? 0,
+                      I: ultimaMyID.score_i ?? 0,
+                      R: ultimaMyID.score_r ?? 0,
+                      C: ultimaMyID.score_c ?? 0,
+                      N: ultimaMyID.score_n ?? 0,
+                      AF: (ultimaMyID.dados_avaliacao as any)?.component_scores?.AF ?? 0,
+                      ERG: (ultimaMyID.dados_avaliacao as any)?.component_scores?.ERG ?? 0,
+                    },
+                  };
+                })()}
+                voiceAssessment={voiceAvaliacoes.length > 0 ? voiceAvaliacoes[0] : null}
+                structuralAssessment={(() => {
+                  if (structuralAvaliacoes.length === 0) return null;
+                  const latest = structuralAvaliacoes[0];
+                  const dados = latest.dados_avaliacao as any;
+                  return dados?._type === 'structural' ? dados : null;
+                })()}
+              />
               <div className="clinical-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Fingerprint className="h-4 w-4 text-primary" />
