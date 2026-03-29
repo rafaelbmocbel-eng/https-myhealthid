@@ -27,7 +27,7 @@ import { format, parseISO, startOfDay, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getPortalUrl } from '@/utils/linkUrls';
 import { shareAgendaLink, shareAvaliacaoLink } from '@/utils/whatsapp';
 import { useToast } from '@/hooks/use-toast';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -400,6 +400,23 @@ export default function CobZero() {
                                 <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
                               )}
                             </div>
+
+                            {/* Link Portal */}
+                            {p.portal_token && (
+                              <div className="flex flex-col gap-1 items-center pl-1">
+                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Portal</span>
+                                <div className="flex items-center gap-1">
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link Portal">
+                                    <Copy className="h-3 w-3" />
+                                  </Button>
+                                  {p.telefone && (
+                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-violet-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal WhatsApp">
+                                      <Smartphone className="h-3 w-3" />
+                                    </Button>
+                                  )}
+                                </div>
+                              </div>
+                            )}
                           </div>
 
                           <Button
