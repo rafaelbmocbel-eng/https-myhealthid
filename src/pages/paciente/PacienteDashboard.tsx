@@ -62,6 +62,8 @@ export default function PacienteDashboard() {
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
   const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0 });
   const [loading, setLoading] = useState(true);
+  const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
+  const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const notifications = usePacienteNotifications(user?.id);
 
   useEffect(() => {
@@ -79,7 +81,7 @@ export default function PacienteDashboard() {
 
       const now = new Date().toISOString();
 
-      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes] = await Promise.all([
+      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes] = await Promise.all([
         supabase.from('agendamentos')
           .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
           .eq('paciente_id', pac.id)
@@ -101,6 +103,13 @@ export default function PacienteDashboard() {
           .select('id', { count: 'exact', head: true })
           .eq('paciente_id', pac.id)
           .neq('status', 'concluido'),
+        // Get latest completed MyID to check monthly recurrence
+        supabase.from('myid_avaliacoes')
+          .select('id, updated_at')
+          .eq('paciente_id', pac.id)
+          .eq('status', 'concluido')
+          .order('updated_at', { ascending: false })
+          .limit(1),
       ]);
 
       setProximasConsultas(agendaRes.data || []);
@@ -110,6 +119,23 @@ export default function PacienteDashboard() {
         diarios: diarioRes.count || 0,
         pendentes: pendentesRes.count || 0,
       });
+
+      // Determine MyID prompt visibility
+      const completedMyIds = lastMyIdRes.data || [];
+      if (completedMyIds.length === 0) {
+        // Never completed a MyID — show first-time prompt
+        setShowMyIdPrompt(true);
+        setMyIdPromptType('first');
+      } else {
+        // Check if last completed MyID is older than 30 days
+        const lastDate = new Date(completedMyIds[0].updated_at);
+        const daysSince = differenceInDays(new Date(), lastDate);
+        if (daysSince >= 30) {
+          setShowMyIdPrompt(true);
+          setMyIdPromptType('monthly');
+        }
+      }
+
       setLoading(false);
     };
 
