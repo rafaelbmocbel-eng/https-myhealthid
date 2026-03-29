@@ -68,7 +68,6 @@ export default function PacienteLogin() {
         handlePostLogin();
       }
     }
-    }
   }, [authLoading, authReady, isPortalLink, signOut, user]);
 
   useEffect(() => {
