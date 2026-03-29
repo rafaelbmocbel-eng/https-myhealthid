@@ -28,7 +28,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { differenceInDays, format, parseISO, startOfDay } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getPortalUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { Navigate, useSearchParams, useNavigate } from 'react-router-dom';
@@ -509,6 +509,12 @@ export default function MetodoIdentidade() {
 
                         {/* Actions — simplified */}
                         <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          {/* Portal link */}
+                          {p.portal_token && (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
+                              <Smartphone className="h-3.5 w-3.5" />
+                            </Button>
+                          )}
                           {(() => {
                             const linkAtivo = getLinkAtivo(p.id);
                             return linkAtivo ? (
