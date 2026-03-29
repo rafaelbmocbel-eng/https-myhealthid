@@ -38,6 +38,7 @@ import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 import ProntuarioTimeline from './ProntuarioTimeline';
 import ResumoProntuario from './ResumoProntuario';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
+import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
 
 interface Paciente {
   id: string;
