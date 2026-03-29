@@ -18,6 +18,7 @@ import PatientIntegratedDashboard from '@/components/paciente/PatientIntegratedD
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
+import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 
 interface PacienteInfo {
@@ -243,6 +244,9 @@ export default function PacienteDashboard() {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* PWA Install Banner */}
+          <PwaInstallBanner />
 
           {/* MyID Prompt — first time or monthly */}
           {showMyIdPrompt && (
