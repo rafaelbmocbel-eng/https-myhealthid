@@ -481,13 +481,34 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
     if (!user) return;
     try {
       const resultado = av.resultado as any;
+
+      // Generate CIF codes including voice data
+      const cifResult = generateCIFSuggestions(
+        ultimaMyID ? {
+          component_scores: {
+            D: ultimaMyID.score_d ?? 0, EFI: ultimaMyID.score_efi ?? 0,
+            P: ultimaMyID.score_p ?? 0, I: ultimaMyID.score_i ?? 0,
+            R: ultimaMyID.score_r ?? 0, C: ultimaMyID.score_c ?? 0,
+          },
+        } : null,
+        av,
+        (() => {
+          if (structuralAvaliacoes.length === 0) return null;
+          const dados = (structuralAvaliacoes[0] as any).dados_avaliacao;
+          return dados?._type === 'structural' ? dados : null;
+        })(),
+      );
+      const cifText = cifResult.codes.length > 0
+        ? `\n\n📋 CIF:\n${cifResult.codes.slice(0, 8).map(c => `• ${c.code}.${c.qualifier} — ${c.description}`).join('\n')}`
+        : '';
+
       await (supabase as any).from('notas_prontuario').insert({
         paciente_id: paciente.id,
         terapeuta_id: user.id,
         tipo: 'avaliacao_voz',
         titulo: `Avaliação por Voz — ${av.classificacao_severidade || 'N/A'} — ${format(new Date(av.created_at), 'dd/MM/yyyy', { locale: ptBR })}`,
-        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
-        dados_extras: { voice_assessment_id: av.id, resultado: resultado },
+        descricao: `🎙️ AVALIAÇÃO POR VOZ\n\n📋 Resumo: ${resultado?.resumo_clinico || 'N/A'}\n🩹 Dor EVA: ${resultado?.dor?.intensidade_eva || 'N/A'}/10\n📍 Local: ${resultado?.dor?.localizacao || 'N/A'}${cifText}\n\n📝 Transcrição:\n${av.transcricao?.slice(0, 500) || ''}`,
+        dados_extras: { voice_assessment_id: av.id, resultado: resultado, cif_codes: cifResult.codes.map(c => ({ code: c.code, qualifier: c.qualifier, description: c.description, source: c.source })) },
         referencia_id: av.id,
       });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
