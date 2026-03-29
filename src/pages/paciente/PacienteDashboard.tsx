@@ -244,9 +244,50 @@ export default function PacienteDashboard() {
             </Card>
           </motion.div>
 
+          {/* MyID Prompt — first time or monthly */}
+          {showMyIdPrompt && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card className="border-0 shadow-md overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-primary-foreground">
+                        {myIdPromptType === 'first'
+                          ? '🎯 Descubra seu MyID!'
+                          : '🔄 Hora de atualizar seu MyID!'
+                        }
+                      </h3>
+                      <p className="text-[11px] text-primary-foreground/70 mt-0.5">
+                        {myIdPromptType === 'first'
+                          ? 'Responda seu primeiro questionário MyID para conhecer seu perfil de saúde e receber orientações personalizadas.'
+                          : 'Já faz mais de 30 dias desde sua última avaliação. Atualize para acompanhar sua evolução!'
+                        }
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
+                        onClick={() => navigate('/paciente/questionarios')}
+                      >
+                        <Fingerprint className="h-3.5 w-3.5 mr-1" />
+                        {myIdPromptType === 'first' ? 'Responder agora' : 'Atualizar MyID'}
+                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Pending questionnaires alert */}
           {stats.pendentes > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
               <Card
                 className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
                 onClick={() => navigate('/paciente/questionarios')}
