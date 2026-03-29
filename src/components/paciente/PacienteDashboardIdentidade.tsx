@@ -348,7 +348,21 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
           ? `\n⚠️ Red Flags: ${redFlagsList.join(', ')}`
           : '';
 
-        const descricao = `🧬 MyID (online/presencial)\n\n🎯 Score MyID-100: ${Number(myidScoreRaw).toFixed(1)}/100 — ${classificacao}${flagsText}\n\n📊 Componentes:\n• Dor (D): ${scoreD}/10\n• Funcionalidade (EFI): ${scoreEFI}/10\n• Psicológico (P): ${scoreP}/10\n• Demanda (I): ${scoreI}/10\n• Ruído (N): ${scoreN}/10\n• Regulação (R): ${scoreR}/10\n• Contexto (C): ${scoreC}/10`;
+        // Generate CIF codes from available data
+        const cifResult = generateCIFSuggestions(
+          { component_scores: scores },
+          voiceAvaliacoes.length > 0 ? voiceAvaliacoes[0] : null,
+          (() => {
+            if (structuralAvaliacoes.length === 0) return null;
+            const dados = (structuralAvaliacoes[0] as any).dados_avaliacao;
+            return dados?._type === 'structural' ? dados : null;
+          })(),
+        );
+        const cifText = cifResult.codes.length > 0
+          ? `\n\n📋 CIF (Classificação Internacional de Funcionalidade):\n${cifResult.codes.slice(0, 10).map(c => `• ${c.code}.${c.qualifier} — ${c.description}`).join('\n')}`
+          : '';
+
+        const descricao = `🧬 MyID (online/presencial)\n\n🎯 Score MyID-100: ${Number(myidScoreRaw).toFixed(1)}/100 — ${classificacao}${flagsText}\n\n📊 Componentes:\n• Dor (D): ${scoreD}/10\n• Funcionalidade (EFI): ${scoreEFI}/10\n• Psicológico (P): ${scoreP}/10\n• Demanda (I): ${scoreI}/10\n• Ruído (N): ${scoreN}/10\n• Regulação (R): ${scoreR}/10\n• Contexto (C): ${scoreC}/10${cifText}`;
 
         try {
           await (supabase as any).from('notas_prontuario').insert({
@@ -357,7 +371,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
             tipo: 'myid_resposta',
             titulo: `MyID — Score ${Number(myidScoreRaw).toFixed(1)}/100 (${classificacao})`,
             descricao,
-            dados_extras: { myid_score: myidScoreRaw, classificacao, scores },
+            dados_extras: { myid_score: myidScoreRaw, classificacao, scores, cif_codes: cifResult.codes.map(c => ({ code: c.code, qualifier: c.qualifier, description: c.description, source: c.source })) },
             referencia_id: av.id,
           });
         } catch (err) {
