@@ -34,6 +34,7 @@ import { Loader2 } from "lucide-react";
 
 // Patient portal (lazy-loaded)
 const PacienteLogin = lazy(() => import("./pages/paciente/PacienteLogin"));
+const PortalGate = lazy(() => import("./pages/paciente/PortalGate"));
 const PacienteDashboard = lazy(() => import("./pages/paciente/PacienteDashboard"));
 const PacienteAgenda = lazy(() => import("./pages/paciente/PacienteAgenda"));
 const PacienteQuestionarios = lazy(() => import("./pages/paciente/PacienteQuestionarios"));
@@ -107,7 +108,7 @@ const App = () => (
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PacienteLogin />} />
-                <Route path="/portal/:token" element={<PacienteLogin />} />
+                <Route path="/portal/:token" element={<PortalGate />} />
                 <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />
                 <Route path="/paciente/evolucao" element={<ProtectedPatientRoute><PacienteEvolucao /></ProtectedPatientRoute>} />
