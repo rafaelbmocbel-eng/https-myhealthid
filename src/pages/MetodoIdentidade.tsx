@@ -651,6 +651,21 @@ export default function MetodoIdentidade() {
                 );
               })()}
 
+              {/* Link do Portal do Paciente */}
+              {selectedPaciente?.portal_token && (
+                <div className="mt-4 pt-4 border-t space-y-2">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Portal do Paciente</p>
+                  <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }}>
+                    <Copy className="h-3 w-3" /> Copiar link do Portal
+                  </Button>
+                  {selectedPaciente.telefone && (
+                    <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }}>
+                      <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
+                    </Button>
+                  )}
+                </div>
+              )}
+
               {blocosConcluidos.size > 0 && (
                 <Button
                   className="w-full mt-3 bg-gradient-primary text-white text-xs"
