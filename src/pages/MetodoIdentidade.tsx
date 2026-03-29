@@ -328,6 +328,23 @@ export default function MetodoIdentidade() {
     );
   }
 
+  const draftDialog = (
+    <AlertDialog open={!!pendingDraft}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>📝 Avaliação em andamento</AlertDialogTitle>
+          <AlertDialogDescription>
+            Você tem uma avaliação MyID não finalizada. Deseja continuar de onde parou ou descartar e começar do zero?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleDiscardDraft}>Descartar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleRestoreDraft}>Continuar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
     // Build a compatible avaliacao object for ProtocoloEditor
     const editorAvaliacao = {
