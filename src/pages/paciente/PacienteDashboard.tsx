@@ -309,26 +309,26 @@ export default function PacienteDashboard() {
           )}
 
           {/* MyID Dashboard */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
             {paciente && (
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             )}
           </motion.div>
 
           {/* Metas & Alertas & Exercícios — stacked */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
             {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
           </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
             {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </motion.div>
 
           {/* Upcoming appointments — compact */}
           {proximasConsultas.length > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-foreground">Próximas consultas</h2>
                 <button onClick={() => navigate('/paciente/agenda')} className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
