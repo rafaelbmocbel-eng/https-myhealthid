@@ -19,7 +19,7 @@ export function getBaseUrl() {
 }
 
 export function getPortalUrl(token: string) {
-  return `${getBaseUrl()}/paciente/login?token=${token}&portal=1`;
+  return `${getBaseUrl()}/portal/${token}`;
 }
 
 export function getAvaliacaoUrl(token: string) {
