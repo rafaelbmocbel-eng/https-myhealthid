@@ -324,19 +324,6 @@ export default function MetodoIdentidade() {
   const progresso = (blocosConcluidos.size / 6) * 100;
 
   // React Hook rules: All hooks must be defined before any early return based on conditions
-  if (!authLoading && !user) return <Navigate to="/auth" replace />;
-
-  if (!draftReady && user) {
-    return (
-      <AppLayout>
-        {draftDialog}
-        <div className="container py-10 flex items-center justify-center">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        </div>
-      </AppLayout>
-    );
-  }
-
   const draftDialog = (
     <AlertDialog open={!!pendingDraft}>
       <AlertDialogContent>
@@ -353,6 +340,19 @@ export default function MetodoIdentidade() {
       </AlertDialogContent>
     </AlertDialog>
   );
+
+  if (!authLoading && !user) return <Navigate to="/auth" replace />;
+
+  if (!draftReady && user) {
+    return (
+      <AppLayout>
+        {draftDialog}
+        <div className="container py-10 flex items-center justify-center">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </AppLayout>
+    );
+  }
 
   if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
     // Build a compatible avaliacao object for ProtocoloEditor
