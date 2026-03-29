@@ -67,18 +67,6 @@ export default function PacienteLogin() {
     setLinking(true);
 
     try {
-      // 0) Check if user is a professional — redirect them away from patient portal
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('id')
-        .eq('user_id', user!.id)
-        .maybeSingle();
-
-      if (profile) {
-        // Professional user — redirect to professional area
-        navigate('/agenda', { replace: true });
-        return;
-      }
 
       // 1) Try to link via portal_token (priority)
       if (portalToken) {
