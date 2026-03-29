@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -11,12 +11,13 @@ import LogoIcon from '@/components/LogoIcon';
 import { withAuthLockRetry } from '@/lib/authLock';
 
 export default function PacienteLogin() {
-  const { user, signIn, loading: authLoading } = useAuth();
+  const { token: routeToken } = useParams();
+  const { user, signIn, signOut, loading: authLoading, authReady } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const portalToken = searchParams.get('token');
-  const isPortalLink = searchParams.get('portal') === '1';
+  const portalToken = routeToken ?? searchParams.get('token');
+  const isPortalLink = Boolean(routeToken) || searchParams.get('portal') === '1';
 
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -28,20 +29,27 @@ export default function PacienteLogin() {
 
   // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
-    if (authLoading || !user || signOutAttempted.current) return;
+    if (!authReady || authLoading || !user || signOutAttempted.current) return;
     
     if (isPortalLink) {
       // Check if current user is a professional — if so, sign out silently
       const checkAndSignOut = async () => {
-        const { data: profile } = await supabase
+        const { data: profile, error } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
+
+        if (error) {
+          console.warn('[Portal] Falha ao verificar sessão profissional:', error);
+        }
         
         if (profile) {
           signOutAttempted.current = true;
-          await supabase.auth.signOut();
+          linkAttempted.current = false;
+          setLinking(false);
+          setSubmitting(false);
+          await signOut();
           // After sign out, user state will clear and they'll see the login form
           return;
         }
@@ -60,13 +68,44 @@ export default function PacienteLogin() {
         handlePostLogin();
       }
     }
-  }, [authLoading, user]);
+  }, [authLoading, authReady, isPortalLink, signOut, user]);
+
+  useEffect(() => {
+    if (!authReady || authLoading || user || !isPortalLink) return;
+
+    signOutAttempted.current = false;
+    setLinking(false);
+    setSubmitting(false);
+  }, [authLoading, authReady, isPortalLink, user]);
 
   const handlePostLogin = async () => {
-    if (linking) return;
+    if (linking || !user) return;
     setLinking(true);
 
     try {
+      if (isPortalLink) {
+        const { data: profile, error: profileError } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', user.id)
+          .maybeSingle();
+
+        if (profileError) {
+          console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
+        }
+
+        if (profile) {
+          await signOut();
+          linkAttempted.current = false;
+          setLinking(false);
+          setSubmitting(false);
+          toast({
+            title: 'Acesso exclusivo do portal',
+            description: 'Entre com a conta do paciente para continuar.',
+          });
+          return;
+        }
+      }
 
       // 1) Try to link via portal_token (priority)
       if (portalToken) {
