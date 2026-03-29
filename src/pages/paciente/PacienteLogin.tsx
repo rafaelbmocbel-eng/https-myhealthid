@@ -16,6 +16,7 @@ export default function PacienteLogin() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const portalToken = searchParams.get('token');
+  const isPortalLink = searchParams.get('portal') === '1';
 
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
@@ -23,6 +24,7 @@ export default function PacienteLogin() {
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
   const [linking, setLinking] = useState(false);
   const linkAttempted = useRef(false);
+  const signOutAttempted = useRef(false);
 
   // If already logged in, try to link and redirect
   useEffect(() => {
