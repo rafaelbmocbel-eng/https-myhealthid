@@ -4,11 +4,12 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles
 } from 'lucide-react';
-import { format, parseISO } from 'date-fns';
+import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
@@ -61,6 +62,8 @@ export default function PacienteDashboard() {
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
   const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0 });
   const [loading, setLoading] = useState(true);
+  const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
+  const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const notifications = usePacienteNotifications(user?.id);
 
   useEffect(() => {
@@ -78,7 +81,7 @@ export default function PacienteDashboard() {
 
       const now = new Date().toISOString();
 
-      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes] = await Promise.all([
+      const [agendaRes, avalRes, sessaoRes, diarioRes, pendentesRes, lastMyIdRes] = await Promise.all([
         supabase.from('agendamentos')
           .select('id, data_inicio, data_fim, titulo, status, tipo_atendimento')
           .eq('paciente_id', pac.id)
@@ -100,6 +103,13 @@ export default function PacienteDashboard() {
           .select('id', { count: 'exact', head: true })
           .eq('paciente_id', pac.id)
           .neq('status', 'concluido'),
+        // Get latest completed MyID to check monthly recurrence
+        supabase.from('myid_avaliacoes')
+          .select('id, updated_at')
+          .eq('paciente_id', pac.id)
+          .eq('status', 'concluido')
+          .order('updated_at', { ascending: false })
+          .limit(1),
       ]);
 
       setProximasConsultas(agendaRes.data || []);
@@ -109,6 +119,23 @@ export default function PacienteDashboard() {
         diarios: diarioRes.count || 0,
         pendentes: pendentesRes.count || 0,
       });
+
+      // Determine MyID prompt visibility
+      const completedMyIds = lastMyIdRes.data || [];
+      if (completedMyIds.length === 0) {
+        // Never completed a MyID — show first-time prompt
+        setShowMyIdPrompt(true);
+        setMyIdPromptType('first');
+      } else {
+        // Check if last completed MyID is older than 30 days
+        const lastDate = new Date(completedMyIds[0].updated_at);
+        const daysSince = differenceInDays(new Date(), lastDate);
+        if (daysSince >= 30) {
+          setShowMyIdPrompt(true);
+          setMyIdPromptType('monthly');
+        }
+      }
+
       setLoading(false);
     };
 
@@ -217,9 +244,50 @@ export default function PacienteDashboard() {
             </Card>
           </motion.div>
 
+          {/* MyID Prompt — first time or monthly */}
+          {showMyIdPrompt && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card className="border-0 shadow-md overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-primary-foreground">
+                        {myIdPromptType === 'first'
+                          ? '🎯 Descubra seu MyID!'
+                          : '🔄 Hora de atualizar seu MyID!'
+                        }
+                      </h3>
+                      <p className="text-[11px] text-primary-foreground/70 mt-0.5">
+                        {myIdPromptType === 'first'
+                          ? 'Responda seu primeiro questionário MyID para conhecer seu perfil de saúde e receber orientações personalizadas.'
+                          : 'Já faz mais de 30 dias desde sua última avaliação. Atualize para acompanhar sua evolução!'
+                        }
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
+                        onClick={() => navigate('/paciente/questionarios')}
+                      >
+                        <Fingerprint className="h-3.5 w-3.5 mr-1" />
+                        {myIdPromptType === 'first' ? 'Responder agora' : 'Atualizar MyID'}
+                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* Pending questionnaires alert */}
           {stats.pendentes > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
               <Card
                 className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
                 onClick={() => navigate('/paciente/questionarios')}
@@ -241,26 +309,26 @@ export default function PacienteDashboard() {
           )}
 
           {/* MyID Dashboard */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
             {paciente && (
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             )}
           </motion.div>
 
           {/* Metas & Alertas & Exercícios — stacked */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
             {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
           </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
             {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </motion.div>
 
           {/* Upcoming appointments — compact */}
           {proximasConsultas.length > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-foreground">Próximas consultas</h2>
                 <button onClick={() => navigate('/paciente/agenda')} className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
