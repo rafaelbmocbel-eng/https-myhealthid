@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from 'react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
@@ -157,6 +158,14 @@ export default function MetodoIdentidade() {
     toast({ title: 'Link da agenda copiado! 📋' });
   };
 
+  const [pendingDraft, setPendingDraft] = useState<{
+    selectedPacienteId: string | null;
+    showDashboard: boolean;
+    avaliacao: AvaliacaoMyID;
+    showRelatorio: boolean;
+    blocosConcluidos: number[];
+  } | null>(null);
+
   useEffect(() => {
     if (!user) return;
 
@@ -170,16 +179,10 @@ export default function MetodoIdentidade() {
       blocosConcluidos: number[];
     }>(myidDraftKey, MYID_DRAFT_VERSION).then((draft) => {
       if (!active) return;
-      if (draft) {
-        setSelectedPacienteId(draft.selectedPacienteId);
-        setShowDashboard(draft.showDashboard);
-        setAvaliacao(draft.avaliacao);
-        setShowRelatorio(draft.showRelatorio);
-        setBlocosConcluidos(new Set(draft.blocosConcluidos ?? []));
-        toast({
-          title: 'Avaliação restaurada',
-          description: 'Seu progresso do MyID foi recuperado automaticamente.',
-        });
+      if (draft && (draft.blocosConcluidos?.length > 0 || draft.avaliacao?.blocoAtual > 1 || draft.showRelatorio)) {
+        setPendingDraft(draft);
+      } else {
+        if (draft) void clearDraft(myidDraftKey);
       }
       setDraftReady(true);
     });
@@ -187,7 +190,24 @@ export default function MetodoIdentidade() {
     return () => {
       active = false;
     };
-  }, [myidDraftKey, toast, user]);
+  }, [myidDraftKey, user]);
+
+  const handleRestoreDraft = () => {
+    if (!pendingDraft) return;
+    setSelectedPacienteId(pendingDraft.selectedPacienteId);
+    setShowDashboard(pendingDraft.showDashboard);
+    setAvaliacao(pendingDraft.avaliacao);
+    setShowRelatorio(pendingDraft.showRelatorio);
+    setBlocosConcluidos(new Set(pendingDraft.blocosConcluidos ?? []));
+    setPendingDraft(null);
+    toast({ title: '✅ Avaliação restaurada', description: 'Continuando de onde você parou.' });
+  };
+
+  const handleDiscardDraft = async () => {
+    await clearDraft(myidDraftKey);
+    setPendingDraft(null);
+    toast({ title: 'Rascunho descartado', description: 'Você pode iniciar uma nova avaliação.' });
+  };
 
   useEffect(() => {
     if (!user || !draftReady || showDiretrizBuilder) return;
@@ -308,6 +328,23 @@ export default function MetodoIdentidade() {
     );
   }
 
+  const draftDialog = (
+    <AlertDialog open={!!pendingDraft}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>📝 Avaliação em andamento</AlertDialogTitle>
+          <AlertDialogDescription>
+            Você tem uma avaliação MyID não finalizada. Deseja continuar de onde parou ou descartar e começar do zero?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={handleDiscardDraft}>Descartar</AlertDialogCancel>
+          <AlertDialogAction onClick={handleRestoreDraft}>Continuar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  );
+
   if (showDiretrizBuilder && selectedPacienteId && savedAvaliacaoId) {
     // Build a compatible avaliacao object for ProtocoloEditor
     const editorAvaliacao = {
@@ -386,6 +423,7 @@ export default function MetodoIdentidade() {
   if (!selectedPacienteId) {
     return (
       <AppLayout>
+        {draftDialog}
         <div className="container py-6 max-w-4xl">
           {/* Module Header */}
           <div className="flex items-center gap-4 mb-6">
