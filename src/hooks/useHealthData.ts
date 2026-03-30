@@ -53,7 +53,7 @@ export function useHealthData(pacienteId: string | null, terapeutaId?: string) {
   const [todaySleep, setTodaySleep] = useState<SleepLog | null>(null);
   const [todayWater, setTodayWater] = useState<WaterLog | null>(null);
   const [latestBody, setLatestBody] = useState<BodyComposition | null>(null);
-  const [weekMetrics, setWeekMetrics] = useState<any[]>([]);
+  const [weekMetrics, setWeekMetrics] = useState<HealthMetrics[]>([]);
   const [weekSleep, setWeekSleep] = useState<SleepLog[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -74,15 +74,15 @@ export function useHealthData(pacienteId: string | null, terapeutaId?: string) {
       supabase.from('sleep_logs').select('*').eq('paciente_id', pacienteId).gte('date', sevenDaysAgo).order('date'),
     ]);
 
-    if (metricsRes.data) setTodayMetrics(metricsRes.data as any);
-    if (sleepRes.data) setTodaySleep(sleepRes.data as any);
+    if (metricsRes.data) setTodayMetrics(metricsRes.data as HealthMetrics);
+    if (sleepRes.data) setTodaySleep(sleepRes.data as SleepLog);
     if (waterRes.data) {
-      const d = waterRes.data as any;
-      setTodayWater({ ...d, entries: Array.isArray(d.entries) ? d.entries : [] });
+      const d = waterRes.data as Record<string, unknown>;
+      setTodayWater({ ...d, entries: Array.isArray(d.entries) ? d.entries : [] } as WaterLog);
     }
-    if (bodyRes.data) setLatestBody(bodyRes.data as any);
-    setWeekMetrics(weekMetricsRes.data || []);
-    setWeekSleep((weekSleepRes.data || []) as any);
+    if (bodyRes.data) setLatestBody(bodyRes.data as BodyComposition);
+    setWeekMetrics((weekMetricsRes.data || []) as HealthMetrics[]);
+    setWeekSleep((weekSleepRes.data || []) as SleepLog[]);
     setLoading(false);
   }, [pacienteId, today]);
 
@@ -103,14 +103,14 @@ export function useHealthData(pacienteId: string | null, terapeutaId?: string) {
 
   const upsertSleep = async (data: Partial<SleepLog>) => {
     if (!pacienteId || !terapeutaId) return;
-    const payload: any = {
+    const { id: _id, ...rest } = data;
+    const payload = {
       paciente_id: pacienteId,
       terapeuta_id: terapeutaId,
       date: today,
-      source: 'manual',
-      ...data,
+      source: 'manual' as const,
+      ...rest,
     };
-    delete payload.id;
     const { error } = await supabase.from('sleep_logs').upsert(payload, { onConflict: 'paciente_id,date' });
     if (!error) fetchAll();
     return error;
@@ -143,16 +143,16 @@ export function useHealthData(pacienteId: string | null, terapeutaId?: string) {
     if (weight && height) {
       bmi = Math.round((weight / ((height / 100) ** 2)) * 10) / 10;
     }
-    const payload: any = {
+    const { id: _id2, ...bodyRest } = data;
+    const payload = {
       paciente_id: pacienteId,
       terapeuta_id: terapeutaId,
       date: today,
-      source: 'manual',
-      ...data,
+      source: 'manual' as const,
+      ...bodyRest,
       bmi,
     };
-    delete payload.id;
-    const { error } = await supabase.from('body_composition').upsert(payload, { onConflict: 'paciente_id,date' } as any);
+    const { error } = await supabase.from('body_composition').upsert(payload as typeof payload & { paciente_id: string }, { onConflict: 'paciente_id,date' } as Record<string, string>);
     if (!error) fetchAll();
     return error;
   };

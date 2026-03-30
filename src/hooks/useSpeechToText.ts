@@ -9,7 +9,7 @@ interface UseSpeechToTextReturn {
 
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<any>(null);
+  const recognitionRef = useRef<SpeechRecognition | null>(null);
 
   const isSupported = typeof window !== 'undefined' && 
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -17,15 +17,15 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const startListening = useCallback((onResult: (text: string) => void) => {
     if (!isSupported) return;
     
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const SpeechRecognitionCtor = (window as unknown as Record<string, typeof SpeechRecognition>).SpeechRecognition || (window as unknown as Record<string, typeof SpeechRecognition>).webkitSpeechRecognition;
+    const recognition = new SpeechRecognitionCtor();
     recognition.lang = 'pt-BR';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
+        .map((result: SpeechRecognitionResult) => result[0].transcript)
         .join(' ');
       onResult(transcript);
     };

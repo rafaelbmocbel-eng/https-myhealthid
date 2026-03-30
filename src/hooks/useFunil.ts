@@ -90,7 +90,7 @@ export function useFunil() {
       queryClient.invalidateQueries({ queryKey: ['funil-config'] });
       toast({ title: 'Configurações do funil salvas! ✅' });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       toast({ title: 'Erro ao salvar funil', description: e.message, variant: 'destructive' });
     },
   });

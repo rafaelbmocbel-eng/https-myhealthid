@@ -97,19 +97,19 @@ export function useEventos() {
       toast.success('Evento criado com sucesso!');
       qc.invalidateQueries({ queryKey: ['eventos'] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const editarEvento = useMutation({
     mutationFn: async ({ id, ...eventoData }: Partial<Evento> & { id: string }) => {
-      const { error } = await supabase.from('eventos').update(eventoData as any).eq('id', id);
+      const { error } = await supabase.from('eventos').update(eventoData as Record<string, unknown>).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => {
       toast.success('Evento atualizado!');
       qc.invalidateQueries({ queryKey: ['eventos'] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const salvarPerguntas = useMutation({
@@ -134,7 +134,7 @@ export function useEventos() {
       toast.success('Questionário salvo!');
       qc.invalidateQueries({ queryKey: ['evento-detalhe'] });
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e: Error) => toast.error(e.message),
   });
 
   const toggleEvento = useMutation({

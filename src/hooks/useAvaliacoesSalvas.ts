@@ -208,7 +208,7 @@ Avaliação realizada presencialmente pelo terapeuta via Método Identidade.`;
       qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       toast({ title: 'Erro ao salvar avaliação', description: e.message, variant: 'destructive' });
     },
   });
@@ -298,7 +298,7 @@ export function useAvaliacoesCobZero(pacienteId?: string) {
       toast({ title: '✅ Avaliação COB° ZERO salva!', description: 'Histórico atualizado com sucesso.' });
       qc.invalidateQueries({ queryKey: ['avaliacoes-cob-zero'] });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       toast({ title: 'Erro ao salvar avaliação', description: e.message, variant: 'destructive' });
     },
   });

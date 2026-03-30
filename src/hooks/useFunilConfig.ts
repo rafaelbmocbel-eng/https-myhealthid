@@ -80,7 +80,7 @@ export function useFunilConfig() {
       qc.invalidateQueries({ queryKey: ['funil-config'] });
       toast({ title: 'Funil salvo! ✅' });
     },
-    onError: (e: any) => {
+    onError: (e: Error) => {
       toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
     },
   });

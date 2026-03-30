@@ -9,7 +9,7 @@ export interface NotaProntuario {
   tipo: string;
   titulo: string;
   descricao: string;
-  dados_extras: any;
+  dados_extras: Record<string, unknown> | null;
   referencia_id: string | null;
   created_at: string;
 }
@@ -39,7 +39,7 @@ export function useNotasProntuario(pacienteId?: string) {
       tipo: string;
       titulo: string;
       descricao: string;
-      dadosExtras?: any;
+      dadosExtras?: Record<string, unknown>;
       referenciaId?: string;
     }) => {
       const { data, error } = await (supabase as any)
