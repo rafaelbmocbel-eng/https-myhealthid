@@ -12,13 +12,13 @@ export function useStudioTreinos(pacienteId?: string) {
   const { data: treinos = [], isLoading } = useQuery({
     queryKey: ['studio-treinos', user?.id, pacienteId],
     queryFn: async () => {
-      let q = (supabase as any)
+      let q = (supabase as unknown as { from: (t: string) => Record<string, (...args: unknown[]) => unknown> })
         .from('studio_treinos')
         .select('*, studio_treino_exercicios(count)')
         .eq('terapeuta_id', user!.id)
         .order('ordem');
-      if (pacienteId) q = q.eq('paciente_id', pacienteId);
-      const { data, error } = await q;
+      if (pacienteId) q = (q as unknown as { eq: (col: string, val: string) => typeof q }).eq('paciente_id', pacienteId);
+      const { data, error } = await (q as unknown as Promise<{ data: unknown[]; error: Error | null }>);
       if (error) throw error;
       return data || [];
     },
@@ -27,6 +27,7 @@ export function useStudioTreinos(pacienteId?: string) {
 
   const criarTreino = useMutation({
     mutationFn: async (payload: { paciente_id: string; titulo: string; objetivo?: string; duracao_estimada?: string; intensidade?: string; frequencia?: string; periodizacao_id?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_treinos')
         .insert({ ...payload, terapeuta_id: user!.id })
@@ -39,11 +40,12 @@ export function useStudioTreinos(pacienteId?: string) {
       toast({ title: 'Treino criado! ✅' });
       qc.invalidateQueries({ queryKey: ['studio-treinos'] });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   const atualizarTreino = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: unknown }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('studio_treinos').update(updates).eq('id', id);
       if (error) throw error;
     },
@@ -54,6 +56,7 @@ export function useStudioTreinos(pacienteId?: string) {
 
   const deletarTreino = useMutation({
     mutationFn: async (id: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('studio_treinos').delete().eq('id', id);
       if (error) throw error;
     },
@@ -74,6 +77,7 @@ export function useStudioExercicios(treinoId?: string) {
   const { data: exercicios = [], isLoading } = useQuery({
     queryKey: ['studio-treino-exercicios', treinoId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_treino_exercicios')
         .select('*')
@@ -86,7 +90,8 @@ export function useStudioExercicios(treinoId?: string) {
   });
 
   const adicionarExercicio = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_treino_exercicios')
         .insert(payload)
@@ -96,11 +101,12 @@ export function useStudioExercicios(treinoId?: string) {
       return data;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['studio-treino-exercicios', treinoId] }),
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   const atualizarExercicio = useMutation({
-    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: any }) => {
+    mutationFn: async ({ id, ...updates }: { id: string; [key: string]: unknown }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('studio_treino_exercicios').update(updates).eq('id', id);
       if (error) throw error;
     },
@@ -109,6 +115,7 @@ export function useStudioExercicios(treinoId?: string) {
 
   const removerExercicio = useMutation({
     mutationFn: async (id: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('studio_treino_exercicios').delete().eq('id', id);
       if (error) throw error;
     },
@@ -127,6 +134,7 @@ export function useStudioExecucoes(pacienteId?: string) {
   const { data: execucoes = [], isLoading } = useQuery({
     queryKey: ['studio-execucoes', pacienteId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_execucoes')
         .select('*, studio_treinos(titulo)')
@@ -141,7 +149,8 @@ export function useStudioExecucoes(pacienteId?: string) {
   });
 
   const registrarExecucao = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_execucoes')
         .insert({ ...payload, terapeuta_id: user!.id })
@@ -154,7 +163,7 @@ export function useStudioExecucoes(pacienteId?: string) {
       toast({ title: 'Sessão registrada! ✅' });
       qc.invalidateQueries({ queryKey: ['studio-execucoes'] });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   return { execucoes, isLoading, registrarExecucao };
@@ -169,6 +178,7 @@ export function useStudioMedidas(pacienteId?: string) {
   const { data: medidas = [], isLoading } = useQuery({
     queryKey: ['studio-medidas', pacienteId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_medidas')
         .select('*')
@@ -182,7 +192,8 @@ export function useStudioMedidas(pacienteId?: string) {
   });
 
   const salvarMedida = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_medidas')
         .insert({ ...payload, terapeuta_id: user!.id })
@@ -195,7 +206,7 @@ export function useStudioMedidas(pacienteId?: string) {
       toast({ title: 'Medidas salvas! ✅' });
       qc.invalidateQueries({ queryKey: ['studio-medidas'] });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   return { medidas, isLoading, salvarMedida };
@@ -210,6 +221,7 @@ export function useStudioNotas(pacienteId?: string) {
   const { data: notas = [], isLoading } = useQuery({
     queryKey: ['studio-notas', pacienteId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_notas')
         .select('*')
@@ -224,6 +236,7 @@ export function useStudioNotas(pacienteId?: string) {
 
   const adicionarNota = useMutation({
     mutationFn: async (payload: { paciente_id: string; conteudo: string; tipo?: string }) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_notas')
         .insert({ ...payload, terapeuta_id: user!.id })
@@ -235,11 +248,12 @@ export function useStudioNotas(pacienteId?: string) {
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['studio-notas'] });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   const deletarNota = useMutation({
     mutationFn: async (id: string) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { error } = await (supabase as any).from('studio_notas').delete().eq('id', id);
       if (error) throw error;
     },
@@ -258,6 +272,7 @@ export function useStudioPeriodizacoes(pacienteId?: string) {
   const { data: periodizacoes = [], isLoading } = useQuery({
     queryKey: ['studio-periodizacoes', pacienteId],
     queryFn: async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_periodizacoes')
         .select('*')
@@ -271,7 +286,8 @@ export function useStudioPeriodizacoes(pacienteId?: string) {
   });
 
   const criarPeriodizacao = useMutation({
-    mutationFn: async (payload: any) => {
+    mutationFn: async (payload: Record<string, unknown>) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const { data, error } = await (supabase as any)
         .from('studio_periodizacoes')
         .insert({ ...payload, terapeuta_id: user!.id })
@@ -284,7 +300,7 @@ export function useStudioPeriodizacoes(pacienteId?: string) {
       toast({ title: 'Periodização criada! ✅' });
       qc.invalidateQueries({ queryKey: ['studio-periodizacoes'] });
     },
-    onError: (e: any) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
+    onError: (e: Error) => toast({ title: 'Erro', description: e.message, variant: 'destructive' }),
   });
 
   return { periodizacoes, isLoading, criarPeriodizacao };
