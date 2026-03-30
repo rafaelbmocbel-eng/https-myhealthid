@@ -12,13 +12,14 @@ export function useStudioTreinos(pacienteId?: string) {
   const { data: treinos = [], isLoading } = useQuery({
     queryKey: ['studio-treinos', user?.id, pacienteId],
     queryFn: async () => {
-      let q = (supabase as unknown as { from: (t: string) => Record<string, (...args: unknown[]) => unknown> })
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      let q = (supabase as any)
         .from('studio_treinos')
         .select('*, studio_treino_exercicios(count)')
         .eq('terapeuta_id', user!.id)
         .order('ordem');
-      if (pacienteId) q = (q as unknown as { eq: (col: string, val: string) => typeof q }).eq('paciente_id', pacienteId);
-      const { data, error } = await (q as unknown as Promise<{ data: unknown[]; error: Error | null }>);
+      if (pacienteId) q = q.eq('paciente_id', pacienteId);
+      const { data, error } = await q;
       if (error) throw error;
       return data || [];
     },
