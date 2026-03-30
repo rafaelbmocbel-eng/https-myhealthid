@@ -5,15 +5,15 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { lazy, Suspense } from "react";
-import Index from "./pages/Index";
-import Auth from "./pages/Auth";
-import MetodoIdentidade from "./pages/MetodoIdentidade";
-import NotFound from "./pages/NotFound";
 import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
 
-// Lazy-loaded pages for better performance
+// ALL pages lazy-loaded for optimal code-splitting
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
+const NotFound = lazy(() => import("./pages/NotFound"));
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
 const CobZero = lazy(() => import("./pages/CobZero"));
 const StudioPersonalID = lazy(() => import("./pages/StudioPersonalID"));
