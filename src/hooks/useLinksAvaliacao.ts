@@ -69,8 +69,9 @@ export function useLinksAvaliacao() {
       qc.invalidateQueries({ queryKey: ['links_avaliacao'] });
       toast({ title: 'Link gerado! ✅', description: 'Válido por 30 dias.' });
       return data as LinkAvaliacao;
-    } catch (e: any) {
-      toast({ title: 'Erro ao gerar link', description: e.message, variant: 'destructive' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : 'Erro desconhecido';
+      toast({ title: 'Erro ao gerar link', description: msg, variant: 'destructive' });
       return null;
     } finally {
       setGerando(false);

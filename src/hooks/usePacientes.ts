@@ -51,16 +51,34 @@ export function usePacientes(filtroServico?: string) {
   });
 
   // Normaliza os dados: extrai a lista de serviços ativos para cada paciente
-  const allPacientes: Paciente[] = pacientesRaw.map((p: any) => ({
+  interface PacienteRaw {
+    id: string;
+    nome: string;
+    sobrenome: string;
+    email?: string;
+    telefone?: string;
+    data_nascimento?: string;
+    genero?: string;
+    cpf?: string;
+    endereco?: string;
+    observacoes?: string;
+    ativo: boolean;
+    created_at: string;
+    terapeuta_id: string;
+    portal_token?: string | null;
+    paciente_servicos?: PacienteServico[];
+  }
+
+  const allPacientes: Paciente[] = (pacientesRaw as PacienteRaw[]).map((p) => ({
     ...p,
     servicos: (p.paciente_servicos || [])
-      .filter((s: any) => s.ativo)
-      .map((s: any) => s.servico),
+      .filter((s) => s.ativo)
+      .map((s) => s.servico),
   }));
 
   // Monta lista de serviços para compatibilidade
-  const servicos: PacienteServico[] = pacientesRaw.flatMap((p: any) =>
-    (p.paciente_servicos || []).map((s: any) => s)
+  const servicos: PacienteServico[] = (pacientesRaw as PacienteRaw[]).flatMap((p) =>
+    (p.paciente_servicos || []).map((s) => s)
   );
 
   const getServicosForPaciente = (pid: string): string[] => {

@@ -9,6 +9,7 @@ interface UseSpeechToTextReturn {
 
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const recognitionRef = useRef<any>(null);
 
   const isSupported = typeof window !== 'undefined' && 
@@ -17,15 +18,15 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const startListening = useCallback((onResult: (text: string) => void) => {
     if (!isSupported) return;
     
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
+    const SpeechRecognitionCtor = (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).SpeechRecognition || (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).webkitSpeechRecognition;
+    const recognition = new SpeechRecognitionCtor();
     recognition.lang = 'pt-BR';
     recognition.continuous = true;
     recognition.interimResults = false;
 
-    recognition.onresult = (event: any) => {
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
       const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
+        .map((result: SpeechRecognitionResult) => result[0].transcript)
         .join(' ');
       onResult(transcript);
     };
