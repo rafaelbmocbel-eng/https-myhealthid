@@ -18,7 +18,12 @@ interface Evento {
   id: string; titulo: string; descricao: string | null; descricao_formulario: string | null;
   data_evento: string; horario_inicio: string; horario_fim: string; local: string | null;
   vagas_max: number | null; cobrar_pagamento: boolean; valor: number;
-  pix_chave: string | null; link_pagamento: string | null; ativo: boolean;
+  ativo: boolean;
+}
+
+interface EventoPagamento {
+  pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null;
+  link_pagamento: string | null; valor: number | null;
 }
 
 interface Pergunta {
