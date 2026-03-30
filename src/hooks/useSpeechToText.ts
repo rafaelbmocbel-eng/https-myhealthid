@@ -9,7 +9,7 @@ interface UseSpeechToTextReturn {
 
 export function useSpeechToText(): UseSpeechToTextReturn {
   const [isListening, setIsListening] = useState(false);
-  const recognitionRef = useRef<SpeechRecognition | null>(null);
+  const recognitionRef = useRef<SpeechRecognitionEvent["target"] | null>(null);
 
   const isSupported = typeof window !== 'undefined' && 
     ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
@@ -17,7 +17,7 @@ export function useSpeechToText(): UseSpeechToTextReturn {
   const startListening = useCallback((onResult: (text: string) => void) => {
     if (!isSupported) return;
     
-    const SpeechRecognitionCtor = (window as unknown as Record<string, typeof SpeechRecognition>).SpeechRecognition || (window as unknown as Record<string, typeof SpeechRecognition>).webkitSpeechRecognition;
+    const SpeechRecognitionCtor = (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).SpeechRecognition || (window as unknown as Record<string, new () => EventTarget & { lang: string; continuous: boolean; interimResults: boolean; onresult: ((e: SpeechRecognitionEvent) => void) | null; onerror: (() => void) | null; onend: (() => void) | null; start: () => void; stop: () => void }>).webkitSpeechRecognition;
     const recognition = new SpeechRecognitionCtor();
     recognition.lang = 'pt-BR';
     recognition.continuous = true;
