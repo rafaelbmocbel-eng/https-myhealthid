@@ -160,6 +160,18 @@ export default function EventoPublico() {
       });
       if (resp.error) throw new Error(resp.error.message);
       if (resp.data?.error) throw new Error(resp.data.error);
+      const newInscricaoId = resp.data?.inscricao_id;
+      setInscricaoId(newInscricaoId);
+      // Load payment info via secure RPC if event charges payment
+      if (evento?.cobrar_pagamento && newInscricaoId) {
+        const { data: pagData } = await supabase.rpc('get_evento_pagamento', {
+          p_evento_id: eventoId!,
+          p_inscricao_id: newInscricaoId,
+        }) as any;
+        if (pagData && pagData.length > 0) {
+          setPagamentoInfo(pagData[0]);
+        }
+      }
       setSubmitted(true);
     } catch (e: any) {
       toast.error(e.message || 'Erro ao inscrever');
