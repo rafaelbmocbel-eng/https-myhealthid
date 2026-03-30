@@ -219,9 +219,9 @@ export default function EventoPublico() {
             <p className="text-sm text-muted-foreground">
               Você está inscrito(a) no evento <strong>{evento.titulo}</strong>.
             </p>
-            {evento.cobrar_pagamento && evento.link_pagamento && (
+            {pagamentoInfo?.link_pagamento && (
               <Button asChild className="w-full mt-4">
-                <a href={evento.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
+                <a href={pagamentoInfo.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
               </Button>
             )}
           </CardContent>
