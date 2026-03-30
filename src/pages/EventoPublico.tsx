@@ -40,7 +40,8 @@ export default function EventoPublico() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [vagasRestantes, setVagasRestantes] = useState<number | null>(null);
-  // Track how many times each option was chosen per question
+  const [pagamentoInfo, setPagamentoInfo] = useState<EventoPagamento | null>(null);
+  const [inscricaoId, setInscricaoId] = useState<string | null>(null);
   const [optionCounts, setOptionCounts] = useState<Record<string, Record<string, number>>>({});
 
   const [nome, setNome] = useState('');
