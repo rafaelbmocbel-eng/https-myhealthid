@@ -56,7 +56,7 @@ export default function EventoPublico() {
 
   const loadEvento = async () => {
     const { data: ev } = await supabase
-      .from('eventos')
+      .from('eventos_publicos')
       .select('*')
       .eq('id', eventoId!)
       .eq('ativo', true)
