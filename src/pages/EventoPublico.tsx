@@ -18,7 +18,12 @@ interface Evento {
   id: string; titulo: string; descricao: string | null; descricao_formulario: string | null;
   data_evento: string; horario_inicio: string; horario_fim: string; local: string | null;
   vagas_max: number | null; cobrar_pagamento: boolean; valor: number;
-  pix_chave: string | null; link_pagamento: string | null; ativo: boolean;
+  ativo: boolean;
+}
+
+interface EventoPagamento {
+  pix_chave: string | null; pix_tipo: string | null; pix_nome: string | null;
+  link_pagamento: string | null; valor: number | null;
 }
 
 interface Pergunta {
@@ -35,7 +40,8 @@ export default function EventoPublico() {
   const [submitted, setSubmitted] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [vagasRestantes, setVagasRestantes] = useState<number | null>(null);
-  // Track how many times each option was chosen per question
+  const [pagamentoInfo, setPagamentoInfo] = useState<EventoPagamento | null>(null);
+  const [inscricaoId, setInscricaoId] = useState<string | null>(null);
   const [optionCounts, setOptionCounts] = useState<Record<string, Record<string, number>>>({});
 
   const [nome, setNome] = useState('');
@@ -50,7 +56,7 @@ export default function EventoPublico() {
 
   const loadEvento = async () => {
     const { data: ev } = await supabase
-      .from('eventos')
+      .from('eventos_publicos')
       .select('*')
       .eq('id', eventoId!)
       .eq('ativo', true)
@@ -154,6 +160,18 @@ export default function EventoPublico() {
       });
       if (resp.error) throw new Error(resp.error.message);
       if (resp.data?.error) throw new Error(resp.data.error);
+      const newInscricaoId = resp.data?.inscricao_id;
+      setInscricaoId(newInscricaoId);
+      // Load payment info via secure RPC if event charges payment
+      if (evento?.cobrar_pagamento && newInscricaoId) {
+        const { data: pagData } = await supabase.rpc('get_evento_pagamento', {
+          p_evento_id: eventoId!,
+          p_inscricao_id: newInscricaoId,
+        }) as any;
+        if (pagData && pagData.length > 0) {
+          setPagamentoInfo(pagData[0]);
+        }
+      }
       setSubmitted(true);
     } catch (e: any) {
       toast.error(e.message || 'Erro ao inscrever');
@@ -201,9 +219,9 @@ export default function EventoPublico() {
             <p className="text-sm text-muted-foreground">
               Você está inscrito(a) no evento <strong>{evento.titulo}</strong>.
             </p>
-            {evento.cobrar_pagamento && evento.link_pagamento && (
+            {pagamentoInfo?.link_pagamento && (
               <Button asChild className="w-full mt-4">
-                <a href={evento.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
+                <a href={pagamentoInfo.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
               </Button>
             )}
           </CardContent>

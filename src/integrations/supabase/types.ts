@@ -689,6 +689,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "evento_inscricoes_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_publicos"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "evento_inscricoes_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
@@ -737,6 +744,13 @@ export type Database = {
             columns: ["evento_id"]
             isOneToOne: false
             referencedRelation: "eventos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_perguntas_evento_id_fkey"
+            columns: ["evento_id"]
+            isOneToOne: false
+            referencedRelation: "eventos_publicos"
             referencedColumns: ["id"]
           },
         ]
@@ -2965,7 +2979,60 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      eventos_publicos: {
+        Row: {
+          ativo: boolean | null
+          cobrar_pagamento: boolean | null
+          created_at: string | null
+          data_evento: string | null
+          descricao: string | null
+          descricao_formulario: string | null
+          horario_fim: string | null
+          horario_inicio: string | null
+          id: string | null
+          local: string | null
+          terapeuta_id: string | null
+          titulo: string | null
+          updated_at: string | null
+          vagas_max: number | null
+          valor: number | null
+        }
+        Insert: {
+          ativo?: boolean | null
+          cobrar_pagamento?: boolean | null
+          created_at?: string | null
+          data_evento?: string | null
+          descricao?: string | null
+          descricao_formulario?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string | null
+          local?: string | null
+          terapeuta_id?: string | null
+          titulo?: string | null
+          updated_at?: string | null
+          vagas_max?: number | null
+          valor?: number | null
+        }
+        Update: {
+          ativo?: boolean | null
+          cobrar_pagamento?: boolean | null
+          created_at?: string | null
+          data_evento?: string | null
+          descricao?: string | null
+          descricao_formulario?: string | null
+          horario_fim?: string | null
+          horario_inicio?: string | null
+          id?: string | null
+          local?: string | null
+          terapeuta_id?: string | null
+          titulo?: string | null
+          updated_at?: string | null
+          vagas_max?: number | null
+          valor?: number | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       count_evento_inscricoes: {
@@ -2988,6 +3055,16 @@ export type Database = {
           data_fim: string
           data_inicio: string
           status: string
+        }[]
+      }
+      get_evento_pagamento: {
+        Args: { p_evento_id: string; p_inscricao_id: string }
+        Returns: {
+          link_pagamento: string
+          pix_chave: string
+          pix_nome: string
+          pix_tipo: string
+          valor: number
         }[]
       }
       get_funil_pagamento: {
