@@ -303,50 +303,6 @@ export default function Protocolos() {
           </Button>
         </div>
 
-        {/* Patient Picker Dialog */}
-        <Dialog open={showPatientPicker} onOpenChange={setShowPatientPicker}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Selecionar Paciente</DialogTitle>
-            </DialogHeader>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar paciente..."
-                className="pl-10"
-                value={patientSearch}
-                onChange={e => setPatientSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="max-h-72 overflow-y-auto space-y-1">
-              {pacientes
-                .filter(p => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(patientSearch.toLowerCase()))
-                .map(p => {
-                  const nome = `${p.nome} ${p.sobrenome}`.trim();
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setShowPatientPicker(false);
-                        setPatientSearch('');
-                        setMontarLivre({ pacienteId: p.id, pacienteNome: nome });
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                        {p.nome.charAt(0)}
-                      </div>
-                      <span className="text-sm font-medium truncate">{nome}</span>
-                    </button>
-                  );
-                })}
-              {pacientes.filter(p => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">Nenhum paciente encontrado</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
 
 
         {/* Avaliações pendentes de protocolo */}
