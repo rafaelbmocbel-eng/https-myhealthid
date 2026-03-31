@@ -33,6 +33,7 @@ import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
+import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
