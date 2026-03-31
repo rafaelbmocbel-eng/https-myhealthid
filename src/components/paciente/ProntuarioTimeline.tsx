@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
   Dumbbell, Calendar, AlertTriangle, Brain, RefreshCw, Loader2,
-  Edit3, Save, X, Mic, Trash2,
+  Edit3, Save, X, Mic, Trash2, TrendingUp,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
