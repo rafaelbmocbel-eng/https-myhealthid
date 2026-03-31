@@ -677,7 +677,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {currentStep > 1 && (
+                        {currentStep > (isFreeMode ? 2 : 1) && (
                             <Button
                                 variant="outline"
                                 size="sm"
