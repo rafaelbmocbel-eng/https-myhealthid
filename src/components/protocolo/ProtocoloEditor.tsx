@@ -56,15 +56,14 @@ const STEPS = [
     { id: 3, label: 'Revisar', icon: Eye, desc: 'Confirmar e salvar' },
 ];
 
-export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
+export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
     const { user } = useAuth();
     const qc = useQueryClient();
     const [salvando, setSalvando] = useState(false);
-    const [currentStep, setCurrentStep] = useState(avaliacao ? 1 : 2);
+    const [currentStep, setCurrentStep] = useState(1);
     const [faseEditando, setFaseEditando] = useState(0);
 
-    const resolvedPacienteId = avaliacao?.paciente_id || pacienteId || '';
-    const isFreeMode = !avaliacao;
+    const resolvedPacienteId = avaliacao.paciente_id;
 
     const scores = {
         E: avaliacao?.score_e || 0,
