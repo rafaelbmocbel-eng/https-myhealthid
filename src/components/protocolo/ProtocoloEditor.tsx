@@ -66,14 +66,14 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
     const resolvedPacienteId = avaliacao.paciente_id;
 
     const scores = {
-        E: avaliacao?.score_e || 0,
-        P: avaliacao?.score_p || 0,
-        C: avaliacao?.score_c || 0,
-        F: avaliacao?.score_f || 0,
-        D: avaliacao?.score_d || 0,
-        R: avaliacao?.score_r || 0,
-        EFI: avaliacao?.score_efi || 0,
-        idFinal: avaliacao?.dor_identidade || 0,
+        E: avaliacao.score_e || 0,
+        P: avaliacao.score_p || 0,
+        C: avaliacao.score_c || 0,
+        F: avaliacao.score_f || 0,
+        D: avaliacao.score_d || 0,
+        R: avaliacao.score_r || 0,
+        EFI: avaliacao.score_efi || 0,
+        idFinal: avaliacao.dor_identidade || 0,
         classificacao: '',
     };
 
