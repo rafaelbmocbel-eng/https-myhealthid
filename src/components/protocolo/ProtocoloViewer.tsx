@@ -1,21 +1,20 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import {
   ArrowLeft, Download, Activity, Target, CheckCircle2,
-  Dumbbell, Clock, RotateCcw, ChevronDown, ChevronUp, Loader2, Brain, Zap,
-  Shield, Beaker, TrendingUp, AlertTriangle, BookOpen, Layers, FileText
+  Loader2, Zap, Shield, Beaker, TrendingUp, Layers, FileText
 } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { toast } from '@/hooks/use-toast';
-import ProtocoloFaseCard from './ProtocoloFaseCard';
 import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
+import ProtocoloDiretrizResumo from './ProtocoloDiretrizResumo';
+import { createLegacyDiretrizSnapshot, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
 interface Props {
   protocoloId: string;
@@ -25,7 +24,6 @@ interface Props {
 }
 
 export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNewDiretriz }: Props) {
-  const [fasesAbertas, setFasesAbertas] = useState<Set<number>>(new Set([0]));
   const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'tratamento' | 'progressao'>('fases');
 
   const { data: protocolo, isLoading: loadingProt } = useQuery({
@@ -66,18 +64,6 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
     },
   });
 
-  const { data: tecnicasDB = [] } = useQuery({
-    queryKey: ['tecnicas-tratamento-completas'],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('tecnicas_tratamento')
-        .select('*')
-        .order('fase_ideal, complexidade, nome');
-      if (error) throw error;
-      return (data || []) as any[];
-    },
-  });
-
   const { data: progressao } = useQuery({
     queryKey: ['protocolo-progressao', protocoloId],
     queryFn: async () => {
@@ -93,59 +79,17 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
     },
   });
 
-  const qc = useQueryClient();
-  const [salvando, setSalvando] = useState(false);
-
-  // Fetch already selected techniques for this protocol
   const { data: tratamentos = [] } = useQuery({
     queryKey: ['protocolo-tratamentos', protocoloId],
     queryFn: async () => {
       const { data, error } = await (supabase as any)
         .from('protocolo_tratamentos')
-        .select('*')
+        .select('*, tecnica:tecnica_id(*)')
         .eq('protocolo_id', protocoloId);
       if (error) throw error;
       return (data || []) as any[];
     },
   });
-
-  const selectedTecnicaIds = new Set(tratamentos.filter((t: any) => t.ativo).map((t: any) => t.tecnica_id));
-
-  const toggleTecnica = async (tecnicaId: string, faseNum: number) => {
-    setSalvando(true);
-    try {
-      const existing = tratamentos.find((t: any) => t.tecnica_id === tecnicaId);
-      if (existing) {
-        await (supabase as any)
-          .from('protocolo_tratamentos')
-          .update({ ativo: !existing.ativo })
-          .eq('id', existing.id);
-      } else {
-        await (supabase as any)
-          .from('protocolo_tratamentos')
-          .insert({
-            protocolo_id: protocoloId,
-            tecnica_id: tecnicaId,
-            fase_numero: faseNum,
-            ativo: true,
-          });
-      }
-      qc.invalidateQueries({ queryKey: ['protocolo-tratamentos', protocoloId] });
-      toast({ title: 'Diretriz atualizada' });
-    } catch (err: any) {
-      toast({ title: 'Erro ao atualizar técnica', description: err.message, variant: 'destructive' });
-    } finally {
-      setSalvando(false);
-    }
-  };
-
-  const toggleFase = (idx: number) => {
-    setFasesAbertas(prev => {
-      const s = new Set(prev);
-      if (s.has(idx)) s.delete(idx); else s.add(idx);
-      return s;
-    });
-  };
 
   if (loadingProt || loadingFases || loadingPres) {
     return (
@@ -160,6 +104,9 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   const scores = protocolo.scores_avaliacao || {};
   const faseAtual = progressao?.fase_atual || 1;
   const semanaAtual = progressao?.semana_atual || 1;
+  const diretrizSnapshot =
+    getDiretrizSnapshotFromScores(protocolo.scores_avaliacao) ??
+    createLegacyDiretrizSnapshot({ fases, prescricoes, tratamentos });
 
   const FASE_LABELS = ['Inflamatória', 'Proliferação', 'Remodelação', 'Funcional'];
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
@@ -312,29 +259,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
 
       {/* Tab content */}
       {tabAtiva === 'fases' && (
-        <div className="space-y-4 mb-6">
-          {fases.map((fase: any, idx: number) => (
-            <ProtocoloFaseCard
-              key={fase.id}
-              fase={fase}
-              idx={idx}
-              prescricoes={prescricoes.filter((p: any) => p.fase_id === fase.id)}
-              tecnicas={tecnicasDB.filter((t: any) => t.fase_ideal === idx + 1)}
-              selectedTecnicaIds={selectedTecnicaIds}
-              onToggleTecnica={toggleTecnica}
-              isOpen={fasesAbertas.has(idx)}
-              onToggle={() => toggleFase(idx)}
-              isAtual={faseAtual === idx + 1}
-              isConcluida={faseAtual > idx + 1}
-            />
-          ))}
-        </div>
-      )}
-
-      {salvando && (
-        <div className="fixed bottom-4 right-4 bg-primary text-primary-foreground px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 text-sm z-50 animate-in fade-in slide-in-from-bottom-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Atualizando Diretriz...
-        </div>
+        <ProtocoloDiretrizResumo fases={diretrizSnapshot?.fases || []} faseAtual={faseAtual} />
       )}
 
 
