@@ -262,8 +262,15 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex-1">
-                    <h2 className="text-lg font-bold text-foreground">Nova Diretriz — {pacienteNome}</h2>
-                    <p className="text-xs text-muted-foreground">ID Final: {scores.idFinal.toFixed(1)} · {demandas.length} demandas identificadas</p>
+                    <h2 className="text-lg font-bold text-foreground">
+                        {isFreeMode ? 'Montar Diretriz' : 'Nova Diretriz'} — {pacienteNome}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                        {isFreeMode
+                            ? 'Selecione técnicas e exercícios livremente do catálogo'
+                            : `ID Final: ${scores.idFinal.toFixed(1)} · ${demandas.length} demandas identificadas`
+                        }
+                    </p>
                 </div>
             </div>
 
