@@ -454,6 +454,32 @@ export default function Agenda() {
     membro_equipe_id: '',
   });
 
+  // ── Draft persistence for appointment form ─────────────────────
+  const AGENDA_DRAFT_KEY = 'agenda:form';
+  const AGENDA_DRAFT_VER = 1;
+
+  useEffect(() => {
+    void readDraft<{ form: FormData; modalOpen: boolean }>(AGENDA_DRAFT_KEY, AGENDA_DRAFT_VER).then(draft => {
+      if (!draft || !draft.modalOpen) return;
+      if (draft.form.data_inicio) {
+        setForm(draft.form);
+        setModal({ open: true });
+      }
+    });
+  }, []);
+
+  useEffect(() => {
+    if (!modal.open) return;
+    const save = () => void writeDraft(AGENDA_DRAFT_KEY, { form, modalOpen: modal.open }, AGENDA_DRAFT_VER);
+    const onVis = () => { if (document.visibilityState === 'hidden') save(); };
+    document.addEventListener('visibilitychange', onVis);
+    window.addEventListener('beforeunload', save);
+    return () => {
+      document.removeEventListener('visibilitychange', onVis);
+      window.removeEventListener('beforeunload', save);
+    };
+  }, [modal.open, form]);
+
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const navPrev = () => {
