@@ -75,6 +75,12 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; gradient: string; lab
     label: 'Falta',
     order: 9,
   },
+  evolucao: {
+    icon: <TrendingUp className="h-4 w-4" />,
+    gradient: 'from-cyan-500/15 to-cyan-500/5 text-cyan-700 border-cyan-200',
+    label: 'Evolução',
+    order: 3.5,
+  },
   geral: {
     icon: <FileText className="h-4 w-4" />,
     gradient: 'from-muted to-muted/50 text-muted-foreground border-border',
