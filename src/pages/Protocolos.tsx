@@ -294,23 +294,13 @@ export default function Protocolos() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowPatientPicker(true)}
-              className="gap-2"
-            >
-              <Dumbbell className="h-4 w-4" />
-              <span className="hidden sm:inline">Montar Diretriz</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/metodo-identidade')}
-              className="bg-gradient-primary text-white gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Nova Avaliação</span>
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/metodo-identidade')}
+            className="bg-gradient-primary text-white gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova Avaliação</span>
+          </Button>
         </div>
 
         {/* Patient Picker Dialog */}
