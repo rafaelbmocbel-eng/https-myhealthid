@@ -20,6 +20,7 @@ import {
 import { getThermalColor } from '@/utils/myidCalculations';
 import { buildDiretrizResumo, createDiretrizSnapshot } from '@/lib/protocoloSnapshot';
 import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
+import { gerarEvolucaoDiretrizCriada } from '@/utils/evolucaoAutoNotes';
 
 interface Avaliacao {
     id: string;
