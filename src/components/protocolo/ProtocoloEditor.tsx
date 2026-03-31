@@ -274,6 +274,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
             qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
             qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
             toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada, registrada no prontuário e pronta para uso.' });
+            await clearDraft(DRAFT_KEY);
             if (onSave) onSave((prot as any).id);
         } catch (err: any) {
             console.error(err);
