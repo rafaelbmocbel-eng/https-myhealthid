@@ -189,7 +189,7 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
                 .insert({
                     paciente_id: resolvedPacienteId,
                     terapeuta_id: user.id,
-                    avaliacao_id: avaliacao?.id || null,
+                    avaliacao_id: avaliacao.id,
                     titulo: `Diretriz Personalizada – ${pacienteNome}`,
                     objetivo_geral: analisePersonalizada.objetivoGeral,
                     descricao: buildDiretrizResumo(diretrizSnapshot),
