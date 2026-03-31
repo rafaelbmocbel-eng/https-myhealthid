@@ -138,9 +138,9 @@ export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, o
             const { data: prot, error: errProt } = await supabase
                 .from('protocolos' as any)
                 .insert({
-                    paciente_id: avaliacao.paciente_id,
+                    paciente_id: resolvedPacienteId,
                     terapeuta_id: user.id,
-                    avaliacao_id: avaliacao.id,
+                    avaliacao_id: avaliacao?.id || null,
                     titulo: `Diretriz Personalizada – ${pacienteNome}`,
                     objetivo_geral: analisePersonalizada.objetivoGeral,
                     descricao: buildDiretrizResumo(diretrizSnapshot),
