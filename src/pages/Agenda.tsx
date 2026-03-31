@@ -685,6 +685,7 @@ export default function Agenda() {
 
     setModal({ open: false });
     setSubmitting(false);
+    void clearDraft(AGENDA_DRAFT_KEY);
   };
 
   const handleDelete = async () => {
