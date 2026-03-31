@@ -36,7 +36,8 @@ interface Avaliacao {
 }
 
 interface ProtocoloEditorProps {
-    avaliacao: Avaliacao;
+    avaliacao?: Avaliacao;
+    pacienteId?: string;
     pacienteNome: string;
     onSave?: (protocoloId?: string) => void;
     onCancel: () => void;
@@ -55,22 +56,25 @@ const STEPS = [
     { id: 3, label: 'Revisar', icon: Eye, desc: 'Confirmar e salvar' },
 ];
 
-export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
+export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
     const { user } = useAuth();
     const qc = useQueryClient();
     const [salvando, setSalvando] = useState(false);
-    const [currentStep, setCurrentStep] = useState(1);
+    const [currentStep, setCurrentStep] = useState(avaliacao ? 1 : 2);
     const [faseEditando, setFaseEditando] = useState(0);
 
+    const resolvedPacienteId = avaliacao?.paciente_id || pacienteId || '';
+    const isFreeMode = !avaliacao;
+
     const scores = {
-        E: avaliacao.score_e || 0,
-        P: avaliacao.score_p || 0,
-        C: avaliacao.score_c || 0,
-        F: avaliacao.score_f || 0,
-        D: avaliacao.score_d || 0,
-        R: avaliacao.score_r || 0,
-        EFI: avaliacao.score_efi || 0,
-        idFinal: avaliacao.dor_identidade || 0,
+        E: avaliacao?.score_e || 0,
+        P: avaliacao?.score_p || 0,
+        C: avaliacao?.score_c || 0,
+        F: avaliacao?.score_f || 0,
+        D: avaliacao?.score_d || 0,
+        R: avaliacao?.score_r || 0,
+        EFI: avaliacao?.score_efi || 0,
+        idFinal: avaliacao?.dor_identidade || 0,
         classificacao: '',
     };
 
