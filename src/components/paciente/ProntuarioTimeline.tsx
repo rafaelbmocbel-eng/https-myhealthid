@@ -16,7 +16,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import {
   FileText, Activity, Stethoscope, Heart, ClipboardCheck,
   Dumbbell, Calendar, AlertTriangle, Brain, RefreshCw, Loader2,
-  Edit3, Save, X, Mic, Trash2,
+  Edit3, Save, X, Mic, Trash2, TrendingUp,
 } from 'lucide-react';
 import type { NotaProntuario } from '@/hooks/useNotasProntuario';
 
@@ -74,6 +74,12 @@ const TIPO_CONFIG: Record<string, { icon: React.ReactNode; gradient: string; lab
     gradient: 'from-red-500/15 to-red-500/5 text-red-700 border-red-200',
     label: 'Falta',
     order: 9,
+  },
+  evolucao: {
+    icon: <TrendingUp className="h-4 w-4" />,
+    gradient: 'from-cyan-500/15 to-cyan-500/5 text-cyan-700 border-cyan-200',
+    label: 'Evolução',
+    order: 3.5,
   },
   geral: {
     icon: <FileText className="h-4 w-4" />,
