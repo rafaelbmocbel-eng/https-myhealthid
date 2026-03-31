@@ -276,7 +276,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
 
             {/* Stepper */}
             <div className="flex items-center gap-2 mb-6 bg-muted/40 rounded-xl p-3">
-                {STEPS.map((step, i) => {
+                {STEPS.filter(s => !isFreeMode || s.id !== 1).map((step, i, arr) => {
                     const Icon = step.icon;
                     const isActive = currentStep === step.id;
                     const isDone = currentStep > step.id;
@@ -295,7 +295,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
                                     isActive ? 'bg-primary-foreground/20' : isDone ? 'bg-primary/20' : 'bg-muted'
                                 }`}>
-                                    {isDone ? <Check className="h-3 w-3" /> : step.id}
+                                    {isDone ? <Check className="h-3 w-3" /> : i + 1}
                                 </div>
                                 <div className="text-left hidden sm:block">
                                     <div className="text-xs font-semibold leading-tight">{step.label}</div>
@@ -303,7 +303,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 </div>
                                 <span className="text-xs font-semibold sm:hidden">{step.label}</span>
                             </button>
-                            {i < STEPS.length - 1 && (
+                            {i < arr.length - 1 && (
                                 <ChevronDown className="h-3 w-3 text-muted-foreground rotate-[-90deg] shrink-0 hidden sm:block" />
                             )}
                         </div>
