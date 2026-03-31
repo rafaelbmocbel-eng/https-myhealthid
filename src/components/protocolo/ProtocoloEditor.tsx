@@ -19,6 +19,7 @@ import {
 } from '@/utils/demandasAnalyzer';
 import { getThermalColor } from '@/utils/myidCalculations';
 import { buildDiretrizResumo, createDiretrizSnapshot } from '@/lib/protocoloSnapshot';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 
 interface Avaliacao {
     id: string;
