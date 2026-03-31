@@ -268,6 +268,9 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
 
             // ── Auto-generate evolution note for new guideline ──
             try {
+                const evoTotalFases = analisePersonalizada.fases.length;
+                const evoFasesResumo = analisePersonalizada.fases.map(f => `Fase ${f.numero}: ${f.titulo}`).join(' | ');
+                const evoDemandas = analisePersonalizada.demandasIdentificadas.slice(0, 3).map(d => `${d.area} (${d.severidade})`).join(', ');
                 await gerarEvolucaoDiretrizCriada({
                     pacienteId: resolvedPacienteId,
                     terapeutaId: user.id,
@@ -276,11 +279,11 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     objetivo: analisePersonalizada.objetivoGeral,
                     duracaoTotal: analisePersonalizada.duracaoTotal,
                     frequencia: analisePersonalizada.frequencia,
-                    totalFases,
+                    totalFases: evoTotalFases,
                     totalTecnicas: totalTecSelecionados,
                     totalExercicios: totalExSelecionados,
-                    fasesResumo,
-                    demandas,
+                    fasesResumo: evoFasesResumo,
+                    demandas: evoDemandas,
                 });
             } catch (_) { /* ignore */ }
 
