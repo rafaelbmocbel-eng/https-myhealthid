@@ -323,7 +323,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
 
             {/* Stepper */}
             <div className="flex items-center gap-2 mb-6 bg-muted/40 rounded-xl p-3">
-                {STEPS.filter(s => !isFreeMode || s.id !== 1).map((step, i, arr) => {
+                {STEPS.map((step, i, arr) => {
                     const Icon = step.icon;
                     const isActive = currentStep === step.id;
                     const isDone = currentStep > step.id;
