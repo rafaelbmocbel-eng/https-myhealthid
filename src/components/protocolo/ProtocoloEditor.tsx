@@ -37,8 +37,7 @@ interface Avaliacao {
 }
 
 interface ProtocoloEditorProps {
-    avaliacao?: Avaliacao;
-    pacienteId?: string;
+    avaliacao: Avaliacao;
     pacienteNome: string;
     onSave?: (protocoloId?: string) => void;
     onCancel: () => void;
@@ -57,25 +56,24 @@ const STEPS = [
     { id: 3, label: 'Revisar', icon: Eye, desc: 'Confirmar e salvar' },
 ];
 
-export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
+export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCancel }: ProtocoloEditorProps) {
     const { user } = useAuth();
     const qc = useQueryClient();
     const [salvando, setSalvando] = useState(false);
-    const [currentStep, setCurrentStep] = useState(avaliacao ? 1 : 2);
+    const [currentStep, setCurrentStep] = useState(1);
     const [faseEditando, setFaseEditando] = useState(0);
 
-    const resolvedPacienteId = avaliacao?.paciente_id || pacienteId || '';
-    const isFreeMode = !avaliacao;
+    const resolvedPacienteId = avaliacao.paciente_id;
 
     const scores = {
-        E: avaliacao?.score_e || 0,
-        P: avaliacao?.score_p || 0,
-        C: avaliacao?.score_c || 0,
-        F: avaliacao?.score_f || 0,
-        D: avaliacao?.score_d || 0,
-        R: avaliacao?.score_r || 0,
-        EFI: avaliacao?.score_efi || 0,
-        idFinal: avaliacao?.dor_identidade || 0,
+        E: avaliacao.score_e || 0,
+        P: avaliacao.score_p || 0,
+        C: avaliacao.score_c || 0,
+        F: avaliacao.score_f || 0,
+        D: avaliacao.score_d || 0,
+        R: avaliacao.score_r || 0,
+        EFI: avaliacao.score_efi || 0,
+        idFinal: avaliacao.dor_identidade || 0,
         classificacao: '',
     };
 
@@ -191,7 +189,7 @@ export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, o
                 .insert({
                     paciente_id: resolvedPacienteId,
                     terapeuta_id: user.id,
-                    avaliacao_id: avaliacao?.id || null,
+                    avaliacao_id: avaliacao.id,
                     titulo: `Diretriz Personalizada – ${pacienteNome}`,
                     objetivo_geral: analisePersonalizada.objetivoGeral,
                     descricao: buildDiretrizResumo(diretrizSnapshot),
@@ -315,20 +313,17 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                 </Button>
                 <div className="flex-1">
                     <h2 className="text-lg font-bold text-foreground">
-                        {isFreeMode ? 'Montar Diretriz' : 'Nova Diretriz'} — {pacienteNome}
+                        Nova Diretriz — {pacienteNome}
                     </h2>
                     <p className="text-xs text-muted-foreground">
-                        {isFreeMode
-                            ? 'Selecione técnicas e exercícios livremente do catálogo'
-                            : `ID Final: ${scores.idFinal.toFixed(1)} · ${demandas.length} demandas identificadas`
-                        }
+                        ID Final: {scores.idFinal.toFixed(1)} · {demandas.length} demandas identificadas
                     </p>
                 </div>
             </div>
 
             {/* Stepper */}
             <div className="flex items-center gap-2 mb-6 bg-muted/40 rounded-xl p-3">
-                {STEPS.filter(s => !isFreeMode || s.id !== 1).map((step, i, arr) => {
+                {STEPS.map((step, i, arr) => {
                     const Icon = step.icon;
                     const isActive = currentStep === step.id;
                     const isDone = currentStep > step.id;
@@ -729,7 +724,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {currentStep > (isFreeMode ? 2 : 1) && (
+                        {currentStep > 1 && (
                             <Button
                                 variant="outline"
                                 size="sm"

@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+
 
 import AppLayout from '@/components/AppLayout';
 import { Button } from '@/components/ui/button';
@@ -86,9 +86,6 @@ export default function Protocolos() {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [analiseAvaliacao, setAnaliseAvaliacao] = useState<Avaliacao | null>(null);
-  const [montarLivre, setMontarLivre] = useState<{ pacienteId: string; pacienteNome: string } | null>(null);
-  const [showPatientPicker, setShowPatientPicker] = useState(false);
-  const [patientSearch, setPatientSearch] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   if (!loading && !user) { navigate('/auth'); return null; }
@@ -260,34 +257,6 @@ export default function Protocolos() {
     );
   }
 
-  // ── View: Montar Diretriz Livre ────────────────────────────────────────────
-  if (montarLivre) {
-    return (
-      <AppLayout>
-        <div className="container py-8">
-          <div className="flex items-center gap-3 mb-6">
-            <Button variant="outline" onClick={() => setMontarLivre(null)} className="gap-2">
-              <ChevronRight className="h-4 w-4 rotate-180" />
-              Voltar
-            </Button>
-            <div>
-              <h1 className="text-xl font-bold text-foreground">Montar Diretriz de Tratamento</h1>
-              <p className="text-sm text-muted-foreground">Seleção livre de técnicas e exercícios · {montarLivre.pacienteNome}</p>
-            </div>
-          </div>
-          <ProtocoloEditor
-            pacienteId={montarLivre.pacienteId}
-            pacienteNome={montarLivre.pacienteNome}
-            onSave={(protocoloId) => {
-              setMontarLivre(null);
-              if (protocoloId) setViewingId(protocoloId);
-            }}
-            onCancel={() => setMontarLivre(null)}
-          />
-        </div>
-      </AppLayout>
-    );
-  }
 
   if (viewingId) {
     return (
@@ -325,69 +294,15 @@ export default function Protocolos() {
               </p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              onClick={() => setShowPatientPicker(true)}
-              className="gap-2"
-            >
-              <Dumbbell className="h-4 w-4" />
-              <span className="hidden sm:inline">Montar Diretriz</span>
-            </Button>
-            <Button
-              onClick={() => navigate('/metodo-identidade')}
-              className="bg-gradient-primary text-white gap-2"
-            >
-              <Plus className="h-4 w-4" />
-              <span className="hidden sm:inline">Nova Avaliação</span>
-            </Button>
-          </div>
+          <Button
+            onClick={() => navigate('/metodo-identidade')}
+            className="bg-gradient-primary text-white gap-2"
+          >
+            <Plus className="h-4 w-4" />
+            <span className="hidden sm:inline">Nova Avaliação</span>
+          </Button>
         </div>
 
-        {/* Patient Picker Dialog */}
-        <Dialog open={showPatientPicker} onOpenChange={setShowPatientPicker}>
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle>Selecionar Paciente</DialogTitle>
-            </DialogHeader>
-            <div className="relative mb-3">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar paciente..."
-                className="pl-10"
-                value={patientSearch}
-                onChange={e => setPatientSearch(e.target.value)}
-                autoFocus
-              />
-            </div>
-            <div className="max-h-72 overflow-y-auto space-y-1">
-              {pacientes
-                .filter(p => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(patientSearch.toLowerCase()))
-                .map(p => {
-                  const nome = `${p.nome} ${p.sobrenome}`.trim();
-                  return (
-                    <button
-                      key={p.id}
-                      onClick={() => {
-                        setShowPatientPicker(false);
-                        setPatientSearch('');
-                        setMontarLivre({ pacienteId: p.id, pacienteNome: nome });
-                      }}
-                      className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-muted transition-colors text-left"
-                    >
-                      <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">
-                        {p.nome.charAt(0)}
-                      </div>
-                      <span className="text-sm font-medium truncate">{nome}</span>
-                    </button>
-                  );
-                })}
-              {pacientes.filter(p => `${p.nome} ${p.sobrenome}`.toLowerCase().includes(patientSearch.toLowerCase())).length === 0 && (
-                <p className="text-sm text-muted-foreground text-center py-6">Nenhum paciente encontrado</p>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
 
 
         {/* Avaliações pendentes de protocolo */}
