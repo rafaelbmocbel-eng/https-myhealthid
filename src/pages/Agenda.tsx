@@ -29,6 +29,7 @@ import { Navigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 import { useToast } from '@/hooks/use-toast';
 import { getPatientColor } from '@/utils/agendaUtils';
 import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
