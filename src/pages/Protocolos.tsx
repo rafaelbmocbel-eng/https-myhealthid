@@ -260,7 +260,35 @@ export default function Protocolos() {
     );
   }
 
-  // ── View: Ver protocolo existente ─────────────────────────────────────────────
+  // ── View: Montar Diretriz Livre ────────────────────────────────────────────
+  if (montarLivre) {
+    return (
+      <AppLayout>
+        <div className="container py-8">
+          <div className="flex items-center gap-3 mb-6">
+            <Button variant="outline" onClick={() => setMontarLivre(null)} className="gap-2">
+              <ChevronRight className="h-4 w-4 rotate-180" />
+              Voltar
+            </Button>
+            <div>
+              <h1 className="text-xl font-bold text-foreground">Montar Diretriz de Tratamento</h1>
+              <p className="text-sm text-muted-foreground">Seleção livre de técnicas e exercícios · {montarLivre.pacienteNome}</p>
+            </div>
+          </div>
+          <ProtocoloEditor
+            pacienteId={montarLivre.pacienteId}
+            pacienteNome={montarLivre.pacienteNome}
+            onSave={(protocoloId) => {
+              setMontarLivre(null);
+              if (protocoloId) setViewingId(protocoloId);
+            }}
+            onCancel={() => setMontarLivre(null)}
+          />
+        </div>
+      </AppLayout>
+    );
+  }
+
   if (viewingId) {
     return (
       <AppLayout>
