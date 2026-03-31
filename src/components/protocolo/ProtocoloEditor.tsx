@@ -18,6 +18,7 @@ import {
     ProtocoloAnalise
 } from '@/utils/demandasAnalyzer';
 import { getThermalColor } from '@/utils/myidCalculations';
+import { buildDiretrizResumo, createDiretrizSnapshot } from '@/lib/protocoloSnapshot';
 
 interface Avaliacao {
     id: string;
@@ -122,9 +123,12 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
                 })),
             };
 
+            const diretrizSnapshot = createDiretrizSnapshot(analisePersonalizada);
+
             const finalScores = {
                 ...scores,
                 prognose: analisePersonalizada.prognose,
+                diretriz_snapshot: diretrizSnapshot,
             };
 
             const { data: prot, error: errProt } = await supabase
@@ -135,6 +139,7 @@ export default function ProtocoloEditor({ avaliacao, pacienteNome, onSave, onCan
                     avaliacao_id: avaliacao.id,
                     titulo: `Diretriz Personalizada – ${pacienteNome}`,
                     objetivo_geral: analisePersonalizada.objetivoGeral,
+                    descricao: buildDiretrizResumo(diretrizSnapshot),
                     duracao_total: analisePersonalizada.duracaoTotal,
                     frequencia: analisePersonalizada.frequencia,
                     perfil_dominante: analisePersonalizada.demandasIdentificadas.map(d => d.area.toUpperCase().replace(/ /g, '_')),
