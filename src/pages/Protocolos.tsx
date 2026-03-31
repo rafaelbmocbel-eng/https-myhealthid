@@ -85,6 +85,9 @@ export default function Protocolos() {
   const [viewingId, setViewingId] = useState<string | null>(null);
   const [exportingId, setExportingId] = useState<string | null>(null);
   const [analiseAvaliacao, setAnaliseAvaliacao] = useState<Avaliacao | null>(null);
+  const [montarLivre, setMontarLivre] = useState<{ pacienteId: string; pacienteNome: string } | null>(null);
+  const [showPatientPicker, setShowPatientPicker] = useState(false);
+  const [patientSearch, setPatientSearch] = useState('');
   const [salvando, setSalvando] = useState(false);
 
   if (!loading && !user) { navigate('/auth'); return null; }
