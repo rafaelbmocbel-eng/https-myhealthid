@@ -266,6 +266,24 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                 console.warn('Nota do prontuário não registrada:', notaErr);
             }
 
+            // ── Auto-generate evolution note for new guideline ──
+            try {
+                await gerarEvolucaoDiretrizCriada({
+                    pacienteId: resolvedPacienteId,
+                    terapeutaId: user.id,
+                    protocoloId: (prot as any).id,
+                    titulo: `Diretriz Personalizada – ${pacienteNome}`,
+                    objetivo: analisePersonalizada.objetivoGeral,
+                    duracaoTotal: analisePersonalizada.duracaoTotal,
+                    frequencia: analisePersonalizada.frequencia,
+                    totalFases,
+                    totalTecnicas: totalTecSelecionados,
+                    totalExercicios: totalExSelecionados,
+                    fasesResumo,
+                    demandas,
+                });
+            } catch (_) { /* ignore */ }
+
             qc.invalidateQueries({ queryKey: ['protocolos'] });
             qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
             qc.invalidateQueries({ queryKey: ['avaliacoes-sem-protocolo'] });
