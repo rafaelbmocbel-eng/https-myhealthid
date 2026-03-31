@@ -37,8 +37,7 @@ interface Avaliacao {
 }
 
 interface ProtocoloEditorProps {
-    avaliacao?: Avaliacao;
-    pacienteId?: string;
+    avaliacao: Avaliacao;
     pacienteNome: string;
     onSave?: (protocoloId?: string) => void;
     onCancel: () => void;
