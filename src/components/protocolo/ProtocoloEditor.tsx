@@ -199,7 +199,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                 await (supabase as any)
                     .from('notas_prontuario')
                     .insert({
-                        paciente_id: avaliacao.paciente_id,
+                        paciente_id: resolvedPacienteId,
                         terapeuta_id: user.id,
                         tipo: 'conduta_diretriz',
                         titulo: `Diretriz de Tratamento — ${analisePersonalizada.duracaoTotal}`,
