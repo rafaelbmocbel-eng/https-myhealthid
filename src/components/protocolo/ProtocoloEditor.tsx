@@ -138,9 +138,9 @@ export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, o
             const { data: prot, error: errProt } = await supabase
                 .from('protocolos' as any)
                 .insert({
-                    paciente_id: avaliacao.paciente_id,
+                    paciente_id: resolvedPacienteId,
                     terapeuta_id: user.id,
-                    avaliacao_id: avaliacao.id,
+                    avaliacao_id: avaliacao?.id || null,
                     titulo: `Diretriz Personalizada – ${pacienteNome}`,
                     objetivo_geral: analisePersonalizada.objetivoGeral,
                     descricao: buildDiretrizResumo(diretrizSnapshot),
@@ -199,7 +199,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                 await (supabase as any)
                     .from('notas_prontuario')
                     .insert({
-                        paciente_id: avaliacao.paciente_id,
+                        paciente_id: resolvedPacienteId,
                         terapeuta_id: user.id,
                         tipo: 'conduta_diretriz',
                         titulo: `Diretriz de Tratamento — ${analisePersonalizada.duracaoTotal}`,
@@ -262,14 +262,21 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     <ArrowLeft className="h-4 w-4" />
                 </Button>
                 <div className="flex-1">
-                    <h2 className="text-lg font-bold text-foreground">Nova Diretriz — {pacienteNome}</h2>
-                    <p className="text-xs text-muted-foreground">ID Final: {scores.idFinal.toFixed(1)} · {demandas.length} demandas identificadas</p>
+                    <h2 className="text-lg font-bold text-foreground">
+                        {isFreeMode ? 'Montar Diretriz' : 'Nova Diretriz'} — {pacienteNome}
+                    </h2>
+                    <p className="text-xs text-muted-foreground">
+                        {isFreeMode
+                            ? 'Selecione técnicas e exercícios livremente do catálogo'
+                            : `ID Final: ${scores.idFinal.toFixed(1)} · ${demandas.length} demandas identificadas`
+                        }
+                    </p>
                 </div>
             </div>
 
             {/* Stepper */}
             <div className="flex items-center gap-2 mb-6 bg-muted/40 rounded-xl p-3">
-                {STEPS.map((step, i) => {
+                {STEPS.filter(s => !isFreeMode || s.id !== 1).map((step, i, arr) => {
                     const Icon = step.icon;
                     const isActive = currentStep === step.id;
                     const isDone = currentStep > step.id;
@@ -288,7 +295,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 <div className={`w-6 h-6 rounded-full flex items-center justify-center shrink-0 text-xs font-bold ${
                                     isActive ? 'bg-primary-foreground/20' : isDone ? 'bg-primary/20' : 'bg-muted'
                                 }`}>
-                                    {isDone ? <Check className="h-3 w-3" /> : step.id}
+                                    {isDone ? <Check className="h-3 w-3" /> : i + 1}
                                 </div>
                                 <div className="text-left hidden sm:block">
                                     <div className="text-xs font-semibold leading-tight">{step.label}</div>
@@ -296,7 +303,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 </div>
                                 <span className="text-xs font-semibold sm:hidden">{step.label}</span>
                             </button>
-                            {i < STEPS.length - 1 && (
+                            {i < arr.length - 1 && (
                                 <ChevronDown className="h-3 w-3 text-muted-foreground rotate-[-90deg] shrink-0 hidden sm:block" />
                             )}
                         </div>
@@ -670,7 +677,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                     </div>
 
                     <div className="flex items-center gap-2">
-                        {currentStep > 1 && (
+                        {currentStep > (isFreeMode ? 2 : 1) && (
                             <Button
                                 variant="outline"
                                 size="sm"
