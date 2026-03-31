@@ -99,6 +99,56 @@ export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, o
         return initial;
     });
 
+    // ── Draft persistence ──────────────────────────────────────────
+    const DRAFT_KEY = `diretriz:${resolvedPacienteId}`;
+    const DRAFT_VERSION = 2;
+    const draftRestoredRef = useRef(false);
+
+    // Restore draft on mount
+    useEffect(() => {
+        if (draftRestoredRef.current) return;
+        draftRestoredRef.current = true;
+        void readDraft<{
+            step: number;
+            fase: number;
+            exercicios: Record<number, number[]>;
+            tecnicas: Record<number, number[]>;
+        }>(DRAFT_KEY, DRAFT_VERSION).then(draft => {
+            if (!draft) return;
+            setCurrentStep(draft.step);
+            setFaseEditando(draft.fase);
+            const ex: Record<number, Set<number>> = {};
+            Object.entries(draft.exercicios).forEach(([k, v]) => { ex[Number(k)] = new Set(v); });
+            setSelectedExercicios(ex);
+            const tec: Record<number, Set<number>> = {};
+            Object.entries(draft.tecnicas).forEach(([k, v]) => { tec[Number(k)] = new Set(v); });
+            setSelectedTecnicas(tec);
+        });
+    }, [DRAFT_KEY]);
+
+    // Persist on visibility change / beforeunload
+    const saveDraftNow = () => {
+        const serializable = {
+            step: currentStep,
+            fase: faseEditando,
+            exercicios: Object.fromEntries(Object.entries(selectedExercicios).map(([k, s]) => [k, [...s]])),
+            tecnicas: Object.fromEntries(Object.entries(selectedTecnicas).map(([k, s]) => [k, [...s]])),
+        };
+        void writeDraft(DRAFT_KEY, serializable, DRAFT_VERSION);
+    };
+
+    useEffect(() => {
+        const onVis = () => { if (document.visibilityState === 'hidden') saveDraftNow(); };
+        const onUnload = () => saveDraftNow();
+        document.addEventListener('visibilitychange', onVis);
+        window.addEventListener('beforeunload', onUnload);
+        return () => {
+            document.removeEventListener('visibilitychange', onVis);
+            window.removeEventListener('beforeunload', onUnload);
+            saveDraftNow(); // persist on unmount too
+        };
+    });
+
     const toggleExercicio = (faseIdx: number, exIdx: number) => {
         setSelectedExercicios(prev => {
             const s = new Set(prev[faseIdx] || []);
