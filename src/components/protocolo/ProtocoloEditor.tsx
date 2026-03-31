@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -19,6 +19,7 @@ import {
 } from '@/utils/demandasAnalyzer';
 import { getThermalColor } from '@/utils/myidCalculations';
 import { buildDiretrizResumo, createDiretrizSnapshot } from '@/lib/protocoloSnapshot';
+import { readDraft, writeDraft, clearDraft } from '@/lib/draftStorage';
 
 interface Avaliacao {
     id: string;
@@ -96,6 +97,56 @@ export default function ProtocoloEditor({ avaliacao, pacienteId, pacienteNome, o
             initial[idx] = new Set(fase.tecnicas.map((_, i) => i));
         });
         return initial;
+    });
+
+    // ── Draft persistence ──────────────────────────────────────────
+    const DRAFT_KEY = `diretriz:${resolvedPacienteId}`;
+    const DRAFT_VERSION = 2;
+    const draftRestoredRef = useRef(false);
+
+    // Restore draft on mount
+    useEffect(() => {
+        if (draftRestoredRef.current) return;
+        draftRestoredRef.current = true;
+        void readDraft<{
+            step: number;
+            fase: number;
+            exercicios: Record<number, number[]>;
+            tecnicas: Record<number, number[]>;
+        }>(DRAFT_KEY, DRAFT_VERSION).then(draft => {
+            if (!draft) return;
+            setCurrentStep(draft.step);
+            setFaseEditando(draft.fase);
+            const ex: Record<number, Set<number>> = {};
+            Object.entries(draft.exercicios).forEach(([k, v]) => { ex[Number(k)] = new Set(v); });
+            setSelectedExercicios(ex);
+            const tec: Record<number, Set<number>> = {};
+            Object.entries(draft.tecnicas).forEach(([k, v]) => { tec[Number(k)] = new Set(v); });
+            setSelectedTecnicas(tec);
+        });
+    }, [DRAFT_KEY]);
+
+    // Persist on visibility change / beforeunload
+    const saveDraftNow = () => {
+        const serializable = {
+            step: currentStep,
+            fase: faseEditando,
+            exercicios: Object.fromEntries(Object.entries(selectedExercicios).map(([k, s]) => [k, [...s]])),
+            tecnicas: Object.fromEntries(Object.entries(selectedTecnicas).map(([k, s]) => [k, [...s]])),
+        };
+        void writeDraft(DRAFT_KEY, serializable, DRAFT_VERSION);
+    };
+
+    useEffect(() => {
+        const onVis = () => { if (document.visibilityState === 'hidden') saveDraftNow(); };
+        const onUnload = () => saveDraftNow();
+        document.addEventListener('visibilitychange', onVis);
+        window.addEventListener('beforeunload', onUnload);
+        return () => {
+            document.removeEventListener('visibilitychange', onVis);
+            window.removeEventListener('beforeunload', onUnload);
+            saveDraftNow(); // persist on unmount too
+        };
     });
 
     const toggleExercicio = (faseIdx: number, exIdx: number) => {
@@ -223,6 +274,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
             qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
             qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
             toast({ title: '✅ Diretriz salva com sucesso!', description: 'Diretriz em 4 fases criada, registrada no prontuário e pronta para uso.' });
+            await clearDraft(DRAFT_KEY);
             if (onSave) onSave((prot as any).id);
         } catch (err: any) {
             console.error(err);
