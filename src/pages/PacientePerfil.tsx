@@ -170,6 +170,30 @@ export default function PacientePerfil() {
     enabled: !!user && !!id,
   });
 
+  const { data: sessoesPaciente = [] } = useQuery({
+    queryKey: ['sessoes-paciente-perfil', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('controle_sessoes')
+        .select('*')
+        .eq('paciente_id', id!)
+        .eq('terapeuta_id', user!.id)
+        .order('data_sessao', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+
+  const sessoesInfo = useMemo(() => {
+    const realizadas = sessoesPaciente.filter((s: any) => s.status === 'realizada');
+    const ultimaSessao = realizadas[0];
+    const numeroAtual = ultimaSessao?.numero_sessao || 0;
+    // Detect active package: group by tipo_atendimento or count
+    const totalRealizadas = realizadas.length;
+    return { numeroAtual, totalRealizadas, ultimaSessao };
+  }, [sessoesPaciente]);
+
   const { data: tratamentosMap = {} } = useQuery({
     queryKey: ['tratamentos-perfil', id, protocolos.map((p: any) => p.id).join(',')],
     queryFn: async () => {
