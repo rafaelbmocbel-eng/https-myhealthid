@@ -290,6 +290,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                   </div>
                 </div>
               )}
+              <PacoteBadge pacienteId={paciente.id} />
             </div>
           </div>
         </div>

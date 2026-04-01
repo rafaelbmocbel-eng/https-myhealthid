@@ -187,6 +187,7 @@ export default function StudioPersonalID() {
                       </div>
                     </div>
                   )}
+                  <PacoteBadge pacienteId={selectedPaciente.id} />
                 </div>
               </div>
             </div>

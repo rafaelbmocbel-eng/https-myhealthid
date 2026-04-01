@@ -693,6 +693,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   </div>
                 </div>
               )}
+              <PacoteBadge pacienteId={paciente.id} />
              </div>
             </div>
           </div>
