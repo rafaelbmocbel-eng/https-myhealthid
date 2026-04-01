@@ -40,6 +40,7 @@ import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
+import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
