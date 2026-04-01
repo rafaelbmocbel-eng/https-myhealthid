@@ -404,12 +404,13 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* KPI Cards — compact 3-col, show only available data */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        {/* KPI Cards — compact grid, show only available data */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {[
             idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
             { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
             { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
+            { icon: ClipboardList, label: 'Sessão', value: `#${sessoesInfo.numeroAtual}`, sub: `${sessoesInfo.totalRealizadas} total` },
           ].filter(Boolean).map((kpi: any) => {
             const Icon = kpi.icon;
             return (
