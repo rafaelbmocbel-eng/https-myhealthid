@@ -908,6 +908,13 @@ export default function PacientePerfil() {
             </div>
           </TabsContent>
 
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: FINANCEIRO
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="financeiro" className="mt-4">
+            <PacienteFinanceiroTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+          </TabsContent>
+
 
         </Tabs>
       </div>
