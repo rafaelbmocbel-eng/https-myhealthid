@@ -422,6 +422,7 @@ export default function PacientePerfil() {
               </div>
             );
           })}
+          <PacoteSessoesManager pacienteId={id!} compact />
         </div>
 
         {/* Contact inline */}

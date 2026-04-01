@@ -1132,6 +1132,18 @@ export default function GestaoVendas() {
                 {/* ══════════════════ SERVIÇOS & PAGAMENTOS TAB ══════════════════ */}
                 {activeTab === 'servicos' && (
                     <div className="space-y-4">
+                        {/* Pacotes de sessões por paciente */}
+                        {selectedPatient && (
+                            <PacoteSessoesManager pacienteId={selectedPatient.id} />
+                        )}
+                        {!selectedPatient && (
+                            <Card className="border-dashed">
+                                <CardContent className="p-4 text-center text-sm text-muted-foreground">
+                                    <Package className="h-5 w-5 mx-auto mb-2 text-muted-foreground/50" />
+                                    Selecione um paciente acima para gerenciar seus pacotes de sessões.
+                                </CardContent>
+                            </Card>
+                        )}
                         <Card className="border">
                             <CardHeader className="pb-2">
                                 <CardTitle className="text-sm font-bold flex items-center gap-2">
