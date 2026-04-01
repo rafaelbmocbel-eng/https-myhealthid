@@ -84,6 +84,7 @@ const App = () => (
         <BrowserRouter>
           <ScrollToTop />
           <AuthProvider>
+            <RouteRestorer />
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
