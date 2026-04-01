@@ -29,6 +29,7 @@ import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
 import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
+import PacoteBadge from './PacoteBadge';
 
 interface Paciente {
   id: string;
