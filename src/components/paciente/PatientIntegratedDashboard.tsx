@@ -817,6 +817,204 @@ export default function PatientIntegratedDashboard({
   );
 }
 
+// ── Active Diretriz Section (shows real saved protocol) ───────────────
+function ActiveDiretrizSection({ pacienteId }: { pacienteId: string }) {
+  const navigate = useNavigate();
+  const [showDiretrizes, setShowDiretrizes] = useState(false);
+
+  const { data: activeProtocolo } = useQuery({
+    queryKey: ['active-diretriz', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolos')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .eq('status', 'ativo')
+        .order('created_at', { ascending: false })
+        .limit(1);
+      if (error) throw error;
+      return data?.[0] || null;
+    },
+  });
+
+  const { data: fases = [] } = useQuery({
+    queryKey: ['active-diretriz-fases', activeProtocolo?.id],
+    enabled: !!activeProtocolo?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolo_fases' as any)
+        .select('*')
+        .eq('protocolo_id', activeProtocolo!.id)
+        .order('numero_fase');
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  const { data: progressao } = useQuery({
+    queryKey: ['active-diretriz-progressao', activeProtocolo?.id],
+    enabled: !!activeProtocolo?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('protocolo_progressao')
+        .select('*')
+        .eq('protocolo_id', activeProtocolo!.id)
+        .maybeSingle();
+      if (error) throw error;
+      return data;
+    },
+  });
+
+  const faseAtual = progressao?.fase_atual || 1;
+
+  return (
+    <Card className="shadow-sm border-violet-200/50">
+      <CardContent className="p-0">
+        <Button
+          variant="ghost"
+          className="w-full flex items-center justify-between p-4 rounded-xl hover:bg-violet-50/50"
+          onClick={() => setShowDiretrizes(!showDiretrizes)}
+        >
+          <div className="flex items-center gap-2">
+            <FileText className="h-4 w-4 text-violet-600" />
+            <span className="font-bold text-sm">Diretrizes e Tratamentos</span>
+            {activeProtocolo && (
+              <Badge variant="outline" className="text-[9px] h-4 border-emerald-300 text-emerald-700 bg-emerald-50">
+                Ativa
+              </Badge>
+            )}
+          </div>
+          {showDiretrizes ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+        </Button>
+
+        {showDiretrizes && (
+          <div className="px-4 pb-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+            {!activeProtocolo ? (
+              <div className="text-center py-4">
+                <p className="text-sm text-muted-foreground mb-2">Nenhuma diretriz ativa encontrada.</p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
+                  className="gap-1.5"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Criar Diretriz
+                </Button>
+              </div>
+            ) : (
+              <>
+                {/* Header da diretriz */}
+                <div className="bg-violet-50/50 dark:bg-violet-900/10 p-3 rounded-lg border border-violet-200/50">
+                  <div className="flex items-center justify-between mb-1">
+                    <h4 className="text-xs font-bold text-violet-700">{activeProtocolo.titulo}</h4>
+                    <Badge variant="outline" className="text-[8px] h-4">
+                      Fase {faseAtual}/{fases.length || '?'}
+                    </Badge>
+                  </div>
+                  {activeProtocolo.objetivo_geral && (
+                    <p className="text-[11px] text-muted-foreground">{activeProtocolo.objetivo_geral}</p>
+                  )}
+                  <div className="flex gap-3 mt-2 text-[10px] text-muted-foreground">
+                    {activeProtocolo.frequencia && (
+                      <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{activeProtocolo.frequencia}</span>
+                    )}
+                    {activeProtocolo.duracao_total && (
+                      <span className="flex items-center gap-1"><Target className="h-3 w-3" />{activeProtocolo.duracao_total}</span>
+                    )}
+                  </div>
+                </div>
+
+                {/* Fases com técnicas */}
+                {fases.map((fase: any, idx: number) => {
+                  const isCurrentPhase = faseAtual === fase.numero_fase;
+                  const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
+                  const exercicios = Array.isArray(fase.exercicios) ? fase.exercicios : [];
+
+                  return (
+                    <div
+                      key={fase.id || idx}
+                      className={cn(
+                        "p-3 rounded-lg border text-sm",
+                        isCurrentPhase
+                          ? "border-primary/30 bg-primary/5"
+                          : "border-border/50 bg-muted/30"
+                      )}
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="font-bold text-xs">
+                          {isCurrentPhase && '▶ '}Fase {fase.numero_fase}: {fase.titulo || fase.nome || `Fase ${fase.numero_fase}`}
+                        </span>
+                        {fase.semanas && (
+                          <span className="text-[9px] text-muted-foreground">{fase.semanas}</span>
+                        )}
+                      </div>
+                      {fase.objetivo && (
+                        <p className="text-[11px] text-muted-foreground mb-2">{fase.objetivo}</p>
+                      )}
+
+                      {tecnicas.length > 0 && (
+                        <div className="space-y-1">
+                          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Técnicas</span>
+                          <div className="flex flex-wrap gap-1">
+                            {tecnicas.map((t: any, ti: number) => (
+                              <Badge key={ti} variant="secondary" className="text-[9px] h-5 bg-violet-100 text-violet-700 border-0">
+                                {typeof t === 'string' ? t : t.nome || t.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {exercicios.length > 0 && (
+                        <div className="space-y-1 mt-1.5">
+                          <span className="text-[9px] font-semibold text-muted-foreground uppercase tracking-wider">Exercícios</span>
+                          <div className="flex flex-wrap gap-1">
+                            {exercicios.map((e: any, ei: number) => (
+                              <Badge key={ei} variant="secondary" className="text-[9px] h-5 bg-emerald-100 text-emerald-700 border-0">
+                                {typeof e === 'string' ? e : e.nome || e.name}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+
+                {/* Snapshot insights from scores_avaliacao */}
+                {activeProtocolo.scores_avaliacao && typeof activeProtocolo.scores_avaliacao === 'object' && (activeProtocolo.scores_avaliacao as any).snapshot && (
+                  <div className="bg-amber-50/50 dark:bg-amber-900/10 p-3 rounded-lg border border-amber-200/50">
+                    <h4 className="text-[10px] font-bold text-amber-700 mb-1">💡 Demandas Identificadas</h4>
+                    <div className="flex flex-wrap gap-1">
+                      {((activeProtocolo.scores_avaliacao as any).snapshot?.demandas || []).map((d: string, i: number) => (
+                        <Badge key={i} variant="outline" className="text-[8px] h-4 border-amber-300 text-amber-700">
+                          {d}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Link to full view */}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full gap-1.5 text-xs"
+                  onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  Ver detalhes completos
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
 // ── Structural Treatment Guideline Generator ──────────────────────────
 function StructuralDiretrizButton({ data, pacienteId }: { data: StructuralAssessmentData, pacienteId: string }) {
   const navigate = useNavigate();
