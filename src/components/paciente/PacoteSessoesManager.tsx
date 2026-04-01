@@ -131,7 +131,11 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
             <div className="text-base font-bold leading-tight">
               {pacoteAtivo.sessoes_utilizadas}/{pacoteAtivo.total_sessoes}
             </div>
-            <div className="text-[9px] text-muted-foreground">{pacoteAtivo.nome}</div>
+            <div className="text-[9px] text-muted-foreground">
+              {pacoteAtivo.total_sessoes - pacoteAtivo.sessoes_utilizadas > 0
+                ? `${pacoteAtivo.total_sessoes - pacoteAtivo.sessoes_utilizadas} restantes`
+                : 'Completo ✓'}
+            </div>
             <div className="mt-1 h-1 bg-muted rounded-full overflow-hidden">
               <div
                 className="h-full bg-primary rounded-full transition-all"
