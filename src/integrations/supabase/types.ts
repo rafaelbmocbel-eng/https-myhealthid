@@ -1690,6 +1690,54 @@ export type Database = {
         }
         Relationships: []
       }
+      pacotes_sessoes: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string | null
+          id: string
+          nome: string
+          observacoes: string | null
+          paciente_id: string
+          sessoes_utilizadas: number
+          status: string
+          terapeuta_id: string
+          total_sessoes: number
+          updated_at: string
+          valor_total: number | null
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          paciente_id: string
+          sessoes_utilizadas?: number
+          status?: string
+          terapeuta_id: string
+          total_sessoes?: number
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string | null
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          paciente_id?: string
+          sessoes_utilizadas?: number
+          status?: string
+          terapeuta_id?: string
+          total_sessoes?: number
+          updated_at?: string
+          valor_total?: number | null
+        }
+        Relationships: []
+      }
       pagamentos_paciente: {
         Row: {
           comprovante_url: string | null
