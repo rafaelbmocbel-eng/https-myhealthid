@@ -40,6 +40,7 @@ import ResumoProntuario from './ResumoProntuario';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
 import { generateCIFSuggestions } from '@/utils/cifMapping';
+import PacoteBadge from './PacoteBadge';
 
 interface Paciente {
   id: string;
@@ -693,6 +694,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   </div>
                 </div>
               )}
+              <PacoteBadge pacienteId={paciente.id} />
              </div>
             </div>
           </div>
