@@ -170,6 +170,30 @@ export default function PacientePerfil() {
     enabled: !!user && !!id,
   });
 
+  const { data: sessoesPaciente = [] } = useQuery({
+    queryKey: ['sessoes-paciente-perfil', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('controle_sessoes')
+        .select('*')
+        .eq('paciente_id', id!)
+        .eq('terapeuta_id', user!.id)
+        .order('data_sessao', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+
+  const sessoesInfo = useMemo(() => {
+    const realizadas = sessoesPaciente.filter((s: any) => s.status === 'realizada');
+    const ultimaSessao = realizadas[0];
+    const numeroAtual = ultimaSessao?.numero_sessao || 0;
+    // Detect active package: group by tipo_atendimento or count
+    const totalRealizadas = realizadas.length;
+    return { numeroAtual, totalRealizadas, ultimaSessao };
+  }, [sessoesPaciente]);
+
   const { data: tratamentosMap = {} } = useQuery({
     queryKey: ['tratamentos-perfil', id, protocolos.map((p: any) => p.id).join(',')],
     queryFn: async () => {
@@ -380,12 +404,13 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* KPI Cards — compact 3-col, show only available data */}
-        <div className="grid grid-cols-3 gap-2 mb-4">
+        {/* KPI Cards — compact grid, show only available data */}
+        <div className="grid grid-cols-4 gap-2 mb-4">
           {[
             idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
             { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
             { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
+            { icon: ClipboardList, label: 'Sessão', value: `#${sessoesInfo.numeroAtual}`, sub: `${sessoesInfo.totalRealizadas} total` },
           ].filter(Boolean).map((kpi: any) => {
             const Icon = kpi.icon;
             return (
