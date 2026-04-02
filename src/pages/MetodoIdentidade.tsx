@@ -571,9 +571,15 @@ export default function MetodoIdentidade() {
                           {(() => {
                             const linkAtivo = getLinkAtivo(p.id);
                             return linkAtivo ? (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
+                              p.telefone ? (
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : (
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              )
                             ) : (
                               <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" disabled={gerando} onClick={() => gerarLink(p.id)} title="Gerar Link">
                                 {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
