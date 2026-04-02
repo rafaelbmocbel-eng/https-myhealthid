@@ -557,35 +557,42 @@ export default function MetodoIdentidade() {
                           </div>
                         </div>
 
-                        {/* Actions — simplified */}
+                        {/* Actions — LinkActionsBar */}
                         <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                          {p.portal_token && p.telefone ? (
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
-                              <Smartphone className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : p.portal_token ? (
-                            <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
-                              <Smartphone className="h-3.5 w-3.5" />
-                            </Button>
-                          ) : null}
-                          {(() => {
+                          <LinkActionsBar items={(() => {
+                            const items: LinkActionItem[] = [];
                             const linkAtivo = getLinkAtivo(p.id);
-                            return linkAtivo ? (
-                              p.telefone ? (
-                                <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
-                                  <MessageCircle className="h-3.5 w-3.5" />
-                                </Button>
-                              ) : (
-                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                              )
-                            ) : (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" disabled={gerando} onClick={() => gerarLink(p.id)} title="Gerar Link">
-                                {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
-                              </Button>
-                            );
-                          })()}
+                            if (linkAtivo) {
+                              items.push({
+                                key: 'myid', label: 'MyID',
+                                active: true, color: 'emerald',
+                                isWhatsApp: !!p.telefone,
+                                onAction: () => p.telefone
+                                  ? shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))
+                                  : copiarLink(linkAtivo.token),
+                              });
+                            } else {
+                              items.push({
+                                key: 'myid', label: 'MyID',
+                                active: false, color: 'emerald',
+                                isWhatsApp: false,
+                                onAction: () => {},
+                                onGenerate: () => gerarLink(p.id),
+                                loading: gerando,
+                              });
+                            }
+                            if (p.portal_token) {
+                              items.push({
+                                key: 'portal', label: 'Portal',
+                                active: true, color: 'violet',
+                                isWhatsApp: !!p.telefone,
+                                onAction: () => p.telefone
+                                  ? (() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
+                                  : (() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
+                              });
+                            }
+                            return items;
+                          })()} />
                           <Button
                             size="sm"
                             className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1"
