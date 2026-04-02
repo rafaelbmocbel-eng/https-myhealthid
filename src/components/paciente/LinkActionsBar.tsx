@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Smartphone, Copy, Plus, Loader2, CalendarDays, Link2, ExternalLink } from 'lucide-react';
+import { Smartphone, Copy, Plus, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 export interface LinkActionItem {
