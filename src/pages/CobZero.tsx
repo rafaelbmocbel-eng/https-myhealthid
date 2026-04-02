@@ -366,12 +366,13 @@ export default function CobZero() {
                               <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
                               {linkAtivo ? (
                                 <div className="flex items-center gap-1">
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                  {p.telefone && (
+                                  {p.telefone ? (
                                     <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
                                       <Smartphone className="h-3 w-3" />
+                                    </Button>
+                                  ) : (
+                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                      <Copy className="h-3 w-3" />
                                     </Button>
                                   )}
                                 </div>
