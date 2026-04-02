@@ -154,16 +154,15 @@ export default function StudioPersonalID() {
                     <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
                     <div className="flex gap-1">
                       {getAgendaAtivo(selectedPaciente.id) ? (
-                        <>
+                        selectedPaciente.telefone ? (
+                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
+                            <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          </Button>
+                        ) : (
                           <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(getAgendaAtivo(selectedPaciente.id).token)} title="Copiar Link Agenda">
                             <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           </Button>
-                          {selectedPaciente.telefone && (
-                            <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
-                              <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                            </Button>
-                          )}
-                        </>
+                        )
                       ) : (
                         <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={true} title="Sem Agenda Ativa">
                           <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />
@@ -177,12 +176,13 @@ export default function StudioPersonalID() {
                     <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
                       <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
                       <div className="flex gap-1">
-                        <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
-                          <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                        {selectedPaciente.telefone && (
+                        {selectedPaciente.telefone ? (
                           <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
                             <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          </Button>
+                        ) : (
+                          <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
+                            <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           </Button>
                         )}
                       </div>
@@ -377,12 +377,13 @@ export default function StudioPersonalID() {
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
                             {linkAtivo ? (
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                                {p.telefone && (
+                                {p.telefone ? (
                                   <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
                                     <Smartphone className="h-3 w-3" />
+                                  </Button>
+                                ) : (
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                    <Copy className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
@@ -398,12 +399,13 @@ export default function StudioPersonalID() {
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
                             {linkAgenda ? (
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                                {p.telefone && (
+                                {p.telefone ? (
                                   <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
                                     <Smartphone className="h-3 w-3" />
+                                  </Button>
+                                ) : (
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
+                                    <Copy className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
