@@ -639,16 +639,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">MyID</span>
                 <div className="flex gap-1">
                   {linkMyIDAtivo ? (
-                    <>
+                    paciente.telefone ? (
+                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)} title="Enviar no WhatsApp">
+                        <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                    ) : (
                       <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => copiarMyIDLink(linkMyIDAtivo.token_acesso)} title="Copiar Link MyID">
                         <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
-                      {paciente.telefone && (
-                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)} title="Enviar no WhatsApp">
-                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </>
+                    )
                   ) : (
                     <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-primary/80" disabled={gerandoMyIDLink} onClick={gerarLinkMyID} title="Gerar Link MyID">
                       {gerandoMyIDLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
@@ -662,16 +661,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
                 <div className="flex gap-1">
                   {linkAgendaAtivo ? (
-                    <>
+                    paciente.telefone ? (
+                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))} title="Enviar no WhatsApp">
+                        <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                    ) : (
                       <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)} title="Copiar Link Agenda">
                         <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
-                      {paciente.telefone && (
-                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))} title="Enviar no WhatsApp">
-                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </>
+                    )
                   ) : (
                     <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={gerandoAgenda} onClick={gerarLinkAgenda} title="Gerar Link Agenda">
                       {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
@@ -683,12 +681,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
                   <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
                   <div className="flex gap-1">
-                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
-                      <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                    </Button>
-                    {paciente.telefone && (
+                    {paciente.telefone ? (
                       <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
                         <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                    ) : (
+                      <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
+                        <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
                     )}
                   </div>

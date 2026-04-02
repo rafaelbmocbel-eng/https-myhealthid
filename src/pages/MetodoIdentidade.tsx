@@ -559,18 +559,27 @@ export default function MetodoIdentidade() {
 
                         {/* Actions — simplified */}
                         <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                          {/* Portal link */}
-                          {p.portal_token && (
+                          {p.portal_token && p.telefone ? (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
+                              <Smartphone className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : p.portal_token ? (
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
                               <Smartphone className="h-3.5 w-3.5" />
                             </Button>
-                          )}
+                          ) : null}
                           {(() => {
                             const linkAtivo = getLinkAtivo(p.id);
                             return linkAtivo ? (
-                              <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
+                              p.telefone ? (
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
+                                  <MessageCircle className="h-3.5 w-3.5" />
+                                </Button>
+                              ) : (
+                                <Button size="icon" variant="ghost" className="h-7 w-7 text-emerald-600" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              )
                             ) : (
                               <Button size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground" disabled={gerando} onClick={() => gerarLink(p.id)} title="Gerar Link">
                                 {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
@@ -679,9 +688,15 @@ export default function MetodoIdentidade() {
                           <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           Link ativo · {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias
                         </div>
-                        <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
-                          <Copy className="h-3 w-3" /> Copiar link
-                        </Button>
+                        {selectedPaciente?.telefone ? (
+                          <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getLinkUrl(linkAtivo.token))}>
+                            <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
+                            <Copy className="h-3 w-3" /> Copiar link
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Button
@@ -706,12 +721,13 @@ export default function MetodoIdentidade() {
               {selectedPaciente?.portal_token && (
                 <div className="mt-4 pt-4 border-t space-y-2">
                   <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Portal do Paciente</p>
-                  <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }}>
-                    <Copy className="h-3 w-3" /> Copiar link do Portal
-                  </Button>
-                  {selectedPaciente.telefone && (
+                  {selectedPaciente.telefone ? (
                     <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }}>
                       <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
+                    </Button>
+                  ) : (
+                    <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }}>
+                      <Copy className="h-3 w-3" /> Copiar link do Portal
                     </Button>
                   )}
                 </div>
