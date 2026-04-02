@@ -12,6 +12,7 @@ import {
   CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3, Users, Search, ChevronRight, Loader2,
   CalendarDays, Clock, Activity, Smartphone, Copy, Link2
 } from 'lucide-react';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
