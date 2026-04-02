@@ -322,9 +322,6 @@ function TodosOsLinks() {
                   <div className="flex items-center gap-1.5 ml-auto flex-wrap">
                     {agAtivo ? (
                       <>
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1" onClick={() => copiar(getAgendaUrl(agAtivo.token), 'Link')}>
-                          <Copy className="h-3 w-3" /> Copiar
-                        </Button>
                         <Button size="sm" variant="outline" className="h-7 w-7 p-0 text-[#25D366] hover:border-[#25D366]" title="WhatsApp" onClick={() => whatsApp(p.id, getAgendaUrl(agAtivo.token), 'agenda')}>
                           <MessageCircle className="h-3 w-3" />
                         </Button>
