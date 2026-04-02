@@ -688,9 +688,15 @@ export default function MetodoIdentidade() {
                           <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
                           Link ativo · {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias
                         </div>
-                        <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
-                          <Copy className="h-3 w-3" /> Copiar link
-                        </Button>
+                        {selectedPaciente?.telefone ? (
+                          <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getLinkUrl(linkAtivo.token))}>
+                            <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
+                          </Button>
+                        ) : (
+                          <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
+                            <Copy className="h-3 w-3" /> Copiar link
+                          </Button>
+                        )}
                       </>
                     ) : (
                       <Button
