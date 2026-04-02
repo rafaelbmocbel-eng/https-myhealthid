@@ -666,25 +666,27 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
             </div>
           )}
         </div>
-        <div className="flex items-center gap-1 pt-1 flex-wrap">
-          <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1">
+        <div className="flex items-center gap-1.5 pt-1">
+          <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1.5 h-8">
             <Eye className="h-3.5 w-3.5" /> Ver
           </Button>
-          <Button variant="outline" size="sm" onClick={onEditEvento} title="Editar evento">
-            <Pencil className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={onEditQuestionario} title="Editar questionário">
-            <FileText className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="outline" size="sm" onClick={onCopy} title="Copiar link">
-            <Copy className="h-3.5 w-3.5" />
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onToggle} title={evento.ativo ? 'Desativar' : 'Ativar'}>
-            {evento.ativo ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
-          </Button>
-          <Button variant="ghost" size="sm" onClick={onDelete} className="text-destructive" title="Deletar">
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
+          <div className="flex items-center gap-0.5">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditEvento} title="Editar evento">
+              <Pencil className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditQuestionario} title="Questionário">
+              <FileText className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={onCopy} title="Copiar link">
+              <Copy className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle} title={evento.ativo ? 'Desativar' : 'Ativar'}>
+              {evento.ativo ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete} title="Deletar">
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
       </CardContent>
     </Card>

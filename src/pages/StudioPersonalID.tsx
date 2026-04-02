@@ -358,52 +358,41 @@ export default function StudioPersonalID() {
                         </div>
                       </div>
 
-                      {/* Ações (Links + Avaliação) */}
-                      <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap sm:flex-nowrap" onClick={e => e.stopPropagation()}>
-                        <div className="flex items-center gap-2 border-r pr-3">
-                          {/* Link MyID */}
-                          <div className="flex flex-col gap-1 items-center">
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
-                            {linkAtivo ? (
-                              <div className="flex items-center gap-1">
-                                {p.telefone ? (
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
-                                    <Smartphone className="h-3 w-3" />
-                                  </Button>
-                                ) : (
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" disabled={gerando} onClick={() => gerarLink(p.id)}>
-                                {gerando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />} Novo Link
-                              </Button>
-                            )}
-                          </div>
-
-                          {/* Link Agenda */}
-                          <div className="flex flex-col gap-1 items-center pl-1">
-                            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
-                            {linkAgenda ? (
-                              <div className="flex items-center gap-1">
-                                {p.telefone ? (
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
-                                    <Smartphone className="h-3 w-3" />
-                                  </Button>
-                                ) : (
-                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
-                                    <Copy className="h-3 w-3" />
-                                  </Button>
-                                )}
-                              </div>
-                            ) : (
-                              <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
-                            )}
-                          </div>
-                        </div>
-
+                      {/* Ações — Links compactos */}
+                      <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                        <LinkActionsBar items={(() => {
+                          const items: LinkActionItem[] = [];
+                          if (linkAtivo) {
+                            items.push({
+                              key: 'myid', label: 'MyID',
+                              active: true, color: 'emerald',
+                              isWhatsApp: !!p.telefone,
+                              onAction: () => p.telefone
+                                ? shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))
+                                : copiarLink(linkAtivo.token),
+                            });
+                          } else {
+                            items.push({
+                              key: 'myid', label: 'MyID',
+                              active: false, color: 'emerald',
+                              isWhatsApp: false,
+                              onAction: () => {},
+                              onGenerate: () => gerarLink(p.id),
+                              loading: gerando,
+                            });
+                          }
+                          if (linkAgenda) {
+                            items.push({
+                              key: 'agenda', label: 'Agenda',
+                              active: true, color: 'blue',
+                              isWhatsApp: !!p.telefone,
+                              onAction: () => p.telefone
+                                ? shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))
+                                : copiarAgendaLink(linkAgenda.token),
+                            });
+                          }
+                          return items;
+                        })()} />
                         <Button
                           size="sm"
                           className="bg-studio hover:bg-studio-dark text-white gap-1 ml-1"
@@ -411,7 +400,6 @@ export default function StudioPersonalID() {
                         >
                           Avaliação <ChevronRight className="h-3 w-3" />
                         </Button>
-
                       </div>
                     </div>
                   );

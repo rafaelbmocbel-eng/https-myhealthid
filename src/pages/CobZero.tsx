@@ -12,6 +12,7 @@ import {
   CheckCircle2, Circle, AlignCenter, ClipboardList, Ruler, BookOpen, Dumbbell, BarChart3, Users, Search, ChevronRight, Loader2,
   CalendarDays, Clock, Activity, Smartphone, Copy, Link2
 } from 'lucide-react';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
@@ -358,70 +359,51 @@ export default function CobZero() {
                           </div>
                         </div>
 
-                        {/* Ações (Links + Avaliação) */}
-                        <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap sm:flex-nowrap" onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center gap-2 border-r pr-3">
-                            {/* Link MyID */}
-                            <div className="flex flex-col gap-1 items-center">
-                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">MyID</span>
-                              {linkAtivo ? (
-                                <div className="flex items-center gap-1">
-                                  {p.telefone ? (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))} title="Enviar MyID WhatsApp">
-                                      <Smartphone className="h-3 w-3" />
-                                    </Button>
-                                  ) : (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-emerald-200 text-emerald-600 bg-emerald-50 hover:bg-emerald-100" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <Button size="sm" variant="outline" className="h-7 text-[10px] px-2" disabled={gerando} onClick={() => gerarLink(p.id)}>
-                                  {gerando ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Link2 className="h-3 w-3 mr-1" />} Novo Link
-                                </Button>
-                              )}
-                            </div>
-
-                            {/* Link Agenda */}
-                            <div className="flex flex-col gap-1 items-center pl-1">
-                              <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
-                              {linkAgenda ? (
-                                <div className="flex items-center gap-1">
-                                  {p.telefone ? (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
-                                      <Smartphone className="h-3 w-3" />
-                                    </Button>
-                                  ) : (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-blue-200 text-blue-600 bg-blue-50 hover:bg-blue-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              ) : (
-                                <span className="text-[10px] text-muted-foreground mt-1">S/ Link</span>
-                              )}
-                            </div>
-
-                            {/* Link Portal */}
-                            {p.portal_token && (
-                              <div className="flex flex-col gap-1 items-center pl-1">
-                                <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Portal</span>
-                                <div className="flex items-center gap-1">
-                                  {p.telefone ? (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-violet-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal WhatsApp">
-                                      <Smartphone className="h-3 w-3" />
-                                    </Button>
-                                  ) : (
-                                    <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-violet-200 text-violet-600 bg-violet-50 hover:bg-violet-100" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link Portal">
-                                      <Copy className="h-3 w-3" />
-                                    </Button>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
+                        {/* Ações — Links compactos */}
+                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
+                          <LinkActionsBar items={(() => {
+                            const items: LinkActionItem[] = [];
+                            if (linkAtivo) {
+                              items.push({
+                                key: 'myid', label: 'MyID',
+                                active: true, color: 'emerald',
+                                isWhatsApp: !!p.telefone,
+                                onAction: () => p.telefone
+                                  ? shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))
+                                  : copiarLink(linkAtivo.token),
+                              });
+                            } else {
+                              items.push({
+                                key: 'myid', label: 'MyID',
+                                active: false, color: 'emerald',
+                                isWhatsApp: false,
+                                onAction: () => {},
+                                onGenerate: () => gerarLink(p.id),
+                                loading: gerando,
+                              });
+                            }
+                            if (linkAgenda) {
+                              items.push({
+                                key: 'agenda', label: 'Agenda',
+                                active: true, color: 'blue',
+                                isWhatsApp: !!p.telefone,
+                                onAction: () => p.telefone
+                                  ? shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))
+                                  : copiarAgendaLink(linkAgenda.token),
+                              });
+                            }
+                            if (p.portal_token) {
+                              items.push({
+                                key: 'portal', label: 'Portal',
+                                active: true, color: 'violet',
+                                isWhatsApp: !!p.telefone,
+                                onAction: () => p.telefone
+                                  ? (() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
+                                  : (() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
+                              });
+                            }
+                            return items;
+                          })()} />
                           <Button
                             size="sm"
                             className="bg-blue-600 hover:bg-blue-700 text-white gap-1 ml-1"
@@ -429,7 +411,6 @@ export default function CobZero() {
                           >
                             Avaliação <ChevronRight className="h-3 w-3" />
                           </Button>
-
                         </div>
                       </div>
                     );
