@@ -491,13 +491,14 @@ export default function PacientePerfil() {
                     <>
                       <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
                       <span className="text-[10px] text-emerald-600 shrink-0">{differenceInDays(new Date(linkAvAtivo.data_expiracao), new Date())}d</span>
-                      <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAvAtivo.token)}>
-                        <Copy className="h-3 w-3" />
-                      </Button>
-                      {paciente.telefone && (
+                      {paciente.telefone ? (
                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-[#25D366]"
                           onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getLinkUrl(linkAvAtivo.token))}>
                           <MessageCircle className="h-3 w-3" />
+                        </Button>
+                      ) : (
+                        <Button size="sm" variant="ghost" className="h-7 w-7 p-0" onClick={() => copiarLink(linkAvAtivo.token)}>
+                          <Copy className="h-3 w-3" />
                         </Button>
                       )}
                     </>
