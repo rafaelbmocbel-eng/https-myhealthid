@@ -639,16 +639,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">MyID</span>
                 <div className="flex gap-1">
                   {linkMyIDAtivo ? (
-                    <>
+                    paciente.telefone ? (
+                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)} title="Enviar no WhatsApp">
+                        <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                    ) : (
                       <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => copiarMyIDLink(linkMyIDAtivo.token_acesso)} title="Copiar Link MyID">
                         <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
-                      {paciente.telefone && (
-                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)} title="Enviar no WhatsApp">
-                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </>
+                    )
                   ) : (
                     <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-primary/80" disabled={gerandoMyIDLink} onClick={gerarLinkMyID} title="Gerar Link MyID">
                       {gerandoMyIDLink ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
