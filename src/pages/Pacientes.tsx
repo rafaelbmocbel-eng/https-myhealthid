@@ -124,9 +124,19 @@ function LinkModalContent({ pac, links, gerando, gerarLink, copiarLink, cancelar
           </div>
         </div>
         <div className="flex gap-2">
-          <Button className="flex-1 gap-2" onClick={() => copiarLink(linkAtivo.token)}>
-            <Copy className="h-3.5 w-3.5" /> Copiar Link
-          </Button>
+          {pac.telefone ? (
+            <Button className="flex-1 gap-2 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => {
+              const url = getLinkUrl(linkAtivo.token);
+              const msg = `Olá ${pac.nome}! 🩺\n\nPreencha sua avaliação:\n${url}`;
+              window.open(`https://wa.me/${pac.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
+            }}>
+              <MessageCircle className="h-3.5 w-3.5" /> Enviar via WhatsApp
+            </Button>
+          ) : (
+            <Button className="flex-1 gap-2" onClick={() => copiarLink(linkAtivo.token)}>
+              <Copy className="h-3.5 w-3.5" /> Copiar Link
+            </Button>
+          )}
           <Button variant="outline" className="gap-2" onClick={async () => {
             await cancelarLink(linkAtivo.id);
             await gerarLink(pac.id);
