@@ -38,6 +38,7 @@ import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 
 const MYID_DRAFT_VERSION = 1;
 
