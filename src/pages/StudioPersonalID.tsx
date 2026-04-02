@@ -154,16 +154,15 @@ export default function StudioPersonalID() {
                     <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
                     <div className="flex gap-1">
                       {getAgendaAtivo(selectedPaciente.id) ? (
-                        <>
+                        selectedPaciente.telefone ? (
+                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
+                            <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                          </Button>
+                        ) : (
                           <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(getAgendaAtivo(selectedPaciente.id).token)} title="Copiar Link Agenda">
                             <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                           </Button>
-                          {selectedPaciente.telefone && (
-                            <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
-                              <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                            </Button>
-                          )}
-                        </>
+                        )
                       ) : (
                         <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={true} title="Sem Agenda Ativa">
                           <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />
