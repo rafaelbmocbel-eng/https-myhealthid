@@ -251,47 +251,36 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <p className="text-xs md:text-sm text-muted-foreground">{paciente.telefone || paciente.email || 'Sem contato'}</p>
             </div>
 
-            {/* Botões de Ação Dinâmicos (Ao lado do nome) */}
-            <div className="flex items-center gap-4 md:gap-5 pt-1">
-              {/* MYID */}
-              <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
-                <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">MyID</span>
-                <div className="flex gap-1">
-                  {linkAtivo ? (
-                    <>
-                      <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:text-emerald-800" onClick={() => copiarLink(linkAtivo.token)} title="Copiar Link MyID">
-                        <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                      </Button>
-                      {paciente.telefone && (
-                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => whatsApp(linkAtivo.token)} title="Enviar no WhatsApp">
-                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </>
-                  ) : (
-                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-blue-600/80" disabled={gerando} onClick={gerarLink} title="Gerar Link MyID">
-                      {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
-                    </Button>
-                  )}
-                </div>
-              </div>
-
-              {/* PORTAL */}
-              {paciente.portal_token && (
-                <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
-                  <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
-                  <div className="flex gap-1">
-                    <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
-                      <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                    </Button>
-                    {paciente.telefone && (
-                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
-                        <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
+            {/* Links de Ação */}
+            <div className="flex items-center gap-2 pt-1">
+              <LinkActionsBar items={(() => {
+                const items: LinkActionItem[] = [];
+                // MyID
+                items.push({
+                  key: 'myid', label: 'MyID',
+                  active: !!linkAtivo,
+                  loading: gerando,
+                  color: 'emerald',
+                  isWhatsApp: !!linkAtivo && !!paciente.telefone,
+                  onAction: () => linkAtivo && (paciente.telefone
+                    ? whatsApp(linkAtivo.token)
+                    : copiarLink(linkAtivo.token)),
+                  onGenerate: gerarLink,
+                });
+                // Portal
+                if (paciente.portal_token) {
+                  items.push({
+                    key: 'portal', label: 'Portal',
+                    active: true,
+                    color: 'violet',
+                    isWhatsApp: !!paciente.telefone,
+                    onAction: () => paciente.telefone
+                      ? (() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
+                      : (() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
+                  });
+                }
+                return items;
+              })()} />
               <PacoteBadge pacienteId={paciente.id} />
             </div>
           </div>
