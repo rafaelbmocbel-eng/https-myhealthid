@@ -4,8 +4,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { getAvaliacaoUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
-import { shareAvaliacaoLink } from '@/utils/whatsapp';
+import { getAvaliacaoUrl, getBaseUrl, getPortalUrl, getAgendaUrl } from '@/utils/linkUrls';
+import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import { useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -30,6 +30,7 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import PacoteBadge from './PacoteBadge';
+import LinkActionsBar, { type LinkActionItem } from './LinkActionsBar';
 
 interface Paciente {
   id: string;
