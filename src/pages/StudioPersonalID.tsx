@@ -35,6 +35,7 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import StudioAvaliacaoTab from '@/components/studio/StudioAvaliacaoTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import PacoteBadge from '@/components/paciente/PacoteBadge';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 
 export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
@@ -147,47 +148,35 @@ export default function StudioPersonalID() {
                   <p className="text-xs md:text-sm text-muted-foreground">{selectedPaciente.email || selectedPaciente.telefone || 'Sem contato'}</p>
                 </div>
 
-                {/* Botões de Ação Dinâmicos (Ao lado do nome) */}
-                <div className="flex items-center gap-4 md:gap-5 pt-1">
-                  {/* AGENDA */}
-                  <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
-                    <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
-                    <div className="flex gap-1">
-                      {getAgendaAtivo(selectedPaciente.id) ? (
-                        selectedPaciente.telefone ? (
-                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(getAgendaAtivo(selectedPaciente.id).token))} title="Enviar no WhatsApp">
-                            <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(getAgendaAtivo(selectedPaciente.id).token)} title="Copiar Link Agenda">
-                            <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          </Button>
-                        )
-                      ) : (
-                        <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={true} title="Sem Agenda Ativa">
-                          <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* PORTAL */}
-                  {selectedPaciente.portal_token && (
-                    <div className="flex flex-col flex-shrink-0 items-center justify-center gap-1">
-                      <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Portal</span>
-                      <div className="flex gap-1">
-                        {selectedPaciente.telefone ? (
-                          <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
-                            <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          </Button>
-                        ) : (
-                          <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-violet-200 bg-violet-50 text-violet-700 hover:bg-violet-100 hover:text-violet-800" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
-                            <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  )}
+                {/* Links de Ação */}
+                <div className="flex items-center gap-2 pt-1">
+                  <LinkActionsBar items={(() => {
+                    const items: LinkActionItem[] = [];
+                    const agendaAtivo = getAgendaAtivo(selectedPaciente.id);
+                    // Agenda
+                    items.push({
+                      key: 'agenda', label: 'Agenda',
+                      active: !!agendaAtivo,
+                      color: 'blue',
+                      isWhatsApp: !!agendaAtivo && !!selectedPaciente.telefone,
+                      onAction: () => agendaAtivo && (selectedPaciente.telefone
+                        ? shareAgendaLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getAgendaUrl(agendaAtivo.token))
+                        : copiarAgendaLink(agendaAtivo.token)),
+                    });
+                    // Portal
+                    if (selectedPaciente.portal_token) {
+                      items.push({
+                        key: 'portal', label: 'Portal',
+                        active: true,
+                        color: 'violet',
+                        isWhatsApp: !!selectedPaciente.telefone,
+                        onAction: () => selectedPaciente.telefone
+                          ? (() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
+                          : (() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
+                      });
+                    }
+                    return items;
+                  })()} />
                   <PacoteBadge pacienteId={selectedPaciente.id} />
                 </div>
               </div>
