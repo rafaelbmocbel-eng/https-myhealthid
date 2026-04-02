@@ -559,12 +559,15 @@ export default function MetodoIdentidade() {
 
                         {/* Actions — simplified */}
                         <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                          {/* Portal link */}
-                          {p.portal_token && (
+                          {p.portal_token && p.telefone ? (
+                            <Button size="icon" variant="ghost" className="h-7 w-7 text-[#25D366]" onClick={() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }} title="Enviar Portal via WhatsApp">
+                              <Smartphone className="h-3.5 w-3.5" />
+                            </Button>
+                          ) : p.portal_token ? (
                             <Button size="icon" variant="ghost" className="h-7 w-7 text-violet-600" onClick={() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }} title="Copiar Link do Portal">
                               <Smartphone className="h-3.5 w-3.5" />
                             </Button>
-                          )}
+                          ) : null}
                           {(() => {
                             const linkAtivo = getLinkAtivo(p.id);
                             return linkAtivo ? (
