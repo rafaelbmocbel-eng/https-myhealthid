@@ -661,16 +661,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 <span className="text-[9px] md:text-[10px] font-bold text-muted-foreground tracking-wider uppercase">Agenda</span>
                 <div className="flex gap-1">
                   {linkAgendaAtivo ? (
-                    <>
+                    paciente.telefone ? (
+                      <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))} title="Enviar no WhatsApp">
+                        <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
+                      </Button>
+                    ) : (
                       <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-blue-200 bg-blue-50 text-blue-700 hover:bg-blue-100 hover:text-blue-800" onClick={() => copiarAgendaLink(linkAgendaAtivo.token)} title="Copiar Link Agenda">
                         <Copy className="h-3 w-3 md:h-3.5 md:w-3.5" />
                       </Button>
-                      {paciente.telefone && (
-                        <Button size="icon" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))} title="Enviar no WhatsApp">
-                          <Smartphone className="h-3 w-3 md:h-3.5 md:w-3.5" />
-                        </Button>
-                      )}
-                    </>
+                    )
                   ) : (
                     <Button size="icon" variant="outline" className="h-[24px] w-[24px] md:h-[28px] md:w-[28px] rounded-lg border-dashed text-accent/80" disabled={gerandoAgenda} onClick={gerarLinkAgenda} title="Gerar Link Agenda">
                       {gerandoAgenda ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3 md:h-3.5 md:w-3.5" />}
