@@ -399,12 +399,13 @@ export default function StudioPersonalID() {
                             <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Agenda</span>
                             {linkAgenda ? (
                               <div className="flex items-center gap-1">
-                                <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
-                                  <Copy className="h-3 w-3" />
-                                </Button>
-                                {p.telefone && (
+                                {p.telefone ? (
                                   <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-white bg-[#25D366] hover:bg-[#20BE5C]" onClick={() => shareAgendaLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getAgendaUrl(linkAgenda.token))} title="Enviar Agenda WhatsApp">
                                     <Smartphone className="h-3 w-3" />
+                                  </Button>
+                                ) : (
+                                  <Button size="icon" variant="outline" className="h-7 w-7 rounded-sm border-indigo-200 text-indigo-600 bg-indigo-50 hover:bg-indigo-100" onClick={() => copiarAgendaLink(linkAgenda.token)} title="Copiar Link Agenda">
+                                    <Copy className="h-3 w-3" />
                                   </Button>
                                 )}
                               </div>
