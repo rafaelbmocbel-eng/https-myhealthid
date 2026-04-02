@@ -41,6 +41,7 @@ import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import CIFSuggestionPanel from '@/components/cif/CIFSuggestionPanel';
 import { generateCIFSuggestions } from '@/utils/cifMapping';
 import PacoteBadge from './PacoteBadge';
+import LinkActionsBar, { type LinkActionItem } from './LinkActionsBar';
 
 interface Paciente {
   id: string;

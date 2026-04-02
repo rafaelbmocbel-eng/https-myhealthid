@@ -35,6 +35,7 @@ import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import StudioAvaliacaoTab from '@/components/studio/StudioAvaliacaoTab';
 import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import PacoteBadge from '@/components/paciente/PacoteBadge';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 
 export default function StudioPersonalID() {
   const { user, loading: authLoading } = useAuth();
