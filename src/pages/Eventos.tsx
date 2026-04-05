@@ -16,6 +16,7 @@ import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, Doll
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { getBaseUrl } from '@/utils/linkUrls';
 import EventoDetalhePainel from '@/components/eventos/EventoDetalhePainel';
 
 interface PerguntaForm {
