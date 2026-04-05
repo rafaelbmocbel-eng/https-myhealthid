@@ -8,6 +8,7 @@ import { Switch } from '@/components/ui/switch';
 import { Separator } from '@/components/ui/separator';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useFunil, FunilConfig, ServicoFunil } from '@/hooks/useFunil';
+import { getBaseUrl } from '@/utils/linkUrls';
 import { useToast } from '@/hooks/use-toast';
 import { Plus, Trash2, Save, ExternalLink, Copy, Zap, Star, CreditCard, MessageSquare, Loader2 } from 'lucide-react';
 
@@ -76,7 +77,7 @@ const FunilConfigPanel = () => {
     setForm(prev => ({ ...prev, servicos: (prev.servicos || []).filter((_, i) => i !== index) }));
   };
 
-  const publicUrl = `${window.location.origin}/funil/${form.slug}`;
+  const publicUrl = `${getBaseUrl()}/funil/${form.slug}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(publicUrl);

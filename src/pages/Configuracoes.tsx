@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Settings, CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy, ExternalLink, RefreshCw, Plus, ClipboardList, AlignCenter, Sparkles, LayoutGrid, PartyPopper, UserPlus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Link } from 'react-router-dom';
-import { getAgendaUrl } from '@/utils/linkUrls';
+import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -243,7 +243,7 @@ export default function Configuracoes() {
               />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              Usado no link de cadastro de clientes: <strong>{window.location.origin}/cadastro/{form.slug || 'seu-slug'}</strong>
+              Usado no link de cadastro de clientes: <strong>{getBaseUrl()}/cadastro/{form.slug || 'seu-slug'}</strong>
             </p>
           </div>
 
@@ -413,8 +413,7 @@ function ClientRegistrationLink() {
   const { config } = useAgenda();
 
   const slug = config.slug;
-  const baseUrl = window.location.origin;
-  const link = slug ? `${baseUrl}/cadastro/${slug}` : '';
+  const link = slug ? `${getBaseUrl()}/cadastro/${slug}` : '';
 
   const copiarLink = () => {
     if (!link) return;

@@ -18,6 +18,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
+import { getBaseUrl } from '@/utils/linkUrls';
 import { PageTransition, StaggerContainer, StaggerItem, FadeIn } from '@/components/PageTransition';
 import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -360,7 +361,7 @@ export default function Index() {
 
       if (error) throw error;
 
-      const link = `${window.location.origin}/myid/responder/${token}`;
+      const link = `${getBaseUrl()}/myid/responder/${token}`;
       await navigator.clipboard.writeText(`Olá! Para iniciarmos nosso trabalho ou atualização, por favor responda ao Questionário MyID através deste link. Leva cerca de 10 minutinhos:\n\n${link}`);
 
       toast({
