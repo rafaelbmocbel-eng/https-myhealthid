@@ -172,7 +172,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
   };
 
   const copiarMyIDLink = (token: string) => {
-    const url = `${window.location.origin}/myid/responder/${token}`;
+    const url = `${getBaseUrl()}/myid/responder/${token}`;
     navigator.clipboard.writeText(url);
     toast({ title: 'Link MyID copiado! 📋' });
   };
@@ -645,7 +645,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                   color: 'emerald',
                   isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
                   onAction: () => linkMyIDAtivo && (paciente.telefone
-                    ? shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${window.location.origin}/myid/responder/${linkMyIDAtivo.token_acesso}`)
+                    ? shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`)
                     : copiarMyIDLink(linkMyIDAtivo.token_acesso)),
                   onGenerate: gerarLinkMyID,
                 });

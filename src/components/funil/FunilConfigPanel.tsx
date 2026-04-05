@@ -76,7 +76,7 @@ const FunilConfigPanel = () => {
     setForm(prev => ({ ...prev, servicos: (prev.servicos || []).filter((_, i) => i !== index) }));
   };
 
-  const publicUrl = `${window.location.origin}/funil/${form.slug}`;
+  const publicUrl = `${getBaseUrl()}/funil/${form.slug}`;
 
   const copyToClipboard = () => {
     navigator.clipboard.writeText(publicUrl);

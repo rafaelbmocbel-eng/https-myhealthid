@@ -9,6 +9,7 @@ import { ArrowLeft, Users, UserPlus, UserCheck, Copy, ChevronRight } from 'lucid
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { getBaseUrl } from '@/utils/linkUrls';
 
 interface Props {
   eventoId: string;
@@ -28,7 +29,7 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
   const ativos = inscritos.filter(i => i.ja_era_paciente).length;
 
   const copyLink = () => {
-    navigator.clipboard.writeText(`${window.location.origin}/evento/${eventoId}`);
+    navigator.clipboard.writeText(`${getBaseUrl()}/evento/${eventoId}`);
     toast.success('Link copiado!');
   };
 

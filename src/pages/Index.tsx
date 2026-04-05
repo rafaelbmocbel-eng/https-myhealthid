@@ -360,7 +360,7 @@ export default function Index() {
 
       if (error) throw error;
 
-      const link = `${window.location.origin}/myid/responder/${token}`;
+      const link = `${getBaseUrl()}/myid/responder/${token}`;
       await navigator.clipboard.writeText(`Olá! Para iniciarmos nosso trabalho ou atualização, por favor responda ao Questionário MyID através deste link. Leva cerca de 10 minutinhos:\n\n${link}`);
 
       toast({

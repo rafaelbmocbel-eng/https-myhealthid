@@ -114,7 +114,7 @@ export default function Eventos() {
   };
 
   const copyLink = (eventoId: string) => {
-    const url = `${window.location.origin}/evento/${eventoId}`;
+    const url = `${getBaseUrl()}/evento/${eventoId}`;
     navigator.clipboard.writeText(url);
     toast.success('Link copiado!');
   };
