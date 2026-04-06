@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 import { useAuth } from '@/contexts/AuthContext';
@@ -13,7 +13,10 @@ type PacoteResumo = {
 export function usePatientSessionStats(pacienteId?: string) {
   const { user } = useAuth();
   const queryClient = useQueryClient();
-  const queryKey = ['patient-session-stats', user?.id, pacienteId] as const;
+  const queryKey = useMemo(
+    () => ['patient-session-stats', user?.id, pacienteId] as const,
+    [user?.id, pacienteId],
+  );
 
   const query = useQuery({
     queryKey,
@@ -82,7 +85,7 @@ export function usePatientSessionStats(pacienteId?: string) {
     return () => {
       void supabase.removeChannel(channel);
     };
-  }, [pacienteId, queryClient, user?.id, queryKey]);
+  }, [pacienteId, queryClient, queryKey, user?.id]);
 
   const pacote = query.data?.pacote ?? null;
 
