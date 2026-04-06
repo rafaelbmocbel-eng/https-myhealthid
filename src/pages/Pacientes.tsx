@@ -610,6 +610,7 @@ export default function Pacientes() {
         )}
 
         {activeMainTab === 'clientes' && (
+        <>
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -745,6 +746,7 @@ export default function Pacientes() {
             })}
           </div>
         )}
+        </>
         )}
       </div>
 
