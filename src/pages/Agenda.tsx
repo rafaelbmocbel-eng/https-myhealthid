@@ -36,6 +36,7 @@ import { gerarNotaConduta } from '@/utils/prontuarioAutoNotes';
 import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
+import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
 type ViewMode = 'dia' | 'semana' | 'mes';
