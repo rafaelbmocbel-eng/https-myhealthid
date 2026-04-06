@@ -931,7 +931,7 @@ export default function Pacientes() {
               <span>Agenda</span>
             </button>
             <button
-              onClick={() => { setFabOpen(false); navigate('/crm'); }}
+              onClick={() => { setFabOpen(false); setActiveMainTab('crm'); }}
               className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors"
             >
               <Send className="h-4 w-4 text-blue-600" />
