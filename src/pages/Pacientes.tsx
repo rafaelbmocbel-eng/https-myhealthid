@@ -30,6 +30,10 @@ import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/wha
 import { useEquipe } from '@/hooks/useEquipe';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
+const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
+const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
+
+type MainTab = 'clientes' | 'crm' | 'financeiro';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
