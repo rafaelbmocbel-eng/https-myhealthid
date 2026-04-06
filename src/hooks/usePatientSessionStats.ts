@@ -5,6 +5,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
 type PacoteResumo = {
+  created_at: string;
+  data_fim: string | null;
+  data_inicio: string | null;
   nome: string | null;
   sessoes_utilizadas: number;
   total_sessoes: number;
@@ -30,7 +33,7 @@ export function usePatientSessionStats(pacienteId?: string) {
           .eq('status', 'realizada'),
         supabase
           .from('pacotes_sessoes')
-          .select('total_sessoes, sessoes_utilizadas, nome')
+          .select('total_sessoes, sessoes_utilizadas, nome, data_inicio, data_fim, created_at')
           .eq('paciente_id', pacienteId!)
           .eq('terapeuta_id', user!.id)
           .eq('status', 'ativo')
@@ -42,9 +45,33 @@ export function usePatientSessionStats(pacienteId?: string) {
       if (sessoesRes.error) throw sessoesRes.error;
       if (pacoteRes.error) throw pacoteRes.error;
 
+      const pacoteData = (pacoteRes.data ?? null) as PacoteResumo;
+      let pacote = pacoteData;
+
+      if (pacoteData) {
+        const inicioPacote = pacoteData.data_inicio ?? pacoteData.created_at.slice(0, 10);
+        const sessoesPacoteRes = await supabase
+          .from('controle_sessoes')
+          .select('id', { count: 'exact', head: true })
+          .eq('paciente_id', pacienteId!)
+          .eq('terapeuta_id', user!.id)
+          .eq('status', 'realizada')
+          .gte('data_sessao', inicioPacote);
+
+        if (sessoesPacoteRes.error) throw sessoesPacoteRes.error;
+
+        pacote = {
+          ...pacoteData,
+          sessoes_utilizadas: Math.min(
+            pacoteData.total_sessoes,
+            sessoesPacoteRes.count ?? pacoteData.sessoes_utilizadas,
+          ),
+        };
+      }
+
       return {
         totalSessoes: sessoesRes.count ?? 0,
-        pacote: (pacoteRes.data ?? null) as PacoteResumo,
+        pacote,
       };
     },
     enabled: !!user?.id && !!pacienteId,
