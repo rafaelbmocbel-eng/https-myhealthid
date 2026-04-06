@@ -408,6 +408,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
     ];
 
     const content = (
+        <>
             <div className="space-y-6">
                 {/* ── KPI Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
