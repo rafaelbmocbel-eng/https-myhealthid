@@ -1,71 +1,38 @@
-import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { Package, CheckCircle2 } from 'lucide-react';
+
+import { usePatientSessionStats } from '@/hooks/usePatientSessionStats';
 
 interface AgendaPatientStatsProps {
   pacienteId: string;
 }
 
 export default function AgendaPatientStats({ pacienteId }: AgendaPatientStatsProps) {
-  const { user } = useAuth();
-
-  const { data } = useQuery({
-    queryKey: ['agenda-patient-stats', pacienteId],
-    queryFn: async () => {
-      const [sessoesRes, pacoteRes] = await Promise.all([
-        supabase
-          .from('controle_sessoes')
-          .select('id', { count: 'exact', head: true })
-          .eq('paciente_id', pacienteId)
-          .eq('terapeuta_id', user!.id)
-          .eq('status', 'realizada'),
-        (supabase as any)
-          .from('pacotes_sessoes')
-          .select('total_sessoes, sessoes_utilizadas, nome')
-          .eq('paciente_id', pacienteId)
-          .eq('terapeuta_id', user!.id)
-          .eq('status', 'ativo')
-          .order('created_at', { ascending: false })
-          .limit(1)
-          .maybeSingle(),
-      ]);
-      return {
-        totalSessoes: sessoesRes.count ?? 0,
-        pacote: pacoteRes.data,
-      };
-    },
-    enabled: !!user && !!pacienteId,
-  });
-
-  if (!data) return null;
-
-  const { totalSessoes, pacote } = data;
+  const { isLoading, pacote, sessoesRestantes, totalSessoes } = usePatientSessionStats(pacienteId);
 
   return (
-    <div className="flex items-center gap-3 pt-1 border-t border-primary/10">
-      {/* Total sessions done */}
-      <div className="flex items-center gap-1.5 text-[11px]">
-        <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-        <span className="font-bold text-foreground">{totalSessoes}</span>
-        <span className="text-muted-foreground">sessões realizadas</span>
+    <div className="grid gap-2 border-t border-border/60 pt-3 sm:grid-cols-2">
+      <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+          <span>Sessões realizadas</span>
+        </div>
+        <p className="mt-1 text-sm font-bold text-foreground">
+          {isLoading ? 'Carregando…' : totalSessoes}
+        </p>
       </div>
 
-      {/* Active package */}
-      {pacote && (
-        <>
-          <span className="text-muted-foreground/40">|</span>
-          <div className="flex items-center gap-1.5 text-[11px]">
-            <Package className="h-3.5 w-3.5 text-primary" />
-            <span className="font-bold text-foreground">
-              {pacote.sessoes_utilizadas}/{pacote.total_sessoes}
-            </span>
-            <span className="text-muted-foreground">
-              ({pacote.total_sessoes - pacote.sessoes_utilizadas} rest.)
-            </span>
-          </div>
-        </>
-      )}
+      <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
+        <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+          <Package className="h-3.5 w-3.5 text-primary" />
+          <span>Pacote ativo</span>
+        </div>
+        <p className="mt-1 text-sm font-bold text-foreground">
+          {isLoading ? 'Carregando…' : pacote ? `${pacote.sessoes_utilizadas}/${pacote.total_sessoes}` : 'Sem pacote ativo'}
+        </p>
+        {!isLoading && pacote && (
+          <p className="text-[11px] text-muted-foreground">{sessoesRestantes} restantes</p>
+        )}
+      </div>
     </div>
   );
 }
