@@ -1614,23 +1614,27 @@ export default function Agenda() {
             {form.paciente_id && form.paciente_id !== 'bloqueio' && (() => {
               const pac = pacientes.find(p => p.id === form.paciente_id);
               return (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 flex items-center justify-between animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                      <Users className="h-5 w-5" />
+                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2 animate-in fade-in slide-in-from-top-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
+                        <Users className="h-5 w-5" />
+                      </div>
+                      <div>
+                        <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
+                        </p>
+                      </div>
                     </div>
-                    <div>
-                      <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                        <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
-                      </p>
-                    </div>
+                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
+                      <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
+                        Ver Prontuário →
+                      </a>
+                    </Button>
                   </div>
-                  <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
-                    <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
-                      Ver Prontuário →
-                    </a>
-                  </Button>
+                  {/* Sessões & Pacote inline */}
+                  <AgendaPatientStats pacienteId={form.paciente_id} />
                 </div>
               );
             })()}
