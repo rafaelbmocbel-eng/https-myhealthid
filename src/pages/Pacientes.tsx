@@ -745,6 +745,7 @@ export default function Pacientes() {
             })}
           </div>
         )}
+        )}
       </div>
 
       {/* Modal Paciente */}
