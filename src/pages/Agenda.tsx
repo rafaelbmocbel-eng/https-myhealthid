@@ -1611,37 +1611,8 @@ export default function Agenda() {
               </div>
             )}
 
-            {/* Clinical Snapshot (Quick insight if patient selected) */}
-            {form.paciente_id && form.paciente_id !== 'bloqueio' && (() => {
-              const pac = pacientes.find(p => p.id === form.paciente_id);
-              return (
-                <div className="bg-primary/5 border border-primary/20 rounded-xl p-3 space-y-2 animate-in fade-in slide-in-from-top-2">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="h-10 w-10 rounded-full bg-primary/20 flex items-center justify-center text-primary">
-                        <Users className="h-5 w-5" />
-                      </div>
-                      <div>
-                        <p className="text-xs font-bold text-foreground">{pac?.nome} {pac?.sobrenome}</p>
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
-                          <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Paciente Ativo
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary" asChild>
-                      <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
-                        Ver Prontuário →
-                      </a>
-                    </Button>
-                  </div>
-                  {/* Sessões & Pacote inline */}
-                  <AgendaPatientStats pacienteId={form.paciente_id} />
-                </div>
-              );
-            })()}
-
             {/* Paciente */}
-            <div>
+            <div className="space-y-2">
               <Label>Paciente</Label>
               <div className="flex gap-2 mt-1.5">
                 <PacienteSelect
@@ -1656,6 +1627,34 @@ export default function Agenda() {
                   <Users className="h-4 w-4" />
                 </Button>
               </div>
+              {form.paciente_id && form.paciente_id !== 'bloqueio' && (() => {
+                const pac = pacientes.find(p => p.id === form.paciente_id);
+                return (
+                  <div className="rounded-xl border border-border/60 bg-muted/30 p-3 space-y-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-10 w-10 rounded-full bg-primary/15 flex items-center justify-center text-primary shrink-0">
+                          <Users className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="text-sm font-bold text-foreground truncate">{pac?.nome} {pac?.sobrenome}</p>
+                          <Badge variant="outline" className="mt-1 gap-1.5 text-[10px] font-medium">
+                            <CheckCircle2 className="h-3 w-3" />
+                            Paciente ativo
+                          </Badge>
+                        </div>
+                      </div>
+                      <Button variant="ghost" size="sm" className="h-7 text-[10px] text-primary shrink-0" asChild>
+                        <a href={`/pacientes/${form.paciente_id}?service=metodo_identidade`} target="_blank" rel="noreferrer">
+                          Ver prontuário →
+                        </a>
+                      </Button>
+                    </div>
+
+                    <AgendaPatientStats pacienteId={form.paciente_id} />
+                  </div>
+                );
+              })()}
               {showNewPaciente && (
                 <div className="mt-2 p-3 border rounded-lg space-y-2 bg-accent/20">
                   <p className="text-xs font-semibold text-muted-foreground">Cadastrar novo paciente</p>
