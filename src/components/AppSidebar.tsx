@@ -2,7 +2,7 @@ import { forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, AlignCenter, CalendarDays, Users,
-  Settings, LogOut, User, ClipboardList, Sparkles, MessageSquare, PartyPopper,
+  Settings, LogOut, User, ClipboardList, Sparkles, PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
@@ -21,7 +21,6 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
-  { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];

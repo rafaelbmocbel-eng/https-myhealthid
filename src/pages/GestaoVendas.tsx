@@ -49,7 +49,7 @@ const CLASSIFICACOES: { key: ClassificacaoTag; label: string; emoji: string; col
 
 type TabId = 'pipeline' | 'mensagens' | 'notas' | 'servicos' | 'relatorios';
 
-export default function GestaoVendas() {
+export default function GestaoVendas({ embedded = false }: { embedded?: boolean }) {
     const navigate = useNavigate();
     const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
     const [fabOpen, setFabOpen] = useState(false);
@@ -407,8 +407,8 @@ export default function GestaoVendas() {
         { id: 'relatorios', label: 'Relatórios', icon: BarChart3, desc: 'Métricas e desempenho' },
     ];
 
-    return (
-        <AppLayout title="Gestão & CRM">
+    const content = (
+        <>
             <div className="space-y-6">
                 {/* ── KPI Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
@@ -1666,6 +1666,14 @@ export default function GestaoVendas() {
                 }
             </div>
             {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
+        </>
+    );
+
+    if (embedded) return content;
+
+    return (
+        <AppLayout title="Gestão & CRM">
+            {content}
         </AppLayout>
     );
 }

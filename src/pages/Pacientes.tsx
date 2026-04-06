@@ -1,6 +1,6 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { PacienteSchema } from '@/lib/validations';
-import { Navigate, useNavigate } from 'react-router-dom';
+import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -19,6 +19,7 @@ import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
+  DollarSign, MessageSquare,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,6 +30,10 @@ import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/wha
 import { useEquipe } from '@/hooks/useEquipe';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
+const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
+const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
+
+type MainTab = 'clientes' | 'crm' | 'financeiro';
 
 // ── Classificação automática de pacientes ───────────────────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
@@ -184,6 +189,16 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeMainTab = (searchParams.get('tab') as MainTab) || 'clientes';
+  const setActiveMainTab = (tab: MainTab) => {
+    if (tab === 'clientes') {
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
 
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
@@ -557,6 +572,45 @@ export default function Pacientes() {
             </Button>
           </div>
         </div>
+
+        {/* ── Main Tabs ── */}
+        <div className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-5">
+          {([
+            { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
+            { id: 'crm' as MainTab, label: 'CRM', icon: MessageSquare },
+            { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
+          ]).map(tab => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveMainTab(tab.id)}
+              className={cn(
+                'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold transition-all',
+                activeMainTab === tab.id
+                  ? 'bg-background shadow-sm text-primary'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              <tab.icon className="h-4 w-4" />
+              <span>{tab.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* ── Tab Content ── */}
+        {activeMainTab === 'crm' && (
+          <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <GestaoVendas embedded />
+          </Suspense>
+        )}
+
+        {activeMainTab === 'financeiro' && (
+          <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+            <FinanceiroGeral />
+          </Suspense>
+        )}
+
+        {activeMainTab === 'clientes' && (
+        <>
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -691,6 +745,8 @@ export default function Pacientes() {
               );
             })}
           </div>
+        )}
+        </>
         )}
       </div>
 
@@ -875,7 +931,7 @@ export default function Pacientes() {
               <span>Agenda</span>
             </button>
             <button
-              onClick={() => { setFabOpen(false); navigate('/crm'); }}
+              onClick={() => { setFabOpen(false); setActiveMainTab('crm'); }}
               className="flex items-center gap-2 h-11 pl-4 pr-5 rounded-full bg-card border shadow-md text-sm font-medium hover:bg-accent transition-colors"
             >
               <Send className="h-4 w-4 text-blue-600" />
