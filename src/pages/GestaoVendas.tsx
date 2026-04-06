@@ -1665,6 +1665,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                 }
             </div>
             {fabOpen && <div className="fixed inset-0 z-40 bg-black/10" onClick={() => setFabOpen(false)} />}
+        </>
     );
 
     if (embedded) return content;
