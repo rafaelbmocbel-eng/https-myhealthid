@@ -21,7 +21,6 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
   { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
-  { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
