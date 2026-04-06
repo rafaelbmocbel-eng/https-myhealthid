@@ -189,6 +189,16 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const activeMainTab = (searchParams.get('tab') as MainTab) || 'clientes';
+  const setActiveMainTab = (tab: MainTab) => {
+    if (tab === 'clientes') {
+      searchParams.delete('tab');
+      setSearchParams(searchParams, { replace: true });
+    } else {
+      setSearchParams({ tab }, { replace: true });
+    }
+  };
 
   const { data: pacientes = [], isLoading } = useQuery({
     queryKey: ['pacientes-com-servicos', user?.id],
