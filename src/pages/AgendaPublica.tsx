@@ -68,26 +68,15 @@ export default function AgendaPublica() {
     (async () => {
       try {
         const { data: linkData, error: linkError } = await supabase
-          .from('links_agenda_paciente')
-          .select('*')
-          .eq('token', token)
+          .rpc('get_agenda_link_by_token', { p_token: token })
           .maybeSingle();
 
-        if (linkError || !linkData) { setErro('Link não encontrado.'); setLoading(false); return; }
-        if (linkData.status !== 'ativo') { setErro('Este link foi cancelado.'); setLoading(false); return; }
-        if (new Date(linkData.data_expiracao!) < new Date()) { setErro('Este link expirou.'); setLoading(false); return; }
+        if (linkError || !linkData) { setErro('Link não encontrado ou expirado.'); setLoading(false); return; }
 
         setLinkInfo(linkData as LinkInfo);
 
-        // Update access tracking
-        await supabase
-          .from('links_agenda_paciente')
-          .update({
-            acessos_totais: (linkData.acessos_totais || 0) + 1,
-            data_ultimo_acesso: new Date().toISOString(),
-            ...(!linkData.data_primeiro_acesso ? { data_primeiro_acesso: new Date().toISOString() } : {}),
-          })
-          .eq('id', linkData.id);
+        // Update access tracking via secure RPC
+        await supabase.rpc('track_agenda_link_access', { p_token: token });
 
         const [{ data: profileData }, { data: cfg }, { data: ags }] = await Promise.all([
           supabase
