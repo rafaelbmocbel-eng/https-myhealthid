@@ -709,9 +709,21 @@ export default function Agenda() {
   const handleRecurrenceAction = async (scope: 'single' | 'future') => {
     if (!recurrenceEditModal) return;
     setSubmitting(true);
-    const { action, agendamento, payload } = recurrenceEditModal;
+    const { action, agendamento, payload, singleCallback } = recurrenceEditModal;
 
-    if (action === 'save' || action === 'drag') {
+    if (action === 'status') {
+      if (scope === 'single') {
+        // Execute the original single-item callback (confirmar/recusar logic)
+        if (singleCallback) await singleCallback();
+      } else if (payload?.status) {
+        // Apply status change to this and all future recurring appointments
+        await updateFutureAgendamentos(
+          agendamento.recorrencia_grupo_id!,
+          agendamento.data_inicio,
+          { status: payload.status },
+        );
+      }
+    } else if (action === 'save' || action === 'drag') {
       if (scope === 'single') {
         await updateAgendamento(agendamento.id, payload || {});
       } else if (payload) {
