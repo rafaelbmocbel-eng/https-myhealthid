@@ -457,10 +457,10 @@ export default function Index() {
         {/* Service modules — compact list */}
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
+            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
             ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
             ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
             ...(servicos.studio ? [{ label: 'Studio Personal ID', sublabel: `${studioPacientes} pacientes`, icon: Sparkles, href: '/studio-personal-id', gradient: 'bg-gradient-studio' }] : []),
-            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
           ].map(mod => {
             const Icon = mod.icon;
             return (
