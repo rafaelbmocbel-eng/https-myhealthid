@@ -202,7 +202,7 @@ export default function Agenda() {
   // Recurrence edit modal state
   const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
     open: boolean;
-    action: 'save' | 'delete' | 'drag';
+    action: 'save' | 'delete' | 'drag' | 'status';
     agendamento: Agendamento;
     payload?: {
       paciente_id?: string;
@@ -212,7 +212,10 @@ export default function Agenda() {
       status?: Agendamento['status'];
       tipo_atendimento?: string;
       observacoes?: string;
+      membro_equipe_id?: string | null;
     };
+    /** Callback executed for single-scope status changes (confirmar/recusar) */
+    singleCallback?: () => Promise<void>;
   } | null>(null);
 
   // ── Auto-conclude past confirmed/pendente appointments ──
