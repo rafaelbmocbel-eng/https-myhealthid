@@ -3105,6 +3105,23 @@ export type Database = {
           status: string
         }[]
       }
+      get_agenda_link_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          acessos_totais: number
+          created_at: string
+          data_criacao: string
+          data_expiracao: string
+          data_primeiro_acesso: string
+          data_ultimo_acesso: string
+          id: string
+          paciente_id: string
+          status: string
+          terapeuta_id: string
+          token: string
+          updated_at: string
+        }[]
+      }
       get_evento_pagamento: {
         Args: { p_evento_id: string; p_inscricao_id: string }
         Returns: {
@@ -3185,6 +3202,10 @@ export type Database = {
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
       link_patient_user_by_email: { Args: never; Returns: string }
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
+      track_agenda_link_access: {
+        Args: { p_token: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
