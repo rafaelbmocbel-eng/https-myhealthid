@@ -202,7 +202,7 @@ export default function Agenda() {
   // Recurrence edit modal state
   const [recurrenceEditModal, setRecurrenceEditModal] = useState<{
     open: boolean;
-    action: 'save' | 'delete' | 'drag';
+    action: 'save' | 'delete' | 'drag' | 'status';
     agendamento: Agendamento;
     payload?: {
       paciente_id?: string;
@@ -212,7 +212,10 @@ export default function Agenda() {
       status?: Agendamento['status'];
       tipo_atendimento?: string;
       observacoes?: string;
+      membro_equipe_id?: string | null;
     };
+    /** Callback executed for single-scope status changes (confirmar/recusar) */
+    singleCallback?: () => Promise<void>;
   } | null>(null);
 
   // ── Auto-conclude past confirmed/pendente appointments ──
@@ -706,9 +709,21 @@ export default function Agenda() {
   const handleRecurrenceAction = async (scope: 'single' | 'future') => {
     if (!recurrenceEditModal) return;
     setSubmitting(true);
-    const { action, agendamento, payload } = recurrenceEditModal;
+    const { action, agendamento, payload, singleCallback } = recurrenceEditModal;
 
-    if (action === 'save' || action === 'drag') {
+    if (action === 'status') {
+      if (scope === 'single') {
+        // Execute the original single-item callback (confirmar/recusar logic)
+        if (singleCallback) await singleCallback();
+      } else if (payload?.status) {
+        // Apply status change to this and all future recurring appointments
+        await updateFutureAgendamentos(
+          agendamento.recorrencia_grupo_id!,
+          agendamento.data_inicio,
+          { status: payload.status },
+        );
+      }
+    } else if (action === 'save' || action === 'drag') {
       if (scope === 'single') {
         await updateAgendamento(agendamento.id, payload || {});
       } else if (payload) {
@@ -765,7 +780,7 @@ export default function Agenda() {
 
   const pendentes = agendamentos.filter(ag => ag.status === 'pendente');
 
-  const handleConfirmar = async (id: string) => {
+  const executeConfirmar = async (id: string) => {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'confirmado' });
 
@@ -804,7 +819,6 @@ export default function Agenda() {
         metadata: { paciente_id: ag.paciente_id, agendamento_id: id, para_paciente: true },
       });
 
-      // Automação: Atualizar diretriz vigente no prontuário
       const { data: prot } = await supabase
         .from('protocolos')
         .select('id, titulo, objetivo_geral')
@@ -851,11 +865,26 @@ export default function Agenda() {
     toast({ title: '✅ Agendamento confirmado!' });
   };
 
-  const handleRecusar = async (id: string) => {
+  const handleConfirmar = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
+    if (!ag) return;
+    if (ag.recorrencia_grupo_id) {
+      setRecurrenceEditModal({
+        open: true,
+        action: 'status',
+        agendamento: ag,
+        payload: { status: 'confirmado' },
+        singleCallback: () => executeConfirmar(id),
+      });
+      return;
+    }
+    await executeConfirmar(id);
+  };
+
+  const executeRecusar = async (id: string) => {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'cancelado' });
 
-    // Notify patient about rejection
     if (ag?.paciente_id) {
       const dataFormatada = format(parseISO(ag.data_inicio), "d MMM 'às' HH:mm", { locale: ptBR });
       await supabase.from('notificacoes').insert({
@@ -870,6 +899,22 @@ export default function Agenda() {
 
     refetchNotifications();
     toast({ title: '❌ Agendamento recusado.' });
+  };
+
+  const handleRecusar = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
+    if (!ag) return;
+    if (ag.recorrencia_grupo_id) {
+      setRecurrenceEditModal({
+        open: true,
+        action: 'status',
+        agendamento: ag,
+        payload: { status: 'cancelado' },
+        singleCallback: () => executeRecusar(id),
+      });
+      return;
+    }
+    await executeRecusar(id);
   };
 
   const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
