@@ -281,7 +281,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
     { key: 'resumo', label: 'Resumo', icon: Activity, badge: alertas > 0 ? alertas : undefined },
     { key: 'agenda', label: 'Agenda', icon: CalendarCheck, badge: proximosConfirmados.length > 0 ? proximosConfirmados.length : undefined },
     { key: 'ciclos', label: 'Ciclos', icon: Repeat, badge: vencidos > 0 ? vencidos : undefined },
-    { key: 'controle', label: 'Controle', icon: ClipboardCheck },
+    { key: 'controle', label: 'Controle', icon: ClipboardCheck, badge: undefined },
   ];
 
   // ── Export current panel data ──────────────────────────────────────
