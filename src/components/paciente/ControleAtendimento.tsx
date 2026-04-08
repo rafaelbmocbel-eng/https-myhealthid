@@ -423,16 +423,12 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
             </CardTitle>
             <p className="text-xs text-muted-foreground mt-1 mb-2">Visão geral de todas as sessões e anotações.</p>
             <div className="mt-1">
-              <select
-                className="w-full text-sm flex h-9 rounded-md border border-input bg-transparent px-3 py-1 shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+              <PacienteSelect
+                pacientes={patients.map((p: any) => ({ id: p.id, nome: p.nome, sobrenome: p.sobrenome }))}
                 value={historicoPatientId}
-                onChange={(e) => setHistoricoPatientId(e.target.value)}
-              >
-                <option value="" disabled>Selecione um paciente...</option>
-                {patients.map((p: any) => (
-                  <option key={p.id} value={p.id}>{p.nome} {p.sobrenome}</option>
-                ))}
-              </select>
+                onValueChange={setHistoricoPatientId}
+                placeholder="Pesquisar paciente..."
+              />
             </div>
           </CardHeader>
           <CardContent className="pt-4">
