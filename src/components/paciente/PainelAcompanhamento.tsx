@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -9,8 +9,10 @@ import {
   Users, UserCheck, AlertTriangle, Phone, Clock,
   TrendingUp, ChevronRight, CalendarDays, Activity,
   UserX, PhoneCall, Eye, EyeOff, CalendarCheck, CalendarPlus,
-  RefreshCw, Target, Repeat, X, Download, Filter
+  RefreshCw, Target, Repeat, X, Download, Filter, ClipboardCheck, Loader2
 } from 'lucide-react';
+
+const ControleAtendimento = lazy(() => import('@/components/paciente/ControleAtendimento'));
 import { differenceInDays, format, formatDistanceToNow, addDays, addMonths, isFuture, isPast } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
@@ -67,7 +69,7 @@ const CICLO_CONFIG: Record<CicloTipo, { label: string; dias: number; icon: strin
   anual: { label: 'Anual', dias: 365, icon: '🎯', color: 'text-primary' },
 };
 
-type TabView = 'resumo' | 'agenda' | 'ciclos';
+type TabView = 'resumo' | 'agenda' | 'ciclos' | 'controle';
 
 export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, todosAgendamentos, membrosEquipe, agendamentosPorMembro = {} }: Props) {
   const navigate = useNavigate();
@@ -279,6 +281,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
     { key: 'resumo', label: 'Resumo', icon: Activity, badge: alertas > 0 ? alertas : undefined },
     { key: 'agenda', label: 'Agenda', icon: CalendarCheck, badge: proximosConfirmados.length > 0 ? proximosConfirmados.length : undefined },
     { key: 'ciclos', label: 'Ciclos', icon: Repeat, badge: vencidos > 0 ? vencidos : undefined },
+    { key: 'controle', label: 'Controle', icon: ClipboardCheck },
   ];
 
   // ── Export current panel data ──────────────────────────────────────
@@ -817,6 +820,12 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
                     </CardContent>
                   </Card>
                 </div>
+              )}
+
+              {activeTab === 'controle' && (
+                <Suspense fallback={<div className="flex items-center justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                  <ControleAtendimento embedded />
+                </Suspense>
               )}
             </div>
           </motion.div>
