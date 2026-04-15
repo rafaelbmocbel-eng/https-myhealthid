@@ -55,7 +55,7 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || 'avaliacoes';
-  const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' ? 'historico-avaliacoes' : rawTab;
+  const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' ? 'avaliacoes' : rawTab;
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -442,12 +442,9 @@ export default function PacientePerfil() {
         {/* Contact + Notes removed — now inline above */}
         {/* ==== 4 TABS ==== */}
         <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-6 h-auto gap-1 w-full">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
             <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <Activity className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Visão Integrada</span><span className="sm:hidden">Visão</span>
-            </TabsTrigger>
-            <TabsTrigger value="historico-avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Hist. Avaliações</span><span className="sm:hidden">Hist.</span>
+              <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
             </TabsTrigger>
             <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
               <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes e Tratamentos</span><span className="sm:hidden">Dir.</span>
@@ -464,21 +461,78 @@ export default function PacientePerfil() {
           </TabsList>
 
           {/* ══════════════════════════════════════════════════════════════════
-              TAB 1: AVALIAÇÕES & QUESTIONÁRIOS (unificada)
-          ══════════════════════════════════════════════════════════════════ */}
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB 1: VISÃO INTEGRADA (resumo, KPIs, links, pontos críticos)
+              TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="avaliacoes" className="mt-4 space-y-6">
-            {/* Action Buttons */}
-            <div className="flex gap-2 flex-wrap">
-              <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Nova Avaliação Identidade
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Nova Avaliação COB° ZERO
-              </Button>
+            {/* Service Action Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Método Identidade */}
+              <div className="clinical-card border-l-4 border-primary cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Activity className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Método Identidade</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesId.length} avaliação(ões)</p>
+                  </div>
+                  <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/metodo-identidade?paciente=${id}`); }}>
+                    <Plus className="h-3.5 w-3.5" /> Nova
+                  </Button>
+                </div>
+              </div>
+
+              {/* COB° ZERO */}
+              <div className="clinical-card border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                    <AlignCenter className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">COB° ZERO</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesCob.length} avaliação(ões)</p>
+                  </div>
+                  <Button size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/cob-zero?paciente=${id}`); }}>
+                    <Plus className="h-3.5 w-3.5" /> Nova
+                  </Button>
+                </div>
+              </div>
+
+              {/* Studio Personal ID */}
+              <div className="clinical-card border-l-4 border-emerald-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/studio-personal-id?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Studio Personal ID</h3>
+                    <p className="text-[10px] text-muted-foreground">Hub de treinos e medidas</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </div>
+
+              {/* Avaliação por Voz */}
+              <div className="clinical-card border-l-4 border-indigo-500">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                    <Stethoscope className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Avaliação por Voz</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesVoz.length} avaliação(ões)</p>
+                  </div>
+                </div>
+                <VoiceAssessment
+                  serviceType="identidade"
+                  pacienteId={id!}
+                  patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                />
+              </div>
             </div>
+
+
+
 
             {/* Links Compactos (barra de ícones) */}
             <div className="clinical-card !p-3">
@@ -685,34 +739,16 @@ export default function PacientePerfil() {
               );
             })()}
 
-            {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && (
-              <EmptyState icon={<Activity />} title="Nenhuma avaliação registrada" subtitle="Realize uma avaliação para visualizar a visão integrada do paciente." />
-            )}
-          </TabsContent>
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: HISTÓRICO DE AVALIAÇÕES (todas as avaliações detalhadas)
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="historico-avaliacoes" className="mt-4 space-y-6">
-            {/* Avaliação por Voz */}
-            <div className="clinical-card">
-              <VoiceAssessment
-                serviceType="identidade"
-                pacienteId={id!}
-                patientName={`${paciente.nome} ${paciente.sobrenome}`}
-              />
-            </div>
-
+            {/* Histórico detalhado de avaliações */}
             {(loadingId || loadingCob) ? (
               <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
             ) : (
               <>
-                {/* MyID / Identidade */}
                 {avaliacoesId.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
                       <Activity className="h-4 w-4 text-primary" />
-                      <h3 className="font-semibold text-sm">Método Identidade ({avaliacoesId.length})</h3>
+                      <h3 className="font-semibold text-sm">Histórico Identidade ({avaliacoesId.length})</h3>
                       <Badge variant="outline" className="text-[10px] ml-auto">
                         {avaliacoesId.length === 1 ? '1ª Avaliação' : `${avaliacoesId.length - 1} reavaliação(ões)`}
                       </Badge>
@@ -740,12 +776,11 @@ export default function PacientePerfil() {
                   </div>
                 )}
 
-                {/* COB° ZERO */}
                 {avaliacoesCob.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
                       <AlignCenter className="h-4 w-4 text-blue-600" />
-                      <h3 className="font-semibold text-sm">COB° ZERO ({avaliacoesCob.length})</h3>
+                      <h3 className="font-semibold text-sm">Histórico COB° ZERO ({avaliacoesCob.length})</h3>
                     </div>
                     <div className="space-y-2">
                       {avaliacoesCob.map((av: any, idx: number) => (
@@ -770,12 +805,11 @@ export default function PacientePerfil() {
                   </div>
                 )}
 
-                {/* Avaliações por Voz */}
                 {avaliacoesVoz.length > 0 && (
                   <div className="clinical-card">
                     <div className="flex items-center gap-2 mb-3">
                       <Stethoscope className="h-4 w-4 text-indigo-600" />
-                      <h3 className="font-semibold text-sm">Avaliações por Voz ({avaliacoesVoz.length})</h3>
+                      <h3 className="font-semibold text-sm">Histórico Voz ({avaliacoesVoz.length})</h3>
                     </div>
                     <div className="space-y-2">
                       {avaliacoesVoz.map((av: any, idx: number) => {
@@ -801,16 +835,10 @@ export default function PacientePerfil() {
                                     {av.classificacao_severidade}
                                   </Badge>
                                 )}
-                                {idx === 0 && <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[10px] h-4">Mais recente</Badge>}
                               </div>
                               {av.queixa_principal && (
-                                <p className="text-xs text-muted-foreground mt-0.5 truncate">
-                                  Queixa: {av.queixa_principal}
-                                </p>
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">Queixa: {av.queixa_principal}</p>
                               )}
-                              <p className="text-[10px] text-muted-foreground mt-0.5">
-                                Serviço: {av.servico === 'identidade' ? 'Método Identidade' : av.servico === 'cobzero' ? 'COB° ZERO' : 'Studio Personal ID'}
-                              </p>
                             </div>
                           </div>
                         );
@@ -818,22 +846,27 @@ export default function PacientePerfil() {
                     </div>
                   </div>
                 )}
-
-                {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && (
-                  <EmptyState icon={<Activity />} title="Nenhuma avaliação salva" subtitle="Realize uma avaliação completa para visualizar o histórico." />
-                )}
               </>
             )}
 
-            {/* Questionários Remotos Recebidos */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <FileText className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Questionários Remotos Recebidos</h3>
+            {/* Questionários Remotos */}
+            {(respostasPaciente.length > 0 || linksAvaliacao.length > 0) && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Questionários Remotos</h3>
+                </div>
+                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
               </div>
-              <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
-            </div>
+            )}
+
+            {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && respostasPaciente.length === 0 && (
+              <EmptyState icon={<Activity />} title="Nenhuma avaliação registrada" subtitle="Utilize os cards acima para iniciar uma avaliação." />
+            )}
           </TabsContent>
+
+
+
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB: EVOLUÇÃO E PRONTUÁRIOS
