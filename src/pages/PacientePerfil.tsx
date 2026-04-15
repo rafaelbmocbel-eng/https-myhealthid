@@ -461,14 +461,78 @@ export default function PacientePerfil() {
           </TabsList>
 
           {/* ══════════════════════════════════════════════════════════════════
-              TAB 1: AVALIAÇÕES & QUESTIONÁRIOS (unificada)
-          ══════════════════════════════════════════════════════════════════ */}
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB 1: VISÃO INTEGRADA (resumo, KPIs, links, pontos críticos)
+              TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="avaliacoes" className="mt-4 space-y-6">
-            {/* Action Buttons */}
-            <div className="flex gap-2 flex-wrap">
+            {/* Service Action Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {/* Método Identidade */}
+              <div className="clinical-card border-l-4 border-primary cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
+                    <Activity className="h-5 w-5 text-primary" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Método Identidade</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesId.length} avaliação(ões)</p>
+                  </div>
+                  <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/metodo-identidade?paciente=${id}`); }}>
+                    <Plus className="h-3.5 w-3.5" /> Nova
+                  </Button>
+                </div>
+              </div>
+
+              {/* COB° ZERO */}
+              <div className="clinical-card border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
+                    <AlignCenter className="h-5 w-5 text-blue-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">COB° ZERO</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesCob.length} avaliação(ões)</p>
+                  </div>
+                  <Button size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/cob-zero?paciente=${id}`); }}>
+                    <Plus className="h-3.5 w-3.5" /> Nova
+                  </Button>
+                </div>
+              </div>
+
+              {/* Studio Personal ID */}
+              <div className="clinical-card border-l-4 border-emerald-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/studio-personal-id?paciente=${id}`)}>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-emerald-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Studio Personal ID</h3>
+                    <p className="text-[10px] text-muted-foreground">Hub de treinos e medidas</p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                </div>
+              </div>
+
+              {/* Avaliação por Voz */}
+              <div className="clinical-card border-l-4 border-indigo-500">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="h-10 w-10 rounded-xl bg-indigo-100 flex items-center justify-center shrink-0">
+                    <Stethoscope className="h-5 w-5 text-indigo-600" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-bold">Avaliação por Voz</h3>
+                    <p className="text-[10px] text-muted-foreground">{avaliacoesVoz.length} avaliação(ões)</p>
+                  </div>
+                </div>
+                <VoiceAssessment
+                  serviceType="identidade"
+                  pacienteId={id!}
+                  patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                />
+              </div>
+            </div>
+
+            {/* Action Buttons - legacy kept for links */}
+            <div className="flex gap-2 flex-wrap" style={{ display: 'none' }}>
               <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
                 <Plus className="h-3.5 w-3.5" /> Nova Avaliação Identidade
               </Button>
