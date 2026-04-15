@@ -1185,7 +1185,14 @@ export default function Agenda() {
             )}
           </div>
 
-          {/* Right: calendar grid */}
+          {/* Right: calendar grid or controle view */}
+          {viewMode === 'controle' ? (
+            <div className="flex-1 overflow-auto p-4">
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                <ControleAtendimento embedded />
+              </Suspense>
+            </div>
+          ) : (
           <div className="flex-1 overflow-auto" ref={gridRef}>
 
             {/* ===== MONTH VIEW ===== */}
