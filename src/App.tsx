@@ -91,6 +91,7 @@ const App = () => (
                 <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<PatientGuard><StudioPersonalID /></PatientGuard>} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
                 <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
