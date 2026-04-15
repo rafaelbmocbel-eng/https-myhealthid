@@ -102,6 +102,5 @@ export default defineConfig(({ mode }) => ({
     "import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY": JSON.stringify(
       process.env.VITE_SUPABASE_PUBLISHABLE_KEY || FALLBACK_SUPABASE_PUBLISHABLE_KEY,
     ),
-    __APP_VERSION__: JSON.stringify(process.env.VITE_APP_VERSION || new Date().toISOString()),
   },
 }));
