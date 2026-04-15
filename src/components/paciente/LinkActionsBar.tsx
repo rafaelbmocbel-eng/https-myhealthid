@@ -1,7 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Smartphone, Copy, Plus, Loader2 } from 'lucide-react';
+import { Smartphone, Copy, Plus, Loader2, Fingerprint, CalendarDays, LayoutDashboard, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  myid: Fingerprint,
+  agenda: CalendarDays,
+  portal: LayoutDashboard,
+};
 
 export interface LinkActionItem {
   key: string;
