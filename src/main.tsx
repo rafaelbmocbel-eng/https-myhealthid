@@ -41,6 +41,9 @@ const reloadOnDynamicImportFailure = () => {
 };
 
 const syncBuildVersion = async () => {
+  // Skip version-based reloads in development to prevent reload loops
+  if (import.meta.env.DEV) return;
+
   const currentVersion = __APP_VERSION__;
   const savedVersion = window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
 
