@@ -25,7 +25,7 @@ export default function PortalGate() {
         console.warn('[PortalGate] signOut error (ignored):', e);
       }
 
-      // 2) Clear any lingering local storage keys related to auth
+      // 2) Clear any lingering local/session storage keys related to auth & routing
       try {
         const keys = Object.keys(localStorage);
         for (const key of keys) {
@@ -33,6 +33,8 @@ export default function PortalGate() {
             localStorage.removeItem(key);
           }
         }
+        // Prevent RouteRestorer from sending patient back to a professional route
+        sessionStorage.removeItem('myhealthid.last-route');
       } catch (_) { /* ignore in SSR */ }
 
       // 3) Dynamically import PacienteLogin to avoid it reading stale session
