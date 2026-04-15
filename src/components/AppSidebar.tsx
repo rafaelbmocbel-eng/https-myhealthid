@@ -1,8 +1,8 @@
 import { forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, AlignCenter, CalendarDays, Users,
-  Settings, LogOut, User, ClipboardList, Sparkles, PartyPopper,
+  LayoutDashboard, CalendarDays, Users,
+  Settings, LogOut, User, PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
@@ -17,9 +17,6 @@ type ServiceKey = 'identidade' | 'cob_zero' | 'studio' | 'eventos';
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, serviceKey: 'identidade' },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, serviceKey: 'cob_zero' },
-  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, serviceKey: 'studio' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
