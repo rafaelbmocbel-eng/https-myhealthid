@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -39,7 +39,9 @@ import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
-type ViewMode = 'dia' | 'semana' | 'mes';
+type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
+
+const ControleAtendimento = lazy(() => import('@/components/paciente/ControleAtendimento'));
 
 // Slot duration in minutes
 const SLOT_MINUTES = 60;
@@ -1022,10 +1024,10 @@ export default function Agenda() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="flex rounded-xl border overflow-hidden text-[10px] sm:text-xs shadow-sm">
-              {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
+              {(['dia', 'semana', 'mes', 'controle'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('px-2 sm:px-3 py-2 font-bold transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30 bg-card')}>
-                  {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : 'Mês'}
+                  {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : v === 'mes' ? 'Mês' : 'Controle'}
                 </button>
               ))}
             </div>
@@ -1183,7 +1185,14 @@ export default function Agenda() {
             )}
           </div>
 
-          {/* Right: calendar grid */}
+          {/* Right: calendar grid or controle view */}
+          {viewMode === 'controle' ? (
+            <div className="flex-1 overflow-auto p-4">
+              <Suspense fallback={<div className="flex items-center justify-center h-40"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>}>
+                <ControleAtendimento embedded />
+              </Suspense>
+            </div>
+          ) : (
           <div className="flex-1 overflow-auto" ref={gridRef}>
 
             {/* ===== MONTH VIEW ===== */}
@@ -1575,6 +1584,7 @@ export default function Agenda() {
               </div>
             )}
           </div>
+          )}
         </div>
       </div>
 
