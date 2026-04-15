@@ -1,8 +1,8 @@
 import { forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  LayoutDashboard, AlignCenter, CalendarDays, Users,
-  Settings, LogOut, User, ClipboardList, Sparkles, PartyPopper,
+  LayoutDashboard, CalendarDays, Users,
+  Settings, LogOut, User, PartyPopper,
   type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
