@@ -82,7 +82,7 @@ window.addEventListener("unhandledrejection", (event) => {
 });
 
 const updateSW = registerSW({
-  immediate: true,
+  immediate: !import.meta.env.DEV,
   onRegisteredSW(swUrl, registration) {
     if (!registration) return;
 
@@ -101,9 +101,7 @@ const updateSW = registerSW({
   onNeedRefresh() {
     void clearBrowserCaches().finally(() => {
       updateSW(true);
-      window.setTimeout(() => {
-        window.location.reload();
-      }, 150);
+      // Single reload after SW activates — no redundant timeout
     });
   },
 });
