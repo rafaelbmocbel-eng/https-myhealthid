@@ -1,66 +1,39 @@
 import { createRoot } from "react-dom/client";
-import { registerSW } from "virtual:pwa-register";
 import App from "./App.tsx";
 import { installSupabaseLockPatch } from "./lib/navigatorLockPatch";
 import "./index.css";
 
-declare const __APP_VERSION__: string;
-
 installSupabaseLockPatch();
 
-const APP_VERSION_STORAGE_KEY = "myhealthid.app.version";
+// ── Detect hostile environments for SW ──
+const isInIframe = (() => {
+  try { return window.self !== window.top; } catch { return true; }
+})();
+
+const isPreviewHost =
+  window.location.hostname.includes("id-preview--") ||
+  window.location.hostname.includes("lovableproject.com") ||
+  window.location.hostname.includes("lovable.app");
+
+const isSafeForSW = !isInIframe && !isPreviewHost && !import.meta.env.DEV;
+
+// ── Unregister stale SWs in unsafe environments ──
+if (!isSafeForSW && "serviceWorker" in navigator) {
+  navigator.serviceWorker.getRegistrations().then((regs) => {
+    regs.forEach((r) => r.unregister());
+  });
+}
+
+// ── Dynamic import error recovery (one retry only) ──
 const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
-const DYNAMIC_IMPORT_ERROR_PATTERN = /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
-
-const clearBrowserCaches = async () => {
-  if (!("caches" in window)) return;
-
-  const cacheNames = await caches.keys();
-  await Promise.all(cacheNames.map((name) => caches.delete(name)));
-};
-
-const forceLoadLatestVersion = async (registration?: ServiceWorkerRegistration) => {
-  await clearBrowserCaches();
-
-  if ("serviceWorker" in navigator) {
-    const registrations = registration ? [registration] : await navigator.serviceWorker.getRegistrations();
-    await Promise.all(registrations.map((item) => item.unregister().catch(() => false)));
-  }
-
-  const url = new URL(window.location.href);
-  url.searchParams.set("app_updated", Date.now().toString());
-  window.location.replace(url.toString());
-};
+const DYNAMIC_IMPORT_ERROR_PATTERN =
+  /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
 
 const reloadOnDynamicImportFailure = () => {
-  const hasRetried = window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY);
-  if (hasRetried) return;
-
+  if (window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY)) return;
   window.sessionStorage.setItem(DYNAMIC_IMPORT_RELOAD_KEY, "1");
-  void forceLoadLatestVersion();
+  window.location.reload();
 };
-
-const syncBuildVersion = async () => {
-  // Skip version-based reloads in development to prevent reload loops
-  if (import.meta.env.DEV) return;
-
-  const currentVersion = __APP_VERSION__;
-  const savedVersion = window.localStorage.getItem(APP_VERSION_STORAGE_KEY);
-
-  if (!savedVersion) {
-    window.localStorage.setItem(APP_VERSION_STORAGE_KEY, currentVersion);
-    return;
-  }
-
-  if (savedVersion !== currentVersion) {
-    window.localStorage.setItem(APP_VERSION_STORAGE_KEY, currentVersion);
-    await forceLoadLatestVersion();
-  }
-
-  window.sessionStorage.removeItem(DYNAMIC_IMPORT_RELOAD_KEY);
-};
-
-void syncBuildVersion();
 
 window.addEventListener("vite:preloadError", (event) => {
   event.preventDefault();
@@ -74,36 +47,32 @@ window.addEventListener("unhandledrejection", (event) => {
       : typeof event.reason === "string"
         ? event.reason
         : "";
-
   if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message)) return;
-
   event.preventDefault();
   reloadOnDynamicImportFailure();
 });
 
-const updateSW = registerSW({
-  immediate: !import.meta.env.DEV,
-  onRegisteredSW(swUrl, registration) {
-    if (!registration) return;
+// Clear the retry flag on successful load
+window.sessionStorage.removeItem(DYNAMIC_IMPORT_RELOAD_KEY);
 
-    const triggerUpdateCheck = () => registration.update().catch(() => undefined);
-
-    window.setInterval(triggerUpdateCheck, 30 * 1000);
-    window.addEventListener("focus", triggerUpdateCheck);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") triggerUpdateCheck();
+// ── Register SW only in production, outside iframes ──
+if (isSafeForSW) {
+  import("virtual:pwa-register").then(({ registerSW }) => {
+    registerSW({
+      immediate: true,
+      onRegisteredSW(_swUrl, registration) {
+        if (!registration) return;
+        // Check for updates every 60s (not 30s to reduce churn)
+        const check = () => registration.update().catch(() => undefined);
+        window.setInterval(check, 60_000);
+      },
+      onNeedRefresh() {
+        // Silently apply update — the user will get it on next navigation
+        // No forced reload to avoid jarring UX
+        console.info("[PWA] Nova versão disponível. Será aplicada ao recarregar.");
+      },
     });
-
-    if (registration.waiting) {
-      void forceLoadLatestVersion(registration);
-    }
-  },
-  onNeedRefresh() {
-    void clearBrowserCaches().finally(() => {
-      updateSW(true);
-      // Single reload after SW activates — no redundant timeout
-    });
-  },
-});
+  });
+}
 
 createRoot(document.getElementById("root")!).render(<App />);
