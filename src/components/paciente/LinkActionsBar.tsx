@@ -1,7 +1,13 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Smartphone, Copy, Plus, Loader2 } from 'lucide-react';
+import { Smartphone, Copy, Plus, Loader2, Fingerprint, CalendarDays, LayoutDashboard, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  myid: Fingerprint,
+  agenda: CalendarDays,
+  portal: LayoutDashboard,
+};
 
 export interface LinkActionItem {
   key: string;
@@ -40,6 +46,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
     <div className={cn('flex items-center gap-1.5', className)}>
       {items.map((item, idx) => {
         const colors = COLOR_MAP[item.color || 'primary'] || COLOR_MAP.primary;
+        const IconComponent = ICON_MAP[item.key] || (item.active ? (item.isWhatsApp ? Smartphone : Copy) : Plus);
         return (
           <Tooltip key={item.key} delayDuration={0}>
             <TooltipTrigger asChild>
@@ -47,7 +54,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                 <Button
                   size="icon"
                   className={cn(
-                    'h-7 w-7 md:h-8 md:w-8 rounded-lg transition-all',
+                    'h-7 w-7 md:h-8 md:w-8 rounded-lg transition-all relative',
                     item.isWhatsApp
                       ? 'bg-[#25D366] hover:bg-[#20BE5C] text-white'
                       : cn('border', colors.bg, colors.text, colors.border, 'hover:opacity-80'),
@@ -55,6 +62,10 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                   variant={item.isWhatsApp ? 'default' : 'outline'}
                   onClick={item.onAction}
                 >
+                  {/* Ícone do tipo de link (pequeno, no canto) */}
+                  <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-white shadow-sm flex items-center justify-center">
+                    <IconComponent className="h-2 w-2" style={{ color: 'hsl(var(--foreground))' }} />
+                  </span>
                   {item.isWhatsApp ? (
                     <Smartphone className="h-3.5 w-3.5" />
                   ) : (
@@ -65,10 +76,14 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                 <Button
                   size="icon"
                   variant="outline"
-                  className="h-7 w-7 md:h-8 md:w-8 rounded-lg border-dashed text-muted-foreground/60"
+                  className="h-7 w-7 md:h-8 md:w-8 rounded-lg border-dashed text-muted-foreground/60 relative"
                   disabled={item.loading}
                   onClick={item.onGenerate}
                 >
+                  {/* Ícone do tipo de link (pequeno, no canto) */}
+                  <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-muted shadow-sm flex items-center justify-center">
+                    <IconComponent className="h-2 w-2" style={{ color: 'hsl(var(--muted-foreground))' }} />
+                  </span>
                   {item.loading ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
