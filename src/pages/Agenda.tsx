@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo, lazy, Suspense } from 'react';
 import {
   format, startOfWeek, endOfWeek, startOfMonth, endOfMonth,
   addDays, addWeeks, addMonths, subWeeks, subMonths, subDays,
@@ -39,7 +39,9 @@ import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
-type ViewMode = 'dia' | 'semana' | 'mes';
+type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
+
+const ControleAtendimento = lazy(() => import('@/components/paciente/ControleAtendimento'));
 
 // Slot duration in minutes
 const SLOT_MINUTES = 60;
