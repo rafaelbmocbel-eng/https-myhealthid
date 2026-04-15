@@ -1024,10 +1024,10 @@ export default function Agenda() {
           </div>
           <div className="flex items-center gap-1.5 sm:gap-2">
             <div className="flex rounded-xl border overflow-hidden text-[10px] sm:text-xs shadow-sm">
-              {(['dia', 'semana', 'mes'] as ViewMode[]).map(v => (
+              {(['dia', 'semana', 'mes', 'controle'] as ViewMode[]).map(v => (
                 <button key={v} onClick={() => setViewMode(v)}
                   className={cn('px-2 sm:px-3 py-2 font-bold transition-all capitalize', viewMode === v ? 'bg-primary text-primary-foreground' : 'hover:bg-secondary/30 bg-card')}>
-                  {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : 'Mês'}
+                  {v === 'dia' ? 'Dia' : v === 'semana' ? 'Semana' : v === 'mes' ? 'Mês' : 'Controle'}
                 </button>
               ))}
             </div>
