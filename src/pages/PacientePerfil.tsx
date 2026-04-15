@@ -531,15 +531,8 @@ export default function PacientePerfil() {
               </div>
             </div>
 
-            {/* Action Buttons - legacy kept for links */}
-            <div className="flex gap-2 flex-wrap" style={{ display: 'none' }}>
-              <Button size="sm" className="bg-gradient-primary text-white gap-1.5" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Nova Avaliação Identidade
-              </Button>
-              <Button size="sm" variant="outline" className="gap-1.5 border-blue-300 text-blue-700 hover:bg-blue-50" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
-                <Plus className="h-3.5 w-3.5" /> Nova Avaliação COB° ZERO
-              </Button>
-            </div>
+
+
 
             {/* Links Compactos (barra de ícones) */}
             <div className="clinical-card !p-3">
