@@ -739,8 +739,129 @@ export default function PacientePerfil() {
               );
             })()}
 
-            {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && (
-              <EmptyState icon={<Activity />} title="Nenhuma avaliação registrada" subtitle="Realize uma avaliação para visualizar a visão integrada do paciente." />
+            {/* Histórico detalhado de avaliações */}
+            {(loadingId || loadingCob) ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>
+            ) : (
+              <>
+                {avaliacoesId.length > 0 && (
+                  <div className="clinical-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Activity className="h-4 w-4 text-primary" />
+                      <h3 className="font-semibold text-sm">Histórico Identidade ({avaliacoesId.length})</h3>
+                      <Badge variant="outline" className="text-[10px] ml-auto">
+                        {avaliacoesId.length === 1 ? '1ª Avaliação' : `${avaliacoesId.length - 1} reavaliação(ões)`}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      {avaliacoesId.map((av: any, idx: number) => (
+                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
+                          <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-primary/15' : 'bg-muted')}>
+                            <TrendingUp className={cn('h-4 w-4', idx === 0 ? 'text-primary' : 'text-muted-foreground')} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold">{av.data_avaliacao}</span>
+                              {av.classificacao && <Badge variant="outline" className="text-[10px] h-4">{av.classificacao}</Badge>}
+                              {idx === 0 && <Badge className="bg-primary/10 text-primary border-primary/20 text-[10px] h-4">Mais recente</Badge>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              ID: {av.id_final?.toFixed(1)}/50 · E:{av.score_e?.toFixed(1)} P:{av.score_p?.toFixed(1)} D:{av.score_d?.toFixed(1)} F:{av.score_f?.toFixed(1)} R:{av.score_r?.toFixed(1)}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {avaliacoesCob.length > 0 && (
+                  <div className="clinical-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <AlignCenter className="h-4 w-4 text-blue-600" />
+                      <h3 className="font-semibold text-sm">Histórico COB° ZERO ({avaliacoesCob.length})</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {avaliacoesCob.map((av: any, idx: number) => (
+                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-blue-400/40 transition-colors" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+                          <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-blue-100' : 'bg-muted')}>
+                            <AlignCenter className={cn('h-4 w-4', idx === 0 ? 'text-blue-600' : 'text-muted-foreground')} />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-sm font-semibold">{av.data_avaliacao}</span>
+                              {av.lenke_type && <Badge variant="outline" className="text-[10px] h-4">Lenke {av.lenke_type}</Badge>}
+                              {av.risco_level && <Badge variant="outline" className="text-[10px] h-4">{av.risco_level}</Badge>}
+                            </div>
+                            <div className="text-xs text-muted-foreground mt-0.5">
+                              Cobb: {av.cobb_angle}° · Risco: {av.risco_percentage}% · E:{av.score_e?.toFixed(1)}
+                            </div>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {avaliacoesVoz.length > 0 && (
+                  <div className="clinical-card">
+                    <div className="flex items-center gap-2 mb-3">
+                      <Stethoscope className="h-4 w-4 text-indigo-600" />
+                      <h3 className="font-semibold text-sm">Histórico Voz ({avaliacoesVoz.length})</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {avaliacoesVoz.map((av: any, idx: number) => {
+                        const severityColors: Record<string, string> = {
+                          'Favorável': 'bg-green-100 text-green-700 border-green-200',
+                          'Atenção': 'bg-yellow-100 text-yellow-700 border-yellow-200',
+                          'Moderado': 'bg-orange-100 text-orange-700 border-orange-200',
+                          'Severo': 'bg-red-100 text-red-700 border-red-200',
+                          'Risco de Cronificação': 'bg-purple-100 text-purple-700 border-purple-200',
+                        };
+                        return (
+                          <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3">
+                            <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-indigo-100' : 'bg-muted')}>
+                              <Stethoscope className={cn('h-4 w-4', idx === 0 ? 'text-indigo-600' : 'text-muted-foreground')} />
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="text-sm font-semibold">
+                                  {format(parseISO(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                                </span>
+                                {av.classificacao_severidade && (
+                                  <Badge variant="outline" className={cn('text-[10px] h-4', severityColors[av.classificacao_severidade] || '')}>
+                                    {av.classificacao_severidade}
+                                  </Badge>
+                                )}
+                              </div>
+                              {av.queixa_principal && (
+                                <p className="text-xs text-muted-foreground mt-0.5 truncate">Queixa: {av.queixa_principal}</p>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+
+            {/* Questionários Remotos */}
+            {(respostasPaciente.length > 0 || linksAvaliacao.length > 0) && (
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4 text-primary" />
+                  <h3 className="font-semibold text-sm">Questionários Remotos</h3>
+                </div>
+                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+              </div>
+            )}
+
+            {avaliacoesId.length === 0 && avaliacoesCob.length === 0 && avaliacoesVoz.length === 0 && respostasPaciente.length === 0 && (
+              <EmptyState icon={<Activity />} title="Nenhuma avaliação registrada" subtitle="Utilize os cards acima para iniciar uma avaliação." />
             )}
           </TabsContent>
 
