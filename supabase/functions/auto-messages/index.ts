@@ -151,7 +151,8 @@ Deno.serve(async (req) => {
         paciente_id: pac.id,
         remetente: "sistema",
         tipo: "reengajamento",
-        mensagem: `🔄 Olá ${pac.nome}! Sentimos sua falta! 😊 Já se passaram ${daysSince} dias desde sua última sessão. Que tal agendarmos um retorno? Sua continuidade é importante! 💪`,
+        mensagem: `🔄 Olá ${pac.nome}! Sentimos sua falta! 😊 Já se passaram ${daysSince} dias desde sua última sessão. Que tal agendarmos um retorno? Toque no botão abaixo para ver os horários disponíveis! 💪`,
+        metadata: { show_slots: true },
       });
       created++;
     }

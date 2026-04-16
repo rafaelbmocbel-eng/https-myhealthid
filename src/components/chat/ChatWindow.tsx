@@ -2,11 +2,12 @@ import { useState, useRef, useEffect } from 'react';
 import { useChatMensagens, ChatMensagem } from '@/hooks/useChatMensagens';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Send, Bot, User, Loader2 } from 'lucide-react';
+import { Send, Bot, User, Loader2, CalendarDays } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
+import ChatSlotPicker from './ChatSlotPicker';
 
 interface Props {
   pacienteId: string;
@@ -21,11 +22,26 @@ const tipoLabels: Record<string, string> = {
   reengajamento: '🔄 Reengajamento',
   aniversario: '🎂 Aniversário',
   boas_vindas: '👋 Boas-vindas',
+  agendamento_chat: '📅 Agendamento via Chat',
 };
+
+const SCHEDULING_KEYWORDS = [
+  'agendar', 'marcar', 'horário', 'horario', 'sessão', 'sessao',
+  'consulta', 'remarcar', 'reagendar', 'disponível', 'disponivel',
+  'quero agendar', 'posso marcar', 'tem horário', 'tem horario',
+];
+
+function detectSchedulingIntent(text: string): boolean {
+  const lower = text.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  return SCHEDULING_KEYWORDS.some(kw =>
+    lower.includes(kw.normalize('NFD').replace(/[\u0300-\u036f]/g, ''))
+  );
+}
 
 export default function ChatWindow({ pacienteId, terapeutaId, remetente, className }: Props) {
   const { mensagens, enviarMensagem, marcarComoLida, isLoading } = useChatMensagens(pacienteId);
   const [texto, setTexto] = useState('');
+  const [showSlotPicker, setShowSlotPicker] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
 
@@ -34,7 +50,7 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [mensagens]);
+  }, [mensagens, showSlotPicker]);
 
   // Mark unread messages as read
   useEffect(() => {
@@ -47,6 +63,21 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
   const handleSend = () => {
     const msg = texto.trim();
     if (!msg) return;
+
+    // Detect scheduling intent from patient
+    if (remetente === 'paciente' && detectSchedulingIntent(msg)) {
+      enviarMensagem.mutate({
+        paciente_id: pacienteId,
+        terapeuta_id: terapeutaId,
+        mensagem: msg,
+        remetente,
+      });
+      setTexto('');
+      // Show slot picker after a brief delay
+      setTimeout(() => setShowSlotPicker(true), 300);
+      return;
+    }
+
     enviarMensagem.mutate({
       paciente_id: pacienteId,
       terapeuta_id: terapeutaId,
@@ -58,6 +89,18 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
     setTexto('');
   };
 
+  const handleAgendado = (data: Date) => {
+    // Send confirmation message
+    enviarMensagem.mutate({
+      paciente_id: pacienteId,
+      terapeuta_id: terapeutaId,
+      mensagem: `📅 Sessão agendada para ${format(data, "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}. Aguardando confirmação do profissional. ✅`,
+      remetente: 'paciente',
+      tipo: 'agendamento_chat',
+    });
+    setShowSlotPicker(false);
+  };
+
   const groupByDate = (msgs: ChatMensagem[]) => {
     const groups: Record<string, ChatMensagem[]> = {};
     msgs.forEach(m => {
@@ -67,6 +110,11 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
     });
     return groups;
   };
+
+  // Check if any system message has scheduling suggestion (metadata.show_slots)
+  const hasSchedulingSuggestion = mensagens.some(
+    m => m.remetente === 'sistema' && m.metadata && (m.metadata as any).show_slots === true && !m.lida
+  );
 
   const groups = groupByDate(mensagens);
 
@@ -99,16 +147,32 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
               {msgs.map(msg => {
                 const isMine = msg.remetente === remetente;
                 const isSystem = msg.remetente === 'sistema';
+                const showSlotsBtn = isSystem && msg.metadata && (msg.metadata as any).show_slots === true;
 
                 if (isSystem) {
                   return (
-                    <div key={msg.id} className="flex justify-center">
-                      <div className="bg-accent/50 text-accent-foreground text-xs px-3 py-1.5 rounded-lg max-w-[85%] text-center">
-                        {tipoLabels[msg.tipo] && (
-                          <span className="font-medium block mb-0.5">{tipoLabels[msg.tipo]}</span>
-                        )}
-                        {msg.mensagem}
+                    <div key={msg.id} className="space-y-1.5">
+                      <div className="flex justify-center">
+                        <div className="bg-accent/50 text-accent-foreground text-xs px-3 py-1.5 rounded-lg max-w-[85%] text-center">
+                          {tipoLabels[msg.tipo] && (
+                            <span className="font-medium block mb-0.5">{tipoLabels[msg.tipo]}</span>
+                          )}
+                          {msg.mensagem}
+                        </div>
                       </div>
+                      {showSlotsBtn && remetente === 'paciente' && !showSlotPicker && (
+                        <div className="flex justify-center">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="text-xs gap-1.5"
+                            onClick={() => setShowSlotPicker(true)}
+                          >
+                            <CalendarDays className="h-3 w-3" />
+                            Ver horários disponíveis
+                          </Button>
+                        </div>
+                      )}
                     </div>
                   );
                 }
@@ -149,10 +213,46 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
             </div>
           </div>
         ))}
+
+        {/* Slot Picker inline */}
+        {showSlotPicker && (
+          <ChatSlotPicker
+            terapeutaId={terapeutaId}
+            pacienteId={pacienteId}
+            onAgendado={handleAgendado}
+            onCancel={() => setShowSlotPicker(false)}
+          />
+        )}
+
+        {/* Auto-show scheduling suggestion */}
+        {hasSchedulingSuggestion && !showSlotPicker && remetente === 'paciente' && (
+          <div className="flex justify-center">
+            <Button
+              variant="default"
+              size="sm"
+              className="gap-1.5 text-xs"
+              onClick={() => setShowSlotPicker(true)}
+            >
+              <CalendarDays className="h-3.5 w-3.5" />
+              Agendar sessão agora
+            </Button>
+          </div>
+        )}
       </div>
 
       {/* Input area */}
       <div className="border-t border-border p-3 flex gap-2">
+        {remetente === 'paciente' && (
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0"
+            onClick={() => setShowSlotPicker(!showSlotPicker)}
+            title="Agendar sessão"
+          >
+            <CalendarDays className="h-4 w-4 text-primary" />
+          </Button>
+        )}
         <Input
           value={texto}
           onChange={e => setTexto(e.target.value)}
