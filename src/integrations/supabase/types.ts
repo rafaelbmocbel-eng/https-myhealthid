@@ -452,6 +452,53 @@ export type Database = {
           },
         ]
       }
+      chat_mensagens: {
+        Row: {
+          created_at: string
+          id: string
+          lida: boolean
+          mensagem: string
+          metadata: Json | null
+          paciente_id: string
+          remetente: string
+          terapeuta_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem: string
+          metadata?: Json | null
+          paciente_id: string
+          remetente?: string
+          terapeuta_id: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lida?: boolean
+          mensagem?: string
+          metadata?: Json | null
+          paciente_id?: string
+          remetente?: string
+          terapeuta_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_mensagens_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       config_agenda: {
         Row: {
           created_at: string
