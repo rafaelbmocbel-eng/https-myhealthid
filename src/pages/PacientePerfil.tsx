@@ -41,6 +41,7 @@ import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
+import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -457,6 +458,9 @@ export default function PacientePerfil() {
             </TabsTrigger>
             <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
               <Heart className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Engajamento</span><span className="sm:hidden">Engaj.</span>
+            </TabsTrigger>
+            <TabsTrigger value="chat" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
+              <MessageCircle className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Chat</span><span className="sm:hidden">Chat</span>
             </TabsTrigger>
           </TabsList>
 
