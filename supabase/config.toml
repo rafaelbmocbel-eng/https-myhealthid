@@ -11,3 +11,6 @@ verify_jwt = false
 
 [functions.validar-myid-token]
 verify_jwt = false
+
+[functions.auto-messages]
+verify_jwt = false
