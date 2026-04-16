@@ -954,6 +954,19 @@ export default function PacientePerfil() {
             <PacienteFinanceiroTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
           </TabsContent>
 
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: CHAT INTERNO
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="chat" className="mt-4">
+            {paciente && (
+              <ChatPacienteTab
+                pacienteId={id!}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                pacienteTelefone={paciente.telefone}
+              />
+            )}
+          </TabsContent>
+
 
         </Tabs>
       </div>
