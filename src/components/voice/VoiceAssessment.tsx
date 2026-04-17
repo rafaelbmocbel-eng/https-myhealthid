@@ -547,9 +547,12 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     return (
       <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             <Stethoscope className="h-5 w-5 text-primary" />
             <h3 className="font-bold text-lg">Avaliação por Voz</h3>
+            <Badge variant="outline" className="text-[10px] border-primary/40 text-primary gap-1">
+              <Sparkles className="h-3 w-3" />Multidisciplinar IA
+            </Badge>
             <Badge className={cn('text-xs', SEVERITY_COLORS[assessment.classificacao_severidade] || 'bg-muted')}>
               {assessment.classificacao_severidade}
             </Badge>
@@ -1009,14 +1012,16 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           <Card className="border-primary/20">
             <CardContent className="p-6 flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              <p className="text-sm text-muted-foreground">
-                {audioBase64 ? 'Transcrevendo áudio e analisando com IA clínica...' : 'Analisando conversa com IA clínica baseada em evidências...'}
+              <p className="text-sm text-muted-foreground text-center">
+                {audioBase64 ? 'Transcrevendo áudio e cruzando 6 lentes clínicas...' : 'Cruzando 6 lentes clínicas com base em evidências...'}
               </p>
-              <div className="flex flex-wrap gap-2 justify-center">
-                <Badge variant="outline" className="text-xs">Magee (2021)</Badge>
-                <Badge variant="outline" className="text-xs">O'Sullivan (2018)</Badge>
-                <Badge variant="outline" className="text-xs">Butler & Moseley</Badge>
-                <Badge variant="outline" className="text-xs">Cook (2014)</Badge>
+              <div className="flex flex-wrap gap-1.5 justify-center max-w-md">
+                <Badge variant="outline" className="text-[10px]">🦴 Fisio (Magee)</Badge>
+                <Badge variant="outline" className="text-[10px]">🧬 Neurociência (Moseley)</Badge>
+                <Badge variant="outline" className="text-[10px]">🏃 Esporte (Cook)</Badge>
+                <Badge variant="outline" className="text-[10px]">🌿 Osteopatia (Greenman)</Badge>
+                <Badge variant="outline" className="text-[10px]">⚙️ Quiropraxia (Bergmann)</Badge>
+                <Badge variant="outline" className="text-[10px]">📐 Posturologia (Souchard)</Badge>
               </div>
             </CardContent>
           </Card>
