@@ -14,12 +14,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
-  DollarSign, MessageSquare,
+  DollarSign, MessageSquare, MoreHorizontal,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -517,59 +518,59 @@ export default function Pacientes() {
   return (
     <AppLayout>
       <div className="container py-6 max-w-6xl">
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6 gap-3">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0">
-              <Users className="h-5 w-5 text-white" />
-            </div>
+        {/* Hero — clean & airy */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-lg sm:text-xl font-bold truncate">Meus Pacientes</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">{pacientes.length} cadastrados</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Pacientes</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">
+                {pacientes.length} {pacientes.length === 1 ? 'cadastrado' : 'cadastrados'}
+              </p>
             </div>
-          </div>
-          <div className="flex items-center gap-2 shrink-0">
-            <Tooltip delayDuration={0}>
-              <TooltipTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => {
-                    const rows = filtered.map(p => ({
-                      nome: p.nome,
-                      sobrenome: p.sobrenome,
-                      email: p.email || '',
-                      telefone: p.telefone || '',
-                      cpf: p.cpf || '',
-                      data_nascimento: p.data_nascimento || '',
-                      genero: p.genero || '',
-                      servicos: (p._servicos || []).join(', '),
-                      cadastro: p.created_at ? format(parseISO(p.created_at), 'dd/MM/yyyy') : '',
-                    }));
-                    exportToCsv(`pacientes_${format(new Date(), 'yyyy-MM-dd')}.csv`, rows, [
-                      { key: 'nome', label: 'Nome' },
-                      { key: 'sobrenome', label: 'Sobrenome' },
-                      { key: 'email', label: 'E-mail' },
-                      { key: 'telefone', label: 'Telefone' },
-                      { key: 'cpf', label: 'CPF' },
-                      { key: 'data_nascimento', label: 'Nascimento' },
-                      { key: 'genero', label: 'Gênero' },
-                      { key: 'servicos', label: 'Serviços' },
-                      { key: 'cadastro', label: 'Data Cadastro' },
-                    ]);
-                    toast({ title: `${rows.length} pacientes exportados!` });
-                  }}
-                  disabled={filtered.length === 0}
-                >
-                  <Download className="h-4 w-4" />
-                  <span className="hidden sm:inline ml-1.5">CSV</span>
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Exportar lista para CSV</TooltipContent>
-            </Tooltip>
-            <Button onClick={openNew} className="bg-gradient-primary text-white gap-2" size="sm">
-              <Plus className="h-4 w-4" /> <span className="hidden sm:inline">Novo Paciente</span><span className="sm:hidden">Novo</span>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl" aria-label="Mais ações">
+                    <MoreHorizontal className="icon-sm" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-48">
+                  <DropdownMenuItem
+                    disabled={filtered.length === 0}
+                    onClick={() => {
+                      const rows = filtered.map(p => ({
+                        nome: p.nome,
+                        sobrenome: p.sobrenome,
+                        email: p.email || '',
+                        telefone: p.telefone || '',
+                        cpf: p.cpf || '',
+                        data_nascimento: p.data_nascimento || '',
+                        genero: p.genero || '',
+                        servicos: (p._servicos || []).join(', '),
+                        cadastro: p.created_at ? format(parseISO(p.created_at), 'dd/MM/yyyy') : '',
+                      }));
+                      exportToCsv(`pacientes_${format(new Date(), 'yyyy-MM-dd')}.csv`, rows, [
+                        { key: 'nome', label: 'Nome' },
+                        { key: 'sobrenome', label: 'Sobrenome' },
+                        { key: 'email', label: 'E-mail' },
+                        { key: 'telefone', label: 'Telefone' },
+                        { key: 'cpf', label: 'CPF' },
+                        { key: 'data_nascimento', label: 'Nascimento' },
+                        { key: 'genero', label: 'Gênero' },
+                        { key: 'servicos', label: 'Serviços' },
+                        { key: 'cadastro', label: 'Data Cadastro' },
+                      ]);
+                      toast({ title: `${rows.length} pacientes exportados!` });
+                    }}
+                  >
+                    <Download className="icon-sm mr-2" /> Exportar CSV
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button onClick={openNew} className="bg-gradient-primary text-white gap-2 rounded-xl h-10" size="sm">
+                <Plus className="icon-sm" /> <span className="hidden sm:inline">Novo paciente</span><span className="sm:hidden">Novo</span>
+              </Button>
+            </div>
           </div>
         </div>
 
