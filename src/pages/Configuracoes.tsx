@@ -65,19 +65,17 @@ export default function Configuracoes() {
   return (
     <AppLayout>
       <div className="px-2 sm:px-0 py-4 sm:py-8 max-w-2xl mx-auto w-full">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-6 sm:mb-8">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="h-9 w-9 sm:h-10 sm:w-10 rounded-xl bg-gradient-primary flex items-center justify-center shrink-0">
-              <Settings className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
-            </div>
+        {/* Hero — clean & airy */}
+        <div className="mb-6 sm:mb-8">
+          <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Configurações</h1>
-              <p className="text-muted-foreground text-xs sm:text-sm">Gerencie horários de trabalho e dias livres da agenda</p>
+              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Configurações</h1>
+              <p className="text-sm text-muted-foreground mt-0.5">Horários, módulos e preferências da clínica</p>
             </div>
+            <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl h-10 shrink-0">
+              <Link to="/agenda"><CalendarDays className="icon-sm" /> <span className="hidden sm:inline">Agenda</span></Link>
+            </Button>
           </div>
-          <Button asChild variant="outline" className="gap-2 w-full sm:w-auto">
-            <Link to="/agenda"><CalendarDays className="h-4 w-4" /> Abrir Agenda</Link>
-          </Button>
         </div>
 
         {/* Módulos / Serviços ativos */}
