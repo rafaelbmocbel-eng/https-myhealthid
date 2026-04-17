@@ -479,25 +479,10 @@ export default function PacientePerfil() {
                   <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
                 </TabsTrigger>
               </TabsList>
-              <ClinicoSubTabsContent
-                avaliacoesId={avaliacoesId}
-                avaliacoesCob={avaliacoesCob}
-                avaliacoesVoz={avaliacoesVoz}
-                evolucoesId={evolucoesId}
-                respostasPaciente={respostasPaciente}
-                linksAvaliacao={linksAvaliacao}
-                notasProntuario={notasProntuario}
-                loadingNotas={loadingNotas}
-                paciente={paciente}
-                id={id!}
-                qc={qc}
-                navigate={navigate}
-                renderAvaliacoesContent={() => null}
-                renderProtocolosContent={() => null}
-                renderProntuarioContent={() => null}
-              />
-            </Tabs>
-          </TabsContent>
+              {/* Sub-abas internas (avaliacoes / protocolos / evolucao-prontuario)
+                  estão definidas logo abaixo neste mesmo bloco <Tabs> interno.
+                  O fechamento </Tabs> e </TabsContent> ocorre após a sub-aba
+                  "evolucao-prontuario" mais adiante. */}
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
