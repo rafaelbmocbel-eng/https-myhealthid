@@ -48,7 +48,7 @@ export default function QuickActions() {
                 'transition-all active:scale-95',
               )}
             >
-              <a.icon className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <a.icon className="h-4 w-4 shrink-0" />
             </button>
           </TooltipTrigger>
           <TooltipContent>{a.hint}</TooltipContent>
