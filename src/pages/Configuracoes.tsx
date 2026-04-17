@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useServicosAtivos, ServicosAtivos } from '@/hooks/useServicosAtivos';
 import EquipeManager from '@/components/equipe/EquipeManager';
+import ThemeToggle from '@/components/ThemeToggle';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -72,9 +73,12 @@ export default function Configuracoes() {
               <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Configurações</h1>
               <p className="text-sm text-muted-foreground mt-0.5">Horários, módulos e preferências da clínica</p>
             </div>
-            <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl h-10 shrink-0">
-              <Link to="/agenda"><CalendarDays className="icon-sm" /> <span className="hidden sm:inline">Agenda</span></Link>
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <ThemeToggle />
+              <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl h-10">
+                <Link to="/agenda"><CalendarDays className="icon-sm" /> <span className="hidden sm:inline">Agenda</span></Link>
+              </Button>
+            </div>
           </div>
         </div>
 
