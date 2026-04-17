@@ -8,7 +8,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 
@@ -64,8 +64,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [isSaved, setIsSaved] = useState(false);
   const [assessment, setAssessment] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    resumo: true, dor: true, funcionalidade: true, psicossocial: false,
-    redflags: true, hipoteses: true, plano: true, insights: true,
+    soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: false,
+    redflags: true, multi: false, hipoteses: true, cif: false, diretriz: true,
+    plano: false, insights: false,
   });
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
@@ -122,8 +123,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setRecordingTime(draft.recordingTime ?? 0);
       setAssessment(draft.assessment ?? null);
       setExpandedSections(draft.expandedSections ?? {
-        resumo: true, dor: true, funcionalidade: true, psicossocial: false,
-        redflags: true, hipoteses: true, plano: true, insights: true,
+        soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: false,
+        redflags: true, multi: false, hipoteses: true, cif: false, diretriz: true,
+        plano: false, insights: false,
       });
       setIsSaved(Boolean(draft.isSaved));
 
