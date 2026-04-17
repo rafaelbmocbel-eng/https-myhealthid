@@ -785,6 +785,11 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
                     </Badge>
                   </div>
+                  {h.lente_clinica && (
+                    <Badge variant="outline" className="text-[10px] mt-1 border-primary/30 text-primary">
+                      <Sparkles className="h-2.5 w-2.5 mr-1" />{h.lente_clinica}
+                    </Badge>
+                  )}
                   {h.unidade_relacionada && <p className="text-xs text-muted-foreground mt-0.5">UC: {typeof h.unidade_relacionada === 'string' ? h.unidade_relacionada : JSON.stringify(h.unidade_relacionada)}</p>}
                   <p className="text-xs text-muted-foreground mt-1 italic">📖 {typeof h.evidencia === 'string' ? h.evidencia : JSON.stringify(h.evidencia)}</p>
                 </div>
@@ -793,7 +798,118 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           )}
         </SectionCard>
 
-        <SectionCard icon={CheckCircle2} title="Plano de Tratamento" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
+        {/* ── RACIOCÍNIO MULTIDISCIPLINAR ── */}
+        {assessment.raciocinio_multidisciplinar && (
+          <SectionCard icon={Users} title="🧠 Raciocínio Multidisciplinar" sectionKey="multi" expanded={expandedSections} toggle={toggleSection}>
+            <p className="text-xs text-muted-foreground mb-3 italic">A visão de cada especialidade sobre este caso.</p>
+            <div className="grid sm:grid-cols-2 gap-3">
+              {Object.entries({
+                fisioterapia_musculoesqueletica: '🦴 Fisioterapia Musculoesquelética',
+                neurociencia_da_dor: '🧬 Neurociência da Dor',
+                reabilitacao_esportiva: '🏃 Reabilitação Esportiva',
+                osteopatia: '🌿 Osteopatia',
+                quiropraxia: '⚙️ Quiropraxia',
+                posturologia: '📐 Posturologia',
+              }).map(([key, label]) => {
+                const value = assessment.raciocinio_multidisciplinar?.[key];
+                if (!value) return null;
+                return (
+                  <div key={key} className="rounded-lg border border-border/50 bg-muted/30 p-3">
+                    <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
+                    <p className="text-xs text-muted-foreground leading-relaxed">{value}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── CIF (ICF) ── */}
+        {assessment.cif_codes?.length > 0 && (
+          <SectionCard icon={Tag} title="🏷️ Mapeamento CIF (ICF)" sectionKey="cif" expanded={expandedSections} toggle={toggleSection}>
+            <p className="text-xs text-muted-foreground mb-2 italic">Classificação Internacional de Funcionalidade — qualificador 0 (sem problema) a 4 (completo).</p>
+            <div className="space-y-1.5">
+              {assessment.cif_codes.map((c: any, i: number) => (
+                <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
+                  <Badge variant="outline" className="text-[10px] font-mono shrink-0 mt-0.5">{c.codigo}</Badge>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm">{c.descricao}</p>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <span className="text-[10px] text-muted-foreground uppercase">
+                        {c.categoria === 'b' ? 'Função' : c.categoria === 's' ? 'Estrutura' : c.categoria === 'd' ? 'Atividade' : 'Ambiental'}
+                      </span>
+                      <span className="text-[10px] font-medium text-foreground">Q{c.qualificador}</span>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </SectionCard>
+        )}
+
+        {/* ── DIRETRIZ DE TRATAMENTO EM 3 FASES ── */}
+        {assessment.diretriz_tratamento && (
+          <SectionCard icon={CheckCircle2} title="🎯 Diretriz de Tratamento — 3 Fases" sectionKey="diretriz" expanded={expandedSections} toggle={toggleSection}>
+            <div className="space-y-4">
+              {[
+                { key: 'fase_1_alivio', label: 'FASE 1 — Alívio & Proteção', color: 'border-l-amber-500' },
+                { key: 'fase_2_carga', label: 'FASE 2 — Carga Progressiva', color: 'border-l-blue-500' },
+                { key: 'fase_3_retorno', label: 'FASE 3 — Retorno Funcional', color: 'border-l-emerald-500' },
+              ].map(({ key, label, color }) => {
+                const fase = assessment.diretriz_tratamento?.[key];
+                if (!fase) return null;
+                return (
+                  <div key={key} className={cn('border-l-4 pl-3 py-1', color)}>
+                    <div className="flex items-center justify-between mb-1.5">
+                      <p className="text-xs font-bold uppercase tracking-wide">{label}</p>
+                      {fase.duracao_semanas && <Badge variant="outline" className="text-[10px]">{fase.duracao_semanas}</Badge>}
+                    </div>
+                    {fase.objetivos?.length > 0 && (
+                      <div className="mb-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Objetivos</p>
+                        <ul className="text-xs text-muted-foreground space-y-0.5">
+                          {fase.objetivos.map((o: string, i: number) => <li key={i}>• {o}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {fase.tecnicas?.length > 0 && (
+                      <div className="space-y-1.5">
+                        {fase.tecnicas.map((t: any, i: number) => (
+                          <div key={i} className="bg-muted/40 rounded-md p-2">
+                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                              <span className="font-medium text-xs">{t.tecnica}</span>
+                              <div className="flex items-center gap-1">
+                                {t.lente_clinica && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">{t.lente_clinica}</Badge>}
+                                <Badge variant="outline" className="text-[9px]">N{t.nivel_evidencia}</Badge>
+                              </div>
+                            </div>
+                            <p className="text-[11px] text-muted-foreground mt-0.5">{t.justificativa}</p>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+              {assessment.diretriz_tratamento.frequencia_sugerida && (
+                <p className="text-xs"><strong>Frequência:</strong> {assessment.diretriz_tratamento.frequencia_sugerida}</p>
+              )}
+              {assessment.diretriz_tratamento.prognostico && (
+                <p className="text-xs"><strong>Prognóstico:</strong> {assessment.diretriz_tratamento.prognostico}</p>
+              )}
+              {assessment.diretriz_tratamento.criterios_alta?.length > 0 && (
+                <div>
+                  <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Critérios de Alta</p>
+                  <ul className="text-xs text-muted-foreground space-y-0.5">
+                    {assessment.diretriz_tratamento.criterios_alta.map((c: string, i: number) => <li key={i}>✓ {c}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          </SectionCard>
+        )}
+
+        <SectionCard icon={CheckCircle2} title="Plano de Tratamento (resumo)" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
           {assessment.plano_tratamento?.objetivos_curto_prazo?.length > 0 && (
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
