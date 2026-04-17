@@ -87,7 +87,7 @@ export default function GlobalSearch() {
         onClick={() => setOpen(true)}
         className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/50 bg-card/60 text-muted-foreground text-sm hover:bg-card hover:border-border transition-all"
       >
-        <Search className="h-3.5 w-3.5" />
+        <Search className="h-4 w-4 shrink-0" />
         <span className="hidden sm:inline">Buscar...</span>
         <kbd className="hidden md:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-muted/50 px-1.5 text-[10px] font-mono text-muted-foreground">
           ⌘K

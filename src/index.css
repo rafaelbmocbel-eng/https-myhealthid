@@ -343,6 +343,23 @@
     word-break: break-word;
   }
 
+  /* ═══════════════════════════════════════════════════════════════════
+     SISTEMA DE ÍCONES PADRONIZADO
+     Use estas classes ou o componente <Icon> de @/components/ui/icon
+     ─────────────────────────────────────────────────────────────────
+     icon-xs (12px) — listas compactas, badges, chips
+     icon-sm (16px) — PADRÃO em botões, inputs, labels e cards
+     icon-md (20px) — hero sections, headers de página
+     icon-lg (24px) — avatares, empty states pequenos
+     icon-xl (32px) — empty states grandes, modais
+     ─────────────────────────────────────────────────────────────────
+     EVITE h-3.5/w-3.5 — use h-3 (compacto) ou h-4 (padrão).
+     ═══════════════════════════════════════════════════════════════════ */
+  .icon-xs { @apply h-3 w-3 shrink-0; }
+  .icon-sm { @apply h-4 w-4 shrink-0; }
+  .icon-md { @apply h-5 w-5 shrink-0; }
+  .icon-lg { @apply h-6 w-6 shrink-0; }
+  .icon-xl { @apply h-8 w-8 shrink-0; }
 
   .text-gradient-primary {
     background: var(--gradient-primary);
