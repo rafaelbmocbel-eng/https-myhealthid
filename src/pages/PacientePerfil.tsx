@@ -440,29 +440,49 @@ export default function PacientePerfil() {
           <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
         </div>
 
-        {/* Contact + Notes removed — now inline above */}
-        {/* ==== 4 TABS ==== */}
-        <Tabs defaultValue={defaultTab} onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}>
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
-            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Avaliações</span><span className="sm:hidden">Aval.</span>
+        {/* ==== 4 GRUPOS PRINCIPAIS ====
+            Clínico (sub-abas: Avaliações, Diretrizes, Prontuário) │ Financeiro │ Engajamento │ Chat */}
+        <Tabs
+          defaultValue={
+            ['avaliacoes', 'protocolos', 'evolucao-prontuario'].includes(defaultTab)
+              ? 'clinico'
+              : defaultTab
+          }
+          onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}
+        >
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
+            <TabsTrigger value="clinico" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+              <Stethoscope className="h-4 w-4 shrink-0" /> <span>Clínico</span>
             </TabsTrigger>
-            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes e Tratamentos</span><span className="sm:hidden">Dir.</span>
+            <TabsTrigger value="financeiro" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+              <DollarSign className="h-4 w-4 shrink-0" /> <span>Financeiro</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
+            <TabsTrigger value="engajamento" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+              <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
             </TabsTrigger>
-            <TabsTrigger value="financeiro" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <DollarSign className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Financeiro</span><span className="sm:hidden">Fin.</span>
-            </TabsTrigger>
-            <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <Heart className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Engajamento</span><span className="sm:hidden">Engaj.</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1.5 py-1.5">
-              <MessageCircle className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Chat</span><span className="sm:hidden">Chat</span>
+            <TabsTrigger value="chat" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+              <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* ══ GRUPO CLÍNICO ══ contém sub-abas: Avaliações | Diretrizes | Prontuário */}
+          <TabsContent value="clinico" className="mt-4">
+            <Tabs defaultValue={['protocolos', 'evolucao-prontuario'].includes(defaultTab) ? defaultTab : 'avaliacoes'}>
+              <TabsList className="bg-background border border-border/60 p-1 rounded-lg grid grid-cols-3 h-auto gap-1 w-full mb-4">
+                <TabsTrigger value="avaliacoes" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
+                  <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span>Avaliações</span>
+                </TabsTrigger>
+                <TabsTrigger value="protocolos" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
+                  <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
+                </TabsTrigger>
+                <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
+                  <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
+                </TabsTrigger>
+              </TabsList>
+              {/* Sub-abas internas (avaliacoes / protocolos / evolucao-prontuario)
+                  estão definidas logo abaixo neste mesmo bloco <Tabs> interno.
+                  O fechamento </Tabs> e </TabsContent> ocorre após a sub-aba
+                  "evolucao-prontuario" mais adiante. */}
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
@@ -924,10 +944,9 @@ export default function PacientePerfil() {
               <StudioTreinosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
             </div>
           </TabsContent>
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: ENGAJAMENTO DO PACIENTE (Portal)
-          ══════════════════════════════════════════════════════════════════ */}
+            </Tabs>
+          </TabsContent>
+          {/* ══ FIM GRUPO CLÍNICO ══ */}
           <TabsContent value="engajamento" className="mt-4 space-y-6">
             {paciente && (
               <PacienteEngajamentoTab
