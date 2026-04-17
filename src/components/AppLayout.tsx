@@ -1,6 +1,7 @@
 import { useState, useLayoutEffect, useCallback } from 'react';
 import AppSidebar from './AppSidebar';
 import MobileBottomNav from './MobileBottomNav';
+import MobileQuickActionsFab from './MobileQuickActionsFab';
 import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
@@ -118,8 +119,12 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-1 md:gap-2">
             <NotificationCenter />
-            <QuickActions />
-            <ThemeToggle />
+            {!isMobile && (
+              <>
+                <QuickActions />
+                <ThemeToggle />
+              </>
+            )}
           </div>
         </header>
 
@@ -132,8 +137,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
 
-      {/* Mobile bottom navigation */}
-      {isMobile && !mobileOpen && <MobileBottomNav />}
+      {/* Mobile bottom navigation + FAB */}
+      {isMobile && !mobileOpen && (
+        <>
+          <MobileBottomNav />
+          <MobileQuickActionsFab />
+        </>
+      )}
     </div>
   );
 }
