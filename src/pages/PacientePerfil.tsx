@@ -944,10 +944,9 @@ export default function PacientePerfil() {
               <StudioTreinosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
             </div>
           </TabsContent>
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: ENGAJAMENTO DO PACIENTE (Portal)
-          ══════════════════════════════════════════════════════════════════ */}
+            </Tabs>
+          </TabsContent>
+          {/* ══ FIM GRUPO CLÍNICO ══ */}
           <TabsContent value="engajamento" className="mt-4 space-y-6">
             {paciente && (
               <PacienteEngajamentoTab
