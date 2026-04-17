@@ -1,0 +1,68 @@
+import { Link, useLocation } from 'react-router-dom';
+import { LayoutDashboard, CalendarDays, Users, Settings, PartyPopper, type LucideIcon } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
+import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+
+type ServiceKey = 'identidade' | 'cob_zero' | 'studio' | 'eventos';
+
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
+  { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
+  { label: 'Pacientes', href: '/pacientes', icon: Users },
+  { label: 'Início', href: '/', icon: LayoutDashboard },
+  { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
+  { label: 'Config', href: '/configuracoes', icon: Settings },
+];
+
+export default function MobileBottomNav() {
+  const location = useLocation();
+  const { pendingCount } = useAgendamentoNotifications();
+  const { servicos } = useServicosAtivos();
+
+  const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
+
+  const isActive = (href: string) =>
+    href === '/' ? location.pathname === '/' : location.pathname.startsWith(href);
+
+  return (
+    <nav
+      className="fixed bottom-0 left-0 right-0 z-40 md:hidden bg-background/85 backdrop-blur-xl border-t border-border/60"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+    >
+      <ul className="flex items-stretch justify-around px-1 pt-1.5 pb-1.5">
+        {visibleItems.map(item => {
+          const Icon = item.icon;
+          const active = isActive(item.href);
+          const showBadge = item.hasBadge && pendingCount > 0;
+
+          return (
+            <li key={item.href} className="flex-1">
+              <Link
+                to={item.href}
+                className={cn(
+                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all active:scale-95',
+                  active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
+                )}
+              >
+                {active && (
+                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary" />
+                )}
+                <div className="relative">
+                  <Icon className={cn('h-5 w-5 transition-transform', active && 'scale-110')} />
+                  {showBadge && (
+                    <span className="absolute -top-1.5 -right-2 flex items-center justify-center h-4 min-w-4 px-1 text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground animate-pulse">
+                      {pendingCount > 9 ? '9+' : pendingCount}
+                    </span>
+                  )}
+                </div>
+                <span className={cn('text-[10px] leading-none font-medium', active && 'font-semibold')}>
+                  {item.label}
+                </span>
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </nav>
+  );
+}

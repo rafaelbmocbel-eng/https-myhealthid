@@ -1,5 +1,6 @@
 import { useState, useLayoutEffect, useCallback } from 'react';
 import AppSidebar from './AppSidebar';
+import MobileBottomNav from './MobileBottomNav';
 import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
@@ -123,13 +124,16 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </header>
 
         <main className={cn(
-          'flex-1 px-2 pb-12 pt-3 transition-all duration-500 overflow-x-hidden',
+          'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',
           'sm:px-4',
-          !isMobile && 'px-6 lg:px-8 pt-6',
+          isMobile ? 'pb-24' : 'pb-12 px-6 lg:px-8 pt-6',
         )}>
           {children}
         </main>
       </div>
+
+      {/* Mobile bottom navigation */}
+      {isMobile && !mobileOpen && <MobileBottomNav />}
     </div>
   );
 }
