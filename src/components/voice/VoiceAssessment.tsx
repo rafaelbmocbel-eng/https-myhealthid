@@ -609,6 +609,30 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </Card>
         )}
 
+        {/* ── SOAP — estrutura padrão de prontuário ── */}
+        {assessment.soap && (
+          <SectionCard icon={Layers} title="📋 SOAP — Prontuário Estruturado" sectionKey="soap" expanded={expandedSections} toggle={toggleSection}>
+            <div className="space-y-3 text-sm">
+              <div>
+                <span className="text-xs font-bold text-primary uppercase tracking-wide">S — Subjetivo</span>
+                <p className="text-muted-foreground leading-relaxed mt-0.5">{assessment.soap.subjetivo}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-primary uppercase tracking-wide">O — Objetivo</span>
+                <p className="text-muted-foreground leading-relaxed mt-0.5">{assessment.soap.objetivo}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-primary uppercase tracking-wide">A — Avaliação</span>
+                <p className="text-muted-foreground leading-relaxed mt-0.5">{assessment.soap.avaliacao}</p>
+              </div>
+              <div>
+                <span className="text-xs font-bold text-primary uppercase tracking-wide">P — Plano</span>
+                <p className="text-muted-foreground leading-relaxed mt-0.5">{assessment.soap.plano}</p>
+              </div>
+            </div>
+          </SectionCard>
+        )}
+
         <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
           <div className="text-sm text-muted-foreground leading-relaxed">
             <EditableInline field="resumo_clinico" value={assessment.resumo_clinico || 'N/I'} multiline />
