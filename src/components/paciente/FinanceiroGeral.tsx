@@ -238,6 +238,8 @@ export default function FinanceiroGeral() {
           )}
         </CardContent>
       </Card>
+      </div>
+      )}
     </div>
   );
 }
