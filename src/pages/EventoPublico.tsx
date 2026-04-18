@@ -181,6 +181,7 @@ export default function EventoPublico() {
           nome: nome.trim(),
           email: email.trim() || null,
           telefone: telefone.trim() || null,
+          paciente_id: pacienteLogado?.id || null,
           respostas: perguntas.map(p => ({ pergunta_id: p.id, resposta: respostas[p.id] ?? null })),
         },
       });
