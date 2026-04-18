@@ -44,10 +44,36 @@ export default function EventoPublico() {
   const [inscricaoId, setInscricaoId] = useState<string | null>(null);
   const [optionCounts, setOptionCounts] = useState<Record<string, Record<string, number>>>({});
 
+  // Patient detection (when already logged in to portal) — enables 1-click registration
+  const [pacienteLogado, setPacienteLogado] = useState<{ id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null } | null>(null);
+
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [respostas, setRespostas] = useState<Record<string, any>>({});
+
+  // Detect logged-in patient (portal session) — auto-fill form for 1-click signup
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled || !session?.user) return;
+        const { data: pac } = await supabase
+          .from('pacientes')
+          .select('id, nome, sobrenome, email, telefone')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (!cancelled && pac) {
+          setPacienteLogado(pac as any);
+          setNome(`${pac.nome} ${pac.sobrenome || ''}`.trim());
+          setEmail(pac.email || '');
+          setTelefone(pac.telefone || '');
+        }
+      } catch (_) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!eventoId) return;
@@ -155,6 +181,7 @@ export default function EventoPublico() {
           nome: nome.trim(),
           email: email.trim() || null,
           telefone: telefone.trim() || null,
+          paciente_id: pacienteLogado?.id || null,
           respostas: perguntas.map(p => ({ pergunta_id: p.id, resposta: respostas[p.id] ?? null })),
         },
       });
@@ -224,6 +251,11 @@ export default function EventoPublico() {
                 <a href={pagamentoInfo.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
               </Button>
             )}
+            {pacienteLogado && (
+              <Button asChild variant="outline" className="w-full">
+                <a href="/paciente/eventos">Voltar ao Portal</a>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
@@ -285,6 +317,15 @@ export default function EventoPublico() {
                 <CardTitle className="text-base">Sua inscrição</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {pacienteLogado && (
+                  <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2.5 flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-foreground">Você já está logado como {pacienteLogado.nome}</p>
+                      <p className="text-muted-foreground">Inscrição com 1 clique — seus dados foram preenchidos automaticamente.</p>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label>Nome completo *</Label>
                   <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" />

@@ -1,13 +1,17 @@
-// URL oficial do projeto - substitua pelo seu domínio oficial se necessário
-const PRODUCTION_URL = 'https://myhealthid.lovable.app';
+// URL oficial do projeto publicado (acessível publicamente sem login Lovable)
+const PRODUCTION_URL = 'https://https-myhealthid.lovable.app';
 
 export function getBaseUrl() {
   if (typeof window !== 'undefined') {
     const origin = window.location.origin;
 
-    // Se o origin contiver 'github.dev', 'github.codespaces' ou 'preview.lovable',
-    // provavelmente estamos no ambiente de desenvolvimento.
-    const isDev = origin.includes('github') || origin.includes('preview');
+    // Ambientes de desenvolvimento/preview do Lovable são PRIVADOS e exigem login.
+    // Sempre force o uso do domínio público publicado para links compartilháveis.
+    const isDev =
+      origin.includes('github') ||
+      origin.includes('id-preview') ||
+      origin.includes('preview--') ||
+      origin.includes('lovableproject.com');
 
     if (isDev && PRODUCTION_URL) {
       return PRODUCTION_URL;
