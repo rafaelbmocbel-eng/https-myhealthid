@@ -251,6 +251,11 @@ export default function EventoPublico() {
                 <a href={pagamentoInfo.link_pagamento} target="_blank" rel="noopener noreferrer">Realizar Pagamento</a>
               </Button>
             )}
+            {pacienteLogado && (
+              <Button asChild variant="outline" className="w-full">
+                <a href="/paciente/eventos">Voltar ao Portal</a>
+              </Button>
+            )}
           </CardContent>
         </Card>
       </div>
