@@ -317,6 +317,15 @@ export default function EventoPublico() {
                 <CardTitle className="text-base">Sua inscrição</CardTitle>
               </CardHeader>
               <CardContent className="space-y-3">
+                {pacienteLogado && (
+                  <div className="rounded-lg bg-primary/10 border border-primary/20 px-3 py-2.5 flex items-start gap-2">
+                    <CheckCircle2 className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                    <div className="text-xs">
+                      <p className="font-semibold text-foreground">Você já está logado como {pacienteLogado.nome}</p>
+                      <p className="text-muted-foreground">Inscrição com 1 clique — seus dados foram preenchidos automaticamente.</p>
+                    </div>
+                  </div>
+                )}
                 <div>
                   <Label>Nome completo *</Label>
                   <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Seu nome completo" />
