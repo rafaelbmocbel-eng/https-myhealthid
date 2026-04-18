@@ -44,10 +44,36 @@ export default function EventoPublico() {
   const [inscricaoId, setInscricaoId] = useState<string | null>(null);
   const [optionCounts, setOptionCounts] = useState<Record<string, Record<string, number>>>({});
 
+  // Patient detection (when already logged in to portal) — enables 1-click registration
+  const [pacienteLogado, setPacienteLogado] = useState<{ id: string; nome: string; sobrenome: string | null; email: string | null; telefone: string | null } | null>(null);
+
   const [nome, setNome] = useState('');
   const [email, setEmail] = useState('');
   const [telefone, setTelefone] = useState('');
   const [respostas, setRespostas] = useState<Record<string, any>>({});
+
+  // Detect logged-in patient (portal session) — auto-fill form for 1-click signup
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (cancelled || !session?.user) return;
+        const { data: pac } = await supabase
+          .from('pacientes')
+          .select('id, nome, sobrenome, email, telefone')
+          .eq('user_id', session.user.id)
+          .maybeSingle();
+        if (!cancelled && pac) {
+          setPacienteLogado(pac as any);
+          setNome(`${pac.nome} ${pac.sobrenome || ''}`.trim());
+          setEmail(pac.email || '');
+          setTelefone(pac.telefone || '');
+        }
+      } catch (_) { /* ignore */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
   useEffect(() => {
     if (!eventoId) return;
