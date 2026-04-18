@@ -1,16 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, Clock, CheckCircle, AlertTriangle, Users, MessageCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CheckCircle, AlertTriangle, Users, MessageCircle, BarChart3, ShoppingCart, Loader2 } from 'lucide-react';
 import { format, startOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+const VendasManager = lazy(() => import('./VendasManager'));
+
+type FinTab = 'visao' | 'vendas';
 
 export default function FinanceiroGeral() {
+  const [tab, setTab] = useState<FinTab>('visao');
   const { user } = useAuth();
   const navigate = useNavigate();
 
