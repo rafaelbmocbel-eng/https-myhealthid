@@ -3028,6 +3028,81 @@ export type Database = {
           },
         ]
       }
+      vendas: {
+        Row: {
+          cliente_nome: string | null
+          created_at: string
+          data_venda: string
+          descricao: string | null
+          forma_pagamento: string
+          id: string
+          observacoes: string | null
+          paciente_id: string | null
+          quantidade: number
+          servico: string
+          status: string
+          terapeuta_id: string
+          updated_at: string
+          valor_total: number
+          valor_unitario: number
+          vendedor_id: string | null
+          vendedor_nome: string | null
+        }
+        Insert: {
+          cliente_nome?: string | null
+          created_at?: string
+          data_venda?: string
+          descricao?: string | null
+          forma_pagamento?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string | null
+          quantidade?: number
+          servico: string
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+          valor_total?: number
+          valor_unitario?: number
+          vendedor_id?: string | null
+          vendedor_nome?: string | null
+        }
+        Update: {
+          cliente_nome?: string | null
+          created_at?: string
+          data_venda?: string
+          descricao?: string | null
+          forma_pagamento?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string | null
+          quantidade?: number
+          servico?: string
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+          valor_total?: number
+          valor_unitario?: number
+          vendedor_id?: string | null
+          vendedor_nome?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "vendas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "vendas_vendedor_id_fkey"
+            columns: ["vendedor_id"]
+            isOneToOne: false
+            referencedRelation: "equipe_membros"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       water_logs: {
         Row: {
           amount_ml: number
