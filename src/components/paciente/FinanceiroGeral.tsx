@@ -1,16 +1,22 @@
-import { useMemo } from 'react';
+import { useMemo, useState, lazy, Suspense } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DollarSign, TrendingUp, Clock, CheckCircle, AlertTriangle, Users, MessageCircle } from 'lucide-react';
+import { DollarSign, TrendingUp, Clock, CheckCircle, AlertTriangle, Users, MessageCircle, BarChart3, ShoppingCart, Loader2 } from 'lucide-react';
 import { format, startOfMonth, parseISO } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useNavigate } from 'react-router-dom';
+import { cn } from '@/lib/utils';
+
+const VendasManager = lazy(() => import('./VendasManager'));
+
+type FinTab = 'visao' | 'vendas';
 
 export default function FinanceiroGeral() {
+  const [tab, setTab] = useState<FinTab>('visao');
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -76,7 +82,35 @@ export default function FinanceiroGeral() {
   const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4">
+      {/* Sub-tabs */}
+      <div className="flex gap-2 border-b">
+        <button
+          onClick={() => setTab('visao')}
+          className={cn(
+            'px-4 py-2 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors',
+            tab === 'visao' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <BarChart3 className="h-4 w-4" /> Visão Geral
+        </button>
+        <button
+          onClick={() => setTab('vendas')}
+          className={cn(
+            'px-4 py-2 text-sm font-semibold flex items-center gap-2 border-b-2 transition-colors',
+            tab === 'vendas' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'
+          )}
+        >
+          <ShoppingCart className="h-4 w-4" /> Vendas
+        </button>
+      </div>
+
+      {tab === 'vendas' ? (
+        <Suspense fallback={<div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>}>
+          <VendasManager />
+        </Suspense>
+      ) : (
+      <div className="space-y-6">
       {/* KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
@@ -204,6 +238,8 @@ export default function FinanceiroGeral() {
           )}
         </CardContent>
       </Card>
+      </div>
+      )}
     </div>
   );
 }
