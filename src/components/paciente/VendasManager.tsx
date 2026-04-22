@@ -347,12 +347,12 @@ export default function VendasManager() {
                   <Button
                     variant="outline"
                     role="combobox"
-                    className="w-full justify-between font-normal"
+                    className="w-full justify-between font-normal h-11 text-base bg-card border-2 border-primary/20 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-sm transition-colors"
                   >
                     {pacienteSel
                       ? `${pacienteSel.nome} ${pacienteSel.sobrenome || ''}`
                       : form.cliente_nome || 'Buscar cliente ou digitar nome...'}
-                    <ChevronsUpDown className="h-3 w-3 opacity-50" />
+                    <ChevronsUpDown className="h-4 w-4 opacity-50 shrink-0" />
                   </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
@@ -361,6 +361,7 @@ export default function VendasManager() {
                       placeholder="Buscar paciente..."
                       value={searchCliente}
                       onValueChange={setSearchCliente}
+                      className="h-11 text-base"
                     />
                     <CommandList>
                       <CommandEmpty>
