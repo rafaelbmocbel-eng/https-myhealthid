@@ -21,8 +21,8 @@ const STEPS = [
   {
     icon: Activity,
     title: 'Realize uma avaliação',
-    description: 'Use o Método Identidade ou COB° ZERO para avaliar seu paciente.',
-    action: '/metodo-identidade',
+    description: 'Abra o perfil do paciente e escolha o tipo de avaliação (Método Identidade, COB° ZERO ou Studio Personal).',
+    action: '/pacientes',
     actionLabel: 'Nova Avaliação',
     checkKey: 'onb_avaliacao',
   },
@@ -45,15 +45,10 @@ const STEPS = [
   {
     icon: Sparkles,
     title: 'Explore os Serviços',
-    description: 'Conheça o Método Identidade, COB° ZERO e Studio Personal ID.',
-    action: '/metodo-identidade',
-    actionLabel: 'Explorar Serviços',
+    description: 'Acesse o perfil do paciente para realizar avaliações do Método Identidade, COB° ZERO e Studio Personal ID.',
+    action: '/pacientes',
+    actionLabel: 'Ir para Pacientes',
     checkKey: 'onb_studio',
-    subActions: [
-      { label: 'Método Identidade', href: '/metodo-identidade' },
-      { label: 'COB° ZERO', href: '/cob-zero' },
-      { label: 'Studio Personal ID', href: '/studio-personal-id' },
-    ],
   },
 ];
 

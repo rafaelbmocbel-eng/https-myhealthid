@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 
 const ACTIONS = [
   { key: 'pacientes', label: 'Novo Paciente', icon: UserPlus, href: '/pacientes' },
-  { key: 'avaliacao', label: 'Nova Avaliação', icon: ClipboardPlus, href: '/metodo-identidade' },
+  { key: 'avaliacao', label: 'Nova Avaliação', icon: ClipboardPlus, href: '/pacientes' },
   { key: 'agenda', label: 'Agenda Hoje', icon: CalendarDays, href: '/agenda' },
   { key: 'eventos', label: 'Eventos', icon: PartyPopper, href: '/eventos' },
 ];

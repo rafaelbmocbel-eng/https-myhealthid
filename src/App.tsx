@@ -13,11 +13,8 @@ import RouteRestorer from "./components/RouteRestorer";
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
-const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
-const CobZero = lazy(() => import("./pages/CobZero"));
-const StudioPersonalID = lazy(() => import("./pages/StudioPersonalID"));
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Pacientes = lazy(() => import("./pages/Pacientes"));
 const PacientePerfil = lazy(() => import("./pages/PacientePerfil"));
@@ -89,11 +86,11 @@ const App = () => (
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
-                <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
-                <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
+                <Route path="/metodo-identidade" element={<Navigate to="/pacientes" replace />} />
+                <Route path="/cob-zero" element={<Navigate to="/pacientes" replace />} />
+                <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
-                <Route path="/studio-personal-id" element={<PatientGuard><StudioPersonalID /></PatientGuard>} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
                 <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
                 <Route path="/pacientes/:id" element={<PatientGuard><PacientePerfil /></PatientGuard>} />

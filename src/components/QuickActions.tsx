@@ -6,7 +6,7 @@ import { cn } from '@/lib/utils';
 
 const ACTIONS = [
   { key: 'pacientes', label: 'Novo Paciente', icon: UserPlus, href: '/pacientes', hint: 'Cadastrar paciente' },
-  { key: 'avaliacao', label: 'Nova Avaliação', icon: ClipboardPlus, href: '/metodo-identidade', hint: 'Iniciar avaliação' },
+  { key: 'avaliacao', label: 'Nova Avaliação', icon: ClipboardPlus, href: '/pacientes', hint: 'Iniciar avaliação' },
   { key: 'agenda', label: 'Agenda Hoje', icon: CalendarDays, href: '/agenda', hint: 'Ver agenda do dia' },
   { key: 'eventos', label: 'Eventos', icon: PartyPopper, href: '/eventos', hint: 'Abrir eventos' },
 ];
