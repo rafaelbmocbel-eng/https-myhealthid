@@ -614,8 +614,13 @@ export default function Pacientes() {
         <>
         <div className="flex flex-wrap gap-3 mb-5">
           <div className="relative flex-1 min-w-52">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar paciente..." className="pl-9" value={search} onChange={e => setSearch(e.target.value)} />
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary shrink-0" />
+            <Input
+              placeholder="Buscar paciente por nome, telefone ou e-mail..."
+              className="pl-11 h-12 text-base bg-card border-2 border-primary/20 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-sm hover:border-primary/40 transition-colors"
+              value={search}
+              onChange={e => setSearch(e.target.value)}
+            />
           </div>
           
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
