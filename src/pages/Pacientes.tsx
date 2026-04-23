@@ -808,15 +808,66 @@ export default function Pacientes() {
               <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Serviços Ativos</Label>
-              <div className="space-y-2">
-                {SERVICOS.map(s => (
-                  <label key={s.key} className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/20 transition-colors">
-                    <Checkbox checked={form.servicos.includes(s.key)} onCheckedChange={() => toggleServico(s.key)} />
-                    <span className="text-sm font-medium">{s.label}</span>
-                  </label>
-                ))}
+              <Label>Profissional Responsável</Label>
+              <Select
+                value={form.responsavel_id || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, responsavel_id: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável definido</SelectItem>
+                  {membrosEquipe.filter(m => m.ativo).map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de Atendimento</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                  className={cn(
+                    'p-3 rounded-lg border text-sm font-medium transition-colors',
+                    form.tipo_pagamento === 'particular'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent/30 text-foreground'
+                  )}
+                >
+                  Particular
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'plano' }))}
+                  className={cn(
+                    'p-3 rounded-lg border text-sm font-medium transition-colors',
+                    form.tipo_pagamento === 'plano'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent/30 text-foreground'
+                  )}
+                >
+                  Plano
+                </button>
               </div>
+              {form.tipo_pagamento === 'plano' && (
+                <div className="pt-2">
+                  <Label className="text-xs">Plano</Label>
+                  <Select
+                    value={form.plano_saude || ''}
+                    onValueChange={v => setForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+                    <SelectContent>
+                      {PLANOS_SAUDE.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
