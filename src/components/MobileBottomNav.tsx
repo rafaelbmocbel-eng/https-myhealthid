@@ -4,7 +4,7 @@ import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
-type ServiceKey = 'identidade' | 'cob_zero' | 'studio' | 'eventos';
+type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },

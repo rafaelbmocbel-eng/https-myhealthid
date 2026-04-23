@@ -16,7 +16,6 @@ const PAGES = [
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'lista clientes' },
   { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, keywords: 'avaliação' },
   { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, keywords: 'escoliose cobb' },
-  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, keywords: 'treino exercício' },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare, keywords: 'vendas funil leads' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'evento workshop recovery inscrição' },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, keywords: 'report pdf' },
