@@ -1,19 +1,16 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Loader2, Save, Sparkles, Mic, Wand2 } from 'lucide-react';
+import { FileText, Loader2, Save, Sparkles } from 'lucide-react';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { format } from 'date-fns';
-import { ptBR } from 'date-fns/locale';
 
 // Build SOAP fields from a voice assessment (`resultado` of avaliacoes_voz)
-function buildSoapFromVoice(voice: any, transcricao?: string): { subjectivo: string; objetivo: string; avaliacao: string; plano: string } {
+export function buildSoapFromVoice(voice: any, transcricao?: string): { subjectivo: string; objetivo: string; avaliacao: string; plano: string } {
   const a = voice || {};
   const dor = a.dor || {};
   const func = a.funcionalidade || {};
