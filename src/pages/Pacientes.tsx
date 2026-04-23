@@ -631,42 +631,6 @@ export default function Pacientes() {
           </Select>
         </div>
 
-        {/* Classification Tag Chips */}
-        <div className="flex flex-wrap gap-2 mb-5">
-          <button
-            onClick={() => setFilterTag('todos')}
-            className={cn(
-              'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
-              filterTag === 'todos' ? 'bg-foreground text-background border-foreground' : 'bg-muted text-muted-foreground border-border hover:bg-accent'
-            )}
-          >
-            Todos ({pacientes.length})
-          </button>
-          {CLASSIFICACOES.map(c => (
-            <button
-              key={c.key}
-              onClick={() => setFilterTag(filterTag === c.key ? 'todos' : c.key)}
-              className={cn(
-                'px-3 py-1.5 rounded-full text-xs font-semibold border transition-all',
-                filterTag === c.key ? cn(c.bgColor, c.color) : 'bg-muted text-muted-foreground border-border hover:bg-accent'
-              )}
-            >
-              {c.emoji} {c.label} ({classificationCounts[c.key] || 0})
-            </button>
-          ))}
-        </div>
-
-        {/* Painel de Acompanhamento */}
-        <div className="mb-5">
-          <PainelAcompanhamento
-            pacientes={pacientes}
-            ultimosAgendamentos={ultimosAgendamentos}
-            todosAgendamentos={todosAgendamentos}
-            membrosEquipe={membrosEquipe}
-            agendamentosPorMembro={agendamentosPorMembro}
-          />
-        </div>
-
         {filtered.length === 0 ? (
           <div className="text-center py-20 text-muted-foreground">
             <Users className="h-12 w-12 mx-auto mb-3 opacity-30" />
