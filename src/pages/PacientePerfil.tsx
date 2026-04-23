@@ -14,7 +14,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -55,14 +55,15 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || '';
-  // Aba única consolidada: avaliacoes | protocolos | evolucao-prontuario | engajamento | chat
-  // Sem aba ativa por padrão — conteúdo aparece somente ao clicar.
-  const VALID_TABS = ['avaliacoes', 'protocolos', 'evolucao-prontuario', 'engajamento', 'chat'];
+  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | engajamento | chat
+  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'engajamento', 'chat'];
   const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
     ? 'evolucao-prontuario'
-    : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
-      ? 'avaliacoes'
-      : rawTab;
+    : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
+      ? 'historico'
+      : rawTab === 'protocolos'
+        ? 'diretrizes'
+        : rawTab;
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { user, loading: authLoading } = useAuth();
@@ -590,29 +591,41 @@ export default function PacientePerfil() {
           <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
         </div>
 
-        {/* ==== 4 GRUPOS PRINCIPAIS ====
-            Clínico (sub-abas: Avaliações, Diretrizes, Prontuário) │ Financeiro │ Engajamento │ Chat */}
-        {/* ==== ABAS UNIFICADAS ====
-            Avaliações │ Diretrizes │ Prontuário │ Engajar │ Chat
-            Sem aba ativa por padrão — conteúdo aparece somente ao clicar. */}
+        {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
+        {!activeTab && (
+          <div className="mb-4">
+            <PacienteDashboardIdentidade
+              paciente={paciente as any}
+              onBack={() => navigate('/pacientes')}
+              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              subTab="integrada"
+            />
+          </div>
+        )}
+
+        {/* ==== ABAS COMPLEMENTARES ====
+            Histórico │ Diretrizes │ Prontuário │ Engajar │ Chat
+            Visão Integrada é a entrada padrão (sem aba ativa). */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => {
-            // Permite "desselecionar" clicando na mesma aba ativa
+            // Permite "desselecionar" clicando na mesma aba ativa, voltando à Visão Integrada
             const next = v === activeTab ? '' : v;
             setActiveTab(next);
             navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
           }}
         >
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
-            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <Stethoscope className="h-4 w-4 shrink-0" /> <span>Avaliações</span>
+            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
+              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
-            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <ClipboardList className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
+            <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Diretrizes e Tratamentos">
+              <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
             </TabsTrigger>
             <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <FileText className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
+              <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
             </TabsTrigger>
             <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
               <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
@@ -622,20 +635,28 @@ export default function PacientePerfil() {
             </TabsTrigger>
           </TabsList>
 
-          {/* TAB: AVALIAÇÕES (hub centralizado) */}
-          <TabsContent value="avaliacoes" className="mt-4">
+          {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
+          <TabsContent value="historico" className="mt-4">
             <PacienteDashboardIdentidade
               paciente={paciente as any}
               onBack={() => navigate('/pacientes')}
               onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
               onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
               onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              subTab="historico"
             />
           </TabsContent>
 
-          {/* TAB: DIRETRIZES / PROTOCOLOS */}
-          <TabsContent value="protocolos" className="mt-4 space-y-6">
-            <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
+          {/* TAB: DIRETRIZES E TRATAMENTOS */}
+          <TabsContent value="diretrizes" className="mt-4 space-y-6">
+            <PacienteDashboardIdentidade
+              paciente={paciente as any}
+              onBack={() => navigate('/pacientes')}
+              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+              subTab="avaliacoes"
+            />
           </TabsContent>
 
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
