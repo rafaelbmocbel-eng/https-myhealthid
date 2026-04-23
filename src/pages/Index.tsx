@@ -458,10 +458,11 @@ export default function Index() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
           {[
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
-            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
-            ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
-            ...(servicos.studio ? [{ label: 'Studio Personal ID', sublabel: `${studioPacientes} pacientes`, icon: Sparkles, href: '/studio-personal-id', gradient: 'bg-gradient-studio' }] : []),
-          ].map(mod => {
+            { label: 'Pacientes', sublabel: `${pacientes.length} cadastrados`, icon: Users, href: '/pacientes', gradient: 'bg-gradient-to-br from-primary to-primary/70' },
+            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/pacientes', gradient: 'bg-gradient-identidade' }] : []),
+            ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/pacientes', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
+            ...(servicos.studio ? [{ label: 'Studio Personal ID', sublabel: `${studioPacientes} pacientes`, icon: Sparkles, href: '/pacientes', gradient: 'bg-gradient-studio' }] : []),
+          ].map((mod, idx) => {
             const Icon = mod.icon;
             return (
               <Link key={mod.href} to={mod.href} className="clinical-card !p-3 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
