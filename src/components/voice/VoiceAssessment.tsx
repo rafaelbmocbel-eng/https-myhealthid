@@ -637,6 +637,45 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 <span className="text-xs font-bold text-primary uppercase tracking-wide">P — Plano</span>
                 <p className="text-muted-foreground leading-relaxed mt-0.5">{assessment.soap.plano}</p>
               </div>
+
+              {pacienteId && (
+                <div className="pt-2 mt-2 border-t border-border">
+                  <Button
+                    size="sm"
+                    variant={soapNoteSaved ? 'outline' : 'default'}
+                    disabled={savingSoapNote || soapNoteSaved}
+                    onClick={async () => {
+                      try {
+                        setSavingSoapNote(true);
+                        const filled = buildSoapFromVoice(assessment, transcript);
+                        const subjetivo = assessment.soap?.subjetivo || filled.subjectivo;
+                        const objetivo = assessment.soap?.objetivo || filled.objetivo;
+                        const avaliacao = assessment.soap?.avaliacao || filled.avaliacao;
+                        const plano = assessment.soap?.plano || filled.plano;
+                        const descricao = `📝 S — SUBJETIVO\n${subjetivo}\n\n🔍 O — OBJETIVO\n${objetivo}\n\n🧠 A — AVALIAÇÃO\n${avaliacao}\n\n📋 P — PLANO\n${plano}`;
+                        const titulo = `Nota SOAP — Avaliação por Voz — ${new Date().toLocaleDateString('pt-BR')}`;
+                        await adicionarNotaProntuario({
+                          pacienteId,
+                          tipo: 'soap_note',
+                          titulo,
+                          descricao,
+                          dadosExtras: { subjetivo, objetivo, avaliacao, plano, origem: 'avaliacao_voz' },
+                        });
+                        setSoapNoteSaved(true);
+                        toast({ title: '✅ Nota SOAP salva no prontuário' });
+                      } catch (err: any) {
+                        toast({ title: 'Erro ao salvar nota SOAP', description: err?.message, variant: 'destructive' });
+                      } finally {
+                        setSavingSoapNote(false);
+                      }
+                    }}
+                    className="w-full gap-1.5 h-8 text-xs"
+                  >
+                    {savingSoapNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {soapNoteSaved ? 'Nota SOAP salva no prontuário' : 'Salvar como nota SOAP no prontuário'}
+                  </Button>
+                </div>
+              )}
             </div>
           </SectionCard>
         )}
