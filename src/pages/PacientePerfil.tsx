@@ -42,6 +42,9 @@ import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
+import { MyIDWizard } from '@/components/myid/MyIDWizard';
+import { CobZeroWizard } from '@/components/cobzero/CobZeroWizard';
+import StudioMedidasForm from '@/components/studio/StudioMedidasForm';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -81,6 +84,7 @@ export default function PacientePerfil() {
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+  const [wizardAtivo, setWizardAtivo] = useState<null | 'identidade' | 'cobzero'>(null);
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
@@ -488,10 +492,71 @@ export default function PacientePerfil() {
               TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="avaliacoes" className="mt-4 space-y-6">
+            {/* Wizard Inline: Método Identidade */}
+            {wizardAtivo === 'identidade' && (
+              <div className="bg-card rounded-xl shadow-sm border p-4 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg text-primary">Nova Avaliação — Método Identidade (MyID)</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setWizardAtivo(null)}>Cancelar</Button>
+                </div>
+                <MyIDWizard onComplete={async (result, rawData) => {
+                  try {
+                    await supabase.from('myid_avaliacoes').insert({
+                      terapeuta_id: user?.id,
+                      paciente_id: id,
+                      status: 'concluido',
+                      respostas_brutas: rawData,
+                      resultado_processado: result,
+                    });
+                    qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+                    qc.invalidateQueries({ queryKey: ['myid-avaliacoes'] });
+                    toast({ title: 'MyID salvo!', description: 'Avaliação registrada com sucesso.' });
+                    setWizardAtivo(null);
+                  } catch (e: any) {
+                    toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+                  }
+                }} />
+              </div>
+            )}
+
+            {/* Wizard Inline: COB° ZERO */}
+            {wizardAtivo === 'cobzero' && (
+              <div className="bg-card rounded-xl shadow-sm border p-4 relative">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="font-bold text-lg text-blue-700">Nova Avaliação — COB° ZERO</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setWizardAtivo(null)}>Cancelar</Button>
+                </div>
+                <CobZeroWizard
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  pacienteId={id!}
+                  onCancel={() => setWizardAtivo(null)}
+                  onComplete={async (avaliacao) => {
+                    try {
+                      await supabase.from('avaliacoes_cob_zero').insert({
+                        terapeuta_id: user?.id!,
+                        paciente_id: id!,
+                        paciente_nome: `${paciente.nome} ${paciente.sobrenome}`,
+                        data_avaliacao: new Date().toISOString().split('T')[0],
+                        dados_avaliacao: avaliacao as any,
+                        cobb_angle: avaliacao.etapaLenke?.cobbAngle ?? null,
+                        lenke_type: avaliacao.etapaLenke?.lenkeType ?? null,
+                      });
+                      qc.invalidateQueries({ queryKey: ['avaliacoes-cob-zero'] });
+                      toast({ title: 'COB° ZERO salvo!', description: 'Avaliação registrada com sucesso.' });
+                      setWizardAtivo(null);
+                    } catch (e: any) {
+                      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+                    }
+                  }}
+                />
+              </div>
+            )}
+
             {/* Service Action Cards */}
+            {!wizardAtivo && (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* Método Identidade */}
-              <div className="clinical-card border-l-4 border-primary cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
+              <div className="clinical-card border-l-4 border-primary cursor-pointer hover:shadow-md transition-shadow" onClick={() => setWizardAtivo('identidade')}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center shrink-0">
                     <Activity className="h-5 w-5 text-primary" />
@@ -500,14 +565,14 @@ export default function PacientePerfil() {
                     <h3 className="text-sm font-bold">Método Identidade</h3>
                     <p className="text-[10px] text-muted-foreground">{avaliacoesId.length} avaliação(ões)</p>
                   </div>
-                  <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/metodo-identidade?paciente=${id}`); }}>
+                  <Button size="sm" className="bg-primary/10 text-primary hover:bg-primary/20 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); setWizardAtivo('identidade'); }}>
                     <Plus className="h-3.5 w-3.5" /> Nova
                   </Button>
                 </div>
               </div>
 
               {/* COB° ZERO */}
-              <div className="clinical-card border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+              <div className="clinical-card border-l-4 border-blue-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => setWizardAtivo('cobzero')}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-blue-100 flex items-center justify-center shrink-0">
                     <AlignCenter className="h-5 w-5 text-blue-600" />
@@ -516,21 +581,21 @@ export default function PacientePerfil() {
                     <h3 className="text-sm font-bold">COB° ZERO</h3>
                     <p className="text-[10px] text-muted-foreground">{avaliacoesCob.length} avaliação(ões)</p>
                   </div>
-                  <Button size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); navigate(`/cob-zero?paciente=${id}`); }}>
+                  <Button size="sm" className="bg-blue-50 text-blue-700 hover:bg-blue-100 gap-1 h-8 shrink-0" onClick={(e) => { e.stopPropagation(); setWizardAtivo('cobzero'); }}>
                     <Plus className="h-3.5 w-3.5" /> Nova
                   </Button>
                 </div>
               </div>
 
               {/* Studio Personal ID */}
-              <div className="clinical-card border-l-4 border-emerald-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/studio-personal-id?paciente=${id}`)}>
+              <div className="clinical-card border-l-4 border-emerald-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/pacientes/${id}?tab=engajamento`)}>
                 <div className="flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
                     <Sparkles className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-bold">Studio Personal ID</h3>
-                    <p className="text-[10px] text-muted-foreground">Hub de treinos e medidas</p>
+                    <p className="text-[10px] text-muted-foreground">Treinos, medidas e portal</p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
                 </div>
@@ -554,6 +619,7 @@ export default function PacientePerfil() {
                 />
               </div>
             </div>
+            )}
 
 
 
@@ -779,7 +845,7 @@ export default function PacientePerfil() {
                     </div>
                     <div className="space-y-2">
                       {avaliacoesId.map((av: any, idx: number) => (
-                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}>
+                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-primary/40 transition-colors" onClick={() => navigate(`/pacientes/${id}?tab=clinico`)}>
                           <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-primary/15' : 'bg-muted')}>
                             <TrendingUp className={cn('h-4 w-4', idx === 0 ? 'text-primary' : 'text-muted-foreground')} />
                           </div>
@@ -808,7 +874,7 @@ export default function PacientePerfil() {
                     </div>
                     <div className="space-y-2">
                       {avaliacoesCob.map((av: any, idx: number) => (
-                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-blue-400/40 transition-colors" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-blue-400/40 transition-colors" onClick={() => navigate(`/pacientes/${id}?tab=clinico`)}>
                           <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-blue-100' : 'bg-muted')}>
                             <AlignCenter className={cn('h-4 w-4', idx === 0 ? 'text-blue-600' : 'text-muted-foreground')} />
                           </div>
