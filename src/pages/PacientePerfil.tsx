@@ -704,55 +704,8 @@ export default function PacientePerfil() {
             </div>
           </TabsContent>
 
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: SESSÕES (pacote + agendamentos)
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="sessoes" className="mt-4 space-y-6">
-            <PacoteSessoesManager pacienteId={id!} />
+          {/* Sessões e Financeiro foram movidos para botões/cards no header (Sheets) */}
 
-            {/* Próximas sessões */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <CalendarDays className="h-4 w-4 text-primary" />
-                <h3 className="font-semibold text-sm">Próximas sessões ({agendamentosFuturos.length})</h3>
-              </div>
-              {loadingAg ? (
-                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-              ) : agendamentosFuturos.length === 0 ? (
-                <EmptyState icon={<CalendarDays />} title="Nenhuma sessão agendada" subtitle="Use a Agenda para criar um novo agendamento." />
-              ) : (
-                <div className="space-y-2">
-                  {agendamentosFuturos.slice(0, 10).map((ag: any) => (
-                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
-                  ))}
-                </div>
-              )}
-            </div>
-
-            {/* Histórico de sessões */}
-            <div>
-              <div className="flex items-center gap-2 mb-3">
-                <Clock className="h-4 w-4 text-muted-foreground" />
-                <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
-              </div>
-              {agendamentosPassados.length === 0 ? (
-                <EmptyState icon={<Clock />} title="Sem histórico" subtitle="Sessões realizadas aparecerão aqui." />
-              ) : (
-                <div className="space-y-2">
-                  {agendamentosPassados.slice(0, 15).map((ag: any) => (
-                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
-                  ))}
-                </div>
-              )}
-            </div>
-          </TabsContent>
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: FINANCEIRO
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="financeiro" className="mt-4">
-            <PacienteFinanceiroTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
-          </TabsContent>
 
           {/* ══════════════════════════════════════════════════════════════════
               TAB: CHAT INTERNO
