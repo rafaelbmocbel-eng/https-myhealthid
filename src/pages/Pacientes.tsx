@@ -88,17 +88,26 @@ const SERVICOS = [
   { key: 'agenda_premium', label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 ];
 
+type TipoPagamento = 'particular' | 'plano';
+type PlanoSaude = 'FUSEX' | 'CASSI' | 'TRT';
+const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
+
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
   data_nascimento: string; genero: string; cpf: string; endereco: string;
-  queixa_principal: string; observacoes: string; servicos: string[];
+  queixa_principal: string; observacoes: string;
+  responsavel_id: string;
+  tipo_pagamento: TipoPagamento;
+  plano_saude: PlanoSaude | '';
 }
 
 const emptyForm: FormData = {
   nome: '', sobrenome: '', email: '', telefone: '',
   data_nascimento: '', genero: '', cpf: '', endereco: '',
   queixa_principal: '', observacoes: '',
-  servicos: [],
+  responsavel_id: '',
+  tipo_pagamento: 'particular',
+  plano_saude: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
