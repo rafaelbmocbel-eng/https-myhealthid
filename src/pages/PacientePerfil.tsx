@@ -53,6 +53,11 @@ export default function PacientePerfil() {
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || 'avaliacoes';
   const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' ? 'avaliacoes' : rawTab;
+  // Top-level tab: clinico | financeiro | engajamento | chat
+  // Sub-tabs (avaliacoes/protocolos/evolucao-prontuario) live INSIDE 'clinico'
+  const CLINICO_SUBTABS = ['avaliacoes', 'protocolos', 'evolucao-prontuario'];
+  const outerTab = CLINICO_SUBTABS.includes(defaultTab) ? 'clinico' : defaultTab;
+  const innerClinicoTab = CLINICO_SUBTABS.includes(defaultTab) ? defaultTab : 'avaliacoes';
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
