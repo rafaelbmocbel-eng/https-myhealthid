@@ -1687,11 +1687,14 @@ export type Database = {
           nome: string
           observacoes: string | null
           origem: string | null
+          plano_saude: string | null
           portal_token: string | null
+          responsavel_id: string | null
           sexo: string | null
           sobrenome: string
           telefone: string | null
           terapeuta_id: string
+          tipo_pagamento: string
           updated_at: string
           user_id: string | null
         }
@@ -1707,11 +1710,14 @@ export type Database = {
           nome: string
           observacoes?: string | null
           origem?: string | null
+          plano_saude?: string | null
           portal_token?: string | null
+          responsavel_id?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id: string
+          tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
         }
@@ -1727,15 +1733,26 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           origem?: string | null
+          plano_saude?: string | null
           portal_token?: string | null
+          responsavel_id?: string | null
           sexo?: string | null
           sobrenome?: string
           telefone?: string | null
           terapeuta_id?: string
+          tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pacientes_responsavel_id_fkey"
+            columns: ["responsavel_id"]
+            isOneToOne: false
+            referencedRelation: "equipe_membros"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pacotes_sessoes: {
         Row: {
