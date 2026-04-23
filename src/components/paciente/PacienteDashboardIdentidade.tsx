@@ -402,7 +402,11 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const [showReport, setShowReport] = useState<{ structural?: StructuralAssessmentData; myid?: any } | null>(null);
   const [gerandoRespostaCompleta, setGerandoRespostaCompleta] = useState(false);
   
-  const [subTabAtiva, setSubTabAtiva] = useState('integrada');
+  const [subTabInterna, setSubTabInterna] = useState<'integrada' | 'historico' | 'myid' | 'avaliacoes'>(subTab || 'integrada');
+  // Sincroniza quando o pai controla a sub-aba
+  useEffect(() => { if (subTab) setSubTabInterna(subTab); }, [subTab]);
+  const subTabAtiva = subTabInterna;
+  const setSubTabAtiva = setSubTabInterna;
 
   // Save voice edit and reprocess with AI
   const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string) => {
