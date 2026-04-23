@@ -577,7 +577,7 @@ export default function PacientePerfil() {
                 <Button
                   size="lg"
                   className="w-full mt-4 gap-2 bg-primary hover:bg-primary/90 text-primary-foreground font-semibold"
-                  onClick={() => setWizardAtivo('identidade')}
+                  onClick={() => navigate(`/metodo-identidade?paciente=${id}`)}
                 >
                   <Plus className="h-4 w-4" /> Nova Avaliação
                 </Button>
