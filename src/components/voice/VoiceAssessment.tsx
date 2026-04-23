@@ -72,6 +72,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   });
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
+  const [savingSoapNote, setSavingSoapNote] = useState(false);
+  const [soapNoteSaved, setSoapNoteSaved] = useState(false);
+  const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
