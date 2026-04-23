@@ -42,6 +42,9 @@ import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
+import { MyIDWizard } from '@/components/myid/MyIDWizard';
+import { CobZeroWizard } from '@/components/cobzero/CobZeroWizard';
+import StudioMedidasForm from '@/components/studio/StudioMedidasForm';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
