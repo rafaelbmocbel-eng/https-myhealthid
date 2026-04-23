@@ -95,7 +95,6 @@ export default function Configuracoes() {
             {([
               { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, iconClassName: 'text-primary' },
               { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, iconClassName: 'text-primary' },
-              { key: 'studio' as const, label: 'Studio Personal ID', icon: Sparkles, iconClassName: 'text-primary' },
               { key: 'eventos' as const, label: 'Eventos', icon: PartyPopper, iconClassName: 'text-primary' },
             ]).map(mod => {
               const ativo = servicos[mod.key];

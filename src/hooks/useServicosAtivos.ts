@@ -6,14 +6,14 @@ import { withAuthLockRetry } from '@/lib/authLock';
 export interface ServicosAtivos {
   identidade: boolean;
   cob_zero: boolean;
-  studio: boolean;
+  studio: boolean; // legacy: kept for backward compatibility, always false
   eventos: boolean;
 }
 
 export const DEFAULT_SERVICOS: ServicosAtivos = {
   identidade: true,
   cob_zero: true,
-  studio: true,
+  studio: false,
   eventos: true,
 };
 

@@ -142,18 +142,7 @@ export default function Index() {
     enabled: authReady && !!user,
   });
 
-  const { data: medidasStudio = [] } = useQuery({
-    queryKey: ['studio-medidas-epidemio', user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('studio_medidas')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('data_medida', { ascending: true });
-      return data || [];
-    },
-    enabled: authReady && !!user,
-  });
+  const medidasStudio: any[] = [];
 
   const { data: amostraClinica } = useQuery({
     queryKey: ['amostra-clinica', user?.id, avaliacoesRaw.length],
@@ -395,7 +384,6 @@ export default function Index() {
 
   const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
   const cobZeroPacientes = pacienteServicos.filter(s => s.servico === 'cob_zero').length;
-  const studioPacientes = pacienteServicos.filter(s => s.servico === 'studio_personal_id').length;
 
   // Filtra avaliações recentes com red flags (últimos 30 dias)
   const recentAlerts = avaliacoesRaw
@@ -460,7 +448,6 @@ export default function Index() {
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
             ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
             ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
-            ...(servicos.studio ? [{ label: 'Studio Personal ID', sublabel: `${studioPacientes} pacientes`, icon: Sparkles, href: '/studio-personal-id', gradient: 'bg-gradient-studio' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
@@ -908,7 +895,7 @@ export default function Index() {
             <AmostraIntegrada
               avaliacoesIdentidade={servicos.identidade ? (avaliacoesRaw as any) : []}
               avaliacoesCobZero={servicos.cob_zero ? (avaliacoesCobZero as any) : []}
-              medidasStudio={servicos.studio ? (medidasStudio as any) : []}
+              medidasStudio={[]}
             />
           </div>
         )}

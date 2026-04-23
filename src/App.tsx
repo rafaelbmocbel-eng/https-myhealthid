@@ -17,7 +17,7 @@ const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
 const CobZero = lazy(() => import("./pages/CobZero"));
-const StudioPersonalID = lazy(() => import("./pages/StudioPersonalID"));
+
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Pacientes = lazy(() => import("./pages/Pacientes"));
 const PacientePerfil = lazy(() => import("./pages/PacientePerfil"));
@@ -93,7 +93,7 @@ const App = () => (
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
-                <Route path="/studio-personal-id" element={<PatientGuard><StudioPersonalID /></PatientGuard>} />
+                <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
                 <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
                 <Route path="/pacientes/:id" element={<PatientGuard><PacientePerfil /></PatientGuard>} />

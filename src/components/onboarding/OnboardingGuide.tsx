@@ -45,14 +45,13 @@ const STEPS = [
   {
     icon: Sparkles,
     title: 'Explore os Serviços',
-    description: 'Conheça o Método Identidade, COB° ZERO e Studio Personal ID.',
+    description: 'Conheça o Método Identidade e o COB° ZERO.',
     action: '/metodo-identidade',
     actionLabel: 'Explorar Serviços',
-    checkKey: 'onb_studio',
+    checkKey: 'onb_servicos',
     subActions: [
       { label: 'Método Identidade', href: '/metodo-identidade' },
       { label: 'COB° ZERO', href: '/cob-zero' },
-      { label: 'Studio Personal ID', href: '/studio-personal-id' },
     ],
   },
 ];
