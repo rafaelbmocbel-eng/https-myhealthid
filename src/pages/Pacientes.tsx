@@ -685,7 +685,7 @@ export default function Pacientes() {
               const tag = getClassificacao(p.id, p.created_at);
               const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
               return (
-                <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
+                <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/metodo-identidade?paciente=${p.id}`)}>
                   <div className="flex items-center gap-3 sm:gap-4">
                     {/* Avatar with status dot */}
                     <div className="relative shrink-0">
