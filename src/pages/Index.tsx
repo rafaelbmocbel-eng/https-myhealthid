@@ -465,7 +465,7 @@ export default function Index() {
           ].map((mod, idx) => {
             const Icon = mod.icon;
             return (
-              <Link key={mod.href} to={mod.href} className="clinical-card !p-3 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
+              <Link key={`${mod.label}-${idx}`} to={mod.href} className="clinical-card !p-3 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
                 <div className={`h-9 w-9 rounded-lg ${mod.gradient} flex items-center justify-center shrink-0`}>
                   <Icon className="h-4.5 w-4.5 text-white" />
                 </div>
