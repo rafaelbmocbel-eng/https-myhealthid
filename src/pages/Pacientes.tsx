@@ -375,7 +375,9 @@ export default function Pacientes() {
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
       genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
       queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
-      servicos: p._servicos || [],
+      responsavel_id: (p as any).responsavel_id || '',
+      tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
+      plano_saude: ((p as any).plano_saude as PlanoSaude) || '',
     });
     setModal({ open: true, paciente: p });
   };
