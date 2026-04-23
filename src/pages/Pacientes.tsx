@@ -88,17 +88,26 @@ const SERVICOS = [
   { key: 'agenda_premium', label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 ];
 
+type TipoPagamento = 'particular' | 'plano';
+type PlanoSaude = 'FUSEX' | 'CASSI' | 'TRT';
+const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
+
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
   data_nascimento: string; genero: string; cpf: string; endereco: string;
-  queixa_principal: string; observacoes: string; servicos: string[];
+  queixa_principal: string; observacoes: string;
+  responsavel_id: string;
+  tipo_pagamento: TipoPagamento;
+  plano_saude: PlanoSaude | '';
 }
 
 const emptyForm: FormData = {
   nome: '', sobrenome: '', email: '', telefone: '',
   data_nascimento: '', genero: '', cpf: '', endereco: '',
   queixa_principal: '', observacoes: '',
-  servicos: [],
+  responsavel_id: '',
+  tipo_pagamento: 'particular',
+  plano_saude: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
@@ -366,7 +375,9 @@ export default function Pacientes() {
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
       genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
       queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
-      servicos: p._servicos || [],
+      responsavel_id: (p as any).responsavel_id || '',
+      tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
+      plano_saude: ((p as any).plano_saude as PlanoSaude) || '',
     });
     setModal({ open: true, paciente: p });
   };
@@ -381,7 +392,7 @@ export default function Pacientes() {
     try {
       let pacienteId = modal.paciente?.id;
       const validated = parsed.data;
-      const payload = {
+      const payload: any = {
         nome: validated.nome!,
         sobrenome: validated.sobrenome!,
         email: validated.email ?? null,
@@ -392,6 +403,9 @@ export default function Pacientes() {
         endereco: validated.endereco ?? null,
         observacoes: validated.observacoes ?? null,
         terapeuta_id: user!.id,
+        responsavel_id: form.responsavel_id || null,
+        tipo_pagamento: form.tipo_pagamento,
+        plano_saude: form.tipo_pagamento === 'plano' ? (form.plano_saude || null) : null,
       };
       if (pacienteId) {
         await supabase.from('pacientes').update(payload).eq('id', pacienteId);
@@ -399,15 +413,6 @@ export default function Pacientes() {
         const { data, error } = await supabase.from('pacientes').insert(payload).select().single();
         if (error) throw error;
         pacienteId = data.id;
-      }
-      await supabase.from('paciente_servicos').delete().eq('paciente_id', pacienteId!);
-      if (form.servicos.length > 0) {
-        await supabase.from('paciente_servicos').insert(
-          form.servicos.map(s => ({
-            paciente_id: pacienteId!, servico: s, ativo: true,
-            data_inicio: new Date().toISOString().split('T')[0],
-          }))
-        );
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
@@ -450,13 +455,6 @@ export default function Pacientes() {
     } catch (e: any) {
       toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
     }
-  };
-
-  const toggleServico = (s: string) => {
-    setForm(f => ({
-      ...f,
-      servicos: f.servicos.includes(s) ? f.servicos.filter(x => x !== s) : [...f.servicos, s],
-    }));
   };
 
   const getLinksForPaciente = (pid: string) => links.filter(l => l.paciente_id === pid);
@@ -810,15 +808,66 @@ export default function Pacientes() {
               <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
             </div>
             <div className="space-y-2">
-              <Label>Serviços Ativos</Label>
-              <div className="space-y-2">
-                {SERVICOS.map(s => (
-                  <label key={s.key} className="flex items-center gap-3 p-3 rounded-lg border cursor-pointer hover:bg-accent/20 transition-colors">
-                    <Checkbox checked={form.servicos.includes(s.key)} onCheckedChange={() => toggleServico(s.key)} />
-                    <span className="text-sm font-medium">{s.label}</span>
-                  </label>
-                ))}
+              <Label>Profissional Responsável</Label>
+              <Select
+                value={form.responsavel_id || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, responsavel_id: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem responsável definido</SelectItem>
+                  {membrosEquipe.filter(m => m.ativo).map(m => (
+                    <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Tipo de Atendimento</Label>
+              <div className="grid grid-cols-2 gap-2">
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                  className={cn(
+                    'p-3 rounded-lg border text-sm font-medium transition-colors',
+                    form.tipo_pagamento === 'particular'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent/30 text-foreground'
+                  )}
+                >
+                  Particular
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'plano' }))}
+                  className={cn(
+                    'p-3 rounded-lg border text-sm font-medium transition-colors',
+                    form.tipo_pagamento === 'plano'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border hover:bg-accent/30 text-foreground'
+                  )}
+                >
+                  Plano
+                </button>
               </div>
+              {form.tipo_pagamento === 'plano' && (
+                <div className="pt-2">
+                  <Label className="text-xs">Plano</Label>
+                  <Select
+                    value={form.plano_saude || ''}
+                    onValueChange={v => setForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+                    <SelectContent>
+                      {PLANOS_SAUDE.map(p => (
+                        <SelectItem key={p} value={p}>{p}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
