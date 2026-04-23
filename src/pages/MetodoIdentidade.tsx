@@ -124,7 +124,7 @@ export default function MetodoIdentidade() {
                 <PacienteSelect
                   pacientes={pacientes as any}
                   value={pacienteId}
-                  onChange={setPacienteId}
+                  onValueChange={setPacienteId}
                   placeholder="Buscar paciente..."
                 />
                 {pacienteSelecionado && (
