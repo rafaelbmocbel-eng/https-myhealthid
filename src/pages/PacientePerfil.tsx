@@ -84,6 +84,7 @@ export default function PacientePerfil() {
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+  const [wizardAtivo, setWizardAtivo] = useState<null | 'identidade' | 'cobzero'>(null);
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
