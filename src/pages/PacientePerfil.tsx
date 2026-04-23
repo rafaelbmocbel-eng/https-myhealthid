@@ -414,12 +414,6 @@ export default function PacientePerfil() {
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
               <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
-              {paciente.telefone && (
-                <Button variant="ghost" size="icon" className="h-7 w-7 text-[#25D366] hover:bg-[#25D366]/10 shrink-0" title="WhatsApp"
-                  onClick={() => window.open(`https://wa.me/55${paciente.telefone?.replace(/\D/g, '')}`, '_blank')}>
-                  <MessageCircle className="h-4 w-4" />
-                </Button>
-              )}
               {/* Links rápidos: MyID · Agenda · Portal */}
               <LinkActionsBar items={(() => {
                 const items: LinkActionItem[] = [];
