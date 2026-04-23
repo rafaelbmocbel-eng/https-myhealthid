@@ -40,6 +40,7 @@ import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -81,8 +82,48 @@ export default function PacientePerfil() {
     enabled: !!user && !!id,
   });
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
+  const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+
+  // Link MyID ativo (pendente)
+  const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
+    queryKey: ['links-myid-perfil', user?.id, id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('myid_avaliacoes')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', id!)
+        .eq('status', 'pendente')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+  const linkMyIDAtivo = linksMyID[0];
+
+  const gerarLinkMyID = async () => {
+    if (!user) return;
+    setGerandoMyIDLink(true);
+    try {
+      const token = Math.random().toString(36).substring(2, 12);
+      const { error } = await supabase.from('myid_avaliacoes').insert({
+        terapeuta_id: user.id,
+        paciente_id: id!,
+        token_acesso: token,
+        status: 'pendente',
+      });
+      if (error) throw error;
+      refetchLinksMyID();
+      toast({ title: 'Link MyID gerado! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link MyID', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoMyIDLink(false);
+    }
+  };
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
