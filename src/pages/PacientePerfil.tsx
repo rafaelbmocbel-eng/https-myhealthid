@@ -13,7 +13,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -448,17 +448,20 @@ export default function PacientePerfil() {
           defaultValue={outerTab}
           onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}
         >
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
-            <TabsTrigger value="clinico" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
+            <TabsTrigger value="clinico" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
               <Stethoscope className="h-4 w-4 shrink-0" /> <span>Clínico</span>
             </TabsTrigger>
-            <TabsTrigger value="financeiro" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
-              <DollarSign className="h-4 w-4 shrink-0" /> <span>Financeiro</span>
+            <TabsTrigger value="sessoes" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
+              <Package className="h-4 w-4 shrink-0" /> <span>Sessões</span>
             </TabsTrigger>
-            <TabsTrigger value="engajamento" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+            <TabsTrigger value="financeiro" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
+              <DollarSign className="h-4 w-4 shrink-0" /> <span>Financ.</span>
+            </TabsTrigger>
+            <TabsTrigger value="engajamento" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
               <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-xs px-2 py-2">
+            <TabsTrigger value="chat" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
               <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
             </TabsTrigger>
           </TabsList>
@@ -560,6 +563,49 @@ export default function PacientePerfil() {
             {/* NPS do Paciente */}
             <div>
               <NpsSurveyCard pacienteId={id!} />
+            </div>
+          </TabsContent>
+
+          {/* ══════════════════════════════════════════════════════════════════
+              TAB: SESSÕES (pacote + agendamentos)
+          ══════════════════════════════════════════════════════════════════ */}
+          <TabsContent value="sessoes" className="mt-4 space-y-6">
+            <PacoteSessoesManager pacienteId={id!} />
+
+            {/* Próximas sessões */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <CalendarDays className="h-4 w-4 text-primary" />
+                <h3 className="font-semibold text-sm">Próximas sessões ({agendamentosFuturos.length})</h3>
+              </div>
+              {loadingAg ? (
+                <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : agendamentosFuturos.length === 0 ? (
+                <EmptyState icon={<CalendarDays />} title="Nenhuma sessão agendada" subtitle="Use a Agenda para criar um novo agendamento." />
+              ) : (
+                <div className="space-y-2">
+                  {agendamentosFuturos.slice(0, 10).map((ag: any) => (
+                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Histórico de sessões */}
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Clock className="h-4 w-4 text-muted-foreground" />
+                <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
+              </div>
+              {agendamentosPassados.length === 0 ? (
+                <EmptyState icon={<Clock />} title="Sem histórico" subtitle="Sessões realizadas aparecerão aqui." />
+              ) : (
+                <div className="space-y-2">
+                  {agendamentosPassados.slice(0, 15).map((ag: any) => (
+                    <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
+                  ))}
+                </div>
+              )}
             </div>
           </TabsContent>
 
