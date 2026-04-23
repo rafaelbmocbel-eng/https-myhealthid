@@ -28,7 +28,6 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
-import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
@@ -36,8 +35,6 @@ import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
-import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
-import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
@@ -47,7 +44,6 @@ import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
   metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
   cob_zero: { label: 'COB° ZERO', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: <AlignCenter className="h-3 w-3" /> },
-  studio_personal_id: { label: 'Studio Personal ID', color: 'bg-emerald-100 text-emerald-700 border-emerald-200', icon: <Sparkles className="h-3 w-3" /> },
   agenda_premium: { label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <CalendarDays className="h-3 w-3" /> },
 };
 
@@ -522,20 +518,6 @@ export default function PacientePerfil() {
                 </div>
               </div>
 
-              {/* Studio Personal ID */}
-              <div className="clinical-card border-l-4 border-emerald-500 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate(`/studio-personal-id?paciente=${id}`)}>
-                <div className="flex items-center gap-3">
-                  <div className="h-10 w-10 rounded-xl bg-emerald-100 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-5 w-5 text-emerald-600" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-bold">Studio Personal ID</h3>
-                    <p className="text-[10px] text-muted-foreground">Hub de treinos e medidas</p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0" />
-                </div>
-              </div>
-
               {/* Avaliação por Voz */}
               <div className="clinical-card border-l-4 border-indigo-500">
                 <div className="flex items-center gap-3 mb-3">
@@ -902,7 +884,6 @@ export default function PacientePerfil() {
             {/* SOAP Note + Prontuário */}
             <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
-            <StudioNotasTab pacienteId={id!} showSummary={true} />
 
             {/* Evolução Avaliações Identidade */}
             {evolucoesId.length >= 2 ? (
@@ -938,11 +919,6 @@ export default function PacientePerfil() {
           ══════════════════════════════════════════════════════════════════ */}
           <TabsContent value="protocolos" className="mt-4 space-y-6">
             <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
-
-            {/* Treinos */}
-            <div>
-              <StudioTreinosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
-            </div>
           </TabsContent>
             </Tabs>
           </TabsContent>
@@ -958,11 +934,6 @@ export default function PacientePerfil() {
             {/* NPS do Paciente */}
             <div>
               <NpsSurveyCard pacienteId={id!} />
-            </div>
-
-            {/* Portal do Paciente — Monitoramento */}
-            <div>
-              <StudioPortalControlTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
             </div>
           </TabsContent>
 
