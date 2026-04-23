@@ -62,9 +62,11 @@ interface Props {
   onIniciarAvaliacao: (precarga?: RespostasPrecarga) => void;
   onVerRelatorio: (avaliacao: any) => void;
   onEditarAvaliacao?: (avaliacao: any) => void;
+  /** Controla qual sub-aba é exibida. 'integrada' | 'historico' | 'myid' | 'avaliacoes'. Default: 'integrada' */
+  subTab?: 'integrada' | 'historico' | 'myid' | 'avaliacoes';
 }
 
-export default function PacienteDashboardIdentidade({ paciente, onBack }: Props) {
+export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
