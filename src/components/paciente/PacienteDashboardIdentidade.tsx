@@ -28,12 +28,8 @@ import StructuralConnectionMap from '../structural/StructuralConnectionMap';
 import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
-import StudioTreinosTab from '@/components/studio/StudioTreinosTab';
-import StudioEvolucaoTab from '@/components/studio/StudioEvolucaoTab';
-import StudioNotasTab from '@/components/studio/StudioNotasTab';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 
-import StudioPortalControlTab from '@/components/studio/StudioPortalControlTab';
 import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
 import ProntuarioTimeline from './ProntuarioTimeline';
 import ResumoProntuario from './ResumoProntuario';
