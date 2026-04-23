@@ -1,5 +1,5 @@
 import * as React from "react"
-import { Check, ChevronsUpDown, Search } from "lucide-react"
+import { Check, ChevronsUpDown } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
@@ -54,11 +54,10 @@ export function PacienteSelect({
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-full justify-between font-normal h-12 text-base bg-card border-2 border-primary/20 hover:border-primary/50 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-sm transition-colors"
+                    className="w-full justify-between font-normal h-10 border-muted-foreground/20 hover:border-primary/50 transition-colors"
                     disabled={disabled}
                 >
-                    <span className="truncate flex items-center gap-2">
-                        <Search className="h-4 w-4 text-primary shrink-0" />
+                    <span className="truncate">
                         {value
                             ? selectedPatient
                                 ? `${selectedPatient.nome} ${selectedPatient.sobrenome || ""}`
@@ -70,7 +69,7 @@ export function PacienteSelect({
             </PopoverTrigger>
             <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/20" align="start">
                 <Command className="rounded-lg border shadow-md">
-                    <CommandInput placeholder="Pesquisar paciente..." className="h-12 text-base" />
+                    <CommandInput placeholder="Pesquisar paciente..." className="h-11" />
                     <CommandList className="max-h-[300px]">
                         <CommandEmpty className="py-6 text-center text-sm text-muted-foreground">
                             Nenhum paciente encontrado.

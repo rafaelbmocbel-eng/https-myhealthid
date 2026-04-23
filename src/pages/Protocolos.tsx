@@ -353,11 +353,11 @@ export default function Protocolos() {
 
 
         {/* Busca */}
-        <div className="relative mb-6 max-w-md">
-          <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-5 w-5 text-primary shrink-0" />
+        <div className="relative mb-6 max-w-sm">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar paciente ou diretriz..."
-            className="pl-11 h-12 text-base bg-card border-2 border-primary/20 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-sm hover:border-primary/40 transition-colors"
+            placeholder="Buscar por paciente ou diretriz..."
+            className="pl-10"
             value={search}
             onChange={e => setSearch(e.target.value)}
           />

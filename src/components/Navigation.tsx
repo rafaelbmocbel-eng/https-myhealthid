@@ -1,13 +1,14 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { LayoutDashboard, Menu, X, User, ChevronDown, CalendarDays, LogOut, Users } from 'lucide-react';
+import { AlignCenter, LayoutDashboard, Menu, X, User, ChevronDown, CalendarDays, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Pacientes', href: '/pacientes', icon: Users },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: null },
+  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
 ];
 

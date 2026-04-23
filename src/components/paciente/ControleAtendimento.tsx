@@ -510,8 +510,8 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-primary shrink-0" />
-            <Input placeholder="Buscar paciente para marcar VIP..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-10 h-10 text-sm bg-card border-2 border-primary/20 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 shadow-sm hover:border-primary/40 transition-colors" />
+            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Input placeholder="Buscar para marcar VIP..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-8 h-8 text-xs" />
           </div>
           {vipIds.length > 0 && (
             <div className="space-y-1">

@@ -14,7 +14,9 @@ import { supabase } from '@/integrations/supabase/client';
 const PAGES = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendário horário' },
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'lista clientes' },
-  { label: 'Pacientes', href: '/pacientes', icon: ClipboardList, keywords: 'avaliação clientes método identidade cob zero studio personal escoliose cobb treino exercício' },
+  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, keywords: 'avaliação' },
+  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, keywords: 'escoliose cobb' },
+  { label: 'Studio Personal ID', href: '/studio-personal-id', icon: Sparkles, keywords: 'treino exercício' },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare, keywords: 'vendas funil leads' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'evento workshop recovery inscrição' },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, keywords: 'report pdf' },
