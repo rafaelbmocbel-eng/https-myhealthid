@@ -474,24 +474,103 @@ export default function PacientePerfil() {
           </div>
         </div>
 
-        {/* KPI Cards — compact grid, show only available data */}
+        {/* KPI Cards — compact grid; Sessão e Pacote são clicáveis e abrem painéis Sessões/Financeiro */}
         <div className="grid grid-cols-5 gap-2 mb-4">
-          {[
-            idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
-            { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
-            { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
-            { icon: ClipboardList, label: 'Sessão', value: `#${sessoesInfo.numeroAtual}`, sub: `${sessoesInfo.totalRealizadas} total` },
-          ].filter(Boolean).map((kpi: any) => {
-            const Icon = kpi.icon;
-            return (
-              <div key={kpi.label} className="clinical-card !p-2.5 text-center">
-                <Icon className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
-                <div className="text-base font-bold leading-tight">{kpi.value}</div>
-                <div className="text-[9px] text-muted-foreground">{kpi.sub || kpi.label}</div>
+          {(() => {
+            const staticKpis = [
+              idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
+              { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
+              { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
+            ].filter(Boolean) as any[];
+            return staticKpis.map((kpi: any) => {
+              const Icon = kpi.icon;
+              return (
+                <div key={kpi.label} className="clinical-card !p-2.5 text-center">
+                  <Icon className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+                  <div className="text-base font-bold leading-tight">{kpi.value}</div>
+                  <div className="text-[9px] text-muted-foreground">{kpi.sub || kpi.label}</div>
+                </div>
+              );
+            });
+          })()}
+
+          {/* KPI Sessões — abre painel completo */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="clinical-card !p-2.5 text-center hover:border-primary/40 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+                title="Abrir gestão de sessões"
+              >
+                <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
+                <div className="text-base font-bold leading-tight">#{sessoesInfo.numeroAtual}</div>
+                <div className="text-[9px] text-muted-foreground">{sessoesInfo.totalRealizadas} sessões</div>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Sessões e Pacotes</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 space-y-6">
+                <PacoteSessoesManager pacienteId={id!} />
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <CalendarDays className="h-4 w-4 text-primary" />
+                    <h3 className="font-semibold text-sm">Próximas sessões ({agendamentosFuturos.length})</h3>
+                  </div>
+                  {loadingAg ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                  ) : agendamentosFuturos.length === 0 ? (
+                    <EmptyState icon={<CalendarDays />} title="Nenhuma sessão agendada" subtitle="Use a Agenda para criar um novo agendamento." />
+                  ) : (
+                    <div className="space-y-2">
+                      {agendamentosFuturos.slice(0, 10).map((ag: any) => (
+                        <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} />
+                      ))}
+                    </div>
+                  )}
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 mb-3">
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
+                  </div>
+                  {agendamentosPassados.length === 0 ? (
+                    <EmptyState icon={<Clock />} title="Sem histórico" subtitle="Sessões realizadas aparecerão aqui." />
+                  ) : (
+                    <div className="space-y-2">
+                      {agendamentosPassados.slice(0, 15).map((ag: any) => (
+                        <AgendamentoCard key={ag.id} ag={ag} statusColors={statusColors} muted />
+                      ))}
+                    </div>
+                  )}
+                </div>
               </div>
-            );
-          })}
-          <PacoteSessoesManager pacienteId={id!} compact />
+            </SheetContent>
+          </Sheet>
+
+          {/* KPI Financeiro — abre painel completo */}
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                type="button"
+                className="clinical-card !p-2.5 text-center hover:border-primary/40 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+                title="Abrir financeiro"
+              >
+                <DollarSign className="h-3.5 w-3.5 mx-auto mb-1 text-emerald-600" />
+                <div className="text-base font-bold leading-tight">R$</div>
+                <div className="text-[9px] text-muted-foreground">Financeiro</div>
+              </button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-emerald-600" /> Financeiro</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4">
+                <PacienteFinanceiroTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
 
         {/* Contact inline */}
