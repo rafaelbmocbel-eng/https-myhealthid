@@ -503,110 +503,22 @@ export default function MetodoIdentidade() {
             </Card>
           )}
 
-          {/* Patient List */}
+          {/* Acesso aos pacientes consolidado em /pacientes */}
           <Card>
-            <CardContent className="pt-4 pb-3">
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                  <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Pacientes</h3>
-                </div>
-                <Badge variant="outline" className="text-xs">{pacientes.length}</Badge>
-              </div>
-              <div className="relative mb-3">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="Buscar paciente..."
-                  className="pl-9"
-                  value={searchPac}
-                  onChange={e => setSearchPac(e.target.value)}
-                />
-              </div>
-
-              {loadingPacientes ? (
-                <div className="flex items-center justify-center py-12">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary" />
-                </div>
-              ) : filteredPac.length === 0 ? (
-                <div className="text-center py-12 text-muted-foreground">
-                  <Users className="h-10 w-10 mx-auto mb-2 opacity-30" />
-                  <p className="font-medium">Nenhum paciente com Método Identidade ativo</p>
-                  <p className="text-sm mt-1">Cadastre pacientes em <strong>Pacientes</strong> e ative o serviço.</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {filteredPac.map(p => {
-                    const linkAtivo = getLinkAtivo(p.id);
-                    const linkAgenda = getAgendaAtivo(p.id);
-
-                    return (
-                      <div
-                        key={p.id}
-                        className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border hover:border-primary/40 hover:bg-primary-light/10 transition-all cursor-pointer bg-card"
-                        onClick={() => handleSelectPaciente(p)}
-                      >
-                        {/* Paciente Info */}
-                        <div className="flex items-center gap-3 flex-1 min-w-0">
-                          <div className="h-10 w-10 rounded-full bg-gradient-identidade flex items-center justify-center shrink-0 text-white font-bold text-sm shadow-md">
-                            {p.nome[0]}{p.sobrenome?.[0] || ''}
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="font-semibold text-sm text-foreground">{p.nome} {p.sobrenome}</span>
-                            <div className="flex justify-between items-center sm:block mt-0.5">
-                              <p className="text-xs text-muted-foreground">{p.email || p.telefone || 'Sem contato'}</p>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* Actions — LinkActionsBar */}
-                        <div className="flex items-center gap-2 shrink-0" onClick={e => e.stopPropagation()}>
-                          <LinkActionsBar items={(() => {
-                            const items: LinkActionItem[] = [];
-                            const linkAtivo = getLinkAtivo(p.id);
-                            if (linkAtivo) {
-                              items.push({
-                                key: 'myid', label: 'MyID',
-                                active: true, color: 'emerald',
-                                isWhatsApp: !!p.telefone,
-                                onAction: () => p.telefone
-                                  ? shareAvaliacaoLink(`${p.nome} ${p.sobrenome}`, p.telefone!, getLinkUrl(linkAtivo.token))
-                                  : copiarLink(linkAtivo.token),
-                              });
-                            } else {
-                              items.push({
-                                key: 'myid', label: 'MyID',
-                                active: false, color: 'emerald',
-                                isWhatsApp: false,
-                                onAction: () => {},
-                                onGenerate: () => gerarLink(p.id),
-                                loading: gerando,
-                              });
-                            }
-                            if (p.portal_token) {
-                              items.push({
-                                key: 'portal', label: 'Portal',
-                                active: true, color: 'violet',
-                                isWhatsApp: !!p.telefone,
-                                onAction: () => p.telefone
-                                  ? (() => { const url = getPortalUrl(p.portal_token!); const msg = `Olá ${p.nome}! 🩺\n\nAcesse seu Portal:\n${url}`; window.open(`https://wa.me/${p.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
-                                  : (() => { navigator.clipboard.writeText(getPortalUrl(p.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
-                              });
-                            }
-                            return items;
-                          })()} />
-                          <Button
-                            size="sm"
-                            className="bg-primary hover:bg-primary/90 text-primary-foreground gap-1"
-                            onClick={() => handleSelectPaciente(p)}
-                          >
-                            Abrir <ChevronRight className="h-3 w-3" />
-                          </Button>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
+            <CardContent className="py-10 text-center">
+              <Users className="h-10 w-10 mx-auto mb-3 text-primary opacity-70" />
+              <h3 className="font-bold text-base text-foreground mb-1">Acesse seus clientes</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-sm mx-auto">
+                A gestão e seleção de pacientes está centralizada no serviço <strong>Clientes</strong>. Abra o perfil do cliente e inicie a avaliação MyID por lá.
+              </p>
+              <Button
+                className="bg-primary hover:bg-primary/90 text-primary-foreground gap-2"
+                onClick={() => navigateTo('/pacientes')}
+              >
+                <Users className="h-4 w-4" />
+                Ir para Clientes
+                <ChevronRight className="h-4 w-4" />
+              </Button>
             </CardContent>
           </Card>
         </div>
