@@ -592,47 +592,38 @@ export default function PacientePerfil() {
 
         {/* ==== 4 GRUPOS PRINCIPAIS ====
             Clínico (sub-abas: Avaliações, Diretrizes, Prontuário) │ Financeiro │ Engajamento │ Chat */}
+        {/* ==== ABAS UNIFICADAS ====
+            Avaliações │ Diretrizes │ Prontuário │ Engajar │ Chat
+            Sem aba ativa por padrão — conteúdo aparece somente ao clicar. */}
         <Tabs
-          defaultValue={outerTab}
-          onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}
+          value={activeTab}
+          onValueChange={(v) => {
+            // Permite "desselecionar" clicando na mesma aba ativa
+            const next = v === activeTab ? '' : v;
+            setActiveTab(next);
+            navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
+          }}
         >
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-3 h-auto gap-1 w-full">
-            <TabsTrigger value="clinico" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
-              <Stethoscope className="h-4 w-4 shrink-0" /> <span>Clínico</span>
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
+            <TabsTrigger value="avaliacoes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
+              <Stethoscope className="h-4 w-4 shrink-0" /> <span>Avaliações</span>
             </TabsTrigger>
-            <TabsTrigger value="engajamento" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
+            <TabsTrigger value="protocolos" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
+              <ClipboardList className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
+            </TabsTrigger>
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
+              <FileText className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
+            </TabsTrigger>
+            <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
               <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
             </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
+            <TabsTrigger value="chat" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
               <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
             </TabsTrigger>
           </TabsList>
 
-          {/* ══ GRUPO CLÍNICO ══ contém sub-abas: Avaliações | Diretrizes | Prontuário */}
-          <TabsContent value="clinico" className="mt-4">
-            <Tabs defaultValue={innerClinicoTab}>
-              <TabsList className="bg-background border border-border/60 p-1 rounded-lg grid grid-cols-3 h-auto gap-1 w-full mb-4">
-                <TabsTrigger value="avaliacoes" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
-                  <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span>Avaliações</span>
-                </TabsTrigger>
-                <TabsTrigger value="protocolos" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
-                  <ClipboardList className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Diretrizes</span><span className="sm:hidden">Dir.</span>
-                </TabsTrigger>
-                <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
-                  <FileText className="h-3.5 w-3.5 shrink-0" /> <span className="hidden sm:inline">Prontuário</span><span className="sm:hidden">Pront.</span>
-                </TabsTrigger>
-              </TabsList>
-              {/* Sub-abas internas (avaliacoes / protocolos / evolucao-prontuario)
-                  estão definidas logo abaixo neste mesmo bloco <Tabs> interno.
-                  O fechamento </Tabs> e </TabsContent> ocorre após a sub-aba
-                  "evolucao-prontuario" mais adiante. */}
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: AVALIAÇÕES (hub centralizado de todos os serviços)
-          ══════════════════════════════════════════════════════════════════ */}
+          {/* TAB: AVALIAÇÕES (hub centralizado) */}
           <TabsContent value="avaliacoes" className="mt-4">
-            {/* Dashboard Identidade completo com sub-abas:
-                Visão Integrada | Histórico de Avaliações | Avaliação Presencial | Diretrizes e Tratamentos */}
             <PacienteDashboardIdentidade
               paciente={paciente as any}
               onBack={() => navigate('/pacientes')}
@@ -642,21 +633,17 @@ export default function PacientePerfil() {
             />
           </TabsContent>
 
+          {/* TAB: DIRETRIZES / PROTOCOLOS */}
+          <TabsContent value="protocolos" className="mt-4 space-y-6">
+            <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
+          </TabsContent>
 
-
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: EVOLUÇÃO E PRONTUÁRIOS
-          ══════════════════════════════════════════════════════════════════ */}
+          {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
-            {/* Resumo Narrativo */}
             <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
-
-            {/* SOAP Note + Prontuário */}
             <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
 
-            {/* Evolução Avaliações Identidade */}
             {evolucoesId.length >= 2 ? (
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -669,7 +656,6 @@ export default function PacientePerfil() {
               <EmptyState icon={<BarChart3 />} title="Dados insuficientes (Identidade)" subtitle="São necessárias pelo menos 2 avaliações Identidade para gerar o comparativo evolutivo." />
             )}
 
-            {/* Evolução Questionários */}
             {respostasPaciente.length > 0 && (
               <div>
                 <div className="flex items-center gap-2 mb-3">
@@ -685,15 +671,7 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: DIRETRIZES / PROTOCOLOS DE TRATAMENTO
-          ══════════════════════════════════════════════════════════════════ */}
-          <TabsContent value="protocolos" className="mt-4 space-y-6">
-            <PacienteProtocolosTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} tipo="identidade" />
-          </TabsContent>
-            </Tabs>
-          </TabsContent>
-          {/* ══ FIM GRUPO CLÍNICO ══ */}
+          {/* TAB: ENGAJAMENTO */}
           <TabsContent value="engajamento" className="mt-4 space-y-6">
             {paciente && (
               <PacienteEngajamentoTab
@@ -701,19 +679,12 @@ export default function PacientePerfil() {
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
               />
             )}
-
-            {/* NPS do Paciente */}
             <div>
               <NpsSurveyCard pacienteId={id!} />
             </div>
           </TabsContent>
 
-          {/* Sessões e Financeiro foram movidos para botões/cards no header (Sheets) */}
-
-
-          {/* ══════════════════════════════════════════════════════════════════
-              TAB: CHAT INTERNO
-          ══════════════════════════════════════════════════════════════════ */}
+          {/* TAB: CHAT INTERNO */}
           <TabsContent value="chat" className="mt-4">
             {paciente && (
               <ChatPacienteTab
@@ -723,8 +694,6 @@ export default function PacientePerfil() {
               />
             )}
           </TabsContent>
-
-
         </Tabs>
       </div>
     </AppLayout >
