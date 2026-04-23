@@ -614,94 +614,8 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
 
   return (
     <div className="space-y-6">
-      {/* Header Unificado */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack} className="h-8 w-8 p-0">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="h-10 w-10 flex-shrink-0 rounded-full bg-identidade flex items-center justify-center text-identidade-foreground font-bold">
-            {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
-          </div>
-          <div className="flex flex-wrap md:flex-nowrap items-center gap-4 md:gap-8">
-            <div>
-              <h2 className="text-lg md:text-xl font-bold text-foreground leading-tight">{paciente.nome} {paciente.sobrenome}</h2>
-              <p className="text-xs md:text-sm text-muted-foreground">{paciente.telefone || paciente.email || 'Sem contato'}</p>
-            </div>
-
-            {/* Links de Ação */}
-            <div className="flex items-center gap-2 pt-1">
-              <LinkActionsBar items={(() => {
-                const items: LinkActionItem[] = [];
-                // MyID
-                items.push({
-                  key: 'myid', label: 'MyID',
-                  active: !!linkMyIDAtivo,
-                  loading: gerandoMyIDLink,
-                  color: 'emerald',
-                  isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
-                  onAction: () => linkMyIDAtivo && (paciente.telefone
-                    ? shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`)
-                    : copiarMyIDLink(linkMyIDAtivo.token_acesso)),
-                  onGenerate: gerarLinkMyID,
-                });
-                // Agenda
-                items.push({
-                  key: 'agenda', label: 'Agenda',
-                  active: !!linkAgendaAtivo,
-                  loading: gerandoAgenda,
-                  color: 'blue',
-                  isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
-                  onAction: () => linkAgendaAtivo && (paciente.telefone
-                    ? shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone!, getAgendaUrl(linkAgendaAtivo.token))
-                    : copiarAgendaLink(linkAgendaAtivo.token)),
-                  onGenerate: gerarLinkAgenda,
-                });
-                // Portal
-                if (paciente.portal_token) {
-                  items.push({
-                    key: 'portal', label: 'Portal',
-                    active: true,
-                    color: 'violet',
-                    isWhatsApp: !!paciente.telefone,
-                    onAction: () => paciente.telefone
-                      ? (() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
-                      : (() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
-                  });
-                }
-                return items;
-              })()} />
-              <PacoteBadge pacienteId={paciente.id} />
-            </div>
-          </div>
-        </div>
-
-        <div className="flex items-center gap-2">
-          {/* Outros botões como perfil e nova avaliação... */}
-          <Button variant="outline" size="sm" className="hidden sm:flex gap-2 border-border hover:bg-muted" onClick={() => {/* TODO: perfil */ }}>
-            <ExternalLink className="h-4 w-4" />
-            Perfil
-          </Button>
-          <Button onClick={() => setIniciandoMyID(true)} className="hidden sm:flex bg-identidade hover:bg-identidade/90 text-white gap-2">
-            <AlignCenter className="h-4 w-4" /> Nova Avaliação
-          </Button>
-        </div>
-      </div>
-
-      {/* Nível 1: Barra Principal de Ferramentas */}
-      <Tabs defaultValue="avaliacao" className="w-full">
-        <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/60 mb-6">
-          <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
-            <ClipboardList className="h-3.5 w-3.5" /> Avaliação
-          </TabsTrigger>
-          <TabsTrigger value="prontuario" className="text-xs gap-1 data-[state=active]:bg-identidade data-[state=active]:text-white">
-            <StickyNote className="h-3.5 w-3.5" /> Prontuário
-          </TabsTrigger>
-        </TabsList>
-
-        {/* --- Aba 1: AVALIAÇÃO (Contém a interface antiga Inteira) --- */}
-        <TabsContent value="avaliacao" className="mt-0">
-          <Tabs value={subTabAtiva} onValueChange={setSubTabAtiva}>
+      {/* Sub-abas de Avaliação (Visão Integrada / Histórico / Presencial / Diretrizes) */}
+      <Tabs value={subTabAtiva} onValueChange={setSubTabAtiva}>
             <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
               <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
                 <Fingerprint className="h-4 w-4" /> Visão Integrada
@@ -1326,16 +1240,6 @@ export default function PacienteDashboardIdentidade({ paciente, onBack }: Props)
                 tipo="identidade"
               />
             </TabsContent>
-          </Tabs>
-        </TabsContent>
-
-
-        {/* --- Aba 4: PRONTUÁRIO --- */}
-        <TabsContent value="prontuario" className="mt-4 space-y-4 overflow-visible min-h-0">
-          <ResumoProntuario pacienteId={paciente.id} />
-          <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`.trim()} />
-        </TabsContent>
-
       </Tabs>
 
       {/* PDF Report Modal */}

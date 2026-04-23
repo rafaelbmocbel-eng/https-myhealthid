@@ -40,6 +40,7 @@ import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
+import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -81,8 +82,48 @@ export default function PacientePerfil() {
     enabled: !!user && !!id,
   });
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
+  const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+
+  // Link MyID ativo (pendente)
+  const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
+    queryKey: ['links-myid-perfil', user?.id, id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('myid_avaliacoes')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .eq('paciente_id', id!)
+        .eq('status', 'pendente')
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+  const linkMyIDAtivo = linksMyID[0];
+
+  const gerarLinkMyID = async () => {
+    if (!user) return;
+    setGerandoMyIDLink(true);
+    try {
+      const token = Math.random().toString(36).substring(2, 12);
+      const { error } = await supabase.from('myid_avaliacoes').insert({
+        terapeuta_id: user.id,
+        paciente_id: id!,
+        token_acesso: token,
+        status: 'pendente',
+      });
+      if (error) throw error;
+      refetchLinksMyID();
+      toast({ title: 'Link MyID gerado! ✅' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar link MyID', description: e.message, variant: 'destructive' });
+    } finally {
+      setGerandoMyIDLink(false);
+    }
+  };
 
   const { data: paciente, isLoading: loadingPac } = useQuery({
     queryKey: ['paciente-perfil', id],
@@ -373,21 +414,44 @@ export default function PacientePerfil() {
                   <MessageCircle className="h-4 w-4" />
                 </Button>
               )}
-              {paciente.portal_token && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0"
-                  title="Copiar link do Portal do Paciente"
-                  onClick={() => {
-                    const url = getPortalUrl(paciente.portal_token!);
-                    navigator.clipboard.writeText(url);
-                    toast({ title: 'Link copiado! 🔗', description: 'Envie este link ao paciente para acesso ao portal.' });
-                  }}
-                >
-                  <ExternalLink className="h-4 w-4" />
-                </Button>
-              )}
+              {/* Links rápidos: MyID · Agenda · Portal */}
+              <LinkActionsBar items={(() => {
+                const items: LinkActionItem[] = [];
+                items.push({
+                  key: 'myid', label: 'MyID',
+                  active: !!linkMyIDAtivo,
+                  loading: gerandoMyIDLink,
+                  color: 'emerald',
+                  isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
+                  onAction: () => linkMyIDAtivo && (paciente.telefone
+                    ? shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`)
+                    : (() => { navigator.clipboard.writeText(`${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`); toast({ title: 'Link MyID copiado! 📋' }); })()),
+                  onGenerate: gerarLinkMyID,
+                });
+                items.push({
+                  key: 'agenda', label: 'Agenda',
+                  active: !!linkAgendaAtivo,
+                  loading: gerandoAgenda,
+                  color: 'blue',
+                  isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
+                  onAction: () => linkAgendaAtivo && (paciente.telefone
+                    ? shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getAgendaUrl(linkAgendaAtivo.token))
+                    : copiarAgendaLink(linkAgendaAtivo.token)),
+                  onGenerate: gerarLinkAgenda,
+                });
+                if (paciente.portal_token) {
+                  items.push({
+                    key: 'portal', label: 'Portal',
+                    active: true,
+                    color: 'violet',
+                    isWhatsApp: !!paciente.telefone,
+                    onAction: () => paciente.telefone
+                      ? (() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
+                      : (() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
+                  });
+                }
+                return items;
+              })()} />
               <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
                 onClick={handleDeletePaciente}>
                 <Trash2 className="h-4 w-4" />
