@@ -53,6 +53,11 @@ export default function PacientePerfil() {
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || 'avaliacoes';
   const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' ? 'avaliacoes' : rawTab;
+  // Top-level tab: clinico | financeiro | engajamento | chat
+  // Sub-tabs (avaliacoes/protocolos/evolucao-prontuario) live INSIDE 'clinico'
+  const CLINICO_SUBTABS = ['avaliacoes', 'protocolos', 'evolucao-prontuario'];
+  const outerTab = CLINICO_SUBTABS.includes(defaultTab) ? 'clinico' : defaultTab;
+  const innerClinicoTab = CLINICO_SUBTABS.includes(defaultTab) ? defaultTab : 'avaliacoes';
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -439,11 +444,7 @@ export default function PacientePerfil() {
         {/* ==== 4 GRUPOS PRINCIPAIS ====
             Clínico (sub-abas: Avaliações, Diretrizes, Prontuário) │ Financeiro │ Engajamento │ Chat */}
         <Tabs
-          defaultValue={
-            ['avaliacoes', 'protocolos', 'evolucao-prontuario'].includes(defaultTab)
-              ? 'clinico'
-              : defaultTab
-          }
+          defaultValue={outerTab}
           onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}
         >
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full">
@@ -463,7 +464,7 @@ export default function PacientePerfil() {
 
           {/* ══ GRUPO CLÍNICO ══ contém sub-abas: Avaliações | Diretrizes | Prontuário */}
           <TabsContent value="clinico" className="mt-4">
-            <Tabs defaultValue={['protocolos', 'evolucao-prontuario'].includes(defaultTab) ? defaultTab : 'avaliacoes'}>
+            <Tabs defaultValue={innerClinicoTab}>
               <TabsList className="bg-background border border-border/60 p-1 rounded-lg grid grid-cols-3 h-auto gap-1 w-full mb-4">
                 <TabsTrigger value="avaliacoes" className="gap-1 rounded-md data-[state=active]:bg-primary/10 data-[state=active]:text-primary text-[11px] sm:text-xs px-1.5 py-1.5">
                   <Stethoscope className="h-3.5 w-3.5 shrink-0" /> <span>Avaliações</span>
