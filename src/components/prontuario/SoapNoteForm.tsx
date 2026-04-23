@@ -1,13 +1,71 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { FileText, Loader2, Save, Sparkles } from 'lucide-react';
+import { FileText, Loader2, Save, Sparkles, Mic, Wand2 } from 'lucide-react';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { useToast } from '@/hooks/use-toast';
+import { supabase } from '@/integrations/supabase/client';
+import { format } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
+
+// Build SOAP fields from a voice assessment (`resultado` of avaliacoes_voz)
+function buildSoapFromVoice(voice: any, transcricao?: string): { subjectivo: string; objetivo: string; avaliacao: string; plano: string } {
+  const a = voice || {};
+  const dor = a.dor || {};
+  const func = a.funcionalidade || {};
+  const psi = a.psicossocial || {};
+  const red = a.red_flags || a.redflags || [];
+  const hipoteses = Array.isArray(a.hipoteses_diagnosticas) ? a.hipoteses_diagnosticas : [];
+  const insights = Array.isArray(a.insights_baseados_evidencia) ? a.insights_baseados_evidencia : [];
+  const diretriz = a.diretriz_inicial || a.diretriz || {};
+  const plano = a.plano_terapeutico || a.plano || {};
+
+  const subjectivo = [
+    `Queixa principal: ${a.queixa_principal || 'N/I'}`,
+    dor.localizacao && `Localização da dor: ${dor.localizacao}`,
+    dor.intensidade_eva != null && `EVA: ${dor.intensidade_eva}/10`,
+    dor.tipo && `Tipo de dor: ${dor.tipo}`,
+    dor.fatores_agravantes && `Fatores agravantes: ${Array.isArray(dor.fatores_agravantes) ? dor.fatores_agravantes.join(', ') : dor.fatores_agravantes}`,
+    dor.fatores_atenuantes && `Fatores atenuantes: ${Array.isArray(dor.fatores_atenuantes) ? dor.fatores_atenuantes.join(', ') : dor.fatores_atenuantes}`,
+    func.limitacoes && `Limitações funcionais: ${Array.isArray(func.limitacoes) ? func.limitacoes.join(', ') : func.limitacoes}`,
+    psi.humor && `Humor: ${psi.humor}`,
+    psi.sono && `Sono: ${psi.sono}`,
+    psi.kinesiofobia && `Kinesiofobia: ${psi.kinesiofobia}`,
+    transcricao && `\nRelato (transcrição):\n${transcricao.slice(0, 1500)}${transcricao.length > 1500 ? '…' : ''}`,
+  ].filter(Boolean).join('\n');
+
+  const objetivo = [
+    a.exame_observacional && `Observação clínica: ${a.exame_observacional}`,
+    func.adm && `ADM: ${func.adm}`,
+    func.forca && `Força: ${func.forca}`,
+    func.testes_funcionais && `Testes funcionais: ${Array.isArray(func.testes_funcionais) ? func.testes_funcionais.join(', ') : func.testes_funcionais}`,
+    a.classificacao_severidade && `Classificação clínica: ${a.classificacao_severidade}`,
+    red?.length > 0 && `⚠️ Red Flags: ${(Array.isArray(red) ? red : [red]).map((r: any) => r.descricao || r).join('; ')}`,
+  ].filter(Boolean).join('\n') || 'Achados objetivos a complementar no exame físico.';
+
+  const avaliacao = [
+    a.resumo_clinico && `Resumo clínico: ${a.resumo_clinico}`,
+    hipoteses.length > 0 && `Hipóteses diagnósticas:\n${hipoteses.slice(0, 3).map((h: any, i: number) => `  ${i + 1}. ${h.diagnostico} (${h.probabilidade || 'N/I'}) — ${h.evidencia || ''}`).join('\n')}`,
+    a.mecanismo_dor && `Mecanismo de dor: ${a.mecanismo_dor}`,
+    a.prognostico && `Prognóstico: ${a.prognostico}`,
+  ].filter(Boolean).join('\n');
+
+  const planoTexto = [
+    diretriz.objetivo && `Objetivo terapêutico: ${diretriz.objetivo}`,
+    plano.condutas && `Condutas: ${Array.isArray(plano.condutas) ? plano.condutas.join(', ') : plano.condutas}`,
+    plano.tecnicas && `Técnicas: ${Array.isArray(plano.tecnicas) ? plano.tecnicas.join(', ') : plano.tecnicas}`,
+    plano.exercicios && `Exercícios: ${Array.isArray(plano.exercicios) ? plano.exercicios.join(', ') : plano.exercicios}`,
+    plano.frequencia && `Frequência: ${plano.frequencia}`,
+    plano.orientacoes && `Orientações: ${Array.isArray(plano.orientacoes) ? plano.orientacoes.join(', ') : plano.orientacoes}`,
+    insights.length > 0 && `\nInsights baseados em evidências:\n${insights.slice(0, 3).map((i: any) => `  • ${i.insight || i} ${i.referencia ? `(${i.referencia})` : ''}`).join('\n')}`,
+  ].filter(Boolean).join('\n') || 'Conduta a definir conforme reavaliação.';
+
+  return { subjectivo, objetivo, avaliacao, plano: planoTexto };
+}
 
 const SOAP_TEMPLATES: Record<string, { label: string; subjectivo: string; objetivo: string; avaliacao: string; plano: string }> = {
   retorno_geral: {
@@ -58,8 +116,28 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
   const [objetivo, setObjetivo] = useState(SOAP_TEMPLATES.retorno_geral.objetivo);
   const [avaliacao, setAvaliacao] = useState(SOAP_TEMPLATES.retorno_geral.avaliacao);
   const [plano, setPlano] = useState(SOAP_TEMPLATES.retorno_geral.plano);
+  const [latestVoice, setLatestVoice] = useState<any>(null);
+  const [loadingVoice, setLoadingVoice] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
   const { adicionar, adicionando } = useNotasProntuario(pacienteId);
   const { toast } = useToast();
+
+  // Fetch latest voice assessment for this patient
+  useEffect(() => {
+    if (!pacienteId) return;
+    setLoadingVoice(true);
+    supabase
+      .from('avaliacoes_voz')
+      .select('id, resultado, transcricao, created_at, servico')
+      .eq('paciente_id', pacienteId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setLatestVoice(data);
+        setLoadingVoice(false);
+      });
+  }, [pacienteId]);
 
   const applyTemplate = (key: string) => {
     const t = SOAP_TEMPLATES[key];
@@ -69,6 +147,24 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
     setObjetivo(t.objetivo);
     setAvaliacao(t.avaliacao);
     setPlano(t.plano);
+    setAutoFilled(false);
+  };
+
+  const fillFromVoice = () => {
+    if (!latestVoice?.resultado) {
+      toast({ title: 'Nenhuma avaliação por voz encontrada', description: 'Realize uma avaliação por voz para usar o preenchimento automático.', variant: 'destructive' });
+      return;
+    }
+    const filled = buildSoapFromVoice(latestVoice.resultado, latestVoice.transcricao);
+    setSubjectivo(filled.subjectivo);
+    setObjetivo(filled.objetivo);
+    setAvaliacao(filled.avaliacao);
+    setPlano(filled.plano);
+    setAutoFilled(true);
+    toast({
+      title: '✨ SOAP preenchido pela avaliação por voz',
+      description: `Baseado na avaliação de ${format(new Date(latestVoice.created_at), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}. Revise e ajuste antes de salvar.`,
+    });
   };
 
   const handleSave = async () => {
@@ -81,7 +177,15 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
         tipo: 'soap_note',
         titulo,
         descricao,
-        dadosExtras: { template, subjectivo, objetivo, avaliacao, plano },
+        dadosExtras: {
+          template,
+          subjectivo,
+          objetivo,
+          avaliacao,
+          plano,
+          origem: autoFilled ? 'avaliacao_voz' : 'manual',
+          avaliacao_voz_id: autoFilled ? latestVoice?.id : undefined,
+        },
       });
       toast({ title: 'Nota SOAP salva! ✅' });
       onSuccess?.();
@@ -119,6 +223,30 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        {latestVoice && (
+          <div className="flex items-center justify-between gap-2 rounded-md border border-primary/20 bg-primary/5 p-2.5">
+            <div className="flex items-center gap-2 min-w-0">
+              <Mic className="h-4 w-4 text-primary shrink-0" />
+              <div className="min-w-0">
+                <p className="text-xs font-medium truncate">Avaliação por voz disponível</p>
+                <p className="text-[10px] text-muted-foreground truncate">
+                  {format(new Date(latestVoice.created_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
+                  {autoFilled && ' • aplicada'}
+                </p>
+              </div>
+            </div>
+            <Button
+              size="sm"
+              variant={autoFilled ? 'outline' : 'default'}
+              onClick={fillFromVoice}
+              disabled={loadingVoice}
+              className="gap-1.5 h-8 text-xs shrink-0"
+            >
+              <Wand2 className="h-3.5 w-3.5" />
+              {autoFilled ? 'Reaplicar' : 'Preencher SOAP'}
+            </Button>
+          </div>
+        )}
         <div>
           <Label className="text-xs font-semibold text-primary">S — Subjetivo</Label>
           <Textarea value={subjectivo} onChange={e => setSubjectivo(e.target.value)} rows={4} className="mt-1 text-xs" placeholder="O que o paciente relata..." />
