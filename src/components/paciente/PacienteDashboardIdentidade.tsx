@@ -620,36 +620,51 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
 
   return (
     <div className="space-y-6">
-      {/* Sub-abas de Avaliação (Visão Integrada / Histórico / Presencial / Diretrizes) */}
-      <Tabs value={subTabAtiva} onValueChange={setSubTabAtiva}>
-            <TabsList className="bg-secondary p-1 rounded-xl flex-wrap h-auto min-h-11">
-              <TabsTrigger value="integrada" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <Fingerprint className="h-4 w-4" /> Visão Integrada
-              </TabsTrigger>
-              <TabsTrigger value="historico" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <FileText className="h-4 w-4" /> Histórico de Avaliações
-              </TabsTrigger>
-              <TabsTrigger value="myid" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <Presentation className="h-4 w-4" /> Avaliação Presencial
-              </TabsTrigger>
-              <TabsTrigger value="avaliacoes" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm data-[state=active]:text-identidade">
-                <Target className="h-4 w-4" /> Diretrizes e Tratamentos
-              </TabsTrigger>
-            </TabsList>
+      {/* Botão grande e destacado: Avaliação Presencial */}
+      {subTabAtiva !== 'myid' && (
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <Button
+            size="lg"
+            className="gap-2 bg-gradient-to-r from-primary to-accent text-primary-foreground shadow-md hover:shadow-lg transition-all w-full sm:w-auto"
+            onClick={() => setSubTabAtiva('myid')}
+          >
+            <Presentation className="h-5 w-5" />
+            Iniciar Avaliação Presencial
+          </Button>
 
-            {/* Botão Resposta Completa - após as sub-abas */}
-            <div className="flex justify-end mt-2">
-              <Button
-                size="sm"
-                className="gap-1.5 bg-gradient-to-r from-primary to-accent text-primary-foreground"
-                onClick={handleRespostaCompleta}
-                disabled={gerandoRespostaCompleta}
-              >
-                {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                Resposta Completa
-              </Button>
-            </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={handleRespostaCompleta}
+            disabled={gerandoRespostaCompleta}
+          >
+            {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Resposta Completa
+          </Button>
+        </div>
+      )}
 
+      {subTabAtiva === 'myid' && (
+        <div className="flex items-center justify-between gap-3">
+          <Button size="sm" variant="ghost" className="gap-2" onClick={() => setSubTabAtiva('integrada')}>
+            <ArrowLeft className="h-4 w-4" /> Voltar à Visão Integrada
+          </Button>
+          <Button
+            size="sm"
+            variant="outline"
+            className="gap-1.5"
+            onClick={handleRespostaCompleta}
+            disabled={gerandoRespostaCompleta}
+          >
+            {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            Resposta Completa
+          </Button>
+        </div>
+      )}
+
+      <Tabs value={subTabAtiva} onValueChange={(v) => setSubTabAtiva(v as typeof subTabAtiva)}>
+            
             <TabsContent value="integrada" className="mt-4">
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
             </TabsContent>
