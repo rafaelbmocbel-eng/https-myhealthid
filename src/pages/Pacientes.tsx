@@ -392,7 +392,7 @@ export default function Pacientes() {
     try {
       let pacienteId = modal.paciente?.id;
       const validated = parsed.data;
-      const payload = {
+      const payload: any = {
         nome: validated.nome!,
         sobrenome: validated.sobrenome!,
         email: validated.email ?? null,
@@ -403,6 +403,9 @@ export default function Pacientes() {
         endereco: validated.endereco ?? null,
         observacoes: validated.observacoes ?? null,
         terapeuta_id: user!.id,
+        responsavel_id: form.responsavel_id || null,
+        tipo_pagamento: form.tipo_pagamento,
+        plano_saude: form.tipo_pagamento === 'plano' ? (form.plano_saude || null) : null,
       };
       if (pacienteId) {
         await supabase.from('pacientes').update(payload).eq('id', pacienteId);
@@ -410,15 +413,6 @@ export default function Pacientes() {
         const { data, error } = await supabase.from('pacientes').insert(payload).select().single();
         if (error) throw error;
         pacienteId = data.id;
-      }
-      await supabase.from('paciente_servicos').delete().eq('paciente_id', pacienteId!);
-      if (form.servicos.length > 0) {
-        await supabase.from('paciente_servicos').insert(
-          form.servicos.map(s => ({
-            paciente_id: pacienteId!, servico: s, ativo: true,
-            data_inicio: new Date().toISOString().split('T')[0],
-          }))
-        );
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
