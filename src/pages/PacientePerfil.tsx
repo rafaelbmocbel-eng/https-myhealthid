@@ -592,15 +592,9 @@ export default function PacientePerfil() {
           defaultValue={outerTab}
           onValueChange={(v) => navigate(`/pacientes/${id}?tab=${v}`, { replace: true })}
         >
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-3 h-auto gap-1 w-full">
             <TabsTrigger value="clinico" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
               <Stethoscope className="h-4 w-4 shrink-0" /> <span>Clínico</span>
-            </TabsTrigger>
-            <TabsTrigger value="sessoes" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
-              <Package className="h-4 w-4 shrink-0" /> <span>Sessões</span>
-            </TabsTrigger>
-            <TabsTrigger value="financeiro" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
-              <DollarSign className="h-4 w-4 shrink-0" /> <span>Financ.</span>
             </TabsTrigger>
             <TabsTrigger value="engajamento" className="gap-1.5 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[11px] sm:text-xs px-1.5 py-2">
               <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
