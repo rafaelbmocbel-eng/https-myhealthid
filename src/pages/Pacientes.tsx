@@ -457,13 +457,6 @@ export default function Pacientes() {
     }
   };
 
-  const toggleServico = (s: string) => {
-    setForm(f => ({
-      ...f,
-      servicos: f.servicos.includes(s) ? f.servicos.filter(x => x !== s) : [...f.servicos, s],
-    }));
-  };
-
   const getLinksForPaciente = (pid: string) => links.filter(l => l.paciente_id === pid);
 
   // Patient status helper
