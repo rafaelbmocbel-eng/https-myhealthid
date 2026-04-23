@@ -874,7 +874,7 @@ export default function PacientePerfil() {
                     </div>
                     <div className="space-y-2">
                       {avaliacoesCob.map((av: any, idx: number) => (
-                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-blue-400/40 transition-colors" onClick={() => navigate(`/cob-zero?paciente=${id}`)}>
+                        <div key={av.id} className="rounded-xl border p-3 flex items-center gap-3 cursor-pointer hover:border-blue-400/40 transition-colors" onClick={() => navigate(`/pacientes/${id}?tab=clinico`)}>
                           <div className={cn('h-9 w-9 rounded-lg flex items-center justify-center shrink-0', idx === 0 ? 'bg-blue-100' : 'bg-muted')}>
                             <AlignCenter className={cn('h-4 w-4', idx === 0 ? 'text-blue-600' : 'text-muted-foreground')} />
                           </div>
