@@ -54,13 +54,17 @@ export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
-  const rawTab = searchParams.get('tab') || 'avaliacoes';
-  const defaultTab = rawTab === 'prontuario' || rawTab === 'evolucao' ? 'evolucao-prontuario' : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' ? 'avaliacoes' : rawTab;
-  // Top-level tab: clinico | financeiro | engajamento | chat
-  // Sub-tabs (avaliacoes/protocolos/evolucao-prontuario) live INSIDE 'clinico'
-  const CLINICO_SUBTABS = ['avaliacoes', 'protocolos', 'evolucao-prontuario'];
-  const outerTab = CLINICO_SUBTABS.includes(defaultTab) ? 'clinico' : defaultTab;
-  const innerClinicoTab = CLINICO_SUBTABS.includes(defaultTab) ? defaultTab : 'avaliacoes';
+  const rawTab = searchParams.get('tab') || '';
+  // Aba única consolidada: avaliacoes | protocolos | evolucao-prontuario | engajamento | chat
+  // Sem aba ativa por padrão — conteúdo aparece somente ao clicar.
+  const VALID_TABS = ['avaliacoes', 'protocolos', 'evolucao-prontuario', 'engajamento', 'chat'];
+  const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
+    ? 'evolucao-prontuario'
+    : rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
+      ? 'avaliacoes'
+      : rawTab;
+  const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
+  const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
