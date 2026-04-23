@@ -116,8 +116,28 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
   const [objetivo, setObjetivo] = useState(SOAP_TEMPLATES.retorno_geral.objetivo);
   const [avaliacao, setAvaliacao] = useState(SOAP_TEMPLATES.retorno_geral.avaliacao);
   const [plano, setPlano] = useState(SOAP_TEMPLATES.retorno_geral.plano);
+  const [latestVoice, setLatestVoice] = useState<any>(null);
+  const [loadingVoice, setLoadingVoice] = useState(false);
+  const [autoFilled, setAutoFilled] = useState(false);
   const { adicionar, adicionando } = useNotasProntuario(pacienteId);
   const { toast } = useToast();
+
+  // Fetch latest voice assessment for this patient
+  useEffect(() => {
+    if (!pacienteId) return;
+    setLoadingVoice(true);
+    supabase
+      .from('avaliacoes_voz')
+      .select('id, resultado, transcricao, created_at, servico')
+      .eq('paciente_id', pacienteId)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data }) => {
+        setLatestVoice(data);
+        setLoadingVoice(false);
+      });
+  }, [pacienteId]);
 
   const applyTemplate = (key: string) => {
     const t = SOAP_TEMPLATES[key];
@@ -127,6 +147,24 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
     setObjetivo(t.objetivo);
     setAvaliacao(t.avaliacao);
     setPlano(t.plano);
+    setAutoFilled(false);
+  };
+
+  const fillFromVoice = () => {
+    if (!latestVoice?.resultado) {
+      toast({ title: 'Nenhuma avaliação por voz encontrada', description: 'Realize uma avaliação por voz para usar o preenchimento automático.', variant: 'destructive' });
+      return;
+    }
+    const filled = buildSoapFromVoice(latestVoice.resultado, latestVoice.transcricao);
+    setSubjectivo(filled.subjectivo);
+    setObjetivo(filled.objetivo);
+    setAvaliacao(filled.avaliacao);
+    setPlano(filled.plano);
+    setAutoFilled(true);
+    toast({
+      title: '✨ SOAP preenchido pela avaliação por voz',
+      description: `Baseado na avaliação de ${format(new Date(latestVoice.created_at), "dd 'de' MMM 'às' HH:mm", { locale: ptBR })}. Revise e ajuste antes de salvar.`,
+    });
   };
 
   const handleSave = async () => {
@@ -139,7 +177,15 @@ export default function SoapNoteForm({ pacienteId, onSuccess }: Props) {
         tipo: 'soap_note',
         titulo,
         descricao,
-        dadosExtras: { template, subjectivo, objetivo, avaliacao, plano },
+        dadosExtras: {
+          template,
+          subjectivo,
+          objetivo,
+          avaliacao,
+          plano,
+          origem: autoFilled ? 'avaliacao_voz' : 'manual',
+          avaliacao_voz_id: autoFilled ? latestVoice?.id : undefined,
+        },
       });
       toast({ title: 'Nota SOAP salva! ✅' });
       onSuccess?.();
