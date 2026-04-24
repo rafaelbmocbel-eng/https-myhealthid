@@ -572,34 +572,27 @@ export default function PacientePerfil() {
           </Sheet>
         </div>
 
-        {/* Contact inline */}
-        <div className="flex flex-wrap gap-3 text-xs text-muted-foreground mb-4 px-1">
-          {paciente.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>}
+        {/* Contact inline + ações WhatsApp */}
+        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3 px-1">
+          {paciente.telefone && (
+            <>
+              <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>
+              <button
+                type="button"
+                onClick={() => window.open(`https://wa.me/55${paciente.telefone!.replace(/\D/g, '')}`, '_blank')}
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors text-[11px] font-medium"
+                title="Abrir conversa no WhatsApp"
+              >
+                <MessageCircle className="h-3 w-3" /> WhatsApp
+              </button>
+            </>
+          )}
           {paciente.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{paciente.email}</span>}
           {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
           {paciente.observacoes && <span className="flex items-center gap-1 text-muted-foreground/70" title={paciente.observacoes}><FileText className="h-3 w-3" />Obs: {paciente.observacoes.slice(0, 40)}{paciente.observacoes.length > 40 ? '…' : ''}</span>}
         </div>
 
-        {/* LGPD Consent */}
-        <div className="mb-4">
-          <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
-        </div>
-
-        {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
-        {!activeTab && (
-          <div className="mb-4">
-            <PacienteDashboardIdentidade
-              paciente={paciente as any}
-              onBack={() => navigate('/pacientes')}
-              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              subTab="integrada"
-            />
-          </div>
-        )}
-
-        {/* ==== ABAS COMPLEMENTARES ====
+        {/* ==== ABAS COMPLEMENTARES — logo abaixo do telefone ====
             Histórico │ Diretrizes │ Prontuário │ Engajar │ Chat
             Visão Integrada é a entrada padrão (sem aba ativa). */}
         <Tabs
@@ -611,7 +604,7 @@ export default function PacientePerfil() {
             navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
           }}
         >
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
@@ -628,6 +621,25 @@ export default function PacientePerfil() {
               <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
             </TabsTrigger>
           </TabsList>
+
+          {/* LGPD Consent */}
+          <div className="mb-4">
+            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+          </div>
+
+          {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
+          {!activeTab && (
+            <div className="mb-4">
+              <PacienteDashboardIdentidade
+                paciente={paciente as any}
+                onBack={() => navigate('/pacientes')}
+                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                subTab="integrada"
+              />
+            </div>
+          )}
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
           <TabsContent value="historico" className="mt-4">
