@@ -580,7 +580,7 @@ export default function PacientePerfil() {
               <button
                 type="button"
                 onClick={() => window.open(`https://wa.me/55${paciente.telefone!.replace(/\D/g, '')}`, '_blank')}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-500/20 transition-colors text-[11px] font-medium"
+                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success hover:bg-success/20 transition-colors text-[11px] font-medium"
                 title="Abrir conversa no WhatsApp"
               >
                 <MessageCircle className="h-3 w-3" /> WhatsApp
