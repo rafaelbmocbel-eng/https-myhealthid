@@ -478,6 +478,163 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     void clearDraft(draftKey);
   };
 
+  // ── Cria uma Diretriz Oficial a partir da diretriz_tratamento gerada pela IA ──
+  const criarDiretrizDaVoz = async () => {
+    if (!user || !assessment?.diretriz_tratamento || !pacienteId) {
+      toast({
+        title: 'Não foi possível criar a diretriz',
+        description: !pacienteId
+          ? 'Esta avaliação não está vinculada a um paciente.'
+          : 'A IA não gerou uma diretriz nesta análise.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setCreatingDiretriz(true);
+    try {
+      const diretriz = assessment.diretriz_tratamento;
+      const queixa = assessment.queixa_principal || 'Avaliação por voz';
+      const classif = assessment.classificacao_severidade || 'N/I';
+
+      const fasesConfig = [
+        { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
+        { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
+        { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
+      ];
+
+      // Snapshot compatível com o sistema de diretrizes (ProtocoloViewer / getDiretrizSnapshotFromScores)
+      const diretrizSnapshot = {
+        versao: 1,
+        createdAt: new Date().toISOString(),
+        origem: 'avaliacao_voz',
+        fases: fasesConfig.map((cfg) => {
+          const fase = diretriz?.[cfg.key] || {};
+          const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
+          return {
+            numero: cfg.numero,
+            titulo: cfg.titulo,
+            semanas: `${cfg.semanas_inicio}-${cfg.semanas_fim}`,
+            semanas_inicio: cfg.semanas_inicio,
+            semanas_fim: cfg.semanas_fim,
+            objetivo: (fase.objetivos || [])[0] || 'Conduta terapêutica planejada.',
+            demandasAlvo: (fase.objetivos || []).slice(1),
+            frequenciaSemanal: 0,
+            duracaoSessao: fase.duracao_semanas || '',
+            exercicios: [],
+            tecnicas: tecnicas.map((t: any) => ({
+              nome: t.tecnica || 'Técnica',
+              descricao: t.justificativa || '',
+              duracao: '',
+              frequencia: diretriz.frequencia_sugerida || '',
+              motivo: t.justificativa || '',
+              categoria: t.lente_clinica || 'referencia',
+            })),
+          };
+        }),
+      };
+
+      const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por voz (${classif}).`;
+
+      // 1) Cria o registro principal de protocolo
+      const { data: prot, error: protErr } = await (supabase as any)
+        .from('protocolos')
+        .insert({
+          terapeuta_id: user.id,
+          paciente_id: pacienteId,
+          titulo: `Diretriz — ${queixa}`,
+          descricao: assessment.resumo_clinico || null,
+          objetivo_geral: objetivoGeral,
+          duracao_total: '12 semanas',
+          frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
+          status: 'ativo',
+          scores_avaliacao: {
+            origem: 'avaliacao_voz',
+            classificacao: classif,
+            queixa_principal: queixa,
+            prognostico: diretriz.prognostico || null,
+            criterios_alta: diretriz.criterios_alta || [],
+            diretriz_snapshot: diretrizSnapshot,
+          },
+        })
+        .select('id')
+        .single();
+
+      if (protErr) throw protErr;
+      const protocoloId = prot.id;
+
+      // 2) Cria as 3 fases
+      const fasesPayload = fasesConfig.map((cfg) => {
+        const fase = diretriz?.[cfg.key] || {};
+        return {
+          protocolo_id: protocoloId,
+          numero_fase: cfg.numero,
+          titulo: cfg.titulo,
+          semanas_inicio: cfg.semanas_inicio,
+          semanas_fim: cfg.semanas_fim,
+          objetivos: Array.isArray(fase.objetivos) ? fase.objetivos : [],
+          sessoes_por_semana: 2,
+        };
+      });
+
+      const { error: fasesErr } = await (supabase as any)
+        .from('protocolo_fases')
+        .insert(fasesPayload);
+      if (fasesErr) throw fasesErr;
+
+      // 3) Nota no prontuário
+      const resumoTecnicas = fasesConfig
+        .map((cfg) => {
+          const fase = diretriz?.[cfg.key] || {};
+          const tecs = (fase.tecnicas || []).map((t: any) => `• ${t.tecnica}`).join('\n');
+          return `${cfg.titulo}${fase.duracao_semanas ? ` (${fase.duracao_semanas})` : ''}\n${tecs || '• (sem técnicas registradas)'}`;
+        })
+        .join('\n\n');
+
+      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por Voz)
+
+Queixa principal: ${queixa}
+Classificação: ${classif}
+Frequência sugerida: ${diretriz.frequencia_sugerida || 'N/I'}
+Prognóstico: ${diretriz.prognostico || 'N/I'}
+
+${resumoTecnicas}`;
+
+      await adicionarNotaProntuario({
+        pacienteId,
+        tipo: 'conduta_diretriz',
+        titulo: `Diretriz — ${queixa}`,
+        descricao,
+        referenciaId: protocoloId,
+        dadosExtras: {
+          protocolo_id: protocoloId,
+          origem: 'avaliacao_voz',
+          classificacao: classif,
+          queixa_principal: queixa,
+        },
+      });
+
+      setDiretrizCreatedId(protocoloId);
+      queryClient.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+      queryClient.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      queryClient.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+
+      toast({
+        title: '✅ Diretriz criada!',
+        description: 'Diretriz oficial registrada no paciente e no prontuário.',
+      });
+    } catch (err: any) {
+      console.error('Erro ao criar diretriz a partir da voz:', err);
+      toast({
+        title: 'Erro ao criar diretriz',
+        description: err?.message || 'Tente novamente.',
+        variant: 'destructive',
+      });
+    } finally {
+      setCreatingDiretriz(false);
+    }
+  };
+
   // Inline edit helpers for AI fields
   const startEditField = (field: string, currentValue: string) => {
     setEditingField(field);
