@@ -1108,6 +1108,37 @@ ${resumoTecnicas}`;
                   </ul>
                 </div>
               )}
+
+              {/* CTA — transformar em Diretriz Oficial */}
+              {pacienteId && (
+                <div className="pt-3 mt-3 border-t border-border">
+                  {diretrizCreatedId ? (
+                    <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 text-xs">
+                      <CheckCircle2 className="h-4 w-4" />
+                      <span>Diretriz oficial criada e disponível na aba Diretrizes do paciente.</span>
+                    </div>
+                  ) : (
+                    <Button
+                      size="sm"
+                      onClick={criarDiretrizDaVoz}
+                      disabled={creatingDiretriz || !isSaved}
+                      className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
+                    >
+                      {creatingDiretriz ? (
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      ) : (
+                        <Target className="h-3.5 w-3.5" />
+                      )}
+                      {creatingDiretriz ? 'Criando diretriz…' : 'Criar Diretriz Oficial a partir desta análise'}
+                    </Button>
+                  )}
+                  {!isSaved && !diretrizCreatedId && (
+                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
+                      Salve a avaliação primeiro para criar a diretriz oficial.
+                    </p>
+                  )}
+                </div>
+              )}
             </div>
           </SectionCard>
         )}
