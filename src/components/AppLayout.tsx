@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import MobileBottomNav from './MobileBottomNav';
 import MobileQuickActionsFab from './MobileQuickActionsFab';
