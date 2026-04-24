@@ -1,4 +1,5 @@
 import { useState, useLayoutEffect, useCallback } from 'react';
+import { useLocation } from 'react-router-dom';
 import AppSidebar from './AppSidebar';
 import MobileBottomNav from './MobileBottomNav';
 import MobileQuickActionsFab from './MobileQuickActionsFab';
@@ -19,6 +20,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
 
   useLayoutEffect(() => {
     const check = () => {
@@ -141,7 +144,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {isMobile && !mobileOpen && (
         <>
           <MobileBottomNav />
-          <MobileQuickActionsFab />
+          {!hideQuickActionsFab && <MobileQuickActionsFab />}
         </>
       )}
     </div>
