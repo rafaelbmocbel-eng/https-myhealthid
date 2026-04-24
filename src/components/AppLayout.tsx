@@ -20,6 +20,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const [collapsed, setCollapsed] = useState(false);
   const [isMobile, setIsMobile] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const location = useLocation();
+  const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
 
   useLayoutEffect(() => {
     const check = () => {
