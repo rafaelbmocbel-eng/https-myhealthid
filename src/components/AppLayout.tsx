@@ -7,6 +7,7 @@ import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
 import NotificationCenter from './NotificationCenter';
+import AiCreditsBanner from './AiCreditsBanner';
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -136,6 +137,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           'sm:px-4',
           isMobile ? 'pb-24' : 'pb-12 px-6 lg:px-8 pt-6',
         )}>
+          <AiCreditsBanner />
           {children}
         </main>
       </div>
