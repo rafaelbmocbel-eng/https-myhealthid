@@ -34,6 +34,7 @@ export default function FunilPublico() {
   const [leadData, setLeadData] = useState({ nome: '', telefone: '', email: '' });
   const [servicoEscolhido, setServicoEscolhido] = useState<ServicoFunil | null>(null);
   const [leadId, setLeadId] = useState<string | null>(null);
+  const [leadToken, setLeadToken] = useState<string | null>(null);
   const [inputValue, setInputValue] = useState('');
   const [inputStep, setInputStep] = useState<'nome' | 'telefone' | 'email'>('nome');
   const [showInput, setShowInput] = useState(false);
@@ -205,11 +206,20 @@ export default function FunilPublico() {
 
       if (error) throw error;
 
-      // Update lead with agendamento info
-      if (leadId) {
-        await supabase.from('funil_leads').update({
-          etapa_atual: 'pagamento',
-        } as any).eq('id', leadId);
+      // Update lead with agendamento info (requer header com session_token)
+      if (leadId && leadToken) {
+        const SUPABASE_URL = (import.meta as any).env.VITE_SUPABASE_URL;
+        const SUPABASE_KEY = (import.meta as any).env.VITE_SUPABASE_PUBLISHABLE_KEY;
+        await fetch(`${SUPABASE_URL}/rest/v1/funil_leads?id=eq.${leadId}`, {
+          method: 'PATCH',
+          headers: {
+            apikey: SUPABASE_KEY,
+            Authorization: `Bearer ${SUPABASE_KEY}`,
+            'Content-Type': 'application/json',
+            'x-lead-token': leadToken,
+          },
+          body: JSON.stringify({ etapa_atual: 'pagamento' }),
+        }).catch(err => console.error('Erro ao atualizar lead:', err));
       }
 
       addBotMessage('✅ Horário reservado com sucesso!');
@@ -426,10 +436,11 @@ export default function FunilPublico() {
           valor_servico: servicoEscolhido?.valor || null,
           etapa_atual: 'agendamento',
           status: 'em_andamento',
-        } as any).select().single();
+        } as any).select('id, session_token').single();
 
         if (error) throw error;
         setLeadId(lead?.id);
+        setLeadToken((lead as any)?.session_token ?? null);
       } catch (e) {
         console.error('Error saving lead:', e);
       }
