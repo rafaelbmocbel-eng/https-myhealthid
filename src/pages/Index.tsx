@@ -572,7 +572,6 @@ export default function Index() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
               {[
                 ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' }] : []),
-                ...(servicos.cob_zero ? [{ label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' }] : []),
                 { label: 'Diretrizes Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
                 { label: 'Diretrizes Ativas', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
