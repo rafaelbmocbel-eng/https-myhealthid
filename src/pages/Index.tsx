@@ -77,7 +77,6 @@ export default function Index() {
     queryFn: async () => {
       const [
         { count: totalAvalIdentidade },
-        { count: totalAvalCob },
         { count: totalProtocolos },
         { count: protocolosAtivos },
         { data: agSemana },
@@ -86,7 +85,6 @@ export default function Index() {
         { count: totalCancelados },
       ] = await Promise.all([
         supabase.from('avaliacoes_identidade').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
-        supabase.from('avaliacoes_cob_zero').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'ativo'),
         supabase.from('agendamentos').select('status').eq('terapeuta_id', user!.id)
