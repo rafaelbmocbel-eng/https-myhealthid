@@ -1166,6 +1166,7 @@ export type Database = {
           id: string
           nome: string
           servico_escolhido: string | null
+          session_token: string
           status: string
           telefone: string | null
           terapeuta_id: string
@@ -1183,6 +1184,7 @@ export type Database = {
           id?: string
           nome: string
           servico_escolhido?: string | null
+          session_token?: string
           status?: string
           telefone?: string | null
           terapeuta_id: string
@@ -1200,6 +1202,7 @@ export type Database = {
           id?: string
           nome?: string
           servico_escolhido?: string | null
+          session_token?: string
           status?: string
           telefone?: string | null
           terapeuta_id?: string
