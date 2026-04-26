@@ -77,7 +77,6 @@ export default function Index() {
     queryFn: async () => {
       const [
         { count: totalAvalIdentidade },
-        { count: totalAvalCob },
         { count: totalProtocolos },
         { count: protocolosAtivos },
         { data: agSemana },
@@ -86,7 +85,6 @@ export default function Index() {
         { count: totalCancelados },
       ] = await Promise.all([
         supabase.from('avaliacoes_identidade').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
-        supabase.from('avaliacoes_cob_zero').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'ativo'),
         supabase.from('agendamentos').select('status').eq('terapeuta_id', user!.id)
@@ -101,7 +99,6 @@ export default function Index() {
       const taxaPresenca = totalSessoes30d > 0 ? Math.round(((totalSessoes30d - faltas30d) / totalSessoes30d) * 100) : 0;
       return {
         totalAvalIdentidade: totalAvalIdentidade || 0,
-        totalAvalCob: totalAvalCob || 0,
         totalProtocolos: totalProtocolos || 0,
         protocolosAtivos: protocolosAtivos || 0,
         totalConcluidos: totalConcluidos || 0,
@@ -129,18 +126,8 @@ export default function Index() {
     enabled: authReady && !!user,
   });
 
-  const { data: avaliacoesCobZero = [] } = useQuery({
-    queryKey: ['avaliacoes-cob-zero-epidemio', user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: true });
-      return data || [];
-    },
-    enabled: authReady && !!user,
-  });
+
+
 
   const medidasStudio: any[] = [];
 
@@ -314,17 +301,15 @@ export default function Index() {
     queryKey: ['atividades-recentes', user?.id],
     queryFn: async () => {
       const sevenDaysAgo = subDays(new Date(), 7).toISOString();
-      const [agResult, avalIdResult, avalCobResult, pacResult] = await Promise.all([
+      const [agResult, avalIdResult, pacResult] = await Promise.all([
         supabase.from('agendamentos').select('id, data_inicio, status, tipo_atendimento, created_at, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
         supabase.from('avaliacoes_identidade').select('id, created_at, classificacao, paciente_id, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
-        supabase.from('avaliacoes_cob_zero').select('id, created_at, paciente_id, pacientes(id, nome, sobrenome)').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
         supabase.from('pacientes').select('id, nome, sobrenome, created_at').eq('terapeuta_id', user!.id).gte('created_at', sevenDaysAgo).order('created_at', { ascending: false }).limit(5),
       ]);
-      type ActivityItem = { id: string; type: 'agendamento' | 'avaliacao_id' | 'avaliacao_cob' | 'novo_paciente'; description: string; pacienteNome: string; pacienteId?: string; timestamp: string; icon: 'calendar' | 'clipboard' | 'align' | 'user-plus' };
+      type ActivityItem = { id: string; type: 'agendamento' | 'avaliacao_id' | 'novo_paciente'; description: string; pacienteNome: string; pacienteId?: string; timestamp: string; icon: 'calendar' | 'clipboard' | 'user-plus' };
       const items: ActivityItem[] = [];
       (agResult.data || []).forEach((a: any) => items.push({ id: `ag-${a.id}`, type: 'agendamento', description: `${a.tipo_atendimento || 'Consulta'} ${a.status === 'concluido' ? 'concluída' : a.status === 'cancelado' ? 'cancelada' : 'agendada'}`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.pacientes?.id, timestamp: a.created_at, icon: 'calendar' }));
       (avalIdResult.data || []).forEach((a: any) => items.push({ id: `avi-${a.id}`, type: 'avaliacao_id', description: `Avaliação Identidade${a.classificacao ? ` — ${a.classificacao}` : ''} concluída`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'clipboard' }));
-      (avalCobResult.data || []).forEach((a: any) => items.push({ id: `avc-${a.id}`, type: 'avaliacao_cob', description: 'Avaliação COB° concluída', pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'align' }));
       (pacResult.data || []).forEach((p: any) => items.push({ id: `pac-${p.id}`, type: 'novo_paciente', description: 'Novo paciente cadastrado', pacienteNome: `${p.nome} ${p.sobrenome}`, pacienteId: p.id, timestamp: p.created_at, icon: 'user-plus' }));
       return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
     },
@@ -383,7 +368,6 @@ export default function Index() {
   });
 
   const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
-  const cobZeroPacientes = pacienteServicos.filter(s => s.servico === 'cob_zero').length;
 
   // Filtra avaliações recentes com red flags (últimos 30 dias)
   const recentAlerts = avaliacoesRaw
@@ -447,7 +431,6 @@ export default function Index() {
           {[
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
             ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
-            ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
@@ -587,7 +570,6 @@ export default function Index() {
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
               {[
                 ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' }] : []),
-                ...(servicos.cob_zero ? [{ label: 'Avaliações COB°', value: statsData.totalAvalCob, icon: AlignCenter, color: 'text-blue-600' }] : []),
                 { label: 'Diretrizes Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
                 { label: 'Diretrizes Ativas', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
@@ -879,7 +861,7 @@ export default function Index() {
         )}
 
         {/* Análise Epidemiológica */}
-        {(servicos.identidade || servicos.cob_zero || servicos.studio) && avaliacoesRaw.length >= 2 && (
+        {servicos.identidade && avaliacoesRaw.length >= 2 && (
           <div className="clinical-card mb-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
@@ -888,13 +870,13 @@ export default function Index() {
               <div>
                 <h2 className="font-bold text-foreground">Central de Inteligência Epidemiológica</h2>
                 <p className="text-xs text-muted-foreground">
-                  Inteligência clínica dos módulos visíveis · Base Científica
+                  Inteligência clínica do Método Identidade · Base Científica
                 </p>
               </div>
             </div>
             <AmostraIntegrada
-              avaliacoesIdentidade={servicos.identidade ? (avaliacoesRaw as any) : []}
-              avaliacoesCobZero={servicos.cob_zero ? (avaliacoesCobZero as any) : []}
+              avaliacoesIdentidade={avaliacoesRaw as any}
+              avaliacoesCobZero={[]}
               medidasStudio={[]}
             />
           </div>
