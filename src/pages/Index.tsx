@@ -433,7 +433,6 @@ export default function Index() {
           {[
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
             ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
-            ...(servicos.cob_zero ? [{ label: 'COB° ZERO', sublabel: `${cobZeroPacientes} pacientes`, icon: AlignCenter, href: '/cob-zero', gradient: 'bg-gradient-to-br from-blue-600 to-cyan-500' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
