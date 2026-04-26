@@ -370,7 +370,6 @@ export default function Index() {
   });
 
   const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
-  const cobZeroPacientes = pacienteServicos.filter(s => s.servico === 'cob_zero').length;
 
   // Filtra avaliações recentes com red flags (últimos 30 dias)
   const recentAlerts = avaliacoesRaw
