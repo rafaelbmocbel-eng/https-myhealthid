@@ -861,7 +861,7 @@ export default function Index() {
         )}
 
         {/* Análise Epidemiológica */}
-        {(servicos.identidade || servicos.cob_zero || servicos.studio) && avaliacoesRaw.length >= 2 && (
+        {servicos.identidade && avaliacoesRaw.length >= 2 && (
           <div className="clinical-card mb-6">
             <div className="flex items-center gap-3 mb-5">
               <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
@@ -870,13 +870,13 @@ export default function Index() {
               <div>
                 <h2 className="font-bold text-foreground">Central de Inteligência Epidemiológica</h2>
                 <p className="text-xs text-muted-foreground">
-                  Inteligência clínica dos módulos visíveis · Base Científica
+                  Inteligência clínica do Método Identidade · Base Científica
                 </p>
               </div>
             </div>
             <AmostraIntegrada
-              avaliacoesIdentidade={servicos.identidade ? (avaliacoesRaw as any) : []}
-              avaliacoesCobZero={servicos.cob_zero ? (avaliacoesCobZero as any) : []}
+              avaliacoesIdentidade={avaliacoesRaw as any}
+              avaliacoesCobZero={[]}
               medidasStudio={[]}
             />
           </div>
