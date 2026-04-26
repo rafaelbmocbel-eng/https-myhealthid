@@ -99,7 +99,6 @@ export default function Index() {
       const taxaPresenca = totalSessoes30d > 0 ? Math.round(((totalSessoes30d - faltas30d) / totalSessoes30d) * 100) : 0;
       return {
         totalAvalIdentidade: totalAvalIdentidade || 0,
-        totalAvalCob: totalAvalCob || 0,
         totalProtocolos: totalProtocolos || 0,
         protocolosAtivos: protocolosAtivos || 0,
         totalConcluidos: totalConcluidos || 0,
