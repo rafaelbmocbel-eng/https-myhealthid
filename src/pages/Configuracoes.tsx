@@ -86,44 +86,6 @@ export default function Configuracoes() {
         {/* Status de créditos da IA */}
         <AiCreditsBanner />
 
-        {/* Módulos / Serviços ativos */}
-        <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <LayoutGrid className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Módulos Ativos</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Escolha quais serviços ficam <strong>visíveis</strong> no menu lateral. Desmarcar um módulo apenas oculta-o da navegação.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {([
-              { key: 'identidade' as const, label: 'Método Identidade', icon: ClipboardList, iconClassName: 'text-primary' },
-              { key: 'cob_zero' as const, label: 'COB° ZERO', icon: AlignCenter, iconClassName: 'text-primary' },
-              { key: 'eventos' as const, label: 'Eventos', icon: PartyPopper, iconClassName: 'text-primary' },
-            ]).map(mod => {
-              const ativo = servicos[mod.key];
-              return (
-                <button
-                  key={mod.key}
-                  onClick={() => saveServicos({ ...servicos, [mod.key]: !ativo })}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border-2 transition-all',
-                    ativo
-                      ? 'border-primary bg-primary/5'
-                      : 'border-dashed border-muted-foreground/20 opacity-50',
-                  )}
-                >
-                  <Switch checked={ativo} onCheckedChange={(v) => saveServicos({ ...servicos, [mod.key]: v })} />
-                  <mod.icon className={cn('h-4 w-4 shrink-0', ativo ? mod.iconClassName : 'text-muted-foreground')} />
-                  <span className={cn('text-sm font-medium', ativo ? 'text-foreground' : 'text-muted-foreground')}>
-                    {mod.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
         {/* Equipe / Profissionais */}
         <EquipeManager />
 
