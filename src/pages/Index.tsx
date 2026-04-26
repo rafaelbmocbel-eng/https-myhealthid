@@ -126,18 +126,8 @@ export default function Index() {
     enabled: authReady && !!user,
   });
 
-  const { data: avaliacoesCobZero = [] } = useQuery({
-    queryKey: ['avaliacoes-cob-zero-epidemio', user?.id],
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('avaliacoes_cob_zero')
-        .select('*')
-        .eq('terapeuta_id', user!.id)
-        .order('created_at', { ascending: true });
-      return data || [];
-    },
-    enabled: authReady && !!user,
-  });
+  const avaliacoesCobZero: any[] = [];
+
 
   const medidasStudio: any[] = [];
 
