@@ -126,7 +126,7 @@ export default function Index() {
     enabled: authReady && !!user,
   });
 
-  const avaliacoesCobZero: any[] = [];
+
 
 
   const medidasStudio: any[] = [];
