@@ -604,6 +604,20 @@ export default function PacientePerfil() {
             navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
           }}
         >
+          {activeTab && (
+            <button
+              type="button"
+              onClick={() => {
+                setActiveTab('');
+                navigate(`/pacientes/${id}`, { replace: true });
+              }}
+              className="mb-3 inline-flex items-center gap-2 px-3 py-1.5 rounded-lg bg-primary/10 text-primary hover:bg-primary/20 transition-colors text-xs font-semibold active:scale-[0.98]"
+              title="Voltar para Visão Integrada"
+            >
+              <LayoutDashboard className="h-4 w-4 shrink-0" />
+              <span>Voltar para Visão Integrada</span>
+            </button>
+          )}
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
