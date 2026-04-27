@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, forwardRef } from "react";
 import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
@@ -70,11 +70,12 @@ const queryClient = new QueryClient({
   },
 });
 
-const LazyFallback = () => (
-  <div className="min-h-screen flex items-center justify-center bg-background">
+const LazyFallback = forwardRef<HTMLDivElement>((_props, ref) => (
+  <div ref={ref} className="min-h-screen flex items-center justify-center bg-background">
     <Loader2 className="h-6 w-6 animate-spin text-primary" />
   </div>
-);
+));
+LazyFallback.displayName = "LazyFallback";
 
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
