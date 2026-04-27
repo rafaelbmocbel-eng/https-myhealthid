@@ -427,7 +427,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
-  const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
+  // expandedMyIDId já declarado acima junto com handleDeleteMyID
   const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
   const [editingVoiceId, setEditingVoiceId] = useState<string | null>(null);
   const [editingVoiceText, setEditingVoiceText] = useState('');
