@@ -390,6 +390,40 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   }, [user, myidAvaliacoes, paciente.id, qc]);
 
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
+  const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
+  const [deletingMyIDId, setDeletingMyIDId] = useState<string | null>(null);
+
+  const handleDeleteMyID = async (id: string) => {
+    setDeletingMyIDId(id);
+    try {
+      const { error } = await supabase
+        .from('myid_avaliacoes')
+        .delete()
+        .eq('id', id)
+        .eq('terapeuta_id', user!.id);
+      if (error) throw error;
+
+      // Limpa também a avaliação salva e nota de prontuário vinculada (se houver)
+      await supabase
+        .from('avaliacoes_identidade')
+        .delete()
+        .eq('paciente_id', paciente.id)
+        .eq('terapeuta_id', user!.id)
+        .filter('dados_avaliacao->>id', 'eq', id);
+
+      toast({ title: '🗑️ MyID excluído', description: 'Resultado removido do histórico.' });
+      if (expandedMyIDId === id) setExpandedMyIDId(null);
+      refetchMyID();
+      qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeletingMyIDId(null);
+    }
+  };
+
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
