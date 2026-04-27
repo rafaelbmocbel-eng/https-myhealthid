@@ -543,34 +543,38 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                         const patientMsgs = mensagens.filter((m: any) => m.paciente_id === p.id);
                         const lastMsg = patientMsgs.length > 0 ? patientMsgs[0] : null;
                         return (
-                            <div key={p.id} className="flex flex-col p-2.5 rounded-lg hover:bg-muted/30 transition-colors gap-1.5">
-                                <div className="flex items-center justify-between">
-                                    <div className="flex items-center gap-2 min-w-0">
-                                        <div className="h-7 w-7 rounded-full bg-primary/10 flex items-center justify-center text-primary text-xs font-bold shrink-0">{p.nome?.[0]}</div>
-                                        <div className="min-w-0">
-                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                <span className="text-sm font-medium">{p.nome} {p.sobrenome}</span>
-                                                <Badge variant="outline" className={cn('text-[9px] h-4 border', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
-                                            </div>
-                                            <div className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</div>
+                            <div key={p.id} className="flex flex-col p-3 rounded-xl border border-border/40 bg-card hover:border-primary/30 hover:shadow-sm transition-all gap-2.5">
+                                {/* Linha 1: Avatar + Nome + Badge */}
+                                <div className="flex items-start gap-2.5 min-w-0">
+                                    <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center text-primary text-sm font-bold shrink-0">{p.nome?.[0]}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <div className="text-sm font-semibold text-foreground truncate">{p.nome} {p.sobrenome}</div>
+                                        <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                                            <Badge variant="outline" className={cn('text-[9px] h-4 border px-1.5', tagCfg.bgColor, tagCfg.color)}>{tagCfg.emoji} {tagCfg.label}</Badge>
+                                            <span className="text-[10px] text-muted-foreground">{p.telefone || 'Sem telefone'}</span>
                                         </div>
                                     </div>
-                                    <div className="flex gap-1 shrink-0">
-                                        {p.telefone && (
-                                            <Button size="sm" variant="default" className="h-7 text-[10px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white"
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
-                                                    window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                                                }}>
-                                                <MessageCircle className="h-3 w-3" /> Chamar
-                                            </Button>
-                                        )}
-                                        {actions}
-                                    </div>
+                                </div>
+                                {/* Linha 2: Ações com scroll horizontal */}
+                                <div className="flex gap-1.5 overflow-x-auto scrollbar-none -mx-1 px-1 pb-0.5">
+                                    {p.telefone && (
+                                        <Button size="sm" variant="default" className="h-8 text-[11px] gap-1 bg-[#25D366] hover:bg-[#20BE5C] text-white shrink-0 px-2.5"
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
+                                                window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
+                                            }}>
+                                            <MessageCircle className="h-3.5 w-3.5" /> Chamar
+                                        </Button>
+                                    )}
+                                    {actions && (
+                                        <div className="flex gap-1.5 shrink-0 [&>button]:shrink-0">
+                                            {actions}
+                                        </div>
+                                    )}
                                 </div>
                                 {lastMsg && (
-                                    <div className="ml-9 flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
+                                    <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground bg-muted/30 px-2 py-1 rounded-md">
                                         <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
                                         <span className="truncate flex-1">{lastMsg.mensagem.substring(0, 60)}{lastMsg.mensagem.length > 60 ? '...' : ''}</span>
                                         <span className="shrink-0 font-medium">{format(new Date(lastMsg.created_at), 'dd/MM')}</span>
