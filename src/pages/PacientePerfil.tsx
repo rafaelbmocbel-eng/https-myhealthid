@@ -457,19 +457,6 @@ export default function PacientePerfil() {
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
-            <div className="flex items-center gap-2 mt-1 flex-wrap">
-              {(paciente._servicos as string[]).map((s: string) => {
-                const cfg = SERVICOS_MAP[s];
-                return cfg ? (
-                  <Badge key={s} variant="outline" className={cn('text-xs gap-1', cfg.color)}>
-                    {cfg.icon} {cfg.label}
-                  </Badge>
-                ) : null;
-              })}
-              {(paciente._servicos as string[]).length === 0 && (
-                <Badge variant="outline" className="text-xs text-muted-foreground">Sem serviços vinculados</Badge>
-              )}
-            </div>
           </div>
         </div>
 

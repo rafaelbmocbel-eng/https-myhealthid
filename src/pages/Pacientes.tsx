@@ -669,9 +669,11 @@ export default function Pacientes() {
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
                           </Badge>
                         )}
-                        <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
-                          {tagCfg.emoji} {tagCfg.label}
-                        </Badge>
+                        {tag === 'inadimplente' && (
+                          <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
+                            {tagCfg.emoji} {tagCfg.label}
+                          </Badge>
+                        )}
                       </div>
                       <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
                         {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
