@@ -611,11 +611,11 @@ export default function Pacientes() {
         {activeMainTab === 'clientes' && (
         <>
         <div className="flex flex-wrap gap-3 mb-5">
-          <div className="relative flex-1 min-w-52 group">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-primary" />
+          <div className="relative flex-1 min-w-52">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-primary pointer-events-none z-10" />
             <Input
               placeholder="Buscar paciente..."
-              className="pl-11 h-11 bg-primary/5 border-2 border-primary/30 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 placeholder:text-primary/60 font-medium shadow-sm transition-all"
+              className="pl-12 h-11 bg-primary/5 border-2 border-primary/30 focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/20 placeholder:text-primary/60 font-medium shadow-sm transition-all"
               value={search}
               onChange={e => setSearch(e.target.value)}
             />
