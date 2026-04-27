@@ -33,3 +33,19 @@ export function getAvaliacaoUrl(token: string) {
 export function getAgendaUrl(token: string) {
   return `${getBaseUrl()}/agenda/${token}`;
 }
+
+export function getMyIdUrl(token: string) {
+  return `${getBaseUrl()}/myid/responder/${token}`;
+}
+
+export function getCadastroUrl(slug: string) {
+  return `${getBaseUrl()}/cadastro/${slug}`;
+}
+
+export function getFunilUrl(slug: string) {
+  return `${getBaseUrl()}/funil/${slug}`;
+}
+
+export function getEventoUrl(slug: string) {
+  return `${getBaseUrl()}/evento/${slug}`;
+}
