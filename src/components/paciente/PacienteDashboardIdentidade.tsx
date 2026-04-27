@@ -941,10 +941,44 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                               </div>
                               <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MyID Score</div>
                             </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => e.stopPropagation()}
+                                  disabled={deletingMyIDId === av.id}
+                                  title="Excluir avaliação MyID"
+                                >
+                                  {deletingMyIDId === av.id
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir esta avaliação MyID?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. O resultado de {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} (Score {result?.myidScore?.toFixed(1) || '—'}) será removido permanentemente do histórico do paciente, do prontuário e da evolução.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteMyID(av.id)}
+                                  >
+                                    Sim, excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0"
+                              onClick={(e) => { e.stopPropagation(); setExpandedMyIDId(isExpanded ? null : av.id); }}
                             >
                               <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
                             </Button>
