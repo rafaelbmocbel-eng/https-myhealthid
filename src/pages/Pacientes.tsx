@@ -668,14 +668,6 @@ export default function Pacientes() {
                           {tagCfg.emoji} {tagCfg.label}
                         </Badge>
                       </div>
-                      <div className="flex flex-wrap gap-1 mt-1">
-                        {pServicos.map(s => {
-                          const cfg = SERVICOS.find(x => x.key === s);
-                          return cfg ? (
-                            <Badge key={s} variant="outline" className={cn('text-[10px] h-5', cfg.color)}>{cfg.label}</Badge>
-                          ) : null;
-                        })}
-                      </div>
                       <div className="hidden sm:flex flex-wrap gap-3 mt-1 text-xs text-muted-foreground">
                         {p.telefone && <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{p.telefone}</span>}
                         {ultimoAg ? (
