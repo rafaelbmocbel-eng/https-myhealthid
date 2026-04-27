@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown, Edit3, Save } from 'lucide-react';
+import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown, Edit3, Save, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -389,10 +390,44 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   }, [user, myidAvaliacoes, paciente.id, qc]);
 
   const [iniciandoMyID, setIniciandoMyID] = useState(false);
+  const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
+  const [deletingMyIDId, setDeletingMyIDId] = useState<string | null>(null);
+
+  const handleDeleteMyID = async (id: string) => {
+    setDeletingMyIDId(id);
+    try {
+      const { error } = await supabase
+        .from('myid_avaliacoes')
+        .delete()
+        .eq('id', id)
+        .eq('terapeuta_id', user!.id);
+      if (error) throw error;
+
+      // Limpa também a avaliação salva e nota de prontuário vinculada (se houver)
+      await supabase
+        .from('avaliacoes_identidade')
+        .delete()
+        .eq('paciente_id', paciente.id)
+        .eq('terapeuta_id', user!.id)
+        .filter('dados_avaliacao->>id', 'eq', id);
+
+      toast({ title: '🗑️ MyID excluído', description: 'Resultado removido do histórico.' });
+      if (expandedMyIDId === id) setExpandedMyIDId(null);
+      refetchMyID();
+      qc.invalidateQueries({ queryKey: ['avaliacoes-identidade'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+    } catch (e: any) {
+      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+    } finally {
+      setDeletingMyIDId(null);
+    }
+  };
+
   const [showStructural, setShowStructural] = useState(false);
   const [structuralData, setStructuralData] = useState<StructuralAssessmentData>(createDefaultAssessment());
   const [expandedStructuralId, setExpandedStructuralId] = useState<string | null>(null);
-  const [expandedMyIDId, setExpandedMyIDId] = useState<string | null>(null);
+  // expandedMyIDId já declarado acima junto com handleDeleteMyID
   const [expandedVoiceId, setExpandedVoiceId] = useState<string | null>(null);
   const [editingVoiceId, setEditingVoiceId] = useState<string | null>(null);
   const [editingVoiceText, setEditingVoiceText] = useState('');
@@ -906,10 +941,44 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                               </div>
                               <div className="text-[10px] text-muted-foreground uppercase tracking-wider font-bold">MyID Score</div>
                             </div>
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                                  onClick={(e) => e.stopPropagation()}
+                                  disabled={deletingMyIDId === av.id}
+                                  title="Excluir avaliação MyID"
+                                >
+                                  {deletingMyIDId === av.id
+                                    ? <Loader2 className="h-4 w-4 animate-spin" />
+                                    : <Trash2 className="h-4 w-4" />}
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Excluir esta avaliação MyID?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    Esta ação não pode ser desfeita. O resultado de {format(new Date(av.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} (Score {result?.myidScore?.toFixed(1) || '—'}) será removido permanentemente do histórico do paciente, do prontuário e da evolução.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                    onClick={() => handleDeleteMyID(av.id)}
+                                  >
+                                    Sim, excluir
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
                             <Button
                               size="sm"
                               variant="ghost"
                               className="h-8 w-8 p-0"
+                              onClick={(e) => { e.stopPropagation(); setExpandedMyIDId(isExpanded ? null : av.id); }}
                             >
                               <FileText className={`h-4 w-4 transition-transform ${isExpanded ? 'text-primary' : 'text-muted-foreground'}`} />
                             </Button>
