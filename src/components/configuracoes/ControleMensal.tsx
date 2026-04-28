@@ -11,8 +11,9 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/utils/exportCsv';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
-const REPASSE_PCT = 0.4; // 40%
+const REPASSE_STORAGE_KEY = 'controle-mensal-repasse-pct';
 
 type Filtro = 'todos' | 'particular' | 'plano';
 
@@ -22,6 +23,22 @@ export default function ControleMensal() {
   const [mesOffset, setMesOffset] = useState(0); // 0 = mês atual, 1 = mês passado...
   const [profissionalId, setProfissionalId] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<Filtro>('todos');
+  const [repassePctInput, setRepassePctInput] = useState<string>(() => {
+    if (typeof window === 'undefined') return '40';
+    return localStorage.getItem(REPASSE_STORAGE_KEY) || '40';
+  });
+  const REPASSE_PCT = useMemo(() => {
+    const n = parseFloat(repassePctInput.replace(',', '.'));
+    if (isNaN(n) || n < 0) return 0;
+    if (n > 100) return 1;
+    return n / 100;
+  }, [repassePctInput]);
+  const repasseLabel = `${(REPASSE_PCT * 100).toFixed(REPASSE_PCT * 100 % 1 === 0 ? 0 : 1)}%`;
+
+  const handleRepasseChange = (v: string) => {
+    setRepassePctInput(v);
+    if (typeof window !== 'undefined') localStorage.setItem(REPASSE_STORAGE_KEY, v);
+  };
 
   const { inicio, fim, label } = useMemo(() => {
     const ref = subMonths(new Date(), mesOffset);
@@ -135,7 +152,7 @@ export default function ControleMensal() {
         tipo: tipo === 'plano' ? 'Plano' : 'Particular',
         plano: s.pacientes?.plano_saude || '-',
         valor_total: valor.toFixed(2),
-        repasse_40: (valor * REPASSE_PCT).toFixed(2),
+        repasse: (valor * REPASSE_PCT).toFixed(2),
       };
     });
     exportToCsv(`controle_mensal_${format(new Date(), 'yyyy-MM')}.csv`, rows, [
@@ -145,7 +162,7 @@ export default function ControleMensal() {
       { key: 'tipo', label: 'Tipo' },
       { key: 'plano', label: 'Plano' },
       { key: 'valor_total', label: 'Valor Total (R$)' },
-      { key: 'repasse_40', label: 'Repasse 40% (R$)' },
+      { key: 'repasse', label: `Repasse ${repasseLabel} (R$)` },
     ]);
   };
 
@@ -156,12 +173,28 @@ export default function ControleMensal() {
           <FileText className="icon-sm text-primary shrink-0" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Controle Mensal</h2>
         </div>
-        <Button size="sm" variant="outline" onClick={handleExport} disabled={!filtradas.length} className="h-8 gap-1.5">
-          <Download className="icon-xs" /> CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 h-8">
+            <Percent className="icon-xs text-primary" />
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">Repasse</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              value={repassePctInput}
+              onChange={(e) => handleRepasseChange(e.target.value)}
+              className="h-6 w-14 px-1.5 text-xs font-bold border-0 bg-transparent focus-visible:ring-1"
+            />
+            <span className="text-xs font-bold">%</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleExport} disabled={!filtradas.length} className="h-8 gap-1.5">
+            <Download className="icon-xs" /> CSV
+          </Button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Atendimentos realizados por profissional, com cálculo de repasse de <strong>40%</strong> sobre o valor total.
+        Atendimentos realizados por profissional, com cálculo de repasse de <strong>{repasseLabel}</strong> sobre o valor total.
       </p>
 
       {/* Filtros */}
@@ -238,7 +271,7 @@ export default function ControleMensal() {
             </div>
             <div className="rounded-xl border-2 border-primary bg-primary/5 p-3">
               <p className="text-[10px] uppercase font-bold text-primary flex items-center gap-1">
-                <Percent className="icon-xs" /> Repasse 40%
+                <Percent className="icon-xs" /> Repasse {repasseLabel}
               </p>
               <p className="text-xl font-black text-primary mt-0.5">{fmt(totais.repasse)}</p>
             </div>
@@ -263,7 +296,7 @@ export default function ControleMensal() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-black">{fmt(prof.total)}</p>
-                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.total * REPASSE_PCT)} (40%)</p>
+                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.total * REPASSE_PCT)} ({repasseLabel})</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
