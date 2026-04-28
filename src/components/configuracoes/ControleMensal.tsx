@@ -18,7 +18,7 @@ type Filtro = 'todos' | 'particular' | 'plano';
 
 export default function ControleMensal() {
   const { user } = useAuth();
-  const { equipe } = useEquipe();
+  const { membros: equipe } = useEquipe();
   const [mesOffset, setMesOffset] = useState(0); // 0 = mês atual, 1 = mês passado...
   const [profissionalId, setProfissionalId] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<Filtro>('todos');
