@@ -173,12 +173,28 @@ export default function ControleMensal() {
           <FileText className="icon-sm text-primary shrink-0" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Controle Mensal</h2>
         </div>
-        <Button size="sm" variant="outline" onClick={handleExport} disabled={!filtradas.length} className="h-8 gap-1.5">
-          <Download className="icon-xs" /> CSV
-        </Button>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 rounded-md border bg-muted/30 px-2 h-8">
+            <Percent className="icon-xs text-primary" />
+            <span className="text-[10px] uppercase font-bold text-muted-foreground">Repasse</span>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              step="0.5"
+              value={repassePctInput}
+              onChange={(e) => handleRepasseChange(e.target.value)}
+              className="h-6 w-14 px-1.5 text-xs font-bold border-0 bg-transparent focus-visible:ring-1"
+            />
+            <span className="text-xs font-bold">%</span>
+          </div>
+          <Button size="sm" variant="outline" onClick={handleExport} disabled={!filtradas.length} className="h-8 gap-1.5">
+            <Download className="icon-xs" /> CSV
+          </Button>
+        </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Atendimentos realizados por profissional, com cálculo de repasse de <strong>40%</strong> sobre o valor total.
+        Atendimentos realizados por profissional, com cálculo de repasse de <strong>{repasseLabel}</strong> sobre o valor total.
       </p>
 
       {/* Filtros */}
