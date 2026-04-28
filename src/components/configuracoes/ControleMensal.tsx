@@ -296,7 +296,7 @@ export default function ControleMensal() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-black">{fmt(prof.total)}</p>
-                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.total * REPASSE_PCT)} (40%)</p>
+                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.total * REPASSE_PCT)} ({repasseLabel})</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
