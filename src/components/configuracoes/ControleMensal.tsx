@@ -228,6 +228,9 @@ export default function ControleMensal() {
           <Button size="sm" variant="outline" onClick={handleExport} disabled={!filtradas.length} className="h-8 gap-1.5">
             <Download className="icon-xs" /> CSV
           </Button>
+          <Button size="sm" onClick={handleExportPdf} disabled={!filtradas.length} className="h-8 gap-1.5">
+            <FileText className="icon-xs" /> PDF
+          </Button>
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
