@@ -41,7 +41,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.2: CRENÇA DE DANO (KNOWLEDGE)</Label>
+                    <Label className="text-base font-bold text-gray-800">Crença de dano</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Tenho certeza absoluta de que a minha dor acontece porque algo está 'rasgado', 'gastado', 'fora do lugar' ou 'estragado' e que só consertando a parte física a dor some."</p>
                     <RadioGroup
                         value={data.bloco_4_belief_damage?.toString() || ''}
@@ -63,7 +63,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.3: EVITAÇÃO (COMPORTAMENTO DE FUGA)</Label>
+                    <Label className="text-base font-bold text-gray-800">Evitação</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Mesmo que não doa muito AGORA, eu prefiro não fazer atividades importantes hoje só por garantia, de tanto medo de 'pagar a conta' e ter muita dor amanhã."</p>
                     <RadioGroup
                         value={data.bloco_4_avoidance?.toString() || ''}
@@ -85,7 +85,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.4: AUTO-EFICÁCIA (NÍVEL DE CONTROLE INTERNO)</Label>
+                    <Label className="text-base font-bold text-gray-800">Auto-eficácia</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Se eu realmente me concentrar e usar minhas próprias ferramentas (descanso, atividade moderada, respirar, pensar diferente), eu sinto que EU MESMO consigo diminuir minha dor sem depender de remédio ou médico toda vez."</p>
                     <RadioGroup
                         className="flex flex-wrap gap-2 sm:gap-4 mt-2"
@@ -110,7 +110,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.5: EXPECTATIVA DE MELHORA</Label>
+                    <Label className="text-base font-bold text-gray-800">Expectativa de melhora</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Quanto você acredita que consegue melhorar do seu problema atual?"</p>
                     <RadioGroup
                         className="flex flex-wrap gap-2 sm:gap-4 mt-2"

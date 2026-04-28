@@ -28,7 +28,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
             {/* Traumas e Cirurgias */}
             <section className="space-y-6">
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 6.1: TRAUMAS AXIAIS (Impactos no Bumbum/Cóccix)</Label>
+                    <Label className="font-semibold text-base">Traumas axiais</Label>
                     <p className="text-sm text-gray-500">Você JÁ SOFREU alguma QUEDA FORTE SENTADO? (Impacto direto no bumbum, cóccix ou base da coluna)</p>
                     <RadioGroup
                         value={data.bloco_6_axial_trauma === undefined ? '' : (data.bloco_6_axial_trauma ? 'yes' : 'no')}
@@ -41,7 +41,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 6.2: CICATRIZES ABDOMINAIS</Label>
+                    <Label className="font-semibold text-base">Cicatrizes abdominais</Label>
                     <p className="text-sm text-gray-500">Você POSSUI CICATRIZ de CIRURGIA ABDOMINAL? (Marque todas que se aplicam ou deixe em branco se não)</p>
                     <div className="space-y-2 grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
                         {[
@@ -68,7 +68,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
             {/* Saúde Visceral */}
             <section className="space-y-6">
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 6.3: SAÚDE VISCERAL - SINAIS AUTONÔMICOS</Label>
+                    <Label className="font-semibold text-base">Saúde visceral - sinais autonômicos</Label>
                     <p className="text-sm text-gray-500">Você SENTE FREQUENTEMENTE algum destes sintomas? (Marque TODOS que se aplicam)</p>
                     <div className="space-y-3">
                         {[
@@ -95,10 +95,10 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
 
             {/* Hormônios Mulheres */}
             <section className="space-y-6 border-t pt-6 bg-pink-50/40 p-5 rounded-xl border border-pink-100">
-                <h3 className="text-lg font-semibold text-pink-800">PERGUNTAS PARA MULHERES (Opcional)</h3>
+                <h3 className="text-lg font-semibold text-pink-800">Perguntas para mulheres (opcional)</h3>
                 <div className="space-y-6 pt-2">
                     <div className="space-y-4">
-                        <Label className="font-semibold text-base">PERGUNTA 6.4: HISTÓRICO ESPECÍFICO (PARA MULHERES)</Label>
+                        <Label className="font-semibold text-base">Histórico específico</Label>
                         <p className="text-sm text-gray-500">Você tem DIAGNÓSTICO de alguma condição hormonal/reprodutiva?</p>
                         <div className="space-y-2">
                             <div className="flex items-center space-x-2">
@@ -107,7 +107,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                                     checked={!!data.bloco_6_endometriosis}
                                     onCheckedChange={(c) => updateData({ bloco_6_endometriosis: !!c })}
                                 />
-                                <Label htmlFor="diag-endo">ENDOMETRIOSE</Label>
+                                <Label htmlFor="diag-endo">Endometriose</Label>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <Checkbox
@@ -115,13 +115,13 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                                     checked={!!data.bloco_6_pcos}
                                     onCheckedChange={(c) => updateData({ bloco_6_pcos: !!c })}
                                 />
-                                <Label htmlFor="diag-pcos">SÍNDROME DO OVÁRIO POLICÍSTICO (PCOS)</Label>
+                                <Label htmlFor="diag-pcos">Síndrome do ovário policístico (pcos)</Label>
                             </div>
                         </div>
                     </div>
 
                     <div className="space-y-4 pt-4 border-t border-pink-200">
-                        <Label className="font-semibold text-base">PERGUNTA 6.5: CICLO MENSTRUAL E HORMÔNIOS ⭐ NOVO</Label>
+                        <Label className="font-semibold text-base">Ciclo menstrual e hormônios </Label>
 
                         <div className="space-y-2">
                             <Label className="text-sm font-semibold text-pink-900">6.5A Seu ciclo menstrual é REGULAR?</Label>
@@ -137,7 +137,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                         </div>
 
                         <div className="space-y-2 pt-4">
-                            <Label className="text-sm font-semibold text-pink-900">6.5B A DOR PIORA EM DETERMINADA FASE DO CICLO?</Label>
+                            <Label className="text-sm font-semibold text-pink-900">6.5b a dor piora em determinada fase do ciclo?</Label>
                             <RadioGroup
                                 value={data.bloco_6_cycle_affects_pain === undefined ? '' : (data.bloco_6_cycle_affects_pain ? 'yes' : 'no')}
                                 onValueChange={(v) => updateData({ bloco_6_cycle_affects_pain: v === 'yes' })}
@@ -171,7 +171,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                         </div>
 
                         <div className="space-y-2 pt-4">
-                            <Label className="text-sm font-semibold text-pink-900">6.5C VOCÊ USA HORMONAL?</Label>
+                            <Label className="text-sm font-semibold text-pink-900">6.5c você usa hormonal?</Label>
                             <RadioGroup
                                 value={data.bloco_6_hormonal_use || 'none'}
                                 onValueChange={(v) => updateData({ bloco_6_hormonal_use: v })}
@@ -204,8 +204,8 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
             {/* Medicações */}
             <section className="space-y-6 border-t pt-6">
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 6.6: MEDICAÇÕES ⭐ NOVO</Label>
-                    <p className="text-sm text-gray-500">Você toma ALGUMA MEDICAÇÃO REGULARMENTE?</p>
+                    <Label className="font-semibold text-base">Medicações </Label>
+                    <p className="text-sm text-gray-500">Você toma alguma medicação regularmente?</p>
 
                     <div className="space-y-4 bg-muted/20 p-5 rounded-xl border border-muted mt-2">
                         <div className="flex items-center space-x-2 justify-between">
@@ -221,7 +221,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
                                         value={data.bloco_6_antidepressant_type || 'ssri'}
                                         onValueChange={(v) => updateData({ bloco_6_antidepressant_type: v })}
                                     >
-                                        <div className="flex items-center space-x-1"><RadioGroupItem value="ssri" id="mt-ssri" /><Label htmlFor="mt-ssri" className="text-xs">SSRI/SNRI</Label></div>
+                                        <div className="flex items-center space-x-1"><RadioGroupItem value="ssri" id="mt-ssri" /><Label htmlFor="mt-ssri" className="text-xs">Ssri/snri</Label></div>
                                         <div className="flex items-center space-x-1"><RadioGroupItem value="tricyclic" id="mt-tri" /><Label htmlFor="mt-tri" className="text-xs">Tricíclico</Label></div>
                                         <div className="flex items-center space-x-1"><RadioGroupItem value="other" id="mt-oth" /><Label htmlFor="mt-oth" className="text-xs">Outro</Label></div>
                                     </RadioGroup>

@@ -33,7 +33,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.1: QUAL É A INTENSIDADE DA SUA DOR AGORA (NESTE EXATO MOMENTO)?</Label>
+                    <Label className="text-base font-bold text-gray-800">Qual é a intensidade da sua dor agora (neste exato momento)?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_now || 0]}
@@ -50,7 +50,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 2.2: QUAL FOI A PIOR INTENSIDADE DA DOR NOS ÚLTIMOS 7 DIAS?</Label>
+                    <Label className="text-base font-bold text-gray-800">Qual foi a pior intensidade da dor nos últimos 7 dias?</Label>
                     <div className="px-2 pt-2">
                         <Slider
                             defaultValue={[data.bloco_2_pain_max || 0]}
@@ -99,7 +99,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.4: COM QUE FREQUÊNCIA VOCÊ SENTE DOR?</Label>
+                        <Label className="text-base font-bold text-gray-800">Com que frequência você sente dor?</Label>
                         <p className="text-sm text-gray-500 mt-1">Qual a frequência com que a dor aparece?</p>
                     </div>
                     <RadioGroup
@@ -128,7 +128,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.5: QUANDO A DOR É PIOR?</Label>
+                        <Label className="text-base font-bold text-gray-800">Quando a dor é pior?</Label>
                         <p className="text-sm text-gray-500 mt-1">Em qual período do dia a dor costuma ser mais forte?</p>
                     </div>
                     <RadioGroup
@@ -146,7 +146,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800">PERGUNTA 2.6: QUAL É SEU PADRÃO TEMPORAL E MECÂNICO?</Label>
+                        <Label className="text-base font-bold text-gray-800">Qual é seu padrão temporal e mecânico?</Label>
                         <p className="text-sm text-gray-500 mt-1">Como o seu corpo se comporta perante a dor? (Marque as aplicáveis)</p>
                     </div>
                     <div className="space-y-3 p-5 bg-muted/20 rounded-xl border border-muted/50">
