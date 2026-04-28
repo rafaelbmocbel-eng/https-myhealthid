@@ -167,6 +167,42 @@ export default function ControleMensal() {
     ]);
   };
 
+  const handleExportPdf = () => {
+    const linhas = filtradas.map((s: any) => {
+      const membroId = s.agendamentos?.membro_equipe_id;
+      const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
+      const tipo = (s.pacientes?.tipo_pagamento || 'particular') as 'particular' | 'plano';
+      return {
+        data: format(new Date(s.data_sessao), 'dd/MM HH:mm'),
+        paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || '—',
+        profissional: membro?.nome || 'Sem profissional',
+        tipo,
+        plano: s.pacientes?.plano_saude || '',
+        valor: Number(s.valor_cobrado) || 0,
+      };
+    });
+    const filtroProfLabel =
+      profissionalId === 'todos'
+        ? 'Todos'
+        : profissionalId === 'sem-membro'
+        ? 'Sem profissional'
+        : equipe.find((m: any) => m.id === profissionalId)?.nome || 'Profissional';
+    const filtroTipoLabel =
+      tipoFiltro === 'todos' ? 'Particular + Plano' : tipoFiltro === 'plano' ? 'Apenas Plano' : 'Apenas Particular';
+
+    gerarPdfControleMensal({
+      periodo: label,
+      filtroProfissional: filtroProfLabel,
+      filtroTipo: filtroTipoLabel,
+      repassePct: REPASSE_PCT,
+      repasseLabel,
+      linhas,
+      totalParticular: totais.totalParticular,
+      totalPlano: totais.totalPlano,
+      total: totais.total,
+    });
+  };
+
   return (
     <div className="clinical-card mb-6">
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
