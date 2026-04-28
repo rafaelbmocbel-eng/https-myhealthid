@@ -397,6 +397,17 @@ Detalhes completos no Histórico de Avaliações.`;
       return;
     }
 
+    // Hard guard: avoid sending huge payloads that the AI gateway will reject (413)
+    // ~20MB base64 ≈ 15MB raw audio. Opus 64kbps ≈ ~30 min.
+    if (audioBase64 && audioBase64.length > 20 * 1024 * 1024) {
+      toast({
+        title: 'Áudio muito longo',
+        description: 'Grave trechos menores (até ~25 min) ou divida a consulta em partes.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsProcessing(true);
     setIsSaved(false);
 
@@ -412,7 +423,19 @@ Detalhes completos no Histórico de Avaliações.`;
       }
 
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
-      if (error) throw error;
+      if (error) {
+        // supabase-js wraps non-2xx as FunctionsHttpError — try to read the JSON body for the real message
+        let serverMessage = error.message;
+        try {
+          // @ts-ignore - context is present on FunctionsHttpError
+          const ctx = (error as any).context;
+          if (ctx && typeof ctx.json === 'function') {
+            const errBody = await ctx.json();
+            if (errBody?.error) serverMessage = errBody.error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(serverMessage);
+      }
       if (data?.error) throw new Error(data.error);
 
       const generatedAssessment = data.assessment;
@@ -431,7 +454,12 @@ Detalhes completos no Histórico de Avaliações.`;
           : 'Não consegui salvar automaticamente; use o botão para tentar novamente.',
       });
     } catch (err: any) {
-      toast({ title: 'Erro ao processar', description: err.message, variant: 'destructive' });
+      console.error('[VoiceAssessment] processAssessment error:', err);
+      toast({
+        title: 'Erro ao processar',
+        description: err?.message || 'Falha desconhecida. Tente novamente em instantes.',
+        variant: 'destructive',
+      });
     } finally {
       setIsProcessing(false);
     }
