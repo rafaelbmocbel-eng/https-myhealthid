@@ -11,7 +11,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 4: CRENÇAS, COMPORTAMENTO E EXPECTATIVA</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Como você se sente em movimento</h2>
                 <p className="text-gray-500">
                     O que você "pensa" que a dor significa altera até 30% a intensidade que ela chega no seu cérebro.
                 </p>
@@ -19,7 +19,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
 
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.1: MEDO DO MOVIMENTO (CINESIOFOBIA)</Label>
+                    <Label className="text-base font-bold text-gray-800">Como você se sente ao se movimentar?</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Tenho muito medo que me movimentar da forma errada, abaixar para pegar um peso ou fazer exercícios piore muito meu problema."</p>
                     <RadioGroup
                         value={data.bloco_4_fear_movement?.toString() || ''}

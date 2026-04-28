@@ -39,7 +39,7 @@ export function Bloco3({ data, updateData }: Bloco3Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 3: IMPACTO FUNCIONAL NA VIDA DIÁRIA</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Como isso afeta o seu dia a dia</h2>
                 <p className="text-gray-500">
                     Sua dor é apenas um número de dor, mas o quanto ela IMPEDE você de viver é o mais importante.<br />
                     Escolha de 0 a 10 para cada uma (0 = Não atrapalha nada / 10 = Não consigo fazer de jeito nenhum).

@@ -27,7 +27,7 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 2: CARACTERÍSTICAS DA DOR E PADRÃO TEMPORAL</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Sobre a sua dor</h2>
                 <p className="text-gray-500">Isso nos ajuda a entender a "natureza" da sua dor.</p>
             </div>
 
@@ -68,9 +68,9 @@ export function Bloco2({ data, updateData }: Bloco2Props) {
 
                 <div className="space-y-4 pt-6 border-t border-muted">
                     <div>
-                        <Label className="text-base font-bold text-gray-800 flex items-center gap-2">PERGUNTA 2.3: SINAIS DE ALERTA (RED FLAGS) <span className="text-xl">⚠️</span></Label>
-                        <p className="text-sm font-bold text-red-600 mt-1 uppercase">MUITO IMPORTANTE: RESPONDER COM ATENÇÃO</p>
-                        <p className="text-sm text-gray-500 mt-1">Você apresentou algum destes SINTOMAS nas últimas semanas, JUNTO COM SUA DOR atual?</p>
+                        <Label className="text-base font-bold text-gray-800 flex items-center gap-2">Outros sintomas</Label>
+                        <p className="text-sm font-medium text-gray-700 mt-1">Por favor, responda com atenção.</p>
+                        <p className="text-sm text-gray-500 mt-1">Você apresentou algum destes sintomas nas últimas semanas, junto com a sua dor atual?</p>
                     </div>
 
                     <div className="space-y-3 bg-red-50/40 p-5 rounded-xl border border-red-100/50">

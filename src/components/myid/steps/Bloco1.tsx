@@ -23,7 +23,7 @@ export function Bloco1({ data, updateData }: Bloco1Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 1: O QUE MUDOU NOS ÚLTIMOS 30 DIAS?</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">O que mudou nos últimos 30 dias?</h2>
                 <p className="text-gray-500">
                     Seu corpo detecta MUDANÇAS como "ameaças potenciais".<br />
                     Seu corpo ADORA rotina. Quando algo muda, ele entra em alerta. Este bloco detecta o que disparou o problema.

@@ -21,7 +21,7 @@ export function Bloco6({ data, updateData }: Bloco6Props) {
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 6: RUÍDO SISTÊMICO E HISTÓRICO</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Histórico de saúde</h2>
                 <p className="text-gray-500">Traumas, cicatrizes e disfunções viscerais invisíveis</p>
             </div>
 
