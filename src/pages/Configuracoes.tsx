@@ -90,6 +90,9 @@ export default function Configuracoes() {
         {/* Equipe / Profissionais */}
         <EquipeManager />
 
+        {/* Controle Mensal de Atendimentos e Repasse */}
+        <ControleMensal />
+
         {/* Dias de atendimento */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
