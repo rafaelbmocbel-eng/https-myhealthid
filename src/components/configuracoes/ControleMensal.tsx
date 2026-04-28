@@ -10,6 +10,7 @@ import { Calendar, Users, DollarSign, Percent, Download, Loader2, FileText } fro
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/utils/exportCsv';
+import { gerarPdfControleMensal } from '@/utils/pdfControleMensal';
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
