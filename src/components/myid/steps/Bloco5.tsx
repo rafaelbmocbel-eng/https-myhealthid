@@ -27,7 +27,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
     return (
         <div className="space-y-10 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">Bloco 5: Estilo de Vida</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Seu estilo de vida</h2>
                 <p className="text-gray-500">Sono, Nutrição, Hidratação e Ergonomia (Pilares de Recuperação)</p>
             </div>
 
@@ -123,7 +123,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 <h3 className="text-lg font-semibold border-b pb-2 text-primary">5C. Fatores Psicológicos (Regulação Mental)</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5C.1: QUAL SEU NÍVEL DE ESTRESSE?</Label>
+                    <Label className="font-semibold text-base">Qual seu nível de estresse?</Label>
                     <p className="text-sm text-gray-500">No seu dia a dia (trabalho, família, vida geral), quão estressado você se sente?</p>
                     <div className="px-2 pt-2">
                         <Input
@@ -142,7 +142,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
-                    <Label className="font-semibold text-base">PERGUNTA 5C.2: QUAL É O SEU NÍVEL DE ANSIEDADE?</Label>
+                    <Label className="font-semibold text-base">Qual é o seu nível de ansiedade?</Label>
                     <p className="text-sm text-gray-500">O quanto a ansiedade (preocupações com o futuro, agitação constante) afeta você?</p>
                     <div className="px-2 pt-2">
                         <Input
@@ -161,7 +161,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
-                    <Label className="font-semibold text-base">PERGUNTA 5C.3: SENSÃO DE CONTROLE</Label>
+                    <Label className="font-semibold text-base">Sensação de controle</Label>
                     <p className="text-sm text-gray-500">Você sente que tem controle sobre o estresse e as pressões da sua vida diária?</p>
                     <RadioGroup
                         value={data.bloco_5c_control || ''}
@@ -181,7 +181,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 <h3 className="text-lg font-semibold border-b pb-2 text-primary">5D. Contexto Social</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5D.1: ESTRESSE NO TRABALHO</Label>
+                    <Label className="font-semibold text-base">Estresse no trabalho</Label>
                     <p className="text-sm text-gray-500">O quanto seu ambiente de trabalho é estressante?</p>
                     <div className="px-2 pt-2">
                         <Input
@@ -200,7 +200,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
-                    <Label className="font-semibold text-base">PERGUNTA 5D.2: CONFLITOS FAMILIARES / PESSOAIS</Label>
+                    <Label className="font-semibold text-base">Conflitos familiares / pessoais</Label>
                     <p className="text-sm text-gray-500">Tem tido conflitos familiares ou pessoais recentes?</p>
                     <div className="px-2 pt-2">
                         <Input
@@ -219,7 +219,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
-                    <Label className="font-semibold text-base">PERGUNTA 5D.3: PREOCUPAÇÃO FINANCEIRA</Label>
+                    <Label className="font-semibold text-base">Preocupação financeira</Label>
                     <p className="text-sm text-gray-500">Sua situação financeira te gera preocupação?</p>
                     <div className="px-2 pt-2">
                         <Input
@@ -240,10 +240,10 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5E: Atividade Física */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5E: ATIVIDADE FÍSICA E TENSÃO DIÁRIA</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">Atividade física e tensão diária</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5E.1: TEMPO SENTADO CONTÍNUO</Label>
+                    <Label className="font-semibold text-base">Tempo sentado contínuo</Label>
                     <p className="text-sm text-gray-500">Quantas horas por dia fica sentado direto?</p>
                     <Input
                         type="number"
@@ -256,7 +256,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5E.2: ESTILO DE VIDA GERAL</Label>
+                    <Label className="font-semibold text-base">Estilo de vida geral</Label>
                     <p className="text-sm text-gray-500">Qual o seu nível de estilo de vida atual?</p>
                     <RadioGroup
                         value={data.bloco_5e_lifestyle || ''}
@@ -272,7 +272,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5E.3: TIPO DE EXERCÍCIO QUE FAZ</Label>
+                    <Label className="font-semibold text-base">Tipo de exercício que faz</Label>
                     <p className="text-sm text-gray-500">Que tipo de exercício você pratica REGULARMENTE? (Marque TODOS que se aplicam)</p>
                     <div className="space-y-2">
                         {[
@@ -296,14 +296,14 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5E.4: INTENSIDADE DO EXERCÍCIO</Label>
+                    <Label className="font-semibold text-base">Intensidade do exercício</Label>
                     <p className="text-sm text-gray-500">Quando você se exercita, qual é a INTENSIDADE?</p>
                     <RadioGroup
                         value={data.bloco_5e_intensity || ''}
                         onValueChange={(v) => updateData({ bloco_5e_intensity: v })}
                         className="space-y-2"
                     >
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="int-none" /><Label htmlFor="int-none">NÃO FAÇO EXERCÍCIO</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="none" id="int-none" /><Label htmlFor="int-none">Não faço exercício</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="light" id="int-light" /><Label htmlFor="int-light">LEVE (Consigo falar durante, ex: caminhada tranquila)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="moderate" id="int-mod" /><Label htmlFor="int-mod">MODERADA (Consigo conversar com dificuldade)</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="intense" id="int-int" /><Label htmlFor="int-int">INTENSA (Falar é difícil, respirando pesado)</Label></div>
@@ -314,10 +314,10 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5F: Hidratação */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5F: HIDRATAÇÃO (Hydration Factor)</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">Hidratação</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5F.1: INGESTÃO DE ÁGUA DIÁRIA</Label>
+                    <Label className="font-semibold text-base">Ingestão de água diária</Label>
                     <p className="text-sm text-gray-500">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
                     <Input
                         type="number"
@@ -330,7 +330,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5F.2: COR DA URINA</Label>
+                    <Label className="font-semibold text-base">Cor da urina</Label>
                     <p className="text-sm text-gray-500">Qual é a COR da sua URINA na maior parte do dia?</p>
                     <RadioGroup
                         value={data.bloco_5f_urine_color || ''}
@@ -345,7 +345,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5F.3: FREQUÊNCIA DE MICÇÃO</Label>
+                    <Label className="font-semibold text-base">Frequência de micção</Label>
                     <p className="text-sm text-gray-500">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
                     <Input
                         type="number"
@@ -358,7 +358,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5F.4: SINTOMAS DE DESIDRATAÇÃO</Label>
+                    <Label className="font-semibold text-base">Sintomas de desidratação</Label>
                     <p className="text-sm text-gray-500">Você sente com frequência algum disto?</p>
                     <div className="space-y-2">
                         <div className="flex items-center space-x-2">
@@ -391,10 +391,10 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5G: Nutrição */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5G: NUTRIÇÃO GERAL (Nutrition Factor)</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">Nutrição geral</h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5G.1: QUALIDADE NUTRICIONAL GERAL</Label>
+                    <Label className="font-semibold text-base">Qualidade nutricional geral</Label>
                     <p className="text-sm text-gray-500">Como você avalia a QUALIDADE da sua alimentação?</p>
                     <RadioGroup
                         value={data.bloco_5g_quality || ''}
@@ -410,7 +410,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5G.2: FREQUÊNCIA DE FRUTAS E VERDURAS</Label>
+                    <Label className="font-semibold text-base">Frequência de frutas e verduras</Label>
                     <p className="text-sm text-gray-500">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
                     <Input
                         type="number"
@@ -423,7 +423,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5G.3: INGESTÃO DE PROTEÍNA</Label>
+                    <Label className="font-semibold text-base">Ingestão de proteína</Label>
                     <p className="text-sm text-gray-500">Você consome PROTEÍNA em TODAS as refeições?</p>
                     <RadioGroup
                         value={data.bloco_5g_protein || ''}
@@ -438,7 +438,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5G.4: ALIMENTOS INFLAMATÓRIOS</Label>
+                    <Label className="font-semibold text-base">Alimentos inflamatórios</Label>
                     <p className="text-sm text-gray-500">Com que frequência você consome alimentos altamente inflamatórios? (Açúcar, fritura, álcool)</p>
                     <RadioGroup
                         value={data.bloco_5g_inflammatory || ''}
@@ -446,15 +446,15 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                         className="space-y-2"
                     >
                         <div className="flex items-center space-x-2"><RadioGroupItem value="daily" id="inf-1" /><Label htmlFor="inf-1">DIARIAMENTE ou quase todos os dias</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="several_week" id="inf-2" /><Label htmlFor="inf-2">VÁRIOS DIAS POR SEMANA</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="1_2_week" id="inf-3" /><Label htmlFor="inf-3">1-2 DIAS POR SEMANA</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="several_week" id="inf-2" /><Label htmlFor="inf-2">Vários dias por semana</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="1_2_week" id="inf-3" /><Label htmlFor="inf-3">1-2 dias por semana</Label></div>
                         <div className="flex items-center space-x-2"><RadioGroupItem value="rarely" id="inf-4" /><Label htmlFor="inf-4">RARAMENTE (1x ao mês)</Label></div>
-                        <div className="flex items-center space-x-2"><RadioGroupItem value="never" id="inf-5" /><Label htmlFor="inf-5">NUNCA</Label></div>
+                        <div className="flex items-center space-x-2"><RadioGroupItem value="never" id="inf-5" /><Label htmlFor="inf-5">Nunca</Label></div>
                     </RadioGroup>
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5G.5: DEFICIÊNCIAS NUTRICIONAIS CONHECIDAS</Label>
+                    <Label className="font-semibold text-base">Deficiências nutricionais conhecidas</Label>
                     <p className="text-sm text-gray-500">Você tem diagnóstico de alguma deficiência nutricional?</p>
                     <RadioGroup
                         value={data.bloco_5g_deficiency || ''}
@@ -471,10 +471,10 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
 
             {/* 5H: Ergonomia */}
             <section className="space-y-6">
-                <h3 className="text-lg font-semibold border-b pb-2 text-primary">SUB-BLOCO 5H: POSTURA E ERGONOMIA ⭐ NOVO</h3>
+                <h3 className="text-lg font-semibold border-b pb-2 text-primary">Postura e ergonomia </h3>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5H.1: ERGONOMIA NO TRABALHO</Label>
+                    <Label className="font-semibold text-base">Ergonomia no trabalho</Label>
                     <p className="text-sm text-gray-500">Como é seu AMBIENTE DE TRABALHO? (Se trabalha em escritório)</p>
                     <RadioGroup
                         value={data.bloco_5h_workspace || ''}
@@ -490,7 +490,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5H.2: TEMPO SENTADO CONTÍNUO</Label>
+                    <Label className="font-semibold text-base">Tempo sentado contínuo</Label>
                     <p className="text-sm text-gray-500">Qual é o MÁXIMO DE TEMPO que você fica sentado sem pausar?</p>
                     <div className="flex items-center gap-2">
                         <Input
@@ -506,7 +506,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5H.3: POSIÇÃO DE DORMIR</Label>
+                    <Label className="font-semibold text-base">Posição de dormir</Label>
                     <p className="text-sm text-gray-500">Como você DORME (posição habitual)?</p>
                     <RadioGroup
                         value={data.bloco_5h_sleep_position || ''}
@@ -521,7 +521,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5H.4: QUALIDADE DO COLCHÃO E TRAVESSEIRO ⭐ NOVO</Label>
+                    <Label className="font-semibold text-base">Qualidade do colchão e travesseiro </Label>
                     <p className="text-sm text-gray-500">Como está a QUALIDADE do seu colchão?</p>
                     <RadioGroup
                         value={data.bloco_5h_mattress || ''}
@@ -537,7 +537,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4">
-                    <Label className="font-semibold text-base">PERGUNTA 5H.5: HÁBITOS POSTURAIS PREJUDICIAIS ⭐ NOVO</Label>
+                    <Label className="font-semibold text-base">Hábitos posturais prejudiciais </Label>
                     <p className="text-sm text-gray-500">Você faz algum destes hábitos que PREJUDICAM postura?</p>
                     <div className="space-y-2">
                         {[

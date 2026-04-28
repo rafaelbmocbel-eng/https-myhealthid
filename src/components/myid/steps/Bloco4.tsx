@@ -11,7 +11,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
     return (
         <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="text-center mb-8">
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">BLOCO 4: CRENÇAS, COMPORTAMENTO E EXPECTATIVA</h2>
+                <h2 className="text-2xl font-bold text-gray-900 mb-2">Como você se sente em movimento</h2>
                 <p className="text-gray-500">
                     O que você "pensa" que a dor significa altera até 30% a intensidade que ela chega no seu cérebro.
                 </p>
@@ -19,7 +19,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
 
             <div className="space-y-8">
                 <div className="space-y-4">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.1: MEDO DO MOVIMENTO (CINESIOFOBIA)</Label>
+                    <Label className="text-base font-bold text-gray-800">Como você se sente ao se movimentar?</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Tenho muito medo que me movimentar da forma errada, abaixar para pegar um peso ou fazer exercícios piore muito meu problema."</p>
                     <RadioGroup
                         value={data.bloco_4_fear_movement?.toString() || ''}
@@ -41,7 +41,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.2: CRENÇA DE DANO (KNOWLEDGE)</Label>
+                    <Label className="text-base font-bold text-gray-800">Crença de dano</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Tenho certeza absoluta de que a minha dor acontece porque algo está 'rasgado', 'gastado', 'fora do lugar' ou 'estragado' e que só consertando a parte física a dor some."</p>
                     <RadioGroup
                         value={data.bloco_4_belief_damage?.toString() || ''}
@@ -63,7 +63,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.3: EVITAÇÃO (COMPORTAMENTO DE FUGA)</Label>
+                    <Label className="text-base font-bold text-gray-800">Evitação</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Mesmo que não doa muito AGORA, eu prefiro não fazer atividades importantes hoje só por garantia, de tanto medo de 'pagar a conta' e ter muita dor amanhã."</p>
                     <RadioGroup
                         value={data.bloco_4_avoidance?.toString() || ''}
@@ -85,7 +85,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.4: AUTO-EFICÁCIA (NÍVEL DE CONTROLE INTERNO)</Label>
+                    <Label className="text-base font-bold text-gray-800">Auto-eficácia</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Se eu realmente me concentrar e usar minhas próprias ferramentas (descanso, atividade moderada, respirar, pensar diferente), eu sinto que EU MESMO consigo diminuir minha dor sem depender de remédio ou médico toda vez."</p>
                     <RadioGroup
                         className="flex flex-wrap gap-2 sm:gap-4 mt-2"
@@ -110,7 +110,7 @@ export function Bloco4({ data, updateData }: Bloco4Props) {
                 </div>
 
                 <div className="space-y-4 pt-6 border-t border-muted">
-                    <Label className="text-base font-bold text-gray-800">PERGUNTA 4.5: EXPECTATIVA DE MELHORA</Label>
+                    <Label className="text-base font-bold text-gray-800">Expectativa de melhora</Label>
                     <p className="text-sm font-medium text-gray-600 italic">"Quanto você acredita que consegue melhorar do seu problema atual?"</p>
                     <RadioGroup
                         className="flex flex-wrap gap-2 sm:gap-4 mt-2"
