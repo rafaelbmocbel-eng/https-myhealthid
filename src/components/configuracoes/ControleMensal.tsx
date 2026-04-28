@@ -152,7 +152,7 @@ export default function ControleMensal() {
         tipo: tipo === 'plano' ? 'Plano' : 'Particular',
         plano: s.pacientes?.plano_saude || '-',
         valor_total: valor.toFixed(2),
-        repasse_40: (valor * REPASSE_PCT).toFixed(2),
+        repasse: (valor * REPASSE_PCT).toFixed(2),
       };
     });
     exportToCsv(`controle_mensal_${format(new Date(), 'yyyy-MM')}.csv`, rows, [
@@ -162,7 +162,7 @@ export default function ControleMensal() {
       { key: 'tipo', label: 'Tipo' },
       { key: 'plano', label: 'Plano' },
       { key: 'valor_total', label: 'Valor Total (R$)' },
-      { key: 'repasse_40', label: 'Repasse 40% (R$)' },
+      { key: 'repasse', label: `Repasse ${repasseLabel} (R$)` },
     ]);
   };
 
