@@ -161,7 +161,7 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                 </div>
 
                 <div className="space-y-4 pt-4 border-t border-muted border-dashed">
-                    <Label className="font-semibold text-base">Sensão de controle</Label>
+                    <Label className="font-semibold text-base">Sensação de controle</Label>
                     <p className="text-sm text-gray-500">Você sente que tem controle sobre o estresse e as pressões da sua vida diária?</p>
                     <RadioGroup
                         value={data.bloco_5c_control || ''}
