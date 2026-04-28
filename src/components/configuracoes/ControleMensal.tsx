@@ -11,8 +11,9 @@ import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/utils/exportCsv';
 import { cn } from '@/lib/utils';
+import { Input } from '@/components/ui/input';
 
-const REPASSE_PCT = 0.4; // 40%
+const REPASSE_STORAGE_KEY = 'controle-mensal-repasse-pct';
 
 type Filtro = 'todos' | 'particular' | 'plano';
 
@@ -22,6 +23,22 @@ export default function ControleMensal() {
   const [mesOffset, setMesOffset] = useState(0); // 0 = mês atual, 1 = mês passado...
   const [profissionalId, setProfissionalId] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<Filtro>('todos');
+  const [repassePctInput, setRepassePctInput] = useState<string>(() => {
+    if (typeof window === 'undefined') return '40';
+    return localStorage.getItem(REPASSE_STORAGE_KEY) || '40';
+  });
+  const REPASSE_PCT = useMemo(() => {
+    const n = parseFloat(repassePctInput.replace(',', '.'));
+    if (isNaN(n) || n < 0) return 0;
+    if (n > 100) return 1;
+    return n / 100;
+  }, [repassePctInput]);
+  const repasseLabel = `${(REPASSE_PCT * 100).toFixed(REPASSE_PCT * 100 % 1 === 0 ? 0 : 1)}%`;
+
+  const handleRepasseChange = (v: string) => {
+    setRepassePctInput(v);
+    if (typeof window !== 'undefined') localStorage.setItem(REPASSE_STORAGE_KEY, v);
+  };
 
   const { inicio, fim, label } = useMemo(() => {
     const ref = subMonths(new Date(), mesOffset);
