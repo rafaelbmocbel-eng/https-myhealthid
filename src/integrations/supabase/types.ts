@@ -555,11 +555,14 @@ export type Database = {
           numero_sessao: number
           observacoes: string | null
           paciente_id: string
+          plano_nome: string | null
           status: string
           terapeuta_id: string
           tipo_atendimento: string | null
+          tipo_cliente: string | null
           updated_at: string
           valor_cobrado: number | null
+          valor_guia: number | null
         }
         Insert: {
           agendamento_id?: string | null
@@ -571,11 +574,14 @@ export type Database = {
           numero_sessao?: number
           observacoes?: string | null
           paciente_id: string
+          plano_nome?: string | null
           status?: string
           terapeuta_id: string
           tipo_atendimento?: string | null
+          tipo_cliente?: string | null
           updated_at?: string
           valor_cobrado?: number | null
+          valor_guia?: number | null
         }
         Update: {
           agendamento_id?: string | null
@@ -587,11 +593,14 @@ export type Database = {
           numero_sessao?: number
           observacoes?: string | null
           paciente_id?: string
+          plano_nome?: string | null
           status?: string
           terapeuta_id?: string
           tipo_atendimento?: string | null
+          tipo_cliente?: string | null
           updated_at?: string
           valor_cobrado?: number | null
+          valor_guia?: number | null
         }
         Relationships: [
           {
@@ -1690,6 +1699,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           origem: string | null
+          plano_nome: string | null
           plano_saude: string | null
           portal_token: string | null
           responsavel_id: string | null
@@ -1697,6 +1707,7 @@ export type Database = {
           sobrenome: string
           telefone: string | null
           terapeuta_id: string
+          tipo_cliente: string
           tipo_pagamento: string
           updated_at: string
           user_id: string | null
@@ -1713,6 +1724,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           origem?: string | null
+          plano_nome?: string | null
           plano_saude?: string | null
           portal_token?: string | null
           responsavel_id?: string | null
@@ -1720,6 +1732,7 @@ export type Database = {
           sobrenome?: string
           telefone?: string | null
           terapeuta_id: string
+          tipo_cliente?: string
           tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
@@ -1736,6 +1749,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           origem?: string | null
+          plano_nome?: string | null
           plano_saude?: string | null
           portal_token?: string | null
           responsavel_id?: string | null
@@ -1743,6 +1757,7 @@ export type Database = {
           sobrenome?: string
           telefone?: string | null
           terapeuta_id?: string
+          tipo_cliente?: string
           tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
