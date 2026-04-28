@@ -555,11 +555,14 @@ export type Database = {
           numero_sessao: number
           observacoes: string | null
           paciente_id: string
+          plano_nome: string | null
           status: string
           terapeuta_id: string
           tipo_atendimento: string | null
+          tipo_cliente: string | null
           updated_at: string
           valor_cobrado: number | null
+          valor_guia: number | null
         }
         Insert: {
           agendamento_id?: string | null
@@ -571,11 +574,14 @@ export type Database = {
           numero_sessao?: number
           observacoes?: string | null
           paciente_id: string
+          plano_nome?: string | null
           status?: string
           terapeuta_id: string
           tipo_atendimento?: string | null
+          tipo_cliente?: string | null
           updated_at?: string
           valor_cobrado?: number | null
+          valor_guia?: number | null
         }
         Update: {
           agendamento_id?: string | null
@@ -587,11 +593,14 @@ export type Database = {
           numero_sessao?: number
           observacoes?: string | null
           paciente_id?: string
+          plano_nome?: string | null
           status?: string
           terapeuta_id?: string
           tipo_atendimento?: string | null
+          tipo_cliente?: string | null
           updated_at?: string
           valor_cobrado?: number | null
+          valor_guia?: number | null
         }
         Relationships: [
           {
