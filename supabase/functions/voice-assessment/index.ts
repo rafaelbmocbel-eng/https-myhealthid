@@ -314,11 +314,23 @@ serve(async (req) => {
     const userContent: any[] = [];
 
     if (hasAudio) {
+      // Normalize mime type — strip codec params and map to gateway-accepted format
+      const cleanMime = (audioMimeType || "audio/webm").split(";")[0].toLowerCase().trim();
+      let audioFormat: string;
+      if (cleanMime.includes("webm")) audioFormat = "webm";
+      else if (cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac")) audioFormat = "mp4";
+      else if (cleanMime.includes("mpeg") || cleanMime.includes("mp3")) audioFormat = "mp3";
+      else if (cleanMime.includes("wav")) audioFormat = "wav";
+      else if (cleanMime.includes("ogg")) audioFormat = "ogg";
+      else audioFormat = "webm"; // fallback
+
+      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> format=${audioFormat}, base64Len=${audioBase64.length}`);
+
       userContent.push({
         type: "input_audio",
         input_audio: {
           data: audioBase64,
-          format: audioMimeType === "audio/webm" ? "webm" : audioMimeType === "audio/mp4" ? "mp4" : "webm",
+          format: audioFormat,
         },
       });
       userContent.push({
@@ -364,7 +376,19 @@ serve(async (req) => {
       }
       const t = await response.text();
       console.error("AI gateway error:", response.status, t);
-      throw new Error("Erro ao processar avaliação");
+
+      // Surface a useful error to the client — common causes:
+      // - 413: payload too large (audio muito longo)
+      // - 400: formato de áudio não suportado
+      let userMsg = `Erro do servidor de IA (${response.status}).`;
+      if (response.status === 413) userMsg = "Áudio muito longo. Grave trechos de até ~5 minutos ou divida em partes.";
+      else if (response.status === 400) userMsg = "Formato de áudio não aceito pelo modelo. Tente novamente ou use a transcrição em texto.";
+      else if (response.status >= 500) userMsg = "Servidor de IA temporariamente indisponível. Tente novamente em instantes.";
+
+      return new Response(JSON.stringify({ error: userMsg, details: t.slice(0, 500) }), {
+        status: response.status,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const data = await response.json();
