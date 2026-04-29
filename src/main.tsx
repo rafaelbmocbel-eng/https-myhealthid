@@ -24,14 +24,27 @@ if (!isSafeForSW && "serviceWorker" in navigator) {
   });
 }
 
-// ── Dynamic import error recovery (one retry only) ──
+// ── Dynamic import error recovery ──
+// Only reload when:
+//   1. The page is currently visible (user is actively using the app)
+//   2. We haven't already tried reloading recently
+// This prevents the "app reinicia ao reabrir" issue on mobile, where the OS
+// suspends the tab, chunks expire, and an automatic reload kills user state.
 const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
 const DYNAMIC_IMPORT_ERROR_PATTERN =
   /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
 
 const reloadOnDynamicImportFailure = () => {
-  if (window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY)) return;
-  window.sessionStorage.setItem(DYNAMIC_IMPORT_RELOAD_KEY, "1");
+  // Don't reload if the tab is hidden — the user just brought the app back
+  // from background; a reload would wipe their state.
+  if (document.visibilityState !== "visible") {
+    // Defer: try again only when the user explicitly navigates next time
+    return;
+  }
+  const last = Number(window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY) || 0);
+  // Only allow one reload per 30s window
+  if (Date.now() - last < 30_000) return;
+  window.sessionStorage.setItem(DYNAMIC_IMPORT_RELOAD_KEY, String(Date.now()));
   window.location.reload();
 };
 
@@ -51,9 +64,6 @@ window.addEventListener("unhandledrejection", (event) => {
   event.preventDefault();
   reloadOnDynamicImportFailure();
 });
-
-// Clear the retry flag on successful load
-window.sessionStorage.removeItem(DYNAMIC_IMPORT_RELOAD_KEY);
 
 // ── Register SW only in production, outside iframes ──
 if (isSafeForSW) {
