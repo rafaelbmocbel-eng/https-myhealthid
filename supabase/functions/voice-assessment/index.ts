@@ -311,38 +311,88 @@ serve(async (req) => {
 
     const contextInfo = `SERVIÇO: ${serviceLabel}\nPACIENTE: ${patientName || 'Não informado'}, ${patientAge || '?'} anos, Sexo: ${patientSex || '?'}`;
 
-    const userContent: any[] = [];
-
+    // Normalize mime once (used by both passes)
+    let audioFormat = "webm";
     if (hasAudio) {
-      // Normalize mime type — strip codec params and map to gateway-accepted format
       const cleanMime = (audioMimeType || "audio/webm").split(";")[0].toLowerCase().trim();
-      let audioFormat: string;
       if (cleanMime.includes("webm")) audioFormat = "webm";
       else if (cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac")) audioFormat = "mp4";
       else if (cleanMime.includes("mpeg") || cleanMime.includes("mp3")) audioFormat = "mp3";
       else if (cleanMime.includes("wav")) audioFormat = "wav";
       else if (cleanMime.includes("ogg")) audioFormat = "ogg";
-      else audioFormat = "webm"; // fallback
-
       console.log(`[voice-assessment] Audio: mime=${cleanMime} -> format=${audioFormat}, base64Len=${audioBase64.length}`);
+    }
 
+    // ───────────────────────────────────────────────────────────────
+    // PASS 1 — Transcrição literal (preserva fala completa, sem resumir)
+    // Só executa quando há áudio E não há transcrição manual prévia válida.
+    // ───────────────────────────────────────────────────────────────
+    let faithfulTranscript = hasText ? String(transcript).trim() : "";
+
+    if (hasAudio && !hasText) {
+      try {
+        const transcribeRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "system",
+                content:
+                  "Você é um transcritor clínico fiel. Transcreva o áudio em PT-BR mantendo CADA fala, na íntegra, sem resumir, sem omitir muletas, sem reordenar. Use parágrafos curtos para mudanças de fala. NÃO adicione comentários, títulos ou interpretações — apenas a transcrição literal completa.",
+              },
+              {
+                role: "user",
+                content: [
+                  { type: "input_audio", input_audio: { data: audioBase64, format: audioFormat } },
+                  { type: "text", text: "Transcreva o áudio inteiro fielmente, palavra por palavra, em PT-BR." },
+                ],
+              },
+            ],
+          }),
+        });
+
+        if (transcribeRes.ok) {
+          const tData = await transcribeRes.json();
+          const txt = tData?.choices?.[0]?.message?.content;
+          if (typeof txt === "string" && txt.trim().length > 0) {
+            faithfulTranscript = txt.trim();
+            console.log(`[voice-assessment] Faithful transcript ok (${faithfulTranscript.length} chars)`);
+          } else {
+            console.warn("[voice-assessment] Pass 1 returned no text content");
+          }
+        } else {
+          console.warn(`[voice-assessment] Pass 1 transcription failed (${transcribeRes.status}); falling back to single-pass`);
+        }
+      } catch (err) {
+        console.warn("[voice-assessment] Pass 1 transcription threw; falling back:", err);
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────────
+    // PASS 2 — Avaliação clínica estruturada
+    // Sempre envia a transcrição literal (quando disponível) para o modelo
+    // analisar; mantém o áudio anexado como referência para nuances.
+    // ───────────────────────────────────────────────────────────────
+    const userContent: any[] = [];
+
+    if (hasAudio) {
       userContent.push({
         type: "input_audio",
-        input_audio: {
-          data: audioBase64,
-          format: audioFormat,
-        },
-      });
-      userContent.push({
-        type: "text",
-        text: `${contextInfo}\n\nAnalise o áudio da consulta clínica. Transcreva fielmente em PT-BR e gere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases).`,
+        input_audio: { data: audioBase64, format: audioFormat },
       });
     }
 
-    if (hasText) {
+    if (faithfulTranscript) {
       userContent.push({
         type: "text",
-        text: `${contextInfo}\n\nTRANSCRIÇÃO DA CONVERSA CLÍNICA:\n\n${transcript}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases).`,
+        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" da resposta deve conter EXATAMENTE o texto acima, palavra por palavra — não condense, não parafraseie.`,
+      });
+    } else {
+      userContent.push({
+        type: "text",
+        text: `${contextInfo}\n\nAnalise o áudio da consulta clínica. Transcreva fielmente em PT-BR no campo "transcricao" (íntegra, sem resumir) e gere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases).`,
       });
     }
 
@@ -397,7 +447,13 @@ serve(async (req) => {
 
     const assessment = JSON.parse(toolCall.function.arguments);
 
-    const transcricao = assessment.transcricao || transcript || "";
+    // Prefer the faithful transcript (Pass 1 / user-provided) so that the
+    // shown text doesn't shrink after structuring. Fallback to whatever the
+    // model returned if Pass 1 wasn't available.
+    const transcricao =
+      faithfulTranscript ||
+      assessment.transcricao ||
+      String(transcript || "");
     delete assessment.transcricao;
 
     return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length }), {
