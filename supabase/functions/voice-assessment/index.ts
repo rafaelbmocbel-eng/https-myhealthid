@@ -447,7 +447,13 @@ serve(async (req) => {
 
     const assessment = JSON.parse(toolCall.function.arguments);
 
-    const transcricao = assessment.transcricao || transcript || "";
+    // Prefer the faithful transcript (Pass 1 / user-provided) so that the
+    // shown text doesn't shrink after structuring. Fallback to whatever the
+    // model returned if Pass 1 wasn't available.
+    const transcricao =
+      faithfulTranscript ||
+      assessment.transcricao ||
+      String(transcript || "");
     delete assessment.transcricao;
 
     return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length }), {
