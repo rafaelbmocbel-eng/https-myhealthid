@@ -72,8 +72,16 @@ Deno.serve(async (req) => {
         }
         userId = existingUser.id;
       } else {
+        const msg = signUpErr.message || '';
+        const lower = msg.toLowerCase();
+        let friendly = msg;
+        if (lower.includes('weak') || lower.includes('pwned')) {
+          friendly = 'Senha muito fraca. Escolha uma senha mais forte (evite "123456", "senha", etc.).';
+        } else if (lower.includes('invalid') && lower.includes('email')) {
+          friendly = 'E-mail inválido. Verifique e tente novamente.';
+        }
         return new Response(
-          JSON.stringify({ error: signUpErr.message }),
+          JSON.stringify({ error: friendly }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
