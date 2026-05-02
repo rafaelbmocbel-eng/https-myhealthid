@@ -174,11 +174,11 @@ export default function CadastroCliente() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="Mínimo 6 caracteres"
+                  placeholder="Mínimo 8 caracteres"
                   value={form.password}
                   onChange={(e) => setForm(f => ({ ...f, password: e.target.value }))}
                   required
-                  minLength={6}
+                  minLength={8}
                   className="pr-10 h-11 rounded-xl text-[16px] sm:text-sm"
                 />
                 <button
