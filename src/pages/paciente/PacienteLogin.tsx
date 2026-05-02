@@ -388,10 +388,11 @@ export default function PacienteLogin() {
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
+                  placeholder={tab === 'register' ? 'Mínimo 8 caracteres' : '••••••••'}
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   required
+                  minLength={tab === 'register' ? 8 : 6}
                   className="pr-10 h-11 rounded-xl text-[16px] sm:text-sm"
                 />
                 <button
@@ -402,6 +403,11 @@ export default function PacienteLogin() {
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
+              {tab === 'register' && (
+                <p className="text-[10px] text-muted-foreground mt-1">
+                  Use uma senha forte: combine letras, números e símbolos. Evite "123456" ou "senha".
+                </p>
+              )}
             </div>
             <Button
               type="submit"
