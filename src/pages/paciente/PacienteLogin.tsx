@@ -184,15 +184,46 @@ export default function PacienteLogin() {
 
         if (error) {
           const message = error.message.toLowerCase();
+          const code = (error as any)?.code?.toLowerCase?.() || '';
           const isAlreadyRegistered =
             message.includes('already registered') ||
             message.includes('already been registered') ||
-            message.includes('user already registered');
+            message.includes('user already registered') ||
+            code === 'user_already_exists' ||
+            code === 'email_exists';
           const isWeakPassword =
-            message.includes('weak') ||
+            code === 'weak_password' ||
+            message.includes('weak password') ||
             message.includes('pwned') ||
             message.includes('password should');
-          const isInvalidEmail = message.includes('invalid') && message.includes('email');
+          const isInvalidEmail =
+            code === 'email_address_invalid' ||
+            code === 'validation_failed' ||
+            message.includes('email address is invalid') ||
+            message.includes('email address') && message.includes('invalid') ||
+            message.includes('unable to validate email');
+
+          // Order matters: already-registered first (overrides invalid)
+          if (isAlreadyRegistered) {
+            const { error: signInError } = await signIn(form.email, form.password);
+
+            if (!signInError) {
+              toast({
+                title: 'Conta já existente',
+                description: 'Você já tinha cadastro. Entrando no portal...',
+              });
+              return;
+            }
+
+            toast({
+              title: 'E-mail já cadastrado',
+              description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
+              variant: 'destructive',
+            });
+            setTab('login');
+            setSubmitting(false);
+            return;
+          }
 
           if (isWeakPassword) {
             toast({
@@ -206,32 +237,10 @@ export default function PacienteLogin() {
 
           if (isInvalidEmail) {
             toast({
-              title: 'E-mail inválido',
-              description: 'Verifique o e-mail digitado e tente novamente.',
+              title: 'E-mail não aceito',
+              description: 'Use um e-mail válido e real (ex: gmail, outlook). Domínios temporários podem ser bloqueados.',
               variant: 'destructive',
             });
-            setSubmitting(false);
-            return;
-          }
-
-          if (isAlreadyRegistered) {
-            const { error: signInError } = await signIn(form.email, form.password);
-
-            if (!signInError) {
-              toast({
-                title: 'Conta já existente',
-                description: 'Você já tinha cadastro. Entrando no portal...',
-              });
-              // submitting stays true — useEffect will handle redirect
-              return;
-            }
-
-            toast({
-              title: 'E-mail já cadastrado',
-              description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
-              variant: 'destructive',
-            });
-            setTab('login');
             setSubmitting(false);
             return;
           }
