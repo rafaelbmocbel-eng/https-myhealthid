@@ -688,27 +688,23 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          {/* TAB: ENGAJAMENTO */}
-          <TabsContent value="engajamento" className="mt-4 space-y-6">
+          {/* TAB: PORTAL — Controle dos espaços do cliente */}
+          <TabsContent value="portal" className="mt-4 space-y-6">
             {paciente && (
-              <PacienteEngajamentoTab
-                pacienteId={id!}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-              />
-            )}
-            <div>
-              <NpsSurveyCard pacienteId={id!} />
-            </div>
-          </TabsContent>
-
-          {/* TAB: CHAT INTERNO */}
-          <TabsContent value="chat" className="mt-4">
-            {paciente && (
-              <ChatPacienteTab
-                pacienteId={id!}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                pacienteTelefone={paciente.telefone}
-              />
+              <>
+                <PortalControleTab
+                  pacienteId={id!}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  portalToken={paciente.portal_token}
+                  telefone={paciente.telefone}
+                />
+                <ChatPacienteTab
+                  pacienteId={id!}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  pacienteTelefone={paciente.telefone}
+                />
+                <NpsSurveyCard pacienteId={id!} />
+              </>
             )}
           </TabsContent>
         </Tabs>
