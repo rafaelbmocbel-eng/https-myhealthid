@@ -597,7 +597,7 @@ export default function PacientePerfil() {
               <span>Voltar para Visão Integrada</span>
             </button>
           )}
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full mb-4">
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
@@ -607,11 +607,8 @@ export default function PacientePerfil() {
             <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
               <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
             </TabsTrigger>
-            <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
+            <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Controle do Portal do Paciente">
+              <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
             </TabsTrigger>
           </TabsList>
 
