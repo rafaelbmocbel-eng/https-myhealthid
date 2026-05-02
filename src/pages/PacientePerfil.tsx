@@ -14,7 +14,7 @@ import {
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
   Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
-  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target, LayoutDashboard,
+  BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,7 +29,7 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
-import PacienteEngajamentoTab from '@/components/paciente/PacienteEngajamentoTab';
+import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
@@ -55,15 +55,17 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || '';
-  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | engajamento | chat
-  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'engajamento', 'chat'];
+  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
+  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal'];
   const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
     ? 'evolucao-prontuario'
     : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
       ? 'historico'
       : rawTab === 'protocolos'
         ? 'diretrizes'
-        : rawTab;
+        : rawTab === 'engajamento' || rawTab === 'chat'
+          ? 'portal'
+          : rawTab;
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { user, loading: authLoading } = useAuth();
@@ -559,20 +561,10 @@ export default function PacientePerfil() {
           </Sheet>
         </div>
 
-        {/* Contact inline + ações WhatsApp */}
+        {/* Contact inline */}
         <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3 px-1">
           {paciente.telefone && (
-            <>
-              <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>
-              <button
-                type="button"
-                onClick={() => window.open(`https://wa.me/55${paciente.telefone!.replace(/\D/g, '')}`, '_blank')}
-                className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-success/10 text-success hover:bg-success/20 transition-colors text-[11px] font-medium"
-                title="Abrir conversa no WhatsApp"
-              >
-                <MessageCircle className="h-3 w-3" /> WhatsApp
-              </button>
-            </>
+            <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>
           )}
           {paciente.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{paciente.email}</span>}
           {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
@@ -605,7 +597,7 @@ export default function PacientePerfil() {
               <span>Voltar para Visão Integrada</span>
             </button>
           )}
-          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
+          <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-4 h-auto gap-1 w-full mb-4">
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
@@ -615,11 +607,8 @@ export default function PacientePerfil() {
             <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
               <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
             </TabsTrigger>
-            <TabsTrigger value="engajamento" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <Heart className="h-4 w-4 shrink-0" /> <span>Engajar</span>
-            </TabsTrigger>
-            <TabsTrigger value="chat" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
-              <MessageCircle className="h-4 w-4 shrink-0" /> <span>Chat</span>
+            <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Controle do Portal do Paciente">
+              <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
             </TabsTrigger>
           </TabsList>
 
@@ -699,27 +688,23 @@ export default function PacientePerfil() {
             )}
           </TabsContent>
 
-          {/* TAB: ENGAJAMENTO */}
-          <TabsContent value="engajamento" className="mt-4 space-y-6">
+          {/* TAB: PORTAL — Controle dos espaços do cliente */}
+          <TabsContent value="portal" className="mt-4 space-y-6">
             {paciente && (
-              <PacienteEngajamentoTab
-                pacienteId={id!}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-              />
-            )}
-            <div>
-              <NpsSurveyCard pacienteId={id!} />
-            </div>
-          </TabsContent>
-
-          {/* TAB: CHAT INTERNO */}
-          <TabsContent value="chat" className="mt-4">
-            {paciente && (
-              <ChatPacienteTab
-                pacienteId={id!}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
-                pacienteTelefone={paciente.telefone}
-              />
+              <>
+                <PortalControleTab
+                  pacienteId={id!}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  portalToken={paciente.portal_token}
+                  telefone={paciente.telefone}
+                />
+                <ChatPacienteTab
+                  pacienteId={id!}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                  pacienteTelefone={paciente.telefone}
+                />
+                <NpsSurveyCard pacienteId={id!} />
+              </>
             )}
           </TabsContent>
         </Tabs>
