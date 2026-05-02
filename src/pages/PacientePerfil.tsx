@@ -55,15 +55,17 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || '';
-  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | engajamento | chat
-  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'engajamento', 'chat'];
+  // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
+  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal'];
   const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
     ? 'evolucao-prontuario'
     : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
       ? 'historico'
       : rawTab === 'protocolos'
         ? 'diretrizes'
-        : rawTab;
+        : rawTab === 'engajamento' || rawTab === 'chat'
+          ? 'portal'
+          : rawTab;
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
   const { user, loading: authLoading } = useAuth();
