@@ -188,6 +188,31 @@ export default function PacienteLogin() {
             message.includes('already registered') ||
             message.includes('already been registered') ||
             message.includes('user already registered');
+          const isWeakPassword =
+            message.includes('weak') ||
+            message.includes('pwned') ||
+            message.includes('password should');
+          const isInvalidEmail = message.includes('invalid') && message.includes('email');
+
+          if (isWeakPassword) {
+            toast({
+              title: 'Senha muito fraca',
+              description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns como "123456" ou "senha").',
+              variant: 'destructive',
+            });
+            setSubmitting(false);
+            return;
+          }
+
+          if (isInvalidEmail) {
+            toast({
+              title: 'E-mail inválido',
+              description: 'Verifique o e-mail digitado e tente novamente.',
+              variant: 'destructive',
+            });
+            setSubmitting(false);
+            return;
+          }
 
           if (isAlreadyRegistered) {
             const { error: signInError } = await signIn(form.email, form.password);
