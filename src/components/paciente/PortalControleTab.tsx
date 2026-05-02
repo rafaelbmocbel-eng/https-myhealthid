@@ -78,7 +78,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const pagPendentes = data.pagamentos.filter((p: any) => p.status === 'pendente').length;
   const pagPagos30 = data.pagamentos.filter((p: any) => p.status === 'pago' && p.created_at >= since30).reduce((s: number, p: any) => s + Number(p.valor || 0), 0);
   const lastChat = data.chat[0];
-  const chatNaoLido = data.chat.filter((c: any) => c.remetente_tipo === 'paciente' && c.created_at >= since7).length;
+  const chatNaoLido = data.chat.filter((c: any) => c.remetente === 'paciente' && c.created_at >= since7).length;
   const respostasPendentes = data.respostas.filter((r: any) => r.status !== 'concluida').length;
 
   const copyLink = () => {
