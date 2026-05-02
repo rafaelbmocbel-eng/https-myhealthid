@@ -29,31 +29,32 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
   const { data, isLoading } = useQuery({
     queryKey: ['portal-controle', pacienteId],
     queryFn: async () => {
+      const sb: any = supabase;
       const [
         dailyLogs, execucoes, prescricoes, agendamentos, pagamentos,
         chat, eventoInscricoes, healthData, respostas
       ] = await Promise.all([
-        supabase.from('daily_logs').select('id, mood, pain, energy, sleep_hours, created_at').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }),
-        supabase.from('studio_execucoes').select('id, created_at, treino_id').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }),
-        supabase.from('prescricoes_exercicios').select('id, ativa').eq('paciente_id', pacienteId),
-        supabase.from('agendamentos').select('id, data_inicio, status').eq('paciente_id', pacienteId).gte('data_inicio', since30),
-        supabase.from('pagamentos_paciente').select('id, valor, status, created_at').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
-        supabase.from('chat_mensagens').select('id, created_at, remetente_tipo').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
-        supabase.from('evento_inscricoes').select('id, evento_id, created_at').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(10),
-        supabase.from('health_data').select('id, created_at').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }).limit(50),
-        supabase.from('respostas_avaliacao').select('id, created_at, status').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
+        sb.from('daily_logs').select('id, mood, pain, energy, sleep_hours, created_at').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }),
+        sb.from('studio_execucoes').select('id, created_at, treino_id').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }),
+        sb.from('prescricoes_exercicios').select('id, ativa').eq('paciente_id', pacienteId),
+        sb.from('agendamentos').select('id, data_inicio, status').eq('paciente_id', pacienteId).gte('data_inicio', since30),
+        sb.from('pagamentos_paciente').select('id, valor, status, created_at').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
+        sb.from('chat_mensagens').select('id, created_at, remetente, lida').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
+        sb.from('evento_inscricoes').select('id, evento_id, created_at').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(10),
+        sb.from('health_metrics').select('id, created_at').eq('paciente_id', pacienteId).gte('created_at', since30).order('created_at', { ascending: false }).limit(50),
+        sb.from('respostas_avaliacao_paciente').select('id, created_at, status').eq('paciente_id', pacienteId).order('created_at', { ascending: false }).limit(20),
       ]);
 
       return {
-        dailyLogs: dailyLogs.data || [],
-        execucoes: execucoes.data || [],
-        prescricoes: prescricoes.data || [],
-        agendamentos: agendamentos.data || [],
-        pagamentos: pagamentos.data || [],
-        chat: chat.data || [],
-        eventos: eventoInscricoes.data || [],
-        health: healthData.data || [],
-        respostas: respostas.data || [],
+        dailyLogs: (dailyLogs.data || []) as any[],
+        execucoes: (execucoes.data || []) as any[],
+        prescricoes: (prescricoes.data || []) as any[],
+        agendamentos: (agendamentos.data || []) as any[],
+        pagamentos: (pagamentos.data || []) as any[],
+        chat: (chat.data || []) as any[],
+        eventos: (eventoInscricoes.data || []) as any[],
+        health: (healthData.data || []) as any[],
+        respostas: (respostas.data || []) as any[],
       };
     },
     enabled: !!user,
