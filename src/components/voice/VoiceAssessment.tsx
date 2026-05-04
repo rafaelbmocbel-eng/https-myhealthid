@@ -1401,21 +1401,39 @@ ${resumoTecnicas}`;
 }
 
 // ── Collapsible Section Card ──
-function SectionCard({ icon: Icon, title, sectionKey, expanded, toggle, children, danger }: {
+function SectionCard({ icon: Icon, title, sectionKey, expanded, toggle, children, danger, onRemove, hidden }: {
   icon: any; title: string; sectionKey: string;
   expanded: Record<string, boolean>; toggle: (k: string) => void;
   children: React.ReactNode; danger?: boolean;
+  onRemove?: (k: string) => void;
+  hidden?: Record<string, boolean>;
 }) {
+  if (hidden?.[sectionKey]) return null;
   const isOpen = expanded[sectionKey];
   return (
     <Card className={cn('transition-all', danger && 'border-destructive/30 bg-destructive/5')}>
-      <button onClick={() => toggle(sectionKey)} className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
-        <div className="flex items-center gap-2">
+      <div className="w-full flex items-center justify-between p-4 hover:bg-muted/30 transition-colors">
+        <button onClick={() => toggle(sectionKey)} className="flex items-center gap-2 flex-1 text-left">
           <Icon className={cn('h-4 w-4', danger ? 'text-destructive' : 'text-primary')} />
           <span className="font-semibold text-sm">{title}</span>
+        </button>
+        <div className="flex items-center gap-1">
+          {onRemove && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-7 w-7 p-0 text-muted-foreground hover:text-destructive"
+              onClick={(e) => { e.stopPropagation(); onRemove(sectionKey); }}
+              title="Excluir esta seção"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+          <button onClick={() => toggle(sectionKey)} className="p-1">
+            {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
+          </button>
         </div>
-        {isOpen ? <ChevronUp className="h-4 w-4 text-muted-foreground" /> : <ChevronDown className="h-4 w-4 text-muted-foreground" />}
-      </button>
+      </div>
       {isOpen && <CardContent className="pt-0 pb-4 px-4">{children}</CardContent>}
     </Card>
   );
