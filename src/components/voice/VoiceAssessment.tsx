@@ -470,6 +470,34 @@ Detalhes completos no Histórico de Avaliações.`;
     setExpandedSections(prev => ({ ...prev, [key]: !prev[key] }));
   };
 
+  const removeSection = (key: string) => {
+    if (!confirm('Excluir esta seção da avaliação? Você pode reprocessar com a IA depois para regenerá-la.')) return;
+    setHiddenSections(prev => ({ ...prev, [key]: true }));
+    if (assessment) {
+      const updated = { ...assessment };
+      const fieldMap: Record<string, string | string[]> = {
+        soap: 'soap',
+        resumo: 'resumo_clinico',
+        dor: 'dor',
+        funcionalidade: 'funcionalidade',
+        psicossocial: 'fatores_psicossociais',
+        redflags: 'red_flags',
+        multi: 'raciocinio_multidisciplinar',
+        hipoteses: 'hipoteses_diagnosticas',
+        cif: 'cif_codes',
+        diretriz: 'diretriz_tratamento',
+        plano: 'plano_tratamento',
+        insights: 'insights_baseados_evidencia',
+      };
+      const f = fieldMap[key];
+      if (f && typeof f === 'string') {
+        delete updated[f];
+        setAssessment(updated);
+        setIsSaved(false);
+      }
+    }
+  };
+
   const copyAssessment = () => {
     if (!assessment) return;
     const text = `AVALIAÇÃO CLÍNICA POR VOZ — ${SERVICE_LABELS[serviceType]}
