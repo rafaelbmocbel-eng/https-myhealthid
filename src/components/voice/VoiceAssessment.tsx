@@ -66,10 +66,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [isSaved, setIsSaved] = useState(false);
   const [assessment, setAssessment] = useState<any>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
-    soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: false,
-    redflags: true, multi: false, hipoteses: true, cif: false, diretriz: true,
-    plano: false, insights: false,
+    soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: true,
+    redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
+    plano: true, insights: true,
   });
+  const [hiddenSections, setHiddenSections] = useState<Record<string, boolean>>({});
   const [editingField, setEditingField] = useState<string | null>(null);
   const [editFieldValue, setEditFieldValue] = useState('');
   const [savingSoapNote, setSavingSoapNote] = useState(false);
