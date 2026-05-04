@@ -131,9 +131,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setRecordingTime(draft.recordingTime ?? 0);
       setAssessment(draft.assessment ?? null);
       setExpandedSections(draft.expandedSections ?? {
-        soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: false,
-        redflags: true, multi: false, hipoteses: true, cif: false, diretriz: true,
-        plano: false, insights: false,
+        soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: true,
+        redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
+        plano: true, insights: true,
       });
       setIsSaved(Boolean(draft.isSaved));
 
