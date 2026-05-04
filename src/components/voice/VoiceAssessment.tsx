@@ -832,7 +832,7 @@ ${resumoTecnicas}`;
 
         {/* ── SOAP — estrutura padrão de prontuário ── */}
         {assessment.soap && (
-          <SectionCard icon={Layers} title="📋 SOAP — Prontuário Estruturado" sectionKey="soap" expanded={expandedSections} toggle={toggleSection}>
+          <SectionCard icon={Layers} title="📋 SOAP — Prontuário Estruturado" sectionKey="soap" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
             <div className="space-y-3 text-sm">
               <div>
                 <span className="text-xs font-bold text-primary uppercase tracking-wide">S — Subjetivo</span>
@@ -893,7 +893,7 @@ ${resumoTecnicas}`;
           </SectionCard>
         )}
 
-        <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="text-sm text-muted-foreground leading-relaxed">
             <EditableInline field="resumo_clinico" value={assessment.resumo_clinico || 'N/I'} multiline />
           </div>
@@ -917,7 +917,7 @@ ${resumoTecnicas}`;
           </div>
         </SectionCard>
 
-        <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="grid grid-cols-2 gap-3 text-sm">
             <div><span className="text-muted-foreground">Local:</span> <strong><EditableInline field="dor_localizacao" value={assessment.dor?.localizacao || 'N/I'} /></strong></div>
             <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg"><EditableInline field="dor_eva" value={String(assessment.dor?.intensidade_eva ?? 'N/I')} />/10</strong></div>
@@ -946,7 +946,7 @@ ${resumoTecnicas}`;
           )}
         </SectionCard>
 
-        <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="mb-2">
             <span className="text-xs text-muted-foreground">Impacto: </span>
             <EditableInline field="funcionalidade_impacto" value={assessment.funcionalidade?.nivel_impacto || 'N/I'} />
@@ -977,7 +977,7 @@ ${resumoTecnicas}`;
           )}
         </SectionCard>
 
-        <SectionCard icon={Brain} title="Fatores Psicossociais" sectionKey="psicossocial" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={Brain} title="Fatores Psicossociais" sectionKey="psicossocial" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="grid grid-cols-2 gap-2 text-sm">
             <div>Catastrofização: <strong>{assessment.fatores_psicossociais?.catastrofizacao}</strong></div>
             <div>Medo-evitação: <strong>{assessment.fatores_psicossociais?.medo_evitacao}</strong></div>
@@ -989,7 +989,7 @@ ${resumoTecnicas}`;
           )}
         </SectionCard>
 
-        <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} danger>
+        <SectionCard icon={AlertTriangle} title="🚨 Red Flags" sectionKey="redflags" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections} danger>
           <div className="flex items-center justify-between mb-1">
             <span className="text-xs text-muted-foreground">{assessment.red_flags?.length || 0} red flag(s)</span>
             <Button variant="ghost" size="sm" className="h-5 text-[10px] text-primary"
@@ -1018,7 +1018,7 @@ ${resumoTecnicas}`;
           )}
         </SectionCard>
 
-        <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="flex items-center justify-between mb-2">
             <span className="text-xs text-muted-foreground">{assessment.hipoteses_diagnosticas?.length || 0} hipótese(s)</span>
             <Button variant="ghost" size="sm" className="h-5 text-[10px] text-primary"
@@ -1060,7 +1060,7 @@ ${resumoTecnicas}`;
 
         {/* ── RACIOCÍNIO MULTIDISCIPLINAR ── */}
         {assessment.raciocinio_multidisciplinar && (
-          <SectionCard icon={Users} title="🧠 Raciocínio Multidisciplinar" sectionKey="multi" expanded={expandedSections} toggle={toggleSection}>
+          <SectionCard icon={Users} title="🧠 Raciocínio Multidisciplinar" sectionKey="multi" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
             <p className="text-xs text-muted-foreground mb-3 italic">A visão de cada especialidade sobre este caso.</p>
             <div className="grid sm:grid-cols-2 gap-3">
               {Object.entries({
@@ -1086,7 +1086,7 @@ ${resumoTecnicas}`;
 
         {/* ── CIF (ICF) ── */}
         {assessment.cif_codes?.length > 0 && (
-          <SectionCard icon={Tag} title="🏷️ Mapeamento CIF (ICF)" sectionKey="cif" expanded={expandedSections} toggle={toggleSection}>
+          <SectionCard icon={Tag} title="🏷️ Mapeamento CIF (ICF)" sectionKey="cif" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
             <p className="text-xs text-muted-foreground mb-2 italic">Classificação Internacional de Funcionalidade — qualificador 0 (sem problema) a 4 (completo).</p>
             <div className="space-y-1.5">
               {assessment.cif_codes.map((c: any, i: number) => (
@@ -1109,7 +1109,7 @@ ${resumoTecnicas}`;
 
         {/* ── DIRETRIZ DE TRATAMENTO EM 3 FASES ── */}
         {assessment.diretriz_tratamento && (
-          <SectionCard icon={CheckCircle2} title="🎯 Diretriz de Tratamento — 3 Fases" sectionKey="diretriz" expanded={expandedSections} toggle={toggleSection}>
+          <SectionCard icon={CheckCircle2} title="🎯 Diretriz de Tratamento — 3 Fases" sectionKey="diretriz" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
             <div className="space-y-4">
               {[
                 { key: 'fase_1_alivio', label: 'FASE 1 — Alívio & Proteção', color: 'border-l-amber-500' },
@@ -1200,7 +1200,7 @@ ${resumoTecnicas}`;
           </SectionCard>
         )}
 
-        <SectionCard icon={CheckCircle2} title="Plano de Tratamento (resumo)" sectionKey="plano" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={CheckCircle2} title="Plano de Tratamento (resumo)" sectionKey="plano" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           {assessment.plano_tratamento?.objetivos_curto_prazo?.length > 0 && (
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
@@ -1228,7 +1228,7 @@ ${resumoTecnicas}`;
           <p className="text-sm"><strong>Prognóstico:</strong> {assessment.plano_tratamento?.prognostico}</p>
         </SectionCard>
 
-        <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection}>
+        <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="space-y-3">
             {assessment.insights_baseados_evidencia?.map((ins: any, i: number) => (
               <div key={i} className="border-l-2 border-primary/40 pl-3">
