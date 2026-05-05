@@ -1320,6 +1320,61 @@ ${resumoTecnicas}`;
     );
   }
 
+  // ── Written-only mode ──
+  if (mode === 'written') {
+    const wordCount = editedTranscript.split(/\s+/).filter(Boolean).length;
+    return (
+      <div className="space-y-4">
+        <Card className="border-accent/30">
+          <CardContent className="p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="h-14 w-14 rounded-full flex items-center justify-center bg-accent/10">
+                <FileText className="h-7 w-7 text-accent-foreground" />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg">Avaliação Escrita</h3>
+                <p className="text-sm text-muted-foreground">
+                  {SERVICE_LABELS[serviceType]} — Descreva o caso e a IA monta as seções editáveis.
+                </p>
+              </div>
+            </div>
+
+            <Textarea
+              value={editedTranscript}
+              onChange={(e) => setEditedTranscript(e.target.value)}
+              placeholder="Descreva o caso clínico: queixa principal, história, sintomas, achados, contexto..."
+              className="min-h-[220px] text-sm"
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              {wordCount} palavras {wordCount < 20 && '— mínimo 20 palavras para gerar.'}
+            </p>
+
+            <div className="flex gap-2 mt-4">
+              <Button
+                onClick={processAssessment}
+                disabled={isProcessing || editedTranscript.trim().length < 20}
+                className="bg-primary text-primary-foreground"
+              >
+                {isProcessing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Analisando...</> : <><Brain className="h-4 w-4 mr-2" />Gerar Avaliação</>}
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {isProcessing && (
+          <Card className="border-primary/20">
+            <CardContent className="p-6 flex flex-col items-center gap-3">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground text-center">
+                Cruzando 6 lentes clínicas com base em evidências...
+              </p>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+    );
+  }
+
   // ── Step 1: Recording UI ──
   return (
     <div className="space-y-4">
