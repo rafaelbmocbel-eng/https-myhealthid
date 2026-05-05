@@ -731,6 +731,29 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                   />
                 </div>
 
+                {/* ── Avaliação Escrita (mesmo motor, sem áudio) ── */}
+                <div className="rounded-2xl border bg-card p-4 mb-4">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
+                      <FileText className="h-5 w-5 text-white" />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Avaliação Escrita — Estrutural</h3>
+                      <p className="text-xs text-muted-foreground">Descreva o caso por escrito; a IA monta as seções editáveis (igual à avaliação por voz)</p>
+                    </div>
+                  </div>
+                  <VoiceAssessment
+                    mode="written"
+                    serviceType="identidade"
+                    pacienteId={paciente.id}
+                    patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                    onAssessmentComplete={() => {
+                      refetchVoice();
+                      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+                    }}
+                  />
+                </div>
+
                 {/* ── Avaliação Estrutural (Unidades Corporais) ── */}
                 {showStructural ? (
                   <StructuralWizard

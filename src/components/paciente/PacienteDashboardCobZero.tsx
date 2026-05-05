@@ -331,8 +331,14 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
             </TabsContent>
 
-            <TabsContent value="voz" className="mt-4">
+            <TabsContent value="voz" className="mt-4 space-y-4">
               <VoiceAssessment
+                serviceType="cobzero"
+                pacienteId={paciente.id}
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              />
+              <VoiceAssessment
+                mode="written"
                 serviceType="cobzero"
                 pacienteId={paciente.id}
                 patientName={`${paciente.nome} ${paciente.sobrenome}`}
