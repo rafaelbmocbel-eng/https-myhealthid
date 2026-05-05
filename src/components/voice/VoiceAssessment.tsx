@@ -51,7 +51,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice' }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
