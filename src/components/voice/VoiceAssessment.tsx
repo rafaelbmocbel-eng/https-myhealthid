@@ -26,6 +26,8 @@ interface VoiceAssessmentProps {
   /** When true, only captures audio/text and returns via onAppendCapture without saving a new record */
   appendMode?: boolean;
   onAppendCapture?: (capturedText: string, capturedAudioBase64?: string, capturedAudioMimeType?: string) => void;
+  /** 'voice' (default) shows mic UI; 'written' hides mic and uses a single textarea */
+  mode?: 'voice' | 'written';
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
