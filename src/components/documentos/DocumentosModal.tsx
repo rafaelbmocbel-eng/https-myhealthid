@@ -58,7 +58,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     (async () => {
       const [clinicaRes, profileRes] = await Promise.all([
         (supabase as any).from('config_clinica').select('*').eq('terapeuta_id', user.id).maybeSingle(),
-        supabase.from('profiles').select('nome, sobrenome, especialidade, cref').eq('user_id', user.id).maybeSingle(),
+        supabase.from('profiles').select('nome, sobrenome, especialidade, crefito').eq('user_id', user.id).maybeSingle(),
       ]);
       setClinica(clinicaRes.data || null);
       const p = profileRes.data as any;
