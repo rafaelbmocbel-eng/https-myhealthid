@@ -453,8 +453,8 @@ export default function MetodoIdentidade() {
               <Activity className="h-7 w-7 text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black text-foreground">Método Identidade</h1>
-              <p className="text-muted-foreground text-sm">Avaliação Integrada de Disfunções e Saúde</p>
+              <h1 className="text-2xl font-black text-foreground">MyID</h1>
+              <p className="text-muted-foreground text-sm">A impressão digital da sua saúde</p>
             </div>
           </div>
 
