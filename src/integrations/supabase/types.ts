@@ -544,6 +544,66 @@ export type Database = {
         }
         Relationships: []
       }
+      config_clinica: {
+        Row: {
+          cep: string | null
+          cidade: string | null
+          cnpj: string | null
+          created_at: string
+          email_clinica: string | null
+          endereco: string | null
+          id: string
+          razao_social: string | null
+          responsavel: string | null
+          telefone: string | null
+          terapeuta_id: string
+          uf: string | null
+          updated_at: string
+          zapi_ativo: boolean
+          zapi_client_token: string | null
+          zapi_instance_id: string | null
+          zapi_token: string | null
+        }
+        Insert: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          email_clinica?: string | null
+          endereco?: string | null
+          id?: string
+          razao_social?: string | null
+          responsavel?: string | null
+          telefone?: string | null
+          terapeuta_id: string
+          uf?: string | null
+          updated_at?: string
+          zapi_ativo?: boolean
+          zapi_client_token?: string | null
+          zapi_instance_id?: string | null
+          zapi_token?: string | null
+        }
+        Update: {
+          cep?: string | null
+          cidade?: string | null
+          cnpj?: string | null
+          created_at?: string
+          email_clinica?: string | null
+          endereco?: string | null
+          id?: string
+          razao_social?: string | null
+          responsavel?: string | null
+          telefone?: string | null
+          terapeuta_id?: string
+          uf?: string | null
+          updated_at?: string
+          zapi_ativo?: boolean
+          zapi_client_token?: string | null
+          zapi_instance_id?: string | null
+          zapi_token?: string | null
+        }
+        Relationships: []
+      }
       controle_sessoes: {
         Row: {
           agendamento_id: string | null
