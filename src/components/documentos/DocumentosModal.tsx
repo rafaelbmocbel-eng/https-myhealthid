@@ -21,7 +21,7 @@ import {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  paciente: PacienteInfo & { id: string };
+  paciente: PacienteInfo & { id: string; data_nascimento?: string | null; sexo?: string | null };
 }
 
 const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] = [
