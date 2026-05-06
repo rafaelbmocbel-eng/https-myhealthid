@@ -1,6 +1,5 @@
 import { useState } from 'react';
-import { Mic, FileText, User, Activity } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { User, Activity } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText } from './Body3DAvatar';
 
@@ -11,8 +10,6 @@ interface Props {
   onAssessmentComplete?: () => void;
 }
 
-type Mode = 'voice' | 'written';
-
 export default function AvaliacaoPresencial({
   pacienteId,
   patientName,
@@ -20,13 +17,10 @@ export default function AvaliacaoPresencial({
   onAssessmentComplete,
 }: Props) {
   const [painMap, setPainMap] = useState<Record<string, number>>({});
-  const [mode, setMode] = useState<Mode>('voice');
   const [includePainInPrompt, setIncludePainInPrompt] = useState(true);
 
-  // Inject pain map into the assessment by prefixing transcript via a key change
-  // We re-mount VoiceAssessment with a key so the prefix is part of fresh state.
   const painText = painMapToText(painMap);
-  const assessmentKey = `${mode}-${Object.keys(painMap).length}-${serviceType}`;
+  const assessmentKey = `unified-${Object.keys(painMap).length}-${serviceType}`;
 
   return (
     <div className="space-y-6">
@@ -60,44 +54,23 @@ export default function AvaliacaoPresencial({
         )}
       </div>
 
-      {/* ── Mode toggle ── */}
+      {/* ── Avaliação unificada: voz, áudio ou texto ── */}
       <div className="clinical-card">
         <div className="flex items-center gap-3 mb-4">
           <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
             <Activity className="h-5 w-5 text-white" />
           </div>
           <div className="flex-1">
-            <h3 className="font-bold text-sm">Anamnese Presencial</h3>
+            <h3 className="font-bold text-sm">Avaliação Clínica</h3>
             <p className="text-xs text-muted-foreground">
-              Grave por voz, envie um áudio ou descreva por escrito. A IA monta as seções editáveis.
+              Grave por voz, envie um áudio (até 25MB) ou descreva o caso por escrito — tudo em um só lugar.
             </p>
           </div>
         </div>
 
-        <div className="inline-flex rounded-xl bg-muted/60 p-1 gap-1 mb-4">
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === 'voice' ? 'default' : 'ghost'}
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => setMode('voice')}
-          >
-            <Mic className="h-3.5 w-3.5" /> Voz / Áudio
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            variant={mode === 'written' ? 'default' : 'ghost'}
-            className="gap-1.5 h-8 text-xs"
-            onClick={() => setMode('written')}
-          >
-            <FileText className="h-3.5 w-3.5" /> Escrita
-          </Button>
-        </div>
-
         <VoiceAssessment
           key={assessmentKey}
-          mode={mode}
+          mode="voice"
           serviceType={serviceType}
           pacienteId={pacienteId}
           patientName={patientName}
