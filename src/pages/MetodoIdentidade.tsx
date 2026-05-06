@@ -277,6 +277,14 @@ export default function MetodoIdentidade() {
     setShowRelatorio(false);
   };
 
+  // Auto-iniciar avaliação quando vier da Avaliação Presencial com ?iniciar=1
+  useEffect(() => {
+    if (autoIniciar && selectedPaciente && draftReady && !pendingDraft) {
+      handleIniciarAvaliacao();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoIniciar, selectedPaciente?.id, draftReady, pendingDraft]);
+
   const updateData = useCallback((newData: any) => {
     setAvaliacao(prev => ({ ...prev, ...newData }));
   }, []);
