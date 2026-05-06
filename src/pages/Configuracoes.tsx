@@ -21,6 +21,7 @@ import EquipeManager from '@/components/equipe/EquipeManager';
 import ThemeToggle from '@/components/ThemeToggle';
 import AiCreditsBanner from '@/components/AiCreditsBanner';
 import ControleMensal from '@/components/configuracoes/ControleMensal';
+import ConfigClinica from '@/components/configuracoes/ConfigClinica';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
