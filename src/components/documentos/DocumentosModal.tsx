@@ -361,7 +361,88 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               </div>
             )}
 
-            <Button
+            {tipo === 'laudo_cinetico' && (
+              <div className="space-y-3">
+                {autoFilling && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando MyID e última avaliação…
+                  </div>
+                )}
+                {myidData?.score != null && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                    <Sparkles className="icon-sm text-emerald-600 shrink-0" />
+                    <span>
+                      MyID auto-preenchido: <strong>{Number(myidData.score).toFixed(1)}/100</strong>
+                      {myidData.classificacao && ` · ${myidData.classificacao}`}
+                      {myidData.dimensoes?.length ? ` · ${myidData.dimensoes.length} dimensões` : ''}
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="prof">Profissão (opcional)</Label>
+                  <Input id="prof" value={profissao} onChange={(e) => setProfissao(e.target.value)} placeholder="Ex: Professora" />
+                </div>
+                <div>
+                  <Label htmlFor="qp">Queixa Principal *</Label>
+                  <Textarea id="qp" rows={2} value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="hma">História da Moléstia Atual (HMA) *</Label>
+                  <Textarea id="hma" rows={3} value={hma} onChange={(e) => setHma(e.target.value)} placeholder="Início, evolução, fatores de melhora/piora" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="hpp">História Pregressa</Label>
+                    <Textarea id="hpp" rows={2} value={hpp} onChange={(e) => setHpp(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="med">Medicamentos</Label>
+                    <Textarea id="med" rows={2} value={medicamentos} onChange={(e) => setMedicamentos(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="ef">Exame Físico-Funcional *</Label>
+                  <Textarea id="ef" rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} placeholder="Inspeção, ADM, força, postura" />
+                </div>
+                <div>
+                  <Label htmlFor="te">Testes Especiais</Label>
+                  <Textarea id="te" rows={2} value={testesEspeciais} onChange={(e) => setTestesEspeciais(e.target.value)} placeholder="Ex: Lasègue +, FABER -" />
+                </div>
+                <div>
+                  <Label htmlFor="dx">Diagnóstico Cinético-Funcional *</Label>
+                  <Textarea id="dx" rows={2} value={diagnosticoFuncional} onChange={(e) => setDiagnosticoFuncional(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="cid10">CID-10</Label>
+                    <Input id="cid10" value={cidPrincipal} onChange={(e) => setCidPrincipal(e.target.value)} placeholder="Ex: M54.5" />
+                  </div>
+                  <div>
+                    <Label htmlFor="cif">Códigos CIF</Label>
+                    <Input id="cif" value={cifCodigos} onChange={(e) => setCifCodigos(e.target.value)} placeholder="Ex: b280.2, d450.1" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="obj">Objetivos *</Label>
+                  <Textarea id="obj" rows={2} value={objetivos} onChange={(e) => setObjetivos(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="cond">Conduta Fisioterapêutica *</Label>
+                  <Textarea id="cond" rows={3} value={conduta} onChange={(e) => setConduta(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="freq">Frequência sugerida</Label>
+                    <Input id="freq" value={frequenciaSugerida} onChange={(e) => setFrequenciaSugerida(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="prog">Prognóstico</Label>
+                    <Input id="prog" value={prognostico} onChange={(e) => setPrognostico(e.target.value)} placeholder="Ex: Bom em 6-8 semanas" />
+                  </div>
+                </div>
+              </div>
+            )}
               className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground"
               onClick={handleGerar}
               disabled={gerando}
