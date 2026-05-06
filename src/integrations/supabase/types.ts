@@ -1179,6 +1179,7 @@ export type Database = {
           status: string
           telefone: string | null
           terapeuta_id: string
+          token_expira_em: string
           updated_at: string
           valor_servico: number | null
         }
@@ -1197,6 +1198,7 @@ export type Database = {
           status?: string
           telefone?: string | null
           terapeuta_id: string
+          token_expira_em?: string
           updated_at?: string
           valor_servico?: number | null
         }
@@ -1215,6 +1217,7 @@ export type Database = {
           status?: string
           telefone?: string | null
           terapeuta_id?: string
+          token_expira_em?: string
           updated_at?: string
           valor_servico?: number | null
         }
@@ -3271,6 +3274,29 @@ export type Database = {
           terapeuta_id: string
           token: string
           updated_at: string
+        }[]
+      }
+      get_config_agenda_by_funil_slug: {
+        Args: { p_slug: string }
+        Returns: {
+          dias_semana: Json
+          duracao_padrao: number
+          horario_fim: string
+          horario_inicio: string
+          intervalo_entre_sessoes: number
+          terapeuta_id: string
+          vagas_por_horario: number
+        }[]
+      }
+      get_config_agenda_by_token: {
+        Args: { p_token: string }
+        Returns: {
+          dias_semana: Json
+          duracao_padrao: number
+          horario_fim: string
+          horario_inicio: string
+          intervalo_entre_sessoes: number
+          vagas_por_horario: number
         }[]
       }
       get_evento_pagamento: {

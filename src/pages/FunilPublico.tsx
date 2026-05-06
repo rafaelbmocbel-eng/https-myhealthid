@@ -90,11 +90,9 @@ export default function FunilPublico() {
   const fetchAvailableSlots = async (date: Date) => {
     if (!config?.terapeuta_id) return [];
 
-    // Get agenda config
+    // Get agenda config via secure RPC (slug-validated)
     const { data: agendaConfig } = await supabase
-      .from('config_agenda')
-      .select('*')
-      .eq('terapeuta_id', config.terapeuta_id)
+      .rpc('get_config_agenda_by_funil_slug', { p_slug: slug! })
       .maybeSingle();
 
     if (!agendaConfig) return [];
