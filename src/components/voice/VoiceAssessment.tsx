@@ -28,6 +28,8 @@ interface VoiceAssessmentProps {
   onAppendCapture?: (capturedText: string, capturedAudioBase64?: string, capturedAudioMimeType?: string) => void;
   /** 'voice' (default) shows mic UI; 'written' hides mic and uses a single textarea */
   mode?: 'voice' | 'written';
+  /** Optional clinical context (e.g. pain map from 3D avatar) prepended to the transcript */
+  contextPrefix?: string;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -51,7 +53,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice' }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -422,7 +424,9 @@ Detalhes completos no Histórico de Avaliações.`;
         body.audioMimeType = audioMimeType;
       }
       if (text.length >= 20) {
-        body.transcript = text;
+        body.transcript = contextPrefix ? `${contextPrefix}\n\n${text}` : text;
+      } else if (contextPrefix) {
+        body.transcript = contextPrefix;
       }
 
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
