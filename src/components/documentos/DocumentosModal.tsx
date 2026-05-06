@@ -54,6 +54,28 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [numeroSessoes, setNumeroSessoes] = useState<number | undefined>();
 
+  // Laudo cinético
+  const [profissao, setProfissao] = useState('');
+  const [queixaPrincipal, setQueixaPrincipal] = useState('');
+  const [hma, setHma] = useState('');
+  const [hpp, setHpp] = useState('');
+  const [medicamentos, setMedicamentos] = useState('');
+  const [exameFisico, setExameFisico] = useState('');
+  const [testesEspeciais, setTestesEspeciais] = useState('');
+  const [diagnosticoFuncional, setDiagnosticoFuncional] = useState('');
+  const [cidPrincipal, setCidPrincipal] = useState('');
+  const [cifCodigos, setCifCodigos] = useState('');
+  const [objetivos, setObjetivos] = useState('');
+  const [conduta, setConduta] = useState('');
+  const [frequenciaSugerida, setFrequenciaSugerida] = useState('2x por semana, por 8 semanas');
+  const [prognostico, setPrognostico] = useState('');
+  const [myidData, setMyidData] = useState<{
+    score?: number | null;
+    classificacao?: string | null;
+    dimensoes?: { label: string; valor: number }[];
+  } | null>(null);
+  const [autoFilling, setAutoFilling] = useState(false);
+
   useEffect(() => {
     if (!open || !user) return;
     (async () => {
