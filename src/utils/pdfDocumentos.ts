@@ -7,7 +7,8 @@ export type TipoDocumento =
   | 'comparecimento'
   | 'atestado_fisio'
   | 'declaracao_tratamento'
-  | 'recibo';
+  | 'recibo'
+  | 'laudo_cinetico';
 
 export interface ClinicaInfo {
   razao_social?: string | null;
