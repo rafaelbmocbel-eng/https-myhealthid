@@ -71,5 +71,12 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
     return <Navigate to="/paciente/dashboard" replace />;
   }
 
+  // FIX: Users with no profile AND no paciente record (e.g., signed up via portal
+  // link but linking failed) MUST NOT see the professional app. Send them to the
+  // patient login so the linking RPC can be retried.
+  if (role === 'unknown') {
+    return <Navigate to="/paciente/login" replace />;
+  }
+
   return <>{children}</>;
 }
