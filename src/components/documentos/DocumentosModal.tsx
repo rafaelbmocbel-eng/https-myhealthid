@@ -443,6 +443,8 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                 </div>
               </div>
             )}
+
+            <Button
               className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground"
               onClick={handleGerar}
               disabled={gerando}
