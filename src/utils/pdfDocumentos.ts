@@ -63,6 +63,34 @@ export interface DocReciboData {
   numeroSessoes?: number;
 }
 
+export interface DocLaudoCineticoData {
+  // Identificação extra
+  dataNascimento?: string | null;
+  sexo?: string | null;
+  profissao?: string | null;
+  // Anamnese
+  queixaPrincipal: string;
+  hma: string;             // História da Moléstia Atual
+  hpp?: string;            // História Pregressa
+  medicamentos?: string;
+  // Exame físico
+  exameFisico: string;
+  testesEspeciais?: string;
+  // Diagnóstico funcional
+  diagnosticoFuncional: string;
+  cidPrincipal?: string;
+  cifCodigos?: string;     // ex: b280.2, d450.1
+  // MyID (auto)
+  myidScore?: number | null;
+  myidClassificacao?: string | null;
+  myidDimensoes?: { label: string; valor: number }[];
+  // Conduta
+  objetivos: string;
+  conduta: string;
+  frequenciaSugerida?: string;  // ex: "2x/semana por 8 semanas"
+  prognostico?: string;
+}
+
 interface BaseInput {
   clinica?: ClinicaInfo | null;
   terapeuta: TerapeutaInfo;
