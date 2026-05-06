@@ -610,7 +610,7 @@ export default function PacientePerfil() {
             </button>
           )}
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
-            <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Avaliação (Avatar 3D + Voz/Áudio/Escrita)">
+            <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
               <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
             </TabsTrigger>
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
