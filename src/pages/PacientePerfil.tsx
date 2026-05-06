@@ -734,6 +734,18 @@ export default function PacientePerfil() {
           </TabsContent>
         </Tabs>
       </div>
+      {paciente && (
+        <DocumentosModal
+          open={docsModalOpen}
+          onOpenChange={setDocsModalOpen}
+          paciente={{
+            id: paciente.id,
+            nome: paciente.nome,
+            sobrenome: paciente.sobrenome,
+            cpf: paciente.cpf,
+          }}
+        />
+      )}
     </AppLayout >
   );
 }
