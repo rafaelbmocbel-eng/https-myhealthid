@@ -10,13 +10,13 @@ import { supabase } from '@/integrations/supabase/client';
  * memory so navigation between professional routes does not re-query the DB.
  */
 
-type RoleResult = 'patient' | 'professional';
+type RoleResult = 'patient' | 'professional' | 'unknown';
 const roleCache = new Map<string, RoleResult>();
 const inflight = new Map<string, Promise<RoleResult>>();
 
 async function resolveRole(userId: string): Promise<RoleResult> {
   const cached = roleCache.get(userId);
-  if (cached) return cached;
+  if (cached && cached !== 'unknown') return cached;
   const existing = inflight.get(userId);
   if (existing) return existing;
 
@@ -25,7 +25,10 @@ async function resolveRole(userId: string): Promise<RoleResult> {
       supabase.from('profiles').select('id').eq('user_id', userId).maybeSingle(),
       supabase.from('pacientes').select('id').eq('user_id', userId).maybeSingle(),
     ]);
-    const role: RoleResult = Boolean(paciente) && !profissional ? 'patient' : 'professional';
+    let role: RoleResult;
+    if (profissional) role = 'professional';
+    else if (paciente) role = 'patient';
+    else role = 'unknown'; // FIX: no profile and no paciente — do NOT default to professional
     roleCache.set(userId, role);
     inflight.delete(userId);
     return role;
