@@ -76,7 +76,8 @@ export default function MetodoIdentidade() {
   const { toast } = useToast();
   const [searchParams] = useSearchParams();
   const [selectedPacienteId, setSelectedPacienteId] = useState<string | null>(searchParams.get('paciente'));
-  const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente'));
+  const autoIniciar = searchParams.get('iniciar') === '1';
+  const [showDashboard, setShowDashboard] = useState(!!searchParams.get('paciente') && !autoIniciar);
   const [searchPac, setSearchPac] = useState('');
   const [avaliacao, setAvaliacao] = useState<AvaliacaoMyID>(makeDefaultAvaliacao());
   const [showRelatorio, setShowRelatorio] = useState(false);
