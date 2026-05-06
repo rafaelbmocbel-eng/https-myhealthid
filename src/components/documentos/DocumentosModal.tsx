@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt } from 'lucide-react';
+import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt, Stethoscope, Sparkles } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -21,10 +21,11 @@ import {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  paciente: PacienteInfo & { id: string };
+  paciente: PacienteInfo & { id: string; data_nascimento?: string | null; sexo?: string | null };
 }
 
 const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] = [
+  { value: 'laudo_cinetico', label: 'Laudo Cinético-Funcional', icon: Stethoscope, desc: 'Laudo completo com anamnese, exame, MyID e CIF (auto-preenchido).' },
   { value: 'comparecimento', label: 'Atestado de Comparecimento', icon: Calendar, desc: 'Comprova presença em sessão (data e horário).' },
   { value: 'atestado_fisio', label: 'Atestado Fisioterapêutico', icon: ClipboardCheck, desc: 'Justifica afastamento de atividades por X dias.' },
   { value: 'declaracao_tratamento', label: 'Declaração de Tratamento', icon: FileCheck, desc: 'Confirma acompanhamento (sem dados clínicos).' },
@@ -53,6 +54,28 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
   const [formaPagamento, setFormaPagamento] = useState('PIX');
   const [numeroSessoes, setNumeroSessoes] = useState<number | undefined>();
 
+  // Laudo cinético
+  const [profissao, setProfissao] = useState('');
+  const [queixaPrincipal, setQueixaPrincipal] = useState('');
+  const [hma, setHma] = useState('');
+  const [hpp, setHpp] = useState('');
+  const [medicamentos, setMedicamentos] = useState('');
+  const [exameFisico, setExameFisico] = useState('');
+  const [testesEspeciais, setTestesEspeciais] = useState('');
+  const [diagnosticoFuncional, setDiagnosticoFuncional] = useState('');
+  const [cidPrincipal, setCidPrincipal] = useState('');
+  const [cifCodigos, setCifCodigos] = useState('');
+  const [objetivos, setObjetivos] = useState('');
+  const [conduta, setConduta] = useState('');
+  const [frequenciaSugerida, setFrequenciaSugerida] = useState('2x por semana, por 8 semanas');
+  const [prognostico, setPrognostico] = useState('');
+  const [myidData, setMyidData] = useState<{
+    score?: number | null;
+    classificacao?: string | null;
+    dimensoes?: { label: string; valor: number }[];
+  } | null>(null);
+  const [autoFilling, setAutoFilling] = useState(false);
+
   useEffect(() => {
     if (!open || !user) return;
     (async () => {
@@ -71,6 +94,82 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     })();
   }, [open, user]);
 
+  // Auto-fill MyID + última avaliação presencial quando seleciona Laudo
+  useEffect(() => {
+    if (tipo !== 'laudo_cinetico' || !user) return;
+    (async () => {
+      setAutoFilling(true);
+      try {
+        const [idRes, vozRes] = await Promise.all([
+          (supabase as any)
+            .from('avaliacoes_identidade')
+            .select('myid_score, classificacao, score_n, score_i, score_f, score_c, score_p, score_e, score_r, score_d, dados_avaliacao, myid_analysis, created_at')
+            .eq('paciente_id', paciente.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          (supabase as any)
+            .from('avaliacoes_voz')
+            .select('queixa_principal, transcricao, resultado, created_at')
+            .eq('paciente_id', paciente.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        const id = idRes.data;
+        if (id) {
+          const dims: { label: string; valor: number }[] = [];
+          const map: [string, string][] = [
+            ['N', 'Neuro'], ['I', 'Inflamatório'], ['F', 'Funcional'],
+            ['C', 'Comportamental'], ['P', 'Postural'], ['E', 'Estrutural'],
+            ['R', 'Recuperação'], ['D', 'Dor'],
+          ];
+          map.forEach(([k, label]) => {
+            const v = id[`score_${k.toLowerCase()}`];
+            if (v != null) dims.push({ label, valor: Number(v) });
+          });
+          setMyidData({
+            score: id.myid_score,
+            classificacao: id.classificacao,
+            dimensoes: dims,
+          });
+
+          // Pré-preencher narrativa se existir myid_analysis
+          const analysis = id.myid_analysis;
+          if (analysis && typeof analysis === 'object') {
+            if (!diagnosticoFuncional && analysis.diagnostico_funcional) {
+              setDiagnosticoFuncional(String(analysis.diagnostico_funcional));
+            }
+            if (!objetivos && analysis.objetivos) {
+              setObjetivos(Array.isArray(analysis.objetivos) ? analysis.objetivos.join('; ') : String(analysis.objetivos));
+            }
+            if (!conduta && analysis.conduta) {
+              setConduta(Array.isArray(analysis.conduta) ? analysis.conduta.join('; ') : String(analysis.conduta));
+            }
+            if (!prognostico && analysis.prognostico) {
+              setPrognostico(String(analysis.prognostico));
+            }
+          }
+        }
+
+        const voz = vozRes.data;
+        if (voz) {
+          if (!queixaPrincipal && voz.queixa_principal) setQueixaPrincipal(voz.queixa_principal);
+          if (!hma && voz.transcricao) setHma(voz.transcricao.slice(0, 800));
+          const r = voz.resultado as any;
+          if (r && typeof r === 'object') {
+            if (!exameFisico && r.exame_fisico) setExameFisico(String(r.exame_fisico));
+            if (!testesEspeciais && r.testes_especiais) setTestesEspeciais(String(r.testes_especiais));
+          }
+        }
+      } finally {
+        setAutoFilling(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, paciente.id, user]);
+
   const handleGerar = async () => {
     if (!tipo || !terapeuta || !user) return;
     setGerando(true);
@@ -88,6 +187,29 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
           break;
         case 'recibo':
           dados = { valor, referente, formaPagamento, numeroSessoes };
+          break;
+        case 'laudo_cinetico':
+          dados = {
+            dataNascimento: paciente.data_nascimento,
+            sexo: paciente.sexo,
+            profissao: profissao || undefined,
+            queixaPrincipal,
+            hma,
+            hpp: hpp || undefined,
+            medicamentos: medicamentos || undefined,
+            exameFisico,
+            testesEspeciais: testesEspeciais || undefined,
+            diagnosticoFuncional,
+            cidPrincipal: cidPrincipal || undefined,
+            cifCodigos: cifCodigos || undefined,
+            myidScore: myidData?.score ?? null,
+            myidClassificacao: myidData?.classificacao ?? null,
+            myidDimensoes: myidData?.dimensoes,
+            objetivos,
+            conduta,
+            frequenciaSugerida: frequenciaSugerida || undefined,
+            prognostico: prognostico || undefined,
+          };
           break;
       }
 
@@ -235,6 +357,89 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                 <div className="col-span-2">
                   <Label htmlFor="ref">Referente a</Label>
                   <Input id="ref" value={referente} onChange={(e) => setReferente(e.target.value)} />
+                </div>
+              </div>
+            )}
+
+            {tipo === 'laudo_cinetico' && (
+              <div className="space-y-3">
+                {autoFilling && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando MyID e última avaliação…
+                  </div>
+                )}
+                {myidData?.score != null && (
+                  <div className="flex items-center gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                    <Sparkles className="icon-sm text-emerald-600 shrink-0" />
+                    <span>
+                      MyID auto-preenchido: <strong>{Number(myidData.score).toFixed(1)}/100</strong>
+                      {myidData.classificacao && ` · ${myidData.classificacao}`}
+                      {myidData.dimensoes?.length ? ` · ${myidData.dimensoes.length} dimensões` : ''}
+                    </span>
+                  </div>
+                )}
+
+                <div>
+                  <Label htmlFor="prof">Profissão (opcional)</Label>
+                  <Input id="prof" value={profissao} onChange={(e) => setProfissao(e.target.value)} placeholder="Ex: Professora" />
+                </div>
+                <div>
+                  <Label htmlFor="qp">Queixa Principal *</Label>
+                  <Textarea id="qp" rows={2} value={queixaPrincipal} onChange={(e) => setQueixaPrincipal(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="hma">História da Moléstia Atual (HMA) *</Label>
+                  <Textarea id="hma" rows={3} value={hma} onChange={(e) => setHma(e.target.value)} placeholder="Início, evolução, fatores de melhora/piora" />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="hpp">História Pregressa</Label>
+                    <Textarea id="hpp" rows={2} value={hpp} onChange={(e) => setHpp(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="med">Medicamentos</Label>
+                    <Textarea id="med" rows={2} value={medicamentos} onChange={(e) => setMedicamentos(e.target.value)} />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="ef">Exame Físico-Funcional *</Label>
+                  <Textarea id="ef" rows={3} value={exameFisico} onChange={(e) => setExameFisico(e.target.value)} placeholder="Inspeção, ADM, força, postura" />
+                </div>
+                <div>
+                  <Label htmlFor="te">Testes Especiais</Label>
+                  <Textarea id="te" rows={2} value={testesEspeciais} onChange={(e) => setTestesEspeciais(e.target.value)} placeholder="Ex: Lasègue +, FABER -" />
+                </div>
+                <div>
+                  <Label htmlFor="dx">Diagnóstico Cinético-Funcional *</Label>
+                  <Textarea id="dx" rows={2} value={diagnosticoFuncional} onChange={(e) => setDiagnosticoFuncional(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="cid10">CID-10</Label>
+                    <Input id="cid10" value={cidPrincipal} onChange={(e) => setCidPrincipal(e.target.value)} placeholder="Ex: M54.5" />
+                  </div>
+                  <div>
+                    <Label htmlFor="cif">Códigos CIF</Label>
+                    <Input id="cif" value={cifCodigos} onChange={(e) => setCifCodigos(e.target.value)} placeholder="Ex: b280.2, d450.1" />
+                  </div>
+                </div>
+                <div>
+                  <Label htmlFor="obj">Objetivos *</Label>
+                  <Textarea id="obj" rows={2} value={objetivos} onChange={(e) => setObjetivos(e.target.value)} />
+                </div>
+                <div>
+                  <Label htmlFor="cond">Conduta Fisioterapêutica *</Label>
+                  <Textarea id="cond" rows={3} value={conduta} onChange={(e) => setConduta(e.target.value)} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="freq">Frequência sugerida</Label>
+                    <Input id="freq" value={frequenciaSugerida} onChange={(e) => setFrequenciaSugerida(e.target.value)} />
+                  </div>
+                  <div>
+                    <Label htmlFor="prog">Prognóstico</Label>
+                    <Input id="prog" value={prognostico} onChange={(e) => setPrognostico(e.target.value)} placeholder="Ex: Bom em 6-8 semanas" />
+                  </div>
                 </div>
               </div>
             )}
