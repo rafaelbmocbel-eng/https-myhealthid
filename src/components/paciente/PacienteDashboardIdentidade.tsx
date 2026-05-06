@@ -26,6 +26,7 @@ import { MyIDResult } from '../myid/MyIDResult';
 import StructuralWizard from '../structural/StructuralWizard';
 import StructuralResultsSummary from '../structural/StructuralResultsSummary';
 import StructuralConnectionMap from '../structural/StructuralConnectionMap';
+import AvaliacaoPresencial from '../presencial/AvaliacaoPresencial';
 import TreatmentReportPDF from '../reports/TreatmentReportPDF';
 import { StructuralAssessmentData, createDefaultAssessment, classifyScore, classifyScoreColor, UNIT_CONFIGS } from '@/types/structural';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
