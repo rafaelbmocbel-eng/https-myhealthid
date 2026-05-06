@@ -83,9 +83,7 @@ export default function AgendaPublica() {
             .rpc('get_terapeuta_by_agenda_token', { p_token: token })
             .maybeSingle(),
           supabase
-            .from('config_agenda')
-            .select('horario_inicio, horario_fim, duracao_padrao, dias_semana, intervalo_entre_sessoes, vagas_por_horario')
-            .eq('terapeuta_id', linkData.terapeuta_id)
+            .rpc('get_config_agenda_by_token', { p_token: token })
             .maybeSingle(),
           supabase
             .rpc('get_agenda_disponibilidade', {
