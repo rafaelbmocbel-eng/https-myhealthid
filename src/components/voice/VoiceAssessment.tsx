@@ -1418,6 +1418,36 @@ ${resumoTecnicas}`;
                 </div>
               </>
             )}
+            {!isRecording && (
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-muted text-sm cursor-pointer transition-colors">
+                <FileText className="h-4 w-4" />
+                <span>Enviar áudio</span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 25 * 1024 * 1024) {
+                      toast({ title: 'Arquivo muito grande', description: 'Máximo 25MB.', variant: 'destructive' });
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      const result = reader.result as string;
+                      const base64 = result.split(',')[1];
+                      setAudioBase64(base64);
+                      setAudioMimeType(file.type || 'audio/mpeg');
+                      // estimate duration display via file size
+                      setRecordingTime(0);
+                      toast({ title: 'Áudio carregado', description: `${file.name} (${(file.size/1024/1024).toFixed(1)}MB)` });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
+            )}
             {(audioBase64 || transcript.trim().length > 20 || editedTranscript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
                 <Edit3 className="h-4 w-4 mr-2" />{appendMode ? 'Capturar e Adicionar' : 'Revisar e Processar'}
