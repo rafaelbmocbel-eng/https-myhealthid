@@ -65,7 +65,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       setTerapeuta({
         nome: p?.nome || user.email?.split('@')[0] || 'Terapeuta',
         sobrenome: p?.sobrenome,
-        registro: p?.cref,
+        registro: p?.crefito,
         especialidade: p?.especialidade,
       });
     })();
