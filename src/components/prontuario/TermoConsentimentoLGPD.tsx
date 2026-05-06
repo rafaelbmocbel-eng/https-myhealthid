@@ -53,15 +53,17 @@ Este consentimento pode ser revogado a qualquer momento, mediante solicitação 
 interface Props {
   pacienteId: string;
   pacienteNome: string;
+  compact?: boolean;
 }
 
-export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome }: Props) {
+export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compact = false }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [enviando, setEnviando] = useState(false);
   const [visualizando, setVisualizando] = useState(false);
   const [aceitouPreview, setAceitouPreview] = useState(false);
+  const [openCompact, setOpenCompact] = useState(false);
 
   const { data: termos = [], isLoading } = useQuery({
     queryKey: ['termos-consentimento', pacienteId],
