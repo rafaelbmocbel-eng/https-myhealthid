@@ -53,15 +53,17 @@ Este consentimento pode ser revogado a qualquer momento, mediante solicitação 
 interface Props {
   pacienteId: string;
   pacienteNome: string;
+  compact?: boolean;
 }
 
-export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome }: Props) {
+export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compact = false }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [enviando, setEnviando] = useState(false);
   const [visualizando, setVisualizando] = useState(false);
   const [aceitouPreview, setAceitouPreview] = useState(false);
+  const [openCompact, setOpenCompact] = useState(false);
 
   const { data: termos = [], isLoading } = useQuery({
     queryKey: ['termos-consentimento', pacienteId],
@@ -117,6 +119,74 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome }: Pro
   };
 
   if (isLoading) return null;
+
+  const statusBadge = termoAtivo ? (
+    <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-[10px] gap-1">
+      <CheckCircle2 className="h-3 w-3" /> Aceito
+    </Badge>
+  ) : termoPendente ? (
+    <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-[10px] gap-1">
+      <Clock className="h-3 w-3" /> Pendente
+    </Badge>
+  ) : (
+    <Badge variant="outline" className="text-[10px] gap-1 text-destructive border-destructive/30">
+      <AlertTriangle className="h-3 w-3" /> Sem termo
+    </Badge>
+  );
+
+  if (compact) {
+    return (
+      <Dialog open={openCompact} onOpenChange={setOpenCompact}>
+        <DialogTrigger asChild>
+          <button className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-card hover:bg-muted/50 transition-colors text-xs">
+            <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
+            <span className="font-medium">LGPD</span>
+            {statusBadge}
+          </button>
+        </DialogTrigger>
+        <DialogContent className="max-w-2xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Shield className="h-5 w-5 text-primary" /> Consentimento LGPD
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            {termoAtivo && (
+              <div className="text-xs text-muted-foreground space-y-1">
+                <p>✅ Aceito em {format(parseISO(termoAtivo.data_aceite || termoAtivo.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })} — Versão {termoAtivo.versao}</p>
+                <ScrollArea className="max-h-[50vh] pr-4 mt-2">
+                  <pre className="text-xs whitespace-pre-wrap font-sans text-muted-foreground leading-relaxed">{termoAtivo.texto_termo}</pre>
+                </ScrollArea>
+              </div>
+            )}
+            {termoPendente && !termoAtivo && (
+              <>
+                <p className="text-xs text-amber-600">Termo enviado, aguardando aceite do paciente.</p>
+                <ScrollArea className="max-h-[45vh] pr-4">
+                  <pre className="text-xs whitespace-pre-wrap font-sans text-muted-foreground leading-relaxed">{termoPendente.texto_termo}</pre>
+                </ScrollArea>
+                <div className="flex items-start gap-2 pt-3 border-t">
+                  <Checkbox id="aceite-c" checked={aceitouPreview} onCheckedChange={(c) => setAceitouPreview(!!c)} />
+                  <label htmlFor="aceite-c" className="text-xs text-muted-foreground leading-tight cursor-pointer">
+                    Confirmo que <strong>{pacienteNome}</strong> leu, compreendeu e concordou.
+                  </label>
+                </div>
+                <Button onClick={() => registrarAceiteManual(termoPendente.id)} disabled={!aceitouPreview} className="w-full gap-2">
+                  <FileCheck className="h-4 w-4" /> Registrar Aceite
+                </Button>
+              </>
+            )}
+            {!termoAtivo && !termoPendente && (
+              <Button onClick={enviarTermo} disabled={enviando} size="sm" className="w-full gap-1.5 text-xs">
+                {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                Enviar Termo de Consentimento
+              </Button>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    );
+  }
 
   return (
     <Card>

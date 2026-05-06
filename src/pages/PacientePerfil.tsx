@@ -627,9 +627,9 @@ export default function PacientePerfil() {
             </TabsTrigger>
           </TabsList>
 
-          {/* LGPD Consent */}
-          <div className="mb-4">
-            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+          {/* LGPD Consent — botão compacto */}
+          <div className="mb-3 flex justify-end">
+            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
           </div>
 
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
