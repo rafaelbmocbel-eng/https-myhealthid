@@ -28,6 +28,8 @@ interface VoiceAssessmentProps {
   onAppendCapture?: (capturedText: string, capturedAudioBase64?: string, capturedAudioMimeType?: string) => void;
   /** 'voice' (default) shows mic UI; 'written' hides mic and uses a single textarea */
   mode?: 'voice' | 'written';
+  /** Optional clinical context (e.g. pain map from 3D avatar) prepended to the transcript */
+  contextPrefix?: string;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -51,7 +53,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice' }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -422,7 +424,9 @@ Detalhes completos no Histórico de Avaliações.`;
         body.audioMimeType = audioMimeType;
       }
       if (text.length >= 20) {
-        body.transcript = text;
+        body.transcript = contextPrefix ? `${contextPrefix}\n\n${text}` : text;
+      } else if (contextPrefix) {
+        body.transcript = contextPrefix;
       }
 
       const { data, error } = await supabase.functions.invoke('voice-assessment', { body });
@@ -1417,6 +1421,36 @@ ${resumoTecnicas}`;
                   {formatTime(recordingTime)}
                 </div>
               </>
+            )}
+            {!isRecording && (
+              <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-muted text-sm cursor-pointer transition-colors">
+                <FileText className="h-4 w-4" />
+                <span>Enviar áudio</span>
+                <input
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (!file) return;
+                    if (file.size > 25 * 1024 * 1024) {
+                      toast({ title: 'Arquivo muito grande', description: 'Máximo 25MB.', variant: 'destructive' });
+                      return;
+                    }
+                    const reader = new FileReader();
+                    reader.onloadend = () => {
+                      const result = reader.result as string;
+                      const base64 = result.split(',')[1];
+                      setAudioBase64(base64);
+                      setAudioMimeType(file.type || 'audio/mpeg');
+                      // estimate duration display via file size
+                      setRecordingTime(0);
+                      toast({ title: 'Áudio carregado', description: `${file.name} (${(file.size/1024/1024).toFixed(1)}MB)` });
+                    };
+                    reader.readAsDataURL(file);
+                  }}
+                />
+              </label>
             )}
             {(audioBase64 || transcript.trim().length > 20 || editedTranscript.trim().length > 20) && !isRecording && (
               <Button onClick={goToReview} className="bg-accent text-accent-foreground">
