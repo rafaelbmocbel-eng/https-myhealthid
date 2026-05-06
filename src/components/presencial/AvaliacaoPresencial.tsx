@@ -25,7 +25,7 @@ export default function AvaliacaoPresencial({
     <div className="space-y-3">
       {/* MyID — link minimalista */}
       <button
-        onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}`)}
+        onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
         className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
         <ClipboardList className="h-3 w-3" />
