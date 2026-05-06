@@ -1,79 +1,104 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0"
 
-// Configure CORS handles for browser requests
 const corsHeaders = {
-    'Access-Control-Allow-Origin': '*',
-    'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Origin': '*',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+}
+
+async function getZapiCreds(req: Request, body: any) {
+  // 1) Credenciais explícitas (modo "testar conexão" pelo painel)
+  if (body.instanceId && body.token) {
+    return { instanceId: body.instanceId, token: body.token, clientToken: body.clientToken || '' }
+  }
+
+  // 2) Credenciais do terapeuta autenticado (config_clinica)
+  const authHeader = req.headers.get('Authorization')
+  if (authHeader) {
+    try {
+      const supabase = createClient(
+        Deno.env.get('SUPABASE_URL')!,
+        Deno.env.get('SUPABASE_ANON_KEY')!,
+        { global: { headers: { Authorization: authHeader } } },
+      )
+      const { data: { user } } = await supabase.auth.getUser()
+      if (user) {
+        const { data } = await supabase
+          .from('config_clinica')
+          .select('zapi_instance_id, zapi_token, zapi_client_token, zapi_ativo')
+          .eq('terapeuta_id', user.id)
+          .maybeSingle()
+        if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
+          return {
+            instanceId: data.zapi_instance_id,
+            token: data.zapi_token,
+            clientToken: data.zapi_client_token || '',
+          }
+        }
+      }
+    } catch (e) {
+      console.warn('Falha ao buscar credenciais do terapeuta:', e)
+    }
+  }
+
+  // 3) Fallback: secrets globais
+  const instanceId = Deno.env.get('ZAPI_INSTANCE_ID')
+  const token = Deno.env.get('ZAPI_TOKEN')
+  const clientToken = Deno.env.get('ZAPI_CLIENT_TOKEN') || ''
+  if (!instanceId || !token) throw new Error('Credenciais Z-API não configuradas')
+  return { instanceId, token, clientToken }
 }
 
 serve(async (req: any) => {
-    // Handle CORS preflight requests
-    if (req.method === 'OPTIONS') {
-        return new Response('ok', { headers: corsHeaders })
+  if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
+
+  try {
+    const body = await req.json()
+    const { instanceId, token, clientToken } = await getZapiCreds(req, body)
+
+    const baseUrl = `https://api.z-api.io/instances/${instanceId}/token/${token}`
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (clientToken) headers['Client-Token'] = clientToken
+
+    // Modo TEST: só verifica status da conexão
+    if (body.test) {
+      const r = await fetch(`${baseUrl}/status`, { headers })
+      const txt = await r.text()
+      let parsed: any = {}
+      try { parsed = JSON.parse(txt) } catch {}
+      const connected = r.ok && (parsed.connected === true || parsed.smartphoneConnected === true)
+      return new Response(
+        JSON.stringify({ connected, status: parsed, raw: connected ? undefined : txt }),
+        { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+      )
     }
 
-    try {
-        const { phone, message } = await req.json()
+    // Modo SEND: envia mensagem
+    const { phone, message } = body
+    if (!phone || !message) throw new Error('Phone and message are required')
+    const cleanPhone = String(phone).replace(/\D/g, '')
 
-        if (!phone || !message) {
-            throw new Error('Phone and message are required')
-        }
+    const response = await fetch(`${baseUrl}/send-text`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ phone: cleanPhone, message }),
+    })
 
-        // Replace with Z-API environment variables from Supabase Secrets
-        // e.g., supabase secrets set ZAPI_INSTANCE_ID=... ZAPI_TOKEN=...
-        const instanceId = Deno.env.get('ZAPI_INSTANCE_ID')
-        const token = Deno.env.get('ZAPI_TOKEN')
-
-        if (!instanceId || !token) {
-            throw new Error('Z-API credentials are not configured')
-        }
-
-        const zapiUrl = `https://api.z-api.io/instances/${instanceId}/token/${token}/send-messages`
-
-        // Clean phone number (Z-API expects 55 + DDD + number)
-        const cleanlyFormattedPhone = phone.replace(/\D/g, '')
-
-        console.log(`Sending WhatsApp to ${cleanlyFormattedPhone}...`)
-
-        const response = await fetch(zapiUrl, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                phone: cleanlyFormattedPhone,
-                message: message
-            })
-        })
-
-        if (!response.ok) {
-            const errorText = await response.text()
-            try {
-                const zapiError = JSON.parse(errorText)
-                throw new Error(`Z-API Error: ${zapiError.error || errorText}`)
-            } catch (e) {
-                throw new Error(`Z-API Error [${response.status}]: ${errorText}`)
-            }
-        }
-
-        const result = await response.json()
-
-        return new Response(
-            JSON.stringify({ success: true, result }),
-            {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 200
-            }
-        )
-
-    } catch (error: any) {
-        console.error('Error dispatching Z-API WhatsApp:', error)
-        return new Response(
-            JSON.stringify({ error: error.message || 'Internal error' }),
-            {
-                headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-                status: 400
-            }
-        )
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw new Error(`Z-API Error [${response.status}]: ${errorText}`)
     }
+
+    const result = await response.json()
+    return new Response(
+      JSON.stringify({ success: true, result }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 200 },
+    )
+  } catch (error: any) {
+    console.error('Erro Z-API:', error)
+    return new Response(
+      JSON.stringify({ error: error.message || 'Internal error', connected: false }),
+      { headers: { ...corsHeaders, 'Content-Type': 'application/json' }, status: 400 },
+    )
+  }
 })
