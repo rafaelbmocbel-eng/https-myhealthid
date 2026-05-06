@@ -94,6 +94,82 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     })();
   }, [open, user]);
 
+  // Auto-fill MyID + última avaliação presencial quando seleciona Laudo
+  useEffect(() => {
+    if (tipo !== 'laudo_cinetico' || !user) return;
+    (async () => {
+      setAutoFilling(true);
+      try {
+        const [idRes, vozRes] = await Promise.all([
+          (supabase as any)
+            .from('avaliacoes_identidade')
+            .select('myid_score, classificacao, score_n, score_i, score_f, score_c, score_p, score_e, score_r, score_d, dados_avaliacao, myid_analysis, created_at')
+            .eq('paciente_id', paciente.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+          (supabase as any)
+            .from('avaliacoes_voz')
+            .select('queixa_principal, transcricao, resultado, created_at')
+            .eq('paciente_id', paciente.id)
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        ]);
+
+        const id = idRes.data;
+        if (id) {
+          const dims: { label: string; valor: number }[] = [];
+          const map: [string, string][] = [
+            ['N', 'Neuro'], ['I', 'Inflamatório'], ['F', 'Funcional'],
+            ['C', 'Comportamental'], ['P', 'Postural'], ['E', 'Estrutural'],
+            ['R', 'Recuperação'], ['D', 'Dor'],
+          ];
+          map.forEach(([k, label]) => {
+            const v = id[`score_${k.toLowerCase()}`];
+            if (v != null) dims.push({ label, valor: Number(v) });
+          });
+          setMyidData({
+            score: id.myid_score,
+            classificacao: id.classificacao,
+            dimensoes: dims,
+          });
+
+          // Pré-preencher narrativa se existir myid_analysis
+          const analysis = id.myid_analysis;
+          if (analysis && typeof analysis === 'object') {
+            if (!diagnosticoFuncional && analysis.diagnostico_funcional) {
+              setDiagnosticoFuncional(String(analysis.diagnostico_funcional));
+            }
+            if (!objetivos && analysis.objetivos) {
+              setObjetivos(Array.isArray(analysis.objetivos) ? analysis.objetivos.join('; ') : String(analysis.objetivos));
+            }
+            if (!conduta && analysis.conduta) {
+              setConduta(Array.isArray(analysis.conduta) ? analysis.conduta.join('; ') : String(analysis.conduta));
+            }
+            if (!prognostico && analysis.prognostico) {
+              setPrognostico(String(analysis.prognostico));
+            }
+          }
+        }
+
+        const voz = vozRes.data;
+        if (voz) {
+          if (!queixaPrincipal && voz.queixa_principal) setQueixaPrincipal(voz.queixa_principal);
+          if (!hma && voz.transcricao) setHma(voz.transcricao.slice(0, 800));
+          const r = voz.resultado as any;
+          if (r && typeof r === 'object') {
+            if (!exameFisico && r.exame_fisico) setExameFisico(String(r.exame_fisico));
+            if (!testesEspeciais && r.testes_especiais) setTestesEspeciais(String(r.testes_especiais));
+          }
+        }
+      } finally {
+        setAutoFilling(false);
+      }
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo, paciente.id, user]);
+
   const handleGerar = async () => {
     if (!tipo || !terapeuta || !user) return;
     setGerando(true);
@@ -111,6 +187,29 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
           break;
         case 'recibo':
           dados = { valor, referente, formaPagamento, numeroSessoes };
+          break;
+        case 'laudo_cinetico':
+          dados = {
+            dataNascimento: paciente.data_nascimento,
+            sexo: paciente.sexo,
+            profissao: profissao || undefined,
+            queixaPrincipal,
+            hma,
+            hpp: hpp || undefined,
+            medicamentos: medicamentos || undefined,
+            exameFisico,
+            testesEspeciais: testesEspeciais || undefined,
+            diagnosticoFuncional,
+            cidPrincipal: cidPrincipal || undefined,
+            cifCodigos: cifCodigos || undefined,
+            myidScore: myidData?.score ?? null,
+            myidClassificacao: myidData?.classificacao ?? null,
+            myidDimensoes: myidData?.dimensoes,
+            objetivos,
+            conduta,
+            frequenciaSugerida: frequenciaSugerida || undefined,
+            prognostico: prognostico || undefined,
+          };
           break;
       }
 
