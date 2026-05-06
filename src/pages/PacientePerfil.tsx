@@ -43,6 +43,7 @@ import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
+import DocumentosModal from '@/components/documentos/DocumentosModal';
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -94,6 +95,7 @@ export default function PacientePerfil() {
   const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
 
   // Link MyID ativo (pendente)
   const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
@@ -455,7 +457,16 @@ export default function PacientePerfil() {
                 }
                 return items;
               })()} />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0 ml-auto"
+                title="Gerar Documento"
+                onClick={() => setDocsModalOpen(true)}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" title="Excluir Definitivamente"
                 onClick={handleDeletePaciente}>
                 <Trash2 className="h-4 w-4" />
               </Button>
@@ -723,6 +734,18 @@ export default function PacientePerfil() {
           </TabsContent>
         </Tabs>
       </div>
+      {paciente && (
+        <DocumentosModal
+          open={docsModalOpen}
+          onOpenChange={setDocsModalOpen}
+          paciente={{
+            id: paciente.id,
+            nome: paciente.nome,
+            sobrenome: paciente.sobrenome,
+            cpf: paciente.cpf,
+          }}
+        />
+      )}
     </AppLayout >
   );
 }

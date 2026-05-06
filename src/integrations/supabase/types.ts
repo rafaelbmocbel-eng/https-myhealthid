@@ -726,6 +726,42 @@ export type Database = {
           },
         ]
       }
+      documentos_emitidos: {
+        Row: {
+          conteudo: Json
+          created_at: string
+          data_emissao: string
+          id: string
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          conteudo?: Json
+          created_at?: string
+          data_emissao?: string
+          id?: string
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          conteudo?: Json
+          created_at?: string
+          data_emissao?: string
+          id?: string
+          paciente_id?: string
+          terapeuta_id?: string
+          tipo?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       equipe_membros: {
         Row: {
           ativo: boolean
