@@ -25,6 +25,7 @@ interface Props {
 }
 
 const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] = [
+  { value: 'laudo_cinetico', label: 'Laudo Cinético-Funcional', icon: Stethoscope, desc: 'Laudo completo com anamnese, exame, MyID e CIF (auto-preenchido).' },
   { value: 'comparecimento', label: 'Atestado de Comparecimento', icon: Calendar, desc: 'Comprova presença em sessão (data e horário).' },
   { value: 'atestado_fisio', label: 'Atestado Fisioterapêutico', icon: ClipboardCheck, desc: 'Justifica afastamento de atividades por X dias.' },
   { value: 'declaracao_tratamento', label: 'Declaração de Tratamento', icon: FileCheck, desc: 'Confirma acompanhamento (sem dados clínicos).' },
