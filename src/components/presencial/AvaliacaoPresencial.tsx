@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Activity, ClipboardList } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { ClipboardList, Sparkles } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText } from './Body3DAvatar';
 
@@ -23,31 +22,22 @@ export default function AvaliacaoPresencial({
   const painText = painMapToText(painMap);
 
   return (
-    <div className="space-y-4">
-      {/* MyID — discreto no topo */}
+    <div className="space-y-3">
+      {/* MyID — link minimalista */}
       <button
         onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}`)}
-        className="w-full flex items-center gap-2 px-3 py-2 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left"
+        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
       >
-        <ClipboardList className="h-4 w-4 text-violet-600 shrink-0" />
-        <span className="text-xs font-medium flex-1">MyID Presencial</span>
-        <span className="text-[10px] text-muted-foreground">Aplicar →</span>
+        <ClipboardList className="h-3 w-3" />
+        <span>MyID Presencial</span>
       </button>
 
-      {/* Voz / Áudio / Escrita */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center shrink-0">
-            <Activity className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-sm">Avaliação Clínica</h3>
-            <p className="text-xs text-muted-foreground">
-              Grave por voz, envie áudio (até 25MB) ou descreva o caso.
-            </p>
-          </div>
-        </div>
-
+      {/* Voz / Áudio / Escrita — sem moldura */}
+      <div className="space-y-2">
+        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+          <Sparkles className="h-3 w-3" />
+          A IA estrutura a avaliação automaticamente a partir da sua fala, áudio ou texto.
+        </p>
         <VoiceAssessment
           mode="voice"
           serviceType={serviceType}
@@ -58,22 +48,8 @@ export default function AvaliacaoPresencial({
         />
       </div>
 
-      {/* Avatar 3D */}
-      <div className="clinical-card">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center shrink-0">
-            <User className="h-5 w-5 text-white" />
-          </div>
-          <div className="flex-1 min-w-0">
-            <h3 className="font-bold text-sm">Avatar 3D — Mapa de Dor</h3>
-            <p className="text-xs text-muted-foreground">
-              Clique nas regiões para registrar a dor (0–10).
-            </p>
-          </div>
-        </div>
-        <Body3DAvatar value={painMap} onChange={setPainMap} />
-      </div>
+      {/* Avatar 3D — sem moldura */}
+      <Body3DAvatar value={painMap} onChange={setPainMap} />
     </div>
   );
 }
-
