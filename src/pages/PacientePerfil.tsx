@@ -743,6 +743,8 @@ export default function PacientePerfil() {
             nome: paciente.nome,
             sobrenome: paciente.sobrenome,
             cpf: paciente.cpf,
+            data_nascimento: (paciente as any).data_nascimento,
+            sexo: (paciente as any).sexo,
           }}
         />
       )}
