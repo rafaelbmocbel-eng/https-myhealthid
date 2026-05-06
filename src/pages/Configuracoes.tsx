@@ -91,6 +91,9 @@ export default function Configuracoes() {
         {/* Equipe / Profissionais */}
         <EquipeManager />
 
+        {/* Dados da clínica + WhatsApp próprio */}
+        <ConfigClinica />
+
         {/* Controle Mensal de Atendimentos e Repasse */}
         <ControleMensal />
 
