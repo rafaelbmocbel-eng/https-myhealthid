@@ -95,6 +95,7 @@ export default function PacientePerfil() {
   const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
+  const [docsModalOpen, setDocsModalOpen] = useState(false);
 
   // Link MyID ativo (pendente)
   const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
