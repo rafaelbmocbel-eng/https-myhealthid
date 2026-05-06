@@ -457,7 +457,16 @@ export default function PacientePerfil() {
                 }
                 return items;
               })()} />
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0 ml-auto" title="Excluir Definitivamente"
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0 ml-auto"
+                title="Gerar Documento"
+                onClick={() => setDocsModalOpen(true)}
+              >
+                <FileText className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" title="Excluir Definitivamente"
                 onClick={handleDeletePaciente}>
                 <Trash2 className="h-4 w-4" />
               </Button>
