@@ -708,88 +708,15 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
 
 
             <TabsContent value="myid" className="mt-4">
-              <div className="space-y-6">
-                {/* ── Avaliação por Voz — Estrutural ── */}
-                <div className="clinical-card">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-violet-600 flex items-center justify-center">
-                      <Mic className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm">Avaliação por Voz — Estrutural</h3>
-                      <p className="text-xs text-muted-foreground">Grave a anamnese estrutural e receba insights baseados em evidências sobre as 8 Unidades Corporais</p>
-                    </div>
-                  </div>
-                  <VoiceAssessment
-                    serviceType="identidade"
-                    pacienteId={paciente.id}
-                    patientName={`${paciente.nome} ${paciente.sobrenome}`}
-                    onAssessmentComplete={() => {
-                      refetchVoice();
-                      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-                    }}
-                  />
-                </div>
-
-                {/* ── Avaliação Escrita (mesmo motor, sem áudio) ── */}
-                <div className="rounded-2xl border bg-card p-4 mb-4">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-500 to-emerald-600 flex items-center justify-center">
-                      <FileText className="h-5 w-5 text-white" />
-                    </div>
-                    <div>
-                      <h3 className="font-bold text-sm">Avaliação Escrita — Estrutural</h3>
-                      <p className="text-xs text-muted-foreground">Descreva o caso por escrito; a IA monta as seções editáveis (igual à avaliação por voz)</p>
-                    </div>
-                  </div>
-                  <VoiceAssessment
-                    mode="written"
-                    serviceType="identidade"
-                    pacienteId={paciente.id}
-                    patientName={`${paciente.nome} ${paciente.sobrenome}`}
-                    onAssessmentComplete={() => {
-                      refetchVoice();
-                      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-                    }}
-                  />
-                </div>
-
-                {/* Avaliação Estrutural removida — substituída pela aba "Presencial" (Avatar 3D + Voz/Áudio/Escrita) */}
-
-                {!showStructural && !lastSavedData && (
-                  <>
-                    {iniciandoMyID ? (
-                      <div className="bg-card rounded-xl shadow-sm border p-4 relative">
-                        <Button variant="ghost" className="mb-4 absolute top-2 right-2" size="sm" onClick={() => setIniciandoMyID(false)}>Voltar</Button>
-                        <MyIDWizard onComplete={async (result, rawData) => {
-                          await supabase.from('myid_avaliacoes').insert({
-                            terapeuta_id: user?.id,
-                            paciente_id: paciente.id,
-                            status: 'concluido',
-                            respostas_brutas: rawData,
-                            resultado_processado: result,
-                          });
-                          refetchMyID();
-                          setIniciandoMyID(false);
-                          toast({ title: 'MyID Salvo!', description: 'Avaliação registrada com sucesso.' });
-                        }} />
-                      </div>
-                    ) : (
-                      <div className="space-y-4">
-                        <div className="flex justify-between items-center bg-card p-4 rounded-xl border shadow-sm">
-                          <div>
-                            <h3 className="font-bold text-lg text-primary">Avaliação MyID Presencial</h3>
-                            <p className="text-sm text-muted-foreground">Preencha um novo MyID durante a sessão.</p>
-                          </div>
-                          <Button onClick={() => setIniciandoMyID(true)}>Nova Avaliação</Button>
-                        </div>
-                        <p className="text-xs text-muted-foreground">O histórico completo fica na aba "Histórico de Avaliações".</p>
-                      </div>
-                    )}
-                  </>
-                )}
-
-              </div>
+              <AvaliacaoPresencial
+                pacienteId={paciente.id}
+                patientName={`${paciente.nome} ${paciente.sobrenome}`}
+                serviceType="identidade"
+                onAssessmentComplete={() => {
+                  refetchVoice();
+                  qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+                }}
+              />
             </TabsContent>
 
             {/* Aba: Histórico de Avaliações */}
