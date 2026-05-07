@@ -370,10 +370,18 @@ function BodyView({
   );
 }
 
-export default function Body3DAvatar({ value, onChange }: Props) {
+export default function Body3DAvatar({ value, onChange, structures, onStructuresChange }: Props) {
   const [internal, setInternal] = useState<Record<string, number>>(value ?? {});
   const points = value ?? internal;
   const [selected, setSelected] = useState<string | null>(null);
+  const [internalStruct, setInternalStruct] = useState<RegionStructState>(structures ?? {});
+  const struct = structures ?? internalStruct;
+  const [customInput, setCustomInput] = useState('');
+
+  const updateStruct = (next: RegionStructState) => {
+    setInternalStruct(next);
+    onStructuresChange?.(next);
+  };
 
   const update = (map: Record<string, number>) => {
     setInternal(map);
@@ -394,7 +402,22 @@ export default function Body3DAvatar({ value, onChange }: Props) {
 
   const clearAll = () => {
     update({});
+    updateStruct({});
     setSelected(null);
+  };
+
+  const toggleStructure = (regionId: string, name: string) => {
+    const list = struct[regionId] ?? [];
+    const next = list.includes(name) ? list.filter(s => s !== name) : [...list, name];
+    updateStruct({ ...struct, [regionId]: next });
+  };
+
+  const addCustomStructure = () => {
+    const v = customInput.trim();
+    if (!v || !selected) return;
+    const list = struct[selected] ?? [];
+    if (!list.includes(v)) updateStruct({ ...struct, [selected]: [...list, v] });
+    setCustomInput('');
   };
 
   const selectedRegion = REGIONS.find(r => r.id === selected);
