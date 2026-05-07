@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard,
+  Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { gerarRecibo } from '@/utils/pdfDocumentos';
 
 interface Props {
   pacienteId: string;
@@ -83,6 +84,63 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
       qc.invalidateQueries({ queryKey: ['pagamentos-perfil', pacienteId] });
     } catch (e: any) {
       toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  const handleGerarRecibo = async (p: any) => {
+    try {
+      // Buscar dados da clínica e do terapeuta
+      const [clinicaRes, profileRes, pacienteRes, pacoteRes] = await Promise.all([
+        (supabase as any).from('config_clinica').select('*').eq('terapeuta_id', user!.id).maybeSingle(),
+        supabase.from('profiles').select('nome, sobrenome, especialidade, crefito').eq('user_id', user!.id).maybeSingle(),
+        supabase.from('pacientes').select('nome, sobrenome, cpf, rg').eq('id', pacienteId).maybeSingle(),
+        (supabase as any)
+          .from('pacotes_sessoes')
+          .select('total_sessoes, sessoes_utilizadas, valor_total, nome_pacote')
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user!.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      const prof = profileRes.data as any;
+      const pac = pacienteRes.data as any;
+      const pacote = pacoteRes.data as any;
+
+      const formaMap: Record<string, string> = {
+        pix: 'PIX', cartao: 'cartão', dinheiro: 'dinheiro', transferencia: 'transferência bancária',
+      };
+
+      const referente = p.descricao
+        + (pacote?.nome_pacote ? ` — pacote ${pacote.nome_pacote}` : '')
+        + ` (recebimento em ${new Date(p.created_at).toLocaleDateString('pt-BR')})`;
+
+      const doc = await gerarRecibo({
+        clinica: clinicaRes.data || null,
+        terapeuta: {
+          nome: prof?.nome || user!.email?.split('@')[0] || 'Terapeuta',
+          sobrenome: prof?.sobrenome,
+          registro: prof?.crefito,
+          especialidade: prof?.especialidade,
+        },
+        paciente: {
+          nome: pac?.nome || pacienteNome,
+          sobrenome: pac?.sobrenome,
+          cpf: pac?.cpf,
+          rg: pac?.rg,
+        },
+        dados: {
+          valor: Number(p.valor),
+          referente,
+          formaPagamento: formaMap[p.forma_pagamento] || p.forma_pagamento,
+          numeroSessoes: pacote?.total_sessoes,
+        },
+      });
+      doc.save(`Recibo_${pac?.nome || pacienteNome}_${new Date(p.created_at).toISOString().split('T')[0]}.pdf`);
+      toast({ title: '📄 Recibo gerado!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar recibo', description: e.message, variant: 'destructive' });
     }
   };
 
@@ -185,11 +243,22 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
                     {new Date(p.created_at).toLocaleDateString('pt-BR')} · {p.forma_pagamento === 'pix' ? 'PIX' : p.forma_pagamento === 'cartao' ? 'Cartão' : p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 'Transf.'}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="text-sm font-bold">R$ {Number(p.valor).toFixed(2).replace('.', ',')}</p>
                   <Badge variant="outline" className={cn('text-[9px] gap-0.5', cfg.color)}>
                     {cfg.icon} {cfg.badge}
                   </Badge>
+                  {p.status === 'confirmado' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-1.5 text-[10px] gap-1 text-primary hover:text-primary"
+                      onClick={() => handleGerarRecibo(p)}
+                      title="Gerar recibo PDF"
+                    >
+                      <Receipt className="h-3 w-3" /> Recibo
+                    </Button>
+                  )}
                 </div>
               </div>
             );
