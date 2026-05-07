@@ -492,6 +492,103 @@ export default function Body3DAvatar({ value, onChange, structures, onStructures
             <span>Sem dor</span>
             <span>Insuportável</span>
           </div>
+
+          {/* ── Estruturas acometidas (aparece após escolher a região) ── */}
+          {selectedIntensity > 0 && (
+            <div className="pt-3 mt-2 border-t border-border space-y-3">
+              <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground">
+                Estruturas acometidas
+              </p>
+              {(() => {
+                const baseId = selected!.replace(/_p_/, '_').replace(/_p$/, '');
+                const cat = STRUCTURES[selected!] ?? STRUCTURES[baseId] ?? {};
+                const cats = Object.keys(cat) as StructCat[];
+                const selList = struct[selected!] ?? [];
+                return (
+                  <>
+                    {cats.length === 0 && (
+                      <p className="text-[11px] text-muted-foreground italic">
+                        Sem catálogo pré-definido. Adicione abaixo.
+                      </p>
+                    )}
+                    {cats.map(c => (
+                      <div key={c}>
+                        <p className="text-[11px] font-semibold mb-1 flex items-center gap-1">
+                          <span>{CAT_EMOJI[c]}</span> {CAT_LABEL[c]}
+                        </p>
+                        <div className="flex flex-wrap gap-1">
+                          {(cat[c] ?? []).map(name => {
+                            const isSel = selList.includes(name);
+                            return (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => toggleStructure(selected!, name)}
+                                className={`text-[10px] px-2 py-0.5 rounded-full border transition-all ${
+                                  isSel
+                                    ? 'bg-primary text-primary-foreground border-primary'
+                                    : 'bg-background border-border hover:border-primary/50'
+                                }`}
+                              >
+                                {name}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                    {/* Custom adicionados (que não estão no catálogo) */}
+                    {(() => {
+                      const known = new Set(cats.flatMap(c => cat[c] ?? []));
+                      const extras = selList.filter(s => !known.has(s));
+                      if (!extras.length) return null;
+                      return (
+                        <div>
+                          <p className="text-[11px] font-semibold mb-1">✏️ Outros</p>
+                          <div className="flex flex-wrap gap-1">
+                            {extras.map(name => (
+                              <button
+                                key={name}
+                                type="button"
+                                onClick={() => toggleStructure(selected!, name)}
+                                className="text-[10px] px-2 py-0.5 rounded-full bg-primary text-primary-foreground border border-primary inline-flex items-center gap-1"
+                              >
+                                {name} <X className="h-2.5 w-2.5" />
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      );
+                    })()}
+                    {/* Input livre */}
+                    <div className="flex gap-1.5 pt-1">
+                      <Input
+                        value={customInput}
+                        onChange={(e) => setCustomInput(e.target.value)}
+                        onKeyDown={(e: KeyboardEvent<HTMLInputElement>) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            addCustomStructure();
+                          }
+                        }}
+                        placeholder="Outra estrutura…"
+                        className="h-8 text-[11px]"
+                      />
+                      <Button
+                        type="button"
+                        size="sm"
+                        variant="outline"
+                        onClick={addCustomStructure}
+                        className="h-8 px-2"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                  </>
+                );
+              })()}
+            </div>
+          )}
         </div>
       ) : (
         <p className="text-xs text-muted-foreground text-center">
