@@ -17,7 +17,7 @@ const CAT_EMOJI: Record<StructCat, string> = {
 };
 
 type RegionStructures = Partial<Record<StructCat, string[]>>;
-const STRUCTURES: Record<string, RegionStructures> = {
+export const STRUCTURES: Record<string, RegionStructures> = {
   cabeca: { musculos: ['Temporal', 'Masseter', 'Frontal'], articulacoes: ['ATM'], nervos: ['Trigêmeo', 'Occipital'] },
   pescoco: { musculos: ['ECOM', 'Escalenos', 'Suboccipitais'], articulacoes: ['C1-C7'], nervos: ['Plexo cervical'] },
   cervical: { musculos: ['Suboccipitais', 'Esplênio', 'Semiespinhal'], articulacoes: ['Facetas C2-C7'], nervos: ['Raízes C5-C8'] },
@@ -118,7 +118,7 @@ const FRONT_OUTLINE =
   'C 96 84 88 70 88 54 ' +                  // jaw L
   'C 88 34 102 18 120 18 Z';
 
-const REGIONS: Region[] = [
+export const REGIONS: Region[] = [
   // ===== FRONT =====
   // Head
   { id: 'cabeca',       label: 'Cabeça',       view: 'front', cx: 120, cy: 50,
