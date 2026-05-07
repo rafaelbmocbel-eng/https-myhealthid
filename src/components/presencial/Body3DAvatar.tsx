@@ -1,19 +1,9 @@
-import { useState } from 'react';
-import { BodyAvatarSVG, UC_TO_REGIONS } from '@/components/identidade/BodyAvatarSVG';
+import { useState, useMemo } from 'react';
+import BodyMapSelector from '@/components/structural/BodyMapSelector';
+import { UNIT_CONFIGS, type UnitAssessment } from '@/types/structural';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Trash2 } from 'lucide-react';
-
-const UC_LABELS: Record<string, string> = {
-  'UC1': 'Cabeça / Pescoço',
-  'UC2': 'Coluna Torácica',
-  'UC3': 'Abdômen / Lombar',
-  'UC4': 'Sacro-Pélvica',
-  'UA-D': 'Membro Superior D',
-  'UA-E': 'Membro Superior E',
-  'ID': 'Membro Inferior D',
-  'DD': 'Membro Inferior E',
-};
 
 function intensityColor(i: number): string {
   if (i <= 0) return '#94a3b8';
@@ -38,14 +28,25 @@ export default function Body3DAvatar({ value, onChange }: Props) {
     onChange?.(map);
   };
 
-  const handleRegionClick = (regionId: string) => {
-    for (const [ucId, regions] of Object.entries(UC_TO_REGIONS)) {
-      if (regions.includes(regionId)) {
-        setSelected(ucId);
-        if (!points[ucId]) update({ ...points, [ucId]: 5 });
-        return;
-      }
+  // Build UnitAssessment shape expected by BodyMapSelector
+  const units: Record<string, UnitAssessment> = useMemo(() => {
+    const out: Record<string, UnitAssessment> = {};
+    for (const cfg of UNIT_CONFIGS) {
+      out[cfg.id] = {
+        unitId: cfg.id,
+        score: points[cfg.id] ?? 0,
+        classification: '',
+        testsPerformed: [],
+        affectedStructures: { muscles: [], joints: [], ligaments: [], nerves: [], viscera: [] },
+        observacoes: '',
+      };
     }
+    return out;
+  }, [points]);
+
+  const handleSelectUnit = (unitId: string) => {
+    setSelected(unitId);
+    if (!points[unitId]) update({ ...points, [unitId]: 5 });
   };
 
   const setIntensity = (key: string, v: number) => {
@@ -60,43 +61,37 @@ export default function Body3DAvatar({ value, onChange }: Props) {
     setSelected(null);
   };
 
-  const selectedLabel = selected ? UC_LABELS[selected] : '';
+  const selectedCfg = UNIT_CONFIGS.find(c => c.id === selected);
   const selectedIntensity = selected ? points[selected] ?? 0 : 0;
   const activeUnits = Object.entries(points).filter(([, v]) => v > 0);
 
   return (
     <div className="space-y-3">
-      <div className="relative rounded-2xl overflow-hidden border border-border bg-gradient-to-b from-muted/30 to-muted/10 p-4">
-        <BodyAvatarSVG
-          mode="structural"
-          ucScoreMap={points}
-          highlightedUC={selected}
-          onRegionClick={handleRegionClick}
-          showBack
-          className="max-w-2xl mx-auto"
+      <div className="relative">
+        <BodyMapSelector
+          units={units}
+          activeUnitId={selected ?? undefined}
+          onSelectUnit={handleSelectUnit}
         />
         {activeUnits.length > 0 && (
           <Button
             type="button"
             size="sm"
             variant="destructive"
-            className="absolute top-2 right-2 h-7 text-[10px] gap-1"
+            className="absolute top-3 right-3 h-7 text-[10px] gap-1"
             onClick={clearAll}
           >
             <Trash2 className="h-3 w-3" /> Limpar
           </Button>
         )}
-        <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground bg-background/70 backdrop-blur px-2 py-1 rounded-md">
-          Clique numa unidade corporal
-        </div>
       </div>
 
-      {selected ? (
+      {selected && selectedCfg ? (
         <div className="rounded-xl border border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-xs text-muted-foreground">Unidade selecionada</p>
-              <p className="font-bold text-sm">{selected} · {selectedLabel}</p>
+              <p className="font-bold text-sm">{selectedCfg.emoji} {selectedCfg.id} · {selectedCfg.name}</p>
             </div>
             <div
               className="h-9 w-9 rounded-full flex items-center justify-center text-white font-black text-sm"
@@ -113,12 +108,12 @@ export default function Body3DAvatar({ value, onChange }: Props) {
             onValueChange={(v) => setIntensity(selected, v[0])}
           />
           <div className="flex justify-between text-[10px] text-muted-foreground">
-            <span>Sem dor</span>
-            <span>Insuportável</span>
+            <span>Sem alteração</span>
+            <span>Crítico</span>
           </div>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground text-center">Clique numa unidade corporal para registrar a dor (0–10).</p>
+        <p className="text-xs text-muted-foreground text-center">Toque numa das 8 unidades corporais para registrar (0–10).</p>
       )}
 
       {activeUnits.length > 0 && (
@@ -129,17 +124,20 @@ export default function Body3DAvatar({ value, onChange }: Props) {
           <div className="flex flex-wrap gap-1.5">
             {activeUnits
               .sort((a, b) => b[1] - a[1])
-              .map(([k, v]) => (
-                <button
-                  key={k}
-                  type="button"
-                  onClick={() => setSelected(k)}
-                  className="px-2 py-1 rounded-full text-[10px] font-bold text-white inline-flex items-center gap-1"
-                  style={{ background: intensityColor(v) }}
-                >
-                  {k} · {UC_LABELS[k] ?? k} · {v}
-                </button>
-              ))}
+              .map(([k, v]) => {
+                const cfg = UNIT_CONFIGS.find(c => c.id === k);
+                return (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setSelected(k)}
+                    className="px-2 py-1 rounded-full text-[10px] font-bold text-white inline-flex items-center gap-1"
+                    style={{ background: intensityColor(v) }}
+                  >
+                    {cfg?.emoji} {k} · {cfg?.shortName ?? ''} · {v}
+                  </button>
+                );
+              })}
           </div>
         </div>
       )}
@@ -151,6 +149,9 @@ export function painMapToText(map: Record<string, number>): string {
   const entries = Object.entries(map).filter(([, v]) => v > 0);
   if (!entries.length) return '';
   const sorted = entries.sort((a, b) => b[1] - a[1]);
-  const lines = sorted.map(([k, v]) => `- ${k} ${UC_LABELS[k] ?? ''}: ${v}/10`);
-  return `Mapa de unidades corporais:\n${lines.join('\n')}`;
+  const lines = sorted.map(([k, v]) => {
+    const cfg = UNIT_CONFIGS.find(c => c.id === k);
+    return `- ${k} ${cfg?.name ?? ''}: ${v}/10`;
+  });
+  return `Mapa das 8 Unidades:\n${lines.join('\n')}`;
 }
