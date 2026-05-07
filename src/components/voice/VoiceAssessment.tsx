@@ -81,6 +81,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [soapNoteSaved, setSoapNoteSaved] = useState(false);
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
+  const [showFullEditor, setShowFullEditor] = useState(false);
+  const [fullEditorJson, setFullEditorJson] = useState('');
+  const [fullEditorError, setFullEditorError] = useState<string | null>(null);
   const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
@@ -541,6 +544,27 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     void clearDraft(draftKey);
   };
 
+  // Full JSON editor — edits EVERY field of the assessment in a single place
+  const openFullEditor = () => {
+    if (!assessment) return;
+    setFullEditorJson(JSON.stringify(assessment, null, 2));
+    setFullEditorError(null);
+    setShowFullEditor(true);
+  };
+
+  const saveFullEditor = () => {
+    try {
+      const parsed = JSON.parse(fullEditorJson);
+      setAssessment(parsed);
+      setIsSaved(false);
+      setShowFullEditor(false);
+      setFullEditorError(null);
+      toast({ title: '✏️ Avaliação atualizada', description: 'Lembre-se de salvar no prontuário.' });
+    } catch (e: any) {
+      setFullEditorError(e?.message || 'JSON inválido');
+    }
+  };
+
   // ── Cria uma Diretriz Oficial a partir da diretriz_tratamento gerada pela IA ──
   const criarDiretrizDaVoz = async () => {
     if (!user || !assessment?.diretriz_tratamento || !pacienteId) {
@@ -785,8 +809,11 @@ ${resumoTecnicas}`;
             </Badge>
           </div>
           <div className="flex gap-2 flex-wrap">
+            <Button variant="outline" size="sm" onClick={openFullEditor} className="border-primary/40 text-primary">
+              <Edit3 className="h-4 w-4 mr-1" />Editor Completo
+            </Button>
             <Button variant="outline" size="sm" onClick={() => setIsEditingTranscript(prev => !prev)}>
-              <Edit3 className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Editor' : 'Ver/Editar Texto'}
+              <FileText className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Texto' : 'Ver/Editar Texto'}
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
             {!isSaved ? (
@@ -802,6 +829,38 @@ ${resumoTecnicas}`;
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
+
+        {/* ── Editor Completo (JSON estruturado de toda a avaliação) ── */}
+        {showFullEditor && (
+          <Card className="border-primary/40 ring-2 ring-primary/20">
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <div className="flex items-center gap-2">
+                  <Edit3 className="h-4 w-4 text-primary" />
+                  <span className="font-semibold text-sm">Editor Completo da Avaliação</span>
+                </div>
+                <p className="text-xs text-muted-foreground">Edite qualquer campo. Mantenha o formato JSON válido.</p>
+              </div>
+              <Textarea
+                value={fullEditorJson}
+                onChange={(e) => { setFullEditorJson(e.target.value); setFullEditorError(null); }}
+                className="min-h-[420px] text-xs font-mono"
+                spellCheck={false}
+              />
+              {fullEditorError && (
+                <p className="text-xs text-destructive flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />{fullEditorError}
+                </p>
+              )}
+              <div className="flex gap-2">
+                <Button size="sm" onClick={saveFullEditor} className="bg-primary text-primary-foreground">
+                  <CheckCircle2 className="h-4 w-4 mr-1" />Aplicar Alterações
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => setShowFullEditor(false)}>Cancelar</Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {isEditingTranscript && (
           <Card className="border-primary/20">
