@@ -46,7 +46,23 @@ function intensityColor(i: number): string {
 
 function HumanModel() {
   const { scene } = useGLTF(HUMAN_MODEL_URL) as any;
-  const cloned = useMemo(() => scene.clone(true), [scene]);
+  const cloned = useMemo(() => {
+    const c = scene.clone(true);
+    // Aplica material de manequim anatômico (branco fosco médico)
+    const mannequinMat = new THREE.MeshStandardMaterial({
+      color: '#e8e4dd',
+      roughness: 0.85,
+      metalness: 0.0,
+    });
+    c.traverse((obj: any) => {
+      if (obj.isMesh) {
+        obj.material = mannequinMat;
+        obj.castShadow = true;
+        obj.receiveShadow = true;
+      }
+    });
+    return c;
+  }, [scene]);
   return <primitive object={cloned} />;
 }
 useGLTF.preload(HUMAN_MODEL_URL);
