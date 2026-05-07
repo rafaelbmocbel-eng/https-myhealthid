@@ -61,16 +61,12 @@ function HumanBody({
   onSelectRegion: (key: string) => void;
 }) {
   return (
-    <group position={[0, -0.85, 0]}>
-      <Bounds fit clip observe margin={1.1}>
-        <Center disableY>
-          <group scale={1}>
-            <Suspense fallback={null}>
-              <HumanModel />
-            </Suspense>
-          </group>
-        </Center>
-      </Bounds>
+    <group>
+      <Center>
+        <Suspense fallback={null}>
+          <HumanModel />
+        </Suspense>
+      </Center>
 
       {/* Region markers */}
       {REGIONS.map((r) => {
