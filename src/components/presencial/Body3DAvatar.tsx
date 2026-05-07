@@ -3,8 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html, useGLTF, Center, Bounds } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Modelo anatômico humano realista (Xbot - figura humana neutra em T-pose, ideal para mapeamento clínico)
-const HUMAN_MODEL_URL = 'https://threejs.org/examples/models/gltf/Xbot.glb';
+// Manequim anatômico (figura humana neutra estilo manequim médico)
+const HUMAN_MODEL_URL = 'https://models.readyplayer.me/64bfa15f0e72c63d7c3934a6.glb?meshLod=2&textureAtlas=512';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Trash2, RotateCcw } from 'lucide-react';
