@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
+import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
 import { User, Mail, Phone, Calendar } from 'lucide-react';
 
@@ -51,6 +52,13 @@ export default function PacientePerfil() {
               ))}
             </CardContent>
           </Card>
+
+          {paciente?.id && paciente?.terapeuta_id && (
+            <PacienteConsentimentoLGPD
+              pacienteId={paciente.id}
+              terapeutaId={paciente.terapeuta_id}
+            />
+          )}
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>
