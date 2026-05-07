@@ -8,9 +8,10 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
-  Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard,
+  Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { gerarRecibo } from '@/utils/pdfDocumentos';
 
 interface Props {
   pacienteId: string;
