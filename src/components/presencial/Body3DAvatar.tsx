@@ -20,53 +20,146 @@ interface Region {
   cy: number;
 }
 
-// Anatomical regions — paths trace approximate body parts on a 200x420 viewBox figure.
+/**
+ * Anatomical silhouette — smooth, human-like proportions on a 240x520 viewBox.
+ * Body parts are drawn with cubic bezier curves to look like a real human outline,
+ * and clickable region paths tile the body without gaps.
+ */
+
+// Outline of the FRONT body (used as silhouette and clipPath)
+const FRONT_OUTLINE =
+  'M120 18 ' +
+  'C 138 18 152 34 152 54 ' +              // head right
+  'C 152 70 144 84 132 90 ' +              // jaw right
+  'L 134 104 ' +                            // neck right
+  'C 156 110 178 118 184 132 ' +           // shoulder right top
+  'L 192 168 ' +                            // upper arm out
+  'L 200 230 ' +                            // forearm out
+  'L 204 280 ' +                            // wrist
+  'L 196 308 L 188 308 L 184 282 ' +       // hand bottom + back
+  'L 176 232 L 168 178 ' +                  // arm inside up
+  'L 160 168 L 158 220 L 156 280 ' +       // ribcage to hip right
+  'L 162 360 L 158 430 L 152 500 ' +       // leg right outside
+  'L 138 506 L 134 500 L 132 430 ' +       // foot R + leg back
+  'L 128 360 L 124 280 ' +                  // groin right
+  'L 116 280 L 112 360 L 108 430 ' +       // groin left → leg left
+  'L 106 500 L 102 506 L 88 500 ' +        // foot L
+  'L 82 430 L 78 360 L 84 280 ' +           // leg left outside
+  'L 82 220 L 80 168 L 72 178 ' +           // hip left to ribcage
+  'L 64 232 L 56 282 L 52 308 ' +           // forearm L
+  'L 44 308 L 36 280 L 40 230 ' +           // hand L
+  'L 48 168 L 56 132 ' +                    // upper arm L
+  'C 62 118 84 110 106 104 ' +             // shoulder L
+  'L 108 90 ' +                             // neck L
+  'C 96 84 88 70 88 54 ' +                  // jaw L
+  'C 88 34 102 18 120 18 Z';
+
 const REGIONS: Region[] = [
   // ===== FRONT =====
-  { id: 'cabeca',        label: 'Cabeça',           view: 'front', cx: 100, cy: 28,  d: 'M100 8 C 116 8 126 22 126 38 C 126 54 116 66 100 66 C 84 66 74 54 74 38 C 74 22 84 8 100 8 Z' },
-  { id: 'pescoco',       label: 'Pescoço',          view: 'front', cx: 100, cy: 76,  d: 'M88 66 L112 66 L114 86 L86 86 Z' },
-  { id: 'ombro_d',       label: 'Ombro D',          view: 'front', cx: 70,  cy: 96,  d: 'M86 86 L60 92 L52 110 L74 108 L82 96 Z' },
-  { id: 'ombro_e',       label: 'Ombro E',          view: 'front', cx: 130, cy: 96,  d: 'M114 86 L140 92 L148 110 L126 108 L118 96 Z' },
-  { id: 'peitoral',      label: 'Tórax',            view: 'front', cx: 100, cy: 118, d: 'M82 96 L118 96 L122 138 L78 138 Z' },
-  { id: 'abdomen',       label: 'Abdômen',          view: 'front', cx: 100, cy: 162, d: 'M80 138 L120 138 L122 188 L78 188 Z' },
-  { id: 'pelve',         label: 'Pelve',            view: 'front', cx: 100, cy: 202, d: 'M78 188 L122 188 L126 220 L74 220 Z' },
-  { id: 'braco_d',       label: 'Braço D',          view: 'front', cx: 56,  cy: 130, d: 'M52 110 L72 108 L70 150 L48 152 Z' },
-  { id: 'braco_e',       label: 'Braço E',          view: 'front', cx: 144, cy: 130, d: 'M148 110 L128 108 L130 150 L152 152 Z' },
-  { id: 'antebraco_d',   label: 'Antebraço D',      view: 'front', cx: 50,  cy: 178, d: 'M48 152 L70 150 L66 200 L44 202 Z' },
-  { id: 'antebraco_e',   label: 'Antebraço E',      view: 'front', cx: 150, cy: 178, d: 'M152 152 L130 150 L134 200 L156 202 Z' },
-  { id: 'mao_d',         label: 'Mão D',            view: 'front', cx: 44,  cy: 218, d: 'M44 202 L66 200 L62 230 L42 232 Z' },
-  { id: 'mao_e',         label: 'Mão E',            view: 'front', cx: 156, cy: 218, d: 'M156 202 L134 200 L138 230 L158 232 Z' },
-  { id: 'coxa_d',        label: 'Coxa D',           view: 'front', cx: 86,  cy: 250, d: 'M76 220 L100 220 L98 282 L74 280 Z' },
-  { id: 'coxa_e',        label: 'Coxa E',           view: 'front', cx: 114, cy: 250, d: 'M124 220 L100 220 L102 282 L126 280 Z' },
-  { id: 'joelho_d',      label: 'Joelho D',         view: 'front', cx: 84,  cy: 296, d: 'M74 280 L98 282 L98 308 L76 306 Z' },
-  { id: 'joelho_e',      label: 'Joelho E',         view: 'front', cx: 116, cy: 296, d: 'M126 280 L102 282 L102 308 L124 306 Z' },
-  { id: 'canela_d',      label: 'Canela D',         view: 'front', cx: 84,  cy: 348, d: 'M76 306 L98 308 L96 380 L78 380 Z' },
-  { id: 'canela_e',      label: 'Canela E',         view: 'front', cx: 116, cy: 348, d: 'M124 306 L102 308 L104 380 L122 380 Z' },
-  { id: 'pe_d',          label: 'Pé D',             view: 'front', cx: 84,  cy: 396, d: 'M78 380 L96 380 L98 408 L74 408 Z' },
-  { id: 'pe_e',          label: 'Pé E',             view: 'front', cx: 116, cy: 396, d: 'M122 380 L104 380 L102 408 L126 408 Z' },
+  // Head
+  { id: 'cabeca',       label: 'Cabeça',       view: 'front', cx: 120, cy: 50,
+    d: 'M88 54 C 88 34 102 18 120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L108 90 C 96 84 88 70 88 54 Z' },
+  // Neck
+  { id: 'pescoco',      label: 'Pescoço',      view: 'front', cx: 120, cy: 100,
+    d: 'M108 90 L132 90 L134 108 L106 108 Z' },
+  // Shoulders
+  { id: 'ombro_d',      label: 'Ombro D',      view: 'front', cx: 158, cy: 122,
+    d: 'M134 108 C 156 110 178 118 184 132 L 168 144 L 152 130 Z' },
+  { id: 'ombro_e',      label: 'Ombro E',      view: 'front', cx: 82,  cy: 122,
+    d: 'M106 108 C 84 110 62 118 56 132 L 72 144 L 88 130 Z' },
+  // Chest
+  { id: 'peitoral',     label: 'Tórax',        view: 'front', cx: 120, cy: 152,
+    d: 'M88 130 L152 130 L168 144 L160 184 L80 184 L72 144 Z' },
+  // Abdomen
+  { id: 'abdomen',      label: 'Abdômen',      view: 'front', cx: 120, cy: 210,
+    d: 'M80 184 L160 184 L162 240 L78 240 Z' },
+  // Pelvis
+  { id: 'pelve',        label: 'Pelve',        view: 'front', cx: 120, cy: 264,
+    d: 'M78 240 L162 240 L156 290 L84 290 Z' },
+  // Right arm (anatomically — viewer's left)
+  { id: 'braco_d',      label: 'Braço D',      view: 'front', cx: 178, cy: 168,
+    d: 'M184 132 L192 168 L176 184 L168 144 Z' },
+  { id: 'cotovelo_d',   label: 'Cotovelo D',   view: 'front', cx: 184, cy: 200,
+    d: 'M192 168 L200 230 L182 224 L176 184 Z' },
+  { id: 'antebraco_d',  label: 'Antebraço D',  view: 'front', cx: 192, cy: 250,
+    d: 'M200 230 L204 280 L188 280 L182 224 Z' },
+  { id: 'mao_d',        label: 'Mão D',        view: 'front', cx: 192, cy: 296,
+    d: 'M204 280 L196 308 L184 308 L188 280 Z' },
+  // Left arm (viewer's right)
+  { id: 'braco_e',      label: 'Braço E',      view: 'front', cx: 62,  cy: 168,
+    d: 'M56 132 L48 168 L64 184 L72 144 Z' },
+  { id: 'cotovelo_e',   label: 'Cotovelo E',   view: 'front', cx: 56,  cy: 200,
+    d: 'M48 168 L40 230 L58 224 L64 184 Z' },
+  { id: 'antebraco_e',  label: 'Antebraço E',  view: 'front', cx: 48,  cy: 250,
+    d: 'M40 230 L36 280 L52 280 L58 224 Z' },
+  { id: 'mao_e',        label: 'Mão E',        view: 'front', cx: 48,  cy: 296,
+    d: 'M36 280 L44 308 L56 308 L52 280 Z' },
+  // Right thigh (viewer's left)
+  { id: 'coxa_d',       label: 'Coxa D',       view: 'front', cx: 144, cy: 330,
+    d: 'M124 290 L156 290 L162 360 L128 360 Z' },
+  { id: 'joelho_d',     label: 'Joelho D',     view: 'front', cx: 144, cy: 380,
+    d: 'M128 360 L162 360 L160 400 L130 400 Z' },
+  { id: 'canela_d',     label: 'Canela D',     view: 'front', cx: 144, cy: 450,
+    d: 'M130 400 L160 400 L158 490 L134 490 Z' },
+  { id: 'pe_d',         label: 'Pé D',         view: 'front', cx: 144, cy: 502,
+    d: 'M134 490 L158 490 L152 510 L138 510 Z' },
+  // Left thigh
+  { id: 'coxa_e',       label: 'Coxa E',       view: 'front', cx: 96,  cy: 330,
+    d: 'M84 290 L116 290 L112 360 L78 360 Z' },
+  { id: 'joelho_e',     label: 'Joelho E',     view: 'front', cx: 96,  cy: 380,
+    d: 'M78 360 L112 360 L110 400 L80 400 Z' },
+  { id: 'canela_e',     label: 'Canela E',     view: 'front', cx: 96,  cy: 450,
+    d: 'M80 400 L110 400 L106 490 L82 490 Z' },
+  { id: 'pe_e',         label: 'Pé E',         view: 'front', cx: 96,  cy: 502,
+    d: 'M82 490 L106 490 L102 510 L88 510 Z' },
 
-  // ===== BACK =====
-  { id: 'occipital',     label: 'Nuca/Occipital',   view: 'back',  cx: 100, cy: 28,  d: 'M100 8 C 116 8 126 22 126 38 C 126 54 116 66 100 66 C 84 66 74 54 74 38 C 74 22 84 8 100 8 Z' },
-  { id: 'cervical',      label: 'Cervical',         view: 'back',  cx: 100, cy: 76,  d: 'M88 66 L112 66 L114 86 L86 86 Z' },
-  { id: 'trapezio_d',    label: 'Trapézio D',       view: 'back',  cx: 78,  cy: 94,  d: 'M86 86 L60 92 L66 108 L88 100 Z' },
-  { id: 'trapezio_e',    label: 'Trapézio E',       view: 'back',  cx: 122, cy: 94,  d: 'M114 86 L140 92 L134 108 L112 100 Z' },
-  { id: 'dorsal',        label: 'Dorsal',           view: 'back',  cx: 100, cy: 130, d: 'M82 100 L118 100 L122 158 L78 158 Z' },
-  { id: 'lombar',        label: 'Lombar',           view: 'back',  cx: 100, cy: 178, d: 'M80 158 L120 158 L122 198 L78 198 Z' },
-  { id: 'gluteos',       label: 'Glúteos',          view: 'back',  cx: 100, cy: 212, d: 'M78 198 L122 198 L126 232 L74 232 Z' },
-  { id: 'braco_post_d',  label: 'Braço Post. D',    view: 'back',  cx: 56,  cy: 130, d: 'M52 110 L72 108 L70 150 L48 152 Z' },
-  { id: 'braco_post_e',  label: 'Braço Post. E',    view: 'back',  cx: 144, cy: 130, d: 'M148 110 L128 108 L130 150 L152 152 Z' },
-  { id: 'cotovelo_d',    label: 'Cotovelo D',       view: 'back',  cx: 49,  cy: 156, d: 'M48 152 L70 150 L68 168 L46 170 Z' },
-  { id: 'cotovelo_e',    label: 'Cotovelo E',       view: 'back',  cx: 151, cy: 156, d: 'M152 152 L130 150 L132 168 L154 170 Z' },
-  { id: 'antebraco_p_d', label: 'Antebraço D',      view: 'back',  cx: 47,  cy: 192, d: 'M46 170 L68 168 L64 212 L44 214 Z' },
-  { id: 'antebraco_p_e', label: 'Antebraço E',      view: 'back',  cx: 153, cy: 192, d: 'M154 170 L132 168 L136 212 L156 214 Z' },
-  { id: 'isquio_d',      label: 'Isquiotibial D',   view: 'back',  cx: 86,  cy: 258, d: 'M76 232 L100 232 L98 290 L74 288 Z' },
-  { id: 'isquio_e',      label: 'Isquiotibial E',   view: 'back',  cx: 114, cy: 258, d: 'M124 232 L100 232 L102 290 L126 288 Z' },
-  { id: 'cavo_d',        label: 'Poplíteo D',       view: 'back',  cx: 84,  cy: 304, d: 'M74 288 L98 290 L98 316 L76 314 Z' },
-  { id: 'cavo_e',        label: 'Poplíteo E',       view: 'back',  cx: 116, cy: 304, d: 'M126 288 L102 290 L102 316 L124 314 Z' },
-  { id: 'panturrilha_d', label: 'Panturrilha D',    view: 'back',  cx: 84,  cy: 350, d: 'M76 314 L98 316 L96 380 L78 380 Z' },
-  { id: 'panturrilha_e', label: 'Panturrilha E',    view: 'back',  cx: 116, cy: 350, d: 'M124 314 L102 316 L104 380 L122 380 Z' },
-  { id: 'calcanhar_d',   label: 'Calcanhar D',      view: 'back',  cx: 84,  cy: 396, d: 'M78 380 L96 380 L98 408 L74 408 Z' },
-  { id: 'calcanhar_e',   label: 'Calcanhar E',      view: 'back',  cx: 116, cy: 396, d: 'M122 380 L104 380 L102 408 L126 408 Z' },
+  // ===== BACK ===== (mirror anatomical labels)
+  { id: 'occipital',    label: 'Nuca',         view: 'back', cx: 120, cy: 50,
+    d: 'M88 54 C 88 34 102 18 120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L108 90 C 96 84 88 70 88 54 Z' },
+  { id: 'cervical',     label: 'Cervical',     view: 'back', cx: 120, cy: 100,
+    d: 'M108 90 L132 90 L134 108 L106 108 Z' },
+  { id: 'trapezio_d',   label: 'Trapézio D',   view: 'back', cx: 158, cy: 122,
+    d: 'M134 108 C 156 110 178 118 184 132 L 168 144 L 152 130 Z' },
+  { id: 'trapezio_e',   label: 'Trapézio E',   view: 'back', cx: 82,  cy: 122,
+    d: 'M106 108 C 84 110 62 118 56 132 L 72 144 L 88 130 Z' },
+  { id: 'dorsal',       label: 'Dorsal',       view: 'back', cx: 120, cy: 160,
+    d: 'M88 130 L152 130 L168 144 L162 184 L78 184 L72 144 Z' },
+  { id: 'lombar',       label: 'Lombar',       view: 'back', cx: 120, cy: 212,
+    d: 'M78 184 L162 184 L160 240 L80 240 Z' },
+  { id: 'gluteos',      label: 'Glúteos',      view: 'back', cx: 120, cy: 264,
+    d: 'M80 240 L160 240 L156 290 L84 290 Z' },
+  { id: 'braco_p_d',    label: 'Tríceps D',    view: 'back', cx: 178, cy: 168,
+    d: 'M184 132 L192 168 L176 184 L168 144 Z' },
+  { id: 'cotovelo_p_d', label: 'Cotovelo D',   view: 'back', cx: 184, cy: 200,
+    d: 'M192 168 L200 230 L182 224 L176 184 Z' },
+  { id: 'antebr_p_d',   label: 'Antebraço D',  view: 'back', cx: 192, cy: 250,
+    d: 'M200 230 L204 280 L188 280 L182 224 Z' },
+  { id: 'mao_p_d',      label: 'Mão D',        view: 'back', cx: 192, cy: 296,
+    d: 'M204 280 L196 308 L184 308 L188 280 Z' },
+  { id: 'braco_p_e',    label: 'Tríceps E',    view: 'back', cx: 62,  cy: 168,
+    d: 'M56 132 L48 168 L64 184 L72 144 Z' },
+  { id: 'cotovelo_p_e', label: 'Cotovelo E',   view: 'back', cx: 56,  cy: 200,
+    d: 'M48 168 L40 230 L58 224 L64 184 Z' },
+  { id: 'antebr_p_e',   label: 'Antebraço E',  view: 'back', cx: 48,  cy: 250,
+    d: 'M40 230 L36 280 L52 280 L58 224 Z' },
+  { id: 'mao_p_e',      label: 'Mão E',        view: 'back', cx: 48,  cy: 296,
+    d: 'M36 280 L44 308 L56 308 L52 280 Z' },
+  { id: 'isquio_d',     label: 'Isquiotibial D', view: 'back', cx: 144, cy: 330,
+    d: 'M124 290 L156 290 L162 360 L128 360 Z' },
+  { id: 'cavo_d',       label: 'Poplíteo D',   view: 'back', cx: 144, cy: 380,
+    d: 'M128 360 L162 360 L160 400 L130 400 Z' },
+  { id: 'panturr_d',    label: 'Panturrilha D', view: 'back', cx: 144, cy: 450,
+    d: 'M130 400 L160 400 L158 490 L134 490 Z' },
+  { id: 'calc_d',       label: 'Calcanhar D',  view: 'back', cx: 144, cy: 502,
+    d: 'M134 490 L158 490 L152 510 L138 510 Z' },
+  { id: 'isquio_e',     label: 'Isquiotibial E', view: 'back', cx: 96, cy: 330,
+    d: 'M84 290 L116 290 L112 360 L78 360 Z' },
+  { id: 'cavo_e',       label: 'Poplíteo E',   view: 'back', cx: 96,  cy: 380,
+    d: 'M78 360 L112 360 L110 400 L80 400 Z' },
+  { id: 'panturr_e',    label: 'Panturrilha E', view: 'back', cx: 96, cy: 450,
+    d: 'M80 400 L110 400 L106 490 L82 490 Z' },
+  { id: 'calc_e',       label: 'Calcanhar E',  view: 'back', cx: 96,  cy: 502,
+    d: 'M82 490 L106 490 L102 510 L88 510 Z' },
 ];
 
 interface Props {
@@ -86,71 +179,123 @@ function BodyView({
   onSelect: (id: string) => void;
 }) {
   const regions = REGIONS.filter(r => r.view === view);
+  const clipId = `body-clip-${view}`;
+  const gradId = `body-grad-${view}`;
   return (
     <div className="flex-1 min-w-0">
       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground text-center mb-1">
         {view === 'front' ? 'Anterior' : 'Posterior'}
       </p>
-      <svg viewBox="0 0 200 420" className="w-full h-auto" style={{ maxHeight: 360 }}>
-        {/* base body silhouette outline */}
-        <g fill="hsl(var(--muted) / 0.35)" stroke="hsl(var(--border))" strokeWidth={0.8}>
-          {/* head */}
-          <ellipse cx={100} cy={37} rx={26} ry={29} />
-          {/* neck */}
-          <path d="M88 64 L112 64 L114 86 L86 86 Z" />
-          {/* torso */}
-          <path d="M60 92 L140 92 L126 220 L74 220 Z" />
-          {/* arms */}
-          <path d="M60 92 L52 110 L44 214 L62 216 L72 152 L74 100 Z" />
-          <path d="M140 92 L148 110 L156 214 L138 216 L128 152 L126 100 Z" />
-          {/* hands */}
-          <ellipse cx={44} cy={228} rx={11} ry={14} />
-          <ellipse cx={156} cy={228} rx={11} ry={14} />
-          {/* legs */}
-          <path d="M74 220 L100 220 L98 408 L74 408 Z" />
-          <path d="M126 220 L100 220 L102 408 L126 408 Z" />
-          {/* feet */}
-          <ellipse cx={86} cy={412} rx={14} ry={6} />
-          <ellipse cx={114} cy={412} rx={14} ry={6} />
+      <svg viewBox="0 0 240 520" className="w-full h-auto" style={{ maxHeight: 420 }}>
+        <defs>
+          <clipPath id={clipId}>
+            <path d={FRONT_OUTLINE} />
+          </clipPath>
+          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%"   stopColor="hsl(var(--muted))" stopOpacity="0.55" />
+            <stop offset="100%" stopColor="hsl(var(--muted))" stopOpacity="0.30" />
+          </linearGradient>
+        </defs>
+
+        {/* Soft shadow under figure */}
+        <ellipse cx={120} cy={515} rx={48} ry={4} fill="hsl(var(--foreground))" opacity={0.08} />
+
+        {/* Body silhouette */}
+        <path
+          d={FRONT_OUTLINE}
+          fill={`url(#${gradId})`}
+          stroke="hsl(var(--border))"
+          strokeWidth={1.2}
+          strokeLinejoin="round"
+        />
+
+        {/* Subtle anatomical hint lines (purely decorative) */}
+        <g
+          fill="none"
+          stroke="hsl(var(--border))"
+          strokeWidth={0.6}
+          opacity={0.5}
+          clipPath={`url(#${clipId})`}
+        >
+          {view === 'front' ? (
+            <>
+              {/* center line */}
+              <path d="M120 108 L120 290" />
+              {/* pectoral curves */}
+              <path d="M92 152 Q 110 168 120 158" />
+              <path d="M148 152 Q 130 168 120 158" />
+              {/* abs */}
+              <path d="M120 188 L120 238" />
+              <path d="M104 200 L136 200" />
+              <path d="M104 218 L136 218" />
+              {/* knee caps */}
+              <ellipse cx={144} cy={380} rx={10} ry={6} />
+              <ellipse cx={96}  cy={380} rx={10} ry={6} />
+            </>
+          ) : (
+            <>
+              {/* spine */}
+              <path d="M120 108 L120 290" />
+              {/* scapulae */}
+              <path d="M96 144 Q 110 160 116 180" />
+              <path d="M144 144 Q 130 160 124 180" />
+              {/* gluteal cleft */}
+              <path d="M120 244 L120 286" />
+              {/* calves */}
+              <path d="M144 430 Q 150 450 144 480" />
+              <path d="M96  430 Q 90  450 96  480" />
+            </>
+          )}
         </g>
 
-        {/* clickable regions */}
+        {/* Clickable regions (clipped to silhouette so they look anatomical) */}
+        <g clipPath={`url(#${clipId})`}>
+          {regions.map((r) => {
+            const v = points[r.id] ?? 0;
+            const isSel = selected === r.id;
+            return (
+              <path
+                key={r.id}
+                d={r.d}
+                fill={v > 0 ? intensityColor(v) : '#000'}
+                fillOpacity={v > 0 ? 0.55 : 0.001}
+                stroke={isSel ? 'hsl(var(--primary))' : 'transparent'}
+                strokeWidth={isSel ? 1.8 : 0}
+                pointerEvents="all"
+                onClick={() => onSelect(r.id)}
+                style={{ cursor: 'pointer' }}
+              />
+            );
+          })}
+        </g>
+
+        {/* Outline overlay so the silhouette edge stays crisp above colored regions */}
+        <path
+          d={FRONT_OUTLINE}
+          fill="none"
+          stroke="hsl(var(--border))"
+          strokeWidth={1.2}
+          strokeLinejoin="round"
+          pointerEvents="none"
+        />
+
+        {/* Score labels for active regions */}
         {regions.map((r) => {
           const v = points[r.id] ?? 0;
-          const isSel = selected === r.id;
-          const fill = v > 0 ? intensityColor(v) : 'transparent';
+          if (v <= 0) return null;
           return (
-            <g key={r.id} onClick={() => onSelect(r.id)} style={{ cursor: 'pointer' }}>
-              <path
-                d={r.d}
-                fill={v > 0 ? fill : '#000'}
-                fillOpacity={v > 0 ? 0.7 : 0.001}
-                stroke={isSel ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
-                strokeWidth={isSel ? 1.6 : 0.5}
-                pointerEvents="all"
-              />
-              {/* invisible larger hit target around region center */}
-              <circle
-                cx={r.cx}
-                cy={r.cy}
-                r={14}
-                fill="#000"
-                fillOpacity={0.001}
-                pointerEvents="all"
-              />
-              {v > 0 && (
-                <text
-                  x={r.cx}
-                  y={r.cy + 3}
-                  textAnchor="middle"
-                  fontSize={9}
-                  fontWeight={800}
-                  fill="white"
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {v}
-                </text>
-              )}
+            <g key={`l-${r.id}`} pointerEvents="none">
+              <circle cx={r.cx} cy={r.cy} r={9} fill="white" opacity={0.9} />
+              <text
+                x={r.cx}
+                y={r.cy + 3}
+                textAnchor="middle"
+                fontSize={10}
+                fontWeight={800}
+                fill={intensityColor(v)}
+              >
+                {v}
+              </text>
             </g>
           );
         })}
@@ -192,7 +337,7 @@ export default function Body3DAvatar({ value, onChange }: Props) {
 
   return (
     <div className="space-y-3">
-      <div className="relative rounded-2xl border border-border bg-card p-3">
+      <div className="relative rounded-2xl border border-border bg-gradient-to-b from-muted/10 to-background p-3">
         <div className="flex gap-2 items-start">
           <BodyView view="front" points={points} selected={selected} onSelect={handleSelect} />
           <BodyView view="back"  points={points} selected={selected} onSelect={handleSelect} />
