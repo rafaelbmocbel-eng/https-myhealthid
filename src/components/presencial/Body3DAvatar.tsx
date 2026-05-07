@@ -156,17 +156,19 @@ export default function Body3DAvatar({ value, onChange }: Props) {
   return (
     <div className="space-y-3">
       <div className="relative rounded-2xl overflow-hidden border border-border bg-gradient-to-b from-muted/30 to-muted/10" style={{ height: 360 }}>
-        <Canvas camera={{ position: [0, 0.2, 2.6], fov: 35 }} dpr={[1, 2]}>
+        <Canvas camera={{ position: [0, 1, 4], fov: 35 }} dpr={[1, 2]}>
           <ambientLight intensity={0.6} />
           <directionalLight position={[2, 3, 4]} intensity={0.8} />
           <directionalLight position={[-2, 1, -2]} intensity={0.3} />
           <Suspense fallback={null}>
-            <group ref={groupRef}>
-              <HumanBody points={points} selected={selected} onSelectRegion={setSelected} />
-            </group>
+            <Bounds fit clip observe margin={1.2}>
+              <group ref={groupRef}>
+                <HumanBody points={points} selected={selected} onSelectRegion={setSelected} />
+              </group>
+            </Bounds>
             <AutoSpinner enabled={autoSpin} groupRef={groupRef} />
           </Suspense>
-          <OrbitControls enablePan={false} minDistance={1.6} maxDistance={4} target={[0, 0, 0]} />
+          <OrbitControls enablePan={false} minDistance={1.6} maxDistance={6} />
         </Canvas>
         <div className="absolute top-2 right-2 flex gap-1.5">
           <Button
