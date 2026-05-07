@@ -87,6 +87,63 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
     }
   };
 
+  const handleGerarRecibo = async (p: any) => {
+    try {
+      // Buscar dados da clínica e do terapeuta
+      const [clinicaRes, profileRes, pacienteRes, pacoteRes] = await Promise.all([
+        (supabase as any).from('config_clinica').select('*').eq('terapeuta_id', user!.id).maybeSingle(),
+        supabase.from('profiles').select('nome, sobrenome, especialidade, crefito').eq('user_id', user!.id).maybeSingle(),
+        supabase.from('pacientes').select('nome, sobrenome, cpf, rg').eq('id', pacienteId).maybeSingle(),
+        (supabase as any)
+          .from('pacotes_sessoes')
+          .select('total_sessoes, sessoes_utilizadas, valor_total, nome_pacote')
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user!.id)
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle(),
+      ]);
+
+      const prof = profileRes.data as any;
+      const pac = pacienteRes.data as any;
+      const pacote = pacoteRes.data as any;
+
+      const formaMap: Record<string, string> = {
+        pix: 'PIX', cartao: 'cartão', dinheiro: 'dinheiro', transferencia: 'transferência bancária',
+      };
+
+      const referente = p.descricao
+        + (pacote?.nome_pacote ? ` — pacote ${pacote.nome_pacote}` : '')
+        + ` (recebimento em ${new Date(p.created_at).toLocaleDateString('pt-BR')})`;
+
+      const doc = await gerarRecibo({
+        clinica: clinicaRes.data || null,
+        terapeuta: {
+          nome: prof?.nome || user!.email?.split('@')[0] || 'Terapeuta',
+          sobrenome: prof?.sobrenome,
+          registro: prof?.crefito,
+          especialidade: prof?.especialidade,
+        },
+        paciente: {
+          nome: pac?.nome || pacienteNome,
+          sobrenome: pac?.sobrenome,
+          cpf: pac?.cpf,
+          rg: pac?.rg,
+        },
+        dados: {
+          valor: Number(p.valor),
+          referente,
+          formaPagamento: formaMap[p.forma_pagamento] || p.forma_pagamento,
+          numeroSessoes: pacote?.total_sessoes,
+        },
+      });
+      doc.save(`Recibo_${pac?.nome || pacienteNome}_${new Date(p.created_at).toISOString().split('T')[0]}.pdf`);
+      toast({ title: '📄 Recibo gerado!' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao gerar recibo', description: e.message, variant: 'destructive' });
+    }
+  };
+
   const totalRecebido = pagamentos
     .filter((p: any) => p.status === 'confirmado')
     .reduce((sum: number, p: any) => sum + Number(p.valor), 0);
