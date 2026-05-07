@@ -1,10 +1,19 @@
 import { useState } from 'react';
-import { BodyAvatarSVG, REGIOES_FRENTE, REGIOES_COSTAS } from '@/components/identidade/BodyAvatarSVG';
+import { BodyAvatarSVG, UC_TO_REGIONS } from '@/components/identidade/BodyAvatarSVG';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Trash2 } from 'lucide-react';
 
-const ALL_REGIONS = [...REGIOES_FRENTE, ...REGIOES_COSTAS];
+const UC_LABELS: Record<string, string> = {
+  'UC1': 'Cabeça / Pescoço',
+  'UC2': 'Coluna Torácica',
+  'UC3': 'Abdômen / Lombar',
+  'UC4': 'Sacro-Pélvica',
+  'UA-D': 'Membro Superior D',
+  'UA-E': 'Membro Superior E',
+  'ID': 'Membro Inferior D',
+  'DD': 'Membro Inferior E',
+};
 
 function intensityColor(i: number): string {
   if (i <= 0) return '#94a3b8';
@@ -30,9 +39,12 @@ export default function Body3DAvatar({ value, onChange }: Props) {
   };
 
   const handleRegionClick = (regionId: string) => {
-    setSelected(regionId);
-    if (!points[regionId]) {
-      update({ ...points, [regionId]: 5 });
+    for (const [ucId, regions] of Object.entries(UC_TO_REGIONS)) {
+      if (regions.includes(regionId)) {
+        setSelected(ucId);
+        if (!points[ucId]) update({ ...points, [ucId]: 5 });
+        return;
+      }
     }
   };
 
@@ -48,21 +60,22 @@ export default function Body3DAvatar({ value, onChange }: Props) {
     setSelected(null);
   };
 
-  const selectedLabel = ALL_REGIONS.find((r) => r.id === selected)?.nome;
+  const selectedLabel = selected ? UC_LABELS[selected] : '';
   const selectedIntensity = selected ? points[selected] ?? 0 : 0;
-  const activeRegions = Object.entries(points).filter(([, v]) => v > 0);
+  const activeUnits = Object.entries(points).filter(([, v]) => v > 0);
 
   return (
     <div className="space-y-3">
       <div className="relative rounded-2xl overflow-hidden border border-border bg-gradient-to-b from-muted/30 to-muted/10 p-4">
         <BodyAvatarSVG
-          mode="pain"
-          painMap={points}
+          mode="structural"
+          ucScoreMap={points}
+          highlightedUC={selected}
           onRegionClick={handleRegionClick}
-          showBack={true}
+          showBack
           className="max-w-2xl mx-auto"
         />
-        {activeRegions.length > 0 && (
+        {activeUnits.length > 0 && (
           <Button
             type="button"
             size="sm"
@@ -74,7 +87,7 @@ export default function Body3DAvatar({ value, onChange }: Props) {
           </Button>
         )}
         <div className="absolute bottom-2 left-2 text-[10px] text-muted-foreground bg-background/70 backdrop-blur px-2 py-1 rounded-md">
-          Clique numa região (frente ou costas)
+          Clique numa unidade corporal
         </div>
       </div>
 
@@ -82,8 +95,8 @@ export default function Body3DAvatar({ value, onChange }: Props) {
         <div className="rounded-xl border border-border bg-card p-3 space-y-2">
           <div className="flex items-center justify-between">
             <div>
-              <p className="text-xs text-muted-foreground">Região selecionada</p>
-              <p className="font-bold text-sm">{selectedLabel}</p>
+              <p className="text-xs text-muted-foreground">Unidade selecionada</p>
+              <p className="font-bold text-sm">{selected} · {selectedLabel}</p>
             </div>
             <div
               className="h-9 w-9 rounded-full flex items-center justify-center text-white font-black text-sm"
@@ -105,31 +118,28 @@ export default function Body3DAvatar({ value, onChange }: Props) {
           </div>
         </div>
       ) : (
-        <p className="text-xs text-muted-foreground text-center">Clique em uma região do corpo para registrar a dor (0–10).</p>
+        <p className="text-xs text-muted-foreground text-center">Clique numa unidade corporal para registrar a dor (0–10).</p>
       )}
 
-      {activeRegions.length > 0 && (
+      {activeUnits.length > 0 && (
         <div className="rounded-xl border border-border bg-muted/20 p-3">
           <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground mb-2">
-            Mapa de Dor ({activeRegions.length})
+            Unidades comprometidas ({activeUnits.length})
           </p>
           <div className="flex flex-wrap gap-1.5">
-            {activeRegions
+            {activeUnits
               .sort((a, b) => b[1] - a[1])
-              .map(([k, v]) => {
-                const r = ALL_REGIONS.find((rr) => rr.id === k);
-                return (
-                  <button
-                    key={k}
-                    type="button"
-                    onClick={() => setSelected(k)}
-                    className="px-2 py-1 rounded-full text-[10px] font-bold text-white inline-flex items-center gap-1"
-                    style={{ background: intensityColor(v) }}
-                  >
-                    {r?.nome ?? k} · {v}
-                  </button>
-                );
-              })}
+              .map(([k, v]) => (
+                <button
+                  key={k}
+                  type="button"
+                  onClick={() => setSelected(k)}
+                  className="px-2 py-1 rounded-full text-[10px] font-bold text-white inline-flex items-center gap-1"
+                  style={{ background: intensityColor(v) }}
+                >
+                  {k} · {UC_LABELS[k] ?? k} · {v}
+                </button>
+              ))}
           </div>
         </div>
       )}
@@ -141,9 +151,6 @@ export function painMapToText(map: Record<string, number>): string {
   const entries = Object.entries(map).filter(([, v]) => v > 0);
   if (!entries.length) return '';
   const sorted = entries.sort((a, b) => b[1] - a[1]);
-  const lines = sorted.map(([k, v]) => {
-    const label = ALL_REGIONS.find((r) => r.id === k)?.nome ?? k;
-    return `- ${label}: ${v}/10`;
-  });
-  return `Mapa de dor:\n${lines.join('\n')}`;
+  const lines = sorted.map(([k, v]) => `- ${k} ${UC_LABELS[k] ?? ''}: ${v}/10`);
+  return `Mapa de unidades corporais:\n${lines.join('\n')}`;
 }
