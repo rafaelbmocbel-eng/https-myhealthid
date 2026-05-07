@@ -29,7 +29,7 @@ const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] 
   { value: 'comparecimento', label: 'Atestado de Comparecimento', icon: Calendar, desc: 'Comprova presença em sessão (data e horário).' },
   { value: 'atestado_fisio', label: 'Atestado Fisioterapêutico', icon: ClipboardCheck, desc: 'Justifica afastamento de atividades por X dias.' },
   { value: 'declaracao_tratamento', label: 'Declaração de Tratamento', icon: FileCheck, desc: 'Confirma acompanhamento (sem dados clínicos).' },
-  { value: 'recibo', label: 'Recibo de Pagamento', icon: Receipt, desc: 'Recibo formal para reembolso/IR.' },
+  
 ];
 
 export default function DocumentosModal({ open, onOpenChange, paciente }: Props) {
