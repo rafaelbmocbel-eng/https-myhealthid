@@ -544,6 +544,27 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     void clearDraft(draftKey);
   };
 
+  // Full JSON editor — edits EVERY field of the assessment in a single place
+  const openFullEditor = () => {
+    if (!assessment) return;
+    setFullEditorJson(JSON.stringify(assessment, null, 2));
+    setFullEditorError(null);
+    setShowFullEditor(true);
+  };
+
+  const saveFullEditor = () => {
+    try {
+      const parsed = JSON.parse(fullEditorJson);
+      setAssessment(parsed);
+      setIsSaved(false);
+      setShowFullEditor(false);
+      setFullEditorError(null);
+      toast({ title: '✏️ Avaliação atualizada', description: 'Lembre-se de salvar no prontuário.' });
+    } catch (e: any) {
+      setFullEditorError(e?.message || 'JSON inválido');
+    }
+  };
+
   // ── Cria uma Diretriz Oficial a partir da diretriz_tratamento gerada pela IA ──
   const criarDiretrizDaVoz = async () => {
     if (!user || !assessment?.diretriz_tratamento || !pacienteId) {
