@@ -458,6 +458,28 @@ Detalhes completos no Histórico de Avaliações.`;
       setAssessment(generatedAssessment);
       setEditedTranscript(generatedTranscript);
 
+      // Extrai mapa de dor (regiões + estruturas) a partir da transcrição, se solicitado
+      if (onPainExtracted && painRegionsCatalog?.regions?.length && generatedTranscript) {
+        try {
+          const { data: painData, error: painErr } = await supabase.functions.invoke('extract-pain-from-voice', {
+            body: {
+              transcript: generatedTranscript,
+              regions: painRegionsCatalog.regions,
+              catalog: painRegionsCatalog.catalog,
+            },
+          });
+          if (!painErr && painData?.findings?.length) {
+            onPainExtracted(painData.findings);
+            toast({
+              title: '🎯 Avatar atualizado pela IA',
+              description: `${painData.findings.length} região(ões) marcada(s) automaticamente.`,
+            });
+          }
+        } catch (e) {
+          console.warn('[VoiceAssessment] pain extraction failed', e);
+        }
+      }
+
       const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
 
       setStep('result');
