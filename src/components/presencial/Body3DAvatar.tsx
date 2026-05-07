@@ -1,7 +1,71 @@
-import { useState } from 'react';
+import { useState, KeyboardEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
-import { Trash2 } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Trash2, Plus, X } from 'lucide-react';
+
+// ---- Catálogo de estruturas por região ----
+type StructCat = 'musculos' | 'articulacoes' | 'ligamentos' | 'nervos';
+const CAT_LABEL: Record<StructCat, string> = {
+  musculos: 'Músculos',
+  articulacoes: 'Articulações',
+  ligamentos: 'Ligamentos',
+  nervos: 'Nervos',
+};
+const CAT_EMOJI: Record<StructCat, string> = {
+  musculos: '💪', articulacoes: '🦴', ligamentos: '🔗', nervos: '⚡',
+};
+
+type RegionStructures = Partial<Record<StructCat, string[]>>;
+const STRUCTURES: Record<string, RegionStructures> = {
+  cabeca: { musculos: ['Temporal', 'Masseter', 'Frontal'], articulacoes: ['ATM'], nervos: ['Trigêmeo', 'Occipital'] },
+  pescoco: { musculos: ['ECOM', 'Escalenos', 'Suboccipitais'], articulacoes: ['C1-C7'], nervos: ['Plexo cervical'] },
+  cervical: { musculos: ['Suboccipitais', 'Esplênio', 'Semiespinhal'], articulacoes: ['Facetas C2-C7'], nervos: ['Raízes C5-C8'] },
+  ombro_d: { musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor'], articulacoes: ['Glenoumeral', 'AC', 'EC'], ligamentos: ['Coracoacromial', 'Glenoumerais'], nervos: ['Axilar', 'Supraescapular'] },
+  ombro_e: { musculos: ['Deltoide', 'Supraespinhal', 'Infraespinhal', 'Subescapular', 'Redondo menor'], articulacoes: ['Glenoumeral', 'AC', 'EC'], ligamentos: ['Coracoacromial', 'Glenoumerais'], nervos: ['Axilar', 'Supraescapular'] },
+  trapezio_d: { musculos: ['Trapézio sup.', 'Levantador da escápula', 'Romboide'], articulacoes: ['Escápulo-torácica'], nervos: ['Acessório', 'Dorsal da escápula'] },
+  trapezio_e: { musculos: ['Trapézio sup.', 'Levantador da escápula', 'Romboide'], articulacoes: ['Escápulo-torácica'], nervos: ['Acessório', 'Dorsal da escápula'] },
+  peitoral: { musculos: ['Peitoral maior', 'Peitoral menor', 'Intercostais'], articulacoes: ['Costoesternais', 'Costocondrais'] },
+  abdomen: { musculos: ['Reto abdominal', 'Oblíquos', 'Transverso'], nervos: ['Intercostais T7-T12'] },
+  pelve: { musculos: ['Iliopsoas', 'Piriforme', 'Assoalho pélvico'], articulacoes: ['Sacroilíaca', 'Sínfise púbica'], ligamentos: ['Sacrotuberoso', 'Sacroespinhoso'] },
+  dorsal: { musculos: ['Latíssimo', 'Eretores da espinha', 'Romboides'], articulacoes: ['Facetas T1-T12'] },
+  lombar: { musculos: ['Multífidos', 'Quadrado lombar', 'Eretores'], articulacoes: ['Facetas L1-L5', 'L5-S1'], nervos: ['Raízes L1-L5'] },
+  gluteos: { musculos: ['Glúteo máx.', 'Glúteo méd.', 'Glúteo mín.', 'Piriforme'], nervos: ['Ciático', 'Glúteo sup.'] },
+  braco_d: { musculos: ['Bíceps', 'Braquial', 'Coracobraquial'], nervos: ['Musculocutâneo', 'Mediano'] },
+  braco_e: { musculos: ['Bíceps', 'Braquial', 'Coracobraquial'], nervos: ['Musculocutâneo', 'Mediano'] },
+  braco_p_d: { musculos: ['Tríceps (3 cabeças)', 'Ancôneo'], nervos: ['Radial'] },
+  braco_p_e: { musculos: ['Tríceps (3 cabeças)', 'Ancôneo'], nervos: ['Radial'] },
+  cotovelo_d: { articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'], ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular'], nervos: ['Ulnar', 'Mediano', 'Radial'] },
+  cotovelo_e: { articulacoes: ['Úmero-ulnar', 'Úmero-radial', 'Rádio-ulnar prox.'], ligamentos: ['Colateral medial', 'Colateral lateral', 'Anular'], nervos: ['Ulnar', 'Mediano', 'Radial'] },
+  cotovelo_p_d: { articulacoes: ['Úmero-ulnar'], ligamentos: ['Colaterais'], nervos: ['Ulnar'] },
+  cotovelo_p_e: { articulacoes: ['Úmero-ulnar'], ligamentos: ['Colaterais'], nervos: ['Ulnar'] },
+  antebraco_d: { musculos: ['Flexores', 'Extensores', 'Pronador redondo', 'Supinador'], nervos: ['Mediano', 'Radial', 'Ulnar'] },
+  antebraco_e: { musculos: ['Flexores', 'Extensores', 'Pronador redondo', 'Supinador'], nervos: ['Mediano', 'Radial', 'Ulnar'] },
+  antebr_p_d: { musculos: ['Extensores'], nervos: ['Radial'] },
+  antebr_p_e: { musculos: ['Extensores'], nervos: ['Radial'] },
+  mao_d: { musculos: ['Tenares', 'Hipotenares', 'Lumbricais'], articulacoes: ['Punho', 'MCF', 'IFP', 'IFD'], ligamentos: ['Colaterais', 'Túnel do carpo'], nervos: ['Mediano', 'Ulnar', 'Radial'] },
+  mao_e: { musculos: ['Tenares', 'Hipotenares', 'Lumbricais'], articulacoes: ['Punho', 'MCF', 'IFP', 'IFD'], ligamentos: ['Colaterais', 'Túnel do carpo'], nervos: ['Mediano', 'Ulnar', 'Radial'] },
+  mao_p_d: { articulacoes: ['Punho', 'Carpo'], nervos: ['Radial'] },
+  mao_p_e: { articulacoes: ['Punho', 'Carpo'], nervos: ['Radial'] },
+  coxa_d: { musculos: ['Quadríceps', 'Adutores', 'Sartório', 'TFL'], nervos: ['Femoral', 'Obturador'] },
+  coxa_e: { musculos: ['Quadríceps', 'Adutores', 'Sartório', 'TFL'], nervos: ['Femoral', 'Obturador'] },
+  isquio_d: { musculos: ['Bíceps femoral', 'Semitendíneo', 'Semimembranoso'], nervos: ['Ciático'] },
+  isquio_e: { musculos: ['Bíceps femoral', 'Semitendíneo', 'Semimembranoso'], nervos: ['Ciático'] },
+  joelho_d: { articulacoes: ['Tíbio-femoral', 'Patelo-femoral'], ligamentos: ['LCA', 'LCP', 'LCM', 'LCL', 'Menisco medial', 'Menisco lateral'], nervos: ['Fibular comum'] },
+  joelho_e: { articulacoes: ['Tíbio-femoral', 'Patelo-femoral'], ligamentos: ['LCA', 'LCP', 'LCM', 'LCL', 'Menisco medial', 'Menisco lateral'], nervos: ['Fibular comum'] },
+  cavo_d: { musculos: ['Poplíteo', 'Gastrocnêmio (origem)'], ligamentos: ['LCP'], nervos: ['Tibial'] },
+  cavo_e: { musculos: ['Poplíteo', 'Gastrocnêmio (origem)'], ligamentos: ['LCP'], nervos: ['Tibial'] },
+  canela_d: { musculos: ['Tibial anterior', 'Fibulares', 'Extensores dos dedos'], nervos: ['Fibular profundo', 'Fibular superficial'] },
+  canela_e: { musculos: ['Tibial anterior', 'Fibulares', 'Extensores dos dedos'], nervos: ['Fibular profundo', 'Fibular superficial'] },
+  panturr_d: { musculos: ['Gastrocnêmio', 'Sóleo', 'Tibial posterior'], ligamentos: ['Tendão de Aquiles'], nervos: ['Tibial', 'Sural'] },
+  panturr_e: { musculos: ['Gastrocnêmio', 'Sóleo', 'Tibial posterior'], ligamentos: ['Tendão de Aquiles'], nervos: ['Tibial', 'Sural'] },
+  pe_d: { musculos: ['Intrínsecos', 'Flexor curto'], articulacoes: ['Tornozelo', 'Subtalar', 'MTF'], ligamentos: ['Talofibular ant.', 'Calcaneofibular', 'Deltoide', 'Fáscia plantar'], nervos: ['Tibial', 'Plantar'] },
+  pe_e: { musculos: ['Intrínsecos', 'Flexor curto'], articulacoes: ['Tornozelo', 'Subtalar', 'MTF'], ligamentos: ['Talofibular ant.', 'Calcaneofibular', 'Deltoide', 'Fáscia plantar'], nervos: ['Tibial', 'Plantar'] },
+  calc_d: { ligamentos: ['Tendão de Aquiles', 'Fáscia plantar'], articulacoes: ['Subtalar'] },
+  calc_e: { ligamentos: ['Tendão de Aquiles', 'Fáscia plantar'], articulacoes: ['Subtalar'] },
+  occipital: { musculos: ['Suboccipitais', 'Trapézio sup.'], nervos: ['Occipital maior', 'Occipital menor'] },
+};
+type RegionStructState = Record<string, string[]>; // regionId -> selected structure names
 
 function intensityColor(i: number): string {
   if (i <= 0) return 'hsl(var(--muted))';
