@@ -243,11 +243,22 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
                     {new Date(p.created_at).toLocaleDateString('pt-BR')} · {p.forma_pagamento === 'pix' ? 'PIX' : p.forma_pagamento === 'cartao' ? 'Cartão' : p.forma_pagamento === 'dinheiro' ? 'Dinheiro' : 'Transf.'}
                   </p>
                 </div>
-                <div className="text-right shrink-0">
+                <div className="text-right shrink-0 flex flex-col items-end gap-1">
                   <p className="text-sm font-bold">R$ {Number(p.valor).toFixed(2).replace('.', ',')}</p>
                   <Badge variant="outline" className={cn('text-[9px] gap-0.5', cfg.color)}>
                     {cfg.icon} {cfg.badge}
                   </Badge>
+                  {p.status === 'confirmado' && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-1.5 text-[10px] gap-1 text-primary hover:text-primary"
+                      onClick={() => handleGerarRecibo(p)}
+                      title="Gerar recibo PDF"
+                    >
+                      <Receipt className="h-3 w-3" /> Recibo
+                    </Button>
+                  )}
                 </div>
               </div>
             );
