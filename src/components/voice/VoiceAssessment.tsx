@@ -30,6 +30,10 @@ interface VoiceAssessmentProps {
   mode?: 'voice' | 'written';
   /** Optional clinical context (e.g. pain map from 3D avatar) prepended to the transcript */
   contextPrefix?: string;
+  /** When provided, the transcript is also sent to the pain-extraction AI and findings are returned. */
+  onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void;
+  /** Region catalog used by the pain extractor (id+label list). Required if onPainExtracted is set. */
+  painRegionsCatalog?: { regions: Array<{ id: string; label: string }>; catalog?: Record<string, { categories: Record<string, string[]> }> };
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -53,7 +57,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -453,6 +457,28 @@ Detalhes completos no Histórico de Avaliações.`;
 
       setAssessment(generatedAssessment);
       setEditedTranscript(generatedTranscript);
+
+      // Extrai mapa de dor (regiões + estruturas) a partir da transcrição, se solicitado
+      if (onPainExtracted && painRegionsCatalog?.regions?.length && generatedTranscript) {
+        try {
+          const { data: painData, error: painErr } = await supabase.functions.invoke('extract-pain-from-voice', {
+            body: {
+              transcript: generatedTranscript,
+              regions: painRegionsCatalog.regions,
+              catalog: painRegionsCatalog.catalog,
+            },
+          });
+          if (!painErr && painData?.findings?.length) {
+            onPainExtracted(painData.findings);
+            toast({
+              title: '🎯 Avatar atualizado pela IA',
+              description: `${painData.findings.length} região(ões) marcada(s) automaticamente.`,
+            });
+          }
+        } catch (e) {
+          console.warn('[VoiceAssessment] pain extraction failed', e);
+        }
+      }
 
       const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
 
