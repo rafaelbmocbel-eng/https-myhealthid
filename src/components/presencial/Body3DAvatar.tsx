@@ -43,6 +43,13 @@ function intensityColor(i: number): string {
   return '#ef4444';
 }
 
+function HumanModel() {
+  const { scene } = useGLTF(HUMAN_MODEL_URL) as any;
+  const cloned = useMemo(() => scene.clone(true), [scene]);
+  return <primitive object={cloned} />;
+}
+useGLTF.preload(HUMAN_MODEL_URL);
+
 function HumanBody({
   points,
   selected,
@@ -52,128 +59,17 @@ function HumanBody({
   selected: string | null;
   onSelectRegion: (key: string) => void;
 }) {
-  const matSkin = useMemo(
-    () => new THREE.MeshStandardMaterial({
-      color: '#e8c9a8',
-      roughness: 0.5,
-      metalness: 0.02,
-    }),
-    [],
-  );
-  const matHair = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#2a1f17', roughness: 0.9 }),
-    [],
-  );
-
-  // Smooth lathe (revolved curve) for organic body shapes
-  const torsoGeo = useMemo(() => {
-    const profile: [number, number][] = [
-      [0.0, 0.70], [0.19, 0.74], [0.20, 0.82], [0.18, 0.92],
-      [0.155, 1.02], [0.165, 1.10], [0.20, 1.22], [0.215, 1.32],
-      [0.18, 1.40], [0.10, 1.46], [0.0, 1.48],
-    ];
-    const geo = new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 48);
-    geo.computeVertexNormals();
-    return geo;
-  }, []);
-  const upperArmGeo = useMemo(() => {
-    const profile: [number, number][] = [
-      [0.0, 0.0], [0.06, 0.02], [0.075, 0.06], [0.07, 0.14],
-      [0.065, 0.22], [0.055, 0.30], [0.05, 0.35], [0.0, 0.36],
-    ];
-    return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24);
-  }, []);
-  const forearmGeo = useMemo(() => {
-    const profile: [number, number][] = [
-      [0.0, 0.0], [0.05, 0.02], [0.058, 0.08], [0.05, 0.18], [0.038, 0.28], [0.0, 0.30],
-    ];
-    return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24);
-  }, []);
-  const thighGeo = useMemo(() => {
-    const profile: [number, number][] = [
-      [0.0, 0.0], [0.10, 0.02], [0.115, 0.08], [0.10, 0.20],
-      [0.085, 0.32], [0.07, 0.42], [0.0, 0.44],
-    ];
-    return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 28);
-  }, []);
-  const calfGeo = useMemo(() => {
-    const profile: [number, number][] = [
-      [0.0, 0.0], [0.06, 0.02], [0.075, 0.10], [0.065, 0.20], [0.045, 0.32], [0.0, 0.34],
-    ];
-    return new THREE.LatheGeometry(profile.map(([r, y]) => new THREE.Vector2(r, y)), 24);
-  }, []);
-
   return (
     <group position={[0, -0.85, 0]}>
-      {/* Head — egg-shaped */}
-      <mesh position={[0, 1.78, 0]} scale={[0.92, 1.1, 0.96]} material={matSkin}>
-        <sphereGeometry args={[0.13, 40, 40]} />
-      </mesh>
-      <mesh position={[0, 1.83, -0.005]} scale={[1.0, 0.7, 1.05]} material={matHair}>
-        <sphereGeometry args={[0.135, 40, 40, 0, Math.PI * 2, 0, Math.PI / 2.1]} />
-      </mesh>
-      {[-1, 1].map((s) => (
-        <mesh key={`ear${s}`} position={[0.115 * s, 1.78, 0]} scale={[0.4, 1, 0.5]} material={matSkin}>
-          <sphereGeometry args={[0.025, 12, 12]} />
-        </mesh>
-      ))}
-
-      {/* Neck */}
-      <mesh position={[0, 1.62, 0]} material={matSkin}>
-        <cylinderGeometry args={[0.05, 0.072, 0.1, 24]} />
-      </mesh>
-
-      {/* Torso (smooth lathe) */}
-      <mesh material={matSkin} geometry={torsoGeo} />
-      {/* Glute */}
-      <mesh position={[0, 0.78, -0.09]} scale={[1.15, 0.65, 0.55]} material={matSkin}>
-        <sphereGeometry args={[0.17, 24, 24]} />
-      </mesh>
-
-      {/* Arms */}
-      {[-1, 1].map((s) => (
-        <group key={s}>
-          <mesh position={[0.215 * s, 1.36, 0]} material={matSkin}>
-            <sphereGeometry args={[0.075, 24, 24]} />
-          </mesh>
-          <group position={[0.245 * s, 1.34, 0]} rotation={[Math.PI, 0, 0]}>
-            <mesh material={matSkin} geometry={upperArmGeo} />
+      <Bounds fit clip observe margin={1.1}>
+        <Center disableY>
+          <group scale={1}>
+            <Suspense fallback={null}>
+              <HumanModel />
+            </Suspense>
           </group>
-          <mesh position={[0.275 * s, 0.97, 0]} material={matSkin}>
-            <sphereGeometry args={[0.048, 16, 16]} />
-          </mesh>
-          <group position={[0.29 * s, 0.95, 0]} rotation={[Math.PI, 0, 0]}>
-            <mesh material={matSkin} geometry={forearmGeo} />
-          </group>
-          <mesh position={[0.318 * s, 0.63, 0]} material={matSkin}>
-            <sphereGeometry args={[0.034, 14, 14]} />
-          </mesh>
-          <mesh position={[0.328 * s, 0.55, 0]} scale={[0.55, 1.4, 0.35]} material={matSkin}>
-            <sphereGeometry args={[0.055, 16, 16]} />
-          </mesh>
-        </group>
-      ))}
-
-      {/* Legs */}
-      {[-1, 1].map((s) => (
-        <group key={`l${s}`}>
-          <group position={[0.105 * s, 0.74, 0]} rotation={[Math.PI, 0, 0]}>
-            <mesh material={matSkin} geometry={thighGeo} />
-          </group>
-          <mesh position={[0.105 * s, 0.30, 0.015]} material={matSkin}>
-            <sphereGeometry args={[0.06, 18, 18]} />
-          </mesh>
-          <group position={[0.105 * s, 0.30, 0.005]} rotation={[Math.PI, 0, 0]}>
-            <mesh material={matSkin} geometry={calfGeo} />
-          </group>
-          <mesh position={[0.105 * s, -0.06, 0.02]} material={matSkin}>
-            <sphereGeometry args={[0.038, 14, 14]} />
-          </mesh>
-          <mesh position={[0.105 * s, -0.085, 0.08]} scale={[0.55, 0.4, 1.5]} material={matSkin}>
-            <sphereGeometry args={[0.07, 18, 18]} />
-          </mesh>
-        </group>
-      ))}
+        </Center>
+      </Bounds>
 
       {/* Region markers */}
       {REGIONS.map((r) => {
