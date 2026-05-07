@@ -120,14 +120,23 @@ function BodyView({
           const isSel = selected === r.id;
           const fill = v > 0 ? intensityColor(v) : 'transparent';
           return (
-            <g key={r.id} onClick={() => onSelect(r.id)} className="cursor-pointer">
+            <g key={r.id} onClick={() => onSelect(r.id)} style={{ cursor: 'pointer' }}>
               <path
                 d={r.d}
-                fill={fill}
-                fillOpacity={v > 0 ? 0.7 : 0}
+                fill={v > 0 ? fill : '#000'}
+                fillOpacity={v > 0 ? 0.7 : 0.001}
                 stroke={isSel ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
                 strokeWidth={isSel ? 1.6 : 0.5}
-                className="transition-all hover:fill-primary/20"
+                pointerEvents="all"
+              />
+              {/* invisible larger hit target around region center */}
+              <circle
+                cx={r.cx}
+                cy={r.cy}
+                r={14}
+                fill="#000"
+                fillOpacity={0.001}
+                pointerEvents="all"
               />
               {v > 0 && (
                 <text
