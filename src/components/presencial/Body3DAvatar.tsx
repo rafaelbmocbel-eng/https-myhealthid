@@ -51,56 +51,126 @@ function HumanBody({
   onSelectRegion: (key: string) => void;
 }) {
   const matSkin = useMemo(
-    () => new THREE.MeshStandardMaterial({ color: '#e2c4a8', roughness: 0.7, metalness: 0.05 }),
+    () => new THREE.MeshStandardMaterial({
+      color: '#e8c9a8',
+      roughness: 0.55,
+      metalness: 0.02,
+    }),
+    [],
+  );
+  const matHair = useMemo(
+    () => new THREE.MeshStandardMaterial({ color: '#3a2a1f', roughness: 0.85 }),
     [],
   );
 
   return (
     <group position={[0, -0.85, 0]}>
-      {/* Head */}
-      <mesh position={[0, 1.78, 0]} material={matSkin}>
-        <sphereGeometry args={[0.13, 24, 24]} />
+      {/* Head — oval */}
+      <mesh position={[0, 1.78, 0]} scale={[0.92, 1.08, 0.95]} material={matSkin}>
+        <sphereGeometry args={[0.13, 32, 32]} />
       </mesh>
+      {/* Hair cap */}
+      <mesh position={[0, 1.84, -0.01]} scale={[0.96, 0.6, 1]} material={matHair}>
+        <sphereGeometry args={[0.135, 32, 32, 0, Math.PI * 2, 0, Math.PI / 2]} />
+      </mesh>
+      {/* Jaw refinement */}
+      <mesh position={[0, 1.69, 0.02]} scale={[0.7, 0.45, 0.7]} material={matSkin}>
+        <sphereGeometry args={[0.1, 24, 24]} />
+      </mesh>
+
       {/* Neck */}
       <mesh position={[0, 1.6, 0]} material={matSkin}>
-        <cylinderGeometry args={[0.05, 0.06, 0.1, 16]} />
+        <cylinderGeometry args={[0.052, 0.07, 0.12, 24]} />
       </mesh>
-      {/* Torso */}
-      <mesh position={[0, 1.2, 0]} material={matSkin}>
-        <boxGeometry args={[0.45, 0.6, 0.22]} />
+      {/* Trapezius */}
+      <mesh position={[0, 1.52, -0.01]} scale={[1, 0.5, 1]} material={matSkin}>
+        <sphereGeometry args={[0.16, 24, 24]} />
       </mesh>
-      {/* Hips */}
-      <mesh position={[0, 0.78, 0]} material={matSkin}>
-        <boxGeometry args={[0.36, 0.22, 0.2]} />
+
+      {/* Chest / Torso — tapered */}
+      <mesh position={[0, 1.3, 0]} material={matSkin}>
+        <cylinderGeometry args={[0.21, 0.17, 0.32, 24]} />
       </mesh>
+      {/* Pectoral hint */}
+      <mesh position={[-0.09, 1.34, 0.13]} scale={[1, 0.6, 0.5]} material={matSkin}>
+        <sphereGeometry args={[0.08, 16, 16]} />
+      </mesh>
+      <mesh position={[0.09, 1.34, 0.13]} scale={[1, 0.6, 0.5]} material={matSkin}>
+        <sphereGeometry args={[0.08, 16, 16]} />
+      </mesh>
+      {/* Abdomen — narrower waist */}
+      <mesh position={[0, 1.04, 0]} material={matSkin}>
+        <cylinderGeometry args={[0.17, 0.16, 0.22, 24]} />
+      </mesh>
+      {/* Hips / Pelvis */}
+      <mesh position={[0, 0.85, 0]} material={matSkin}>
+        <cylinderGeometry args={[0.18, 0.2, 0.18, 24]} />
+      </mesh>
+      {/* Glute hint (back) */}
+      <mesh position={[0, 0.82, -0.08]} scale={[1.1, 0.7, 0.6]} material={matSkin}>
+        <sphereGeometry args={[0.16, 20, 20]} />
+      </mesh>
+
       {/* Shoulders / Arms */}
       {[-1, 1].map((s) => (
         <group key={s}>
-          <mesh position={[0.28 * s, 1.3, 0]} material={matSkin}>
-            <sphereGeometry args={[0.08, 16, 16]} />
+          {/* Deltoid */}
+          <mesh position={[0.22 * s, 1.36, 0]} material={matSkin}>
+            <sphereGeometry args={[0.085, 20, 20]} />
           </mesh>
-          <mesh position={[0.36 * s, 1.05, 0]} rotation={[0, 0, (Math.PI / 18) * -s]} material={matSkin}>
-            <cylinderGeometry args={[0.055, 0.05, 0.4, 16]} />
+          {/* Upper arm (biceps) */}
+          <mesh
+            position={[0.27 * s, 1.13, 0]}
+            rotation={[0, 0, (Math.PI / 22) * -s]}
+            material={matSkin}
+          >
+            <cylinderGeometry args={[0.055, 0.048, 0.32, 20]} />
           </mesh>
-          <mesh position={[0.42 * s, 0.7, 0]} rotation={[0, 0, (Math.PI / 18) * -s]} material={matSkin}>
-            <cylinderGeometry args={[0.05, 0.045, 0.35, 16]} />
+          {/* Elbow */}
+          <mesh position={[0.295 * s, 0.96, 0]} material={matSkin}>
+            <sphereGeometry args={[0.05, 16, 16]} />
           </mesh>
-          <mesh position={[0.46 * s, 0.5, 0]} material={matSkin}>
-            <sphereGeometry args={[0.05, 12, 12]} />
+          {/* Forearm */}
+          <mesh
+            position={[0.32 * s, 0.78, 0]}
+            rotation={[0, 0, (Math.PI / 22) * -s]}
+            material={matSkin}
+          >
+            <cylinderGeometry args={[0.045, 0.038, 0.3, 20]} />
+          </mesh>
+          {/* Wrist */}
+          <mesh position={[0.345 * s, 0.62, 0]} material={matSkin}>
+            <sphereGeometry args={[0.038, 14, 14]} />
+          </mesh>
+          {/* Hand */}
+          <mesh position={[0.355 * s, 0.55, 0]} scale={[0.6, 1.3, 0.4]} material={matSkin}>
+            <sphereGeometry args={[0.058, 16, 16]} />
           </mesh>
         </group>
       ))}
+
       {/* Legs */}
       {[-1, 1].map((s) => (
         <group key={`l${s}`}>
-          <mesh position={[0.12 * s, 0.5, 0]} material={matSkin}>
-            <cylinderGeometry args={[0.08, 0.07, 0.45, 16]} />
+          {/* Thigh */}
+          <mesh position={[0.1 * s, 0.55, 0]} material={matSkin}>
+            <cylinderGeometry args={[0.085, 0.065, 0.42, 20]} />
           </mesh>
-          <mesh position={[0.12 * s, 0.15, 0.02]} material={matSkin}>
-            <cylinderGeometry args={[0.07, 0.06, 0.4, 16]} />
+          {/* Knee */}
+          <mesh position={[0.1 * s, 0.32, 0.02]} material={matSkin}>
+            <sphereGeometry args={[0.062, 16, 16]} />
           </mesh>
-          <mesh position={[0.12 * s, -0.07, 0.05]} material={matSkin}>
-            <boxGeometry args={[0.09, 0.05, 0.18]} />
+          {/* Calf */}
+          <mesh position={[0.1 * s, 0.13, 0.01]} material={matSkin}>
+            <cylinderGeometry args={[0.06, 0.045, 0.36, 20]} />
+          </mesh>
+          {/* Ankle */}
+          <mesh position={[0.1 * s, -0.06, 0.02]} material={matSkin}>
+            <sphereGeometry args={[0.04, 14, 14]} />
+          </mesh>
+          {/* Foot */}
+          <mesh position={[0.1 * s, -0.085, 0.07]} scale={[0.6, 0.4, 1.4]} material={matSkin}>
+            <sphereGeometry args={[0.07, 16, 16]} />
           </mesh>
         </group>
       ))}
