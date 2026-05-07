@@ -229,6 +229,8 @@ const REGIONS: Region[] = [
 interface Props {
   value?: Record<string, number>;
   onChange?: (map: Record<string, number>) => void;
+  structures?: RegionStructState;
+  onStructuresChange?: (s: RegionStructState) => void;
 }
 
 function BodyView({
