@@ -30,6 +30,10 @@ interface VoiceAssessmentProps {
   mode?: 'voice' | 'written';
   /** Optional clinical context (e.g. pain map from 3D avatar) prepended to the transcript */
   contextPrefix?: string;
+  /** When provided, the transcript is also sent to the pain-extraction AI and findings are returned. */
+  onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void;
+  /** Region catalog used by the pain extractor (id+label list). Required if onPainExtracted is set. */
+  painRegionsCatalog?: { regions: Array<{ id: string; label: string }>; catalog?: Record<string, { categories: Record<string, string[]> }> };
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
