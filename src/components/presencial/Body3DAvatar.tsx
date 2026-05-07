@@ -224,6 +224,27 @@ export default function Body3DAvatar({ value, onChange }: Props) {
             step={1}
             onValueChange={(v) => setIntensity(selected, v[0])}
           />
+          <div className="grid grid-cols-11 gap-1">
+            {Array.from({ length: 11 }, (_, n) => (
+              <button
+                key={n}
+                type="button"
+                onClick={() => setIntensity(selected, n)}
+                className={`h-8 rounded-md text-[11px] font-bold border transition-all ${
+                  selectedIntensity === n
+                    ? 'text-white border-transparent scale-105 shadow'
+                    : 'bg-background text-foreground border-border hover:bg-muted'
+                }`}
+                style={
+                  selectedIntensity === n
+                    ? { background: intensityColor(n) }
+                    : undefined
+                }
+              >
+                {n}
+              </button>
+            ))}
+          </div>
           <div className="flex justify-between text-[10px] text-muted-foreground">
             <span>Sem dor</span>
             <span>Insuportável</span>
