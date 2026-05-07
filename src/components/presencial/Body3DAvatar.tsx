@@ -3,7 +3,8 @@ import { Canvas, useFrame } from '@react-three/fiber';
 import { OrbitControls, Html, useGLTF, Center, Bounds } from '@react-three/drei';
 import * as THREE from 'three';
 
-const HUMAN_MODEL_URL = 'https://threejs.org/examples/models/gltf/Soldier.glb';
+// Modelo anatômico humano realista (Xbot - figura humana neutra em T-pose, ideal para mapeamento clínico)
+const HUMAN_MODEL_URL = 'https://threejs.org/examples/models/gltf/Xbot.glb';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Trash2, RotateCcw } from 'lucide-react';
