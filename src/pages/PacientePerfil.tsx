@@ -1073,18 +1073,190 @@ export default function PacientePerfil() {
         </Tabs>
       </div>
       {paciente && (
-        <DocumentosModal
-          open={docsModalOpen}
-          onOpenChange={setDocsModalOpen}
-          paciente={{
-            id: paciente.id,
-            nome: paciente.nome,
-            sobrenome: paciente.sobrenome,
-            cpf: paciente.cpf,
-            data_nascimento: (paciente as any).data_nascimento,
-            sexo: (paciente as any).sexo,
-          }}
-        />
+        <>
+          <DocumentosModal
+            open={docsModalOpen}
+            onOpenChange={setDocsModalOpen}
+            paciente={{
+              id: paciente.id,
+              nome: paciente.nome,
+              sobrenome: paciente.sobrenome,
+              cpf: paciente.cpf,
+              data_nascimento: (paciente as any).data_nascimento,
+              sexo: (paciente as any).sexo,
+            }}
+          />
+          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Edit className="h-4 w-4 text-primary" /> Editar Paciente
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Nome *</Label>
+                    <Input placeholder="Maria" value={editForm.nome} onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Sobrenome</Label>
+                    <Input placeholder="Silva" value={editForm.sobrenome} onChange={e => setEditForm(f => ({ ...f, sobrenome: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>E-mail</Label>
+                  <Input type="email" placeholder="maria@email.com" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Telefone</Label>
+                    <Input placeholder="(11) 98765-4321" value={editForm.telefone}
+                      onChange={e => setEditForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))}
+                      maxLength={15} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Data de Nascimento</Label>
+                    <Input
+                      type="text"
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      value={editForm.data_nascimento ? (() => {
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(editForm.data_nascimento)) {
+                          const [y, m, d] = editForm.data_nascimento.split('-');
+                          return `${d}/${m}/${y}`;
+                        }
+                        return editForm.data_nascimento;
+                      })() : ''}
+                      onChange={e => {
+                        let v = e.target.value.replace(/[^\d/]/g, '');
+                        const digits = v.replace(/\//g, '');
+                        if (digits.length >= 5) {
+                          v = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+                        } else if (digits.length >= 3) {
+                          v = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                        }
+                        setEditForm(f => ({ ...f, data_nascimento: v }));
+                      }}
+                      onBlur={e => {
+                        const v = e.target.value;
+                        const match = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                        if (match) {
+                          const [, d, m, y] = match;
+                          const iso = `${y}-${m}-${d}`;
+                          const date = new Date(iso);
+                          if (!isNaN(date.getTime()) && date.getFullYear() === Number(y)) {
+                            setEditForm(f => ({ ...f, data_nascimento: iso }));
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Gênero</Label>
+                    <Select value={editForm.genero} onValueChange={v => setEditForm(f => ({ ...f, genero: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="feminino">Feminino</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>CPF</Label>
+                    <Input placeholder="123.456.789-00" value={editForm.cpf}
+                      onChange={e => setEditForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))}
+                      maxLength={14} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Endereço</Label>
+                  <Input placeholder="Rua, número, bairro, cidade" value={editForm.endereco} onChange={e => setEditForm(f => ({ ...f, endereco: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Queixa Principal</Label>
+                  <Input placeholder="Ex: Dor lombar crônica, escoliose..." value={editForm.queixa_principal}
+                    onChange={e => setEditForm(f => ({ ...f, queixa_principal: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Observações</Label>
+                  <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={editForm.observacoes} onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Profissional Responsável</Label>
+                  <Select
+                    value={editForm.responsavel_id || 'none'}
+                    onValueChange={v => setEditForm(f => ({ ...f, responsavel_id: v === 'none' ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem responsável definido</SelectItem>
+                      {membrosEquipe.filter(m => m.ativo).map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Atendimento</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                      className={cn(
+                        'p-3 rounded-lg border text-sm font-medium transition-colors',
+                        editForm.tipo_pagamento === 'particular'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-accent/30 text-foreground'
+                      )}
+                    >
+                      Particular
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'plano' }))}
+                      className={cn(
+                        'p-3 rounded-lg border text-sm font-medium transition-colors',
+                        editForm.tipo_pagamento === 'plano'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-accent/30 text-foreground'
+                      )}
+                    >
+                      Plano
+                    </button>
+                  </div>
+                  {editForm.tipo_pagamento === 'plano' && (
+                    <div className="pt-2">
+                      <Label className="text-xs">Plano</Label>
+                      <Select
+                        value={editForm.plano_saude || ''}
+                        onValueChange={v => setEditForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+                        <SelectContent>
+                          {PLANOS_SAUDE.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+                  <Button className="flex-1 bg-gradient-primary text-white" onClick={handleSaveEdit} disabled={submittingEdit}>
+                    {submittingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </AppLayout >
   );
