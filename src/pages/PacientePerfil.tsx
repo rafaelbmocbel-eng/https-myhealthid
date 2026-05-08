@@ -816,13 +816,15 @@ export default function PacientePerfil() {
           </div>
         )}
 
-        {/* ==== ABAS COMPLEMENTARES — logo abaixo do telefone ====
-            Histórico │ Diretrizes │ Prontuário │ Engajar │ Chat
-            Visão Integrada é a entrada padrão (sem aba ativa). */}
+        {/* LGPD Consent — banner compacto acima das abas */}
+        <div className="mb-3">
+          <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
+        </div>
+
+        {/* ==== ABAS COMPLEMENTARES ==== */}
         <Tabs
           value={activeTab}
           onValueChange={(v) => {
-            // Permite "desselecionar" clicando na mesma aba ativa, voltando à Visão Integrada
             const next = v === activeTab ? '' : v;
             setActiveTab(next);
             navigate(`/pacientes/${id}${next ? `?tab=${next}` : ''}`, { replace: true });
@@ -843,27 +845,22 @@ export default function PacientePerfil() {
             </button>
           )}
           <TabsList className="bg-muted/60 p-1 rounded-xl grid grid-cols-5 h-auto gap-1 w-full mb-4">
-            <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
+            <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
               <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Histórico de Avaliações">
+            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
-            <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Diretrizes e Tratamentos">
+            <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Diretrizes e Tratamentos">
               <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
             </TabsTrigger>
-            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row">
+            <TabsTrigger value="evolucao-prontuario" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]">
               <ClipboardList className="h-4 w-4 shrink-0" /> <span>Prontuário</span>
             </TabsTrigger>
-            <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm text-[10px] sm:text-xs px-1 py-2 flex-col sm:flex-row" title="Controle do Portal do Paciente">
+            <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Controle do Portal do Paciente">
               <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
             </TabsTrigger>
           </TabsList>
-
-          {/* LGPD Consent — botão compacto */}
-          <div className="mb-3 flex justify-end">
-            <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
-          </div>
 
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
