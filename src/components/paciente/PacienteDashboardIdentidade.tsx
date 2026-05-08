@@ -499,7 +499,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
             terapeuta_id: user.id,
             tipo: 'avaliacao_voz',
             titulo: `Avaliação por Voz atualizada — ${av.classificacao_severidade || 'N/A'}`,
-            descricao: `📝 Transcrição editada e reprocessada.\n\n${editingVoiceText.slice(0, 500)}`,
+            descricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${transcriptToUse.slice(0, 500)}`,
             dados_extras: { voice_assessment_id: avId },
             referencia_id: avId,
           });
