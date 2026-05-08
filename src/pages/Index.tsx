@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
+
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getBaseUrl } from '@/utils/linkUrls';
