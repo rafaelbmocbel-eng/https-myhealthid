@@ -617,12 +617,12 @@ export default function Index() {
         )}
 
         {/* Amostra Clínica Populacional */}
-        {servicos.identidade && amostraClinica && (
+        {amostraClinica && (
           <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
             <div className="mb-5">
               <h2 className="h-section">Amostra clínica populacional</h2>
               <p className="text-caption mt-0.5">
-                Média geral de {amostraClinica.n} avaliações · Todos os pacientes
+                Média geral de {amostraClinica.n} avaliações MyID · Todos os pacientes
               </p>
             </div>
 
