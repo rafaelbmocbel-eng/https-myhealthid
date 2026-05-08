@@ -385,64 +385,81 @@ export default function Index() {
   return (
     <AppLayout>
       <PageTransition>
-      <div className="container py-4 sm:py-8 max-w-6xl px-1 sm:px-6">
+      <div className="container py-4 sm:py-8 max-w-6xl px-2 sm:px-6">
         {/* Welcome header */}
         <FadeIn>
-        <div className="mb-6 sm:mb-8">
-          <h1 className="text-xl sm:text-2xl font-black text-foreground">
-            {saudacao}, {profile?.nome || 'Terapeuta'}! 👋
+        <header className="mb-6 sm:mb-8">
+          <h1 className="h-page">
+            {saudacao}, {profile?.nome || 'Terapeuta'}
           </h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            {format(new Date(), "EEEE, d 'de' MMMM 'de' yyyy", { locale: ptBR })}
+          <p className="text-caption mt-1.5 capitalize">
+            {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
           </p>
-        </div>
+        </header>
         </FadeIn>
 
         {/* Onboarding Guide */}
-        <div className="mb-4">
+        <div className="mb-6">
           <OnboardingGuide />
         </div>
 
-        {/* Quick stats — compact row */}
-        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
+        {/* Quick stats — clean row */}
+        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Pacientes', value: pacientes.length, icon: Users, color: 'text-primary' },
-            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, color: 'text-emerald-600' },
-            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, color: 'text-amber-600' },
-            { label: 'Próximo', value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—', icon: Clock, color: 'text-blue-600',
+            { label: 'Pacientes', value: pacientes.length, icon: Users },
+            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays },
+            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList },
+            {
+              label: 'Próximo',
+              value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—',
+              icon: Clock,
               onClick: () => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`),
-              subtitle: proximoAtendimento?.pacientes ? `${(proximoAtendimento as any).pacientes.nome}` : undefined },
+              subtitle: proximoAtendimento?.pacientes ? `${(proximoAtendimento as any).pacientes.nome}` : undefined,
+            },
           ].map(stat => {
             const Icon = stat.icon;
+            const clickable = !!(stat as any).onClick;
             return (
               <StaggerItem key={stat.label}>
-              <div className={`clinical-card !p-3 text-center ${(stat as any).onClick ? 'cursor-pointer hover:ring-1 hover:ring-primary/30' : ''}`} onClick={(stat as any).onClick}>
-                <Icon className={`h-5 w-5 mx-auto mb-1 ${stat.color}`} />
-                <div className="text-xl font-black text-foreground">{stat.value}</div>
-                <div className="text-[10px] text-muted-foreground leading-tight">{(stat as any).subtitle || stat.label}</div>
-              </div>
+                <div
+                  className={`rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors ${clickable ? 'cursor-pointer hover:border-primary/40' : ''}`}
+                  onClick={(stat as any).onClick}
+                >
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-micro">{stat.label}</span>
+                    <Icon className="icon-xs text-muted-foreground/70" />
+                  </div>
+                  <div className="text-2xl font-semibold text-foreground tracking-tight">{stat.value}</div>
+                  {(stat as any).subtitle && (
+                    <div className="text-[11px] text-muted-foreground truncate mt-0.5">{(stat as any).subtitle}</div>
+                  )}
+                </div>
               </StaggerItem>
             );
           })}
         </StaggerContainer>
 
-        {/* Service modules — compact list */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
+        {/* Service modules — clean list, no gradients */}
+        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda', gradient: 'bg-gradient-to-br from-amber-500 to-orange-500' },
-            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade', gradient: 'bg-gradient-identidade' }] : []),
+            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda' },
+            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
-              <Link key={mod.href} to={mod.href} className="clinical-card !p-3 flex items-center gap-3 hover:shadow-md hover:border-primary/30 transition-all group">
-                <div className={`h-9 w-9 rounded-lg ${mod.gradient} flex items-center justify-center shrink-0`}>
-                  <Icon className="h-4.5 w-4.5 text-white" />
+              <Link
+                key={mod.href}
+                to={mod.href}
+                className="rounded-xl border border-border/40 bg-card p-3 sm:p-4 flex items-center gap-3 hover:border-primary/40 transition-colors group"
+              >
+                <div className="h-9 w-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
+                  <Icon className="icon-sm text-foreground/70 group-hover:text-primary transition-colors" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <div className="text-sm font-bold text-foreground truncate">{mod.label}</div>
-                  <div className="text-[10px] text-muted-foreground">{mod.sublabel}</div>
+                  <div className="h-card truncate">{mod.label}</div>
+                  <div className="text-caption mt-0.5">{mod.sublabel}</div>
                 </div>
-                <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors shrink-0" />
+                <ArrowRight className="icon-sm text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
               </Link>
             );
           })}
@@ -450,166 +467,151 @@ export default function Index() {
 
         {/* Today's schedule */}
         {agendamentosHoje.length > 0 && (
-          <div className="clinical-card">
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="font-bold text-foreground">Agenda de Hoje</h2>
-              <Button asChild variant="ghost" size="sm" className="text-primary">
-                <Link to="/agenda">Ver tudo <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+              <h2 className="h-section">Agenda de hoje</h2>
+              <Button asChild variant="ghost" size="sm" className="text-primary h-8">
+                <Link to="/agenda">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
               </Button>
             </div>
-            <div className="space-y-2">
+            <div className="space-y-1">
               {agendamentosHoje.slice(0, 5).map((ag: any) => {
                 const inicio = parseISO(ag.data_inicio);
                 const isPast = inicio < new Date();
                 return (
-                  <div key={ag.id} className={`flex items-center gap-3 p-3 rounded-lg border transition-all ${isPast ? 'opacity-60' : 'hover:bg-accent/10'}`}>
-                    <div className="text-sm font-mono font-bold text-primary w-12 shrink-0">
+                  <div key={ag.id} className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors ${isPast ? 'opacity-50' : 'hover:bg-muted/50'}`}>
+                    <div className="text-sm font-mono font-semibold text-foreground w-12 shrink-0 tabular-nums">
                       {format(inicio, 'HH:mm')}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="font-medium text-sm truncate">
+                      <div className="text-sm font-medium text-foreground truncate">
                         {ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : ag.titulo || 'Agendamento'}
                       </div>
-                      <div className="text-xs text-muted-foreground">{ag.tipo_atendimento || 'Retorno'}</div>
+                      <div className="text-caption">{ag.tipo_atendimento || 'Retorno'}</div>
                     </div>
-                    <div className={`text-xs font-medium px-2 py-0.5 rounded-full ${ag.status === 'confirmado' ? 'bg-emerald-100 text-emerald-700' :
-                      ag.status === 'pendente' ? 'bg-amber-100 text-amber-700' :
-                        'bg-slate-100 text-slate-600'
-                      }`}>
+                    <div className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                      ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' :
+                      ag.status === 'pendente' ? 'bg-amber-50 text-amber-700' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
                       {ag.status}
                     </div>
                   </div>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Alertas Clínicos Críticos (Red Flags) */}
         {recentAlerts.length > 0 && (
-          <div className="clinical-card mb-6 border-red-200/50">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-red-100 flex items-center justify-center shadow-sm">
-                  <Shield className="h-4.5 w-4.5 text-red-600" />
-                </div>
-                <div>
-                  <h2 className="font-bold text-red-800">Alertas Clínicos Ativos</h2>
-                  <p className="text-[10px] text-red-600/80">Pacientes que acionaram Red Flags recentemente</p>
-                </div>
+          <section className="rounded-xl border border-destructive/20 bg-destructive/[0.02] p-4 sm:p-5 mb-6">
+            <div className="flex items-center gap-2.5 mb-4">
+              <Shield className="icon-sm text-destructive" />
+              <div className="min-w-0">
+                <h2 className="h-section text-destructive">Alertas clínicos ativos</h2>
+                <p className="text-caption">Pacientes com Red Flags recentes</p>
               </div>
             </div>
-            <div className="grid sm:grid-cols-3 gap-3">
+            <div className="grid sm:grid-cols-3 gap-2.5">
               {recentAlerts.map(alert => (
-                <div key={alert.id_final || alert.created_at} className="p-3 rounded-lg border border-red-100 bg-red-50/30 flex flex-col gap-1 cursor-pointer hover:bg-red-50/60 transition-colors" onClick={() => alert.paciente_id && navigate(`/pacientes/${alert.paciente_id}`)}>
-                  <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold text-red-900 truncate">{(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}</span>
-                    <span className="text-[10px] text-red-500 font-medium">{formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}</span>
+                <button
+                  key={alert.id_final || alert.created_at}
+                  type="button"
+                  className="text-left p-3 rounded-lg border border-destructive/15 bg-card hover:border-destructive/40 hover:bg-destructive/[0.04] transition-colors"
+                  onClick={() => alert.paciente_id && navigate(`/pacientes/${alert.paciente_id}`)}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm font-semibold text-foreground truncate">{(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}</span>
                   </div>
-                  <div className="text-[11px] text-red-700/80 font-medium">Perímetro de Alerta MyID acionado</div>
-                </div>
+                  <div className="text-caption">Perímetro de alerta MyID acionado</div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5">
+                    {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}
+                  </div>
+                </button>
               ))}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Feed de Atividades Recentes */}
         {atividadesRecentes.length > 0 && (
-          <div className="clinical-card mb-6">
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-indigo-500 to-blue-500 flex items-center justify-center shadow-lg">
-                  <Activity className="h-4.5 w-4.5 text-white" />
-                </div>
-                <h2 className="font-bold text-foreground">Últimas Atividades</h2>
-              </div>
-              <Button asChild variant="ghost" size="sm" className="text-primary">
-                <Link to="/pacientes">Ver tudo <ArrowRight className="h-3.5 w-3.5 ml-1" /></Link>
+              <h2 className="h-section">Últimas atividades</h2>
+              <Button asChild variant="ghost" size="sm" className="text-primary h-8">
+                <Link to="/pacientes">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
               </Button>
             </div>
-            <div className="space-y-1.5">
+            <div className="space-y-0.5">
               {atividadesRecentes.map((item: any) => {
                 const ActivityIcon = item.icon === 'calendar' ? CalendarDays : item.icon === 'clipboard' ? ClipboardList : item.icon === 'align' ? AlignCenter : UserPlus;
-                const colorMap: Record<string, string> = { calendar: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400', clipboard: 'bg-rose-100 text-rose-700 dark:bg-rose-950/40 dark:text-rose-400', align: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400', 'user-plus': 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-400' };
                 return (
-                  <div
+                  <button
+                    type="button"
                     key={item.id}
-                    className="flex items-center gap-3 p-2.5 rounded-lg hover:bg-accent/10 transition-all cursor-pointer"
+                    className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
                     onClick={() => item.pacienteId && navigate(`/pacientes/${item.pacienteId}`)}
                   >
-                    <div className={`h-8 w-8 rounded-lg flex items-center justify-center shrink-0 ${colorMap[item.icon] || 'bg-slate-100 text-slate-600'}`}>
-                      <ActivityIcon className="h-4 w-4" />
+                    <div className="h-8 w-8 rounded-lg bg-muted/70 flex items-center justify-center shrink-0">
+                      <ActivityIcon className="icon-sm text-foreground/70" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="text-sm font-medium text-foreground truncate">{item.pacienteNome}</div>
-                      <div className="text-xs text-muted-foreground truncate">{item.description}</div>
+                      <div className="text-caption truncate">{item.description}</div>
                     </div>
-                    <div className="text-[10px] text-muted-foreground whitespace-nowrap shrink-0">
+                    <div className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
                       {formatDistanceToNow(parseISO(item.timestamp), { addSuffix: true, locale: ptBR })}
                     </div>
-                  </div>
+                  </button>
                 );
               })}
             </div>
-          </div>
+          </section>
         )}
 
         {/* Estatísticas Gerais */}
         {statsData && (
-          <div className="clinical-card mb-6">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-600 to-indigo-600 flex items-center justify-center shadow-lg">
-                <BarChart3 className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Estatísticas Gerais</h2>
-                <p className="text-xs text-muted-foreground">Visão consolidada dos últimos 30 dias</p>
-              </div>
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+            <div className="mb-5">
+              <h2 className="h-section">Estatísticas gerais</h2>
+              <p className="text-caption mt-0.5">Visão consolidada dos últimos 30 dias</p>
             </div>
 
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-5">
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-5">
               {[
-                ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade, icon: Activity, color: 'text-primary' }] : []),
-                { label: 'Diretrizes Totais', value: statsData.totalProtocolos, icon: FileText, color: 'text-violet-600' },
-                { label: 'Diretrizes Ativas', value: statsData.protocolosAtivos, icon: TrendingUp, color: 'text-emerald-600' },
-                { label: 'Sessões (30d)', value: statsData.sessoes30d, icon: CalendarDays, color: 'text-amber-600' },
-                { label: 'Taxa Presença', value: `${statsData.taxaPresenca}%`, icon: CheckCircle2, color: 'text-teal-600' },
+                ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade }] : []),
+                { label: 'Diretrizes totais', value: statsData.totalProtocolos },
+                { label: 'Diretrizes ativas', value: statsData.protocolosAtivos },
+                { label: 'Sessões (30d)', value: statsData.sessoes30d },
+                { label: 'Taxa de presença', value: `${statsData.taxaPresenca}%` },
+              ].map(s => (
+                <div key={s.label} className="rounded-lg border border-border/40 bg-background p-3">
+                  <div className="text-micro mb-1.5">{s.label}</div>
+                  <div className="text-xl font-semibold text-foreground tracking-tight">{s.value}</div>
+                </div>
+              ))}
+            </div>
+
+            <div className="grid grid-cols-3 gap-2.5">
+              {[
+                { count: statsData.totalConcluidos, label: 'Concluídos', icon: CheckCircle2, color: 'text-emerald-600' },
+                { count: statsData.totalFaltas, label: 'Faltas', icon: UserX, color: 'text-destructive' },
+                { count: statsData.totalCancelados, label: 'Cancelados', icon: XCircle, color: 'text-muted-foreground' },
               ].map(s => {
                 const Icon = s.icon;
                 return (
-                  <div key={s.label} className="rounded-xl border bg-card p-3 text-center">
-                    <Icon className={`h-5 w-5 mx-auto mb-1.5 ${s.color}`} />
-                    <div className="text-xl font-black text-foreground">{s.value}</div>
-                    <div className="text-[10px] text-muted-foreground leading-tight mt-0.5">{s.label}</div>
+                  <div key={s.label} className="flex items-center gap-2.5 px-3 py-2.5 rounded-lg bg-muted/40">
+                    <Icon className={`icon-sm ${s.color}`} />
+                    <div className="min-w-0">
+                      <div className="text-sm font-semibold text-foreground">{s.count}</div>
+                      <div className="text-[10px] text-muted-foreground">{s.label}</div>
+                    </div>
                   </div>
                 );
               })}
             </div>
-
-            <div className="grid grid-cols-3 gap-3">
-              <div className="flex items-center gap-2 rounded-lg bg-emerald-50 dark:bg-emerald-950/30 p-2.5">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600 shrink-0" />
-                <div>
-                  <div className="text-sm font-bold text-emerald-700 dark:text-emerald-400">{statsData.totalConcluidos}</div>
-                  <div className="text-[10px] text-emerald-600/80">Concluídos</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg bg-red-50 dark:bg-red-950/30 p-2.5">
-                <UserX className="h-4 w-4 text-red-600 shrink-0" />
-                <div>
-                  <div className="text-sm font-bold text-red-700 dark:text-red-400">{statsData.totalFaltas}</div>
-                  <div className="text-[10px] text-red-600/80">Faltas</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-2 rounded-lg bg-slate-50 dark:bg-slate-950/30 p-2.5">
-                <XCircle className="h-4 w-4 text-slate-500 shrink-0" />
-                <div>
-                  <div className="text-sm font-bold text-slate-700 dark:text-slate-400">{statsData.totalCancelados}</div>
-                  <div className="text-[10px] text-slate-500/80">Cancelados</div>
-                </div>
-              </div>
-            </div>
-          </div>
+          </section>
         )}
 
         {/* Amostra Clínica Populacional */}
