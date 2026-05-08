@@ -1,6 +1,16 @@
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
-import { Smartphone, Copy, Plus, Loader2, Fingerprint, CalendarDays, LayoutDashboard, type LucideIcon } from 'lucide-react';
+import {
+  Smartphone,
+  Copy,
+  Plus,
+  Loader2,
+  Fingerprint,
+  CalendarDays,
+  LayoutDashboard,
+  Check,
+  type LucideIcon,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const ICON_MAP: Record<string, LucideIcon> = {
@@ -12,17 +22,11 @@ const ICON_MAP: Record<string, LucideIcon> = {
 export interface LinkActionItem {
   key: string;
   label: string;
-  /** Whether a link is currently active */
   active: boolean;
-  /** Loading state when generating a link */
   loading?: boolean;
-  /** Color accent for the icon label */
   color?: string;
-  /** Called when the WhatsApp/copy button is clicked */
   onAction: () => void;
-  /** Called when "generate" is clicked (only when !active) */
   onGenerate?: () => void;
-  /** True if WhatsApp action, false if copy fallback */
   isWhatsApp: boolean;
 }
 
@@ -31,73 +35,130 @@ interface LinkActionsBarProps {
   className?: string;
 }
 
-const COLOR_MAP: Record<string, { bg: string; text: string; border: string }> = {
-  emerald: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200' },
-  blue: { bg: 'bg-blue-50', text: 'text-blue-700', border: 'border-blue-200' },
-  violet: { bg: 'bg-violet-50', text: 'text-violet-700', border: 'border-violet-200' },
-  amber: { bg: 'bg-amber-50', text: 'text-amber-700', border: 'border-amber-200' },
-  primary: { bg: 'bg-primary/10', text: 'text-primary', border: 'border-primary/20' },
+const COLOR_MAP: Record<
+  string,
+  { bg: string; text: string; border: string; soft: string; ring: string }
+> = {
+  emerald: {
+    bg: 'bg-emerald-500',
+    text: 'text-emerald-700',
+    border: 'border-emerald-200',
+    soft: 'bg-emerald-50 hover:bg-emerald-100',
+    ring: 'ring-emerald-500/20',
+  },
+  blue: {
+    bg: 'bg-blue-500',
+    text: 'text-blue-700',
+    border: 'border-blue-200',
+    soft: 'bg-blue-50 hover:bg-blue-100',
+    ring: 'ring-blue-500/20',
+  },
+  violet: {
+    bg: 'bg-violet-500',
+    text: 'text-violet-700',
+    border: 'border-violet-200',
+    soft: 'bg-violet-50 hover:bg-violet-100',
+    ring: 'ring-violet-500/20',
+  },
+  amber: {
+    bg: 'bg-amber-500',
+    text: 'text-amber-700',
+    border: 'border-amber-200',
+    soft: 'bg-amber-50 hover:bg-amber-100',
+    ring: 'ring-amber-500/20',
+  },
+  primary: {
+    bg: 'bg-primary',
+    text: 'text-primary',
+    border: 'border-primary/20',
+    soft: 'bg-primary/10 hover:bg-primary/20',
+    ring: 'ring-primary/20',
+  },
 };
 
 export default function LinkActionsBar({ items, className }: LinkActionsBarProps) {
   if (items.length === 0) return null;
 
   return (
-    <div className={cn('flex items-center gap-1.5', className)}>
-      {items.map((item, idx) => {
+    <div className={cn('flex flex-wrap items-center gap-2', className)}>
+      {items.map((item) => {
         const colors = COLOR_MAP[item.color || 'primary'] || COLOR_MAP.primary;
-        const IconComponent = ICON_MAP[item.key] || (item.active ? (item.isWhatsApp ? Smartphone : Copy) : Plus);
+        const TypeIcon = ICON_MAP[item.key] || LayoutDashboard;
+
+        if (item.active) {
+          return (
+            <Tooltip key={item.key} delayDuration={0}>
+              <TooltipTrigger asChild>
+                <button
+                  type="button"
+                  onClick={item.onAction}
+                  className={cn(
+                    'group inline-flex items-center gap-2 h-8 pl-2 pr-2.5 rounded-lg border text-xs font-semibold transition-all shadow-sm',
+                    'hover:shadow-md hover:-translate-y-px active:translate-y-0 active:scale-[0.98]',
+                    colors.soft,
+                    colors.border,
+                    colors.text,
+                  )}
+                >
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0',
+                      colors.bg,
+                    )}
+                  >
+                    <TypeIcon className="w-3 h-3 text-white" />
+                  </span>
+                  <span className="hidden sm:inline">{item.label}</span>
+                  <span
+                    className={cn(
+                      'inline-flex items-center justify-center w-5 h-5 rounded-md shrink-0 ml-0.5',
+                      item.isWhatsApp ? 'bg-[#25D366] text-white' : 'bg-foreground/5 text-foreground/70',
+                    )}
+                  >
+                    {item.isWhatsApp ? (
+                      <Smartphone className="w-3 h-3" />
+                    ) : (
+                      <Copy className="w-3 h-3" />
+                    )}
+                  </span>
+                  <Check className="w-3 h-3 text-emerald-600 shrink-0" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="bottom" className="text-xs">
+                <p className="font-semibold">{item.label} · ativo</p>
+                <p className="text-muted-foreground">
+                  {item.isWhatsApp ? 'Clique para enviar via WhatsApp' : 'Clique para copiar o link'}
+                </p>
+              </TooltipContent>
+            </Tooltip>
+          );
+        }
+
         return (
           <Tooltip key={item.key} delayDuration={0}>
             <TooltipTrigger asChild>
-              {item.active ? (
-                <Button
-                  size="icon"
-                  className={cn(
-                    'h-7 w-7 md:h-8 md:w-8 rounded-lg transition-all relative',
-                    item.isWhatsApp
-                      ? 'bg-[#25D366] hover:bg-[#20BE5C] text-white'
-                      : cn('border', colors.bg, colors.text, colors.border, 'hover:opacity-80'),
-                  )}
-                  variant={item.isWhatsApp ? 'default' : 'outline'}
-                  onClick={item.onAction}
-                >
-                  {/* Ícone do tipo de link (pequeno, no canto) */}
-                  <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-white shadow-sm flex items-center justify-center">
-                    <IconComponent className="h-2 w-2" style={{ color: 'hsl(var(--foreground))' }} />
-                  </span>
-                  {item.isWhatsApp ? (
-                    <Smartphone className="h-3.5 w-3.5" />
-                  ) : (
-                    <Copy className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              ) : (
-                <Button
-                  size="icon"
-                  variant="outline"
-                  className="h-7 w-7 md:h-8 md:w-8 rounded-lg border-dashed text-muted-foreground/60 relative"
-                  disabled={item.loading}
-                  onClick={item.onGenerate}
-                >
-                  {/* Ícone do tipo de link (pequeno, no canto) */}
-                  <span className="absolute -top-0.5 -left-0.5 w-3 h-3 rounded-full bg-muted shadow-sm flex items-center justify-center">
-                    <IconComponent className="h-2 w-2" style={{ color: 'hsl(var(--muted-foreground))' }} />
-                  </span>
-                  {item.loading ? (
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  ) : (
-                    <Plus className="h-3.5 w-3.5" />
-                  )}
-                </Button>
-              )}
+              <button
+                type="button"
+                onClick={item.onGenerate}
+                disabled={item.loading}
+                className={cn(
+                  'group inline-flex items-center gap-1.5 h-8 px-2.5 rounded-lg border border-dashed border-border text-xs font-semibold text-muted-foreground transition-all',
+                  'hover:border-solid hover:bg-muted/60 hover:text-foreground active:scale-[0.98]',
+                  'disabled:opacity-60 disabled:cursor-wait',
+                )}
+              >
+                <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+                <span className="hidden sm:inline">{item.label}</span>
+                {item.loading ? (
+                  <Loader2 className="w-3 h-3 animate-spin shrink-0" />
+                ) : (
+                  <Plus className="w-3 h-3 shrink-0" />
+                )}
+              </button>
             </TooltipTrigger>
             <TooltipContent side="bottom" className="text-xs">
-              <span className="font-semibold">{item.label}</span>
-              {item.active
-                ? item.isWhatsApp ? ' · Enviar via WhatsApp' : ' · Copiar link'
-                : ' · Gerar link'
-              }
+              <p className="font-semibold">Gerar link {item.label}</p>
+              <p className="text-muted-foreground">Clique para criar um novo link compartilhável</p>
             </TooltipContent>
           </Tooltip>
         );
