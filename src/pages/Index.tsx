@@ -616,17 +616,12 @@ export default function Index() {
 
         {/* Amostra Clínica Populacional */}
         {servicos.identidade && amostraClinica && (
-          <div className="clinical-card mb-6">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-600 to-pink-500 flex items-center justify-center shadow-lg">
-                <Gauge className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Amostra Clínica Populacional</h2>
-                <p className="text-xs text-muted-foreground">
-                  Média geral de {amostraClinica.n} avaliações · Todos os pacientes
-                </p>
-              </div>
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+            <div className="mb-5">
+              <h2 className="h-section">Amostra clínica populacional</h2>
+              <p className="text-caption mt-0.5">
+                Média geral de {amostraClinica.n} avaliações · Todos os pacientes
+              </p>
             </div>
 
             <Tabs defaultValue="scores" className="w-full">
