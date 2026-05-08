@@ -118,23 +118,52 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 hasRedFlags={red_flags_detected}
             />
 
-            {/* Fingerprint */}
-            <Card className="shadow-xl border-0 bg-card/80 backdrop-blur-sm">
-                <CardHeader className="text-center pb-2">
-                    <CardTitle className="text-xl font-bold text-foreground">🔏 Sua Impressão Digital Sistêmica</CardTitle>
-                    <CardDescription>Cada crista representa uma dimensão do seu perfil de saúde</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center pb-8">
-                    <MyIDFingerprint
-                        rings={buildFingerprintRings(component_scores)}
-                        myidScore={myidScoreValue}
-                        className="w-full"
-                        hasRedFlags={red_flags_detected}
-                    />
-                </CardContent>
-            </Card>
+            {/* Onde você está perdendo pontos — breakdown concreto */}
+            {(() => {
+                const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
+                if (items.length === 0) return null;
+                const maxPerda = Math.max(...items.map(i => i.perda), 1);
+                return (
+                    <Card className="shadow-sm">
+                        <CardHeader className="pb-3">
+                            <CardTitle className="text-lg font-bold flex items-center gap-2">
+                                📉 Onde você está perdendo pontos
+                            </CardTitle>
+                            <CardDescription className="text-xs">
+                                Detalhamento por dimensão — quanto maior a barra, maior o impacto no seu MyID-100.
+                            </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3">
+                            {items.map(item => (
+                                <div key={item.key} className={`p-3 rounded-lg border ${item.isDriver ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}>
+                                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                                        <div className="flex-1 min-w-0">
+                                            <div className="flex items-center gap-2 flex-wrap">
+                                                <span className="font-semibold text-sm">{item.label}</span>
+                                                {item.isDriver && <Badge className="text-[9px] h-4 bg-primary/15 text-primary border-primary/30 hover:bg-primary/15">PRINCIPAL</Badge>}
+                                                {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">CRÍTICO</Badge>}
+                                            </div>
+                                            {item.interpretacao && (
+                                                <p className="text-xs text-muted-foreground mt-0.5">{item.interpretacao}</p>
+                                            )}
+                                        </div>
+                                        <div className="text-right shrink-0">
+                                            <div className="text-base font-black text-destructive">−{item.perda}</div>
+                                            <div className="text-[10px] text-muted-foreground">pts</div>
+                                        </div>
+                                    </div>
+                                    <Progress value={(item.perda / maxPerda) * 100} className="h-1.5" />
+                                    <div className="text-[10px] text-muted-foreground/70 mt-1">
+                                        Score bruto: {item.score.toFixed(1)}/10
+                                    </div>
+                                </div>
+                            ))}
+                        </CardContent>
+                    </Card>
+                );
+            })()}
 
-            {/* Dicas Personalizadas */}
+            {/* Dicas Personalizadas (data-driven, específicas) */}
             <MyIDDicasPessoais scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }} myidScore={myid_100 ?? MyID_score ?? 0} />
 
             {/* Hidden Factors */}
@@ -159,62 +188,33 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                             <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{medications.join(', ')}</span>
                         </div>
                     )}
-                </CardContent>
-            </Card>
-
-            {/* Bio-alignment tips */}
-            <Card className="bg-primary/5 border-primary/20 shadow-sm border-l-4 border-l-primary pt-2">
-                <CardHeader className="pb-2">
-                    <CardTitle className="text-primary text-xl font-bold flex items-center gap-2">
-                        <span>🚀</span> DICAS PARA SEU BIO-ALINHAMENTO
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4 pt-2">
-                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-                        <h4 className="font-bold text-primary flex items-center gap-2 mb-2"><span className="text-lg">🏥</span> SUA SAÚDE E SISTEMA:</h4>
-                        <p className="text-foreground/70 text-sm leading-relaxed">
-                            Seu Score MyID-100 é de <strong>{Math.round(myidScoreValue)}/100</strong>, o que reflete um padrão de dor <strong>{pain_pattern}</strong>.
-                            {red_flags_detected ? ' Identificamos sinais que precisam de atenção profissional.' : ' Sem sinais de alerta imediatos.'}
-                        </p>
-                    </div>
-
-                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">🪑</span> SEU AMBIENTE:</h4>
-                        <p className="text-foreground/70 text-sm leading-relaxed">
-                            Ergonomia: <strong>{ERG.toFixed(1)}/10</strong>. Setup: <strong>{translateWorkspace(rawData.bloco_5h_workspace || 'atual')}</strong>.
-                            {rawData.bloco_5h_sitting_continuous ? ` Você fica ${rawData.bloco_5h_sitting_continuous} min sentado(a) sem pausa.` : ''}
-                        </p>
-                    </div>
-
-                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">💪</span> MOVIMENTO:</h4>
-                        <p className="text-foreground/70 text-sm leading-relaxed">
-                            Atividade física: <strong>{AF.toFixed(1)}/10</strong>. Estilo: <strong>{translateLifestyle(rawData.bloco_5e_lifestyle || 'atual')}</strong>.
-                            {rawData.bloco_5e_intensity !== 'none' ? ` Intensidade: ${translateIntensity(rawData.bloco_5e_intensity)}.` : ''}
-                        </p>
-                    </div>
-
-                    <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-                        <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">🥗</span> NUTRIÇÃO E HIDRATAÇÃO:</h4>
-                        <p className="text-foreground/70 text-sm leading-relaxed">
-                            Nutrição: <strong>{NUT.toFixed(1)}/10</strong>. Hidratação: <strong>{HID.toFixed(1)}/10</strong>.
-                            {rawData.bloco_5f_water_liters ? ` Consumo: ${rawData.bloco_5f_water_liters}L/dia.` : ''}
-                        </p>
-                    </div>
-
+                    {rawData.bloco_5h_workspace && (
+                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
+                            <span className="font-bold text-foreground/70">Ergonomia:</span>
+                            <span className="text-sm">{translateWorkspace(rawData.bloco_5h_workspace)}{rawData.bloco_5h_sitting_continuous ? ` · ${rawData.bloco_5h_sitting_continuous}min sentado sem pausa` : ''}</span>
+                        </div>
+                    )}
+                    {rawData.bloco_5e_lifestyle && (
+                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
+                            <span className="font-bold text-foreground/70">Estilo de vida:</span>
+                            <span className="text-sm">{translateLifestyle(rawData.bloco_5e_lifestyle)}{rawData.bloco_5e_intensity && rawData.bloco_5e_intensity !== 'none' ? ` · intensidade ${translateIntensity(rawData.bloco_5e_intensity)}` : ''}</span>
+                        </div>
+                    )}
+                    {rawData.bloco_5f_water_liters && (
+                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
+                            <span className="font-bold text-foreground/70">Hidratação:</span>
+                            <span className="text-sm">{rawData.bloco_5f_water_liters}L/dia</span>
+                        </div>
+                    )}
                     {hasWomenHealth && (
-                        <div className="bg-card p-4 rounded-lg border border-border shadow-sm">
-                            <h4 className="font-bold text-accent-foreground flex items-center gap-2 mb-2"><span className="text-lg">👩</span> SAÚDE FEMININA:</h4>
-                            <p className="text-foreground/70 text-sm leading-relaxed">
-                                Ciclo menstrual <strong>{rawData.bloco_6_cycle_affects_pain ? 'influencia' : 'tem pouca influência'}</strong> na dor.
-                                Ruído sistêmico: <strong>{N.toFixed(1)}/10</strong>.
-                            </p>
+                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
+                            <span className="font-bold text-foreground/70">Ciclo menstrual:</span>
+                            <span className="text-sm">{rawData.bloco_6_cycle_affects_pain ? 'Influencia a dor' : 'Pouca influência na dor'}</span>
                         </div>
                     )}
                 </CardContent>
             </Card>
 
-            {/* Footer */}
             <div className="bg-card p-6 rounded-xl border shadow-sm text-center space-y-4">
                 <h3 className="font-bold text-xl text-foreground">🎊 OBRIGADO POR PARTICIPAR!</h3>
                 <p className="text-muted-foreground">
