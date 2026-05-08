@@ -122,6 +122,16 @@ export default function PacientePerfil() {
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nome: '', sobrenome: '', email: '', telefone: '',
+    data_nascimento: '', genero: '', cpf: '', endereco: '',
+    queixa_principal: '', observacoes: '',
+    responsavel_id: '', tipo_pagamento: 'particular' as TipoPagamento,
+    plano_saude: '' as PlanoSaude | '',
+  });
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const { membros: membrosEquipe } = useEquipe();
 
   // Link MyID ativo (pendente)
   const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
