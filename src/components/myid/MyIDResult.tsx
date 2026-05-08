@@ -268,7 +268,7 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
 // Detalhes técnicos (colapsável)
 // ───────────────────────────────────────────────────────
 interface DetalhesTecnicosProps {
-    scores: Record<string, number>;
+    scores: any;
     myidScoreValue: number;
     perdas_calculadas: any;
     myid_100: any;
