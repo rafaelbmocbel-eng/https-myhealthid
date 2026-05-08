@@ -1623,6 +1623,51 @@ export type Database = {
           },
         ]
       }
+      myid_acoes_checklist: {
+        Row: {
+          action_key: string
+          action_label: string
+          action_text: string
+          avaliacao_id: string | null
+          completed: boolean
+          completed_at: string | null
+          created_at: string
+          id: string
+          ordem: number
+          paciente_id: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          action_key: string
+          action_label: string
+          action_text: string
+          avaliacao_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          ordem?: number
+          paciente_id: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          action_key?: string
+          action_label?: string
+          action_text?: string
+          avaliacao_id?: string | null
+          completed?: boolean
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          ordem?: number
+          paciente_id?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       myid_avaliacoes: {
         Row: {
           created_at: string
