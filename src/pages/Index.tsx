@@ -582,8 +582,8 @@ export default function Index() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-5">
               {[
-                ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade }] : []),
-                { label: 'Diretrizes totais', value: statsData.totalProtocolos },
+                { label: 'Avaliações MyID', value: statsData.totalAvalIdentidade },
+                { label: 'Avaliações presenciais', value: statsData.totalAvalPresenciais },
                 { label: 'Diretrizes ativas', value: statsData.protocolosAtivos },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d },
                 { label: 'Taxa de presença', value: `${statsData.taxaPresenca}%` },
