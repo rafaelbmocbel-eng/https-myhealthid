@@ -25,22 +25,30 @@ const translateIntensity = (val: string) => {
     return map[val] || val;
 };
 
-function buildFingerprintRings(scores: any): FingerprintRing[] {
-    if (!scores) return [];
-    const normalized: Record<string, number> = {
-        D: scores.D ?? scores.D_pain ?? 0,
-        EFI: scores.EFI ?? scores.EFI_functionality ?? 0,
-        P: scores.P ?? scores.P_psychological ?? 0,
-        I: scores.I ?? scores.I_inertia ?? 0,
-        R: scores.R ?? scores.R_regulation ?? 0,
-        C: scores.C ?? scores.C_context ?? 0,
-        AF: scores.AF ?? scores.AF_activity ?? 0,
-        HID: scores.HID ?? scores.HID_hydration ?? 0,
-        NUT: scores.NUT ?? scores.NUT_nutrition ?? 0,
-        ERG: scores.ERG ?? scores.ERG_ergonomics ?? 0,
-        N: scores.N ?? scores.N_noise ?? 0,
-    };
-    return getMyIDFingerprintData(normalized);
+interface PerdaItem {
+    key: string;
+    label: string;
+    perda: number;
+    score: number;
+    interpretacao: string;
+    gatilho: boolean;
+    isDriver: boolean;
+}
+
+function buildPerdasBreakdown(perdas: Record<string, PerdaCalculada> | undefined, driverDim?: string): PerdaItem[] {
+    if (!perdas) return [];
+    return Object.entries(perdas)
+        .filter(([key, p]) => key !== 'MED' && (p?.perda_pontos ?? 0) > 0)
+        .map(([key, p]) => ({
+            key,
+            label: DIMENSION_LABELS[key] || key,
+            perda: p.perda_pontos,
+            score: p.score_bruto,
+            interpretacao: p.interpretacao || '',
+            gatilho: !!p.gatilho_critico,
+            isDriver: key === driverDim,
+        }))
+        .sort((a, b) => b.perda - a.perda);
 }
 
 export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
