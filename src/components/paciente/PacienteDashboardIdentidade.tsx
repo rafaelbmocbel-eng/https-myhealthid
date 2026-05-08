@@ -478,9 +478,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
           const resultado = data.assessment;
           const cleanResult = JSON.parse(JSON.stringify(resultado));
           // Update transcription with AI-generated one if it returned more content
-          const finalTranscript = data.transcricao && data.transcricao.length > editingVoiceText.length
+          const finalTranscript = data.transcricao && data.transcricao.length > transcriptToUse.length
             ? data.transcricao
-            : editingVoiceText;
+            : transcriptToUse;
 
           await (supabase as any).from('avaliacoes_voz').update({
             resultado: cleanResult,
