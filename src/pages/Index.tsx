@@ -132,7 +132,7 @@ export default function Index() {
 
 
 
-  const medidasStudio: any[] = [];
+  
 
   const { data: amostraClinica } = useQuery({
     queryKey: ['amostra-clinica', user?.id, avaliacoesRaw.length],
