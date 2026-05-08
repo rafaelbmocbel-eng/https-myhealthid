@@ -854,29 +854,24 @@ export default function Index() {
                 </div>
               </TabsContent>
             </Tabs>
-          </div>
+          </section>
         )}
 
         {/* Análise Epidemiológica */}
         {servicos.identidade && avaliacoesRaw.length >= 2 && (
-          <div className="clinical-card mb-6">
-            <div className="flex items-center gap-3 mb-5">
-              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-emerald-600 to-teal-500 flex items-center justify-center shadow-lg">
-                <TrendingUp className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <h2 className="font-bold text-foreground">Central de Inteligência Epidemiológica</h2>
-                <p className="text-xs text-muted-foreground">
-                  Inteligência clínica do Método Identidade · Base Científica
-                </p>
-              </div>
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+            <div className="mb-5">
+              <h2 className="h-section">Central de inteligência epidemiológica</h2>
+              <p className="text-caption mt-0.5">
+                Inteligência clínica do Método Identidade · Base científica
+              </p>
             </div>
             <AmostraIntegrada
               avaliacoesIdentidade={avaliacoesRaw as any}
               avaliacoesCobZero={[]}
               medidasStudio={[]}
             />
-          </div>
+          </section>
         )}
 
       </div>
