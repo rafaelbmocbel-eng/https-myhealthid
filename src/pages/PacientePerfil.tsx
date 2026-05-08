@@ -782,8 +782,12 @@ export default function PacientePerfil() {
                   <span className="text-[10px] font-semibold uppercase tracking-wide">Financeiro</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="text-base sm:text-lg font-black leading-tight text-foreground">R$</div>
-                <div className="text-[10px] text-muted-foreground mt-0.5">recibos & pagto</div>
+                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                  {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {finResumo.pendente > 0 ? `${fmtBRL(finResumo.pendente)} pendente` : 'recibos & pagto'}
+                </div>
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
