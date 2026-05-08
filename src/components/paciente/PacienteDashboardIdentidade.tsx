@@ -727,7 +727,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
               <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20">
                 <div>
                   <h3 className="text-sm font-black text-foreground tracking-tight uppercase">Histórico de Avaliações</h3>
-                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">MyID · Estrutural · Voz · Questionários</p>
+                  <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">MyID · Voz · Questionários</p>
                 </div>
                 <Button
                   size="sm"
