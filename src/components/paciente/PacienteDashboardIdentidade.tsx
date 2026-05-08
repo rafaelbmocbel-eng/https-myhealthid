@@ -1204,6 +1204,41 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
           onClose={() => setShowReport(null)}
         />
       )}
+
+      {/* Dialog: Adicionar complemento (voz / áudio / descrição) à avaliação presencial existente */}
+      <Dialog open={!!addingVoiceToId} onOpenChange={(o) => !o && setAddingVoiceToId(null)}>
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mic className="h-4 w-4 text-violet-600" />
+              Adicionar complemento à avaliação
+            </DialogTitle>
+            <DialogDescription>
+              Grave por voz, faça upload de áudio ou escreva uma observação. A IA vai somar ao resultado existente e atualizar a análise.
+            </DialogDescription>
+          </DialogHeader>
+          {addingVoiceToId && (() => {
+            const av = voiceAvaliacoes.find((a: any) => a.id === addingVoiceToId);
+            const existingTranscript = av?.transcricao || '';
+            return (
+              <VoiceAssessment
+                serviceType={(av?.servico as any) || 'identidade'}
+                pacienteId={paciente.id}
+                patientName={patientName}
+                appendMode
+                mode="voice"
+                onAppendCapture={async (capturedText, capturedAudioBase64, capturedAudioMimeType) => {
+                  const stamp = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+                  const additionLabel = `\n\n--- Complemento (${stamp}) ---\n${capturedText || '(áudio anexado)'}`;
+                  const merged = existingTranscript + additionLabel;
+                  setAddingVoiceToId(null);
+                  await handleSaveVoiceEdit(av.id, capturedAudioBase64, capturedAudioMimeType, merged);
+                }}
+              />
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
