@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import AmostraIntegrada from '@/components/dashboard/AmostraIntegrada';
+
 import { format, parseISO, startOfDay, endOfDay, formatDistanceToNow, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getBaseUrl } from '@/utils/linkUrls';
@@ -77,6 +77,7 @@ export default function Index() {
     queryFn: async () => {
       const [
         { count: totalAvalIdentidade },
+        { count: totalAvalPresenciais },
         { count: totalProtocolos },
         { count: protocolosAtivos },
         { data: agSemana },
@@ -85,6 +86,7 @@ export default function Index() {
         { count: totalCancelados },
       ] = await Promise.all([
         supabase.from('avaliacoes_identidade').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_voz').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id),
         supabase.from('protocolos').select('*', { count: 'exact', head: true }).eq('terapeuta_id', user!.id).eq('status', 'ativo'),
         supabase.from('agendamentos').select('status').eq('terapeuta_id', user!.id)
@@ -99,6 +101,7 @@ export default function Index() {
       const taxaPresenca = totalSessoes30d > 0 ? Math.round(((totalSessoes30d - faltas30d) / totalSessoes30d) * 100) : 0;
       return {
         totalAvalIdentidade: totalAvalIdentidade || 0,
+        totalAvalPresenciais: totalAvalPresenciais || 0,
         totalProtocolos: totalProtocolos || 0,
         protocolosAtivos: protocolosAtivos || 0,
         totalConcluidos: totalConcluidos || 0,
@@ -129,7 +132,7 @@ export default function Index() {
 
 
 
-  const medidasStudio: any[] = [];
+  
 
   const { data: amostraClinica } = useQuery({
     queryKey: ['amostra-clinica', user?.id, avaliacoesRaw.length],
@@ -309,7 +312,7 @@ export default function Index() {
       type ActivityItem = { id: string; type: 'agendamento' | 'avaliacao_id' | 'novo_paciente'; description: string; pacienteNome: string; pacienteId?: string; timestamp: string; icon: 'calendar' | 'clipboard' | 'user-plus' };
       const items: ActivityItem[] = [];
       (agResult.data || []).forEach((a: any) => items.push({ id: `ag-${a.id}`, type: 'agendamento', description: `${a.tipo_atendimento || 'Consulta'} ${a.status === 'concluido' ? 'concluída' : a.status === 'cancelado' ? 'cancelada' : 'agendada'}`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.pacientes?.id, timestamp: a.created_at, icon: 'calendar' }));
-      (avalIdResult.data || []).forEach((a: any) => items.push({ id: `avi-${a.id}`, type: 'avaliacao_id', description: `Avaliação Identidade${a.classificacao ? ` — ${a.classificacao}` : ''} concluída`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'clipboard' }));
+      (avalIdResult.data || []).forEach((a: any) => items.push({ id: `avi-${a.id}`, type: 'avaliacao_id', description: `Avaliação MyID${a.classificacao ? ` — ${a.classificacao}` : ''} concluída`, pacienteNome: a.pacientes ? `${a.pacientes.nome} ${a.pacientes.sobrenome}` : 'Paciente', pacienteId: a.paciente_id, timestamp: a.created_at, icon: 'clipboard' }));
       (pacResult.data || []).forEach((p: any) => items.push({ id: `pac-${p.id}`, type: 'novo_paciente', description: 'Novo paciente cadastrado', pacienteNome: `${p.nome} ${p.sobrenome}`, pacienteId: p.id, timestamp: p.created_at, icon: 'user-plus' }));
       return items.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 8);
     },
@@ -367,7 +370,7 @@ export default function Index() {
     return inicio > new Date() && a.status !== 'cancelado';
   });
 
-  const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
+  
 
   // Filtra avaliações recentes com red flags (últimos 30 dias)
   const recentAlerts = avaliacoesRaw
@@ -443,7 +446,6 @@ export default function Index() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda' },
-            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
@@ -580,8 +582,8 @@ export default function Index() {
 
             <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2.5 mb-5">
               {[
-                ...(servicos.identidade ? [{ label: 'Avaliações Identidade', value: statsData.totalAvalIdentidade }] : []),
-                { label: 'Diretrizes totais', value: statsData.totalProtocolos },
+                { label: 'Avaliações MyID', value: statsData.totalAvalIdentidade },
+                { label: 'Avaliações presenciais', value: statsData.totalAvalPresenciais },
                 { label: 'Diretrizes ativas', value: statsData.protocolosAtivos },
                 { label: 'Sessões (30d)', value: statsData.sessoes30d },
                 { label: 'Taxa de presença', value: `${statsData.taxaPresenca}%` },
@@ -615,12 +617,12 @@ export default function Index() {
         )}
 
         {/* Amostra Clínica Populacional */}
-        {servicos.identidade && amostraClinica && (
+        {amostraClinica && (
           <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
             <div className="mb-5">
               <h2 className="h-section">Amostra clínica populacional</h2>
               <p className="text-caption mt-0.5">
-                Média geral de {amostraClinica.n} avaliações · Todos os pacientes
+                Média geral de {amostraClinica.n} avaliações MyID · Todos os pacientes
               </p>
             </div>
 
@@ -857,22 +859,7 @@ export default function Index() {
           </section>
         )}
 
-        {/* Análise Epidemiológica */}
-        {servicos.identidade && avaliacoesRaw.length >= 2 && (
-          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
-            <div className="mb-5">
-              <h2 className="h-section">Central de inteligência epidemiológica</h2>
-              <p className="text-caption mt-0.5">
-                Inteligência clínica do Método Identidade · Base científica
-              </p>
-            </div>
-            <AmostraIntegrada
-              avaliacoesIdentidade={avaliacoesRaw as any}
-              avaliacoesCobZero={[]}
-              medidasStudio={[]}
-            />
-          </section>
-        )}
+
 
       </div>
 
