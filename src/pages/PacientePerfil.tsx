@@ -470,6 +470,64 @@ export default function PacientePerfil() {
     navigate(`/agenda`);
   };
 
+  // ── Editar paciente ─────────────────────────────────────────────────
+  const openEdit = () => {
+    if (!paciente) return;
+    setEditForm({
+      nome: paciente.nome || '',
+      sobrenome: paciente.sobrenome || '',
+      email: paciente.email || '',
+      telefone: paciente.telefone || '',
+      data_nascimento: paciente.data_nascimento || '',
+      genero: paciente.genero || '',
+      cpf: paciente.cpf || '',
+      endereco: paciente.endereco || '',
+      queixa_principal: (paciente as any).queixa_principal || '',
+      observacoes: paciente.observacoes || '',
+      responsavel_id: (paciente as any).responsavel_id || '',
+      tipo_pagamento: ((paciente as any).tipo_pagamento as TipoPagamento) || 'particular',
+      plano_saude: ((paciente as any).plano_saude as PlanoSaude) || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!paciente || !user) return;
+    const parsed = PacienteSchema.safeParse(editForm);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Dados inválidos';
+      return toast({ title: firstError, variant: 'destructive' });
+    }
+    setSubmittingEdit(true);
+    try {
+      const validated = parsed.data;
+      const payload: any = {
+        nome: validated.nome!,
+        sobrenome: validated.sobrenome!,
+        email: validated.email ?? null,
+        telefone: validated.telefone ?? null,
+        data_nascimento: validated.data_nascimento ?? null,
+        genero: validated.genero ?? null,
+        cpf: validated.cpf ?? null,
+        endereco: editForm.endereco || null,
+        observacoes: validated.observacoes ?? null,
+        responsavel_id: editForm.responsavel_id || null,
+        tipo_pagamento: editForm.tipo_pagamento,
+        plano_saude: editForm.tipo_pagamento === 'plano' ? (editForm.plano_saude || null) : null,
+      };
+      const { error } = await supabase.from('pacientes').update(payload).eq('id', paciente.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['paciente-perfil', paciente.id] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      toast({ title: 'Paciente atualizado! ✅' });
+      setEditModalOpen(false);
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-5xl px-3 sm:px-6">
