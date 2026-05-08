@@ -859,22 +859,7 @@ export default function Index() {
           </section>
         )}
 
-        {/* Análise Epidemiológica */}
-        {servicos.identidade && avaliacoesRaw.length >= 2 && (
-          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
-            <div className="mb-5">
-              <h2 className="h-section">Central de inteligência epidemiológica</h2>
-              <p className="text-caption mt-0.5">
-                Inteligência clínica do Método Identidade · Base científica
-              </p>
-            </div>
-            <AmostraIntegrada
-              avaliacoesIdentidade={avaliacoesRaw as any}
-              avaliacoesCobZero={[]}
-              medidasStudio={[]}
-            />
-          </section>
-        )}
+
 
       </div>
 
