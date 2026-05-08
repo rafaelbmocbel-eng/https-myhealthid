@@ -850,7 +850,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                                 result={result}
                                 rawData={av.respostas_brutas}
                                 pacienteId={paciente.id}
-                                terapeutaId={av.terapeuta_id || paciente.terapeuta_id}
+                                terapeutaId={av.terapeuta_id}
                                 avaliacaoId={av.id}
                               />
                               <div className="mt-4 flex justify-end">
