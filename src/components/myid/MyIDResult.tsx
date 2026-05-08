@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, TrendingUp, Loader2 } from 'lucide-react';
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
+import MyIDTreatmentPlan from './MyIDTreatmentPlan';
 import { shareMyIDResults } from '@/utils/whatsapp';
 import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
 import { supabase } from '@/integrations/supabase/client';
@@ -205,7 +206,7 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                 </Card>
             )}
 
-            {/* ───── O QUE FAZER PARA MELHORAR ───── */}
+            {/* ───── O QUE PRECISA MELHORAR (checklist de ações rápidas) ───── */}
             {top3Melhorar.length > 0 && (
                 <ChecklistAcoes
                     items={top3Melhorar.map((it) => ({
@@ -219,6 +220,13 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                 />
             )}
 
+            {/* ───── PLANO DE TRATAMENTO (mindfulness + respiração + atividades) ───── */}
+            <MyIDTreatmentPlan
+                drivers={top3Ruim}
+                myidScore={myidScoreValue}
+                redFlags={!!red_flags_detected}
+            />
+
             {/* ───── DETALHES TÉCNICOS (colapsável) ───── */}
             <DetalhesTecnicos
                 scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
@@ -227,6 +235,7 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                 myid_100={myid_100}
                 red_flags_detected={red_flags_detected}
             />
+
 
             <div className="bg-card p-6 rounded-xl border shadow-sm text-center space-y-4">
                 <h3 className="font-bold text-xl text-foreground">🎊 OBRIGADO POR PARTICIPAR!</h3>
