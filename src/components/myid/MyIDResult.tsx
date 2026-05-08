@@ -7,6 +7,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, TrendingUp, Loader2 } from 'lucide-react';
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
+import MyIDTreatmentPlan from './MyIDTreatmentPlan';
 import { shareMyIDResults } from '@/utils/whatsapp';
 import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
 import { supabase } from '@/integrations/supabase/client';
