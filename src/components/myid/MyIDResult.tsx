@@ -114,13 +114,25 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     const myidScoreValue = MyID_score ?? 0;
     const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 
+    // Constrói itens ordenados por impacto (mesma fonte do breakdown)
+    const perdasItems = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
+    const top3Ruim = perdasItems.slice(0, 3);
+    const top3Melhorar = perdasItems.slice(0, 3);
+
+    // Status simples
+    const statusInfo = (() => {
+        const v = myidScoreValue;
+        if (v >= 85) return { emoji: '🟢', titulo: 'Você está bem!', cor: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/20', borda: 'border-emerald-300', frase: 'Seu corpo e estilo de vida estão em equilíbrio. Mantenha o que está fazendo.' };
+        if (v >= 70) return { emoji: '🟡', titulo: 'Está bom, mas dá pra melhorar', cor: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/20', borda: 'border-amber-300', frase: 'Você tem alguns pontos de atenção. Pequenos ajustes vão fazer grande diferença.' };
+        if (v >= 50) return { emoji: '🟠', titulo: 'Atenção: seu sistema está sobrecarregado', cor: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/20', borda: 'border-orange-300', frase: 'Vários fatores estão somando contra você. Hora de agir com apoio profissional.' };
+        return { emoji: '🔴', titulo: 'Situação crítica — busque ajuda', cor: 'text-destructive', bg: 'bg-destructive/10', borda: 'border-destructive/40', frase: 'Seu corpo está pedindo socorro. Procure acompanhamento profissional o quanto antes.' };
+    })();
+
     return (
-        <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
-            <div className="text-center space-y-4 pt-8">
-                <div className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-bold rounded-full mb-2 tracking-wide text-sm">
-                    PROCESSAMENTO CONCLUÍDO
-                </div>
-                <h1 className="text-4xl font-extrabold tracking-tight">🎯 SEU RESULTADO MyID-100</h1>
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
+            <div className="text-center pt-6">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Seu resultado MyID</h1>
+                <p className="text-sm text-muted-foreground mt-1">Em linguagem simples — o que está bem, o que precisa melhorar.</p>
             </div>
 
             {/* Red Flags Warning */}
