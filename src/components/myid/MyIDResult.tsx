@@ -45,6 +45,9 @@ const ACAO_SIMPLES: Record<string, string> = {
 interface MyIDResultProps {
     result: any;
     rawData?: any;
+    pacienteId?: string;
+    terapeutaId?: string;
+    avaliacaoId?: string;
 }
 
 const translateWorkspace = (val: string) => {
