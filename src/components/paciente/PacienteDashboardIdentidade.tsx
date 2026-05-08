@@ -846,7 +846,13 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                           </div>
                           {isExpanded && result && (
                             <div className="p-4 bg-card animate-in fade-in slide-in-from-top-2 duration-300">
-                              <MyIDResult result={result} rawData={av.respostas_brutas} />
+                              <MyIDResult
+                                result={result}
+                                rawData={av.respostas_brutas}
+                                pacienteId={paciente.id}
+                                terapeutaId={av.terapeuta_id}
+                                avaliacaoId={av.id}
+                              />
                               <div className="mt-4 flex justify-end">
                                 <Button
                                   size="sm"

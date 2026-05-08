@@ -208,7 +208,13 @@ export default function PacienteQuestionarios() {
             </button>
             {item?.resultado_processado ? (
               <div className="bg-card p-4 md:p-6 rounded-xl border shadow-sm">
-                <MyIDResult result={item.resultado_processado} rawData={item.respostas_brutas} />
+                <MyIDResult
+                  result={item.resultado_processado}
+                  rawData={item.respostas_brutas}
+                  pacienteId={item.paciente_id}
+                  terapeutaId={item.terapeuta_id}
+                  avaliacaoId={item.id}
+                />
               </div>
             ) : (
               <Card>
