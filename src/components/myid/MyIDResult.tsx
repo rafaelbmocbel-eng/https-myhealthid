@@ -324,3 +324,170 @@ function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100,
         </div>
     );
 }
+
+// ───────────────────────────────────────────────────────
+// Checklist de Ações (persistido por avaliação)
+// ───────────────────────────────────────────────────────
+interface ChecklistItemDef {
+    action_key: string;
+    action_label: string;
+    action_text: string;
+}
+interface ChecklistAcoesProps {
+    items: ChecklistItemDef[];
+    pacienteId?: string;
+    terapeutaId?: string;
+    avaliacaoId?: string;
+}
+
+interface ChecklistRow {
+    id: string;
+    action_key: string;
+    completed: boolean;
+    completed_at: string | null;
+}
+
+function ChecklistAcoes({ items, pacienteId, terapeutaId, avaliacaoId }: ChecklistAcoesProps) {
+    const { toast } = useToast();
+    const persistEnabled = !!(pacienteId && terapeutaId && avaliacaoId);
+    const [rows, setRows] = useState<Record<string, ChecklistRow>>({});
+    const [loading, setLoading] = useState(persistEnabled);
+    const [savingKey, setSavingKey] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (!persistEnabled) { setLoading(false); return; }
+        let cancel = false;
+        (async () => {
+            const { data } = await supabase
+                .from('myid_acoes_checklist')
+                .select('id, action_key, completed, completed_at')
+                .eq('avaliacao_id', avaliacaoId!);
+            if (cancel) return;
+            const map: Record<string, ChecklistRow> = {};
+            (data || []).forEach((r: any) => { map[r.action_key] = r; });
+
+            // Cria linhas faltantes (apenas terapeuta consegue inserir; paciente também consegue)
+            const missing = items.filter(it => !map[it.action_key]);
+            if (missing.length > 0) {
+                const toInsert = missing.map((it, idx) => ({
+                    paciente_id: pacienteId!,
+                    terapeuta_id: terapeutaId!,
+                    avaliacao_id: avaliacaoId!,
+                    action_key: it.action_key,
+                    action_label: it.action_label,
+                    action_text: it.action_text,
+                    ordem: idx,
+                }));
+                const { data: inserted, error } = await supabase
+                    .from('myid_acoes_checklist')
+                    .insert(toInsert)
+                    .select('id, action_key, completed, completed_at');
+                if (!error && inserted) {
+                    inserted.forEach((r: any) => { map[r.action_key] = r; });
+                }
+            }
+            setRows(map);
+            setLoading(false);
+        })();
+        return () => { cancel = true; };
+    }, [persistEnabled, avaliacaoId, pacienteId, terapeutaId]);
+
+    const toggle = async (action_key: string, next: boolean) => {
+        const row = rows[action_key];
+        if (!row) return;
+        setSavingKey(action_key);
+        const optimistic = { ...row, completed: next, completed_at: next ? new Date().toISOString() : null };
+        setRows(r => ({ ...r, [action_key]: optimistic }));
+        const { error } = await supabase
+            .from('myid_acoes_checklist')
+            .update({ completed: next, completed_at: next ? new Date().toISOString() : null })
+            .eq('id', row.id);
+        if (error) {
+            setRows(r => ({ ...r, [action_key]: row }));
+            toast({ title: 'Erro ao salvar', description: error.message, variant: 'destructive' });
+        } else if (next) {
+            toast({ title: '✅ Ação marcada', description: 'Continue assim — seu progresso está sendo registrado.', duration: 2000 });
+        }
+        setSavingKey(null);
+    };
+
+    const completedCount = items.filter(it => rows[it.action_key]?.completed).length;
+    const pct = items.length > 0 ? (completedCount / items.length) * 100 : 0;
+
+    return (
+        <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+            <CardHeader className="pb-3">
+                <CardTitle className="text-lg font-bold flex items-center gap-2">
+                    <TrendingUp className="h-5 w-5 text-emerald-600" />
+                    O que fazer para melhorar
+                </CardTitle>
+                <CardDescription className="text-xs">
+                    {persistEnabled
+                        ? 'Marque conforme você for praticando. Seu progresso fica salvo para acompanhar com o profissional.'
+                        : 'Ações práticas, na ordem de maior impacto.'}
+                </CardDescription>
+                {persistEnabled && (
+                    <div className="pt-2">
+                        <div className="flex items-center justify-between text-xs mb-1">
+                            <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                Progresso: {completedCount} de {items.length}
+                            </span>
+                            <span className="text-muted-foreground">{Math.round(pct)}%</span>
+                        </div>
+                        <Progress value={pct} className="h-2" />
+                    </div>
+                )}
+            </CardHeader>
+            <CardContent className="space-y-3">
+                {loading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando checklist...
+                    </div>
+                ) : items.map((item, idx) => {
+                    const row = rows[item.action_key];
+                    const checked = !!row?.completed;
+                    const saving = savingKey === item.action_key;
+                    return (
+                        <label
+                            key={item.action_key}
+                            className={`flex gap-3 items-start p-3 rounded-lg border transition-colors cursor-pointer ${
+                                checked
+                                    ? 'bg-emerald-100/60 dark:bg-emerald-950/40 border-emerald-300 dark:border-emerald-800'
+                                    : 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900 hover:bg-emerald-100/40'
+                            } ${!persistEnabled ? 'cursor-default' : ''}`}
+                        >
+                            {persistEnabled ? (
+                                <Checkbox
+                                    checked={checked}
+                                    disabled={saving}
+                                    onCheckedChange={(v) => toggle(item.action_key, !!v)}
+                                    className="mt-0.5 h-5 w-5 border-emerald-500 data-[state=checked]:bg-emerald-600 data-[state=checked]:border-emerald-600"
+                                />
+                            ) : (
+                                <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                            )}
+                            <div className="flex-1 min-w-0">
+                                <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-0.5 flex items-center gap-2 flex-wrap">
+                                    <span>Ação {idx + 1} · {item.action_label}</span>
+                                    {checked && row?.completed_at && (
+                                        <Badge variant="outline" className="text-[9px] h-4 border-emerald-400 text-emerald-700 dark:text-emerald-400">
+                                            Feito {new Date(row.completed_at).toLocaleDateString('pt-BR')}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <p className={`text-sm ${checked ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
+                                    {item.action_text}
+                                </p>
+                            </div>
+                        </label>
+                    );
+                })}
+                {!persistEnabled && (
+                    <p className="text-[11px] text-muted-foreground italic pt-1">
+                        💡 Salve esta avaliação para acompanhar seu progresso ao longo das sessões.
+                    </p>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
