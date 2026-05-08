@@ -207,31 +207,16 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
 
             {/* ───── O QUE FAZER PARA MELHORAR ───── */}
             {top3Melhorar.length > 0 && (
-                <Card className="border-l-4 border-l-emerald-500 shadow-sm">
-                    <CardHeader className="pb-3">
-                        <CardTitle className="text-lg font-bold flex items-center gap-2">
-                            <TrendingUp className="h-5 w-5 text-emerald-600" />
-                            O que fazer para melhorar
-                        </CardTitle>
-                        <CardDescription className="text-xs">Ações práticas, na ordem de maior impacto.</CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-3">
-                        {top3Melhorar.map((item, idx) => {
-                            const acao = ACAO_SIMPLES[item.key] || 'Converse com seu profissional sobre como abordar este ponto.';
-                            return (
-                                <div key={item.key} className="flex gap-3 items-start p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
-                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
-                                    <div className="flex-1 min-w-0">
-                                        <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-0.5">
-                                            Ação {idx + 1} · {item.label}
-                                        </div>
-                                        <p className="text-sm text-foreground">{acao}</p>
-                                    </div>
-                                </div>
-                            );
-                        })}
-                    </CardContent>
-                </Card>
+                <ChecklistAcoes
+                    items={top3Melhorar.map((it) => ({
+                        action_key: it.key,
+                        action_label: it.label,
+                        action_text: ACAO_SIMPLES[it.key] || 'Converse com seu profissional sobre como abordar este ponto.',
+                    }))}
+                    pacienteId={pacienteId}
+                    terapeutaId={terapeutaId}
+                    avaliacaoId={avaliacaoId}
+                />
             )}
 
             {/* ───── DETALHES TÉCNICOS (colapsável) ───── */}
