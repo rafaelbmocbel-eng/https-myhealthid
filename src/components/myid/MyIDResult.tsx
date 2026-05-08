@@ -1,12 +1,11 @@
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import MyIDFingerprint from './MyIDFingerprint';
+import { Progress } from "@/components/ui/progress";
+import { Badge } from "@/components/ui/badge";
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
-import { FingerprintRing } from '@/types/myid';
-import { getMyIDFingerprintData } from '@/utils/myidCalculations';
 import { shareMyIDResults } from '@/utils/whatsapp';
-import { DIMENSION_LABELS, DIMENSION_COLORS, PerdaCalculada } from '@/utils/myid/lossTable';
+import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
 
 interface MyIDResultProps {
     result: any;
