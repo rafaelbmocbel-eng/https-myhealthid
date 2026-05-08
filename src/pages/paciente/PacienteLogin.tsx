@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Eye, EyeOff, Loader2, Heart } from 'lucide-react';
+import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, ShieldCheck, Sparkles, Lock, Mail, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 import { withAuthLockRetry } from '@/lib/authLock';
@@ -24,15 +24,15 @@ export default function PacienteLogin() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
   const [linking, setLinking] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const linkAttempted = useRef(false);
   const signOutAttempted = useRef(false);
 
   // If portal link (portal=1) and user is logged in as professional, sign them out first
   useEffect(() => {
     if (!authReady || authLoading || !user || signOutAttempted.current) return;
-    
+
     if (isPortalLink) {
-      // Check if current user is a professional — if so, sign out silently
       const checkAndSignOut = async () => {
         const { data: profile, error } = await supabase
           .from('profiles')
@@ -40,21 +40,17 @@ export default function PacienteLogin() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (error) {
-          console.warn('[Portal] Falha ao verificar sessão profissional:', error);
-        }
-        
+        if (error) console.warn('[Portal] Falha ao verificar sessão profissional:', error);
+
         if (profile) {
           signOutAttempted.current = true;
           linkAttempted.current = false;
           setLinking(false);
           setSubmitting(false);
           await signOut();
-          // After sign out, user state will clear and they'll see the login form
           return;
         }
-        
-        // Not a professional — proceed with linking
+
         if (!linkAttempted.current) {
           linkAttempted.current = true;
           handlePostLogin();
@@ -62,7 +58,6 @@ export default function PacienteLogin() {
       };
       checkAndSignOut();
     } else {
-      // Normal flow (no portal=1 flag)
       if (!linkAttempted.current) {
         linkAttempted.current = true;
         handlePostLogin();
@@ -72,7 +67,6 @@ export default function PacienteLogin() {
 
   useEffect(() => {
     if (!authReady || authLoading || user || !isPortalLink) return;
-
     signOutAttempted.current = false;
     setLinking(false);
     setSubmitting(false);
@@ -90,9 +84,7 @@ export default function PacienteLogin() {
           .eq('user_id', user.id)
           .maybeSingle();
 
-        if (profileError) {
-          console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
-        }
+        if (profileError) console.warn('[Portal] Falha ao validar perfil antes do vínculo:', profileError);
 
         if (profile) {
           await signOut();
@@ -107,31 +99,22 @@ export default function PacienteLogin() {
         }
       }
 
-      // 1) Try to link via portal_token (priority)
       if (portalToken) {
-        const { data, error } = await supabase.rpc('link_patient_user_by_token', {
-          p_token: portalToken,
-        });
-        if (error) {
-          console.warn('[Portal] Falha ao vincular via token:', error);
-        } else if (data) {
-          console.log('[Portal] Vinculado via token, paciente_id:', data);
+        const { data, error } = await supabase.rpc('link_patient_user_by_token', { p_token: portalToken });
+        if (error) console.warn('[Portal] Falha ao vincular via token:', error);
+        else if (data) {
           navigate('/paciente/dashboard', { replace: true });
           return;
         }
       }
 
-      // 2) Try to link by email as fallback
       const { data: linkedByEmail, error: emailError } = await supabase.rpc('link_patient_user_by_email');
-      if (emailError) {
-        console.warn('[Portal] Falha ao vincular via email:', emailError);
-      } else if (linkedByEmail) {
-        console.log('[Portal] Vinculado via email, paciente_id:', linkedByEmail);
+      if (emailError) console.warn('[Portal] Falha ao vincular via email:', emailError);
+      else if (linkedByEmail) {
         navigate('/paciente/dashboard', { replace: true });
         return;
       }
 
-      // 3) Final check - maybe already linked
       const { data: paciente } = await supabase
         .from('pacientes')
         .select('id')
@@ -146,7 +129,6 @@ export default function PacienteLogin() {
           description: 'Seu e-mail não está vinculado a nenhum paciente. Verifique se usou o mesmo e-mail informado ao seu terapeuta.',
           variant: 'destructive',
         });
-        // Reset all states so user can try again
         linkAttempted.current = false;
         setLinking(false);
         setSubmitting(false);
@@ -156,6 +138,36 @@ export default function PacienteLogin() {
       linkAttempted.current = false;
       setLinking(false);
       setSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async () => {
+    if (!form.email) {
+      toast({
+        title: 'Informe seu e-mail',
+        description: 'Digite o e-mail no campo acima para receber o link de redefinição.',
+        variant: 'destructive',
+      });
+      return;
+    }
+    setResetting(true);
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
+        redirectTo: `${window.location.origin}/paciente/login`,
+      });
+      if (error) throw error;
+      toast({
+        title: 'E-mail enviado',
+        description: 'Se este e-mail estiver cadastrado, você receberá instruções para redefinir sua senha.',
+      });
+    } catch (err: any) {
+      toast({
+        title: 'Não foi possível enviar',
+        description: err.message || 'Tente novamente em instantes.',
+        variant: 'destructive',
+      });
+    } finally {
+      setResetting(false);
     }
   };
 
@@ -170,10 +182,8 @@ export default function PacienteLogin() {
         setSubmitting(false);
         linkAttempted.current = false;
       }
-      // redirect handled by useEffect when user state changes
     } else {
       try {
-        // FIX: Use withAuthLockRetry to prevent lock timeout errors
         const { error } = await withAuthLockRetry(() =>
           supabase.auth.signUp({
             email: form.email,
@@ -200,21 +210,15 @@ export default function PacienteLogin() {
             code === 'email_address_invalid' ||
             code === 'validation_failed' ||
             message.includes('email address is invalid') ||
-            message.includes('email address') && message.includes('invalid') ||
+            (message.includes('email address') && message.includes('invalid')) ||
             message.includes('unable to validate email');
 
-          // Order matters: already-registered first (overrides invalid)
           if (isAlreadyRegistered) {
             const { error: signInError } = await signIn(form.email, form.password);
-
             if (!signInError) {
-              toast({
-                title: 'Conta já existente',
-                description: 'Você já tinha cadastro. Entrando no portal...',
-              });
+              toast({ title: 'Conta já existente', description: 'Você já tinha cadastro. Entrando no portal...' });
               return;
             }
-
             toast({
               title: 'E-mail já cadastrado',
               description: 'Esta conta já existe. Use a aba Entrar com a senha já criada.',
@@ -224,38 +228,30 @@ export default function PacienteLogin() {
             setSubmitting(false);
             return;
           }
-
           if (isWeakPassword) {
             toast({
               title: 'Senha muito fraca',
-              description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns como "123456" ou "senha").',
+              description: 'Escolha uma senha mais forte (mínimo 8 caracteres, evite senhas comuns).',
               variant: 'destructive',
             });
             setSubmitting(false);
             return;
           }
-
           if (isInvalidEmail) {
             toast({
               title: 'E-mail não aceito',
-              description: 'Use um e-mail válido e real (ex: gmail, outlook). Domínios temporários podem ser bloqueados.',
+              description: 'Use um e-mail válido e real. Domínios temporários podem ser bloqueados.',
               variant: 'destructive',
             });
             setSubmitting(false);
             return;
           }
-
           toast({ title: 'Erro ao cadastrar', description: error.message, variant: 'destructive' });
           setSubmitting(false);
         } else {
-          toast({
-            title: 'Conta criada!',
-            description: 'Conectando ao portal...',
-          });
-          // submitting stays true — useEffect handles redirect via handlePostLogin
+          toast({ title: 'Conta criada!', description: 'Conectando ao portal...' });
         }
       } catch (err: any) {
-        // FIX: Catch lock timeout or network errors during signUp
         console.error('[Portal] Erro no cadastro:', err);
         toast({
           title: 'Erro ao cadastrar',
@@ -269,21 +265,38 @@ export default function PacienteLogin() {
 
   if (authLoading || linking) {
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-3">
+      <div className="min-h-[100dvh] flex flex-col items-center justify-center bg-background gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-sm text-muted-foreground">Conectando ao portal...</p>
       </div>
     );
   }
 
+  const features = [
+    { icon: LineChart, label: 'Sua evolução', desc: 'Acompanhe seus avanços' },
+    { icon: Dumbbell, label: 'Exercícios', desc: 'Programa personalizado' },
+    { icon: Calendar, label: 'Agenda', desc: 'Marque e remarque online' },
+    { icon: Activity, label: 'Diário', desc: 'Sintomas e bem-estar' },
+  ];
+
   return (
-    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background">
-      {/* Left panel – branding (desktop/tablet) */}
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background overflow-x-hidden">
+      {/* ============ Left panel — Brand / Hero ============ */}
       <div
-        className="hidden md:flex flex-col lg:w-1/2 p-8 lg:p-12 justify-between"
-        style={{ background: 'linear-gradient(160deg, hsl(213 55% 16%) 0%, hsl(213 55% 8%) 100%)' }}
+        className="relative hidden md:flex flex-col lg:w-1/2 p-8 lg:p-12 justify-between overflow-hidden"
+        style={{ background: 'linear-gradient(160deg, hsl(213 55% 18%) 0%, hsl(213 55% 6%) 100%)' }}
       >
-        <div className="flex items-center gap-3">
+        {/* decorative orbs */}
+        <div
+          className="pointer-events-none absolute -top-24 -right-24 w-[420px] h-[420px] rounded-full opacity-30 blur-3xl"
+          style={{ background: 'radial-gradient(circle, hsl(40 95% 52% / 0.6), transparent 70%)' }}
+        />
+        <div
+          className="pointer-events-none absolute -bottom-32 -left-20 w-[360px] h-[360px] rounded-full opacity-20 blur-3xl"
+          style={{ background: 'radial-gradient(circle, hsl(190 85% 50% / 0.5), transparent 70%)' }}
+        />
+
+        <div className="relative flex items-center gap-3">
           <LogoIcon size={44} />
           <div>
             <div className="text-sm font-black text-white tracking-wide">
@@ -292,38 +305,62 @@ export default function PacienteLogin() {
             <div className="text-xs text-white/50">Portal do Paciente</div>
           </div>
         </div>
-        <div>
-          <h2 className="text-3xl lg:text-4xl font-black text-white leading-tight mb-4">
-            Seu portal de<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>saúde integrada</span>
+
+        <div className="relative">
+          <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/10 mb-5">
+            <Sparkles className="h-3 w-3" style={{ color: 'hsl(40 95% 62%)' }} />
+            <span className="text-[11px] font-semibold text-white/80">Sua jornada de saúde, integrada</span>
+          </div>
+          <h2 className="text-3xl lg:text-4xl font-black text-white leading-[1.1] mb-4">
+            Um portal feito<br />
+            <span style={{ color: 'hsl(40 95% 52%)' }}>para você</span> evoluir
           </h2>
-          <p className="text-white/60 text-sm leading-relaxed max-w-md">
-            Acompanhe sua evolução, acesse exercícios personalizados, registre seu diário de saúde e gerencie seus agendamentos — tudo em um só lugar.
+          <p className="text-white/60 text-sm leading-relaxed max-w-md mb-8">
+            Acompanhe sua evolução, acesse exercícios personalizados, registre seu diário e
+            converse com seu terapeuta — tudo em um só lugar, com segurança.
           </p>
-          <div className="mt-8 grid grid-cols-2 gap-3">
-            {[
-              { icon: '📊', label: 'Evolução & MyID' },
-              { icon: '🏋️', label: 'Exercícios Guiados' },
-              { icon: '📅', label: 'Agenda Interativa' },
-              { icon: '💊', label: 'Diário de Saúde' },
-            ].map(f => (
-              <div key={f.label} className="flex items-center gap-2 text-white/50 text-xs bg-white/5 rounded-lg px-3 py-2">
-                <span>{f.icon}</span>
-                <span>{f.label}</span>
+
+          <div className="grid grid-cols-2 gap-3 max-w-md">
+            {features.map(f => (
+              <div
+                key={f.label}
+                className="group flex items-start gap-3 bg-white/5 backdrop-blur border border-white/10 rounded-xl px-3 py-2.5 hover:bg-white/10 transition-colors"
+              >
+                <div
+                  className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
+                  style={{ background: 'hsl(40 95% 52% / 0.15)' }}
+                >
+                  <f.icon className="h-4 w-4" style={{ color: 'hsl(40 95% 62%)' }} />
+                </div>
+                <div className="min-w-0">
+                  <div className="text-xs font-bold text-white">{f.label}</div>
+                  <div className="text-[10px] text-white/50 leading-tight">{f.desc}</div>
+                </div>
               </div>
             ))}
           </div>
         </div>
-        <p className="text-white/20 text-xs">My Health ID © 2026 · Portal do Paciente</p>
+
+        <div className="relative flex items-center justify-between text-white/30 text-[11px]">
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck className="h-3.5 w-3.5" />
+            <span>LGPD Compliant · Dados criptografados</span>
+          </div>
+          <span>© 2026</span>
+        </div>
       </div>
 
-      {/* Mobile header */}
+      {/* ============ Mobile header ============ */}
       <div
-        className="md:hidden w-full py-4 px-4 flex items-center gap-3 shrink-0"
-        style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 12%) 100%)' }}
+        className="md:hidden relative w-full py-5 px-4 flex items-center gap-3 shrink-0 overflow-hidden"
+        style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 10%) 100%)' }}
       >
-        <LogoIcon size={32} />
-        <div>
+        <div
+          className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-30 blur-2xl"
+          style={{ background: 'radial-gradient(circle, hsl(40 95% 52% / 0.5), transparent 70%)' }}
+        />
+        <LogoIcon size={36} />
+        <div className="relative">
           <div className="text-sm font-black text-white tracking-wide">
             My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
           </div>
@@ -331,33 +368,43 @@ export default function PacienteLogin() {
         </div>
       </div>
 
-      {/* Right panel – form */}
+      {/* ============ Right panel — Form ============ */}
       <div className="flex-1 flex items-center justify-center p-4 sm:p-6 lg:p-8 overflow-y-auto">
         <div className="w-full max-w-sm">
-          <div className="text-center mb-5">
-            <div className="inline-flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-primary/10 mb-3">
-              <Heart className="h-6 w-6 sm:h-7 sm:w-7 text-primary" />
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div
+              className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-4 shadow-lg"
+              style={{
+                background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%)',
+                boxShadow: '0 10px 30px -10px hsl(var(--primary) / 0.5)',
+              }}
+            >
+              <Heart className="h-7 w-7 text-primary-foreground" fill="currentColor" />
             </div>
-            <h1 className="text-lg sm:text-xl font-black text-foreground">
-              {tab === 'login' ? 'Acesse seu portal' : 'Criar conta'}
+            <h1 className="text-xl sm:text-2xl font-black text-foreground tracking-tight">
+              {tab === 'login' ? 'Bem-vindo de volta' : 'Crie sua conta'}
             </h1>
-            <p className="text-muted-foreground text-xs mt-1">
+            <p className="text-muted-foreground text-xs sm:text-sm mt-1.5 px-2">
               {tab === 'login'
-                ? 'Use o mesmo e-mail informado ao seu terapeuta.'
+                ? 'Entre com o e-mail informado ao seu terapeuta.'
                 : 'Use o mesmo e-mail que seu terapeuta cadastrou.'}
             </p>
           </div>
 
-          {/* Tabs */}
-          <div className="flex rounded-xl bg-muted p-1 mb-4">
+          {/* Tabs — animated indicator */}
+          <div className="relative flex rounded-xl bg-muted p-1 mb-5">
+            <div
+              className="absolute top-1 bottom-1 w-[calc(50%-4px)] rounded-lg bg-primary shadow-md transition-transform duration-300 ease-out"
+              style={{ transform: tab === 'login' ? 'translateX(0)' : 'translateX(100%)' }}
+            />
             {(['login', 'register'] as const).map((t) => (
               <button
                 key={t}
+                type="button"
                 onClick={() => setTab(t)}
-                className={`flex-1 py-2.5 rounded-lg text-xs font-semibold transition-all ${
-                  tab === t
-                    ? 'bg-primary text-primary-foreground shadow-md'
-                    : 'text-muted-foreground hover:text-foreground'
+                className={`relative z-10 flex-1 py-2.5 rounded-lg text-xs font-semibold transition-colors ${
+                  tab === t ? 'text-primary-foreground' : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
                 {t === 'login' ? 'Entrar' : 'Cadastrar'}
@@ -365,62 +412,90 @@ export default function PacienteLogin() {
             ))}
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-3">
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-3.5">
             {tab === 'register' && (
-              <div className="space-y-1">
-                <Label htmlFor="nome" className="text-xs">Nome completo</Label>
-                <Input
-                  id="nome"
-                  placeholder="Seu nome"
-                  value={form.nome}
-                  onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
-                  required
-                  className="h-11 rounded-xl text-[16px] sm:text-sm"
-                />
+              <div className="space-y-1.5">
+                <Label htmlFor="nome" className="text-xs font-semibold">Nome completo</Label>
+                <div className="relative">
+                  <UserIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    id="nome"
+                    placeholder="Seu nome"
+                    value={form.nome}
+                    onChange={(e) => setForm((f) => ({ ...f, nome: e.target.value }))}
+                    required
+                    className="pl-10 h-11 rounded-xl text-[16px] sm:text-sm"
+                  />
+                </div>
               </div>
             )}
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs">E-mail</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder="seu@email.com"
-                value={form.email}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
-                required
-                className="h-11 rounded-xl text-[16px] sm:text-sm"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label htmlFor="password" className="text-xs">Senha</Label>
+
+            <div className="space-y-1.5">
+              <Label htmlFor="email" className="text-xs font-semibold">E-mail</Label>
               <div className="relative">
+                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  placeholder="seu@email.com"
+                  value={form.email}
+                  onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))}
+                  required
+                  className="pl-10 h-11 rounded-xl text-[16px] sm:text-sm"
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password" className="text-xs font-semibold">Senha</Label>
+                {tab === 'login' && (
+                  <button
+                    type="button"
+                    onClick={handleForgotPassword}
+                    disabled={resetting}
+                    className="text-[11px] font-semibold hover:underline disabled:opacity-50"
+                    style={{ color: 'hsl(40 95% 45%)' }}
+                  >
+                    {resetting ? 'Enviando…' : 'Esqueci minha senha'}
+                  </button>
+                )}
+              </div>
+              <div className="relative">
+                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? 'text' : 'password'}
+                  autoComplete={tab === 'login' ? 'current-password' : 'new-password'}
                   placeholder={tab === 'register' ? 'Mínimo 8 caracteres' : '••••••••'}
                   value={form.password}
                   onChange={(e) => setForm((f) => ({ ...f, password: e.target.value }))}
                   required
                   minLength={tab === 'register' ? 8 : 6}
-                  className="pr-10 h-11 rounded-xl text-[16px] sm:text-sm"
+                  className="pl-10 pr-10 h-11 rounded-xl text-[16px] sm:text-sm"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1 rounded-md hover:bg-muted transition-colors"
                 >
                   {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                 </button>
               </div>
               {tab === 'register' && (
-                <p className="text-[10px] text-muted-foreground mt-1">
-                  Use uma senha forte: combine letras, números e símbolos. Evite "123456" ou "senha".
+                <p className="text-[10px] text-muted-foreground mt-1 leading-snug">
+                  Combine letras, números e símbolos. Evite senhas comuns como "123456".
                 </p>
               )}
             </div>
+
             <Button
               type="submit"
-              className="w-full h-11 rounded-xl font-bold text-sm"
+              className="w-full h-11 rounded-xl font-bold text-sm shadow-md hover:shadow-lg transition-shadow"
               disabled={submitting}
             >
               {submitting ? (
@@ -433,27 +508,39 @@ export default function PacienteLogin() {
             </Button>
           </form>
 
-          <p className="text-center text-[11px] text-muted-foreground mt-4">
-            {tab === 'login' ? 'Não tem conta?' : 'Já tem conta?'}{' '}
+          {/* Switch tab footer */}
+          <p className="text-center text-xs text-muted-foreground mt-5">
+            {tab === 'login' ? 'Ainda não tem conta?' : 'Já tem conta?'}{' '}
             <button
+              type="button"
               onClick={() => setTab(tab === 'login' ? 'register' : 'login')}
-              className="font-semibold hover:underline"
-              style={{ color: 'hsl(40 95% 52%)' }}
+              className="font-bold hover:underline"
+              style={{ color: 'hsl(40 95% 45%)' }}
             >
-              {tab === 'login' ? 'Cadastrar' : 'Entrar'}
+              {tab === 'login' ? 'Cadastre-se' : 'Entrar'}
             </button>
           </p>
 
           {portalToken && (
-            <p className="text-center text-[10px] text-muted-foreground/60 mt-3">
-              🔗 Link de convite detectado — sua conta será vinculada automaticamente.
-            </p>
+            <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+              <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+              <p className="text-[11px] text-muted-foreground leading-snug">
+                <strong className="text-foreground">Link de convite detectado.</strong> Sua conta
+                será vinculada automaticamente ao seu terapeuta.
+              </p>
+            </div>
           )}
+
+          {/* Trust bar */}
+          <div className="mt-6 pt-4 border-t border-border/40 flex items-center justify-center gap-1.5 text-[10px] text-muted-foreground/70">
+            <ShieldCheck className="h-3 w-3" />
+            <span>Acesso seguro · Dados protegidos pela LGPD</span>
+          </div>
         </div>
       </div>
 
       {/* Mobile footer */}
-      <p className="md:hidden text-center text-[10px] text-muted-foreground/40 py-3 shrink-0">
+      <p className="md:hidden text-center text-[10px] text-muted-foreground/50 py-3 shrink-0">
         My Health ID © 2026 · Portal do Paciente
       </p>
     </div>
