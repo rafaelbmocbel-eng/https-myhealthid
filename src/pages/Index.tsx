@@ -446,7 +446,6 @@ export default function Index() {
         <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
             { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda' },
-            ...(servicos.identidade ? [{ label: 'Método Identidade', sublabel: `${metodoIdentidadePacientes} pacientes`, icon: Activity, href: '/metodo-identidade' }] : []),
           ].map(mod => {
             const Icon = mod.icon;
             return (
