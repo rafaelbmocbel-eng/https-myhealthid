@@ -237,10 +237,10 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 red_flags_detected={red_flags_detected}
             />
 
-            {/* Bloco técnico (breakdown, dicas detalhadas, fatores contextuais) já está dentro de DetalhesTecnicos abaixo */}
+            <div className="bg-card p-6 rounded-xl border shadow-sm text-center space-y-4">
                 <h3 className="font-bold text-xl text-foreground">🎊 OBRIGADO POR PARTICIPAR!</h3>
                 <p className="text-muted-foreground">
-                    Você acabou de criar sua "impressão digital sistêmica" COMPLETA e PRECISA.
+                    Compartilhe com seu profissional para um plano personalizado.
                 </p>
                 <div className="pt-4 flex flex-wrap justify-center gap-3">
                     <button className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md text-sm transition-colors">
@@ -260,6 +260,76 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                     Data: {new Date().toLocaleDateString()} | ID: {result.session_id || 'LOCAL'} | Versão: MyID-100 v2.0
                 </p>
             </div>
+        </div>
+    );
+}
+
+// ───────────────────────────────────────────────────────
+// Detalhes técnicos (colapsável)
+// ───────────────────────────────────────────────────────
+interface DetalhesTecnicosProps {
+    scores: Record<string, number>;
+    myidScoreValue: number;
+    perdas_calculadas: any;
+    myid_100: any;
+    red_flags_detected: boolean;
+}
+
+function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected }: DetalhesTecnicosProps) {
+    const [open, setOpen] = useState(false);
+    const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
+    const maxPerda = Math.max(...items.map(i => i.perda), 1);
+
+    return (
+        <div>
+            <Button variant="outline" onClick={() => setOpen(o => !o)} className="w-full justify-between">
+                <span className="text-sm font-semibold">
+                    {open ? 'Ocultar' : 'Ver'} detalhes técnicos (para profissionais)
+                </span>
+                {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+
+            {open && (
+                <div className="space-y-6 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <MyIDFormulaDisplay
+                        scores={scores}
+                        myidScore={myidScoreValue}
+                        perdas={perdas_calculadas}
+                        driverPrimario={myid_100?.driver_primario}
+                        gatilhosCriticos={myid_100?.gatilhos_criticos_ativados || []}
+                        hasRedFlags={red_flags_detected}
+                    />
+
+                    {items.length > 0 && (
+                        <Card className="shadow-sm">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base font-bold">📉 Perda por dimensão</CardTitle>
+                                <CardDescription className="text-xs">Quanto maior a barra, maior o impacto no MyID-100.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2.5">
+                                {items.map(item => (
+                                    <div key={item.key} className={`p-2.5 rounded-lg border ${item.isDriver ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                <span className="font-semibold text-xs">{item.label}</span>
+                                                {item.isDriver && <Badge className="text-[9px] h-4 bg-primary/15 text-primary border-primary/30 hover:bg-primary/15">PRINCIPAL</Badge>}
+                                                {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">CRÍTICO</Badge>}
+                                            </div>
+                                            <div className="text-sm font-black text-destructive shrink-0">−{item.perda} pts</div>
+                                        </div>
+                                        <Progress value={(item.perda / maxPerda) * 100} className="h-1.5" />
+                                        {item.interpretacao && (
+                                            <p className="text-[11px] text-muted-foreground mt-1">{item.interpretacao}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} />
+                </div>
+            )}
         </div>
     );
 }
