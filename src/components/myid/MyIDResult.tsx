@@ -89,7 +89,7 @@ function buildPerdasBreakdown(perdas: Record<string, PerdaCalculada> | undefined
         .sort((a, b) => b.perda - a.perda);
 }
 
-export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
+export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, avaliacaoId }: MyIDResultProps) {
     if (!result) return null;
 
     const {
