@@ -152,14 +152,89 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 </Card>
             )}
 
-            {/* Formula Display with Score, Losses, Driver */}
-            <MyIDFormulaDisplay
+            {/* ───── BIG SCORE + STATUS EM LINGUAGEM SIMPLES ───── */}
+            <Card className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm`}>
+                <CardContent className="p-6 sm:p-8 text-center space-y-3">
+                    <div className="text-5xl">{statusInfo.emoji}</div>
+                    <div>
+                        <div className={`text-6xl sm:text-7xl font-black ${statusInfo.cor} leading-none`}>
+                            {Math.round(myidScoreValue)}
+                            <span className="text-2xl text-muted-foreground font-bold">/100</span>
+                        </div>
+                        <div className={`text-base sm:text-lg font-bold mt-2 ${statusInfo.cor}`}>{statusInfo.titulo}</div>
+                    </div>
+                    <p className="text-sm text-foreground/80 max-w-md mx-auto">{statusInfo.frase}</p>
+                </CardContent>
+            </Card>
+
+            {/* ───── O QUE ESTÁ RUIM ───── */}
+            {top3Ruim.length > 0 && (
+                <Card className="border-l-4 border-l-destructive shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-destructive" />
+                            O que está pesando contra você
+                        </CardTitle>
+                        <CardDescription className="text-xs">Os 3 fatores que mais estão afetando seu bem-estar agora.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {top3Ruim.map((item, idx) => {
+                            const frase = PROBLEMA_SIMPLES[item.key]?.(item.score) || item.interpretacao || `${item.label} precisa de atenção.`;
+                            return (
+                                <div key={item.key} className="flex gap-3 items-start p-3 rounded-lg bg-destructive/5 border border-destructive/15">
+                                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-destructive text-destructive-foreground font-bold text-sm flex items-center justify-center">
+                                        {idx + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                            <span className="font-semibold text-sm">{item.label}</span>
+                                            {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">URGENTE</Badge>}
+                                        </div>
+                                        <p className="text-sm text-foreground/80">{frase}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ───── O QUE FAZER PARA MELHORAR ───── */}
+            {top3Melhorar.length > 0 && (
+                <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-600" />
+                            O que fazer para melhorar
+                        </CardTitle>
+                        <CardDescription className="text-xs">Ações práticas, na ordem de maior impacto.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {top3Melhorar.map((item, idx) => {
+                            const acao = ACAO_SIMPLES[item.key] || 'Converse com seu profissional sobre como abordar este ponto.';
+                            return (
+                                <div key={item.key} className="flex gap-3 items-start p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-0.5">
+                                            Ação {idx + 1} · {item.label}
+                                        </div>
+                                        <p className="text-sm text-foreground">{acao}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ───── DETALHES TÉCNICOS (colapsável) ───── */}
+            <DetalhesTecnicos
                 scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
-                myidScore={myidScoreValue}
-                perdas={perdas_calculadas}
-                driverPrimario={myid_100?.driver_primario}
-                gatilhosCriticos={myid_100?.gatilhos_criticos_ativados || []}
-                hasRedFlags={red_flags_detected}
+                myidScoreValue={myidScoreValue}
+                perdas_calculadas={perdas_calculadas}
+                myid_100={myid_100}
+                red_flags_detected={red_flags_detected}
             />
 
             {/* Onde você está perdendo pontos — breakdown concreto */}
