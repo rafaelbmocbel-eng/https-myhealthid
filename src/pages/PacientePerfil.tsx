@@ -9,6 +9,11 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
@@ -45,6 +50,26 @@ import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
+import { PacienteSchema } from '@/lib/validations';
+import { useEquipe } from '@/hooks/useEquipe';
+
+const maskPhone = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 2) return d;
+  if (d.length <= 7) return `(${d.slice(0, 2)}) ${d.slice(2)}`;
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`;
+};
+const maskCPF = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 11);
+  if (d.length <= 3) return d;
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`;
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
+};
+
+type TipoPagamento = 'particular' | 'plano';
+type PlanoSaude = 'FUSEX' | 'CASSI' | 'TRT';
+const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -97,6 +122,16 @@ export default function PacientePerfil() {
   const [agendandoNovo, setAgendandoNovo] = useState(false);
   const [tratamentoAberto, setTratamentoAberto] = useState<string | null>(null);
   const [docsModalOpen, setDocsModalOpen] = useState(false);
+  const [editModalOpen, setEditModalOpen] = useState(false);
+  const [editForm, setEditForm] = useState({
+    nome: '', sobrenome: '', email: '', telefone: '',
+    data_nascimento: '', genero: '', cpf: '', endereco: '',
+    queixa_principal: '', observacoes: '',
+    responsavel_id: '', tipo_pagamento: 'particular' as TipoPagamento,
+    plano_saude: '' as PlanoSaude | '',
+  });
+  const [submittingEdit, setSubmittingEdit] = useState(false);
+  const { membros: membrosEquipe } = useEquipe();
 
   // Link MyID ativo (pendente)
   const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
@@ -435,6 +470,64 @@ export default function PacientePerfil() {
     navigate(`/agenda`);
   };
 
+  // ── Editar paciente ─────────────────────────────────────────────────
+  const openEdit = () => {
+    if (!paciente) return;
+    setEditForm({
+      nome: paciente.nome || '',
+      sobrenome: paciente.sobrenome || '',
+      email: paciente.email || '',
+      telefone: paciente.telefone || '',
+      data_nascimento: paciente.data_nascimento || '',
+      genero: paciente.genero || '',
+      cpf: paciente.cpf || '',
+      endereco: paciente.endereco || '',
+      queixa_principal: (paciente as any).queixa_principal || '',
+      observacoes: paciente.observacoes || '',
+      responsavel_id: (paciente as any).responsavel_id || '',
+      tipo_pagamento: ((paciente as any).tipo_pagamento as TipoPagamento) || 'particular',
+      plano_saude: ((paciente as any).plano_saude as PlanoSaude) || '',
+    });
+    setEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!paciente || !user) return;
+    const parsed = PacienteSchema.safeParse(editForm);
+    if (!parsed.success) {
+      const firstError = parsed.error.errors[0]?.message || 'Dados inválidos';
+      return toast({ title: firstError, variant: 'destructive' });
+    }
+    setSubmittingEdit(true);
+    try {
+      const validated = parsed.data;
+      const payload: any = {
+        nome: validated.nome!,
+        sobrenome: validated.sobrenome!,
+        email: validated.email ?? null,
+        telefone: validated.telefone ?? null,
+        data_nascimento: validated.data_nascimento ?? null,
+        genero: validated.genero ?? null,
+        cpf: validated.cpf ?? null,
+        endereco: editForm.endereco || null,
+        observacoes: validated.observacoes ?? null,
+        responsavel_id: editForm.responsavel_id || null,
+        tipo_pagamento: editForm.tipo_pagamento,
+        plano_saude: editForm.tipo_pagamento === 'plano' ? (editForm.plano_saude || null) : null,
+      };
+      const { error } = await supabase.from('pacientes').update(payload).eq('id', paciente.id);
+      if (error) throw error;
+      qc.invalidateQueries({ queryKey: ['paciente-perfil', paciente.id] });
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      toast({ title: 'Paciente atualizado! ✅' });
+      setEditModalOpen(false);
+    } catch (e: any) {
+      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+    } finally {
+      setSubmittingEdit(false);
+    }
+  };
+
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-5xl px-3 sm:px-6">
@@ -480,6 +573,21 @@ export default function PacientePerfil() {
                   </TooltipTrigger>
                   <TooltipContent side="bottom" className="text-xs">
                     Gerar atestado, recibo, declaração…
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-foreground hover:bg-muted"
+                      onClick={openEdit}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Editar cadastro
                   </TooltipContent>
                 </Tooltip>
                 <Tooltip delayDuration={0}>
@@ -965,18 +1073,190 @@ export default function PacientePerfil() {
         </Tabs>
       </div>
       {paciente && (
-        <DocumentosModal
-          open={docsModalOpen}
-          onOpenChange={setDocsModalOpen}
-          paciente={{
-            id: paciente.id,
-            nome: paciente.nome,
-            sobrenome: paciente.sobrenome,
-            cpf: paciente.cpf,
-            data_nascimento: (paciente as any).data_nascimento,
-            sexo: (paciente as any).sexo,
-          }}
-        />
+        <>
+          <DocumentosModal
+            open={docsModalOpen}
+            onOpenChange={setDocsModalOpen}
+            paciente={{
+              id: paciente.id,
+              nome: paciente.nome,
+              sobrenome: paciente.sobrenome,
+              cpf: paciente.cpf,
+              data_nascimento: (paciente as any).data_nascimento,
+              sexo: (paciente as any).sexo,
+            }}
+          />
+          <Dialog open={editModalOpen} onOpenChange={setEditModalOpen}>
+            <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Edit className="h-4 w-4 text-primary" /> Editar Paciente
+                </DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4 py-2">
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Nome *</Label>
+                    <Input placeholder="Maria" value={editForm.nome} onChange={e => setEditForm(f => ({ ...f, nome: e.target.value }))} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Sobrenome</Label>
+                    <Input placeholder="Silva" value={editForm.sobrenome} onChange={e => setEditForm(f => ({ ...f, sobrenome: e.target.value }))} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>E-mail</Label>
+                  <Input type="email" placeholder="maria@email.com" value={editForm.email} onChange={e => setEditForm(f => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Telefone</Label>
+                    <Input placeholder="(11) 98765-4321" value={editForm.telefone}
+                      onChange={e => setEditForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))}
+                      maxLength={15} />
+                  </div>
+                  <div className="space-y-1">
+                    <Label>Data de Nascimento</Label>
+                    <Input
+                      type="text"
+                      placeholder="dd/mm/aaaa"
+                      maxLength={10}
+                      value={editForm.data_nascimento ? (() => {
+                        if (/^\d{4}-\d{2}-\d{2}$/.test(editForm.data_nascimento)) {
+                          const [y, m, d] = editForm.data_nascimento.split('-');
+                          return `${d}/${m}/${y}`;
+                        }
+                        return editForm.data_nascimento;
+                      })() : ''}
+                      onChange={e => {
+                        let v = e.target.value.replace(/[^\d/]/g, '');
+                        const digits = v.replace(/\//g, '');
+                        if (digits.length >= 5) {
+                          v = `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4, 8)}`;
+                        } else if (digits.length >= 3) {
+                          v = `${digits.slice(0, 2)}/${digits.slice(2)}`;
+                        }
+                        setEditForm(f => ({ ...f, data_nascimento: v }));
+                      }}
+                      onBlur={e => {
+                        const v = e.target.value;
+                        const match = v.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+                        if (match) {
+                          const [, d, m, y] = match;
+                          const iso = `${y}-${m}-${d}`;
+                          const date = new Date(iso);
+                          if (!isNaN(date.getTime()) && date.getFullYear() === Number(y)) {
+                            setEditForm(f => ({ ...f, data_nascimento: iso }));
+                          }
+                        }
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <div className="space-y-1">
+                    <Label>Gênero</Label>
+                    <Select value={editForm.genero} onValueChange={v => setEditForm(f => ({ ...f, genero: v }))}>
+                      <SelectTrigger><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="masculino">Masculino</SelectItem>
+                        <SelectItem value="feminino">Feminino</SelectItem>
+                        <SelectItem value="outro">Outro</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1">
+                    <Label>CPF</Label>
+                    <Input placeholder="123.456.789-00" value={editForm.cpf}
+                      onChange={e => setEditForm(f => ({ ...f, cpf: maskCPF(e.target.value) }))}
+                      maxLength={14} />
+                  </div>
+                </div>
+                <div className="space-y-1">
+                  <Label>Endereço</Label>
+                  <Input placeholder="Rua, número, bairro, cidade" value={editForm.endereco} onChange={e => setEditForm(f => ({ ...f, endereco: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Queixa Principal</Label>
+                  <Input placeholder="Ex: Dor lombar crônica, escoliose..." value={editForm.queixa_principal}
+                    onChange={e => setEditForm(f => ({ ...f, queixa_principal: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label>Observações</Label>
+                  <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={editForm.observacoes} onChange={e => setEditForm(f => ({ ...f, observacoes: e.target.value }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Profissional Responsável</Label>
+                  <Select
+                    value={editForm.responsavel_id || 'none'}
+                    onValueChange={v => setEditForm(f => ({ ...f, responsavel_id: v === 'none' ? '' : v }))}
+                  >
+                    <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Sem responsável definido</SelectItem>
+                      {membrosEquipe.filter(m => m.ativo).map(m => (
+                        <SelectItem key={m.id} value={m.id}>{m.nome}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Atendimento</Label>
+                  <div className="grid grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                      className={cn(
+                        'p-3 rounded-lg border text-sm font-medium transition-colors',
+                        editForm.tipo_pagamento === 'particular'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-accent/30 text-foreground'
+                      )}
+                    >
+                      Particular
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'plano' }))}
+                      className={cn(
+                        'p-3 rounded-lg border text-sm font-medium transition-colors',
+                        editForm.tipo_pagamento === 'plano'
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border hover:bg-accent/30 text-foreground'
+                      )}
+                    >
+                      Plano
+                    </button>
+                  </div>
+                  {editForm.tipo_pagamento === 'plano' && (
+                    <div className="pt-2">
+                      <Label className="text-xs">Plano</Label>
+                      <Select
+                        value={editForm.plano_saude || ''}
+                        onValueChange={v => setEditForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
+                        <SelectContent>
+                          {PLANOS_SAUDE.map(p => (
+                            <SelectItem key={p} value={p}>{p}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                </div>
+                <div className="flex gap-3 pt-2">
+                  <Button variant="outline" className="flex-1" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
+                  <Button className="flex-1 bg-gradient-primary text-white" onClick={handleSaveEdit} disabled={submittingEdit}>
+                    {submittingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+            </DialogContent>
+          </Dialog>
+        </>
       )}
     </AppLayout >
   );
