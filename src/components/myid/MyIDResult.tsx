@@ -1,11 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
 import { shareMyIDResults } from '@/utils/whatsapp';
 import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
+
+// Linguagem simples: o que está ruim em cada dimensão
+const PROBLEMA_SIMPLES: Record<string, (score: number) => string> = {
+    D: (s) => s >= 7 ? 'Sua dor está intensa e atrapalhando o dia a dia.' : 'Você sente dor com frequência.',
+    EFI: (s) => s >= 7 ? 'Você está com muita dificuldade nas atividades do dia a dia.' : 'Algumas atividades estão mais difíceis do que deveriam.',
+    P: (s) => s >= 5 ? 'Medo de se mexer ou pensamentos negativos sobre a dor estão te travando.' : 'Há alguma insegurança em relação ao movimento.',
+    I: (s) => s >= 2 ? 'A dor já está há tempo demais sem tratamento adequado.' : 'A dor é recente — bom momento para agir.',
+    R: (s) => s >= 7 ? 'Seu corpo não está recuperando: sono ruim, cansaço e estresse altos.' : 'Sono, energia ou estresse estão desregulados.',
+    C: (s) => s >= 6 ? 'Pressões do trabalho, família ou dinheiro estão pesando muito.' : 'O contexto de vida está sobrecarregando você.',
+    AF: (s) => s >= 6 ? 'Você está muito parado(a) — isso piora a dor.' : 'Falta movimento no seu dia.',
+    HID: (s) => 'Você está bebendo pouca água.',
+    NUT: (s) => 'Sua alimentação pode estar inflamando o corpo.',
+    ERG: (s) => s >= 6 ? 'Sua postura/posto de trabalho está agredindo o corpo todo dia.' : 'Pequenos ajustes de postura ajudariam muito.',
+    N: (s) => 'Cicatrizes, cirurgias ou questões viscerais estão somando ruído ao sistema.',
+};
+
+// Linguagem simples: o que fazer
+const ACAO_SIMPLES: Record<string, string> = {
+    D: 'Procure um fisioterapeuta para tratar a dor de forma ativa, sem só remédio.',
+    EFI: 'Comece a se mover dentro do que dá — atividades simples já contam.',
+    P: 'Converse sobre seus medos com o profissional. Movimento seguro e gradual cura.',
+    I: 'Não espere mais: quanto antes começar, mais rápido melhora.',
+    R: 'Priorize o sono (7-8h), reduza telas à noite e busque relaxamento ativo.',
+    C: 'Identifique 1 fonte de estresse para reduzir esta semana — peça apoio se precisar.',
+    AF: 'Caminhe 20-30 min por dia, 4-5x na semana. É o remédio mais barato.',
+    HID: 'Beba 2-3 litros de água por dia. Coloque uma garrafa visível.',
+    NUT: 'Reduza ultraprocessados, açúcar e álcool. Aumente frutas, vegetais e proteína.',
+    ERG: 'Ajuste cadeira/tela do trabalho e faça pausa de 2 min a cada 45 min sentado(a).',
+    N: 'Comente cirurgias e questões viscerais com seu terapeuta — pode mudar a abordagem.',
+};
 
 interface MyIDResultProps {
     result: any;
