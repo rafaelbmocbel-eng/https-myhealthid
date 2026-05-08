@@ -675,12 +675,19 @@ export default function PacientePerfil() {
             </div>
             <div className="text-base sm:text-lg font-black leading-tight text-foreground">
               {agendamentosFuturos[0]
-                ? format(parseISO(agendamentosFuturos[0].data_inicio), 'dd/MM', { locale: ptBR })
+                ? (() => {
+                    const d = parseISO(agendamentosFuturos[0].data_inicio);
+                    const dias = differenceInDays(d, hoje);
+                    if (dias === 0) return 'Hoje';
+                    if (dias === 1) return 'Amanhã';
+                    if (dias < 7) return `${dias}d`;
+                    return format(d, 'dd/MM', { locale: ptBR });
+                  })()
                 : '—'}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
               {agendamentosFuturos[0]
-                ? format(parseISO(agendamentosFuturos[0].data_inicio), "HH:mm 'h'", { locale: ptBR })
+                ? format(parseISO(agendamentosFuturos[0].data_inicio), "dd/MM 'às' HH:mm", { locale: ptBR })
                 : 'sem agenda'}
             </div>
           </div>
