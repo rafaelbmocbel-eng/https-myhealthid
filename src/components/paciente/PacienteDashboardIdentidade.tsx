@@ -446,11 +446,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const setSubTabAtiva = setSubTabInterna;
 
   // Save voice edit and reprocess with AI
-  const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string) => {
+  const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string, textOverride?: string) => {
     setSavingVoiceEdit(true);
+    const transcriptToUse = textOverride !== undefined ? textOverride : editingVoiceText;
     try {
       // 1. Update transcription text
-      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: editingVoiceText }).eq('id', avId);
+      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: transcriptToUse }).eq('id', avId);
       if (error) throw error;
 
       // 2. Reprocess with AI using correct parameter name
