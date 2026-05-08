@@ -408,120 +408,299 @@ export default function PacientePerfil() {
   return (
     <AppLayout>
       <div className="container py-4 sm:py-6 max-w-5xl px-3 sm:px-6">
-        {/* Rich Header */}
-        <div className="flex items-start gap-3 sm:gap-4 mb-4 sm:mb-6">
-          <Button variant="ghost" size="sm" className="h-8 w-8 p-0 mt-1 shrink-0" onClick={() => navigate('/pacientes')}>
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-          <div className="h-11 w-11 sm:h-14 sm:w-14 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-base sm:text-lg">
-            {paciente.nome[0]}{paciente.sobrenome?.[0] || ''}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 flex-wrap">
-              <h1 className="text-lg sm:text-2xl font-bold text-foreground truncate">{paciente.nome} {paciente.sobrenome}</h1>
-              {/* Links rápidos: MyID · Agenda · Portal */}
-              <LinkActionsBar items={(() => {
-                const items: LinkActionItem[] = [];
-                items.push({
-                  key: 'myid', label: 'MyID',
-                  active: !!linkMyIDAtivo,
-                  loading: gerandoMyIDLink,
-                  color: 'emerald',
-                  isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
-                  onAction: () => linkMyIDAtivo && (paciente.telefone
-                    ? shareAvaliacaoLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`)
-                    : (() => { navigator.clipboard.writeText(`${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`); toast({ title: 'Link MyID copiado! 📋' }); })()),
-                  onGenerate: gerarLinkMyID,
-                });
-                items.push({
-                  key: 'agenda', label: 'Agenda',
-                  active: !!linkAgendaAtivo,
-                  loading: gerandoAgenda,
-                  color: 'blue',
-                  isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
-                  onAction: () => linkAgendaAtivo && (paciente.telefone
-                    ? shareAgendaLink(`${paciente.nome} ${paciente.sobrenome}`, paciente.telefone, getAgendaUrl(linkAgendaAtivo.token))
-                    : copiarAgendaLink(linkAgendaAtivo.token)),
-                  onGenerate: gerarLinkAgenda,
-                });
-                if (paciente.portal_token) {
-                  items.push({
-                    key: 'portal', label: 'Portal',
-                    active: true,
-                    color: 'violet',
-                    isWhatsApp: !!paciente.telefone,
-                    onAction: () => paciente.telefone
-                      ? (() => { const url = getPortalUrl(paciente.portal_token!); const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); })()
-                      : (() => { navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); })(),
-                  });
-                }
-                return items;
-              })()} />
+        {/* ============ HERO HEADER ============ */}
+        <div className="relative mb-4 sm:mb-5 overflow-hidden rounded-2xl border border-border/60 bg-card shadow-sm">
+          {/* Decorative gradient strip */}
+          <div
+            className="absolute inset-x-0 top-0 h-24 sm:h-28 opacity-90"
+            style={{
+              background:
+                'linear-gradient(135deg, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.05) 50%, hsl(40 95% 52% / 0.12) 100%)',
+            }}
+          />
+          <div
+            className="pointer-events-none absolute -top-12 -right-10 w-44 h-44 rounded-full opacity-30 blur-3xl"
+            style={{ background: 'radial-gradient(circle, hsl(var(--primary) / 0.5), transparent 70%)' }}
+          />
+
+          <div className="relative p-3 sm:p-5">
+            {/* Top row: back + actions */}
+            <div className="flex items-center justify-between mb-3">
               <Button
                 variant="ghost"
-                size="icon"
-                className="h-7 w-7 text-primary hover:bg-primary/10 shrink-0 ml-auto"
-                title="Gerar Documento"
-                onClick={() => setDocsModalOpen(true)}
+                size="sm"
+                className="h-8 gap-1.5 -ml-2 text-muted-foreground hover:text-foreground"
+                onClick={() => navigate('/pacientes')}
               >
-                <FileText className="h-4 w-4" />
+                <ArrowLeft className="h-4 w-4" />
+                <span className="text-xs font-medium hidden sm:inline">Pacientes</span>
               </Button>
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:bg-destructive/10 shrink-0" title="Excluir Definitivamente"
-                onClick={handleDeletePaciente}>
-                <Trash2 className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 bg-background/80 backdrop-blur"
+                      onClick={() => setDocsModalOpen(true)}
+                    >
+                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      <span className="text-xs font-semibold hidden sm:inline">Documentos</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Gerar atestado, recibo, declaração…
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-destructive hover:bg-destructive/10"
+                      onClick={handleDeletePaciente}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Excluir definitivamente
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+            </div>
+
+            {/* Identity row */}
+            <div className="flex items-start gap-3 sm:gap-4">
+              <div
+                className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center shrink-0 text-white font-black text-lg sm:text-xl shadow-lg ring-4 ring-background"
+                style={{
+                  background:
+                    'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%)',
+                }}
+              >
+                {paciente.nome[0]}
+                {paciente.sobrenome?.[0] || ''}
+              </div>
+              <div className="flex-1 min-w-0">
+                <h1 className="text-lg sm:text-2xl font-black text-foreground leading-tight truncate">
+                  {paciente.nome} {paciente.sobrenome}
+                </h1>
+                {/* Contact pills */}
+                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                  {idade !== null && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 text-[10px] font-medium text-muted-foreground">
+                      <Calendar className="h-2.5 w-2.5" />
+                      {idade} anos
+                    </span>
+                  )}
+                  {paciente.genero && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 text-[10px] font-medium text-muted-foreground capitalize">
+                      <User className="h-2.5 w-2.5" />
+                      {paciente.genero}
+                    </span>
+                  )}
+                  {paciente.telefone && (
+                    <a
+                      href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[10px] font-medium text-emerald-700 border border-emerald-200 transition-colors"
+                      title="Abrir conversa no WhatsApp"
+                    >
+                      <Phone className="h-2.5 w-2.5" />
+                      {paciente.telefone}
+                    </a>
+                  )}
+                  {paciente.email && (
+                    <a
+                      href={`mailto:${paciente.email}`}
+                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 hover:bg-muted text-[10px] font-medium text-muted-foreground transition-colors max-w-[200px] truncate"
+                      title={paciente.email}
+                    >
+                      <Mail className="h-2.5 w-2.5 shrink-0" />
+                      <span className="truncate">{paciente.email}</span>
+                    </a>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Links toolbar — labeled and prominent */}
+            <div className="mt-4 pt-3 border-t border-border/40">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                  Links de acesso do paciente
+                </span>
+              </div>
+              <LinkActionsBar
+                items={(() => {
+                  const items: LinkActionItem[] = [];
+                  items.push({
+                    key: 'myid',
+                    label: 'MyID',
+                    active: !!linkMyIDAtivo,
+                    loading: gerandoMyIDLink,
+                    color: 'emerald',
+                    isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
+                    onAction: () =>
+                      linkMyIDAtivo &&
+                      (paciente.telefone
+                        ? shareAvaliacaoLink(
+                            `${paciente.nome} ${paciente.sobrenome}`,
+                            paciente.telefone,
+                            `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
+                          )
+                        : (() => {
+                            navigator.clipboard.writeText(
+                              `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
+                            );
+                            toast({ title: 'Link MyID copiado! 📋' });
+                          })()),
+                    onGenerate: gerarLinkMyID,
+                  });
+                  items.push({
+                    key: 'agenda',
+                    label: 'Agenda',
+                    active: !!linkAgendaAtivo,
+                    loading: gerandoAgenda,
+                    color: 'blue',
+                    isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
+                    onAction: () =>
+                      linkAgendaAtivo &&
+                      (paciente.telefone
+                        ? shareAgendaLink(
+                            `${paciente.nome} ${paciente.sobrenome}`,
+                            paciente.telefone,
+                            getAgendaUrl(linkAgendaAtivo.token),
+                          )
+                        : copiarAgendaLink(linkAgendaAtivo.token)),
+                    onGenerate: gerarLinkAgenda,
+                  });
+                  if (paciente.portal_token) {
+                    items.push({
+                      key: 'portal',
+                      label: 'Portal',
+                      active: true,
+                      color: 'violet',
+                      isWhatsApp: !!paciente.telefone,
+                      onAction: () =>
+                        paciente.telefone
+                          ? (() => {
+                              const url = getPortalUrl(paciente.portal_token!);
+                              const msg = `Olá ${paciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`;
+                              window.open(
+                                `https://wa.me/${paciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`,
+                                '_blank',
+                              );
+                            })()
+                          : (() => {
+                              navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
+                              toast({ title: 'Link do Portal copiado! 🔗' });
+                            })(),
+                    });
+                  }
+                  return items;
+                })()}
+              />
             </div>
           </div>
         </div>
 
-        {/* KPI Cards — compact grid; Sessão e Pacote são clicáveis e abrem painéis Sessões/Financeiro */}
-        <div className="grid grid-cols-5 gap-2 mb-4">
-          {(() => {
-            const staticKpis = [
-              idade !== null ? { icon: Calendar, label: 'Idade', value: `${idade}a`, sub: paciente.data_nascimento ? format(parseISO(paciente.data_nascimento), 'dd/MM/yy') : undefined } : null,
-              { icon: Clock, label: 'Desde', value: formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~'), sub: format(parseISO(paciente.created_at), 'dd/MM/yy') },
-              { icon: Activity, label: 'Aval.', value: `${avaliacoesId.length + avaliacoesCob.length}`, sub: avaliacoesId.length > 0 ? `${avaliacoesId.length} ID` : avaliacoesCob.length > 0 ? `${avaliacoesCob.length} COB°` : undefined },
-            ].filter(Boolean) as any[];
-            return staticKpis.map((kpi: any) => {
-              const Icon = kpi.icon;
-              return (
-                <div key={kpi.label} className="clinical-card !p-2.5 text-center">
-                  <Icon className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
-                  <div className="text-base font-bold leading-tight">{kpi.value}</div>
-                  <div className="text-[9px] text-muted-foreground">{kpi.sub || kpi.label}</div>
-                </div>
-              );
-            });
-          })()}
+        {/* ============ KPI CARDS — bigger, more readable ============ */}
+        <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-4">
+          {/* Tempo de cadastro */}
+          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <Clock className="h-3 w-3" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide">Cliente há</span>
+            </div>
+            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+              {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              desde {format(parseISO(paciente.created_at), 'dd/MM/yy')}
+            </div>
+          </div>
 
-          {/* KPI Sessões — abre painel completo */}
+          {/* Avaliações */}
+          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <Activity className="h-3 w-3" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide">Avaliações</span>
+            </div>
+            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+              {avaliacoesId.length + avaliacoesCob.length}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {avaliacoesId.length} ID · {avaliacoesCob.length} COB°
+            </div>
+          </div>
+
+          {/* Próxima sessão */}
+          <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
+            <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
+              <CalendarDays className="h-3 w-3" />
+              <span className="text-[10px] font-semibold uppercase tracking-wide">Próxima</span>
+            </div>
+            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+              {agendamentosFuturos[0]
+                ? format(parseISO(agendamentosFuturos[0].data_inicio), 'dd/MM', { locale: ptBR })
+                : '—'}
+            </div>
+            <div className="text-[10px] text-muted-foreground mt-0.5">
+              {agendamentosFuturos[0]
+                ? format(parseISO(agendamentosFuturos[0].data_inicio), "HH:mm 'h'", { locale: ptBR })
+                : 'sem agenda'}
+            </div>
+          </div>
+
+          {/* KPI Sessões — clicável, abre Sheet */}
           <Sheet>
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="clinical-card !p-2.5 text-center hover:border-primary/40 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
-                title="Abrir gestão de sessões"
+                className="rounded-xl border border-primary/30 bg-primary/5 p-3 text-left hover:bg-primary/10 hover:shadow-md hover:border-primary/50 transition-all focus:outline-none focus:ring-2 focus:ring-primary/40 group"
+                title="Abrir gestão de sessões e pacotes"
               >
-                <ClipboardList className="h-3.5 w-3.5 mx-auto mb-1 text-primary" />
-                <div className="text-base font-bold leading-tight">#{sessoesInfo.numeroAtual}</div>
-                <div className="text-[9px] text-muted-foreground">{sessoesInfo.totalRealizadas} sessões</div>
+                <div className="flex items-center gap-1.5 text-primary mb-1">
+                  <Package className="h-3 w-3" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Sessões</span>
+                  <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                  #{sessoesInfo.numeroAtual || 0}
+                </div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">
+                  {sessoesInfo.totalRealizadas} realizadas
+                </div>
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2"><Package className="h-4 w-4 text-primary" /> Sessões e Pacotes</SheetTitle>
+                <SheetTitle className="flex items-center gap-2">
+                  <Package className="h-4 w-4 text-primary" /> Sessões e Pacotes
+                </SheetTitle>
               </SheetHeader>
               <div className="mt-4 space-y-6">
                 <PacoteSessoesManager pacienteId={id!} />
                 <div>
                   <div className="flex items-center gap-2 mb-3">
                     <CalendarDays className="h-4 w-4 text-primary" />
-                    <h3 className="font-semibold text-sm">Próximas sessões ({agendamentosFuturos.length})</h3>
+                    <h3 className="font-semibold text-sm">
+                      Próximas sessões ({agendamentosFuturos.length})
+                    </h3>
                   </div>
                   {loadingAg ? (
-                    <div className="flex justify-center py-6"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+                    <div className="flex justify-center py-6">
+                      <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                    </div>
                   ) : agendamentosFuturos.length === 0 ? (
-                    <EmptyState icon={<CalendarDays />} title="Nenhuma sessão agendada" subtitle="Use a Agenda para criar um novo agendamento." />
+                    <EmptyState
+                      icon={<CalendarDays />}
+                      title="Nenhuma sessão agendada"
+                      subtitle="Use a Agenda para criar um novo agendamento."
+                    />
                   ) : (
                     <div className="space-y-2">
                       {agendamentosFuturos.slice(0, 10).map((ag: any) => (
@@ -536,7 +715,11 @@ export default function PacientePerfil() {
                     <h3 className="font-semibold text-sm">Histórico ({agendamentosPassados.length})</h3>
                   </div>
                   {agendamentosPassados.length === 0 ? (
-                    <EmptyState icon={<Clock />} title="Sem histórico" subtitle="Sessões realizadas aparecerão aqui." />
+                    <EmptyState
+                      icon={<Clock />}
+                      title="Sem histórico"
+                      subtitle="Sessões realizadas aparecerão aqui."
+                    />
                   ) : (
                     <div className="space-y-2">
                       {agendamentosPassados.slice(0, 15).map((ag: any) => (
@@ -549,39 +732,48 @@ export default function PacientePerfil() {
             </SheetContent>
           </Sheet>
 
-          {/* KPI Financeiro — abre painel completo */}
+          {/* KPI Financeiro — clicável, abre Sheet */}
           <Sheet>
             <SheetTrigger asChild>
               <button
                 type="button"
-                className="clinical-card !p-2.5 text-center hover:border-primary/40 hover:shadow-md transition-all focus:outline-none focus:ring-2 focus:ring-primary/40"
+                className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-3 text-left hover:bg-emerald-50 hover:shadow-md hover:border-emerald-300 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500/40 group"
                 title="Abrir financeiro"
               >
-                <DollarSign className="h-3.5 w-3.5 mx-auto mb-1 text-emerald-600" />
-                <div className="text-base font-bold leading-tight">R$</div>
-                <div className="text-[9px] text-muted-foreground">Financeiro</div>
+                <div className="flex items-center gap-1.5 text-emerald-700 mb-1">
+                  <DollarSign className="h-3 w-3" />
+                  <span className="text-[10px] font-semibold uppercase tracking-wide">Financeiro</span>
+                  <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
+                </div>
+                <div className="text-base sm:text-lg font-black leading-tight text-foreground">R$</div>
+                <div className="text-[10px] text-muted-foreground mt-0.5">recibos & pagto</div>
               </button>
             </SheetTrigger>
             <SheetContent side="right" className="w-full sm:max-w-xl overflow-y-auto">
               <SheetHeader>
-                <SheetTitle className="flex items-center gap-2"><DollarSign className="h-4 w-4 text-emerald-600" /> Financeiro</SheetTitle>
+                <SheetTitle className="flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-emerald-600" /> Financeiro
+                </SheetTitle>
               </SheetHeader>
               <div className="mt-4">
-                <PacienteFinanceiroTab pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} />
+                <PacienteFinanceiroTab
+                  pacienteId={id!}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
+                />
               </div>
             </SheetContent>
           </Sheet>
         </div>
 
-        {/* Contact inline */}
-        <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-3 px-1">
-          {paciente.telefone && (
-            <span className="flex items-center gap-1"><Phone className="h-3 w-3" />{paciente.telefone}</span>
-          )}
-          {paciente.email && <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{paciente.email}</span>}
-          {paciente.genero && <span className="flex items-center gap-1 capitalize"><User className="h-3 w-3" />{paciente.genero}</span>}
-          {paciente.observacoes && <span className="flex items-center gap-1 text-muted-foreground/70" title={paciente.observacoes}><FileText className="h-3 w-3" />Obs: {paciente.observacoes.slice(0, 40)}{paciente.observacoes.length > 40 ? '…' : ''}</span>}
-        </div>
+        {/* Observações inline (se houver) */}
+        {paciente.observacoes && (
+          <div className="mb-3 px-3 py-2 rounded-lg bg-amber-50/60 border border-amber-200/60 text-xs text-amber-900 flex items-start gap-2">
+            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+            <span className="leading-snug">
+              <span className="font-semibold">Observações:</span> {paciente.observacoes}
+            </span>
+          </div>
+        )}
 
         {/* ==== ABAS COMPLEMENTARES — logo abaixo do telefone ====
             Histórico │ Diretrizes │ Prontuário │ Engajar │ Chat
