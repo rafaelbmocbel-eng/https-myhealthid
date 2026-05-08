@@ -243,6 +243,35 @@ export default function PacientePerfil() {
     enabled: !!user && !!id,
   });
 
+  const { data: pagamentosPac = [] } = useQuery({
+    queryKey: ['pagamentos-perfil', id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('pagamentos_paciente')
+        .select('valor, status')
+        .eq('paciente_id', id!)
+        .eq('terapeuta_id', user!.id);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!user && !!id,
+  });
+
+  const finResumo = useMemo(() => {
+    let pago = 0, pendente = 0;
+    pagamentosPac.forEach((p: any) => {
+      const v = Number(p.valor) || 0;
+      if (p.status === 'pago' || p.status === 'confirmado') pago += v;
+      else if (p.status === 'pendente') pendente += v;
+    });
+    return { pago, pendente };
+  }, [pagamentosPac]);
+
+  const fmtBRL = (n: number) =>
+    n >= 1000
+      ? `R$ ${(n / 1000).toFixed(n >= 10000 ? 0 : 1)}k`
+      : `R$ ${n.toFixed(0)}`;
+
   const sessoesInfo = useMemo(() => {
     const realizadas = sessoesPaciente.filter((s: any) => s.status === 'realizada');
     const ultimaSessao = realizadas[0];
