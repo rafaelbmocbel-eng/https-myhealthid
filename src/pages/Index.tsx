@@ -370,7 +370,7 @@ export default function Index() {
     return inicio > new Date() && a.status !== 'cancelado';
   });
 
-  const metodoIdentidadePacientes = pacienteServicos.filter(s => s.servico === 'metodo_identidade').length;
+  
 
   // Filtra avaliações recentes com red flags (últimos 30 dias)
   const recentAlerts = avaliacoesRaw
