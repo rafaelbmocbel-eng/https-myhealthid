@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { ArrowLeft, Target, Link2, Copy, MessageCircle, Mail, Plus, Loader2, FileText, Calendar, BarChart3, CalendarDays, Dumbbell, AlignCenter, Fingerprint, UserCircle, ExternalLink, Presentation, Activity, CheckCircle2, ClipboardList, StickyNote, Smartphone, Download, Mic, Eye, ChevronDown, Edit3, Save, Trash2 } from 'lucide-react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -445,18 +446,19 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
   const setSubTabAtiva = setSubTabInterna;
 
   // Save voice edit and reprocess with AI
-  const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string) => {
+  const handleSaveVoiceEdit = async (avId: string, extraAudioBase64?: string, extraAudioMimeType?: string, textOverride?: string) => {
     setSavingVoiceEdit(true);
+    const transcriptToUse = textOverride !== undefined ? textOverride : editingVoiceText;
     try {
       // 1. Update transcription text
-      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: editingVoiceText }).eq('id', avId);
+      const { error } = await (supabase as any).from('avaliacoes_voz').update({ transcricao: transcriptToUse }).eq('id', avId);
       if (error) throw error;
 
       // 2. Reprocess with AI using correct parameter name
       const av = voiceAvaliacoes.find((a: any) => a.id === avId);
       if (av) {
         const body: any = {
-          transcript: editingVoiceText,
+          transcript: transcriptToUse,
           serviceType: av.servico || 'identidade',
           patientName: patientName,
         };
@@ -476,9 +478,9 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
           const resultado = data.assessment;
           const cleanResult = JSON.parse(JSON.stringify(resultado));
           // Update transcription with AI-generated one if it returned more content
-          const finalTranscript = data.transcricao && data.transcricao.length > editingVoiceText.length
+          const finalTranscript = data.transcricao && data.transcricao.length > transcriptToUse.length
             ? data.transcricao
-            : editingVoiceText;
+            : transcriptToUse;
 
           await (supabase as any).from('avaliacoes_voz').update({
             resultado: cleanResult,
@@ -497,7 +499,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
             terapeuta_id: user.id,
             tipo: 'avaliacao_voz',
             titulo: `Avaliação por Voz atualizada — ${av.classificacao_severidade || 'N/A'}`,
-            descricao: `📝 Transcrição editada e reprocessada.\n\n${editingVoiceText.slice(0, 500)}`,
+            descricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${transcriptToUse.slice(0, 500)}`,
             dados_extras: { voice_assessment_id: avId },
             referencia_id: avId,
           });
@@ -1202,6 +1204,41 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
           onClose={() => setShowReport(null)}
         />
       )}
+
+      {/* Dialog: Adicionar complemento (voz / áudio / descrição) à avaliação presencial existente */}
+      <Dialog open={!!addingVoiceToId} onOpenChange={(o) => !o && setAddingVoiceToId(null)}>
+        <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Mic className="h-4 w-4 text-violet-600" />
+              Adicionar complemento à avaliação
+            </DialogTitle>
+            <DialogDescription>
+              Grave por voz, faça upload de áudio ou escreva uma observação. A IA vai somar ao resultado existente e atualizar a análise.
+            </DialogDescription>
+          </DialogHeader>
+          {addingVoiceToId && (() => {
+            const av = voiceAvaliacoes.find((a: any) => a.id === addingVoiceToId);
+            const existingTranscript = av?.transcricao || '';
+            return (
+              <VoiceAssessment
+                serviceType={(av?.servico as any) || 'identidade'}
+                pacienteId={paciente.id}
+                patientName={patientName}
+                appendMode
+                mode="voice"
+                onAppendCapture={async (capturedText, capturedAudioBase64, capturedAudioMimeType) => {
+                  const stamp = format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR });
+                  const additionLabel = `\n\n--- Complemento (${stamp}) ---\n${capturedText || '(áudio anexado)'}`;
+                  const merged = existingTranscript + additionLabel;
+                  setAddingVoiceToId(null);
+                  await handleSaveVoiceEdit(av.id, capturedAudioBase64, capturedAudioMimeType, merged);
+                }}
+              />
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
