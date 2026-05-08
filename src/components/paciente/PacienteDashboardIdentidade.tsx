@@ -458,7 +458,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       const av = voiceAvaliacoes.find((a: any) => a.id === avId);
       if (av) {
         const body: any = {
-          transcript: editingVoiceText,
+          transcript: transcriptToUse,
           serviceType: av.servico || 'identidade',
           patientName: patientName,
         };
