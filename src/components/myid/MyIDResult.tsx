@@ -1,11 +1,43 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { ChevronDown, ChevronUp, AlertCircle, CheckCircle2, TrendingUp } from 'lucide-react';
 import MyIDFormulaDisplay from './MyIDFormulaDisplay';
 import MyIDDicasPessoais from './MyIDDicasPessoais';
 import { shareMyIDResults } from '@/utils/whatsapp';
 import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
+
+// Linguagem simples: o que está ruim em cada dimensão
+const PROBLEMA_SIMPLES: Record<string, (score: number) => string> = {
+    D: (s) => s >= 7 ? 'Sua dor está intensa e atrapalhando o dia a dia.' : 'Você sente dor com frequência.',
+    EFI: (s) => s >= 7 ? 'Você está com muita dificuldade nas atividades do dia a dia.' : 'Algumas atividades estão mais difíceis do que deveriam.',
+    P: (s) => s >= 5 ? 'Medo de se mexer ou pensamentos negativos sobre a dor estão te travando.' : 'Há alguma insegurança em relação ao movimento.',
+    I: (s) => s >= 2 ? 'A dor já está há tempo demais sem tratamento adequado.' : 'A dor é recente — bom momento para agir.',
+    R: (s) => s >= 7 ? 'Seu corpo não está recuperando: sono ruim, cansaço e estresse altos.' : 'Sono, energia ou estresse estão desregulados.',
+    C: (s) => s >= 6 ? 'Pressões do trabalho, família ou dinheiro estão pesando muito.' : 'O contexto de vida está sobrecarregando você.',
+    AF: (s) => s >= 6 ? 'Você está muito parado(a) — isso piora a dor.' : 'Falta movimento no seu dia.',
+    HID: (s) => 'Você está bebendo pouca água.',
+    NUT: (s) => 'Sua alimentação pode estar inflamando o corpo.',
+    ERG: (s) => s >= 6 ? 'Sua postura/posto de trabalho está agredindo o corpo todo dia.' : 'Pequenos ajustes de postura ajudariam muito.',
+    N: (s) => 'Cicatrizes, cirurgias ou questões viscerais estão somando ruído ao sistema.',
+};
+
+// Linguagem simples: o que fazer
+const ACAO_SIMPLES: Record<string, string> = {
+    D: 'Procure um fisioterapeuta para tratar a dor de forma ativa, sem só remédio.',
+    EFI: 'Comece a se mover dentro do que dá — atividades simples já contam.',
+    P: 'Converse sobre seus medos com o profissional. Movimento seguro e gradual cura.',
+    I: 'Não espere mais: quanto antes começar, mais rápido melhora.',
+    R: 'Priorize o sono (7-8h), reduza telas à noite e busque relaxamento ativo.',
+    C: 'Identifique 1 fonte de estresse para reduzir esta semana — peça apoio se precisar.',
+    AF: 'Caminhe 20-30 min por dia, 4-5x na semana. É o remédio mais barato.',
+    HID: 'Beba 2-3 litros de água por dia. Coloque uma garrafa visível.',
+    NUT: 'Reduza ultraprocessados, açúcar e álcool. Aumente frutas, vegetais e proteína.',
+    ERG: 'Ajuste cadeira/tela do trabalho e faça pausa de 2 min a cada 45 min sentado(a).',
+    N: 'Comente cirurgias e questões viscerais com seu terapeuta — pode mudar a abordagem.',
+};
 
 interface MyIDResultProps {
     result: any;
@@ -82,13 +114,25 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
     const myidScoreValue = MyID_score ?? 0;
     const hasWomenHealth = rawData.bloco_6_cycle_regularity || rawData.bloco_6_endometriosis || rawData.bloco_6_pcos;
 
+    // Constrói itens ordenados por impacto (mesma fonte do breakdown)
+    const perdasItems = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
+    const top3Ruim = perdasItems.slice(0, 3);
+    const top3Melhorar = perdasItems.slice(0, 3);
+
+    // Status simples
+    const statusInfo = (() => {
+        const v = myidScoreValue;
+        if (v >= 85) return { emoji: '🟢', titulo: 'Você está bem!', cor: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-950/20', borda: 'border-emerald-300', frase: 'Seu corpo e estilo de vida estão em equilíbrio. Mantenha o que está fazendo.' };
+        if (v >= 70) return { emoji: '🟡', titulo: 'Está bom, mas dá pra melhorar', cor: 'text-amber-600', bg: 'bg-amber-50 dark:bg-amber-950/20', borda: 'border-amber-300', frase: 'Você tem alguns pontos de atenção. Pequenos ajustes vão fazer grande diferença.' };
+        if (v >= 50) return { emoji: '🟠', titulo: 'Atenção: seu sistema está sobrecarregado', cor: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/20', borda: 'border-orange-300', frase: 'Vários fatores estão somando contra você. Hora de agir com apoio profissional.' };
+        return { emoji: '🔴', titulo: 'Situação crítica — busque ajuda', cor: 'text-destructive', bg: 'bg-destructive/10', borda: 'border-destructive/40', frase: 'Seu corpo está pedindo socorro. Procure acompanhamento profissional o quanto antes.' };
+    })();
+
     return (
-        <div className="space-y-8 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
-            <div className="text-center space-y-4 pt-8">
-                <div className="inline-block px-4 py-1.5 bg-primary/10 text-primary font-bold rounded-full mb-2 tracking-wide text-sm">
-                    PROCESSAMENTO CONCLUÍDO
-                </div>
-                <h1 className="text-4xl font-extrabold tracking-tight">🎯 SEU RESULTADO MyID-100</h1>
+        <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
+            <div className="text-center pt-6">
+                <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Seu resultado MyID</h1>
+                <p className="text-sm text-muted-foreground mt-1">Em linguagem simples — o que está bem, o que precisa melhorar.</p>
             </div>
 
             {/* Red Flags Warning */}
@@ -108,117 +152,95 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                 </Card>
             )}
 
-            {/* Formula Display with Score, Losses, Driver */}
-            <MyIDFormulaDisplay
-                scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
-                myidScore={myidScoreValue}
-                perdas={perdas_calculadas}
-                driverPrimario={myid_100?.driver_primario}
-                gatilhosCriticos={myid_100?.gatilhos_criticos_ativados || []}
-                hasRedFlags={red_flags_detected}
-            />
-
-            {/* Onde você está perdendo pontos — breakdown concreto */}
-            {(() => {
-                const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
-                if (items.length === 0) return null;
-                const maxPerda = Math.max(...items.map(i => i.perda), 1);
-                return (
-                    <Card className="shadow-sm">
-                        <CardHeader className="pb-3">
-                            <CardTitle className="text-lg font-bold flex items-center gap-2">
-                                📉 Onde você está perdendo pontos
-                            </CardTitle>
-                            <CardDescription className="text-xs">
-                                Detalhamento por dimensão — quanto maior a barra, maior o impacto no seu MyID-100.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent className="space-y-3">
-                            {items.map(item => (
-                                <div key={item.key} className={`p-3 rounded-lg border ${item.isDriver ? 'border-primary/40 bg-primary/5' : 'border-border bg-card'}`}>
-                                    <div className="flex items-start justify-between gap-2 mb-1.5">
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex items-center gap-2 flex-wrap">
-                                                <span className="font-semibold text-sm">{item.label}</span>
-                                                {item.isDriver && <Badge className="text-[9px] h-4 bg-primary/15 text-primary border-primary/30 hover:bg-primary/15">PRINCIPAL</Badge>}
-                                                {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">CRÍTICO</Badge>}
-                                            </div>
-                                            {item.interpretacao && (
-                                                <p className="text-xs text-muted-foreground mt-0.5">{item.interpretacao}</p>
-                                            )}
-                                        </div>
-                                        <div className="text-right shrink-0">
-                                            <div className="text-base font-black text-destructive">−{item.perda}</div>
-                                            <div className="text-[10px] text-muted-foreground">pts</div>
-                                        </div>
-                                    </div>
-                                    <Progress value={(item.perda / maxPerda) * 100} className="h-1.5" />
-                                    <div className="text-[10px] text-muted-foreground/70 mt-1">
-                                        Score bruto: {item.score.toFixed(1)}/10
-                                    </div>
-                                </div>
-                            ))}
-                        </CardContent>
-                    </Card>
-                );
-            })()}
-
-            {/* Dicas Personalizadas (data-driven, específicas) */}
-            <MyIDDicasPessoais scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }} myidScore={myid_100 ?? MyID_score ?? 0} />
-
-            {/* Hidden Factors */}
-            <Card className="border-border shadow-sm">
-                <CardHeader className="bg-muted/30 pb-4">
-                    <CardTitle className="text-foreground/80 flex items-center gap-2 text-lg">
-                        <span>🔍</span> FATORES CONTEXTUAIS
-                    </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3 pt-4">
-                    <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                        <span className="font-bold text-foreground/70">Padrão da Dor:</span>
-                        <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{pain_pattern}</span>
+            {/* ───── BIG SCORE + STATUS EM LINGUAGEM SIMPLES ───── */}
+            <Card className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm`}>
+                <CardContent className="p-6 sm:p-8 text-center space-y-3">
+                    <div className="text-5xl">{statusInfo.emoji}</div>
+                    <div>
+                        <div className={`text-6xl sm:text-7xl font-black ${statusInfo.cor} leading-none`}>
+                            {Math.round(myidScoreValue)}
+                            <span className="text-2xl text-muted-foreground font-bold">/100</span>
+                        </div>
+                        <div className={`text-base sm:text-lg font-bold mt-2 ${statusInfo.cor}`}>{statusInfo.titulo}</div>
                     </div>
-                    <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                        <span className="font-bold text-foreground/70">Prognóstico:</span>
-                        <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{healing_history?.prognosis || 'Normal'}</span>
-                    </div>
-                    {medications?.length > 0 && (
-                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                            <span className="font-bold text-foreground/70">Medicações:</span>
-                            <span className="font-mono bg-muted/50 px-3 py-0.5 rounded text-sm">{medications.join(', ')}</span>
-                        </div>
-                    )}
-                    {rawData.bloco_5h_workspace && (
-                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                            <span className="font-bold text-foreground/70">Ergonomia:</span>
-                            <span className="text-sm">{translateWorkspace(rawData.bloco_5h_workspace)}{rawData.bloco_5h_sitting_continuous ? ` · ${rawData.bloco_5h_sitting_continuous}min sentado sem pausa` : ''}</span>
-                        </div>
-                    )}
-                    {rawData.bloco_5e_lifestyle && (
-                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                            <span className="font-bold text-foreground/70">Estilo de vida:</span>
-                            <span className="text-sm">{translateLifestyle(rawData.bloco_5e_lifestyle)}{rawData.bloco_5e_intensity && rawData.bloco_5e_intensity !== 'none' ? ` · intensidade ${translateIntensity(rawData.bloco_5e_intensity)}` : ''}</span>
-                        </div>
-                    )}
-                    {rawData.bloco_5f_water_liters && (
-                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                            <span className="font-bold text-foreground/70">Hidratação:</span>
-                            <span className="text-sm">{rawData.bloco_5f_water_liters}L/dia</span>
-                        </div>
-                    )}
-                    {hasWomenHealth && (
-                        <div className="flex justify-between text-sm py-2 border-b border-border/50">
-                            <span className="font-bold text-foreground/70">Ciclo menstrual:</span>
-                            <span className="text-sm">{rawData.bloco_6_cycle_affects_pain ? 'Influencia a dor' : 'Pouca influência na dor'}</span>
-                        </div>
-                    )}
+                    <p className="text-sm text-foreground/80 max-w-md mx-auto">{statusInfo.frase}</p>
                 </CardContent>
             </Card>
+
+            {/* ───── O QUE ESTÁ RUIM ───── */}
+            {top3Ruim.length > 0 && (
+                <Card className="border-l-4 border-l-destructive shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <AlertCircle className="h-5 w-5 text-destructive" />
+                            O que está pesando contra você
+                        </CardTitle>
+                        <CardDescription className="text-xs">Os 3 fatores que mais estão afetando seu bem-estar agora.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {top3Ruim.map((item, idx) => {
+                            const frase = PROBLEMA_SIMPLES[item.key]?.(item.score) || item.interpretacao || `${item.label} precisa de atenção.`;
+                            return (
+                                <div key={item.key} className="flex gap-3 items-start p-3 rounded-lg bg-destructive/5 border border-destructive/15">
+                                    <div className="flex-shrink-0 w-7 h-7 rounded-full bg-destructive text-destructive-foreground font-bold text-sm flex items-center justify-center">
+                                        {idx + 1}
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <div className="flex items-center gap-2 flex-wrap mb-0.5">
+                                            <span className="font-semibold text-sm">{item.label}</span>
+                                            {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">URGENTE</Badge>}
+                                        </div>
+                                        <p className="text-sm text-foreground/80">{frase}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ───── O QUE FAZER PARA MELHORAR ───── */}
+            {top3Melhorar.length > 0 && (
+                <Card className="border-l-4 border-l-emerald-500 shadow-sm">
+                    <CardHeader className="pb-3">
+                        <CardTitle className="text-lg font-bold flex items-center gap-2">
+                            <TrendingUp className="h-5 w-5 text-emerald-600" />
+                            O que fazer para melhorar
+                        </CardTitle>
+                        <CardDescription className="text-xs">Ações práticas, na ordem de maior impacto.</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                        {top3Melhorar.map((item, idx) => {
+                            const acao = ACAO_SIMPLES[item.key] || 'Converse com seu profissional sobre como abordar este ponto.';
+                            return (
+                                <div key={item.key} className="flex gap-3 items-start p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/20 border border-emerald-200 dark:border-emerald-900">
+                                    <CheckCircle2 className="h-5 w-5 text-emerald-600 flex-shrink-0 mt-0.5" />
+                                    <div className="flex-1 min-w-0">
+                                        <div className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 uppercase tracking-wide mb-0.5">
+                                            Ação {idx + 1} · {item.label}
+                                        </div>
+                                        <p className="text-sm text-foreground">{acao}</p>
+                                    </div>
+                                </div>
+                            );
+                        })}
+                    </CardContent>
+                </Card>
+            )}
+
+            {/* ───── DETALHES TÉCNICOS (colapsável) ───── */}
+            <DetalhesTecnicos
+                scores={{ D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED }}
+                myidScoreValue={myidScoreValue}
+                perdas_calculadas={perdas_calculadas}
+                myid_100={myid_100}
+                red_flags_detected={red_flags_detected}
+            />
 
             <div className="bg-card p-6 rounded-xl border shadow-sm text-center space-y-4">
                 <h3 className="font-bold text-xl text-foreground">🎊 OBRIGADO POR PARTICIPAR!</h3>
                 <p className="text-muted-foreground">
-                    Você acabou de criar sua "impressão digital sistêmica" COMPLETA e PRECISA.
+                    Compartilhe com seu profissional para um plano personalizado.
                 </p>
                 <div className="pt-4 flex flex-wrap justify-center gap-3">
                     <button className="px-4 py-2 bg-muted hover:bg-muted/80 text-foreground font-medium rounded-md text-sm transition-colors">
@@ -238,6 +260,76 @@ export function MyIDResult({ result, rawData = {} }: MyIDResultProps) {
                     Data: {new Date().toLocaleDateString()} | ID: {result.session_id || 'LOCAL'} | Versão: MyID-100 v2.0
                 </p>
             </div>
+        </div>
+    );
+}
+
+// ───────────────────────────────────────────────────────
+// Detalhes técnicos (colapsável)
+// ───────────────────────────────────────────────────────
+interface DetalhesTecnicosProps {
+    scores: any;
+    myidScoreValue: number;
+    perdas_calculadas: any;
+    myid_100: any;
+    red_flags_detected: boolean;
+}
+
+function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected }: DetalhesTecnicosProps) {
+    const [open, setOpen] = useState(false);
+    const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
+    const maxPerda = Math.max(...items.map(i => i.perda), 1);
+
+    return (
+        <div>
+            <Button variant="outline" onClick={() => setOpen(o => !o)} className="w-full justify-between">
+                <span className="text-sm font-semibold">
+                    {open ? 'Ocultar' : 'Ver'} detalhes técnicos (para profissionais)
+                </span>
+                {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+            </Button>
+
+            {open && (
+                <div className="space-y-6 mt-4 animate-in fade-in slide-in-from-top-2 duration-300">
+                    <MyIDFormulaDisplay
+                        scores={scores}
+                        myidScore={myidScoreValue}
+                        perdas={perdas_calculadas}
+                        driverPrimario={myid_100?.driver_primario}
+                        gatilhosCriticos={myid_100?.gatilhos_criticos_ativados || []}
+                        hasRedFlags={red_flags_detected}
+                    />
+
+                    {items.length > 0 && (
+                        <Card className="shadow-sm">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-base font-bold">📉 Perda por dimensão</CardTitle>
+                                <CardDescription className="text-xs">Quanto maior a barra, maior o impacto no MyID-100.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-2.5">
+                                {items.map(item => (
+                                    <div key={item.key} className={`p-2.5 rounded-lg border ${item.isDriver ? 'border-primary/40 bg-primary/5' : 'border-border'}`}>
+                                        <div className="flex items-center justify-between gap-2 mb-1">
+                                            <div className="flex items-center gap-2 flex-wrap min-w-0">
+                                                <span className="font-semibold text-xs">{item.label}</span>
+                                                {item.isDriver && <Badge className="text-[9px] h-4 bg-primary/15 text-primary border-primary/30 hover:bg-primary/15">PRINCIPAL</Badge>}
+                                                {item.gatilho && <Badge variant="destructive" className="text-[9px] h-4">CRÍTICO</Badge>}
+                                            </div>
+                                            <div className="text-sm font-black text-destructive shrink-0">−{item.perda} pts</div>
+                                        </div>
+                                        <Progress value={(item.perda / maxPerda) * 100} className="h-1.5" />
+                                        {item.interpretacao && (
+                                            <p className="text-[11px] text-muted-foreground mt-1">{item.interpretacao}</p>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
+
+                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} />
+                </div>
+            )}
         </div>
     );
 }
