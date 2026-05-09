@@ -1689,35 +1689,53 @@ export type Database = {
       myid_avaliacoes: {
         Row: {
           created_at: string
+          dimensoes_preenchidas: Json
+          fase_atual: number
+          fase_concluida: number
           id: string
+          myid_score_parcial: number | null
           paciente_id: string | null
+          red_flags_detectadas: boolean
           respostas_brutas: Json | null
           resultado_processado: Json | null
           status: string
           terapeuta_id: string
           token_acesso: string
+          ultima_atividade_em: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          dimensoes_preenchidas?: Json
+          fase_atual?: number
+          fase_concluida?: number
           id?: string
+          myid_score_parcial?: number | null
           paciente_id?: string | null
+          red_flags_detectadas?: boolean
           respostas_brutas?: Json | null
           resultado_processado?: Json | null
           status?: string
           terapeuta_id: string
           token_acesso?: string
+          ultima_atividade_em?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          dimensoes_preenchidas?: Json
+          fase_atual?: number
+          fase_concluida?: number
           id?: string
+          myid_score_parcial?: number | null
           paciente_id?: string | null
+          red_flags_detectadas?: boolean
           respostas_brutas?: Json | null
           resultado_processado?: Json | null
           status?: string
           terapeuta_id?: string
           token_acesso?: string
+          ultima_atividade_em?: string
           updated_at?: string
         }
         Relationships: [
@@ -3497,14 +3515,16 @@ export type Database = {
       get_myid_em_andamento: {
         Args: { p_token: string }
         Returns: {
-          dados_avaliacao: Json
           dimensoes_preenchidas: Json
           fase_atual: number
           fase_concluida: number
           id: string
           myid_score_parcial: number
           paciente_id: string
-          red_flags: Json
+          red_flags_detectadas: boolean
+          respostas_brutas: Json
+          resultado_processado: Json
+          status: string
           terapeuta_id: string
         }[]
       }
@@ -3554,12 +3574,10 @@ export type Database = {
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
       salvar_fase_myid: {
         Args: {
-          p_dados: Json
-          p_data_avaliacao?: string
           p_dimensoes: Json
           p_fase: number
-          p_paciente_nome?: string
-          p_red_flags?: Json
+          p_red_flags?: boolean
+          p_respostas: Json
           p_score_parcial: number
           p_token: string
         }
