@@ -248,13 +248,19 @@ export type Database = {
       avaliacoes_identidade: {
         Row: {
           classificacao: string | null
+          concluido_em: string | null
           created_at: string
           dados_avaliacao: Json
           data_avaliacao: string
+          dimensoes_preenchidas: Json
+          fase_atual: number
+          fase_concluida: number
           id: string
           id_final: number | null
+          link_id: string | null
           myid_analysis: Json | null
           myid_score: number | null
+          myid_score_parcial: number | null
           paciente_id: string
           paciente_nome: string
           red_flags: Json | null
@@ -272,13 +278,19 @@ export type Database = {
         }
         Insert: {
           classificacao?: string | null
+          concluido_em?: string | null
           created_at?: string
           dados_avaliacao: Json
           data_avaliacao: string
+          dimensoes_preenchidas?: Json
+          fase_atual?: number
+          fase_concluida?: number
           id?: string
           id_final?: number | null
+          link_id?: string | null
           myid_analysis?: Json | null
           myid_score?: number | null
+          myid_score_parcial?: number | null
           paciente_id: string
           paciente_nome: string
           red_flags?: Json | null
@@ -296,13 +308,19 @@ export type Database = {
         }
         Update: {
           classificacao?: string | null
+          concluido_em?: string | null
           created_at?: string
           dados_avaliacao?: Json
           data_avaliacao?: string
+          dimensoes_preenchidas?: Json
+          fase_atual?: number
+          fase_concluida?: number
           id?: string
           id_final?: number | null
+          link_id?: string | null
           myid_analysis?: Json | null
           myid_score?: number | null
+          myid_score_parcial?: number | null
           paciente_id?: string
           paciente_nome?: string
           red_flags?: Json | null
@@ -3476,6 +3494,20 @@ export type Database = {
           terapeuta_id: string
         }[]
       }
+      get_myid_em_andamento: {
+        Args: { p_token: string }
+        Returns: {
+          dados_avaliacao: Json
+          dimensoes_preenchidas: Json
+          fase_atual: number
+          fase_concluida: number
+          id: string
+          myid_score_parcial: number
+          paciente_id: string
+          red_flags: Json
+          terapeuta_id: string
+        }[]
+      }
       get_patient_by_portal_token: {
         Args: { p_token: string }
         Returns: {
@@ -3520,6 +3552,19 @@ export type Database = {
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
       link_patient_user_by_email: { Args: never; Returns: string }
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
+      salvar_fase_myid: {
+        Args: {
+          p_dados: Json
+          p_data_avaliacao?: string
+          p_dimensoes: Json
+          p_fase: number
+          p_paciente_nome?: string
+          p_red_flags?: Json
+          p_score_parcial: number
+          p_token: string
+        }
+        Returns: string
+      }
       track_agenda_link_access: {
         Args: { p_token: string }
         Returns: undefined
