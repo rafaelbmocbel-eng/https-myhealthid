@@ -4,77 +4,50 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { lazy, Suspense, forwardRef, type ComponentType } from "react";
-import { Loader2 } from "lucide-react";
+import { lazy, Suspense, forwardRef } from "react";
 import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteRestorer from "./components/RouteRestorer";
 import GlobalBackButton from "./components/GlobalBackButton";
 
-type LazyModule<T extends ComponentType<any>> = { default: T };
-
-const reloadAfterInvalidLazyModule = () => {
-  const key = "myhealthid.lazy-module-reload";
-  const last = Number(window.sessionStorage.getItem(key) || 0);
-  if (Date.now() - last < 30_000) return;
-  window.sessionStorage.setItem(key, String(Date.now()));
-  window.location.reload();
-};
-
-function LazyLoadRecovery() {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
-      <Loader2 className="h-6 w-6 animate-spin text-primary" />
-    </div>
-  );
-}
-
-const safeLazy = <T extends ComponentType<any>>(loader: () => Promise<LazyModule<T>>) =>
-  lazy(() => loader().then((mod) => {
-    if (!mod?.default) {
-      reloadAfterInvalidLazyModule();
-      return { default: LazyLoadRecovery as unknown as T };
-    }
-    return mod;
-  }));
-
 // ALL pages lazy-loaded for optimal code-splitting
-const Index = safeLazy(() => import("./pages/Index"));
-const Auth = safeLazy(() => import("./pages/Auth"));
-const MetodoIdentidade = safeLazy(() => import("./pages/MetodoIdentidade"));
-const NotFound = safeLazy(() => import("./pages/NotFound"));
-const MyIDResponder = safeLazy(() => import("./pages/MyIDResponder"));
-const CobZero = safeLazy(() => import("./pages/CobZero"));
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
+const CobZero = lazy(() => import("./pages/CobZero"));
 
-const Agenda = safeLazy(() => import("./pages/Agenda"));
-const Pacientes = safeLazy(() => import("./pages/Pacientes"));
-const PacientePerfil = safeLazy(() => import("./pages/PacientePerfil"));
-const AvaliacaoPublica = safeLazy(() => import("./pages/AvaliacaoPublica"));
-const AgendaPublica = safeLazy(() => import("./pages/AgendaPublica"));
-const GestaoVendas = safeLazy(() => import("./pages/GestaoVendas"));
-const Configuracoes = safeLazy(() => import("./pages/Configuracoes"));
-const FunilPublico = safeLazy(() => import("./pages/FunilPublico"));
-const Eventos = safeLazy(() => import("./pages/Eventos"));
-const EventoPublico = safeLazy(() => import("./pages/EventoPublico"));
-const CadastroCliente = safeLazy(() => import("./pages/CadastroCliente"));
+const Agenda = lazy(() => import("./pages/Agenda"));
+const Pacientes = lazy(() => import("./pages/Pacientes"));
+const PacientePerfil = lazy(() => import("./pages/PacientePerfil"));
+const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
+const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
+const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
+const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const FunilPublico = lazy(() => import("./pages/FunilPublico"));
+const Eventos = lazy(() => import("./pages/Eventos"));
+const EventoPublico = lazy(() => import("./pages/EventoPublico"));
+const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
+import { Loader2 } from "lucide-react";
 
 // Patient portal (lazy-loaded)
-const PacienteLogin = safeLazy(() => import("./pages/paciente/PacienteLogin"));
-const PortalGate = safeLazy(() => import("./pages/paciente/PortalGate"));
-const PacienteDashboard = safeLazy(() => import("./pages/paciente/PacienteDashboard"));
-const PacienteAgenda = safeLazy(() => import("./pages/paciente/PacienteAgenda"));
-const PacienteQuestionarios = safeLazy(() => import("./pages/paciente/PacienteQuestionarios"));
-const PacientePerfilPage = safeLazy(() => import("./pages/paciente/PacientePerfil"));
-const PacienteDiario = safeLazy(() => import("./pages/paciente/PacienteDiario"));
-const PacienteEvolucao = safeLazy(() => import("./pages/paciente/PacienteEvolucao"));
-const PacienteExercicios = safeLazy(() => import("./pages/paciente/PacienteExercicios"));
-const PacientePagamentos = safeLazy(() => import("./pages/paciente/PacientePagamentos"));
-const PacienteSaude = safeLazy(() => import("./pages/paciente/PacienteSaude"));
-const PacienteEventos = safeLazy(() => import("./pages/paciente/PacienteEventos"));
-const PacienteChat = safeLazy(() => import("./pages/paciente/PacienteChat"));
+const PacienteLogin = lazy(() => import("./pages/paciente/PacienteLogin"));
+const PortalGate = lazy(() => import("./pages/paciente/PortalGate"));
+const PacienteDashboard = lazy(() => import("./pages/paciente/PacienteDashboard"));
+const PacienteAgenda = lazy(() => import("./pages/paciente/PacienteAgenda"));
+const PacienteQuestionarios = lazy(() => import("./pages/paciente/PacienteQuestionarios"));
+const PacientePerfilPage = lazy(() => import("./pages/paciente/PacientePerfil"));
+const PacienteDiario = lazy(() => import("./pages/paciente/PacienteDiario"));
+const PacienteEvolucao = lazy(() => import("./pages/paciente/PacienteEvolucao"));
+const PacienteExercicios = lazy(() => import("./pages/paciente/PacienteExercicios"));
+const PacientePagamentos = lazy(() => import("./pages/paciente/PacientePagamentos"));
+const PacienteSaude = lazy(() => import("./pages/paciente/PacienteSaude"));
+const PacienteEventos = lazy(() => import("./pages/paciente/PacienteEventos"));
+const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
