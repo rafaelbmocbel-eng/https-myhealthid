@@ -12,6 +12,7 @@ import {
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
 } from 'recharts';
 import { differenceInYears, parseISO, format } from 'date-fns';
+import DashboardFilters, { DEFAULT_FILTERS, DashboardFilterState, periodToDate, sexoMatch, ageInFaixa } from './DashboardFilters';
 
 const PALETTE = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
 
@@ -69,23 +70,50 @@ function interpretD(d: number): string {
   if (a < 0.8) return 'médio';
   return 'grande';
 }
+function normalCdf(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989422804014327 * Math.exp(-x*x/2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function pairedT(pre: number[], post: number[]) {
+  const n = Math.min(pre.length, post.length);
+  if (n < 2) return { t: 0, p: 1, df: 0, mean_diff: 0, ci_low: 0, ci_high: 0, n: 0 };
+  const diffs: number[] = [];
+  for (let i = 0; i < n; i++) { const d = post[i] - pre[i]; if (Number.isFinite(d)) diffs.push(d); }
+  const m = mean(diffs); const s = sd(diffs);
+  const se = s / Math.sqrt(diffs.length);
+  const t = se ? m / se : 0;
+  const p = 2 * (1 - normalCdf(Math.abs(t)));
+  const margin = 1.96 * se;
+  return { t: +t.toFixed(3), p: +p.toFixed(4), df: diffs.length-1, mean_diff: +m.toFixed(2), ci_low: +(m-margin).toFixed(2), ci_high: +(m+margin).toFixed(2), n: diffs.length };
+}
+function fnv1a(str: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return ('0000000' + (h >>> 0).toString(16)).slice(-8);
+}
+function pSig(p: number): string { if (p < 0.001) return '<0.001'; return p.toFixed(3); }
 
 export default function ResearchDashboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState('demografia');
+  const [filters, setFilters] = useState<DashboardFilterState>(DEFAULT_FILTERS);
 
   const { data, isLoading } = useQuery({
     queryKey: ['research-data', user?.id],
     queryFn: async () => {
-      const [pac, ava, voz] = await Promise.all([
+      const [pac, ava, voz, prot] = await Promise.all([
         supabase.from('pacientes').select('id, nome, sobrenome, data_nascimento, genero, created_at, ativo').eq('terapeuta_id', user!.id),
         supabase.from('avaliacoes_identidade').select('*').eq('terapeuta_id', user!.id),
         supabase.from('avaliacoes_voz').select('*').eq('terapeuta_id', user!.id),
+        (supabase as any).from('protocolos').select('id, paciente_id, titulo, status, data_inicio, data_fim_prevista, duracao_total, frequencia, objetivo_geral, scores_avaliacao, created_at').eq('terapeuta_id', user!.id),
       ]);
       return {
         pacientes: (pac.data || []) as Paciente[],
         avaliacoes: (ava.data || []) as Avaliacao[],
         voz: (voz.data || []) as Voz[],
+        protocolos: (prot.data || []) as any[],
       };
     },
     enabled: !!user,
@@ -93,11 +121,20 @@ export default function ResearchDashboard() {
 
   const stats = useMemo(() => {
     if (!data) return null;
-    const { pacientes, avaliacoes, voz } = data;
+    const cut = periodToDate(filters.period);
+    const inP = (iso?: string | null) => !cut || (iso ? new Date(iso) >= cut : false);
 
-    // Pacientes com pelo menos uma avaliação MyID
+    // Filtra pacientes por subgrupo
+    const allPac = data.pacientes.filter(p => sexoMatch(p.genero, filters.sexo) && ageInFaixa(age(p.data_nascimento), filters.faixa));
+    const pacIds = new Set(allPac.map(p => p.id));
+
+    const avaliacoes = data.avaliacoes.filter(a => pacIds.has(a.paciente_id) && inP(a.created_at));
+    const voz = data.voz.filter(v => pacIds.has(v.paciente_id) && inP(v.created_at));
+    const protocolos = data.protocolos.filter(pr => pacIds.has(pr.paciente_id) && inP(pr.created_at));
+
     const withMyID = new Set(avaliacoes.map(a => a.paciente_id));
-    const sample = pacientes.filter(p => withMyID.has(p.id));
+    const sample = allPac.filter(p => withMyID.has(p.id));
+    const pacientes = allPac;
 
     // Demografia
     const idades = sample.map(p => age(p.data_nascimento)).filter((n): n is number => n != null);
@@ -170,16 +207,89 @@ export default function ResearchDashboard() {
     }).filter(Boolean) as { pre: any; post: any }[];
 
     const dimCohen = DIMENSOES.map(d => {
-      const pre = prePost.map(x => Number(x.pre[d.key])).filter(Number.isFinite);
-      const post = prePost.map(x => Number(x.post[d.key])).filter(Number.isFinite);
+      const pairs = prePost.map(x => ({ pre: Number(x.pre[d.key]), post: Number(x.post[d.key]) }))
+        .filter(p => Number.isFinite(p.pre) && Number.isFinite(p.post));
+      const pre = pairs.map(p => p.pre);
+      const post = pairs.map(p => p.post);
       const dval = cohensD(pre, post);
+      const tt = pairedT(pre, post);
       return {
-        dimensao: d.label, key: d.key, n: pre.length,
+        dimensao: d.label, key: d.key, n: pairs.length,
         media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
-        delta: +(mean(post) - mean(pre)).toFixed(1),
+        delta: tt.mean_diff, ci: `[${tt.ci_low}; ${tt.ci_high}]`,
         cohen_d: dval, magnitude: interpretD(dval),
+        t: tt.t, p: tt.p, p_label: pSig(tt.p),
+        sig: tt.p < 0.05,
       };
     });
+
+    // Subgrupos: média MyID por sexo e faixa etária
+    const subSexo: Record<string, number[]> = {};
+    const subFaixa: Record<string, number[]> = {};
+    sample.forEach(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const last = avs[avs.length - 1];
+      const score = Number(last?.myid_score);
+      if (!Number.isFinite(score)) return;
+      const s = (p.genero || 'não informado').toLowerCase();
+      (subSexo[s] = subSexo[s] || []).push(score);
+      const a = age(p.data_nascimento);
+      let f = '60+';
+      if (a == null) f = 'não informado';
+      else if (a < 18) f = '<18';
+      else if (a < 30) f = '18-29';
+      else if (a < 45) f = '30-44';
+      else if (a < 60) f = '45-59';
+      (subFaixa[f] = subFaixa[f] || []).push(score);
+    });
+    const subgruposSexo = Object.entries(subSexo).map(([k, arr]) => ({ grupo: k, n: arr.length, media: +mean(arr).toFixed(1), dp: +sd(arr).toFixed(1) }));
+    const subgruposFaixa = Object.entries(subFaixa).map(([k, arr]) => ({ grupo: k, n: arr.length, media: +mean(arr).toFixed(1), dp: +sd(arr).toFixed(1) }));
+
+    // Análise por DIRETRIZ DE TRATAMENTO (protocolos)
+    // Cada protocolo: pareia avaliação ANTES de data_inicio com a MAIS RECENTE depois
+    const protocolosAnalise = data.protocolos.map(pr => {
+      const pid = pr.paciente_id;
+      const inicio = pr.data_inicio || pr.created_at?.slice(0, 10);
+      if (!inicio) return null;
+      const inicioDate = new Date(inicio);
+      const avsAntes = data.avaliacoes.filter(a => a.paciente_id === pid && new Date(a.created_at) < inicioDate).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const avsDepois = data.avaliacoes.filter(a => a.paciente_id === pid && new Date(a.created_at) >= inicioDate).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const pre = avsAntes[avsAntes.length - 1];
+      const post = avsDepois[avsDepois.length - 1];
+      if (!pre || !post) return null;
+      return {
+        protocolo_id: pr.id, paciente_id: pid, titulo: pr.titulo, status: pr.status,
+        duracao: pr.duracao_total, frequencia: pr.frequencia,
+        myid_pre: Number(pre.myid_score), myid_post: Number(post.myid_score),
+        delta: Number(post.myid_score) - Number(pre.myid_score),
+        dias: Math.max(1, Math.round((new Date(post.created_at).getTime() - new Date(pre.created_at).getTime()) / 86400000)),
+      };
+    }).filter(Boolean) as any[];
+
+    // Agrupado por título da diretriz
+    const porDiretrizMap = new Map<string, any[]>();
+    protocolosAnalise.forEach(pa => {
+      const key = (pa.titulo || 'Sem título').trim();
+      (porDiretrizMap.get(key) || porDiretrizMap.set(key, []).get(key)!).push(pa);
+    });
+    const porDiretriz = Array.from(porDiretrizMap.entries()).map(([titulo, arr]) => {
+      const pre = arr.map(a => a.myid_pre).filter(Number.isFinite);
+      const post = arr.map(a => a.myid_post).filter(Number.isFinite);
+      const tt = pairedT(pre, post);
+      return {
+        titulo, n: arr.length,
+        media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
+        delta: tt.mean_diff, ci: `[${tt.ci_low}; ${tt.ci_high}]`,
+        cohen_d: cohensD(pre, post), p: tt.p, p_label: pSig(tt.p),
+        dias_medio: +mean(arr.map(a => a.dias)).toFixed(0),
+      };
+    }).sort((a, b) => b.n - a.n);
+
+    // Status dos protocolos
+    const protStatus = data.protocolos.reduce<Record<string, number>>((acc, pr) => {
+      acc[pr.status || 'desconhecido'] = (acc[pr.status || 'desconhecido'] || 0) + 1;
+      return acc;
+    }, {});
 
     // Matriz de correlação entre dimensões (na última avaliação de cada paciente)
     const ultimas = sample.map(p => {
@@ -197,15 +307,20 @@ export default function ResearchDashboard() {
       })),
     }));
 
+    // Hash determinístico do dataset (reprodutibilidade)
+    const datasetSig = sample.map(p => `${p.id.slice(0,8)}:${avaliacoes.filter(a => a.paciente_id === p.id).length}`).sort().join('|');
+    const datasetHash = fnv1a(`${filters.period}|${filters.sexo}|${filters.faixa}|${datasetSig}`);
+
     return {
       n_pacientes_total: pacientes.length,
       n_amostra: sample.length,
       n_avaliacoes: avaliacoes.length,
       n_presencial: voz.length,
+      n_protocolos: data.protocolos.length,
       idade_media: +mean(idades).toFixed(1),
       idade_dp: +sd(idades).toFixed(1),
-      idade_min: Math.min(...idades, 0),
-      idade_max: Math.max(...idades, 0),
+      idade_min: idades.length ? Math.min(...idades) : 0,
+      idade_max: idades.length ? Math.max(...idades) : 0,
       sexo,
       faixas: Object.entries(faixas).map(([k, v]) => ({ faixa: k, n: v })),
       dimStats,
@@ -221,8 +336,15 @@ export default function ResearchDashboard() {
       dimCohen,
       corrMatrix,
       n_prepost: prePost.length,
+      subgruposSexo,
+      subgruposFaixa,
+      porDiretriz,
+      protStatus: Object.entries(protStatus).map(([k, v]) => ({ status: k, n: v })),
+      protocolosAnalise,
+      datasetHash,
+      filtros: filters,
     };
-  }, [data]);
+  }, [data, filters]);
 
   if (isLoading || !stats) {
     return <div className="flex justify-center py-20"><Loader2 className="icon-lg animate-spin text-primary" /></div>;
@@ -293,14 +415,20 @@ export default function ResearchDashboard() {
     exportToCsv(`pesquisa_prepost_cohen_${format(new Date(), 'yyyyMMdd')}.csv`, rows);
   };
 
+  const exportProtocolos = () => {
+    exportToCsv(`pesquisa_protocolos_${format(new Date(), 'yyyyMMdd')}.csv`, stats.porDiretriz);
+  };
+
   return (
     <div className="space-y-4">
+      <DashboardFilters value={filters} onChange={setFilters} showSubgroups />
+
       {/* Header KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         {[
-          { label: 'Amostra (n)', value: stats.n_amostra, icon: Users, sub: `${stats.n_pacientes_total} pacientes totais` },
-          { label: 'Avaliações MyID', value: stats.n_avaliacoes, icon: Activity, sub: 'todas as fases' },
-          { label: 'Presenciais', value: stats.n_presencial, icon: FileText, sub: 'voz + mapa corporal' },
+          { label: 'Amostra (n)', value: stats.n_amostra, icon: Users, sub: `${stats.n_pacientes_total} totais` },
+          { label: 'Avaliações MyID', value: stats.n_avaliacoes, icon: Activity, sub: 'no período' },
+          { label: 'Diretrizes', value: stats.n_protocolos, icon: FileText, sub: 'tratamentos' },
           { label: 'Red Flags', value: `${stats.pct_red_flags}%`, icon: AlertTriangle, sub: `${stats.n_red_flags} casos` },
         ].map(s => {
           const Icon = s.icon;
@@ -317,28 +445,34 @@ export default function ResearchDashboard() {
         })}
       </div>
 
-      {/* Export bar */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={exportRawCSV} className="gap-1.5">
           <Download className="icon-xs" /> CSV — Dados brutos
         </Button>
         <Button size="sm" variant="outline" onClick={exportTabela1} className="gap-1.5">
-          <FileText className="icon-xs" /> Tabela 1 (descritivo)
+          <FileText className="icon-xs" /> Tabela 1
         </Button>
         <Button size="sm" variant="outline" onClick={exportPrePost} className="gap-1.5">
-          <FileText className="icon-xs" /> Pré/pós + Cohen's d
+          <FileText className="icon-xs" /> Pré/pós + d + p
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportProtocolos} className="gap-1.5">
+          <FileText className="icon-xs" /> Diretrizes (outcomes)
         </Button>
         <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
           <FileText className="icon-xs" /> Codebook
         </Button>
+        <span className="text-[10px] text-muted-foreground ml-auto font-mono" title="Hash determinístico do dataset filtrado — use para reprodutibilidade">
+          dataset#{stats.datasetHash}
+        </span>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="demografia" className="text-[10px] sm:text-xs">Demografia</TabsTrigger>
           <TabsTrigger value="myid" className="text-[10px] sm:text-xs">MyID</TabsTrigger>
           <TabsTrigger value="presencial" className="text-[10px] sm:text-xs">Presencial</TabsTrigger>
           <TabsTrigger value="estatistica" className="text-[10px] sm:text-xs">Estatística</TabsTrigger>
+          <TabsTrigger value="protocolos" className="text-[10px] sm:text-xs">Diretrizes</TabsTrigger>
           <TabsTrigger value="evolucao" className="text-[10px] sm:text-xs">Evolução</TabsTrigger>
         </TabsList>
 
@@ -447,9 +581,10 @@ export default function ResearchDashboard() {
                       <th className="text-right">n</th>
                       <th className="text-right">Pré</th>
                       <th className="text-right">Pós</th>
-                      <th className="text-right">Δ</th>
-                      <th className="text-right">Cohen's d</th>
-                      <th className="text-right">Magnitude</th>
+                      <th className="text-right">Δ (IC 95%)</th>
+                      <th className="text-right">d</th>
+                      <th className="text-right">t</th>
+                      <th className="text-right">p</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -459,9 +594,12 @@ export default function ResearchDashboard() {
                         <td className="text-right">{d.n}</td>
                         <td className="text-right">{d.media_pre}</td>
                         <td className="text-right">{d.media_post}</td>
-                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>{d.delta > 0 ? '+' : ''}{d.delta}</td>
-                        <td className="text-right font-mono">{d.cohen_d}</td>
-                        <td className="text-right text-muted-foreground">{d.magnitude}</td>
+                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>
+                          {d.delta > 0 ? '+' : ''}{d.delta} <span className="text-muted-foreground font-normal">{d.ci}</span>
+                        </td>
+                        <td className="text-right font-mono">{d.cohen_d} <span className="text-muted-foreground">({d.magnitude})</span></td>
+                        <td className="text-right font-mono">{d.t}</td>
+                        <td className={`text-right font-mono ${d.sig ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'}`}>{d.p_label}</td>
                       </tr>
                     ))}
                   </tbody>
