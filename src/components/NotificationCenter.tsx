@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useNotificacoes } from '@/hooks/useNotificacoes';
-import { Bell, CheckCheck, CalendarDays, ClipboardList, Star, MessageSquare, ExternalLink } from 'lucide-react';
+import { Bell, CheckCheck, CalendarDays, ClipboardList, Star, MessageSquare, ExternalLink, Sparkles } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -19,6 +19,7 @@ const iconMap: Record<string, typeof Bell> = {
   nps: Star,
   geral: MessageSquare,
   evento: Star,
+  diretriz_rascunho: Sparkles,
 };
 
 export default function NotificationCenter() {
