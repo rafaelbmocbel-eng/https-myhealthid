@@ -83,31 +83,53 @@ export function useEventos() {
   });
 
   const criarEvento = useMutation({
-    mutationFn: async (evento: Omit<Evento, 'id' | 'terapeuta_id' | 'created_at'> & { perguntas: Omit<EventoPergunta, 'id' | 'evento_id'>[] }) => {
-      const { perguntas, ...eventoData } = evento;
+    mutationFn: async (
+      evento: Omit<Evento, 'id' | 'terapeuta_id' | 'created_at' | 'recorrencia_grupo_id'> & {
+        perguntas: Omit<EventoPergunta, 'id' | 'evento_id'>[];
+        recorrencia?: RecorrenciaConfig | null;
+      }
+    ) => {
+      const { perguntas, recorrencia, ...eventoData } = evento;
+
+      // Build list of dates based on recurrence
+      const ocorrencias = recorrencia && recorrencia.ocorrencias > 1 ? recorrencia.ocorrencias : 1;
+      const stepDays = recorrencia
+        ? (recorrencia.tipo === 'semanal' ? 7 : 1) * Math.max(1, recorrencia.intervalo)
+        : 0;
+      const baseDate = new Date(eventoData.data_evento + 'T12:00:00');
+      const grupoId = ocorrencias > 1 ? crypto.randomUUID() : null;
+
+      const rows = Array.from({ length: ocorrencias }, (_, i) => {
+        const d = new Date(baseDate);
+        d.setDate(d.getDate() + i * stepDays);
+        const ymd = d.toISOString().split('T')[0];
+        return { ...eventoData, data_evento: ymd, terapeuta_id: user!.id, recorrencia_grupo_id: grupoId };
+      });
+
       const { data, error } = await supabase
         .from('eventos')
-        .insert({ ...eventoData, terapeuta_id: user!.id } as any)
-        .select('id')
-        .single();
+        .insert(rows as any)
+        .select('id');
       if (error) throw error;
 
-      if (perguntas.length > 0) {
-        const rows = perguntas.map((p, i) => ({
-          evento_id: data.id,
-          ordem: i + 1,
-          tipo: p.tipo,
-          pergunta: p.pergunta,
-          opcoes: p.opcoes || [],
-          obrigatoria: p.obrigatoria,
-          limite_por_opcao: (p as any).limite_por_opcao ?? null,
-        }));
-        await supabase.from('evento_perguntas').insert(rows as any);
+      if (perguntas.length > 0 && data) {
+        const allRows = data.flatMap(ev =>
+          perguntas.map((p, i) => ({
+            evento_id: ev.id,
+            ordem: i + 1,
+            tipo: p.tipo,
+            pergunta: p.pergunta,
+            opcoes: p.opcoes || [],
+            obrigatoria: p.obrigatoria,
+            limite_por_opcao: (p as any).limite_por_opcao ?? null,
+          }))
+        );
+        await supabase.from('evento_perguntas').insert(allRows as any);
       }
-      return data;
+      return { count: rows.length };
     },
-    onSuccess: () => {
-      toast.success('Evento criado com sucesso!');
+    onSuccess: ({ count }) => {
+      toast.success(count > 1 ? `${count} eventos criados!` : 'Evento criado com sucesso!');
       qc.invalidateQueries({ queryKey: ['eventos'] });
     },
     onError: (e: Error) => toast.error(e.message),
