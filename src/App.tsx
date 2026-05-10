@@ -49,6 +49,8 @@ const PacientePagamentos = lazy(() => import("./pages/paciente/PacientePagamento
 const PacienteSaude = lazy(() => import("./pages/paciente/PacienteSaude"));
 const PacienteEventos = lazy(() => import("./pages/paciente/PacienteEventos"));
 const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
+const PacientePlano = lazy(() => import("./pages/paciente/PacientePlano"));
+const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
