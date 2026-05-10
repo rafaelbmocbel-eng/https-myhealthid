@@ -159,7 +159,7 @@ export function MyIDPhasedFlow({
 
     // End of phase → save
     setSaving(true);
-    const { score, redFlags } = computePartialScore(data, fase);
+    const { score, redFlags, fullResult: partialFR } = computePartialScore(data, fase);
     const dims = dimsForPhase(fase);
 
     try {
