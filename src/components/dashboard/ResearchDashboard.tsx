@@ -207,16 +207,89 @@ export default function ResearchDashboard() {
     }).filter(Boolean) as { pre: any; post: any }[];
 
     const dimCohen = DIMENSOES.map(d => {
-      const pre = prePost.map(x => Number(x.pre[d.key])).filter(Number.isFinite);
-      const post = prePost.map(x => Number(x.post[d.key])).filter(Number.isFinite);
+      const pairs = prePost.map(x => ({ pre: Number(x.pre[d.key]), post: Number(x.post[d.key]) }))
+        .filter(p => Number.isFinite(p.pre) && Number.isFinite(p.post));
+      const pre = pairs.map(p => p.pre);
+      const post = pairs.map(p => p.post);
       const dval = cohensD(pre, post);
+      const tt = pairedT(pre, post);
       return {
-        dimensao: d.label, key: d.key, n: pre.length,
+        dimensao: d.label, key: d.key, n: pairs.length,
         media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
-        delta: +(mean(post) - mean(pre)).toFixed(1),
+        delta: tt.mean_diff, ci: `[${tt.ci_low}; ${tt.ci_high}]`,
         cohen_d: dval, magnitude: interpretD(dval),
+        t: tt.t, p: tt.p, p_label: pSig(tt.p),
+        sig: tt.p < 0.05,
       };
     });
+
+    // Subgrupos: média MyID por sexo e faixa etária
+    const subSexo: Record<string, number[]> = {};
+    const subFaixa: Record<string, number[]> = {};
+    sample.forEach(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const last = avs[avs.length - 1];
+      const score = Number(last?.myid_score);
+      if (!Number.isFinite(score)) return;
+      const s = (p.genero || 'não informado').toLowerCase();
+      (subSexo[s] = subSexo[s] || []).push(score);
+      const a = age(p.data_nascimento);
+      let f = '60+';
+      if (a == null) f = 'não informado';
+      else if (a < 18) f = '<18';
+      else if (a < 30) f = '18-29';
+      else if (a < 45) f = '30-44';
+      else if (a < 60) f = '45-59';
+      (subFaixa[f] = subFaixa[f] || []).push(score);
+    });
+    const subgruposSexo = Object.entries(subSexo).map(([k, arr]) => ({ grupo: k, n: arr.length, media: +mean(arr).toFixed(1), dp: +sd(arr).toFixed(1) }));
+    const subgruposFaixa = Object.entries(subFaixa).map(([k, arr]) => ({ grupo: k, n: arr.length, media: +mean(arr).toFixed(1), dp: +sd(arr).toFixed(1) }));
+
+    // Análise por DIRETRIZ DE TRATAMENTO (protocolos)
+    // Cada protocolo: pareia avaliação ANTES de data_inicio com a MAIS RECENTE depois
+    const protocolosAnalise = data.protocolos.map(pr => {
+      const pid = pr.paciente_id;
+      const inicio = pr.data_inicio || pr.created_at?.slice(0, 10);
+      if (!inicio) return null;
+      const inicioDate = new Date(inicio);
+      const avsAntes = data.avaliacoes.filter(a => a.paciente_id === pid && new Date(a.created_at) < inicioDate).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const avsDepois = data.avaliacoes.filter(a => a.paciente_id === pid && new Date(a.created_at) >= inicioDate).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      const pre = avsAntes[avsAntes.length - 1];
+      const post = avsDepois[avsDepois.length - 1];
+      if (!pre || !post) return null;
+      return {
+        protocolo_id: pr.id, paciente_id: pid, titulo: pr.titulo, status: pr.status,
+        duracao: pr.duracao_total, frequencia: pr.frequencia,
+        myid_pre: Number(pre.myid_score), myid_post: Number(post.myid_score),
+        delta: Number(post.myid_score) - Number(pre.myid_score),
+        dias: Math.max(1, Math.round((new Date(post.created_at).getTime() - new Date(pre.created_at).getTime()) / 86400000)),
+      };
+    }).filter(Boolean) as any[];
+
+    // Agrupado por título da diretriz
+    const porDiretrizMap = new Map<string, any[]>();
+    protocolosAnalise.forEach(pa => {
+      const key = (pa.titulo || 'Sem título').trim();
+      (porDiretrizMap.get(key) || porDiretrizMap.set(key, []).get(key)!).push(pa);
+    });
+    const porDiretriz = Array.from(porDiretrizMap.entries()).map(([titulo, arr]) => {
+      const pre = arr.map(a => a.myid_pre).filter(Number.isFinite);
+      const post = arr.map(a => a.myid_post).filter(Number.isFinite);
+      const tt = pairedT(pre, post);
+      return {
+        titulo, n: arr.length,
+        media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
+        delta: tt.mean_diff, ci: `[${tt.ci_low}; ${tt.ci_high}]`,
+        cohen_d: cohensD(pre, post), p: tt.p, p_label: pSig(tt.p),
+        dias_medio: +mean(arr.map(a => a.dias)).toFixed(0),
+      };
+    }).sort((a, b) => b.n - a.n);
+
+    // Status dos protocolos
+    const protStatus = data.protocolos.reduce<Record<string, number>>((acc, pr) => {
+      acc[pr.status || 'desconhecido'] = (acc[pr.status || 'desconhecido'] || 0) + 1;
+      return acc;
+    }, {});
 
     // Matriz de correlação entre dimensões (na última avaliação de cada paciente)
     const ultimas = sample.map(p => {
