@@ -83,7 +83,7 @@ export default function TreatmentReportPDF({
         @media print { .no-print { display: none !important; } }
       </style></head><body>
       ${content.innerHTML}
-      <div class="watermark">MyHealth ID — Método Identidade</div>
+      <div class="watermark">MY HEALTH ID</div>
       </body></html>
     `);
         printWindow.document.close();
@@ -117,8 +117,8 @@ export default function TreatmentReportPDF({
                     {/* ══ PAGE 1: COVER ══ */}
                     <div className="page">
                         <div className="cover">
-                            <div className="cover-logo">MyHealth ID</div>
-                            <div className="cover-sub">Método Identidade · Relatório de Tratamento</div>
+                            <div className="cover-logo">MY HEALTH ID</div>
+                            <div className="cover-sub">Relatório de Tratamento</div>
                             <div className="cover-patient">
                                 <h2>{pacienteNome}</h2>
                                 <p>{pacienteIdade ? `${pacienteIdade} anos · ` : ''}Data: {dataAvaliacao}</p>
