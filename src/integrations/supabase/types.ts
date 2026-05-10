@@ -2576,6 +2576,7 @@ export type Database = {
           hierarquia_terapeutica: Json | null
           id: string
           objetivo_geral: string | null
+          origem: string
           paciente_id: string
           perfil_dominante: Json | null
           scores_avaliacao: Json | null
@@ -2597,6 +2598,7 @@ export type Database = {
           hierarquia_terapeutica?: Json | null
           id?: string
           objetivo_geral?: string | null
+          origem?: string
           paciente_id: string
           perfil_dominante?: Json | null
           scores_avaliacao?: Json | null
@@ -2618,6 +2620,7 @@ export type Database = {
           hierarquia_terapeutica?: Json | null
           id?: string
           objetivo_geral?: string | null
+          origem?: string
           paciente_id?: string
           perfil_dominante?: Json | null
           scores_avaliacao?: Json | null

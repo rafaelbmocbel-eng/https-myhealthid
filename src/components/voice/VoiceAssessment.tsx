@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -61,6 +62,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('record');
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -592,7 +594,8 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
   };
 
   // ── Cria uma Diretriz Oficial a partir da diretriz_tratamento gerada pela IA ──
-  const criarDiretrizDaVoz = async () => {
+  // intent: 'aprovar' = salva ativa + nota no prontuário | 'personalizar' = abre editor para refinar
+  const criarDiretrizDaVoz = async (intent: 'aprovar' | 'personalizar' = 'aprovar') => {
     if (!user || !assessment?.diretriz_tratamento || !pacienteId) {
       toast({
         title: 'Não foi possível criar a diretriz',
@@ -609,6 +612,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const diretriz = assessment.diretriz_tratamento;
       const queixa = assessment.queixa_principal || 'Avaliação por voz';
       const classif = assessment.classificacao_severidade || 'N/I';
+      const origemDiretriz = mode === 'written' ? 'ia_escrita' : 'ia_voz';
 
       const fasesConfig = [
         { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
@@ -620,7 +624,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const diretrizSnapshot = {
         versao: 1,
         createdAt: new Date().toISOString(),
-        origem: 'avaliacao_voz',
+        origem: origemDiretriz,
         fases: fasesConfig.map((cfg) => {
           const fase = diretriz?.[cfg.key] || {};
           const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
@@ -647,7 +651,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         }),
       };
 
-      const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por voz (${classif}).`;
+      const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por ${mode === 'written' ? 'texto' : 'voz'} (${classif}).`;
 
       // 1) Cria o registro principal de protocolo
       const { data: prot, error: protErr } = await (supabase as any)
@@ -661,8 +665,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           duracao_total: '12 semanas',
           frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
           status: 'ativo',
+          origem: origemDiretriz,
           scores_avaliacao: {
-            origem: 'avaliacao_voz',
+            origem: origemDiretriz,
             classificacao: classif,
             queixa_principal: queixa,
             prognostico: diretriz.prognostico || null,
@@ -704,7 +709,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         })
         .join('\n\n');
 
-      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por Voz)
+      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por ${mode === 'written' ? 'Texto' : 'Voz'})
 
 Queixa principal: ${queixa}
 Classificação: ${classif}
@@ -721,7 +726,7 @@ ${resumoTecnicas}`;
         referenciaId: protocoloId,
         dadosExtras: {
           protocolo_id: protocoloId,
-          origem: 'avaliacao_voz',
+          origem: origemDiretriz,
           classificacao: classif,
           queixa_principal: queixa,
         },
@@ -732,10 +737,18 @@ ${resumoTecnicas}`;
       queryClient.invalidateQueries({ queryKey: ['notas-prontuario'] });
       queryClient.invalidateQueries({ queryKey: ['evolucao-paciente'] });
 
-      toast({
-        title: '✅ Diretriz criada!',
-        description: 'Diretriz oficial registrada no paciente e no prontuário.',
-      });
+      if (intent === 'personalizar') {
+        toast({
+          title: '✏️ Rascunho criado — vamos personalizar',
+          description: 'Abrindo a aba Diretrizes para você ajustar fases, exercícios e técnicas.',
+        });
+        navigate(`/pacientes/${pacienteId}?tab=diretrizes&protocolo=${protocoloId}`);
+      } else {
+        toast({
+          title: '✅ Diretriz aprovada e enviada ao prontuário',
+          description: 'Diretriz oficial registrada e visível na aba Diretrizes do paciente.',
+        });
+      }
     } catch (err: any) {
       console.error('Erro ao criar diretriz a partir da voz:', err);
       toast({
@@ -1266,19 +1279,32 @@ ${resumoTecnicas}`;
                       <span>Diretriz oficial criada e disponível na aba Diretrizes do paciente.</span>
                     </div>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={criarDiretrizDaVoz}
-                      disabled={creatingDiretriz || !isSaved}
-                      className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
-                    >
-                      {creatingDiretriz ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Target className="h-3.5 w-3.5" />
-                      )}
-                      {creatingDiretriz ? 'Criando diretriz…' : 'Criar Diretriz Oficial a partir desta análise'}
-                    </Button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => criarDiretrizDaVoz('aprovar')}
+                          disabled={creatingDiretriz || !isSaved}
+                          className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
+                        >
+                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          Aprovar e enviar ao prontuário
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => criarDiretrizDaVoz('personalizar')}
+                          disabled={creatingDiretriz || !isSaved}
+                          className="w-full gap-1.5 h-9"
+                        >
+                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit3 className="h-3.5 w-3.5" />}
+                          Personalizar antes
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        Personalizar abre o editor de fases, exercícios e técnicas com a sugestão da IA pré-carregada.
+                      </p>
+                    </div>
                   )}
                   {!isSaved && !diretrizCreatedId && (
                     <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
