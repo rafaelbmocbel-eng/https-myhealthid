@@ -12,7 +12,8 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText } from 'lucide-react';
+import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -213,22 +214,51 @@ export default function Eventos() {
               <p className="text-xs mt-1">Clique em "Novo Evento" para começar</p>
             </CardContent>
           </Card>
-        ) : (
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            {eventos.map(ev => (
-              <EventoCard
-                key={ev.id}
-                evento={ev}
-                onView={() => setSelectedEvento(ev.id)}
-                onCopy={() => copyLink(ev.id)}
-                onToggle={() => toggleEvento.mutate({ id: ev.id, ativo: !ev.ativo })}
-                onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
-                onEditQuestionario={() => setEditingQuestionario(ev.id)}
-                onEditEvento={() => setEditingEvento(ev.id)}
-              />
-            ))}
-          </div>
-        )}
+        ) : (() => {
+          const todayStr = new Date().toISOString().split('T')[0];
+          const proximos = eventos.filter(e => e.data_evento >= todayStr);
+          const encerrados = eventos.filter(e => e.data_evento < todayStr);
+          const renderGrid = (list: typeof eventos, emptyMsg: string) => (
+            list.length === 0 ? (
+              <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">{emptyMsg}</CardContent></Card>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {list.map(ev => (
+                  <EventoCard
+                    key={ev.id}
+                    evento={ev}
+                    onView={() => setSelectedEvento(ev.id)}
+                    onCopy={() => copyLink(ev.id)}
+                    onToggle={() => toggleEvento.mutate({ id: ev.id, ativo: !ev.ativo })}
+                    onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
+                    onEditQuestionario={() => setEditingQuestionario(ev.id)}
+                    onEditEvento={() => setEditingEvento(ev.id)}
+                  />
+                ))}
+              </div>
+            )
+          );
+          return (
+            <Tabs defaultValue="proximos" className="w-full">
+              <TabsList className="grid w-full grid-cols-2 max-w-sm">
+                <TabsTrigger value="proximos" className="gap-1.5">
+                  <Calendar className="icon-sm" /> Próximos
+                  {proximos.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{proximos.length}</Badge>}
+                </TabsTrigger>
+                <TabsTrigger value="encerrados" className="gap-1.5">
+                  <Archive className="icon-sm" /> Encerrados
+                  {encerrados.length > 0 && <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px]">{encerrados.length}</Badge>}
+                </TabsTrigger>
+              </TabsList>
+              <TabsContent value="proximos" className="mt-4">
+                {renderGrid(proximos, 'Nenhum evento próximo.')}
+              </TabsContent>
+              <TabsContent value="encerrados" className="mt-4">
+                {renderGrid(encerrados, 'Nenhum evento encerrado ainda.')}
+              </TabsContent>
+            </Tabs>
+          );
+        })()}
 
         {/* Edit Questionario Dialog */}
         {editingQuestionario && (
