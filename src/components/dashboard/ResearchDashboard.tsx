@@ -5,8 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical } from 'lucide-react';
+import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical, FileDown } from 'lucide-react';
 import { exportToCsv } from '@/utils/exportCsv';
+import { gerarPdfResearchReport } from '@/utils/pdfResearchReport';
+import { toast } from '@/hooks/use-toast';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
@@ -419,6 +421,36 @@ export default function ResearchDashboard() {
     exportToCsv(`pesquisa_protocolos_${format(new Date(), 'yyyyMMdd')}.csv`, stats.porDiretriz);
   };
 
+  const exportPdfReport = async () => {
+    try {
+      await gerarPdfResearchReport({
+        filtros: stats.filtros,
+        datasetHash: stats.datasetHash,
+        n_pacientes_total: stats.n_pacientes_total,
+        n_amostra: stats.n_amostra,
+        n_avaliacoes: stats.n_avaliacoes,
+        n_presencial: stats.n_presencial,
+        n_protocolos: stats.n_protocolos,
+        n_prepost: stats.n_prepost,
+        n_red_flags: stats.n_red_flags,
+        pct_red_flags: stats.pct_red_flags,
+        idade_media: stats.idade_media,
+        idade_dp: stats.idade_dp,
+        idade_min: stats.idade_min,
+        idade_max: stats.idade_max,
+        sexo: stats.sexo,
+        dimStats: stats.dimStats,
+        dimCohen: stats.dimCohen,
+        porDiretriz: stats.porDiretriz,
+        subgruposSexo: stats.subgruposSexo,
+        subgruposFaixa: stats.subgruposFaixa,
+      });
+      toast({ title: 'Relatório PDF gerado', description: 'O download foi iniciado.' });
+    } catch (e) {
+      toast({ title: 'Erro ao gerar PDF', description: String(e), variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <DashboardFilters value={filters} onChange={setFilters} showSubgroups />
@@ -460,6 +492,9 @@ export default function ResearchDashboard() {
         </Button>
         <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
           <FileText className="icon-xs" /> Codebook
+        </Button>
+        <Button size="sm" variant="default" onClick={exportPdfReport} className="gap-1.5">
+          <FileDown className="icon-xs" /> Relatório PDF
         </Button>
         <span className="text-[10px] text-muted-foreground ml-auto font-mono" title="Hash determinístico do dataset filtrado — use para reprodutibilidade">
           dataset#{stats.datasetHash}
@@ -641,6 +676,65 @@ export default function ResearchDashboard() {
             </div>
           </Card>
 
+          <div className="grid md:grid-cols-2 gap-3">
+            <Card className="p-4">
+              <h3 className="h-card mb-1">Subgrupos por sexo</h3>
+              <p className="text-caption mb-3">Score MyID global (última avaliação)</p>
+              {stats.subgruposSexo.length === 0 ? (
+                <p className="text-caption">Sem dados.</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-1.5">Grupo</th>
+                      <th className="text-right">n</th>
+                      <th className="text-right">Média</th>
+                      <th className="text-right">DP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.subgruposSexo.map(s => (
+                      <tr key={s.grupo} className="border-b border-border/20">
+                        <td className="py-1.5 capitalize">{s.grupo}</td>
+                        <td className="text-right">{s.n}</td>
+                        <td className="text-right font-medium">{s.media}</td>
+                        <td className="text-right text-muted-foreground">{s.dp}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+            <Card className="p-4">
+              <h3 className="h-card mb-1">Subgrupos por faixa etária</h3>
+              <p className="text-caption mb-3">Score MyID global (última avaliação)</p>
+              {stats.subgruposFaixa.length === 0 ? (
+                <p className="text-caption">Sem dados.</p>
+              ) : (
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-1.5">Faixa</th>
+                      <th className="text-right">n</th>
+                      <th className="text-right">Média</th>
+                      <th className="text-right">DP</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.subgruposFaixa.map(s => (
+                      <tr key={s.grupo} className="border-b border-border/20">
+                        <td className="py-1.5">{s.grupo}</td>
+                        <td className="text-right">{s.n}</td>
+                        <td className="text-right font-medium">{s.media}</td>
+                        <td className="text-right text-muted-foreground">{s.dp}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </Card>
+          </div>
+
           <Card className="p-4">
             <div className="flex items-start gap-2">
               <FlaskConical className="icon-sm text-primary mt-0.5 shrink-0" />
@@ -649,11 +743,77 @@ export default function ResearchDashboard() {
                 <p className="text-caption mt-1">
                   Estudo observacional de coorte retrospectiva. Amostra de conveniência (n = {stats.n_amostra}),
                   idade {stats.idade_media} ± {stats.idade_dp} anos. Avaliação primária: MyID v2.0 (escala 0–100, 9 dimensões).
-                  Análise pré/pós com pacientes com ≥2 medidas (n = {stats.n_prepost}). Tamanho de efeito por Cohen's d.
-                  Correlações intra-dimensionais por coeficiente de Pearson. Dados anonimizados via hash de ID.
+                  Análise pré/pós com teste t pareado, IC 95% e tamanho de efeito por Cohen's d (n = {stats.n_prepost}).
+                  Outcomes por diretriz pareiam a última avaliação anterior ao protocolo com a mais recente posterior.
+                  Correlações por coeficiente de Pearson. Anonimização via hash de ID. Reprodutibilidade: dataset#{stats.datasetHash}.
                 </p>
               </div>
             </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="protocolos" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Outcomes por diretriz de tratamento</h3>
+            <p className="text-caption mb-3">
+              Cada paciente com protocolo é pareado: última avaliação MyID anterior ao início × mais recente posterior.
+              Δ positivo = melhora.
+            </p>
+            {stats.porDiretriz.length === 0 ? (
+              <p className="text-caption">
+                Nenhuma diretriz com pareamento pré/pós disponível ainda. Pacientes precisam ter ≥1 MyID antes e ≥1 depois do início do protocolo.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-1.5">Diretriz</th>
+                      <th className="text-right">n</th>
+                      <th className="text-right">Pré</th>
+                      <th className="text-right">Pós</th>
+                      <th className="text-right">Δ (IC 95%)</th>
+                      <th className="text-right">d</th>
+                      <th className="text-right">p</th>
+                      <th className="text-right">Dias</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.porDiretriz.map(d => (
+                      <tr key={d.titulo} className="border-b border-border/20">
+                        <td className="py-1.5 max-w-[200px] truncate" title={d.titulo}>{d.titulo}</td>
+                        <td className="text-right">{d.n}</td>
+                        <td className="text-right">{d.media_pre}</td>
+                        <td className="text-right">{d.media_post}</td>
+                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>
+                          {d.delta > 0 ? '+' : ''}{d.delta} <span className="text-muted-foreground font-normal">{d.ci}</span>
+                        </td>
+                        <td className="text-right font-mono">{d.cohen_d}</td>
+                        <td className={`text-right font-mono ${d.p && d.p < 0.05 ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'}`}>{d.p_label}</td>
+                        <td className="text-right text-muted-foreground">{d.dias_medio}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Ranking de impacto (Δ médio MyID)</h3>
+            {stats.porDiretriz.length === 0 ? (
+              <p className="text-caption">Sem dados.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={Math.max(180, stats.porDiretriz.length * 32)}>
+                <BarChart data={stats.porDiretriz.slice(0, 10)} layout="vertical" margin={{ left: 100 }}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis type="number" tick={{ fontSize: 11 }} />
+                  <YAxis type="category" dataKey="titulo" tick={{ fontSize: 10 }} width={140} />
+                  <Tooltip />
+                  <Bar dataKey="delta" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} name="Δ MyID" />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
           </Card>
         </TabsContent>
 
