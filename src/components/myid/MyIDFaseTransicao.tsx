@@ -190,7 +190,29 @@ export function MyIDFaseTransicao({
         </div>
       )}
 
-      {proxInfo && (
+      {/* Partial Fingerprint preview */}
+      {partialFingerprint && (
+        <div className="rounded-2xl border border-border/40 bg-card p-4 sm:p-5 shadow-xs space-y-3 animate-in fade-in duration-700">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider text-left">
+              Sua impressão digital MyID
+            </p>
+            <Badge variant="secondary" className="gap-1 text-[10px]">
+              <Construction className="h-3 w-3" />
+              Em construção · {preenchidas}/{totalDims}
+            </Badge>
+          </div>
+          <MyIDFingerprint
+            rings={partialFingerprint}
+            myidScore={scoreParcial ?? 0}
+            compact
+          />
+          <p className="text-[11px] text-muted-foreground italic">
+            As próximas fases vão preencher as dimensões em cinza.
+          </p>
+        </div>
+      )}
+
         <div className="rounded-xl border border-border/40 p-4 bg-muted/30 text-left space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">A seguir</p>
           <p className="text-sm font-semibold">
