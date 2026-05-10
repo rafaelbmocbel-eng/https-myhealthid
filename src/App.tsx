@@ -9,6 +9,7 @@ import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteRestorer from "./components/RouteRestorer";
+import GlobalBackButton from "./components/GlobalBackButton";
 
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
@@ -91,6 +92,7 @@ const App = () => (
           <ScrollToTop />
           <AuthProvider>
             <RouteRestorer />
+            <GlobalBackButton />
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
