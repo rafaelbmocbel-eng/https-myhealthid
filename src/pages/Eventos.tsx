@@ -73,12 +73,20 @@ export default function Eventos() {
   const [pixNome, setPixNome] = useState('');
   const [linkPagamento, setLinkPagamento] = useState('');
   const [perguntas, setPerguntas] = useState<PerguntaForm[]>([{ ...DEFAULT_PERGUNTA }]);
+  const [categoria, setCategoria] = useState<EventoCategoria>('outro');
+  const [linkVideo, setLinkVideo] = useState('');
+  const [publicoAlvo, setPublicoAlvo] = useState<EventoPublicoAlvo>('publico');
+  const [recorrenciaTipo, setRecorrenciaTipo] = useState<'nao' | 'diaria' | 'semanal'>('nao');
+  const [recorrenciaIntervalo, setRecorrenciaIntervalo] = useState<number>(1);
+  const [recorrenciaOcorrencias, setRecorrenciaOcorrencias] = useState<number>(4);
 
   const resetForm = () => {
     setTitulo(''); setDescricao(''); setDescricaoFormulario(''); setDataEvento(''); setHorarioInicio('09:00');
     setHorarioFim('12:00'); setLocal(''); setVagasMax(''); setCobrarPagamento(false);
     setValor(0); setPixChave(''); setPixTipo('cpf'); setPixNome(''); setLinkPagamento('');
     setPerguntas([{ ...DEFAULT_PERGUNTA }]);
+    setCategoria('outro'); setLinkVideo(''); setPublicoAlvo('publico');
+    setRecorrenciaTipo('nao'); setRecorrenciaIntervalo(1); setRecorrenciaOcorrencias(4);
   };
 
   const applyTemplate = () => {
