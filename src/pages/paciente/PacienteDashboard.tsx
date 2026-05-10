@@ -89,10 +89,10 @@ export default function PacienteDashboard() {
       if (pac.terapeuta_id) {
         const { data: prof } = await supabase
           .from('profiles')
-          .select('full_name, telefone')
+          .select('nome, sobrenome, telefone')
           .eq('user_id', pac.terapeuta_id)
           .maybeSingle();
-        if (prof) setProfissional({ nome: prof.full_name, whatsapp: prof.telefone });
+        if (prof) setProfissional({ nome: [prof.nome, prof.sobrenome].filter(Boolean).join(' '), whatsapp: prof.telefone ?? undefined });
       }
 
       const now = new Date().toISOString();
