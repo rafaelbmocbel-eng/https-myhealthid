@@ -73,6 +73,8 @@ export function MyIDPhasedFlow({
   // Last partial score for showing on transition
   const [lastScoreParcial, setLastScoreParcial] = useState<number | undefined>();
   const [lastDimensions, setLastDimensions] = useState<string[]>(dimsForPhase(faseConcluida));
+  const [lastPartialScores, setLastPartialScores] = useState<Record<string, number> | undefined>();
+
 
   const updateData = useCallback((newData: Partial<MyIDResponses>) => {
     setData((prev) => {
@@ -157,7 +159,7 @@ export function MyIDPhasedFlow({
 
     // End of phase → save
     setSaving(true);
-    const { score, redFlags } = computePartialScore(data, fase);
+    const { score, redFlags, fullResult: partialFR } = computePartialScore(data, fase);
     const dims = dimsForPhase(fase);
 
     try {
@@ -176,6 +178,7 @@ export function MyIDPhasedFlow({
         }
         setLastScoreParcial(myid);
         setLastDimensions(dims);
+        setLastPartialScores(fullResult?.scores || {});
         setScreen('final');
       } else {
         const ok = await onPhaseSave(fase, data, score, dims, redFlags);
@@ -185,8 +188,10 @@ export function MyIDPhasedFlow({
         }
         setLastScoreParcial(score);
         setLastDimensions(dims);
+        setLastPartialScores(partialFR?.scores || {});
         setScreen('transicao');
       }
+
     } catch (e: any) {
       toast({
         title: 'Erro ao salvar fase',
@@ -235,6 +240,8 @@ export function MyIDPhasedFlow({
         proximaFase={Math.min(4, fase + 1) as Fase}
         scoreParcial={lastScoreParcial}
         dimensoesPreenchidas={lastDimensions}
+        partialScores={lastPartialScores}
+
         onContinuar={handleContinuarProximaFase}
         onSalvarESair={handleSalvarESair}
       />

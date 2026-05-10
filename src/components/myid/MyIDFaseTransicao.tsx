@@ -1,6 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ArrowRight, Save, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Save, Sparkles, Construction } from 'lucide-react';
+import MyIDFingerprint from './MyIDFingerprint';
+import { getMyIDFingerprintData } from '@/utils/myidCalculations';
+
 
 interface FaseInfo {
   numero: 1 | 2 | 3 | 4;
@@ -52,9 +55,11 @@ interface Props {
   proximaFase?: 1 | 2 | 3 | 4;
   scoreParcial?: number;
   dimensoesPreenchidas?: string[];
+  partialScores?: Record<string, number>;
   onContinuar: () => void;
   onSalvarESair?: () => void;
 }
+
 
 export function MyIDFaseTransicao({
   modo,
@@ -62,9 +67,22 @@ export function MyIDFaseTransicao({
   proximaFase,
   scoreParcial,
   dimensoesPreenchidas = [],
+  partialScores,
   onContinuar,
   onSalvarESair,
 }: Props) {
+  // Builds a partial fingerprint where unfilled dimensions render muted/gray.
+  const partialFingerprint = (() => {
+    if (!partialScores) return null;
+    const filled = new Set(dimensoesPreenchidas);
+    const rings = getMyIDFingerprintData(partialScores).map((r) => {
+      const key = r.scoreKey || '';
+      if (filled.has(key)) return r;
+      return { ...r, value: 0, color: 'hsl(var(--muted-foreground) / 0.25)' };
+    });
+    return rings;
+  })();
+
   if (modo === 'inicio') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6 text-center animate-in fade-in zoom-in-95 duration-500">
@@ -172,6 +190,28 @@ export function MyIDFaseTransicao({
         </div>
       )}
 
+      {/* Partial Fingerprint preview */}
+      {partialFingerprint && (
+        <div className="rounded-2xl border border-border/40 bg-card p-4 sm:p-5 shadow-xs space-y-3 animate-in fade-in duration-700">
+          <div className="flex items-center justify-between gap-2 flex-wrap">
+            <p className="text-xs text-muted-foreground uppercase tracking-wider text-left">
+              Sua impressão digital MyID
+            </p>
+            <Badge variant="secondary" className="gap-1 text-[10px]">
+              <Construction className="h-3 w-3" />
+              Em construção · {preenchidas}/{totalDims}
+            </Badge>
+          </div>
+          <MyIDFingerprint
+            rings={partialFingerprint}
+            myidScore={scoreParcial ?? 0}
+            compact
+          />
+          <p className="text-[11px] text-muted-foreground italic">
+            As próximas fases vão preencher as dimensões em cinza.
+          </p>
+        </div>
+      )}
       {proxInfo && (
         <div className="rounded-xl border border-border/40 p-4 bg-muted/30 text-left space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">A seguir</p>
@@ -183,6 +223,7 @@ export function MyIDFaseTransicao({
           </p>
         </div>
       )}
+
 
       <div className="flex flex-col sm:flex-row gap-2 justify-center">
         <Button size="lg" onClick={onContinuar} className="rounded-full px-8">
