@@ -9,7 +9,7 @@ import { ptBR } from 'date-fns/locale';
 import {
   ChevronLeft, ChevronRight, Plus, Users, X, Loader2, Trash2, Save,
   Lock, Clock, CheckCircle2, AlertCircle, Calendar, MessageCircle,
-  Smartphone, CreditCard, Info, DollarSign, Repeat
+  Smartphone, CreditCard, Info, DollarSign, Repeat, ChevronDown
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
