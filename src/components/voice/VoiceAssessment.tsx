@@ -1279,19 +1279,32 @@ ${resumoTecnicas}`;
                       <span>Diretriz oficial criada e disponível na aba Diretrizes do paciente.</span>
                     </div>
                   ) : (
-                    <Button
-                      size="sm"
-                      onClick={criarDiretrizDaVoz}
-                      disabled={creatingDiretriz || !isSaved}
-                      className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
-                    >
-                      {creatingDiretriz ? (
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                      ) : (
-                        <Target className="h-3.5 w-3.5" />
-                      )}
-                      {creatingDiretriz ? 'Criando diretriz…' : 'Criar Diretriz Oficial a partir desta análise'}
-                    </Button>
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => criarDiretrizDaVoz('aprovar')}
+                          disabled={creatingDiretriz || !isSaved}
+                          className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
+                        >
+                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                          Aprovar e enviar ao prontuário
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => criarDiretrizDaVoz('personalizar')}
+                          disabled={creatingDiretriz || !isSaved}
+                          className="w-full gap-1.5 h-9"
+                        >
+                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit3 className="h-3.5 w-3.5" />}
+                          Personalizar antes
+                        </Button>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground text-center">
+                        Personalizar abre o editor de fases, exercícios e técnicas com a sugestão da IA pré-carregada.
+                      </p>
+                    </div>
                   )}
                   {!isSaved && !diretrizCreatedId && (
                     <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
