@@ -254,6 +254,32 @@ export default function PacienteDashboard() {
           {/* Reação pós-sessão (NPS rápido) */}
           {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
 
+          {/* Upgrade banner — Wellness Free */}
+          {isFree && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card
+                className="border-0 shadow-md overflow-hidden cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}
+                onClick={() => navigate('/paciente/plano')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-primary-foreground">
+                      ✨ Desbloqueie tudo com Wellness Premium
+                    </h3>
+                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
+                      Exercícios, protocolos, missões completas e 1 consulta/mês com profissional.
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* MyID Prompt — first time or monthly */}
           {showMyIdPrompt && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
