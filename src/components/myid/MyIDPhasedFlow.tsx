@@ -240,6 +240,8 @@ export function MyIDPhasedFlow({
         proximaFase={Math.min(4, fase + 1) as Fase}
         scoreParcial={lastScoreParcial}
         dimensoesPreenchidas={lastDimensions}
+        partialScores={lastPartialScores}
+
         onContinuar={handleContinuarProximaFase}
         onSalvarESair={handleSalvarESair}
       />
