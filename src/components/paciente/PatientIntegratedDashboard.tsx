@@ -150,7 +150,7 @@ export default function PatientIntegratedDashboard({
     },
   });
 
-  // ── Structural assessment data (only for Método Identidade)
+  // ── Structural assessment data (legado)
   const { data: structuralAvaliacoes = [] } = useQuery({
     queryKey: ['integrated-structural', pacienteId],
     queryFn: async () => {
@@ -599,7 +599,7 @@ export default function PatientIntegratedDashboard({
         </>
       )}
 
-      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL (only Método Identidade) ─── */}
+      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL (legado) ─── */}
       {serviceType === 'identidade' && structuralData && (
         <Card className="shadow-sm overflow-hidden">
           <CardContent className="p-5">
@@ -710,7 +710,7 @@ export default function PatientIntegratedDashboard({
                     <AlignCenter className="h-5 w-5 text-blue-600" />
                   </div>
                   <div>
-                    <h3 className="font-black text-lg text-foreground">COB° ZERO</h3>
+                    <h3 className="font-black text-lg text-foreground">Estrutural (legado)</h3>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Avaliação Estrutural</p>
                   </div>
                 </div>
@@ -742,7 +742,7 @@ export default function PatientIntegratedDashboard({
                     <Dumbbell className="h-5 w-5 text-emerald-600" />
                   </div>
                   <div>
-                    <h3 className="font-black text-lg text-foreground">Studio Personal</h3>
+                    <h3 className="font-black text-lg text-foreground">Funcional (legado)</h3>
                     <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Composição Corporal</p>
                   </div>
                 </div>

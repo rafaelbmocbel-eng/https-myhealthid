@@ -350,7 +350,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               <div className="clinical-card">
                 <div className="flex items-center gap-2 mb-3">
                   <Presentation className="h-4 w-4 text-blue-600" />
-                  <h3 className="font-semibold text-sm">Avaliações Presenciais COB° ZERO</h3>
+                  <h3 className="font-semibold text-sm">Histórico Estrutural (legado)</h3>
                 </div>
                 {avaliacoes.length === 0 ? (
                   <div className="text-center py-6 text-muted-foreground">
@@ -420,7 +420,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
               {iniciandoAvaliacao ? (
                 <div className="bg-white rounded-xl shadow-sm border p-6 relative animate-in fade-in slide-in-from-top-4 duration-500">
                   <div className="flex justify-between items-center mb-6">
-                    <h3 className="text-xl font-black text-foreground">Nova Avaliação COB° ZERO</h3>
+                    <h3 className="text-xl font-black text-foreground">Avaliação Estrutural (legado)</h3>
                     <Button variant="ghost" size="sm" onClick={() => setIniciandoAvaliacao(false)}>
                       Voltar ao Histórico
                     </Button>

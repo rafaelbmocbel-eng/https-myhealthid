@@ -804,7 +804,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             <TrendingUp className="h-4 w-4 text-primary mt-0.5 shrink-0" />
             <p className="text-[10px] text-muted-foreground">
               <strong>Para estudos científicos:</strong> Estes dados representam a prevalência amostral dos fatores de risco 
-              definidos pelo Método Identidade. Use as correlações de Pearson (aba Correlações) para análise de associação bivariada. 
+              definidos pelas avaliações. Use as correlações de Pearson (aba Correlações) para análise de associação bivariada. 
               Para publicações, considere tamanho amostral (n={analysis.n}), intervalos de confiança e testes de significância (p-valor).
             </p>
           </div>

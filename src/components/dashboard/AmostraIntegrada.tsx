@@ -125,14 +125,14 @@ const AmostraIntegrada = forwardRef<HTMLDivElement, Props>(function AmostraInteg
         }
 
         if (crossPatientsCobZero.length >= 3) {
-            execSummary += `No intercruzamento com a clínica de Escoliose (COB° ZERO), analisamos ${crossPatientsCobZero.length} perfis duplos. `;
+            execSummary += `No intercruzamento com a avaliações estruturais (legado), analisamos ${crossPatientsCobZero.length} perfis duplos. `;
             if (Math.abs(rCobbP) > 0.4) {
                 execSummary += `A correlação entre o Ângulo de Cobb e a Cinesiofobia (Medo de Movimento) apresentou índice $${Math.abs(rCobbP).toFixed(2)}$ (${rCobbP > 0 ? 'Positiva' : 'Inversa'} e ${interpretR(rCobbP).label}), o que comprova em nossos dados que a severidade estrutural impacta o comportamento evitativo. `;
             }
         }
 
         if (crossPatientsStudio.length >= 3) {
-            execSummary += `No Studio Personal ID, cruzamos ${crossPatientsStudio.length} perfis físicos com fatores biopsicossociais. `;
+            execSummary += `No módulo Funcional (legado), cruzamos ${crossPatientsStudio.length} perfis físicos com fatores biopsicossociais. `;
             if (Math.abs(rBfRegulacao) > 0.3) {
                 execSummary += `Identificamos uma correlação visível ($${Math.abs(rBfRegulacao).toFixed(2)}$) entre composição corporal e o escore de Regulação Neurovegetativa (Score R). `;
             }
@@ -153,7 +153,7 @@ const AmostraIntegrada = forwardRef<HTMLDivElement, Props>(function AmostraInteg
         return (
             <div className="text-center py-8 text-muted-foreground text-sm border-2 border-dashed rounded-xl">
                 <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-20" />
-                O Motor de IA precisa de pelo menos 2 avaliações no Método Identidade para gerar Ciência de Dados cruzada.
+                O Motor de IA precisa de pelo menos 2 avaliações registradas para gerar Ciência de Dados cruzada.
             </div>
         );
     }
@@ -208,7 +208,7 @@ ${analysis.execSummary}
                             <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border shadow-sm">
                                 <div className="flex items-center gap-2 mb-3">
                                     <Ruler className="h-4 w-4 text-emerald-600" />
-                                    <h4 className="font-bold text-sm text-foreground">Identidade × COB° ZERO</h4>
+                                    <h4 className="font-bold text-sm text-foreground">Avaliações × Estrutural</h4>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mb-4">Análise em {analysis.cobbVectorLength} perfis duplos.</p>
 
@@ -231,7 +231,7 @@ ${analysis.execSummary}
                             <div className="bg-white dark:bg-slate-950 p-4 rounded-xl border shadow-sm">
                                 <div className="flex items-center gap-2 mb-3">
                                     <Dumbbell className="h-4 w-4 text-studio" />
-                                    <h4 className="font-bold text-sm text-foreground">Identidade × Studio Personal ID</h4>
+                                    <h4 className="font-bold text-sm text-foreground">Avaliações × Funcional</h4>
                                 </div>
                                 <p className="text-[10px] text-muted-foreground mb-4">Análise em {analysis.bfVectorLength} perfis duplos com bioimpedância/dobras.</p>
 
