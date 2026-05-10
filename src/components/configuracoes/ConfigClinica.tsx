@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck } from 'lucide-react';
+import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X } from 'lucide-react';
 
 type ConfigClinica = {
   razao_social: string;
@@ -19,6 +19,7 @@ type ConfigClinica = {
   cidade: string;
   uf: string;
   cep: string;
+  logo_url: string;
   zapi_instance_id: string;
   zapi_token: string;
   zapi_client_token: string;
@@ -28,6 +29,7 @@ type ConfigClinica = {
 const EMPTY: ConfigClinica = {
   razao_social: '', cnpj: '', responsavel: '',
   telefone: '', email_clinica: '', endereco: '', cidade: '', uf: '', cep: '',
+  logo_url: '',
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
 };
 
