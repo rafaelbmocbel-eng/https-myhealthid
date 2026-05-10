@@ -257,19 +257,60 @@ export function MyIDPhasedFlow({
   return (
     <div className="w-full max-w-3xl mx-auto py-6 px-4 sm:px-6">
       {/* Top progress */}
-      <div className="mb-6 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className="text-xs">
-            Fase {fase} de 4 · {faseInfo.titulo}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {faseInfo.tempoEstimado}
-          </span>
+      <div className="mb-6 space-y-3">
+        {/* Pílulas das 4 fases */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {([1, 2, 3, 4] as Fase[]).map((f) => {
+            const done = f < fase;
+            const active = f === fase;
+            return (
+              <div
+                key={f}
+                className={`h-1.5 rounded-full transition-colors ${
+                  done
+                    ? 'bg-emerald-500'
+                    : active
+                    ? 'bg-primary'
+                    : 'bg-muted'
+                }`}
+                aria-label={`Fase ${f}`}
+              />
+            );
+          })}
         </div>
-        <Progress value={progressoGeral} className="h-1.5" />
-        <p className="text-xs text-muted-foreground">
-          Bloco {blocoIdxInPhase + 1} de {totalBlocosNaFase} desta fase
-        </p>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Badge variant="outline" className="text-xs shrink-0">
+              Fase {fase}/4
+            </Badge>
+            <span className="text-sm font-semibold text-foreground truncate">
+              {faseInfo.titulo}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+            <Clock className="h-3 w-3" />
+            <span>
+              {secondsLeft > 0
+                ? `${formatTime(secondsLeft)} restantes`
+                : 'tempo esgotado'}
+            </span>
+            <span className="opacity-50">· est. {faseInfo.tempoEstimado}</span>
+          </div>
+        </div>
+
+        {/* Barra DESTA fase */}
+        <div className="space-y-1">
+          <Progress value={progressoFase} className="h-2" />
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted-foreground">
+              Bloco {blocoIdxInPhase + 1} de {totalBlocosNaFase} desta fase
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {Math.round(progressoGeral)}% total
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
