@@ -34,7 +34,7 @@ const safeLazy = <T extends ComponentType<any>>(loader: () => Promise<LazyModule
   lazy(() => loader().then((mod) => {
     if (!mod?.default) {
       reloadAfterInvalidLazyModule();
-      return { default: LazyLoadRecovery as T };
+      return { default: LazyLoadRecovery as unknown as T };
     }
     return mod;
   }));
