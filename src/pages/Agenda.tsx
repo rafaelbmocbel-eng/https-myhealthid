@@ -1090,6 +1090,50 @@ export default function Agenda() {
           }}
         />
 
+        {/* Próxima sessão — versão mobile (a desktop fica na sidebar) */}
+        {proximaSessao && (
+          <div className="lg:hidden mx-2 sm:mx-4 mt-2 mb-3 rounded-2xl border-l-4 border-l-primary bg-gradient-to-br from-card to-primary/5 shadow-sm overflow-hidden">
+            <div className="p-3">
+              <div className="flex justify-between items-center mb-2">
+                <Badge variant="outline" className="text-[9px] font-bold uppercase tracking-wider bg-primary/10 text-primary border-none">Próxima sessão</Badge>
+                <span className="text-[10px] font-black text-primary">{tempoAteProxima}</span>
+              </div>
+              <div className="flex items-center gap-2 mb-3">
+                <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm ring-2 ring-background shrink-0">
+                  {proximaSessao.pacientes?.nome?.[0] ?? '?'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-sm font-bold truncate leading-tight">
+                    {proximaSessao.pacientes ? `${proximaSessao.pacientes.nome} ${proximaSessao.pacientes.sobrenome ?? ''}`.trim() : proximaSessao.titulo}
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    {format(parseISO(proximaSessao.data_inicio), 'HH:mm')} • {proximaSessao.tipo_atendimento ? TIPO_LABELS[proximaSessao.tipo_atendimento] : 'Sessão'}
+                  </div>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Button size="sm" variant="outline" className="h-8 text-xs gap-1 border-emerald-200 text-emerald-700 bg-emerald-50 hover:bg-emerald-100"
+                  onClick={() => {
+                    if (proximaSessao.pacientes?.telefone) {
+                      const tel = proximaSessao.pacientes.telefone.replace(/\D/g, '');
+                      const msg = encodeURIComponent(`Olá ${proximaSessao.pacientes.nome}, tudo bem? Estou aguardando você para nossa sessão hoje às ${format(parseISO(proximaSessao.data_inicio), 'HH:mm')}. Até já!`);
+                      window.open(`https://wa.me/55${tel}?text=${msg}`, '_blank');
+                    }
+                  }}>
+                  <MessageCircle className="h-3.5 w-3.5" /> WhatsApp
+                </Button>
+                <Button size="sm" className="h-8 text-xs gap-1 bg-primary text-white"
+                  onClick={() => {
+                    if (proximaSessao.paciente_id) {
+                      window.location.href = `/pacientes/${proximaSessao.paciente_id}`;
+                    }
+                  }}>
+                  <Users className="h-3.5 w-3.5" /> Perfil
+                </Button>
+              </div>
+            </div>
+          </div>
+        )}
         <div className="flex flex-1 overflow-hidden">
           {/* Left: mini calendar + stats */}
           <div className="hidden lg:flex flex-col w-56 shrink-0 border-r bg-background overflow-y-auto p-3 gap-3">
