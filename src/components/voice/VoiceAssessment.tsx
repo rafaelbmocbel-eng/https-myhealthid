@@ -612,6 +612,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const diretriz = assessment.diretriz_tratamento;
       const queixa = assessment.queixa_principal || 'Avaliação por voz';
       const classif = assessment.classificacao_severidade || 'N/I';
+      const origemDiretriz = mode === 'written' ? 'ia_escrita' : 'ia_voz';
 
       const fasesConfig = [
         { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
@@ -623,7 +624,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const diretrizSnapshot = {
         versao: 1,
         createdAt: new Date().toISOString(),
-        origem: 'avaliacao_voz',
+        origem: origemDiretriz,
         fases: fasesConfig.map((cfg) => {
           const fase = diretriz?.[cfg.key] || {};
           const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
