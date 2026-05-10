@@ -249,6 +249,9 @@ export default function PacienteDashboard() {
           {/* PWA Install Banner */}
           <PwaInstallBanner />
 
+          {/* Reação pós-sessão (NPS rápido) */}
+          {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
+
           {/* MyID Prompt — first time or monthly */}
           {showMyIdPrompt && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
