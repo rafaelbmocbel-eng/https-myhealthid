@@ -123,6 +123,7 @@ const App = () => (
                 <Route path="/avaliacao/:token" element={<AvaliacaoPublica />} />
                 <Route path="/agenda/:token" element={<AgendaPublica />} />
                 <Route path="/myid/responder/:token" element={<MyIDResponder />} />
+                <Route path="/myid/ver/:token" element={<MyIDView />} />
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<Navigate to="/pacientes?tab=crm" replace />} />
