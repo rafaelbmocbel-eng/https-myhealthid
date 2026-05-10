@@ -1,0 +1,370 @@
+import { useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { Card } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical } from 'lucide-react';
+import { exportToCsv } from '@/utils/exportCsv';
+import {
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
+  PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
+} from 'recharts';
+import { differenceInYears, parseISO, format } from 'date-fns';
+
+const PALETTE = ['hsl(var(--primary))', 'hsl(var(--accent))', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6', '#06b6d4', '#ec4899', '#84cc16'];
+
+const DIMENSOES = [
+  { key: 'score_i', label: 'Identidade (I)' },
+  { key: 'score_n', label: 'Neurológica (N)' },
+  { key: 'score_r', label: 'Respiratória (R)' },
+  { key: 'score_d', label: 'Dor (D)' },
+  { key: 'score_f', label: 'Funcional (F)' },
+  { key: 'score_e', label: 'Emocional (E)' },
+  { key: 'score_efi', label: 'Eficiência (EFI)' },
+  { key: 'score_c', label: 'Comportamental (C)' },
+  { key: 'score_p', label: 'Postural (P)' },
+] as const;
+
+type Avaliacao = Record<string, any>;
+type Paciente = { id: string; nome: string; sobrenome: string; data_nascimento: string | null; genero: string | null; created_at: string };
+type Voz = Record<string, any>;
+
+function age(dn?: string | null): number | null {
+  if (!dn) return null;
+  try { return differenceInYears(new Date(), parseISO(dn)); } catch { return null; }
+}
+
+function mean(arr: number[]): number {
+  const v = arr.filter(n => Number.isFinite(n));
+  return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 0;
+}
+function sd(arr: number[]): number {
+  const v = arr.filter(n => Number.isFinite(n));
+  if (v.length < 2) return 0;
+  const m = mean(v);
+  return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (v.length - 1));
+}
+
+export default function ResearchDashboard() {
+  const { user } = useAuth();
+  const [tab, setTab] = useState('demografia');
+
+  const { data, isLoading } = useQuery({
+    queryKey: ['research-data', user?.id],
+    queryFn: async () => {
+      const [pac, ava, voz] = await Promise.all([
+        supabase.from('pacientes').select('id, nome, sobrenome, data_nascimento, genero, created_at, ativo').eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_identidade').select('*').eq('terapeuta_id', user!.id),
+        supabase.from('avaliacoes_voz').select('*').eq('terapeuta_id', user!.id),
+      ]);
+      return {
+        pacientes: (pac.data || []) as Paciente[],
+        avaliacoes: (ava.data || []) as Avaliacao[],
+        voz: (voz.data || []) as Voz[],
+      };
+    },
+    enabled: !!user,
+  });
+
+  const stats = useMemo(() => {
+    if (!data) return null;
+    const { pacientes, avaliacoes, voz } = data;
+
+    // Pacientes com pelo menos uma avaliação MyID
+    const withMyID = new Set(avaliacoes.map(a => a.paciente_id));
+    const sample = pacientes.filter(p => withMyID.has(p.id));
+
+    // Demografia
+    const idades = sample.map(p => age(p.data_nascimento)).filter((n): n is number => n != null);
+    const sexo = sample.reduce<Record<string, number>>((acc, p) => {
+      const g = (p.genero || 'não informado').toLowerCase();
+      acc[g] = (acc[g] || 0) + 1; return acc;
+    }, {});
+    const faixas: Record<string, number> = { '<18': 0, '18-29': 0, '30-44': 0, '45-59': 0, '60+': 0 };
+    idades.forEach(i => {
+      if (i < 18) faixas['<18']++;
+      else if (i < 30) faixas['18-29']++;
+      else if (i < 45) faixas['30-44']++;
+      else if (i < 60) faixas['45-59']++;
+      else faixas['60+']++;
+    });
+
+    // Prevalências por dimensão (médias e %críticos: score < 50)
+    const dimStats = DIMENSOES.map(d => {
+      const vals = avaliacoes.map(a => Number(a[d.key])).filter(Number.isFinite);
+      const criticos = vals.filter(v => v < 50).length;
+      return {
+        dimensao: d.label,
+        key: d.key,
+        n: vals.length,
+        media: +mean(vals).toFixed(1),
+        dp: +sd(vals).toFixed(1),
+        pct_criticos: vals.length ? +((criticos / vals.length) * 100).toFixed(1) : 0,
+      };
+    });
+
+    // Classificações
+    const classif = avaliacoes.reduce<Record<string, number>>((acc, a) => {
+      const c = a.classificacao || 'sem classificação';
+      acc[c] = (acc[c] || 0) + 1; return acc;
+    }, {});
+
+    // Red flags
+    const totalAv = avaliacoes.length;
+    const comRedFlags = avaliacoes.filter(a => Array.isArray(a.red_flags) && a.red_flags.length > 0).length;
+
+    // Severidade voz (presencial)
+    const sev = voz.reduce<Record<string, number>>((acc, v) => {
+      const s = v.classificacao_severidade || 'não classificada';
+      acc[s] = (acc[s] || 0) + 1; return acc;
+    }, {});
+
+    // Queixas mais comuns (tokenização simples)
+    const tokens: Record<string, number> = {};
+    voz.forEach(v => {
+      const q = (v.queixa_principal || '').toLowerCase();
+      q.split(/[,;.\s]+/).filter(t => t.length > 4).forEach(t => {
+        tokens[t] = (tokens[t] || 0) + 1;
+      });
+    });
+    const topQueixas = Object.entries(tokens).sort((a, b) => b[1] - a[1]).slice(0, 10).map(([k, v]) => ({ termo: k, n: v }));
+
+    // Evolução temporal (avaliações por mês)
+    const porMes: Record<string, number> = {};
+    avaliacoes.forEach(a => {
+      const m = format(parseISO(a.created_at), 'yyyy-MM');
+      porMes[m] = (porMes[m] || 0) + 1;
+    });
+    const temporal = Object.entries(porMes).sort().map(([mes, n]) => ({ mes, n }));
+
+    return {
+      n_pacientes_total: pacientes.length,
+      n_amostra: sample.length,
+      n_avaliacoes: avaliacoes.length,
+      n_presencial: voz.length,
+      idade_media: +mean(idades).toFixed(1),
+      idade_dp: +sd(idades).toFixed(1),
+      idade_min: Math.min(...idades, 0),
+      idade_max: Math.max(...idades, 0),
+      sexo,
+      faixas: Object.entries(faixas).map(([k, v]) => ({ faixa: k, n: v })),
+      dimStats,
+      classif: Object.entries(classif).map(([k, v]) => ({ classificacao: k, n: v })),
+      pct_red_flags: totalAv ? +((comRedFlags / totalAv) * 100).toFixed(1) : 0,
+      n_red_flags: comRedFlags,
+      sev: Object.entries(sev).map(([k, v]) => ({ severidade: k, n: v })),
+      topQueixas,
+      temporal,
+      sample,
+      avaliacoes,
+      voz,
+    };
+  }, [data]);
+
+  if (isLoading || !stats) {
+    return <div className="flex justify-center py-20"><Loader2 className="icon-lg animate-spin text-primary" /></div>;
+  }
+
+  // Exports
+  const exportRawCSV = () => {
+    const rows = stats.sample.map(p => {
+      const avs = stats.avaliacoes.filter(a => a.paciente_id === p.id).sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const last = avs[avs.length - 1];
+      return {
+        paciente_id: p.id.slice(0, 8),
+        idade: age(p.data_nascimento) ?? '',
+        sexo: p.genero || '',
+        n_avaliacoes: avs.length,
+        primeira_avaliacao: avs[0]?.created_at?.slice(0, 10) || '',
+        ultima_avaliacao: last?.created_at?.slice(0, 10) || '',
+        classificacao: last?.classificacao || '',
+        myid_score: last?.myid_score ?? '',
+        score_i: last?.score_i ?? '', score_n: last?.score_n ?? '', score_r: last?.score_r ?? '',
+        score_d: last?.score_d ?? '', score_f: last?.score_f ?? '', score_e: last?.score_e ?? '',
+        score_efi: last?.score_efi ?? '', score_c: last?.score_c ?? '', score_p: last?.score_p ?? '',
+        red_flags: Array.isArray(last?.red_flags) ? last.red_flags.length : 0,
+      };
+    });
+    exportToCsv(`pesquisa_dados_brutos_${format(new Date(), 'yyyyMMdd')}.csv`, rows);
+  };
+
+  const exportTabela1 = () => {
+    const rows = [
+      { variavel: 'N (amostra)', valor: stats.n_amostra },
+      { variavel: 'Idade — média (DP)', valor: `${stats.idade_media} (${stats.idade_dp})` },
+      { variavel: 'Idade — min–max', valor: `${stats.idade_min}–${stats.idade_max}` },
+      ...Object.entries(stats.sexo).map(([k, v]) => ({ variavel: `Sexo: ${k}`, valor: `${v} (${((v / stats.n_amostra) * 100).toFixed(1)}%)` })),
+      { variavel: 'Total avaliações MyID', valor: stats.n_avaliacoes },
+      { variavel: 'Avaliações presenciais (voz)', valor: stats.n_presencial },
+      { variavel: 'Red flags (% das avaliações)', valor: `${stats.n_red_flags} (${stats.pct_red_flags}%)` },
+      ...stats.dimStats.map(d => ({ variavel: `${d.dimensao} — média (DP)`, valor: `${d.media} (${d.dp}); críticos: ${d.pct_criticos}%` })),
+    ];
+    exportToCsv(`pesquisa_tabela1_${format(new Date(), 'yyyyMMdd')}.csv`, rows, [
+      { key: 'variavel', label: 'Variável' }, { key: 'valor', label: 'Valor' },
+    ]);
+  };
+
+  return (
+    <div className="space-y-4">
+      {/* Header KPIs */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
+        {[
+          { label: 'Amostra (n)', value: stats.n_amostra, icon: Users, sub: `${stats.n_pacientes_total} pacientes totais` },
+          { label: 'Avaliações MyID', value: stats.n_avaliacoes, icon: Activity, sub: 'todas as fases' },
+          { label: 'Presenciais', value: stats.n_presencial, icon: FileText, sub: 'voz + mapa corporal' },
+          { label: 'Red Flags', value: `${stats.pct_red_flags}%`, icon: AlertTriangle, sub: `${stats.n_red_flags} casos` },
+        ].map(s => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className="rounded-xl border border-border/40 bg-card p-3 sm:p-4">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-micro">{s.label}</span>
+                <Icon className="icon-xs text-muted-foreground/70" />
+              </div>
+              <div className="text-2xl font-semibold tracking-tight">{s.value}</div>
+              <div className="text-[11px] text-muted-foreground mt-0.5">{s.sub}</div>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Export bar */}
+      <div className="flex flex-wrap gap-2">
+        <Button size="sm" variant="outline" onClick={exportRawCSV} className="gap-1.5">
+          <Download className="icon-xs" /> CSV — Dados brutos (anonimizado)
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportTabela1} className="gap-1.5">
+          <FileText className="icon-xs" /> CSV — Tabela 1 (resumo descritivo)
+        </Button>
+      </div>
+
+      <Tabs value={tab} onValueChange={setTab}>
+        <TabsList className="grid grid-cols-4 w-full">
+          <TabsTrigger value="demografia" className="text-[11px] sm:text-xs">Demografia</TabsTrigger>
+          <TabsTrigger value="myid" className="text-[11px] sm:text-xs">MyID</TabsTrigger>
+          <TabsTrigger value="presencial" className="text-[11px] sm:text-xs">Presencial</TabsTrigger>
+          <TabsTrigger value="evolucao" className="text-[11px] sm:text-xs">Evolução</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="demografia" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Faixa etária</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.faixas}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="faixa" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="n" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+            <div className="text-caption mt-2">Idade média: <strong>{stats.idade_media} ± {stats.idade_dp}</strong> anos (intervalo {stats.idade_min}–{stats.idade_max})</div>
+          </Card>
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Distribuição por sexo</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <PieChart>
+                <Pie data={Object.entries(stats.sexo).map(([k, v]) => ({ name: k, value: v }))} dataKey="value" nameKey="name" outerRadius={80} label>
+                  {Object.keys(stats.sexo).map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="myid" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Prevalência por dimensão</h3>
+            <p className="text-caption mb-3">Média do score (0–100) e % de casos críticos (score &lt; 50)</p>
+            <ResponsiveContainer width="100%" height={300}>
+              <BarChart data={stats.dimStats} layout="vertical" margin={{ left: 80 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="dimensao" tick={{ fontSize: 10 }} width={110} />
+                <Tooltip />
+                <Bar dataKey="media" fill="hsl(var(--primary))" name="Score médio" radius={[0, 6, 6, 0]} />
+                <Bar dataKey="pct_criticos" fill="hsl(var(--destructive))" name="% críticos" radius={[0, 6, 6, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Classificações (n)</h3>
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.classif}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="classificacao" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="n" fill="hsl(var(--accent))" radius={[6, 6, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="presencial" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Severidade clínica (avaliação por voz)</h3>
+            {stats.sev.length === 0 ? (
+              <p className="text-caption">Nenhuma avaliação presencial registrada ainda.</p>
+            ) : (
+              <ResponsiveContainer width="100%" height={220}>
+                <BarChart data={stats.sev}>
+                  <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                  <XAxis dataKey="severidade" tick={{ fontSize: 11 }} />
+                  <YAxis tick={{ fontSize: 11 }} />
+                  <Tooltip />
+                  <Bar dataKey="n" fill="hsl(var(--primary))" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            )}
+          </Card>
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Termos mais frequentes nas queixas</h3>
+            {stats.topQueixas.length === 0 ? (
+              <p className="text-caption">Sem queixas registradas.</p>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {stats.topQueixas.map(t => (
+                  <span key={t.termo} className="px-2 py-1 rounded-full bg-muted text-xs">
+                    {t.termo} <span className="text-muted-foreground">({t.n})</span>
+                  </span>
+                ))}
+              </div>
+            )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="evolucao" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-3">Avaliações MyID por mês</h3>
+            <ResponsiveContainer width="100%" height={260}>
+              <LineChart data={stats.temporal}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis dataKey="mes" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Line type="monotone" dataKey="n" stroke="hsl(var(--primary))" strokeWidth={2} dot={{ r: 3 }} />
+              </LineChart>
+            </ResponsiveContainer>
+          </Card>
+          <Card className="p-4">
+            <div className="flex items-start gap-2">
+              <FlaskConical className="icon-sm text-primary mt-0.5 shrink-0" />
+              <div>
+                <h3 className="h-card">Pronto para artigo</h3>
+                <p className="text-caption mt-1">
+                  Use os botões de exportação acima. O CSV anonimizado segue formato wide (1 paciente por linha) compatível com SPSS/R/JASP.
+                  A Tabela 1 resume as variáveis no formato padrão de Métodos.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
