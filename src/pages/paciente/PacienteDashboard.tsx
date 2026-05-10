@@ -78,12 +78,22 @@ export default function PacienteDashboard() {
     const fetchData = async () => {
       const { data: pac } = await supabase
         .from('pacientes')
-        .select('id, nome, sobrenome')
+        .select('id, nome, sobrenome, terapeuta_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!pac) { setLoading(false); return; }
       setPaciente(pac);
+
+      // Profissional vinculado (para CTA de retomar tratamento)
+      if (pac.terapeuta_id) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('full_name, telefone')
+          .eq('user_id', pac.terapeuta_id)
+          .maybeSingle();
+        if (prof) setProfissional({ nome: prof.full_name, whatsapp: prof.telefone });
+      }
 
       const now = new Date().toISOString();
 
