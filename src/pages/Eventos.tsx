@@ -773,11 +773,25 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
   return (
     <Card className="group hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-tight">{evento.titulo}</CardTitle>
           <Badge variant={evento.ativo && !isPast ? 'default' : 'secondary'}>
             {isPast ? 'Encerrado' : evento.ativo ? 'Ativo' : 'Inativo'}
           </Badge>
+        </div>
+        <div className="flex flex-wrap gap-1 pt-1">
+          <Badge variant="outline" className="text-[10px] h-5">{categoriaIcon(evento.categoria)} {categoriaLabel(evento.categoria)}</Badge>
+          {evento.publico_alvo === 'pacientes_ativos' ? (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Lock className="icon-xs" /> Só pacientes</Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Globe className="icon-xs" /> Público</Badge>
+          )}
+          {evento.link_video && (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5 text-primary"><Video className="icon-xs" /> Online</Badge>
+          )}
+          {evento.recorrencia_grupo_id && (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Repeat className="icon-xs" /> Recorrente</Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
