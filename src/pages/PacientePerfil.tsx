@@ -49,6 +49,7 @@ import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
+import IdentidadePortavelActions from '@/components/paciente/IdentidadePortavelActions';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
@@ -742,6 +743,11 @@ export default function PacientePerfil() {
                   }
                   return items;
                 })()}
+              />
+              <IdentidadePortavelActions
+                pacienteId={paciente.id}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
               />
             </div>
           </div>
