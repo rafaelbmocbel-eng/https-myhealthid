@@ -98,6 +98,11 @@ export default function Eventos() {
   const handleCreate = () => {
     if (!titulo || !dataEvento) { toast.error('Título e data são obrigatórios'); return; }
     const validPerguntas = perguntas.filter(p => p.pergunta.trim());
+    const recorrencia: RecorrenciaConfig | null = recorrenciaTipo === 'nao' ? null : {
+      tipo: recorrenciaTipo,
+      intervalo: Math.max(1, recorrenciaIntervalo),
+      ocorrencias: Math.max(1, Math.min(52, recorrenciaOcorrencias)),
+    };
     criarEvento.mutate({
       titulo, descricao: descricao || null, descricao_formulario: descricaoFormulario || null,
       data_evento: dataEvento,
@@ -106,7 +111,9 @@ export default function Eventos() {
       cobrar_pagamento: cobrarPagamento, valor: cobrarPagamento ? valor : 0,
       pix_chave: pixChave || null, pix_tipo: pixTipo || 'cpf', pix_nome: pixNome || null,
       link_pagamento: linkPagamento || null, ativo: true,
+      categoria, link_video: linkVideo || null, publico_alvo: publicoAlvo,
       perguntas: validPerguntas,
+      recorrencia,
     } as any, {
       onSuccess: () => { setOpenCreate(false); resetForm(); },
     });
