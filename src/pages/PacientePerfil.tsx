@@ -50,6 +50,7 @@ import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import IdentidadePortavelActions from '@/components/paciente/IdentidadePortavelActions';
+import ResumoRapido30s from '@/components/paciente/ResumoRapido30s';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
