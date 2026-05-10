@@ -1,14 +1,11 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { AlignCenter, LayoutDashboard, Menu, X, User, ChevronDown, CalendarDays, LogOut } from 'lucide-react';
+import { LayoutDashboard, Menu, X, User, ChevronDown, CalendarDays, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import logoMetodo from '@/assets/logo-metodo-identidade.jpg';
 import { useAuth } from '@/contexts/AuthContext';
 
 const navItems = [
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: null },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays },
 ];
 
@@ -31,16 +28,13 @@ export default function Navigation() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <img
-            src={logoMetodo}
-            alt="Método Identidade Logo"
-            className="h-10 w-10 rounded-xl object-cover"
-          />
+          <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold text-sm">
+            MH
+          </div>
           <div>
             <div className="text-sm font-bold leading-none text-foreground">
-              MÉTODO <span className="text-gradient-primary">IDENTIDADE</span>
+              MY HEALTH <span className="text-gradient-primary">ID</span>
             </div>
-            <div className="text-xs text-muted-foreground mt-0.5">+ COB° ZERO v8.2</div>
           </div>
         </Link>
 
