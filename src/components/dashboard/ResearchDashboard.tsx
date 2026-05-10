@@ -46,6 +46,29 @@ function sd(arr: number[]): number {
   const m = mean(v);
   return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (v.length - 1));
 }
+function pearson(x: number[], y: number[]): number {
+  const n = Math.min(x.length, y.length);
+  if (n < 3) return 0;
+  const mx = mean(x), my = mean(y);
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { const a = x[i]-mx, b = y[i]-my; num += a*b; dx += a*a; dy += b*b; }
+  const den = Math.sqrt(dx * dy);
+  return den ? +(num / den).toFixed(3) : 0;
+}
+function cohensD(pre: number[], post: number[]): number {
+  if (pre.length < 2 || post.length < 2) return 0;
+  const m1 = mean(pre), m2 = mean(post);
+  const s1 = sd(pre), s2 = sd(post);
+  const sp = Math.sqrt(((pre.length-1)*s1*s1 + (post.length-1)*s2*s2) / (pre.length + post.length - 2));
+  return sp ? +((m2 - m1) / sp).toFixed(3) : 0;
+}
+function interpretD(d: number): string {
+  const a = Math.abs(d);
+  if (a < 0.2) return 'trivial';
+  if (a < 0.5) return 'pequeno';
+  if (a < 0.8) return 'médio';
+  return 'grande';
+}
 
 export default function ResearchDashboard() {
   const { user } = useAuth();
