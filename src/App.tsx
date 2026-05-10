@@ -148,6 +148,10 @@ const App = () => (
                 <Route path="/paciente/eventos" element={<ProtectedPatientRoute><PacienteEventos /></ProtectedPatientRoute>} />
                 <Route path="/paciente/chat" element={<ProtectedPatientRoute><PacienteChat /></ProtectedPatientRoute>} />
                 <Route path="/paciente/perfil" element={<ProtectedPatientRoute><PacientePerfilPage /></ProtectedPatientRoute>} />
+                <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
+
+                {/* Wellness public signup (freemium) */}
+                <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
