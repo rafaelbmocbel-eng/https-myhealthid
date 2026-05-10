@@ -273,9 +273,11 @@ interface DetalhesTecnicosProps {
     perdas_calculadas: any;
     myid_100: any;
     red_flags_detected: boolean;
+    pacienteId?: string;
+    terapeutaId?: string;
 }
 
-function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected }: DetalhesTecnicosProps) {
+function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected, pacienteId, terapeutaId }: DetalhesTecnicosProps) {
     const [open, setOpen] = useState(false);
     const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
     const maxPerda = Math.max(...items.map(i => i.perda), 1);
