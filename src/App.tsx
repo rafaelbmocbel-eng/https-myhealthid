@@ -49,6 +49,8 @@ const PacientePagamentos = lazy(() => import("./pages/paciente/PacientePagamento
 const PacienteSaude = lazy(() => import("./pages/paciente/PacienteSaude"));
 const PacienteEventos = lazy(() => import("./pages/paciente/PacienteEventos"));
 const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
+const PacientePlano = lazy(() => import("./pages/paciente/PacientePlano"));
+const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -146,6 +148,10 @@ const App = () => (
                 <Route path="/paciente/eventos" element={<ProtectedPatientRoute><PacienteEventos /></ProtectedPatientRoute>} />
                 <Route path="/paciente/chat" element={<ProtectedPatientRoute><PacienteChat /></ProtectedPatientRoute>} />
                 <Route path="/paciente/perfil" element={<ProtectedPatientRoute><PacientePerfilPage /></ProtectedPatientRoute>} />
+                <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
+
+                {/* Wellness public signup (freemium) */}
+                <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
                 <Route path="*" element={<NotFound />} />
               </Routes>
