@@ -155,6 +155,21 @@ export async function shareLembreteRetorno(patientName: string, patientPhone: st
   return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
+export async function shareConfirmacaoSessao(
+  patientName: string,
+  patientPhone: string,
+  dataHora: string,
+  terapeutaName?: string,
+  direct: boolean = false,
+) {
+  const assinatura = terapeutaName ? `\n\n— ${terapeutaName}` : '';
+  const message =
+    `Olá ${patientName}! ✅\n\n` +
+    `Confirmando sua sessão para *${dataHora}*.\n\n` +
+    `Caso precise reagendar, me avise com antecedência. Até lá! 💙${assinatura}`;
+  return shareViaWhatsApp(patientPhone, message, undefined, direct);
+}
+
 export async function sharePosAlta(patientName: string, patientPhone: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 🌟\n\n` +
