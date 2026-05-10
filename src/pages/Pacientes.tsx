@@ -20,7 +20,7 @@ import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
   Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
-  DollarSign, MessageSquare, MoreHorizontal,
+  DollarSign, MessageSquare, MoreHorizontal, Bell,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -300,6 +300,30 @@ export default function Pacientes() {
       return data || [];
     },
     enabled: !!user,
+  });
+
+  // Pendências por paciente (notificações não lidas) — badge na lista
+  const { data: pendenciasPorPaciente = {} } = useQuery({
+    queryKey: ['pendencias-por-paciente', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('notificacoes')
+        .select('tipo, titulo, metadata')
+        .eq('terapeuta_id', user!.id)
+        .eq('lida', false);
+      const map: Record<string, { count: number; tipos: string[]; titulos: string[] }> = {};
+      (data || []).forEach((n: any) => {
+        const pid = n.metadata?.paciente_id;
+        if (!pid) return;
+        if (!map[pid]) map[pid] = { count: 0, tipos: [], titulos: [] };
+        map[pid].count += 1;
+        if (!map[pid].tipos.includes(n.tipo)) map[pid].tipos.push(n.tipo);
+        if (map[pid].titulos.length < 4) map[pid].titulos.push(n.titulo);
+      });
+      return map;
+    },
+    enabled: !!user,
+    refetchInterval: 60000,
   });
 
   // Fetch avaliacoes_identidade to know who has been evaluated
@@ -651,6 +675,7 @@ export default function Pacientes() {
               const ultimoAg = ultimosAgendamentos[p.id];
               const tag = getClassificacao(p.id, p.created_at);
               const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
+              const pend = pendenciasPorPaciente[p.id];
               return (
                 <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
                   <div className="flex items-center gap-3 sm:gap-4">
@@ -664,6 +689,26 @@ export default function Pacientes() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
+                        {pend && pend.count > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 animate-pulse"
+                              >
+                                <Bell className="h-2.5 w-2.5" /> {pend.count} pendência{pend.count > 1 ? 's' : ''}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="space-y-1">
+                                <p className="font-semibold text-xs">Pendências no perfil:</p>
+                                {pend.titulos.map((t, i) => (
+                                  <p key={i} className="text-xs">• {t}</p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {linkAtivo && (
                           <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
