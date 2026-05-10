@@ -415,14 +415,20 @@ export default function ResearchDashboard() {
     exportToCsv(`pesquisa_prepost_cohen_${format(new Date(), 'yyyyMMdd')}.csv`, rows);
   };
 
+  const exportProtocolos = () => {
+    exportToCsv(`pesquisa_protocolos_${format(new Date(), 'yyyyMMdd')}.csv`, stats.porDiretriz);
+  };
+
   return (
     <div className="space-y-4">
+      <DashboardFilters value={filters} onChange={setFilters} showSubgroups />
+
       {/* Header KPIs */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3">
         {[
-          { label: 'Amostra (n)', value: stats.n_amostra, icon: Users, sub: `${stats.n_pacientes_total} pacientes totais` },
-          { label: 'Avaliações MyID', value: stats.n_avaliacoes, icon: Activity, sub: 'todas as fases' },
-          { label: 'Presenciais', value: stats.n_presencial, icon: FileText, sub: 'voz + mapa corporal' },
+          { label: 'Amostra (n)', value: stats.n_amostra, icon: Users, sub: `${stats.n_pacientes_total} totais` },
+          { label: 'Avaliações MyID', value: stats.n_avaliacoes, icon: Activity, sub: 'no período' },
+          { label: 'Diretrizes', value: stats.n_protocolos, icon: FileText, sub: 'tratamentos' },
           { label: 'Red Flags', value: `${stats.pct_red_flags}%`, icon: AlertTriangle, sub: `${stats.n_red_flags} casos` },
         ].map(s => {
           const Icon = s.icon;
@@ -439,28 +445,34 @@ export default function ResearchDashboard() {
         })}
       </div>
 
-      {/* Export bar */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap items-center gap-2">
         <Button size="sm" variant="outline" onClick={exportRawCSV} className="gap-1.5">
           <Download className="icon-xs" /> CSV — Dados brutos
         </Button>
         <Button size="sm" variant="outline" onClick={exportTabela1} className="gap-1.5">
-          <FileText className="icon-xs" /> Tabela 1 (descritivo)
+          <FileText className="icon-xs" /> Tabela 1
         </Button>
         <Button size="sm" variant="outline" onClick={exportPrePost} className="gap-1.5">
-          <FileText className="icon-xs" /> Pré/pós + Cohen's d
+          <FileText className="icon-xs" /> Pré/pós + d + p
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportProtocolos} className="gap-1.5">
+          <FileText className="icon-xs" /> Diretrizes (outcomes)
         </Button>
         <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
           <FileText className="icon-xs" /> Codebook
         </Button>
+        <span className="text-[10px] text-muted-foreground ml-auto font-mono" title="Hash determinístico do dataset filtrado — use para reprodutibilidade">
+          dataset#{stats.datasetHash}
+        </span>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-5 w-full">
+        <TabsList className="grid grid-cols-6 w-full">
           <TabsTrigger value="demografia" className="text-[10px] sm:text-xs">Demografia</TabsTrigger>
           <TabsTrigger value="myid" className="text-[10px] sm:text-xs">MyID</TabsTrigger>
           <TabsTrigger value="presencial" className="text-[10px] sm:text-xs">Presencial</TabsTrigger>
           <TabsTrigger value="estatistica" className="text-[10px] sm:text-xs">Estatística</TabsTrigger>
+          <TabsTrigger value="protocolos" className="text-[10px] sm:text-xs">Diretrizes</TabsTrigger>
           <TabsTrigger value="evolucao" className="text-[10px] sm:text-xs">Evolução</TabsTrigger>
         </TabsList>
 
