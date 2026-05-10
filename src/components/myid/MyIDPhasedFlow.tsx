@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock, CheckCircle2 } from 'lucide-react';
 import { Bloco1 } from './steps/Bloco1';
 import { Bloco2 } from './steps/Bloco2';
 import { Bloco3 } from './steps/Bloco3';
@@ -91,12 +91,45 @@ export function MyIDPhasedFlow({
   const totalBlocosNaFase = blocosNaFase.length;
   const blocoNumero = blocosNaFase[blocoIdxInPhase];
 
+  // ── Timer estimado por fase ──
+  const parseMinutes = (s: string) => {
+    const m = s.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : 3;
+  };
+  const totalSecondsFase = useMemo(
+    () => parseMinutes(FASES_INFO[fase].tempoEstimado) * 60,
+    [fase],
+  );
+  const [secondsLeft, setSecondsLeft] = useState(totalSecondsFase);
+
+  // Reset timer ao entrar/trocar de fase
+  useEffect(() => {
+    if (screen !== 'fase') return;
+    setSecondsLeft(totalSecondsFase);
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [fase, screen, totalSecondsFase]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  };
+
+  // Progresso da fase atual (0-100)
+  const progressoFase = totalBlocosNaFase > 0
+    ? ((blocoIdxInPhase + 1) / totalBlocosNaFase) * 100
+    : 0;
+
   // Overall progress: (completed phases + progress in current phase) / 4
   const progressoGeral = useMemo(() => {
     const completed = Math.max(0, fase - 1);
     const inCurrent = totalBlocosNaFase > 0 ? (blocoIdxInPhase + 1) / totalBlocosNaFase : 0;
     return ((completed + inCurrent) / 4) * 100;
   }, [fase, blocoIdxInPhase, totalBlocosNaFase]);
+
 
   // Compute partial score for current data up to a given phase
   const computePartialScore = useCallback(
@@ -224,19 +257,60 @@ export function MyIDPhasedFlow({
   return (
     <div className="w-full max-w-3xl mx-auto py-6 px-4 sm:px-6">
       {/* Top progress */}
-      <div className="mb-6 space-y-2">
-        <div className="flex items-center justify-between gap-2">
-          <Badge variant="outline" className="text-xs">
-            Fase {fase} de 4 · {faseInfo.titulo}
-          </Badge>
-          <span className="text-xs text-muted-foreground">
-            {faseInfo.tempoEstimado}
-          </span>
+      <div className="mb-6 space-y-3">
+        {/* Pílulas das 4 fases */}
+        <div className="grid grid-cols-4 gap-1.5">
+          {([1, 2, 3, 4] as Fase[]).map((f) => {
+            const done = f < fase;
+            const active = f === fase;
+            return (
+              <div
+                key={f}
+                className={`h-1.5 rounded-full transition-colors ${
+                  done
+                    ? 'bg-emerald-500'
+                    : active
+                    ? 'bg-primary'
+                    : 'bg-muted'
+                }`}
+                aria-label={`Fase ${f}`}
+              />
+            );
+          })}
         </div>
-        <Progress value={progressoGeral} className="h-1.5" />
-        <p className="text-xs text-muted-foreground">
-          Bloco {blocoIdxInPhase + 1} de {totalBlocosNaFase} desta fase
-        </p>
+
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <div className="flex items-center gap-2 min-w-0">
+            <Badge variant="outline" className="text-xs shrink-0">
+              Fase {fase}/4
+            </Badge>
+            <span className="text-sm font-semibold text-foreground truncate">
+              {faseInfo.titulo}
+            </span>
+          </div>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground shrink-0">
+            <Clock className="h-3 w-3" />
+            <span>
+              {secondsLeft > 0
+                ? `${formatTime(secondsLeft)} restantes`
+                : 'tempo esgotado'}
+            </span>
+            <span className="opacity-50">· est. {faseInfo.tempoEstimado}</span>
+          </div>
+        </div>
+
+        {/* Barra DESTA fase */}
+        <div className="space-y-1">
+          <Progress value={progressoFase} className="h-2" />
+          <div className="flex items-center justify-between">
+            <p className="text-[11px] text-muted-foreground">
+              Bloco {blocoIdxInPhase + 1} de {totalBlocosNaFase} desta fase
+            </p>
+            <p className="text-[11px] text-muted-foreground">
+              {Math.round(progressoGeral)}% total
+            </p>
+          </div>
+        </div>
       </div>
 
       <Card className="border-0 shadow-none sm:border sm:shadow-sm">
