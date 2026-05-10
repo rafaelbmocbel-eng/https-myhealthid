@@ -2003,6 +2003,7 @@ export type Database = {
           sobrenome: string
           telefone: string | null
           terapeuta_id: string
+          tipo_conta: string
           tipo_pagamento: string
           updated_at: string
           user_id: string | null
@@ -2026,6 +2027,7 @@ export type Database = {
           sobrenome?: string
           telefone?: string | null
           terapeuta_id: string
+          tipo_conta?: string
           tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
@@ -2049,6 +2051,7 @@ export type Database = {
           sobrenome?: string
           telefone?: string | null
           terapeuta_id?: string
+          tipo_conta?: string
           tipo_pagamento?: string
           updated_at?: string
           user_id?: string | null
@@ -3476,6 +3479,59 @@ export type Database = {
           },
         ]
       }
+      wellness_assinaturas: {
+        Row: {
+          created_at: string
+          data_fim: string | null
+          data_inicio: string
+          id: string
+          paciente_id: string
+          provider: string | null
+          provider_subscription_id: string | null
+          proxima_cobranca: string | null
+          status: string
+          ultima_sessao_mensal_em: string | null
+          updated_at: string
+          valor_mensal: number
+        }
+        Insert: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          paciente_id: string
+          provider?: string | null
+          provider_subscription_id?: string | null
+          proxima_cobranca?: string | null
+          status?: string
+          ultima_sessao_mensal_em?: string | null
+          updated_at?: string
+          valor_mensal?: number
+        }
+        Update: {
+          created_at?: string
+          data_fim?: string | null
+          data_inicio?: string
+          id?: string
+          paciente_id?: string
+          provider?: string | null
+          provider_subscription_id?: string | null
+          proxima_cobranca?: string | null
+          status?: string
+          ultima_sessao_mensal_em?: string | null
+          updated_at?: string
+          valor_mensal?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "wellness_assinaturas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       eventos_publicos: {
@@ -3543,6 +3599,15 @@ export type Database = {
       count_evento_inscricoes: {
         Args: { p_evento_id: string }
         Returns: number
+      }
+      criar_paciente_wellness: {
+        Args: {
+          p_email: string
+          p_nome: string
+          p_sobrenome: string
+          p_telefone?: string
+        }
+        Returns: string
       }
       get_active_inscricao_ids: {
         Args: { p_evento_id: string }
@@ -3698,6 +3763,18 @@ export type Database = {
         }[]
       }
       get_turnos_by_token: { Args: { p_token: string }; Returns: Json }
+      get_wellness_status: {
+        Args: never
+        Returns: {
+          assinatura_status: string
+          consulta_mensal_disponivel: boolean
+          is_premium: boolean
+          paciente_id: string
+          proxima_cobranca: string
+          tipo_conta: string
+          ultima_sessao_mensal_em: string
+        }[]
+      }
       has_active_agenda_link: {
         Args: { p_terapeuta_id: string }
         Returns: boolean
