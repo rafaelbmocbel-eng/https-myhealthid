@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive, Video, Repeat, Lock, Globe } from 'lucide-react';
+import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive, Video, Repeat, Lock, Globe, RotateCcw } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -56,6 +56,8 @@ export default function Eventos() {
   const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
   const [editingQuestionario, setEditingQuestionario] = useState<string | null>(null);
   const [editingEvento, setEditingEvento] = useState<string | null>(null);
+  const [reativando, setReativando] = useState<Evento | null>(null);
+  const [novaDataReativar, setNovaDataReativar] = useState<string>('');
 
   // Form state
   const [titulo, setTitulo] = useState('');
@@ -304,6 +306,12 @@ export default function Eventos() {
                     onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
                     onEditQuestionario={() => setEditingQuestionario(ev.id)}
                     onEditEvento={() => setEditingEvento(ev.id)}
+                    onReativar={() => {
+                      setReativando(ev);
+                      const t = new Date();
+                      t.setDate(t.getDate() + 7);
+                      setNovaDataReativar(t.toISOString().split('T')[0]);
+                    }}
                   />
                 ))}
               </div>
@@ -350,6 +358,59 @@ export default function Eventos() {
             editarEvento={editarEvento}
           />
         )}
+
+        {/* Reativar Evento Passado */}
+        <Dialog open={!!reativando} onOpenChange={(o) => !o && setReativando(null)}>
+          <DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base">Reativar evento</DialogTitle>
+            </DialogHeader>
+            {reativando && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border/40 bg-muted/30 p-3 space-y-1">
+                  <p className="text-sm font-medium">{reativando.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Data anterior: {format(new Date(reativando.data_evento + 'T12:00:00'), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nova-data" className="text-sm">Nova data do evento *</Label>
+                  <Input
+                    id="nova-data"
+                    type="date"
+                    value={novaDataReativar}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setNovaDataReativar(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Horário, local, link de vídeo, questionário e demais configurações serão mantidos. Inscrições anteriores ficam preservadas no histórico.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setReativando(null)} className="flex-1">Cancelar</Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!novaDataReativar || novaDataReativar < new Date().toISOString().split('T')[0] || editarEvento.isPending}
+                    onClick={() => {
+                      editarEvento.mutate(
+                        {
+                          id: reativando.id,
+                          data_evento: novaDataReativar,
+                          ativo: true,
+                          lembrete_24h_enviado: false,
+                          lembrete_1h_enviado: false,
+                        } as any,
+                        { onSuccess: () => setReativando(null) }
+                      );
+                    }}
+                  >
+                    {editarEvento.isPending ? 'Reativando...' : 'Reativar'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
@@ -766,8 +827,8 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
 }
 
 /* ─── Event Card ─── */
-function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento }: {
-  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void;
+function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento, onReativar }: {
+  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void; onReativar?: () => void;
 }) {
   const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
   return (
@@ -827,6 +888,11 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
           <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1.5 h-8">
             <Eye className="icon-sm" /> Ver
           </Button>
+          {isPast && onReativar && (
+            <Button variant="default" size="sm" onClick={onReativar} className="gap-1.5 h-8" title="Reativar com nova data">
+              <RotateCcw className="icon-sm" /> Reativar
+            </Button>
+          )}
           <div className="flex items-center gap-0.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditEvento} title="Editar evento">
               <Pencil className="icon-sm" />
