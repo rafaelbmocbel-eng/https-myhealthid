@@ -4,12 +4,7 @@ import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import AppLayout from '@/components/AppLayout';
 import { AvaliacaoMyID, DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3, DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6, DEFAULT_RED_FLAGS } from '@/types/myid';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
-import { Bloco1 } from '@/components/myid/steps/Bloco1';
-import { Bloco2 } from '@/components/myid/steps/Bloco2';
-import { Bloco3 } from '@/components/myid/steps/Bloco3';
-import { Bloco4 } from '@/components/myid/steps/Bloco4';
-import { Bloco5 } from '@/components/myid/steps/Bloco5';
-import { Bloco6 } from '@/components/myid/steps/Bloco6';
+import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
 import { MyIDCalculator } from '@/utils/myid/calculator';
 import RelatorioIdentidade from '@/components/identidade/RelatorioIdentidade';
 import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
@@ -569,166 +564,100 @@ export default function MetodoIdentidade() {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-          {/* Sidebar - horizontal scroll on mobile, vertical on desktop */}
-          <div className="lg:col-span-1">
-            <div className="clinical-card lg:sticky lg:top-24 !p-3 sm:!p-6">
-              <h3 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider mb-3 hidden lg:block">Blocos de Avaliação</h3>
-              <div className="flex lg:flex-col gap-2 overflow-x-auto lg:overflow-x-visible pb-2 lg:pb-0 -mx-1 px-1 snap-x snap-mandatory lg:snap-none">
-                {blocos.map(bloco => {
-                  const Icon = bloco.icon;
-                  const isActive = avaliacao.blocoAtual === bloco.id;
-                  const isConcluido = blocosConcluidos.has(bloco.id);
-                  return (
-                    <button
-                      key={bloco.id}
-                      onClick={() => setAvaliacao(prev => ({ ...prev, blocoAtual: bloco.id }))}
-                      className={`shrink-0 lg:shrink text-left block-step snap-start min-w-[140px] lg:min-w-0 lg:w-full ${isActive ? 'active' : isConcluido ? 'completed' : 'pending'}`}
-                    >
-                      <div className="flex items-center gap-2 sm:gap-3">
-                        {isConcluido ? (
-                          <CheckCircle2 className="h-4 w-4 sm:h-5 sm:w-5 text-success flex-shrink-0" />
-                        ) : isActive ? (
-                          <Icon className="h-4 w-4 sm:h-5 sm:w-5 text-primary flex-shrink-0" />
-                        ) : (
-                          <Circle className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground flex-shrink-0" />
-                        )}
-                        <div className="min-w-0">
-                          <div className={cn('text-xs sm:text-sm font-medium truncate', isActive ? 'text-primary' : isConcluido ? 'text-success' : 'text-foreground')}>
-                            {bloco.label}
-                          </div>
-                          <div className="text-[10px] sm:text-xs text-muted-foreground hidden lg:block">{bloco.sublabel} · {bloco.time}</div>
-                        </div>
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-
-              {/* Link de avaliação remota */}
-              {selectedPacienteId && (() => {
-                const linkAtivo = getLinkAtivo(selectedPacienteId);
-                return (
-                  <div className="mt-4 pt-4 border-t space-y-2">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Avaliação Remota</p>
-                    {linkAtivo ? (
-                      <>
-                        <div className="flex items-center gap-2 text-xs text-emerald-600">
-                          <div className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                          Link ativo · {differenceInDays(new Date(linkAtivo.data_expiracao), new Date())} dias
-                        </div>
-                        {selectedPaciente?.telefone ? (
-                          <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getLinkUrl(linkAtivo.token))}>
-                            <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
-                          </Button>
-                        ) : (
-                          <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
-                            <Copy className="h-3 w-3" /> Copiar link
-                          </Button>
-                        )}
-                      </>
-                    ) : (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full text-xs gap-1 h-8"
-                        onClick={async () => {
-                          const novo = await gerarLink(selectedPacienteId);
-                          if (novo) copiarLink(novo.token);
-                        }}
-                        disabled={gerando}
-                      >
-                        {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
-                        Gerar link 30 dias
-                      </Button>
-                    )}
-                  </div>
-                );
-              })()}
-
-              {/* Link do Portal do Paciente */}
-              {selectedPaciente?.portal_token && (
-                <div className="mt-4 pt-4 border-t space-y-2">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Portal do Paciente</p>
-                  {selectedPaciente.telefone ? (
-                    <Button size="sm" className="w-full text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }}>
-                      <Smartphone className="h-3 w-3" /> Enviar via WhatsApp
-                    </Button>
-                  ) : (
-                    <Button size="sm" variant="outline" className="w-full text-xs gap-1 h-8" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }}>
-                      <Copy className="h-3 w-3" /> Copiar link do Portal
-                    </Button>
-                  )}
-                </div>
-              )}
-
-              {blocosConcluidos.size > 0 && (
-                <Button
-                  className="w-full mt-3 bg-gradient-primary text-white text-xs"
-                  onClick={() => {
-                    const calculator = new MyIDCalculator(avaliacao);
-                    const resultado = calculator.getFullResult();
-                    setAvaliacao(prev => ({ ...prev, resultado }));
-                    setAvaliacao(prev => ({ ...prev, resultado }));
-                    setShowRelatorio(true);
-                  }}
-                >
-                  Ver Relatório Parcial
+        {/* Ações compactas: link remoto, portal, relatório parcial */}
+        <div className="flex flex-wrap gap-2 mb-4">
+          {selectedPacienteId && (() => {
+            const linkAtivo = getLinkAtivo(selectedPacienteId);
+            if (linkAtivo) {
+              return selectedPaciente?.telefone ? (
+                <Button size="sm" className="text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => shareAvaliacaoLink(`${selectedPaciente.nome} ${selectedPaciente.sobrenome}`, selectedPaciente.telefone!, getLinkUrl(linkAtivo.token))}>
+                  <Smartphone className="h-3 w-3" /> Enviar avaliação via WhatsApp
                 </Button>
-              )}
-            </div>
-          </div>
-
-          {/* Conteúdo principal */}
-          <div className="lg:col-span-3">
-            <div className="animate-slide-in">
-              {avaliacao.blocoAtual === 1 && (
-                <Bloco1 data={avaliacao} updateData={updateData} />
-              )}
-              {avaliacao.blocoAtual === 2 && (
-                <Bloco2 data={avaliacao} updateData={updateData} />
-              )}
-              {avaliacao.blocoAtual === 3 && (
-                <Bloco3 data={avaliacao} updateData={updateData} />
-              )}
-              {avaliacao.blocoAtual === 4 && (
-                <Bloco4 data={avaliacao} updateData={updateData} />
-              )}
-              {avaliacao.blocoAtual === 5 && (
-                <Bloco5 data={avaliacao} updateData={updateData} />
-              )}
-              {avaliacao.blocoAtual === 6 && (
-                <Bloco6 data={avaliacao} updateData={updateData} />
-              )}
-
-            </div>
-
-            {/* Navegação entre Blocos */}
-            {(
-              <div className="flex justify-between items-center mt-8 bg-card p-4 rounded-xl shadow-sm border">
-                <Button
-                  variant="outline"
-                  onClick={voltarBloco}
-                  className="gap-2 h-10 px-6"
-                  disabled={avaliacao.blocoAtual === 1}
-                >
-                  <ArrowLeft className="h-4 w-4" /> Anterior
+              ) : (
+                <Button size="sm" variant="outline" className="text-xs gap-1 h-8" onClick={() => copiarLink(linkAtivo.token)}>
+                  <Copy className="h-3 w-3" /> Copiar link da avaliação
                 </Button>
+              );
+            }
+            return (
+              <Button size="sm" variant="outline" className="text-xs gap-1 h-8" onClick={async () => {
+                const novo = await gerarLink(selectedPacienteId);
+                if (novo) copiarLink(novo.token);
+              }} disabled={gerando}>
+                {gerando ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link2 className="h-3 w-3" />}
+                Gerar link 30 dias
+              </Button>
+            );
+          })()}
 
-                <Button
-                  onClick={() => avancarBloco(avaliacao.blocoAtual)}
-                  className="bg-gradient-primary text-white gap-2 h-10 px-8"
-                >
-                  {avaliacao.blocoAtual === 6 ? (
-                    <>Finalizar Avaliação <CheckCircle2 className="h-4 w-4" /></>
-                  ) : (
-                    <>Próximo Passo <ArrowRight className="h-4 w-4" /></>
-                  )}
-                </Button>
-              </div>
-            )}
-          </div>
+          {selectedPaciente?.portal_token && (
+            selectedPaciente.telefone ? (
+              <Button size="sm" className="text-xs gap-1 h-8 bg-emerald-500 hover:bg-emerald-600 text-white" onClick={() => { const url = getPortalUrl(selectedPaciente.portal_token!); const msg = `Olá ${selectedPaciente.nome}! 🩺\n\nAcesse seu Portal do Paciente:\n${url}`; window.open(`https://wa.me/${selectedPaciente.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank'); }}>
+                <Smartphone className="h-3 w-3" /> Portal via WhatsApp
+              </Button>
+            ) : (
+              <Button size="sm" variant="outline" className="text-xs gap-1 h-8" onClick={() => { navigator.clipboard.writeText(getPortalUrl(selectedPaciente.portal_token!)); toast({ title: 'Link do Portal copiado! 🔗' }); }}>
+                <Copy className="h-3 w-3" /> Copiar link do Portal
+              </Button>
+            )
+          )}
+
+          {blocosConcluidos.size > 0 && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="text-xs gap-1 h-8 ml-auto"
+              onClick={() => {
+                const calculator = new MyIDCalculator(avaliacao);
+                const resultado = calculator.getFullResult();
+                setAvaliacao(prev => ({ ...prev, resultado }));
+                setShowRelatorio(true);
+              }}
+            >
+              Ver Relatório Parcial
+            </Button>
+          )}
         </div>
+
+        {/* Fluxo MyID em 4 fases — unificado com link público */}
+        <MyIDPhasedFlow
+          initialData={avaliacao}
+          faseConcluida={
+            blocosConcluidos.has(6) ? 4 :
+            blocosConcluidos.has(5) ? 3 :
+            (blocosConcluidos.has(3) && blocosConcluidos.has(4)) ? 2 :
+            (blocosConcluidos.has(1) && blocosConcluidos.has(2)) ? 1 : 0
+          }
+          pacienteNome={avaliacao.pacienteNome}
+          onDataChange={(d) => setAvaliacao(prev => ({ ...prev, ...d } as any))}
+          onPhaseSave={async (fase) => {
+            const blocosFase: Record<number, number[]> = { 1: [1, 2], 2: [3, 4], 3: [5], 4: [6] };
+            setBlocosConcluidos(prev => new Set([...prev, ...blocosFase[fase]]));
+            return true;
+          }}
+          onComplete={async () => {
+            setBlocosConcluidos(new Set([1, 2, 3, 4, 5, 6]));
+            const calculator = new MyIDCalculator(avaliacao);
+            const resultado = calculator.getFullResult();
+            const finalAv = { ...avaliacao, resultado, concluido: true };
+            setAvaliacao(finalAv);
+            if (selectedPacienteId) {
+              try {
+                const savedData = await salvarAvaliacao({ avaliacao: finalAv, pacienteId: selectedPacienteId });
+                setSavedAvaliacaoId(savedData?.id || null);
+                await clearDraft(myidDraftKey);
+                toast({ title: '✅ Avaliação salva automaticamente!', description: 'Agora monte a Diretriz de Tratamento.' });
+                setShowDiretrizBuilder(true);
+              } catch (err) {
+                console.error('Erro ao salvar avaliação:', err);
+                setShowRelatorio(true);
+              }
+            } else {
+              setShowRelatorio(true);
+            }
+            return true;
+          }}
+        />
       </div>
     </AppLayout>
   );

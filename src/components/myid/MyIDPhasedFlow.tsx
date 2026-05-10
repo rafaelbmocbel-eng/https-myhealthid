@@ -40,6 +40,8 @@ interface Props {
     redFlags: boolean,
   ) => Promise<boolean>;
   onComplete: (data: MyIDResponses, fullResult: any) => Promise<boolean>;
+  /** Optional: notified on every data update (for parent draft autosave). */
+  onDataChange?: (data: MyIDResponses) => void;
 }
 
 function dimsForPhase(fase: number): string[] {
@@ -59,6 +61,7 @@ export function MyIDPhasedFlow({
   pacienteNome,
   onPhaseSave,
   onComplete,
+  onDataChange,
 }: Props) {
   const { toast } = useToast();
   const [data, setData] = useState<MyIDResponses>(initialData || {});
@@ -72,8 +75,12 @@ export function MyIDPhasedFlow({
   const [lastDimensions, setLastDimensions] = useState<string[]>(dimsForPhase(faseConcluida));
 
   const updateData = useCallback((newData: Partial<MyIDResponses>) => {
-    setData((prev) => ({ ...prev, ...newData }));
-  }, []);
+    setData((prev) => {
+      const next = { ...prev, ...newData };
+      onDataChange?.(next);
+      return next;
+    });
+  }, [onDataChange]);
 
   // Scroll to top on screen/phase changes
   useEffect(() => {
