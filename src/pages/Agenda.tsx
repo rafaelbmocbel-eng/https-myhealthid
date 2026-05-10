@@ -1554,6 +1554,9 @@ export default function Agenda() {
                                         <div className={cn('flex items-center gap-0.5', sc.text)}>
                                           {sc.icon}
                                         </div>
+                                        {ag.paciente_id && (
+                                          <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                        )}
                                         <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
                                           {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
                                         </span>
