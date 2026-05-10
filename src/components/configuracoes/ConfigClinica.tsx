@@ -44,6 +44,31 @@ export default function ConfigClinica() {
   const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState<'ok' | 'fail' | null>(null);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoUpload = async (file: File) => {
+    if (!user) return;
+    if (file.size > 2 * 1024 * 1024) {
+      toast({ title: 'Logo muito grande', description: 'Máximo 2MB.', variant: 'destructive' });
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('clinica-assets').upload(path, file, { upsert: true });
+      if (upErr) throw upErr;
+      const { data: urlData } = supabase.storage.from('clinica-assets').getPublicUrl(path);
+      update('logo_url', urlData.publicUrl);
+      toast({ title: 'Logo enviado! Salve as configurações para confirmar.' });
+    } catch (e: any) {
+      toast({ title: 'Erro ao enviar logo', description: e.message, variant: 'destructive' });
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const removerLogo = () => update('logo_url', '');
 
   useEffect(() => {
     if (!user) return;
