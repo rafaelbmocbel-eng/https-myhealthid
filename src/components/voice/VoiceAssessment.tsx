@@ -651,7 +651,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         }),
       };
 
-      const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por voz (${classif}).`;
+      const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por ${mode === 'written' ? 'texto' : 'voz'} (${classif}).`;
 
       // 1) Cria o registro principal de protocolo
       const { data: prot, error: protErr } = await (supabase as any)
@@ -665,8 +665,9 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           duracao_total: '12 semanas',
           frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
           status: 'ativo',
+          origem: origemDiretriz,
           scores_avaliacao: {
-            origem: 'avaliacao_voz',
+            origem: origemDiretriz,
             classificacao: classif,
             queixa_principal: queixa,
             prognostico: diretriz.prognostico || null,
