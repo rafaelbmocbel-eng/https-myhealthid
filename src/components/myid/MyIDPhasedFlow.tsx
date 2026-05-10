@@ -178,6 +178,7 @@ export function MyIDPhasedFlow({
         }
         setLastScoreParcial(myid);
         setLastDimensions(dims);
+        setLastPartialScores(fullResult?.scores || {});
         setScreen('final');
       } else {
         const ok = await onPhaseSave(fase, data, score, dims, redFlags);
@@ -187,8 +188,10 @@ export function MyIDPhasedFlow({
         }
         setLastScoreParcial(score);
         setLastDimensions(dims);
+        setLastPartialScores(partialFR?.scores || {});
         setScreen('transicao');
       }
+
     } catch (e: any) {
       toast({
         title: 'Erro ao salvar fase',
