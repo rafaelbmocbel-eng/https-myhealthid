@@ -3566,6 +3566,16 @@ export type Database = {
           terapeuta_id: string
         }[]
       }
+      get_myid_concluido_publico: {
+        Args: { p_token: string }
+        Returns: {
+          data_conclusao: string
+          id: string
+          myid_score: number
+          paciente_nome: string
+          resultado_processado: Json
+        }[]
+      }
       get_myid_em_andamento: {
         Args: { p_token: string }
         Returns: {
