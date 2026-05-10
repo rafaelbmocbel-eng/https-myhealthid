@@ -302,6 +302,30 @@ export default function Pacientes() {
     enabled: !!user,
   });
 
+  // Pendências por paciente (notificações não lidas) — badge na lista
+  const { data: pendenciasPorPaciente = {} } = useQuery({
+    queryKey: ['pendencias-por-paciente', user?.id],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('notificacoes')
+        .select('tipo, titulo, metadata')
+        .eq('terapeuta_id', user!.id)
+        .eq('lida', false);
+      const map: Record<string, { count: number; tipos: string[]; titulos: string[] }> = {};
+      (data || []).forEach((n: any) => {
+        const pid = n.metadata?.paciente_id;
+        if (!pid) return;
+        if (!map[pid]) map[pid] = { count: 0, tipos: [], titulos: [] };
+        map[pid].count += 1;
+        if (!map[pid].tipos.includes(n.tipo)) map[pid].tipos.push(n.tipo);
+        if (map[pid].titulos.length < 4) map[pid].titulos.push(n.titulo);
+      });
+      return map;
+    },
+    enabled: !!user,
+    refetchInterval: 60000,
+  });
+
   // Fetch avaliacoes_identidade to know who has been evaluated
   const { data: avaliacoesIdentidade = [] } = useQuery({
     queryKey: ['pacientes-avaliacoes-identidade', user?.id],
