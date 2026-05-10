@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta } from '@/hooks/useEventos';
+import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta, type EventoCategoria, type EventoPublicoAlvo, type RecorrenciaConfig } from '@/hooks/useEventos';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
