@@ -666,7 +666,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           objetivo_geral: objetivoGeral,
           duracao_total: '12 semanas',
           frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
-          status: 'ativo',
+          status: intent === 'personalizar' ? 'rascunho' : 'ativo',
           origem: origemDiretriz,
           scores_avaliacao: {
             origem: origemDiretriz,
