@@ -44,6 +44,7 @@ export default function NotificationCenter() {
     reagendamento: '/agenda',
     cancelamento: '/agenda',
     evento: '/eventos',
+    diretriz_rascunho: '/pacientes',
   };
 
   const handleClick = (id: string, rota: string | null, tipo?: string) => {
