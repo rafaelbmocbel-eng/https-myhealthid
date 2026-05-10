@@ -69,6 +69,30 @@ function interpretD(d: number): string {
   if (a < 0.8) return 'médio';
   return 'grande';
 }
+function normalCdf(x: number): number {
+  const t = 1 / (1 + 0.2316419 * Math.abs(x));
+  const d = 0.3989422804014327 * Math.exp(-x*x/2);
+  const p = d * t * (0.3193815 + t * (-0.3565638 + t * (1.781478 + t * (-1.821256 + t * 1.330274))));
+  return x > 0 ? 1 - p : p;
+}
+function pairedT(pre: number[], post: number[]) {
+  const n = Math.min(pre.length, post.length);
+  if (n < 2) return { t: 0, p: 1, df: 0, mean_diff: 0, ci_low: 0, ci_high: 0, n: 0 };
+  const diffs: number[] = [];
+  for (let i = 0; i < n; i++) { const d = post[i] - pre[i]; if (Number.isFinite(d)) diffs.push(d); }
+  const m = mean(diffs); const s = sd(diffs);
+  const se = s / Math.sqrt(diffs.length);
+  const t = se ? m / se : 0;
+  const p = 2 * (1 - normalCdf(Math.abs(t)));
+  const margin = 1.96 * se;
+  return { t: +t.toFixed(3), p: +p.toFixed(4), df: diffs.length-1, mean_diff: +m.toFixed(2), ci_low: +(m-margin).toFixed(2), ci_high: +(m+margin).toFixed(2), n: diffs.length };
+}
+function fnv1a(str: string): string {
+  let h = 0x811c9dc5;
+  for (let i = 0; i < str.length; i++) { h ^= str.charCodeAt(i); h = Math.imul(h, 0x01000193); }
+  return ('0000000' + (h >>> 0).toString(16)).slice(-8);
+}
+function pSig(p: number): string { if (p < 0.001) return '<0.001'; return p.toFixed(3); }
 
 export default function ResearchDashboard() {
   const { user } = useAuth();
