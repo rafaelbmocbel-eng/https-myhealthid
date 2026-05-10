@@ -162,6 +162,41 @@ export default function ResearchDashboard() {
     });
     const temporal = Object.entries(porMes).sort().map(([mes, n]) => ({ mes, n }));
 
+    // Pré/pós: pacientes com >=2 avaliações — Cohen's d por dimensão
+    const prePost = sample.map(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      if (avs.length < 2) return null;
+      return { pre: avs[0], post: avs[avs.length - 1] };
+    }).filter(Boolean) as { pre: any; post: any }[];
+
+    const dimCohen = DIMENSOES.map(d => {
+      const pre = prePost.map(x => Number(x.pre[d.key])).filter(Number.isFinite);
+      const post = prePost.map(x => Number(x.post[d.key])).filter(Number.isFinite);
+      const dval = cohensD(pre, post);
+      return {
+        dimensao: d.label, key: d.key, n: pre.length,
+        media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
+        delta: +(mean(post) - mean(pre)).toFixed(1),
+        cohen_d: dval, magnitude: interpretD(dval),
+      };
+    });
+
+    // Matriz de correlação entre dimensões (na última avaliação de cada paciente)
+    const ultimas = sample.map(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      return avs[avs.length - 1];
+    }).filter(Boolean);
+    const corrMatrix = DIMENSOES.map(d1 => ({
+      dim: d1.label,
+      cells: DIMENSOES.map(d2 => ({
+        dim: d2.label,
+        r: pearson(
+          ultimas.map(a => Number(a[d1.key])).filter(Number.isFinite),
+          ultimas.map(a => Number(a[d2.key])).filter(Number.isFinite),
+        ),
+      })),
+    }));
+
     return {
       n_pacientes_total: pacientes.length,
       n_amostra: sample.length,
@@ -183,6 +218,9 @@ export default function ResearchDashboard() {
       sample,
       avaliacoes,
       voz,
+      dimCohen,
+      corrMatrix,
+      n_prepost: prePost.length,
     };
   }, [data]);
 
