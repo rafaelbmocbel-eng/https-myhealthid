@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import AppLayout from '@/components/AppLayout';
-import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta } from '@/hooks/useEventos';
+import { useEventos, useEventoDetalhe, type Evento, type EventoPergunta, type EventoCategoria, type EventoPublicoAlvo, type RecorrenciaConfig } from '@/hooks/useEventos';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -12,7 +12,7 @@ import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive } from 'lucide-react';
+import { Calendar, Plus, Trash2, Users, Eye, Copy, Check, X, MapPin, Clock, DollarSign, Pencil, FileText, Archive, Video, Repeat, Lock, Globe } from 'lucide-react';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -29,6 +29,19 @@ interface PerguntaForm {
 }
 
 const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true, limite_por_opcao: null };
+
+export const CATEGORIAS: { value: EventoCategoria; label: string; icon: string }[] = [
+  { value: 'aula_online', label: 'Aula online', icon: '🎥' },
+  { value: 'workshop', label: 'Workshop', icon: '🛠️' },
+  { value: 'live', label: 'Live / Tira-dúvidas', icon: '🎙️' },
+  { value: 'triagem', label: 'Triagem gratuita', icon: '🎁' },
+  { value: 'desafio', label: 'Desafio', icon: '🏆' },
+  { value: 'sazonal', label: 'Sazonal', icon: '🎉' },
+  { value: 'outro', label: 'Outro', icon: '📌' },
+];
+
+export const categoriaLabel = (c?: string) => CATEGORIAS.find(x => x.value === c)?.label || 'Outro';
+export const categoriaIcon = (c?: string) => CATEGORIAS.find(x => x.value === c)?.icon || '📌';
 
 const RECOVERY_TEMPLATE: PerguntaForm[] = [
   { tipo: 'boolean', pergunta: 'VOCÊ CONFIRMA SUA PRESENÇA?', opcoes: [], obrigatoria: true, limite_por_opcao: null },
@@ -60,12 +73,20 @@ export default function Eventos() {
   const [pixNome, setPixNome] = useState('');
   const [linkPagamento, setLinkPagamento] = useState('');
   const [perguntas, setPerguntas] = useState<PerguntaForm[]>([{ ...DEFAULT_PERGUNTA }]);
+  const [categoria, setCategoria] = useState<EventoCategoria>('outro');
+  const [linkVideo, setLinkVideo] = useState('');
+  const [publicoAlvo, setPublicoAlvo] = useState<EventoPublicoAlvo>('publico');
+  const [recorrenciaTipo, setRecorrenciaTipo] = useState<'nao' | 'diaria' | 'semanal'>('nao');
+  const [recorrenciaIntervalo, setRecorrenciaIntervalo] = useState<number>(1);
+  const [recorrenciaOcorrencias, setRecorrenciaOcorrencias] = useState<number>(4);
 
   const resetForm = () => {
     setTitulo(''); setDescricao(''); setDescricaoFormulario(''); setDataEvento(''); setHorarioInicio('09:00');
     setHorarioFim('12:00'); setLocal(''); setVagasMax(''); setCobrarPagamento(false);
     setValor(0); setPixChave(''); setPixTipo('cpf'); setPixNome(''); setLinkPagamento('');
     setPerguntas([{ ...DEFAULT_PERGUNTA }]);
+    setCategoria('outro'); setLinkVideo(''); setPublicoAlvo('publico');
+    setRecorrenciaTipo('nao'); setRecorrenciaIntervalo(1); setRecorrenciaOcorrencias(4);
   };
 
   const applyTemplate = () => {
@@ -77,6 +98,11 @@ export default function Eventos() {
   const handleCreate = () => {
     if (!titulo || !dataEvento) { toast.error('Título e data são obrigatórios'); return; }
     const validPerguntas = perguntas.filter(p => p.pergunta.trim());
+    const recorrencia: RecorrenciaConfig | null = recorrenciaTipo === 'nao' ? null : {
+      tipo: recorrenciaTipo,
+      intervalo: Math.max(1, recorrenciaIntervalo),
+      ocorrencias: Math.max(1, Math.min(52, recorrenciaOcorrencias)),
+    };
     criarEvento.mutate({
       titulo, descricao: descricao || null, descricao_formulario: descricaoFormulario || null,
       data_evento: dataEvento,
@@ -85,7 +111,9 @@ export default function Eventos() {
       cobrar_pagamento: cobrarPagamento, valor: cobrarPagamento ? valor : 0,
       pix_chave: pixChave || null, pix_tipo: pixTipo || 'cpf', pix_nome: pixNome || null,
       link_pagamento: linkPagamento || null, ativo: true,
+      categoria, link_video: linkVideo || null, publico_alvo: publicoAlvo,
       perguntas: validPerguntas,
+      recorrencia,
     } as any, {
       onSuccess: () => { setOpenCreate(false); resetForm(); },
     });
@@ -166,7 +194,50 @@ export default function Eventos() {
                     pixTipo={pixTipo} setPixTipo={setPixTipo}
                     pixNome={pixNome} setPixNome={setPixNome}
                     linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+                    categoria={categoria} setCategoria={setCategoria}
+                    linkVideo={linkVideo} setLinkVideo={setLinkVideo}
+                    publicoAlvo={publicoAlvo} setPublicoAlvo={setPublicoAlvo}
                   />
+
+                  <Separator />
+
+                  {/* Recurrence */}
+                  <div className="space-y-3 rounded-lg border border-border/40 p-3 bg-muted/30">
+                    <Label className="flex items-center gap-2 text-base font-semibold">
+                      <Repeat className="icon-sm" /> Repetir evento
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Frequência</Label>
+                        <Select value={recorrenciaTipo} onValueChange={(v) => setRecorrenciaTipo(v as any)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nao">Não repetir (único)</SelectItem>
+                            <SelectItem value="diaria">Diariamente (ex: desafio 30 dias)</SelectItem>
+                            <SelectItem value="semanal">Semanalmente (ex: aula toda quarta)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {recorrenciaTipo !== 'nao' && (
+                        <>
+                          <div>
+                            <Label className="text-xs">A cada</Label>
+                            <Input type="number" min={1} max={12} value={recorrenciaIntervalo}
+                              onChange={e => setRecorrenciaIntervalo(Number(e.target.value) || 1)} />
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {recorrenciaTipo === 'semanal' ? 'semana(s)' : 'dia(s)'}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Total de eventos</Label>
+                            <Input type="number" min={2} max={52} value={recorrenciaOcorrencias}
+                              onChange={e => setRecorrenciaOcorrencias(Number(e.target.value) || 2)} />
+                            <p className="text-[10px] text-muted-foreground mt-1">máx. 52</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
                   <Separator />
 
@@ -292,6 +363,7 @@ function EventoFormFields({
   cobrarPagamento, setCobrarPagamento, valor, setValor,
   pixChave, setPixChave, pixTipo, setPixTipo, pixNome, setPixNome,
   linkPagamento, setLinkPagamento,
+  categoria, setCategoria, linkVideo, setLinkVideo, publicoAlvo, setPublicoAlvo,
 }: {
   titulo: string; setTitulo: (v: string) => void;
   descricao: string; setDescricao: (v: string) => void;
@@ -307,17 +379,45 @@ function EventoFormFields({
   pixTipo: string; setPixTipo: (v: string) => void;
   pixNome: string; setPixNome: (v: string) => void;
   linkPagamento: string; setLinkPagamento: (v: string) => void;
+  categoria: EventoCategoria; setCategoria: (v: EventoCategoria) => void;
+  linkVideo: string; setLinkVideo: (v: string) => void;
+  publicoAlvo: EventoPublicoAlvo; setPublicoAlvo: (v: EventoPublicoAlvo) => void;
 }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="sm:col-span-2">
           <Label>Título *</Label>
-          <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
+          <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Aula de alongamento" />
+        </div>
+        <div>
+          <Label>Categoria</Label>
+          <Select value={categoria} onValueChange={(v) => setCategoria(v as EventoCategoria)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {CATEGORIAS.map(c => (
+                <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Quem pode se inscrever</Label>
+          <Select value={publicoAlvo} onValueChange={(v) => setPublicoAlvo(v as EventoPublicoAlvo)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="publico">🌐 Público (capta leads)</SelectItem>
+              <SelectItem value="pacientes_ativos">🔒 Só pacientes ativos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="sm:col-span-2">
           <Label>Descrição do evento</Label>
           <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
+        </div>
+        <div className="sm:col-span-2">
+          <Label className="flex items-center gap-1"><Video className="icon-sm" /> Link de vídeo (Zoom, Meet, YouTube)</Label>
+          <Input value={linkVideo} onChange={e => setLinkVideo(e.target.value)} placeholder="https://meet.google.com/... (opcional)" />
         </div>
         <div className="sm:col-span-2">
           <Label>Texto introdutório do formulário</Label>
@@ -339,7 +439,7 @@ function EventoFormFields({
           <Label>Horário Fim</Label>
           <Input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <Label>Vagas (vazio = ilimitado)</Label>
           <Input type="number" value={vagasMax} onChange={e => setVagasMax(e.target.value ? Number(e.target.value) : '')} min={1} />
         </div>
@@ -573,6 +673,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
   const [pixTipo, setPixTipo] = useState('cpf');
   const [pixNome, setPixNome] = useState('');
   const [linkPagamento, setLinkPagamento] = useState('');
+  const [categoria, setCategoria] = useState<EventoCategoria>('outro');
+  const [linkVideo, setLinkVideo] = useState('');
+  const [publicoAlvo, setPublicoAlvo] = useState<EventoPublicoAlvo>('publico');
 
   useEffect(() => {
     if (evento) {
@@ -590,6 +693,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
       setPixTipo(evento.pix_tipo || 'cpf');
       setPixNome(evento.pix_nome || '');
       setLinkPagamento(evento.link_pagamento || '');
+      setCategoria((evento.categoria as EventoCategoria) || 'outro');
+      setLinkVideo(evento.link_video || '');
+      setPublicoAlvo((evento.publico_alvo as EventoPublicoAlvo) || 'publico');
     }
   }, [evento]);
 
@@ -612,6 +718,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
       pix_tipo: pixTipo || 'cpf',
       pix_nome: pixNome || null,
       link_pagamento: linkPagamento || null,
+      categoria,
+      link_video: linkVideo || null,
+      publico_alvo: publicoAlvo,
     }, {
       onSuccess: () => onClose(),
     });
@@ -642,6 +751,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
               pixTipo={pixTipo} setPixTipo={setPixTipo}
               pixNome={pixNome} setPixNome={setPixNome}
               linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+              categoria={categoria} setCategoria={setCategoria}
+              linkVideo={linkVideo} setLinkVideo={setLinkVideo}
+              publicoAlvo={publicoAlvo} setPublicoAlvo={setPublicoAlvo}
             />
             <Button onClick={handleSave} disabled={editarEvento.isPending} className="w-full">
               {editarEvento.isPending ? 'Salvando...' : 'Salvar Alterações'}
@@ -661,11 +773,25 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
   return (
     <Card className="group hover:shadow-md transition-shadow">
       <CardHeader className="pb-2">
-        <div className="flex items-start justify-between">
+        <div className="flex items-start justify-between gap-2">
           <CardTitle className="text-base leading-tight">{evento.titulo}</CardTitle>
           <Badge variant={evento.ativo && !isPast ? 'default' : 'secondary'}>
             {isPast ? 'Encerrado' : evento.ativo ? 'Ativo' : 'Inativo'}
           </Badge>
+        </div>
+        <div className="flex flex-wrap gap-1 pt-1">
+          <Badge variant="outline" className="text-[10px] h-5">{categoriaIcon(evento.categoria)} {categoriaLabel(evento.categoria)}</Badge>
+          {evento.publico_alvo === 'pacientes_ativos' ? (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Lock className="icon-xs" /> Só pacientes</Badge>
+          ) : (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Globe className="icon-xs" /> Público</Badge>
+          )}
+          {evento.link_video && (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5 text-primary"><Video className="icon-xs" /> Online</Badge>
+          )}
+          {evento.recorrencia_grupo_id && (
+            <Badge variant="outline" className="text-[10px] h-5 gap-0.5"><Repeat className="icon-xs" /> Recorrente</Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
