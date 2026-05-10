@@ -35,6 +35,7 @@ import { useFunil } from '@/hooks/useFunil';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
+import DetectarAbandonoCard from '@/components/crm/DetectarAbandonoCard';
 
 // ── Classificação automática (shared with Pacientes) ──────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
@@ -488,6 +489,9 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                         </CardContent>
                     </Card>
                 )}
+
+                {/* Detectar abandono */}
+                <DetectarAbandonoCard />
 
                 {/* ── Tab Selector ── */}
                 <div className="flex gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto">

@@ -20,6 +20,7 @@ import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
+import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 
 interface PacienteInfo {
   id: string;
@@ -247,6 +248,9 @@ export default function PacienteDashboard() {
 
           {/* PWA Install Banner */}
           <PwaInstallBanner />
+
+          {/* Reação pós-sessão (NPS rápido) */}
+          {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
 
           {/* MyID Prompt — first time or monthly */}
           {showMyIdPrompt && (

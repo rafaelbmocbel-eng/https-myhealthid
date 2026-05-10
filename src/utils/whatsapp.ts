@@ -170,6 +170,34 @@ export async function shareConfirmacaoSessao(
   return shareViaWhatsApp(patientPhone, message, undefined, direct);
 }
 
+export async function shareReativacao(
+  patientName: string,
+  patientPhone: string,
+  diasSumido: number,
+  terapeutaName?: string,
+  direct: boolean = false,
+) {
+  const assinatura = terapeutaName ? `\n\n— ${terapeutaName}` : '';
+  let corpo: string;
+  if (diasSumido <= 30) {
+    corpo =
+      `Olá ${patientName}! 👋\n\n` +
+      `Notei que faz cerca de *${diasSumido} dias* que não nos vemos. Como você está se sentindo?\n\n` +
+      `Que tal agendarmos um retorno para acompanhar sua evolução? 📅`;
+  } else if (diasSumido <= 90) {
+    corpo =
+      `Olá ${patientName}! 💙\n\n` +
+      `Já faz *${diasSumido} dias* desde nossa última sessão. Estou pensando em você e quero saber como está.\n\n` +
+      `Vamos retomar seu acompanhamento? Posso te mandar horários disponíveis.`;
+  } else {
+    corpo =
+      `Olá ${patientName}! 🌟\n\n` +
+      `Faz um tempo (*${diasSumido} dias*) que não conversamos. Quero entender como você está e se posso ajudar a retomar seu cuidado.\n\n` +
+      `Me responda quando puder — sem compromisso. 💙`;
+  }
+  return shareViaWhatsApp(patientPhone, corpo + assinatura, undefined, direct);
+}
+
 export async function sharePosAlta(patientName: string, patientPhone: string, direct: boolean = false) {
   const message =
     `Olá ${patientName}! 🌟\n\n` +
