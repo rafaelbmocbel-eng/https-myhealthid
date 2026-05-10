@@ -1828,6 +1828,57 @@ export type Database = {
         }
         Relationships: []
       }
+      paciente_missoes: {
+        Row: {
+          acao_imediata: string | null
+          ativo: boolean
+          categoria: string
+          created_at: string
+          descricao: string | null
+          id: string
+          ordem: number
+          origem: string
+          paciente_id: string
+          source_key: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+          xp_recompensa: number
+        }
+        Insert: {
+          acao_imediata?: string | null
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          origem?: string
+          paciente_id: string
+          source_key?: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+          xp_recompensa?: number
+        }
+        Update: {
+          acao_imediata?: string | null
+          ativo?: boolean
+          categoria?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ordem?: number
+          origem?: string
+          paciente_id?: string
+          source_key?: string | null
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+          xp_recompensa?: number
+        }
+        Relationships: []
+      }
       paciente_servicos: {
         Row: {
           ativo: boolean
