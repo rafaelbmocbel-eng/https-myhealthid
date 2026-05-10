@@ -3766,8 +3766,11 @@ export type Database = {
       get_wellness_status: {
         Args: never
         Returns: {
+          acesso_clinico: string
+          acesso_clinico_expira_em: string
           assinatura_status: string
           consulta_mensal_disponivel: boolean
+          dias_restantes_carencia: number
           is_in_trial: boolean
           is_premium: boolean
           paciente_id: string

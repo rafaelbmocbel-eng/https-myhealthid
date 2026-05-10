@@ -34,6 +34,14 @@ export function useWellnessAccess() {
   const isPremium = tipoConta === 'wellness_premium';
   const isWellness = isFree || isPremium;
 
+  // Acesso clínico (paciente vinculado a profissional)
+  const acessoClinico = (data?.acesso_clinico as 'ativo' | 'carencia' | 'bloqueado' | undefined) ?? 'ativo';
+  const acessoClinicoExpiraEm = data?.acesso_clinico_expira_em as string | undefined;
+  const diasRestantesCarencia = (data?.dias_restantes_carencia as number | null | undefined) ?? null;
+  const emCarencia = isClinico && acessoClinico === 'carencia';
+  const bloqueadoClinico = isClinico && acessoClinico === 'bloqueado';
+  const podeReceberAtividadesNovas = !isClinico || acessoClinico === 'ativo';
+
   const trialAte = data?.trial_ate as string | undefined;
   const isInTrial = !!data?.is_in_trial;
   const trialDiasRestantes = trialAte
@@ -67,5 +75,12 @@ export function useWellnessAccess() {
     pacienteId: data?.paciente_id as string | undefined,
     consultaMensalDisponivel: !!data?.consulta_mensal_disponivel,
     proximaCobranca: data?.proxima_cobranca as string | undefined,
+    // acesso clínico
+    acessoClinico,
+    acessoClinicoExpiraEm,
+    diasRestantesCarencia,
+    emCarencia,
+    bloqueadoClinico,
+    podeReceberAtividadesNovas,
   };
 }

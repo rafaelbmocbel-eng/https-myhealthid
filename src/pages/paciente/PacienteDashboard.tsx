@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -19,6 +19,7 @@ import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembr
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
+import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
@@ -68,7 +69,8 @@ export default function PacienteDashboard() {
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const notifications = usePacienteNotifications(user?.id);
-  const { isFree, isInTrial, trialDiasRestantes } = useWellnessAccess();
+  const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
+  const [profissional, setProfissional] = useState<{ nome?: string; whatsapp?: string }>({});
 
   useEffect(() => {
     if (!user) return;
@@ -76,12 +78,22 @@ export default function PacienteDashboard() {
     const fetchData = async () => {
       const { data: pac } = await supabase
         .from('pacientes')
-        .select('id, nome, sobrenome')
+        .select('id, nome, sobrenome, terapeuta_id')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!pac) { setLoading(false); return; }
       setPaciente(pac);
+
+      // Profissional vinculado (para CTA de retomar tratamento)
+      if (pac.terapeuta_id) {
+        const { data: prof } = await supabase
+          .from('profiles')
+          .select('nome, sobrenome, telefone')
+          .eq('user_id', pac.terapeuta_id)
+          .maybeSingle();
+        if (prof) setProfissional({ nome: [prof.nome, prof.sobrenome].filter(Boolean).join(' '), whatsapp: prof.telefone ?? undefined });
+      }
 
       const now = new Date().toISOString();
 
@@ -247,6 +259,37 @@ export default function PacienteDashboard() {
               </CardContent>
             </Card>
           </motion.div>
+
+          {/* Bloqueio total — pacote terminou há mais de 60 dias */}
+          {bloqueadoClinico && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <BloqueioPortalCard
+                whatsappProfissional={profissional.whatsapp}
+                nomeProfissional={profissional.nome}
+              />
+            </motion.div>
+          )}
+
+          {/* Carência — pacote terminou, ainda dentro de 30 dias */}
+          {emCarencia && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <Clock className="icon-sm text-amber-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-amber-900">
+                      Período de carência — {diasRestantesCarencia ?? 0} {diasRestantesCarencia === 1 ? 'dia' : 'dias'} restantes
+                    </p>
+                    <p className="text-[11px] text-amber-800/80 mt-0.5">
+                      Seu pacote terminou. O portal segue aberto para acompanhamento, mas seu profissional não pode adicionar novas atividades. Retome o tratamento para liberar tudo de novo.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
 
           {/* PWA Install Banner */}
           <PwaInstallBanner />

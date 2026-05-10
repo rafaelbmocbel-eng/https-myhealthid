@@ -44,6 +44,8 @@ import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLG
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
+import StatusClinicoBadge from '@/components/paciente/StatusClinicoBadge';
+import { useAcessoClinicoPaciente } from '@/hooks/useAcessoClinicoPaciente';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
@@ -83,6 +85,7 @@ const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.R
 export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: acessoClinico } = useAcessoClinicoPaciente(id);
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
@@ -625,9 +628,17 @@ export default function PacientePerfil() {
                 {paciente.sobrenome?.[0] || ''}
               </div>
               <div className="flex-1 min-w-0">
-                <h1 className="text-lg sm:text-2xl font-black text-foreground leading-tight truncate">
-                  {paciente.nome} {paciente.sobrenome}
-                </h1>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <h1 className="text-lg sm:text-2xl font-black text-foreground leading-tight truncate">
+                    {paciente.nome} {paciente.sobrenome}
+                  </h1>
+                  {acessoClinico && (
+                    <StatusClinicoBadge
+                      status={acessoClinico.status}
+                      diasRestantesCarencia={acessoClinico.diasRestantesCarencia}
+                    />
+                  )}
+                </div>
                 {/* Contact pills */}
                 <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
                   {idade !== null && (
