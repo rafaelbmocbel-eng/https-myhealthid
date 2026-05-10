@@ -750,6 +750,12 @@ export default function PacientePerfil() {
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
                 terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
               />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <ResumoRapido30s
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                />
+              </div>
             </div>
           </div>
         </div>
