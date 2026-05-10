@@ -358,6 +358,59 @@ export default function Eventos() {
             editarEvento={editarEvento}
           />
         )}
+
+        {/* Reativar Evento Passado */}
+        <Dialog open={!!reativando} onOpenChange={(o) => !o && setReativando(null)}>
+          <DialogContent className="max-w-sm max-h-[90dvh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle className="text-base">Reativar evento</DialogTitle>
+            </DialogHeader>
+            {reativando && (
+              <div className="space-y-4">
+                <div className="rounded-lg border border-border/40 bg-muted/30 p-3 space-y-1">
+                  <p className="text-sm font-medium">{reativando.titulo}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Data anterior: {format(new Date(reativando.data_evento + 'T12:00:00'), "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="nova-data" className="text-sm">Nova data do evento *</Label>
+                  <Input
+                    id="nova-data"
+                    type="date"
+                    value={novaDataReativar}
+                    min={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => setNovaDataReativar(e.target.value)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Horário, local, link de vídeo, questionário e demais configurações serão mantidos. Inscrições anteriores ficam preservadas no histórico.
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Button variant="outline" onClick={() => setReativando(null)} className="flex-1">Cancelar</Button>
+                  <Button
+                    className="flex-1"
+                    disabled={!novaDataReativar || novaDataReativar < new Date().toISOString().split('T')[0] || editarEvento.isPending}
+                    onClick={() => {
+                      editarEvento.mutate(
+                        {
+                          id: reativando.id,
+                          data_evento: novaDataReativar,
+                          ativo: true,
+                          lembrete_24h_enviado: false,
+                          lembrete_1h_enviado: false,
+                        } as any,
+                        { onSuccess: () => setReativando(null) }
+                      );
+                    }}
+                  >
+                    {editarEvento.isPending ? 'Reativando...' : 'Reativar'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   );
