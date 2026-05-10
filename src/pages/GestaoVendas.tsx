@@ -490,6 +490,9 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                     </Card>
                 )}
 
+                {/* Detectar abandono */}
+                <DetectarAbandonoCard />
+
                 {/* ── Tab Selector ── */}
                 <div className="flex gap-1 bg-muted/50 p-1 rounded-xl overflow-x-auto">
                     {TABS.map(tab => (
