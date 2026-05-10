@@ -44,6 +44,21 @@ export default function PacienteChat() {
             <div className="flex-1 flex items-center justify-center">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
+          ) : isFree && !hasFeature('chat') ? (
+            <div className="flex-1 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center">
+                <Lock className="icon-md text-primary" />
+              </div>
+              <div>
+                <p className="text-base font-bold text-foreground">Chat com profissional</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
+                  Disponível para assinantes do plano Wellness Premium.
+                </p>
+              </div>
+              <Button onClick={() => navigate('/paciente/plano')} size="sm" className="gap-1">
+                <Sparkles className="icon-sm" /> Conhecer plano
+              </Button>
+            </div>
           ) : paciente ? (
             <ChatWindow
               pacienteId={paciente.id}
