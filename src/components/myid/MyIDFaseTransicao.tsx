@@ -1,6 +1,9 @@
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { CheckCircle2, ArrowRight, Save, Sparkles } from 'lucide-react';
+import { CheckCircle2, ArrowRight, Save, Sparkles, Construction } from 'lucide-react';
+import MyIDFingerprint from './MyIDFingerprint';
+import { getMyIDFingerprintData } from '@/utils/myidCalculations';
+
 
 interface FaseInfo {
   numero: 1 | 2 | 3 | 4;
