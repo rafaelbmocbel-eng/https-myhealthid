@@ -268,10 +268,14 @@ export default function PacienteDashboard() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-sm font-black text-primary-foreground">
-                      ✨ Desbloqueie tudo com Wellness Premium
+                      {isInTrial
+                        ? `🎁 Trial Premium ativo — ${trialDiasRestantes} ${trialDiasRestantes === 1 ? 'dia restante' : 'dias restantes'}`
+                        : '✨ Desbloqueie tudo com Wellness Premium'}
                     </h3>
                     <p className="text-[11px] text-primary-foreground/75 mt-0.5">
-                      Exercícios, protocolos, missões completas e 1 consulta/mês com profissional.
+                      {isInTrial
+                        ? 'Você tem acesso completo aos exercícios, protocolos e missões. Assine para continuar após o trial.'
+                        : 'Exercícios, protocolos, missões completas e 1 consulta/mês com profissional.'}
                     </p>
                   </div>
                   <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
