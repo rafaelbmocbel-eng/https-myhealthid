@@ -90,7 +90,7 @@ export default function PacienteEventos() {
     const today = new Date().toISOString().split('T')[0];
     const { data: evts } = await supabase
       .from('eventos')
-        .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento')
+        .select('id, titulo, descricao, descricao_formulario, data_evento, horario_inicio, horario_fim, local, vagas_max, cobrar_pagamento, valor, link_pagamento, categoria, link_video, recorrencia_grupo_id')
       .eq('terapeuta_id', pac.terapeuta_id)
       .eq('ativo', true)
       .gte('data_evento', today)
