@@ -1090,8 +1090,11 @@ export default function Agenda() {
                       <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleRecusar(ag.id)}>
                         <X className="h-3 w-3 mr-1" /> Recusar
                       </Button>
-                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmar(ag.id)}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirmar(ag.id)}>
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmarWhatsApp(ag.id)} title="Confirma e abre WhatsApp com mensagem pronta">
+                        <MessageCircle className="h-3 w-3 mr-1" /> Confirmar + WhatsApp
                       </Button>
                     </div>
                   </div>
