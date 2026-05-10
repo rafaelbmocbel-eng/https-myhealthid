@@ -392,7 +392,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
                     </div>
                     {pac?.telefone && (
                       <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-emerald-600 shrink-0" onClick={() => { window.open(`https://wa.me/55${pac.telefone.replace(/\D/g, '')}`, '_blank'); }}>
-                        <Phone className="h-3.5 w-3.5" />
+                        <Phone className="icon-sm" />
                       </Button>
                     )}
                   </div>
@@ -510,7 +510,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="relative">
-            <Search className="absolute left-2.5 top-2.5 h-3.5 w-3.5 text-muted-foreground" />
+            <Search className="absolute left-2.5 top-2.5 icon-sm text-muted-foreground" />
             <Input placeholder="Buscar para marcar VIP..." value={vipSearch} onChange={e => setVipSearch(e.target.value)} className="pl-8 h-8 text-xs" />
           </div>
           {vipIds.length > 0 && (
@@ -520,7 +520,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
                 if (!p) return null;
                 return (
                   <div key={id} className="flex items-center gap-2 p-2 rounded-lg bg-amber-50 dark:bg-amber-950/20 border border-amber-200">
-                    <button onClick={() => saveVip(vipIds.filter(v => v !== id))}><Star className="h-3.5 w-3.5 text-amber-500 fill-amber-500" /></button>
+                    <button onClick={() => saveVip(vipIds.filter(v => v !== id))}><Star className="icon-sm text-amber-500 fill-amber-500" /></button>
                     <span className="text-xs font-bold truncate flex-1">{(p as any).nome} {(p as any).sobrenome}</span>
                     {(p as any).telefone && <button onClick={() => { const t = (p as any).telefone.replace(/\D/g, ''); window.open(`https://wa.me/55${t}`, '_blank'); }} className="text-emerald-600"><Phone className="h-3 w-3" /></button>}
                   </div>

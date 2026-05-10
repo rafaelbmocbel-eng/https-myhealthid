@@ -110,9 +110,9 @@ export default function ProtocoloProgressao({ protocoloId, progressao, fases, fa
                         atingido ? 'bg-emerald-50 text-emerald-700' : 'bg-muted/40 text-muted-foreground'
                       }`}>
                         {atingido ? (
-                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                          <CheckCircle2 className="icon-sm text-emerald-500 shrink-0" />
                         ) : (
-                          <Circle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <Circle className="icon-sm text-muted-foreground shrink-0" />
                         )}
                         <div>
                           <div className="font-medium">{c.label}</div>

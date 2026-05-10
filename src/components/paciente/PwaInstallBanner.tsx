@@ -53,7 +53,7 @@ export default function PwaInstallBanner() {
                     📲 Instale o app no celular!
                   </h3>
                   <button onClick={handleDismiss} className="text-white/60 hover:text-white/90 p-0.5">
-                    <X className="h-3.5 w-3.5" />
+                    <X className="icon-sm" />
                   </button>
                 </div>
                 <p className="text-[11px] text-white/70 mt-0.5">
@@ -66,7 +66,7 @@ export default function PwaInstallBanner() {
                     className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-white border-0"
                     onClick={handleInstall}
                   >
-                    <Download className="h-3.5 w-3.5 mr-1" />
+                    <Download className="icon-sm mr-1" />
                     Instalar agora
                   </Button>
                 )}
@@ -77,7 +77,7 @@ export default function PwaInstallBanner() {
                     className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-white border-0"
                     onClick={() => setShowIosSteps(true)}
                   >
-                    <Share className="h-3.5 w-3.5 mr-1" />
+                    <Share className="icon-sm mr-1" />
                     Como instalar
                   </Button>
                 )}

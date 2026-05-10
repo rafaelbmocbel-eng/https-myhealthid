@@ -545,7 +545,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 {/* Exercícios */}
                                 <div>
                                     <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                        <Dumbbell className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <Dumbbell className="icon-sm text-muted-foreground" />
                                         Exercícios
                                         <Badge variant="outline" className="text-[10px] h-5">
                                             {selectedExercicios[faseEditando]?.size || 0}/{fase.exercicios.length}
@@ -590,7 +590,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 {/* Técnicas */}
                                 <div>
                                     <h4 className="font-semibold text-sm mb-3 flex items-center gap-2">
-                                        <Brain className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <Brain className="icon-sm text-muted-foreground" />
                                         Técnicas Terapêuticas
                                         <Badge variant="outline" className="text-[10px] h-5">
                                             {selectedTecnicas[faseEditando]?.size || 0}/{fase.tecnicas.length}
@@ -753,7 +753,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 onClick={() => setCurrentStep(prev => prev - 1)}
                                 className="gap-1"
                             >
-                                <ArrowLeft className="h-3.5 w-3.5" />
+                                <ArrowLeft className="icon-sm" />
                                 <span className="hidden sm:inline">Voltar</span>
                             </Button>
                         )}
@@ -765,7 +765,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 className="bg-gradient-primary text-white gap-1"
                             >
                                 <span>{currentStep === 1 ? 'Personalizar' : 'Revisar'}</span>
-                                <ArrowRight className="h-3.5 w-3.5" />
+                                <ArrowRight className="icon-sm" />
                             </Button>
                         ) : (
                             <Button

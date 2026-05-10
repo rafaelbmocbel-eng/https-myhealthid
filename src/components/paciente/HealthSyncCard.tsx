@@ -88,21 +88,21 @@ export default function HealthSyncCard({ onSyncComplete }: HealthSyncCardProps) 
         {lastSync && (
           <div className="grid grid-cols-3 gap-2">
             <div className="text-center p-2 rounded-lg bg-background">
-              <Footprints className="h-3.5 w-3.5 mx-auto text-blue-500 mb-0.5" />
+              <Footprints className="icon-sm mx-auto text-blue-500 mb-0.5" />
               <span className="text-sm font-black text-foreground block">
                 {lastSync.steps.toLocaleString()}
               </span>
               <span className="text-[8px] text-muted-foreground">passos</span>
             </div>
             <div className="text-center p-2 rounded-lg bg-background">
-              <Heart className="h-3.5 w-3.5 mx-auto text-red-500 mb-0.5" />
+              <Heart className="icon-sm mx-auto text-red-500 mb-0.5" />
               <span className="text-sm font-black text-foreground block">
                 {lastSync.heartRate ? `${Math.round(lastSync.heartRate)}` : '—'}
               </span>
               <span className="text-[8px] text-muted-foreground">bpm</span>
             </div>
             <div className="text-center p-2 rounded-lg bg-background">
-              <Flame className="h-3.5 w-3.5 mx-auto text-orange-500 mb-0.5" />
+              <Flame className="icon-sm mx-auto text-orange-500 mb-0.5" />
               <span className="text-sm font-black text-foreground block">
                 {lastSync.calories ? Math.round(lastSync.calories) : '—'}
               </span>
@@ -123,9 +123,9 @@ export default function HealthSyncCard({ onSyncComplete }: HealthSyncCardProps) 
           disabled={syncing}
         >
           {syncing ? (
-            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            <Loader2 className="icon-sm animate-spin" />
           ) : (
-            <RefreshCw className="h-3.5 w-3.5" />
+            <RefreshCw className="icon-sm" />
           )}
           {!hasPermission ? 'Conectar Smartwatch' : lastSync ? 'Atualizar dados' : 'Sincronizar agora'}
         </Button>

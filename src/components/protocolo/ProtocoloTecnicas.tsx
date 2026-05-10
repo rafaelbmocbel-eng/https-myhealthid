@@ -194,8 +194,8 @@ export default function ProtocoloTecnicas({ tecnicas, faseAtual, protocoloId }: 
                                     <span className="text-sm font-medium">{tec.nome}</span>
                                   </div>
                                   <div className="flex gap-0.5 shrink-0">
-                                    <Badge className={`${evBadge.class} border-0 text-[8px] h-3.5 px-1`}>{evBadge.label}</Badge>
-                                    <Badge className={`${compBadge.class} border-0 text-[8px] h-3.5 px-1`}>{compBadge.label}</Badge>
+                                    <Badge className={`${evBadge.class} border-0 text-[8px] h-4 px-1`}>{evBadge.label}</Badge>
+                                    <Badge className={`${compBadge.class} border-0 text-[8px] h-4 px-1`}>{compBadge.label}</Badge>
                                   </div>
                                 </div>
                                 <p className="text-xs text-muted-foreground mt-0.5 ml-7">{tec.descricao}</p>
@@ -204,7 +204,7 @@ export default function ProtocoloTecnicas({ tecnicas, faseAtual, protocoloId }: 
                                 {tec.parametros && typeof tec.parametros === 'object' && (
                                   <div className="flex flex-wrap gap-0.5 mt-1 ml-7">
                                     {Object.entries(tec.parametros).slice(0, 3).map(([k, v]) => (
-                                      <Badge key={k} variant="outline" className="text-[8px] py-0 h-3.5">{k}: {String(v)}</Badge>
+                                      <Badge key={k} variant="outline" className="text-[8px] py-0 h-4">{k}: {String(v)}</Badge>
                                     ))}
                                   </div>
                                 )}

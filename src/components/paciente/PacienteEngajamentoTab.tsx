@@ -140,7 +140,7 @@ export default function PacienteEngajamentoTab({ pacienteId, pacienteNome }: Pro
               alert.severity === 'warning' ? 'bg-amber-50 text-amber-700' :
               'bg-emerald-50 text-emerald-700'
             }`}>
-              <alert.icon className="h-3.5 w-3.5 shrink-0" />
+              <alert.icon className="icon-sm shrink-0" />
               {alert.text}
             </div>
           ))}

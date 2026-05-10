@@ -119,7 +119,7 @@ export default function PacienteExerciciosResumido({ pacienteId }: Props) {
                     </span>
                   )}
                   {treino.intensidade && (
-                    <Badge variant="outline" className="text-[8px] py-0 h-3.5">{treino.intensidade}</Badge>
+                    <Badge variant="outline" className="text-[8px] py-0 h-4">{treino.intensidade}</Badge>
                   )}
                 </div>
                 <div className="flex items-center gap-2 mt-1">

@@ -1601,7 +1601,7 @@ export default function Agenda() {
             {/* Recurring indicator */}
             {modal.agendamento?.recorrencia_grupo_id && (
               <div className="flex items-center gap-2 text-xs bg-accent/30 border border-border rounded-lg px-3 py-2">
-                <Repeat className="h-3.5 w-3.5 text-primary" />
+                <Repeat className="icon-sm text-primary" />
                 <span className="font-medium text-muted-foreground">Agendamento recorrente — alterações podem afetar toda a série</span>
               </div>
             )}

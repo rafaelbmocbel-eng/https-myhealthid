@@ -223,10 +223,10 @@ function TodosOsLinks() {
 
       {/* Legenda */}
       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-        <span className="flex items-center gap-1.5"><Activity className="h-3.5 w-3.5 text-primary" /> Avaliação (30 dias)</span>
-        <span className="flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5 text-amber-500" /> Agenda (90 dias)</span>
-        <span className="flex items-center gap-1.5"><MessageCircle className="h-3.5 w-3.5 text-[#25D366]" /> WhatsApp</span>
-        <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-blue-500" /> Email</span>
+        <span className="flex items-center gap-1.5"><Activity className="icon-sm text-primary" /> Avaliação (30 dias)</span>
+        <span className="flex items-center gap-1.5"><CalendarDays className="icon-sm text-amber-500" /> Agenda (90 dias)</span>
+        <span className="flex items-center gap-1.5"><MessageCircle className="icon-sm text-[#25D366]" /> WhatsApp</span>
+        <span className="flex items-center gap-1.5"><Mail className="icon-sm text-blue-500" /> Email</span>
       </div>
 
       {/* Lista de pacientes */}
@@ -258,7 +258,7 @@ function TodosOsLinks() {
                 {/* Linha: Link de Avaliação */}
                 <div className="border-t px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3">
                   <div className="flex items-center gap-2 min-w-[140px]">
-                    <Activity className="h-3.5 w-3.5 text-primary shrink-0" />
+                    <Activity className="icon-sm text-primary shrink-0" />
                     <span className="text-xs font-medium text-foreground">Avaliação</span>
                     {avAtivo
                       ? <Badge className="bg-emerald-100 text-emerald-700 border-emerald-200 text-xs ml-1">{differenceInDays(new Date(avAtivo.data_expiracao!), new Date())}d restantes</Badge>
@@ -305,7 +305,7 @@ function TodosOsLinks() {
                 {/* Linha: Link de Agenda */}
                 <div className="border-t px-4 py-3 flex flex-col sm:flex-row sm:items-center gap-3 bg-amber-50/30">
                   <div className="flex items-center gap-2 min-w-[140px]">
-                    <CalendarDays className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                    <CalendarDays className="icon-sm text-amber-500 shrink-0" />
                     <span className="text-xs font-medium text-foreground">Agenda</span>
                     {agAtivo
                       ? <Badge className="bg-amber-100 text-amber-700 border-amber-200 text-xs ml-1">{differenceInDays(new Date(agAtivo.data_expiracao!), new Date())}d restantes</Badge>

@@ -198,7 +198,7 @@ export default function PacienteExercicios() {
                 <div className="space-y-1.5">
                   {exercicios.filter(e => e.treino_id === activeSession).map(ex => (
                     <div key={ex.id} className="flex items-center gap-2 p-2 rounded-lg bg-background/50 text-xs">
-                      <Check className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Check className="icon-sm text-muted-foreground" />
                       <span className="font-medium text-foreground flex-1">{ex.nome_customizado || 'Exercício'}</span>
                       <span className="text-muted-foreground">{ex.series}×{ex.repeticoes}</span>
                     </div>

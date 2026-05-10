@@ -564,7 +564,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                 const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
                                                 window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}?text=${msg}`, '_blank');
                                             }}>
-                                            <MessageCircle className="h-3.5 w-3.5" /> Chamar
+                                            <MessageCircle className="icon-sm" /> Chamar
                                         </Button>
                                     )}
                                     {actions && (
@@ -578,7 +578,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                         <MessageCircle className="h-3 w-3 text-[#25D366] shrink-0" />
                                         <span className="truncate flex-1">{lastMsg.mensagem.substring(0, 60)}{lastMsg.mensagem.length > 60 ? '...' : ''}</span>
                                         <span className="shrink-0 font-medium">{format(new Date(lastMsg.created_at), 'dd/MM')}</span>
-                                        {patientMsgs.length > 1 && <Badge variant="secondary" className="text-[8px] h-3.5 px-1">{patientMsgs.length}</Badge>}
+                                        {patientMsgs.length > 1 && <Badge variant="secondary" className="text-[8px] h-4 px-1">{patientMsgs.length}</Badge>}
                                     </div>
                                 )}
                             </div>
@@ -600,7 +600,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                        <MessageCircle className="icon-sm" />
                                                     </Button>
                                                 </>
                                             ) : null
@@ -633,7 +633,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                     {link.pacientes?.telefone && (
                                                         <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                             onClick={() => window.open(`https://wa.me/55${link.pacientes.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                            <MessageCircle className="h-3.5 w-3.5" />
+                                                            <MessageCircle className="icon-sm" />
                                                         </Button>
                                                     )}
                                                 </div>
@@ -670,7 +670,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                        <MessageCircle className="icon-sm" />
                                                     </Button>
                                                 </>
                                             ) : null
@@ -706,7 +706,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                        <MessageCircle className="icon-sm" />
                                                     </Button>
                                                 </>
                                             ) : null
@@ -731,7 +731,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                 </Button>
                                                 <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                     onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                    <MessageCircle className="h-3.5 w-3.5" />
+                                                    <MessageCircle className="icon-sm" />
                                                 </Button>
                                             </>
                                         ) : null
@@ -756,7 +756,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                                     </Button>
                                                     <Button size="sm" variant="ghost" className="h-7 w-7 p-0 text-green-600"
                                                         onClick={() => window.open(`https://wa.me/55${p.telefone.replace(/\D/g, '')}`, '_blank')}>
-                                                        <MessageCircle className="h-3.5 w-3.5" />
+                                                        <MessageCircle className="icon-sm" />
                                                     </Button>
                                                 </>
                                             ) : null
@@ -921,7 +921,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                         <Button variant="outline" size="sm" className="h-8 gap-1 text-[11px] bg-[#25D366]/10 text-[#128C7E] hover:bg-[#25D366] hover:text-white border-[#25D366]/30 transition-colors"
                                             onClick={() => window.open(`https://wa.me/55${selectedPatient.telefone?.replace(/\D/g, '')}`, '_blank')}
                                             disabled={!selectedPatient.telefone}>
-                                            <MessageCircle className="h-3.5 w-3.5" /> Abrir WhatsApp Web
+                                            <MessageCircle className="icon-sm" /> Abrir WhatsApp Web
                                         </Button>
                                     </div>
 

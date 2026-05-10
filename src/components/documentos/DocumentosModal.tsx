@@ -365,7 +365,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               <div className="space-y-3">
                 {autoFilling && (
                   <div className="flex items-center gap-2 p-2 rounded-lg bg-muted/50 text-xs text-muted-foreground">
-                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Buscando MyID e última avaliação…
+                    <Loader2 className="icon-sm animate-spin" /> Buscando MyID e última avaliação…
                   </div>
                 )}
                 {myidData?.score != null && (

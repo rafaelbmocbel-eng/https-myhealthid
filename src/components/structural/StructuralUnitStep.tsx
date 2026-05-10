@@ -122,7 +122,7 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
               );
             })()}
           </div>
-          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
+          <ChevronDown className={cn('icon-sm text-muted-foreground transition-transform', expandedSection === 'tests' && 'rotate-180')} />
         </button>
 
         {expandedSection === 'tests' && (
@@ -180,7 +180,7 @@ export default function StructuralUnitStep({ unitConfig, assessment, onChange }:
               </Badge>
             )}
           </div>
-          <ChevronDown className={cn('h-3.5 w-3.5 text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
+          <ChevronDown className={cn('icon-sm text-muted-foreground transition-transform', expandedSection === 'structures' && 'rotate-180')} />
         </button>
 
         {expandedSection === 'structures' && (

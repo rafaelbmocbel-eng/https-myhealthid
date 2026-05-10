@@ -44,7 +44,7 @@ function LossBar({ dim, perda, maxLoss = 20 }: { dim: string; perda: PerdaCalcul
       <span className="text-[11px] font-black w-12 text-right" style={{ color }}>
         -{perda.perda_pontos}pts
       </span>
-      {perda.gatilho_critico && <AlertTriangle className="h-3.5 w-3.5 text-red-500 shrink-0" />}
+      {perda.gatilho_critico && <AlertTriangle className="icon-sm text-red-500 shrink-0" />}
     </div>
   );
 }

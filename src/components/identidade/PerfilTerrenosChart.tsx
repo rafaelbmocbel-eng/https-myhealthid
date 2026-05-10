@@ -384,7 +384,7 @@ export default function PerfilTerrenosChart({ avaliacao, className }: Props) {
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger>
-                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Info className="icon-sm text-muted-foreground" />
                 </TooltipTrigger>
                 <TooltipContent className="max-w-xs text-xs">
                   <p><strong>Anéis internos</strong> = fatores modificáveis (hábitos de vida). <strong>Anéis externos</strong> = fatores regulatórios/não-modificáveis. <strong>Centro</strong> = mapa de dor do paciente. Passe o mouse para detalhes.</p>

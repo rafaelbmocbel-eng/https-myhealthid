@@ -98,7 +98,7 @@ export default function AiCreditsBanner() {
             className="h-8 w-8 p-0 hover:bg-background/60"
             title="Verificar novamente"
           >
-            <RefreshCw className={cn('h-3.5 w-3.5', loading && 'animate-spin')} />
+            <RefreshCw className={cn('icon-sm', loading && 'animate-spin')} />
           </Button>
           {status === 'active' && (
             <Button
@@ -108,7 +108,7 @@ export default function AiCreditsBanner() {
               className="h-8 w-8 p-0 hover:bg-background/60"
               title="Ocultar por 24h"
             >
-              <X className="h-3.5 w-3.5" />
+              <X className="icon-sm" />
             </Button>
           )}
         </div>
@@ -116,7 +116,7 @@ export default function AiCreditsBanner() {
 
       {/* Aviso sobre saldo + ações */}
       <div className="flex items-start gap-2 pt-2 border-t border-current/15">
-        <Info className="h-3.5 w-3.5 shrink-0 mt-0.5 opacity-70" />
+        <Info className="icon-sm shrink-0 mt-0.5 opacity-70" />
         <p className="text-[11px] opacity-80 flex-1">
           O saldo exato em USD não é exposto pela API da Lovable AI. Para ver o valor restante e adicionar
           créditos, abra <span className="font-medium">Settings → Workspace → Cloud &amp; AI balance</span>.
@@ -131,7 +131,7 @@ export default function AiCreditsBanner() {
           variant="outline"
         >
           <a href={TOPUP_URL} target="_blank" rel="noopener noreferrer">
-            <Wallet className="h-3.5 w-3.5" />
+            <Wallet className="icon-sm" />
             Adicionar créditos
             <ExternalLink className="h-3 w-3 opacity-60" />
           </a>

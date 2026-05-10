@@ -329,10 +329,10 @@ export default function PacienteDiario() {
           {/* Summary cards */}
           {averages && (
             <div className="grid grid-cols-4 gap-2">
-              <SummaryMini icon={<Smile className="h-3.5 w-3.5" />} label="Humor" value={averages.mood.toFixed(1)} color="text-violet-600" />
-              <SummaryMini icon={<Activity className="h-3.5 w-3.5" />} label="Dor" value={averages.pain.toFixed(1)} color={averages.pain > 5 ? 'text-red-500' : 'text-emerald-600'} />
-              <SummaryMini icon={<Zap className="h-3.5 w-3.5" />} label="Energia" value={averages.energy.toFixed(1)} color="text-amber-500" />
-              <SummaryMini icon={<Moon className="h-3.5 w-3.5" />} label="Sono" value={`${averages.sleep.toFixed(1)}h`} color="text-blue-500" />
+              <SummaryMini icon={<Smile className="icon-sm" />} label="Humor" value={averages.mood.toFixed(1)} color="text-violet-600" />
+              <SummaryMini icon={<Activity className="icon-sm" />} label="Dor" value={averages.pain.toFixed(1)} color={averages.pain > 5 ? 'text-red-500' : 'text-emerald-600'} />
+              <SummaryMini icon={<Zap className="icon-sm" />} label="Energia" value={averages.energy.toFixed(1)} color="text-amber-500" />
+              <SummaryMini icon={<Moon className="icon-sm" />} label="Sono" value={`${averages.sleep.toFixed(1)}h`} color="text-blue-500" />
             </div>
           )}
 

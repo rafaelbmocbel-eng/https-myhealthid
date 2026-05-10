@@ -340,7 +340,7 @@ export default function Protocolos() {
                       size="sm"
                       onClick={() => setAnaliseAvaliacao(av)}
                     >
-                      <Zap className="h-3.5 w-3.5" />
+                      <Zap className="icon-sm" />
                       Gerar Diretriz
                     </Button>
                   </div>
@@ -560,7 +560,7 @@ function StructuralDiretrizCard({ pacienteNome, date, data }: { pacienteNome: st
         </div>
         {!guidelines && (
           <Button className="bg-gradient-primary text-white gap-2 shrink-0" size="sm" onClick={generate}>
-            <Zap className="h-3.5 w-3.5" /> Gerar Diretriz
+            <Zap className="icon-sm" /> Gerar Diretriz
           </Button>
         )}
       </div>

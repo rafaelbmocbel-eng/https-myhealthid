@@ -190,10 +190,10 @@ ${analysis.execSummary}
         <div ref={ref} className="space-y-4">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="grid grid-cols-4 mb-4 bg-slate-900 text-slate-300">
-                    <TabsTrigger value="cruzamento" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Network className="h-3.5 w-3.5 mr-1" /> Multi-Serviço</TabsTrigger>
-                    <TabsTrigger value="longitudinal" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Activity className="h-3.5 w-3.5 mr-1" /> Longitudinal</TabsTrigger>
-                    <TabsTrigger value="ia-resumo" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Brain className="h-3.5 w-3.5 mr-1" /> Resumo IA</TabsTrigger>
-                    <TabsTrigger value="export" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><FileText className="h-3.5 w-3.5 mr-1" /> Publ. Científica</TabsTrigger>
+                    <TabsTrigger value="cruzamento" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Network className="icon-sm mr-1" /> Multi-Serviço</TabsTrigger>
+                    <TabsTrigger value="longitudinal" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Activity className="icon-sm mr-1" /> Longitudinal</TabsTrigger>
+                    <TabsTrigger value="ia-resumo" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><Brain className="icon-sm mr-1" /> Resumo IA</TabsTrigger>
+                    <TabsTrigger value="export" className="text-[10px] sm:text-xs data-[state=active]:bg-primary data-[state=active]:text-white"><FileText className="icon-sm mr-1" /> Publ. Científica</TabsTrigger>
                 </TabsList>
 
                 {/* CRUZAMENTO MULTI-SERVIÇOS */}

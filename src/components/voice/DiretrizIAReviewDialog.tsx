@@ -154,7 +154,7 @@ export default function DiretrizIAReviewDialog({
               disabled={loading}
               className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10 order-3 sm:order-1"
             >
-              <Trash2 className="h-3.5 w-3.5 shrink-0" />
+              <Trash2 className="icon-sm shrink-0" />
               Descartar
             </Button>
             <Button
@@ -164,7 +164,7 @@ export default function DiretrizIAReviewDialog({
               disabled={loading}
               className="gap-1.5 order-2"
             >
-              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <Edit3 className="h-3.5 w-3.5 shrink-0" />}
+              {loading ? <Loader2 className="icon-sm animate-spin shrink-0" /> : <Edit3 className="icon-sm shrink-0" />}
               Editar antes
             </Button>
             <Button
@@ -173,7 +173,7 @@ export default function DiretrizIAReviewDialog({
               disabled={loading}
               className="gap-1.5 bg-primary text-primary-foreground order-1 sm:order-3"
             >
-              {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" /> : <CheckCircle2 className="h-3.5 w-3.5 shrink-0" />}
+              {loading ? <Loader2 className="icon-sm animate-spin shrink-0" /> : <CheckCircle2 className="icon-sm shrink-0" />}
               Aprovar e ativar
             </Button>
           </div>
