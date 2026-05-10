@@ -1282,29 +1282,19 @@ ${resumoTecnicas}`;
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => criarDiretrizDaVoz('aprovar')}
-                          disabled={creatingDiretriz || !isSaved}
-                          className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
-                        >
-                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          Aprovar e enviar ao prontuário
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => criarDiretrizDaVoz('personalizar')}
-                          disabled={creatingDiretriz || !isSaved}
-                          className="w-full gap-1.5 h-9"
-                        >
-                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit3 className="h-3.5 w-3.5" />}
-                          Personalizar antes
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowReviewDialog(true)}
+                        disabled={creatingDiretriz || !isSaved}
+                        className="w-full gap-1.5 h-10 bg-primary text-primary-foreground"
+                      >
+                        {creatingDiretriz
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                          : <Sparkles className="h-3.5 w-3.5 shrink-0" />}
+                        Revisar diretriz IA
+                      </Button>
                       <p className="text-[10px] text-muted-foreground text-center">
-                        Personalizar abre o editor de fases, exercícios e técnicas com a sugestão da IA pré-carregada.
+                        Veja a sugestão completa antes de aprovar, editar ou descartar.
                       </p>
                     </div>
                   )}
