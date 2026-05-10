@@ -145,7 +145,50 @@ export default function ConfigClinica() {
         </div>
       </div>
 
-      {/* Contato e localização */}
+      {/* Logo da clínica */}
+      <div className="clinical-card mb-6">
+        <div className="flex items-center gap-2 mb-2">
+          <ImageIcon className="icon-sm text-primary shrink-0" />
+          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Logo da Clínica</h2>
+        </div>
+        <p className="text-xs text-muted-foreground mb-4">Usado em PDFs, recibos e portal do paciente. PNG/JPG até 2MB.</p>
+
+        {form.logo_url ? (
+          <div className="flex items-center gap-4 p-3 rounded-xl bg-muted/30 border border-border/40">
+            <img src={form.logo_url} alt="Logo" className="h-16 w-16 object-contain rounded-lg bg-background border" />
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium">Logo enviado ✓</p>
+              <p className="text-[11px] text-muted-foreground truncate">{form.logo_url.split('/').pop()}</p>
+            </div>
+            <div className="flex gap-1">
+              <label className="cursor-pointer">
+                <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
+                <Button asChild size="sm" variant="outline" className="h-8"><span>Trocar</span></Button>
+              </label>
+              <Button size="icon" variant="ghost" className="h-8 w-8 text-muted-foreground hover:text-destructive" onClick={removerLogo}>
+                <X className="icon-sm" />
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <label className="block cursor-pointer">
+            <input type="file" accept="image/*" className="hidden" onChange={(e) => e.target.files?.[0] && handleLogoUpload(e.target.files[0])} />
+            <div className="border-2 border-dashed border-muted-foreground/20 rounded-xl p-6 text-center hover:border-primary/40 hover:bg-primary/5 transition-colors">
+              {uploadingLogo ? (
+                <Loader2 className="icon-md mx-auto animate-spin text-primary" />
+              ) : (
+                <>
+                  <Upload className="icon-md mx-auto text-muted-foreground mb-2" />
+                  <p className="text-sm font-medium">Enviar logo</p>
+                  <p className="text-xs text-muted-foreground mt-1">Clique para escolher um arquivo</p>
+                </>
+              )}
+            </div>
+          </label>
+        )}
+      </div>
+
+
       <div className="clinical-card mb-6">
         <div className="flex items-center gap-2 mb-4">
           <MapPin className="h-4 w-4 text-primary" />
