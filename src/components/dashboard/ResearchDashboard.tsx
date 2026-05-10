@@ -97,19 +97,22 @@ function pSig(p: number): string { if (p < 0.001) return '<0.001'; return p.toFi
 export default function ResearchDashboard() {
   const { user } = useAuth();
   const [tab, setTab] = useState('demografia');
+  const [filters, setFilters] = useState<DashboardFilterState>(DEFAULT_FILTERS);
 
   const { data, isLoading } = useQuery({
     queryKey: ['research-data', user?.id],
     queryFn: async () => {
-      const [pac, ava, voz] = await Promise.all([
+      const [pac, ava, voz, prot] = await Promise.all([
         supabase.from('pacientes').select('id, nome, sobrenome, data_nascimento, genero, created_at, ativo').eq('terapeuta_id', user!.id),
         supabase.from('avaliacoes_identidade').select('*').eq('terapeuta_id', user!.id),
         supabase.from('avaliacoes_voz').select('*').eq('terapeuta_id', user!.id),
+        (supabase as any).from('protocolos').select('id, paciente_id, titulo, status, data_inicio, data_fim_prevista, duracao_total, frequencia, objetivo_geral, scores_avaliacao, created_at').eq('terapeuta_id', user!.id),
       ]);
       return {
         pacientes: (pac.data || []) as Paciente[],
         avaliacoes: (ava.data || []) as Avaliacao[],
         voz: (voz.data || []) as Voz[],
+        protocolos: (prot.data || []) as any[],
       };
     },
     enabled: !!user,
@@ -117,11 +120,20 @@ export default function ResearchDashboard() {
 
   const stats = useMemo(() => {
     if (!data) return null;
-    const { pacientes, avaliacoes, voz } = data;
+    const cut = periodToDate(filters.period);
+    const inP = (iso?: string | null) => !cut || (iso ? new Date(iso) >= cut : false);
 
-    // Pacientes com pelo menos uma avaliação MyID
+    // Filtra pacientes por subgrupo
+    const allPac = data.pacientes.filter(p => sexoMatch(p.genero, filters.sexo) && ageInFaixa(age(p.data_nascimento), filters.faixa));
+    const pacIds = new Set(allPac.map(p => p.id));
+
+    const avaliacoes = data.avaliacoes.filter(a => pacIds.has(a.paciente_id) && inP(a.created_at));
+    const voz = data.voz.filter(v => pacIds.has(v.paciente_id) && inP(v.created_at));
+    const protocolos = data.protocolos.filter(pr => pacIds.has(pr.paciente_id) && inP(pr.created_at));
+
     const withMyID = new Set(avaliacoes.map(a => a.paciente_id));
-    const sample = pacientes.filter(p => withMyID.has(p.id));
+    const sample = allPac.filter(p => withMyID.has(p.id));
+    const pacientes = allPac;
 
     // Demografia
     const idades = sample.map(p => age(p.data_nascimento)).filter((n): n is number => n != null);
