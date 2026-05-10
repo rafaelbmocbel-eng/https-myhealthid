@@ -137,13 +137,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
         </main>
       </div>
 
-      {/* Mobile bottom navigation + FAB */}
-      {isMobile && !mobileOpen && (
-        <>
-          <MobileBottomNav />
-          {!hideQuickActionsFab && <MobileQuickActionsFab />}
-        </>
-      )}
+      {/* Mobile bottom navigation */}
+      {isMobile && !mobileOpen && <MobileBottomNav />}
     </div>
   );
 }
