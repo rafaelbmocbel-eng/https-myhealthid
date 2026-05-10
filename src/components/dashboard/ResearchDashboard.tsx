@@ -320,19 +320,26 @@ export default function ResearchDashboard() {
       {/* Export bar */}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={exportRawCSV} className="gap-1.5">
-          <Download className="icon-xs" /> CSV — Dados brutos (anonimizado)
+          <Download className="icon-xs" /> CSV — Dados brutos
         </Button>
         <Button size="sm" variant="outline" onClick={exportTabela1} className="gap-1.5">
-          <FileText className="icon-xs" /> CSV — Tabela 1 (resumo descritivo)
+          <FileText className="icon-xs" /> Tabela 1 (descritivo)
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportPrePost} className="gap-1.5">
+          <FileText className="icon-xs" /> Pré/pós + Cohen's d
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
+          <FileText className="icon-xs" /> Codebook
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="demografia" className="text-[11px] sm:text-xs">Demografia</TabsTrigger>
-          <TabsTrigger value="myid" className="text-[11px] sm:text-xs">MyID</TabsTrigger>
-          <TabsTrigger value="presencial" className="text-[11px] sm:text-xs">Presencial</TabsTrigger>
-          <TabsTrigger value="evolucao" className="text-[11px] sm:text-xs">Evolução</TabsTrigger>
+        <TabsList className="grid grid-cols-5 w-full">
+          <TabsTrigger value="demografia" className="text-[10px] sm:text-xs">Demografia</TabsTrigger>
+          <TabsTrigger value="myid" className="text-[10px] sm:text-xs">MyID</TabsTrigger>
+          <TabsTrigger value="presencial" className="text-[10px] sm:text-xs">Presencial</TabsTrigger>
+          <TabsTrigger value="estatistica" className="text-[10px] sm:text-xs">Estatística</TabsTrigger>
+          <TabsTrigger value="evolucao" className="text-[10px] sm:text-xs">Evolução</TabsTrigger>
         </TabsList>
 
         <TabsContent value="demografia" className="space-y-3 mt-3">
