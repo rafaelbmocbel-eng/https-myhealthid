@@ -50,6 +50,7 @@ import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
 import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import IdentidadePortavelActions from '@/components/paciente/IdentidadePortavelActions';
+import ResumoRapido30s from '@/components/paciente/ResumoRapido30s';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
@@ -749,6 +750,12 @@ export default function PacientePerfil() {
                 pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
                 terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
               />
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <ResumoRapido30s
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                />
+              </div>
             </div>
           </div>
         </div>
