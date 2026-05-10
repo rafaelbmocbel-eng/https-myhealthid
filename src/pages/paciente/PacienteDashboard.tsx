@@ -295,7 +295,13 @@ export default function PacienteDashboard() {
           {!bloqueadoClinico && <PwaInstallBanner />}
 
           {/* Reação pós-sessão (NPS rápido) */}
-          {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
+          {!bloqueadoClinico && paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
+
+          {!bloqueadoClinico && (<></>)}
+          {!bloqueadoClinico && (<>
+          </>)}
+          {/* Conteúdo principal — escondido quando bloqueado */}
+          {!bloqueadoClinico && (<></>)}
 
           {/* Upgrade banner — Wellness Free */}
           {isFree && (
