@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
+import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
