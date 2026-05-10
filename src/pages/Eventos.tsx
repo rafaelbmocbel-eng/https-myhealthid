@@ -30,6 +30,19 @@ interface PerguntaForm {
 
 const DEFAULT_PERGUNTA: PerguntaForm = { tipo: 'text', pergunta: '', opcoes: [''], obrigatoria: true, limite_por_opcao: null };
 
+export const CATEGORIAS: { value: EventoCategoria; label: string; icon: string }[] = [
+  { value: 'aula_online', label: 'Aula online', icon: '🎥' },
+  { value: 'workshop', label: 'Workshop', icon: '🛠️' },
+  { value: 'live', label: 'Live / Tira-dúvidas', icon: '🎙️' },
+  { value: 'triagem', label: 'Triagem gratuita', icon: '🎁' },
+  { value: 'desafio', label: 'Desafio', icon: '🏆' },
+  { value: 'sazonal', label: 'Sazonal', icon: '🎉' },
+  { value: 'outro', label: 'Outro', icon: '📌' },
+];
+
+export const categoriaLabel = (c?: string) => CATEGORIAS.find(x => x.value === c)?.label || 'Outro';
+export const categoriaIcon = (c?: string) => CATEGORIAS.find(x => x.value === c)?.icon || '📌';
+
 const RECOVERY_TEMPLATE: PerguntaForm[] = [
   { tipo: 'boolean', pergunta: 'VOCÊ CONFIRMA SUA PRESENÇA?', opcoes: [], obrigatoria: true, limite_por_opcao: null },
   { tipo: 'multiple_choice', pergunta: 'ESCOLHA SEU HORÁRIO PARA INÍCIO (montagem de lista por ordem de preenchimento)', opcoes: ['8H', '9H', '10H', '11H', '12H'], obrigatoria: true, limite_por_opcao: 5 },
