@@ -1599,7 +1599,7 @@ ${resumoTecnicas}`;
           diretriz={assessment.diretriz_tratamento}
           queixa={assessment.queixa_principal}
           classificacao={assessment.classificacao_severidade}
-          origem={mode === 'written' ? 'ia_escrita' : 'ia_voz'}
+          origem={(mode as string) === 'written' ? 'ia_escrita' : 'ia_voz'}
           loading={creatingDiretriz}
           onAprovar={async () => {
             await criarDiretrizDaVoz('aprovar');
