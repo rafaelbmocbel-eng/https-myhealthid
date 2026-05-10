@@ -1,26 +1,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
-import { Progress } from '@/components/ui/progress';
-import { Loader2, CheckCircle2, XCircle, AlertCircle, ClipboardList, MapPin, Activity, Brain, Bed, Stethoscope, ArrowLeft, ArrowRight } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+import { Loader2, CheckCircle2, XCircle } from 'lucide-react';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
-import { Bloco1 } from '@/components/myid/steps/Bloco1';
-import { Bloco2 } from '@/components/myid/steps/Bloco2';
-import { Bloco3 } from '@/components/myid/steps/Bloco3';
-import { Bloco4 } from '@/components/myid/steps/Bloco4';
-import { Bloco5 } from '@/components/myid/steps/Bloco5';
-import { Bloco6 } from '@/components/myid/steps/Bloco6';
-import { MyIDCalculator } from '@/utils/myid/calculator';
+import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
+import { MyIDCalculator, MyIDResponses } from '@/utils/myid/calculator';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import type {
-  MyIDBloco1Data, MyIDBloco2Data, MyIDBloco3Data,
-  MyIDBloco4Data, MyIDBloco5Data, MyIDBloco6Data,
-} from '@/types/myid';
-import {
-  DEFAULT_BLOCO1, DEFAULT_BLOCO2, DEFAULT_BLOCO3,
-  DEFAULT_BLOCO4, DEFAULT_BLOCO5, DEFAULT_BLOCO6,
-} from '@/types/myid';
 import { getMyIDFingerprintData, getMyIDSeverityColor } from '@/utils/myidCalculations';
 
 interface LinkInfo {
@@ -31,43 +16,20 @@ interface LinkInfo {
   data_expiracao: string;
 }
 
-const STEPS = [
-  { blocoNum: 1, label: 'Identificação', icon: ClipboardList },
-  { blocoNum: 2, label: 'Mapeamento Dor', icon: MapPin },
-  { blocoNum: 3, label: 'Funcionalidade', icon: Activity },
-  { blocoNum: 4, label: 'Comportamento', icon: Brain },
-  { blocoNum: 5, label: 'Regulação', icon: Bed },
-  { blocoNum: 6, label: 'Ruído Sistêmico', icon: Stethoscope },
-];
-
-const BLOCK_ORDER = [1, 2, 3, 4, 5, 6];
+const FASE_BLOCOS: Record<number, number[]> = {
+  1: [1, 2],
+  2: [3, 4],
+  3: [5],
+  4: [6],
+};
 
 export default function AvaliacaoPublica() {
   const { token } = useParams<{ token: string }>();
   const [linkInfo, setLinkInfo] = useState<LinkInfo | null>(null);
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
-  const [blocoAtual, setBlocoAtual] = useState(1);
-  const [blocosConcluidos, setBlocosConcluidos] = useState<Set<number>>(new Set());
   const [concluido, setConcluido] = useState(false);
-  const [salvando, setSalvando] = useState(false);
-
-  const [data, setData] = useState<any>({
-    ...DEFAULT_BLOCO1,
-    ...DEFAULT_BLOCO2,
-    ...DEFAULT_BLOCO3,
-    ...DEFAULT_BLOCO4,
-    ...DEFAULT_BLOCO5,
-    ...DEFAULT_BLOCO6,
-  });
-
-  useEffect(() => {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, [blocoAtual, concluido]);
-
-  const currentStepIdx = STEPS.findIndex(s => s.blocoNum === blocoAtual);
-  const completedSteps = STEPS.filter(s => blocosConcluidos.has(s.blocoNum)).length;
-  const progresso = (completedSteps / STEPS.length) * 100;
+  const [resultadoFinal, setResultadoFinal] = useState<any>(null);
 
   useEffect(() => {
     if (!token) { setErro('Link inválido.'); setLoading(false); return; }
@@ -89,11 +51,9 @@ export default function AvaliacaoPublica() {
     })();
   }, [token]);
 
-  const salvarBloco = async (blocoNum: number, dados: any) => {
+  const salvarBlocoNoBackend = async (blocoNum: number, dados: any) => {
     if (!linkInfo) return;
-    setSalvando(true);
     try {
-      // Salva via edge function para não expor a tabela anonimamente
       await supabase.functions.invoke('salvar-bloco-avaliacao', {
         body: {
           link_id: linkInfo.id,
@@ -103,43 +63,25 @@ export default function AvaliacaoPublica() {
         },
       });
     } catch (e) {
-      console.error('Erro ao salvar bloco:', e);
-    } finally {
-      setSalvando(false);
+      console.warn('Erro salvar bloco', blocoNum, e);
     }
   };
 
-  const updateData = (newData: any) => {
-    setData((prev: any) => ({ ...prev, ...newData }));
-  };
-
-  const avancarBloco = async (blocoNum: number, dados: any) => {
-    await salvarBloco(blocoNum, dados);
-    setBlocosConcluidos(prev => new Set([...prev, blocoNum]));
-    const currentIdx = BLOCK_ORDER.indexOf(blocoNum);
-    const nextBlock = BLOCK_ORDER[currentIdx + 1];
-    if (nextBlock) {
-      setBlocoAtual(nextBlock);
-    } else {
-      setConcluido(true);
+  const handlePhaseSave = async (fase: 1 | 2 | 3 | 4, data: MyIDResponses) => {
+    const blocos = FASE_BLOCOS[fase] || [];
+    for (const b of blocos) {
+      await salvarBlocoNoBackend(b, data);
     }
+    return true;
   };
 
-  const voltarBloco = () => {
-    const currentIdx = BLOCK_ORDER.indexOf(blocoAtual);
-    if (currentIdx > 0) setBlocoAtual(BLOCK_ORDER[currentIdx - 1]);
-  };
+  const handleComplete = async (data: MyIDResponses, _fullResult: any) => {
+    // Garantir que a fase final (bloco 6) é persistida
+    await salvarBlocoNoBackend(6, data);
 
-  const handleFinalizar = async () => {
-    setSalvando(true);
-    await salvarBloco(6, data);
-    setBlocosConcluidos(prev => new Set([...prev, 6]));
-
-    // Compute result and sync to backend
     try {
       const calculator = new MyIDCalculator(data);
       const resultado = calculator.getFullResult();
-
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       await fetch(
         `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/complete-myid`,
@@ -157,18 +99,12 @@ export default function AvaliacaoPublica() {
           }),
         }
       );
+      setResultadoFinal(resultado);
     } catch (e) {
       console.warn('Erro ao sincronizar resultado:', e);
     }
-
-    setSalvando(false);
     setConcluido(true);
-  };
-
-  // ── Cálculo final para tela de conclusão ──
-  const computeMyID = () => {
-    const calculator = new MyIDCalculator(data);
-    return calculator.getFullResult();
+    return true;
   };
 
   if (loading) return (
@@ -185,9 +121,8 @@ export default function AvaliacaoPublica() {
     </div>
   );
 
-  if (concluido) {
-    const resultado = computeMyID();
-    const fpData = getMyIDFingerprintData(resultado.component_scores);
+  if (concluido && resultadoFinal) {
+    const fpData = getMyIDFingerprintData(resultadoFinal.component_scores);
     return (
       <div className="min-h-screen flex flex-col items-center justify-center bg-background gap-6 p-6">
         <img src={logoMyHealthId} alt="MyID" className="h-16 w-16 rounded-2xl object-cover shadow-lg" />
@@ -196,18 +131,13 @@ export default function AvaliacaoPublica() {
           <h2 className="text-2xl font-bold text-foreground mb-2">Avaliação MyID Concluída!</h2>
           <p className="text-muted-foreground mb-4">Suas respostas foram salvas com sucesso.</p>
         </div>
-
-        {/* MyID Score */}
-        <div className={`px-6 py-4 rounded-xl border-2 ${getMyIDSeverityColor(resultado.status)} text-center`}>
-          <div className="text-3xl font-bold">{resultado.MyID_score.toFixed(1)}</div>
-          <div className="text-sm font-medium mt-1">{resultado.status}</div>
+        <div className={`px-6 py-4 rounded-xl border-2 ${getMyIDSeverityColor(resultadoFinal.status)} text-center`}>
+          <div className="text-3xl font-bold">{resultadoFinal.MyID_score.toFixed(1)}</div>
+          <div className="text-sm font-medium mt-1">{resultadoFinal.status}</div>
         </div>
-
-        {/* Fingerprint */}
         <div className="w-full max-w-2xl">
-          <MyIDFingerprint rings={fpData} myidScore={resultado.MyID_score} />
+          <MyIDFingerprint rings={fpData} myidScore={resultadoFinal.MyID_score} />
         </div>
-
         <p className="text-[10px] text-muted-foreground text-center max-w-sm italic">
           *Esta visualização ajuda seu terapeuta a entender a relação entre demanda e capacidade do seu sistema.
         </p>
@@ -217,82 +147,20 @@ export default function AvaliacaoPublica() {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Header */}
-      <div className="border-b bg-card px-4 py-4 sticky top-0 z-10">
-        <div className="max-w-2xl mx-auto">
-          <div className="flex items-center gap-4 mb-3">
-            <img src={logoMyHealthId} alt="MyID" className="h-10 w-10 rounded-xl object-cover shrink-0" />
-            <div className="flex-1">
-              <h1 className="font-bold text-sm text-foreground">Questionário MyID</h1>
-              <div className="flex items-center gap-3 mt-1">
-                <Progress value={progresso} className="h-1.5 flex-1" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{completedSteps}/{STEPS.length}</span>
-              </div>
-            </div>
-            {salvando && <Loader2 className="h-4 w-4 animate-spin text-primary shrink-0" />}
-          </div>
-
-          <div className="flex gap-1">
-            {STEPS.map((step, idx) => {
-              const Icon = step.icon;
-              const isActive = idx === currentStepIdx;
-              const isDone = blocosConcluidos.has(step.blocoNum);
-              return (
-                <div key={step.blocoNum}
-                  className={`flex-1 flex items-center gap-1 rounded-lg px-1.5 py-1.5 text-[10px] font-medium transition-all ${isActive ? 'bg-primary/10 text-primary border border-primary/20' :
-                    isDone ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/30' :
-                      'text-muted-foreground'
-                    }`}>
-                  {isDone ? <CheckCircle2 className="h-3 w-3 shrink-0" /> : <Icon className="h-3 w-3 shrink-0" />}
-                  <span className="hidden sm:inline truncate">{step.label}</span>
-                  <span className="sm:hidden">{idx + 1}</span>
-                </div>
-              );
-            })}
+      <div className="border-b bg-card px-4 py-3 sticky top-0 z-10">
+        <div className="max-w-3xl mx-auto flex items-center gap-3">
+          <img src={logoMyHealthId} alt="MyID" className="h-9 w-9 rounded-xl object-cover shrink-0" />
+          <div>
+            <h1 className="font-bold text-sm text-foreground">Questionário MyID</h1>
+            <p className="text-xs text-muted-foreground">Avaliação em 4 fases</p>
           </div>
         </div>
       </div>
 
-      <div className="max-w-2xl mx-auto px-4 py-8">
-        {blocoAtual === 1 && <Bloco1 data={data} updateData={updateData} />}
-        {blocoAtual === 2 && <Bloco2 data={data} updateData={updateData} />}
-        {blocoAtual === 3 && <Bloco3 data={data} updateData={updateData} />}
-        {blocoAtual === 4 && <Bloco4 data={data} updateData={updateData} />}
-        {blocoAtual === 5 && <Bloco5 data={data} updateData={updateData} />}
-        {blocoAtual === 6 && <Bloco6 data={data} updateData={updateData} />}
-
-        {/* Navegação entre Blocos */}
-        <div className="flex justify-between items-center mt-10 pt-6 border-t">
-          <Button
-            variant="outline"
-            onClick={voltarBloco}
-            className="gap-2"
-            disabled={blocoAtual === 1 || salvando}
-          >
-            <ArrowLeft className="h-4 w-4" /> Anterior
-          </Button>
-
-          <Button
-            onClick={() => {
-              if (blocoAtual === 6) {
-                handleFinalizar();
-              } else {
-                avancarBloco(blocoAtual, data);
-              }
-            }}
-            className="bg-primary text-white gap-2 px-8"
-            disabled={salvando}
-          >
-            {salvando ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : blocoAtual === 6 ? (
-              <>Concluir <CheckCircle2 className="h-4 w-4" /></>
-            ) : (
-              <>Continuar <ArrowRight className="h-4 w-4" /></>
-            )}
-          </Button>
-        </div>
-      </div>
+      <MyIDPhasedFlow
+        onPhaseSave={handlePhaseSave}
+        onComplete={handleComplete}
+      />
     </div>
   );
 }
