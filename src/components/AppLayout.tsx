@@ -123,12 +123,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-1 md:gap-2">
             <NotificationCenter />
-            {!isMobile && (
-              <>
-                <QuickActions />
-                <ThemeToggle />
-              </>
-            )}
+            <ThemeToggle />
+            {!isMobile && <QuickActions />}
           </div>
         </header>
 
