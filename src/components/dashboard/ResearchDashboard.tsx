@@ -267,6 +267,32 @@ export default function ResearchDashboard() {
     ]);
   };
 
+  const exportCodebook = () => {
+    const cb = [
+      { variavel: 'paciente_id', tipo: 'string', descricao: 'ID anonimizado (8 chars)', valores: 'hash' },
+      { variavel: 'idade', tipo: 'numeric', descricao: 'Idade em anos', valores: '0-120' },
+      { variavel: 'sexo', tipo: 'categorical', descricao: 'Sexo informado', valores: 'masculino/feminino/outro/não informado' },
+      { variavel: 'n_avaliacoes', tipo: 'numeric', descricao: 'Total de avaliações MyID concluídas', valores: '>=1' },
+      { variavel: 'myid_score', tipo: 'numeric', descricao: 'Score global MyID (última avaliação)', valores: '0-100, maior=melhor' },
+      ...DIMENSOES.map(d => ({ variavel: d.key, tipo: 'numeric', descricao: `${d.label} — score por dimensão`, valores: '0-100, <50 = crítico' })),
+      { variavel: 'red_flags', tipo: 'numeric', descricao: 'Quantidade de red flags identificados', valores: '>=0' },
+      { variavel: 'classificacao', tipo: 'categorical', descricao: 'Classificação clínica final do MyID', valores: 'várias' },
+    ];
+    exportToCsv(`pesquisa_codebook_${format(new Date(), 'yyyyMMdd')}.csv`, cb, [
+      { key: 'variavel', label: 'Variável' }, { key: 'tipo', label: 'Tipo' },
+      { key: 'descricao', label: 'Descrição' }, { key: 'valores', label: 'Valores' },
+    ]);
+  };
+
+  const exportPrePost = () => {
+    const rows = stats.dimCohen.map(d => ({
+      dimensao: d.dimensao, n: d.n,
+      media_pre: d.media_pre, media_post: d.media_post, delta: d.delta,
+      cohen_d: d.cohen_d, magnitude: d.magnitude,
+    }));
+    exportToCsv(`pesquisa_prepost_cohen_${format(new Date(), 'yyyyMMdd')}.csv`, rows);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header KPIs */}
