@@ -306,6 +306,12 @@ export default function Eventos() {
                     onDelete={() => { if (confirm('Deletar evento?')) deletarEvento.mutate(ev.id); }}
                     onEditQuestionario={() => setEditingQuestionario(ev.id)}
                     onEditEvento={() => setEditingEvento(ev.id)}
+                    onReativar={() => {
+                      setReativando(ev);
+                      const t = new Date();
+                      t.setDate(t.getDate() + 7);
+                      setNovaDataReativar(t.toISOString().split('T')[0]);
+                    }}
                   />
                 ))}
               </div>
