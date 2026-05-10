@@ -85,6 +85,7 @@ const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.R
 export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { data: acessoClinico } = useAcessoClinicoPaciente(id);
   const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
