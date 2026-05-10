@@ -21,6 +21,7 @@ import PacienteExerciciosResumido from '@/components/paciente/PacienteExercicios
 import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
+import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 
 interface PacienteInfo {
   id: string;
