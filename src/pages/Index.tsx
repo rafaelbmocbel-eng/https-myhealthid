@@ -31,6 +31,7 @@ export default function Index() {
   const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const { servicos } = useServicosAtivos();
+  const [vertente, setVertente] = useState<'clinica' | 'pesquisa'>('clinica');
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
