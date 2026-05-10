@@ -91,12 +91,45 @@ export function MyIDPhasedFlow({
   const totalBlocosNaFase = blocosNaFase.length;
   const blocoNumero = blocosNaFase[blocoIdxInPhase];
 
+  // ── Timer estimado por fase ──
+  const parseMinutes = (s: string) => {
+    const m = s.match(/(\d+)/);
+    return m ? parseInt(m[1], 10) : 3;
+  };
+  const totalSecondsFase = useMemo(
+    () => parseMinutes(FASES_INFO[fase].tempoEstimado) * 60,
+    [fase],
+  );
+  const [secondsLeft, setSecondsLeft] = useState(totalSecondsFase);
+
+  // Reset timer ao entrar/trocar de fase
+  useEffect(() => {
+    if (screen !== 'fase') return;
+    setSecondsLeft(totalSecondsFase);
+    const id = setInterval(() => {
+      setSecondsLeft((s) => (s > 0 ? s - 1 : 0));
+    }, 1000);
+    return () => clearInterval(id);
+  }, [fase, screen, totalSecondsFase]);
+
+  const formatTime = (s: number) => {
+    const m = Math.floor(s / 60);
+    const sec = s % 60;
+    return `${m}:${String(sec).padStart(2, '0')}`;
+  };
+
+  // Progresso da fase atual (0-100)
+  const progressoFase = totalBlocosNaFase > 0
+    ? ((blocoIdxInPhase + 1) / totalBlocosNaFase) * 100
+    : 0;
+
   // Overall progress: (completed phases + progress in current phase) / 4
   const progressoGeral = useMemo(() => {
     const completed = Math.max(0, fase - 1);
     const inCurrent = totalBlocosNaFase > 0 ? (blocoIdxInPhase + 1) / totalBlocosNaFase : 0;
     return ((completed + inCurrent) / 4) * 100;
   }, [fase, blocoIdxInPhase, totalBlocosNaFase]);
+
 
   // Compute partial score for current data up to a given phase
   const computePartialScore = useCallback(
