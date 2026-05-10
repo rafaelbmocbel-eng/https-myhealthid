@@ -56,6 +56,8 @@ export default function Eventos() {
   const [selectedEvento, setSelectedEvento] = useState<string | null>(null);
   const [editingQuestionario, setEditingQuestionario] = useState<string | null>(null);
   const [editingEvento, setEditingEvento] = useState<string | null>(null);
+  const [reativando, setReativando] = useState<Evento | null>(null);
+  const [novaDataReativar, setNovaDataReativar] = useState<string>('');
 
   // Form state
   const [titulo, setTitulo] = useState('');
