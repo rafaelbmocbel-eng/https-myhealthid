@@ -47,8 +47,15 @@ export default function MobileBottomNav() {
                 {active && (
                   <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary" />
                 )}
-                <div className="relative">
-                  <Icon className={cn('h-5 w-5 transition-transform', active && 'scale-110')} />
+                <div className={cn(
+                  'relative flex items-center justify-center transition-all',
+                  active && 'bg-primary/10 rounded-full px-3 py-0.5'
+                )}>
+                  <Icon
+                    className={cn('h-5 w-5 transition-transform', active && 'scale-110')}
+                    fill={active ? 'currentColor' : 'none'}
+                    fillOpacity={active ? 0.15 : 0}
+                  />
                   {showBadge && (
                     <span className="absolute -top-1.5 -right-2 flex items-center justify-center h-4 min-w-4 px-1 text-[9px] font-bold rounded-full bg-destructive text-destructive-foreground animate-pulse">
                       {pendingCount > 9 ? '9+' : pendingCount}
