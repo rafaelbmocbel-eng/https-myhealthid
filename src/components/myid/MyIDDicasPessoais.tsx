@@ -227,13 +227,17 @@ interface MyIDDicasPessoaisProps {
   myidScore?: number;
   compact?: boolean;
   className?: string;
+  pacienteId?: string;
+  terapeutaId?: string;
 }
 
-export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className }: MyIDDicasPessoaisProps) {
+export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className, pacienteId, terapeutaId }: MyIDDicasPessoaisProps) {
   const [expandido, setExpandido] = useState(!compact);
   const [showInsights, setShowInsights] = useState(false);
   const dicas = gerarDicas(scores);
   const insights = myidScore ? gerarInsightsClinicosMyID(scores, myidScore) : null;
+  const showEditor = !!(pacienteId && terapeutaId);
+  const autoMissoes = showEditor ? buildAutoMissoes(scores, myidScore || 0) : [];
 
   if (dicas.length === 0) return null;
 
