@@ -14,6 +14,7 @@ import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
+import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
@@ -87,6 +88,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [soapNoteSaved, setSoapNoteSaved] = useState(false);
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
+  const [showReviewDialog, setShowReviewDialog] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
@@ -664,7 +666,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           objetivo_geral: objetivoGeral,
           duracao_total: '12 semanas',
           frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
-          status: 'ativo',
+          status: intent === 'personalizar' ? 'rascunho' : 'ativo',
           origem: origemDiretriz,
           scores_avaliacao: {
             origem: origemDiretriz,
@@ -1280,29 +1282,19 @@ ${resumoTecnicas}`;
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => criarDiretrizDaVoz('aprovar')}
-                          disabled={creatingDiretriz || !isSaved}
-                          className="w-full gap-1.5 h-9 bg-primary text-primary-foreground"
-                        >
-                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                          Aprovar e enviar ao prontuário
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => criarDiretrizDaVoz('personalizar')}
-                          disabled={creatingDiretriz || !isSaved}
-                          className="w-full gap-1.5 h-9"
-                        >
-                          {creatingDiretriz ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Edit3 className="h-3.5 w-3.5" />}
-                          Personalizar antes
-                        </Button>
-                      </div>
+                      <Button
+                        size="sm"
+                        onClick={() => setShowReviewDialog(true)}
+                        disabled={creatingDiretriz || !isSaved}
+                        className="w-full gap-1.5 h-10 bg-primary text-primary-foreground"
+                      >
+                        {creatingDiretriz
+                          ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
+                          : <Sparkles className="h-3.5 w-3.5 shrink-0" />}
+                        Revisar diretriz IA
+                      </Button>
                       <p className="text-[10px] text-muted-foreground text-center">
-                        Personalizar abre o editor de fases, exercícios e técnicas com a sugestão da IA pré-carregada.
+                        Veja a sugestão completa antes de aprovar, editar ou descartar.
                       </p>
                     </div>
                   )}
@@ -1598,6 +1590,28 @@ ${resumoTecnicas}`;
           )}
         </CardContent>
       </Card>
+
+      {/* Pre-review modal: Aprovar | Editar | Descartar */}
+      {assessment?.diretriz_tratamento && pacienteId && (
+        <DiretrizIAReviewDialog
+          open={showReviewDialog}
+          onOpenChange={(v) => { if (!creatingDiretriz) setShowReviewDialog(v); }}
+          diretriz={assessment.diretriz_tratamento}
+          queixa={assessment.queixa_principal}
+          classificacao={assessment.classificacao_severidade}
+          origem={(mode as string) === 'written' ? 'ia_escrita' : 'ia_voz'}
+          loading={creatingDiretriz}
+          onAprovar={async () => {
+            await criarDiretrizDaVoz('aprovar');
+            setShowReviewDialog(false);
+          }}
+          onEditar={async () => {
+            await criarDiretrizDaVoz('personalizar');
+            setShowReviewDialog(false);
+          }}
+          onDescartar={() => setShowReviewDialog(false)}
+        />
+      )}
     </div>
   );
 }
