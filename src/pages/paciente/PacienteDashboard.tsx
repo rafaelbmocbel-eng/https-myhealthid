@@ -260,8 +260,39 @@ export default function PacienteDashboard() {
             </Card>
           </motion.div>
 
+          {/* Bloqueio total — pacote terminou há mais de 60 dias */}
+          {bloqueadoClinico && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <BloqueioPortalCard
+                whatsappProfissional={profissional.whatsapp}
+                nomeProfissional={profissional.nome}
+              />
+            </motion.div>
+          )}
+
+          {/* Carência — pacote terminou, ainda dentro de 30 dias */}
+          {emCarencia && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <Clock className="icon-sm text-amber-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-amber-900">
+                      Período de carência — {diasRestantesCarencia ?? 0} {diasRestantesCarencia === 1 ? 'dia' : 'dias'} restantes
+                    </p>
+                    <p className="text-[11px] text-amber-800/80 mt-0.5">
+                      Seu pacote terminou. O portal segue aberto para acompanhamento, mas seu profissional não pode adicionar novas atividades. Retome o tratamento para liberar tudo de novo.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </motion.div>
+          )}
+
           {/* PWA Install Banner */}
-          <PwaInstallBanner />
+          {!bloqueadoClinico && <PwaInstallBanner />}
 
           {/* Reação pós-sessão (NPS rápido) */}
           {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
