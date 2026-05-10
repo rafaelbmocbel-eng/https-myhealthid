@@ -212,7 +212,7 @@ export function MyIDFaseTransicao({
           </p>
         </div>
       )}
-
+      {proxInfo && (
         <div className="rounded-xl border border-border/40 p-4 bg-muted/30 text-left space-y-1">
           <p className="text-xs text-muted-foreground uppercase tracking-wider">A seguir</p>
           <p className="text-sm font-semibold">
@@ -223,6 +223,7 @@ export function MyIDFaseTransicao({
           </p>
         </div>
       )}
+
 
       <div className="flex flex-col sm:flex-row gap-2 justify-center">
         <Button size="lg" onClick={onContinuar} className="rounded-full px-8">
