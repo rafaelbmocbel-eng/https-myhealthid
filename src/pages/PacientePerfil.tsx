@@ -73,8 +73,8 @@ const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
 
 
 const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
-  metodo_identidade: { label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20', icon: <Activity className="h-3 w-3" /> },
-  cob_zero: { label: 'COB° ZERO', color: 'bg-blue-100 text-blue-700 border-blue-200', icon: <AlignCenter className="h-3 w-3" /> },
+  metodo_identidade: { label: 'Avaliação (legado)', color: 'bg-muted text-muted-foreground border-border', icon: <Activity className="h-3 w-3" /> },
+  cob_zero: { label: 'Estrutural (legado)', color: 'bg-muted text-muted-foreground border-border', icon: <AlignCenter className="h-3 w-3" /> },
   agenda_premium: { label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <CalendarDays className="h-3 w-3" /> },
 };
 
@@ -1068,12 +1068,12 @@ export default function PacientePerfil() {
               <div>
                 <div className="flex items-center gap-2 mb-3">
                   <Activity className="h-4 w-4 text-primary" />
-                  <h3 className="font-semibold text-sm">Evolução — Método Identidade</h3>
+                  <h3 className="font-semibold text-sm">Evolução — Avaliações</h3>
                 </div>
                 <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
               </div>
             ) : (
-              <EmptyState icon={<BarChart3 />} title="Dados insuficientes (Identidade)" subtitle="São necessárias pelo menos 2 avaliações Identidade para gerar o comparativo evolutivo." />
+              <EmptyState icon={<BarChart3 />} title="Dados insuficientes" subtitle="São necessárias pelo menos 2 avaliações para gerar o comparativo evolutivo." />
             )}
 
             {respostasPaciente.length > 0 && (
