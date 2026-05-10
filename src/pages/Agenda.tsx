@@ -164,6 +164,9 @@ export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
   const { agendamentos, pacientes, config, loading, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
+  const { data: myidFreshnessMap } = useMyIDFreshnessMap(
+    Array.from(new Set((agendamentos || []).map((a: any) => a.paciente_id).filter(Boolean) as string[])),
+  );
   const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
