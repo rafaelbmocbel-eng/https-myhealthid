@@ -37,6 +37,8 @@ import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
+import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
+import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
 
 type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
@@ -162,6 +164,9 @@ export default function Agenda() {
   const { user, loading: authLoading } = useAuth();
   const { agendamentos, pacientes, config, loading, createAgendamento, createBatchAgendamentos, updateAgendamento, updateFutureAgendamentos, deleteAgendamento, deleteFutureAgendamentos, createPaciente, refresh } = useAgenda();
   const { pendingCount, clearCount, refetch: refetchNotifications } = useAgendamentoNotifications();
+  const { data: myidFreshnessMap } = useMyIDFreshnessMap(
+    Array.from(new Set((agendamentos || []).map((a: any) => a.paciente_id).filter(Boolean) as string[])),
+  );
   const { toast } = useToast();
 
   const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
@@ -1053,7 +1058,10 @@ export default function Agenda() {
                 return (
                   <div key={ag.id} className="flex items-center justify-between gap-3 bg-white dark:bg-card rounded-lg border border-amber-200 dark:border-amber-800 px-3 py-2">
                     <div className="min-w-0 flex-1">
-                      <div className="text-sm font-semibold text-foreground truncate">
+                      <div className="text-sm font-semibold text-foreground truncate flex items-center gap-1.5">
+                        {ag.paciente_id && (
+                          <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} size="sm" />
+                        )}
                         {pac ? `${pac.nome} ${pac.sobrenome}` : ag.titulo || 'Auto-agendamento'}
                       </div>
                       <div className="text-xs text-muted-foreground">
@@ -1440,6 +1448,9 @@ export default function Agenda() {
                               <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
                                 {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
                                 {sc.icon}
+                                {ag.paciente_id && (
+                                  <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                )}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
                                   {layout.totalCols > 2
@@ -1546,6 +1557,9 @@ export default function Agenda() {
                                         <div className={cn('flex items-center gap-0.5', sc.text)}>
                                           {sc.icon}
                                         </div>
+                                        {ag.paciente_id && (
+                                          <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                        )}
                                         <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
                                           {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
                                         </span>
