@@ -406,6 +406,12 @@ export default function MyIDDicasPessoais({ scores, myidScore, compact = false, 
               )}
             </div>
           )}
+
+          {showEditor && (
+            <div className="pt-3 border-t border-border">
+              <MyIDMissoesEditor pacienteId={pacienteId!} terapeutaId={terapeutaId!} autoMissoes={autoMissoes} />
+            </div>
+          )}
         </CardContent>
       )}
     </Card>
