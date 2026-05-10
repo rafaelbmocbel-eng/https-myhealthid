@@ -44,6 +44,8 @@ import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLG
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import ResumoNarrativo from '@/components/paciente/ResumoNarrativo';
+import StatusClinicoBadge from '@/components/paciente/StatusClinicoBadge';
+import { useAcessoClinicoPaciente } from '@/hooks/useAcessoClinicoPaciente';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
