@@ -1,77 +1,65 @@
+# Esconder serviços descontinuados (COB° ZERO, Studio Personal, Método Identidade)
+
 ## Objetivo
+- Os 3 serviços **não existem mais** como produtos.
+- **Banco intacto**: nenhuma tabela, hook, RPC, RLS ou edge function será tocada.
+- **Histórico**: pacientes que já fizeram avaliações continuam vendo os resultados (read-only).
+- **MyID v2.0** continua sendo o questionário-mãe único e visível.
 
-Permitir que o profissional **edite, desative e adicione missões** de gamificação de cada paciente, mantendo as sugestões automáticas visíveis e atualizando a lista quando uma avaliação presencial (Unidades ID / COB ZERO / Studio) for feita.
+## Princípio
+Esconder **entradas de criação** (botões "Nova Avaliação", links no menu, cards "Iniciar"), manter **listagens históricas** com selo "Descontinuado" quando houver dados antigos.
 
-## Comportamento
+---
 
-- **Geração automática continua igual** (MyID gera missões via `gerarMissoesSaude` + `clinicalInsights`).
-- **Profissional vê a lista completa** dentro da avaliação MyID concluída, com botões para:
-  - Editar título e descrição de qualquer missão (override).
-  - Desativar/ocultar missões automáticas.
-  - Adicionar missões manuais (texto livre + categoria/XP).
-- **Paciente vê** a versão final mesclada (auto + overrides + manuais ativas), em tempo real.
-- **Pós-presencial**: ao salvar uma avaliação presencial, o sistema regenera as missões combinando MyID + achados presenciais, mantendo overrides manuais do profissional intactos e marcando as novas como `origem='presencial'` para revisão.
+## Fase A — Remover pontos de entrada para criar novas avaliações
 
-## Arquitetura
+1. **`src/components/Navigation.tsx` / sidebar / sub-nav**: remover qualquer link para `/metodo-identidade`, `/cob-zero`, dashboards Studio.
+2. **`src/components/PacientesSubNav.tsx`**: remover abas dos serviços, se existirem.
+3. **`src/pages/PacientePerfil.tsx`**:
+   - Esconder abas "Identidade", "COB° ZERO", "Studio Personal" da TabsList (mantém os dashboards montados, mas não acessíveis pela aba).
+   - Desabilitar botões "Iniciar Avaliação" / "Nova Avaliação" → trocar por "Histórico (descontinuado)".
+4. **`src/components/onboarding/OnboardingGuide.tsx`**: remover passos que mencionam esses serviços.
+5. **`src/components/GlobalSearch.tsx`**: remover sugestões de rota desses serviços.
+6. **`src/pages/Auth.tsx`**: remover menções na tela de login.
+7. **`src/pages/MetodoIdentidade.tsx`**: substituir conteúdo da página por banner "Serviço descontinuado — veja histórico no perfil do paciente" + botão voltar. Não apagar a rota (links antigos não quebram).
 
-### 1. Banco — nova tabela `paciente_missoes`
+## Fase B — Mostrar histórico read-only no perfil
 
-```text
-paciente_missoes
-  id, paciente_id, terapeuta_id
-  source_key text       -- chave da missão auto (para override) ou null se manual
-  origem text           -- 'myid' | 'presencial' | 'manual'
-  titulo text
-  descricao text
-  acao_imediata text
-  categoria text        -- urgente|importante|oportunidade|positivo
-  xp_recompensa int
-  ativo boolean default true
-  ordem int
-  created_at, updated_at
-```
+8. **`src/pages/PacientePerfil.tsx`**: adicionar seção "Histórico de Avaliações Descontinuadas" que aparece **apenas** se o paciente tiver avaliações em `avaliacoes_identidade` ou `avaliacoes_cob_zero`. Lista cards com data + score + botão "Ver relatório" (read-only). Sem botão de criar/editar/excluir.
+9. **`src/components/paciente/PacienteProtocolosTab.tsx`**: esconder botão "Gerar Diretriz COB° ZERO". Manter listagem de diretrizes já existentes.
 
-RLS: terapeuta gerencia (`auth.uid() = terapeuta_id`); paciente lê pelas suas próprias (via `pacientes.user_id = auth.uid()`).
+## Fase C — Limpar dashboards gerais e relatórios
 
-### 2. Camada de merge — `src/hooks/useMissoesPaciente.ts`
+10. **`src/components/dashboard/AmostraEpidemiologica.tsx`** e **`AmostraIntegrada.tsx`**: substituir referências "Método Identidade" / "COB° ZERO" / "Studio Personal" por "Avaliações" genéricas. Esconder seções de cross-correlação cuja amostra deva ficar zerada (manter código, esconder card se vazio).
+11. **`src/components/paciente/PatientIntegratedDashboard.tsx`**: esconder cards "COB° ZERO" e "Studio Personal" da seção 1.5 ("Avaliação Estrutural") quando não houver dados; quando houver, exibir como "Histórico".
+12. **`src/components/paciente/ResumoNarrativo.tsx`**: já ajustado na Fase 1 anterior — usar termos genéricos.
 
-- Busca `paciente_missoes` do paciente.
-- Recebe lista auto-gerada (atual `gerarMissoesSaude` + `clinicalInsights.missoes`).
-- Cada missão auto recebe um `source_key` estável (ex.: `myid:dor-alta`, `clinical:driver-D`).
-- Merge: para cada auto, se houver registro com mesmo `source_key`, aplica override (título/descrição/ativo). Adiciona manuais ativas. Ordena por categoria + ordem.
-- Expõe `{ missoes, upsertOverride, toggleAtivo, addManual, remove }`.
+## Fase D — Configurações e CRM
 
-### 3. UI Profissional — `src/components/myid/MyIDMissoesEditor.tsx`
+13. **Visibilidade de módulos** (`config/visibilidade-modulos-ativos`): garantir que toggles para esses serviços fiquem `false` por padrão e ocultos no painel de configurações.
+14. **Funil de vendas / serviços pagos**: remover esses serviços das listas pré-cadastradas (se aparecerem como sugestão).
 
-- Renderizado dentro do `MyIDDicasPessoais` (avaliação MyID concluída do pro), em seção "Missões sugeridas para o paciente".
-- Cada item: linha editável (título, descrição), botão ✏️/👁/🗑, badge da origem.
-- Botão "+ Adicionar missão manual" abre dialog.
-- Salva via hook → invalida React Query → paciente vê em tempo real (já que `PacienteMetasDesafios` usa a mesma fonte).
+## Fase E — Atualizar memória do projeto
 
-### 4. UI Paciente — atualizar `PacienteMetasDesafios.tsx` e `MyIDDicasPessoais.tsx` (modo paciente)
+15. Atualizar `mem://index.md`:
+    - Trocar `Architecture: Unifies Identidade, COB ZERO, Studio` → `Architecture: MyID v2.0 é o único produto de avaliação ativo. COB° ZERO/Studio/Identidade são dados históricos read-only.`
+    - Trocar `Avaliações: COB° ZERO, Identidade, Studio são tipos de avaliação` → `Apenas MyID está ativo. Demais ficam como histórico no perfil do paciente.`
+16. Marcar memórias `studio-personal-*`, `cob-zero-*`, `myid-100-v2-roadmap-fases` (parte que cita Studio) como **deprecated** com aviso no topo.
 
-- Trocam a lista local por `useMissoesPaciente(pacienteId).missoes`.
-- Sem mudanças visuais no portal — só conteúdo passa pela mesclagem.
+---
 
-### 5. Regeneração pós-presencial
+## O que NÃO será tocado
+- Tabelas: `avaliacoes_identidade`, `avaliacoes_cob_zero`, `protocolos_tratamento`, `myid_*`
+- Hooks: `useAvaliacoesIdentidade`, `useAvaliacoesCobZero`
+- Componentes que renderizam relatórios antigos (continuam funcionando para read-only)
+- Edge functions, RLS, RPCs
+- `MyID v2.0` em qualquer lugar — continua visível e ativo
 
-- Hook `useEvolucaoPaciente` (e/ou os formulários presenciais) já dispara após salvar uma avaliação estrutural. Em vez de regenerar de fora, o merge é feito on-the-fly: a função `gerarMissoesSaude`/`clinicalInsights` recebe também os scores estruturais mais recentes (`avaliacoes_cob_zero`/Unidades ID/Studio).
-- Missões novas que não existiam ganham `source_key` `presencial:<código>` e aparecem como "Sugerida após avaliação presencial — clique para revisar". Nunca apagam manuais nem overrides.
+## Detalhes técnicos
+- Estratégia de "esconder": condicional `{historico.length > 0 && (...)}` envolvendo seções históricas; remover botões com `// SERVICE DEPRECATED` comentado para futura referência.
+- Página `/metodo-identidade` vira tela de aviso, não 404, para preservar bookmarks.
+- Nenhuma rota será deletada.
 
-## Arquivos afetados
-
-- **Migração nova**: tabela + RLS + trigger `updated_at`.
-- **Novo hook**: `src/hooks/useMissoesPaciente.ts`.
-- **Novo componente**: `src/components/myid/MyIDMissoesEditor.tsx` + dialog `MissaoManualDialog.tsx`.
-- **Editado**: `src/components/myid/MyIDDicasPessoais.tsx` (insere editor no modo pro; consome merge no modo paciente).
-- **Editado**: `src/components/paciente/PacienteMetasDesafios.tsx` (consome merge).
-- **Editado**: `src/utils/myid/clinicalInsights.ts` e função `gerarMissoesSaude` para retornar `source_key` estável e aceitar dados estruturais opcionais.
-- **Memória**: atualizar `mem://features/portal-paciente/gamificacao-missoes` com a nova arquitetura editável.
-
-## Fora de escopo
-
-- Edição de XP / prioridade / categoria (você marcou só título+descrição e ativar/adicionar).
-- Notificação push ao paciente quando o profissional edita (pode ser próxima iteração).
-- Histórico de versões das missões.
-
-Posso seguir com a migração e implementação?
+## Risco
+- **Baixo**: zero alteração de schema, zero alteração de lógica clínica, zero alteração de auth.
+- Único risco real: quebrar imports se eu remover um componente referenciado em outro lugar. Mitigação: só esconder via condicional/remover JSX, não deletar arquivos.
