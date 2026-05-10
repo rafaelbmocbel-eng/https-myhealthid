@@ -24,6 +24,8 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+import ResearchDashboard from '@/components/dashboard/ResearchDashboard';
+import { Stethoscope as StethoscopeIcon, FlaskConical } from 'lucide-react';
 
 export default function Index() {
   const { user, profile, loading, authReady } = useAuth();
