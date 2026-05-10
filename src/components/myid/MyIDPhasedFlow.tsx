@@ -73,6 +73,8 @@ export function MyIDPhasedFlow({
   // Last partial score for showing on transition
   const [lastScoreParcial, setLastScoreParcial] = useState<number | undefined>();
   const [lastDimensions, setLastDimensions] = useState<string[]>(dimsForPhase(faseConcluida));
+  const [lastPartialScores, setLastPartialScores] = useState<Record<string, number> | undefined>();
+
 
   const updateData = useCallback((newData: Partial<MyIDResponses>) => {
     setData((prev) => {
