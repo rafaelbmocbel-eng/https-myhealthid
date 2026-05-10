@@ -4,6 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { withAuthLockRetry } from '@/lib/authLock';
 
+export type EventoCategoria = 'aula_online' | 'workshop' | 'live' | 'triagem' | 'desafio' | 'sazonal' | 'outro';
+export type EventoPublicoAlvo = 'publico' | 'pacientes_ativos';
+
 export interface Evento {
   id: string;
   terapeuta_id: string;
@@ -23,6 +26,16 @@ export interface Evento {
   link_pagamento: string | null;
   ativo: boolean;
   created_at: string;
+  categoria: EventoCategoria;
+  link_video: string | null;
+  publico_alvo: EventoPublicoAlvo;
+  recorrencia_grupo_id: string | null;
+}
+
+export interface RecorrenciaConfig {
+  tipo: 'diaria' | 'semanal';
+  intervalo: number; // ex: 1 = toda semana, 2 = a cada 2 semanas
+  ocorrencias: number; // total de eventos a criar (1 = único)
 }
 
 export interface EventoPergunta {
