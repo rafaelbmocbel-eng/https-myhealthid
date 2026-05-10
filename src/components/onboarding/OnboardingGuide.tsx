@@ -20,10 +20,10 @@ const STEPS = [
   },
   {
     icon: Activity,
-    title: 'Realize uma avaliação',
-    description: 'Use o Método Identidade ou COB° ZERO para avaliar seu paciente.',
-    action: '/metodo-identidade',
-    actionLabel: 'Nova Avaliação',
+    title: 'Realize uma avaliação MyID',
+    description: 'Envie o questionário MyID v2.0 para o paciente preencher e gere a análise clínica.',
+    action: '/pacientes',
+    actionLabel: 'Iniciar Avaliação',
     checkKey: 'onb_avaliacao',
   },
   {
@@ -44,15 +44,11 @@ const STEPS = [
   },
   {
     icon: Sparkles,
-    title: 'Explore os Serviços',
-    description: 'Conheça o Método Identidade e o COB° ZERO.',
-    action: '/metodo-identidade',
-    actionLabel: 'Explorar Serviços',
+    title: 'Configure sua clínica',
+    description: 'Personalize serviços, valores e identidade visual da sua plataforma.',
+    action: '/configuracoes',
+    actionLabel: 'Abrir Configurações',
     checkKey: 'onb_servicos',
-    subActions: [
-      { label: 'Método Identidade', href: '/metodo-identidade' },
-      { label: 'COB° ZERO', href: '/cob-zero' },
-    ],
   },
 ];
 
@@ -166,19 +162,9 @@ export default function OnboardingGuide() {
                     {isCurrent && !done && (
                       <>
                         <p className="text-[11px] text-muted-foreground mt-0.5">{step.description}</p>
-                        {step.subActions ? (
-                          <div className="flex flex-wrap gap-1.5 mt-2">
-                            {step.subActions.map(sa => (
-                              <Button key={sa.href} size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => { handleAction(step); navigate(sa.href); }}>
-                                {sa.label} <ArrowRight className="h-3 w-3" />
-                              </Button>
-                            ))}
-                          </div>
-                        ) : (
-                          <Button size="sm" className="mt-2 gap-1.5 h-7 text-xs" onClick={() => handleAction(step)}>
-                            {step.actionLabel} <ArrowRight className="h-3 w-3" />
-                          </Button>
-                        )}
+                        <Button size="sm" className="mt-2 gap-1.5 h-7 text-xs" onClick={() => handleAction(step)}>
+                          {step.actionLabel} <ArrowRight className="h-3 w-3" />
+                        </Button>
                       </>
                     )}
                   </div>

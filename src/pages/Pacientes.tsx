@@ -82,9 +82,9 @@ interface Paciente {
 }
 
 const SERVICOS = [
-  { key: 'metodo_identidade', label: 'Método Identidade', color: 'bg-primary/10 text-primary border-primary/20' },
-  { key: 'cob_zero', label: 'COB° ZERO', color: 'bg-blue-100 text-blue-700 border-blue-200' },
-  { key: 'studio_personal_id', label: 'Studio Personal ID', color: 'bg-emerald-100 text-emerald-700 border-emerald-200' },
+  
+  
+  
   { key: 'agenda_premium', label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200' },
 ];
 

@@ -5,8 +5,8 @@ import {
   CommandGroup, CommandItem, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  LayoutDashboard, Users, CalendarDays, ClipboardList, AlignCenter,
-  Settings, Sparkles, MessageSquare, FileText, Search, User, PartyPopper,
+  LayoutDashboard, Users, CalendarDays,
+  Settings, MessageSquare, FileText, Search, User, PartyPopper,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,8 +14,6 @@ import { supabase } from '@/integrations/supabase/client';
 const PAGES = [
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendário horário' },
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'lista clientes' },
-  { label: 'Método Identidade', href: '/metodo-identidade', icon: ClipboardList, keywords: 'avaliação' },
-  { label: 'COB° ZERO', href: '/cob-zero', icon: AlignCenter, keywords: 'escoliose cobb' },
   { label: 'Gestão & CRM', href: '/crm', icon: MessageSquare, keywords: 'vendas funil leads' },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, keywords: 'evento workshop recovery inscrição' },
   { label: 'Relatórios', href: '/relatorios', icon: FileText, keywords: 'report pdf' },

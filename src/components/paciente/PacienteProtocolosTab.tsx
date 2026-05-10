@@ -524,33 +524,9 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         </div>
       )}
 
-      {/* Avaliações prontas para protocolo (cob_zero) */}
-      {tipo === 'cob_zero' && avaliacoesCobZeroSemProtocolo.length > 0 && (
-        <div className="space-y-2" id="secao-pendencias">
-          <div className="flex items-center gap-2 mb-2">
-            <Zap className="h-4 w-4 text-blue-500" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Avaliações CobZero Disponíveis</span>
-            <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px]">{avaliacoesCobZeroSemProtocolo.length}</Badge>
-          </div>
-          {avaliacoesCobZeroSemProtocolo.map((av: any) => (
-            <div key={av.id} className="border-l-4 border-blue-400 rounded-lg p-3 bg-blue-50/50 flex items-center gap-3 shadow-sm hover:shadow-md transition-shadow">
-              <Activity className="h-4 w-4 text-blue-600 shrink-0" />
-              <div className="flex-1 min-w-0">
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-medium">
-                    {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                  </span>
-                  <Badge variant="outline" className="text-[10px] h-4">Cobb {av.cobb_angle}°</Badge>
-                  <Badge className="bg-blue-100 text-blue-700 border-0 text-[10px]">Lenke {av.lenke_type}</Badge>
-                </div>
-              </div>
-              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white gap-1 h-7 text-xs"
-                onClick={() => handleGerarDiretrizCobZero(av)}>
-                <Zap className="h-3 w-3" /> Gerar
-              </Button>
-            </div>
-          ))}
-        </div>
+      {/* Avaliações prontas para protocolo (cob_zero) — DEPRECATED: serviço descontinuado, mantido apenas para histórico */}
+      {false && tipo === 'cob_zero' && avaliacoesCobZeroSemProtocolo.length > 0 && (
+        <div className="space-y-2" id="secao-pendencias" />
       )}
 
       {/* Lista de protocolos */}

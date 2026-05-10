@@ -1017,11 +1017,13 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                             <p className="text-xs text-muted-foreground">Selecione um paciente acima e envie uma proposta comercial via WhatsApp.</p>
                         </CardHeader>
                         <CardContent className="space-y-3">
-                            {(['Método Identidade', 'COB° ZERO', 'Studio Personal ID'] as const).map(servico => {
-                                const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servico);
+                            {(['Avaliação', 'Estrutural', 'Funcional'] as const).map(servico => {
+                                const servicoMap: Record<string, string> = { 'Avaliação': 'Método Identidade', 'Estrutural': 'COB° ZERO', 'Funcional': 'Studio Personal ID' };
+                                const pacotes = PACOTES_PREDEFINIDOS.filter(p => p.servico === servicoMap[servico]);
+                                if (pacotes.length === 0) return null;
                                 return (
                                     <div key={servico}>
-                                        <h4 className="font-bold text-xs mb-1.5 text-muted-foreground">{servico}</h4>
+                                        <h4 className="font-bold text-xs mb-1.5 text-muted-foreground">{servico} <span className="text-[10px] opacity-60">(legado)</span></h4>
                                         <div className="grid gap-2 md:grid-cols-2">
                                             {pacotes.map(pacote => {
                                                 const isSelected = selectedPacote === pacote.id;

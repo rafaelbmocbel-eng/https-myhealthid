@@ -373,7 +373,7 @@ export default function Protocolos() {
             <FileText className="h-16 w-16 text-muted-foreground/30 mx-auto mb-4" />
             <h3 className="text-lg font-semibold text-foreground mb-2">Nenhuma diretriz encontrada</h3>
             <p className="text-muted-foreground mb-6">
-              Conclua uma avaliação do Método Identidade para gerar uma diretriz automaticamente.
+              Conclua uma avaliação MyID para gerar uma diretriz automaticamente.
             </p>
             <Button onClick={() => navigate('/metodo-identidade')} className="bg-gradient-primary text-white">
               <Plus className="h-4 w-4 mr-2" />
@@ -494,7 +494,7 @@ function StructuralDiretrizCard({ pacienteNome, date, data }: { pacienteNome: st
     const lines: string[] = [];
     const d = new Date().toLocaleDateString('pt-BR');
     lines.push('═══════════════════════════════════════');
-    lines.push('  DIRETRIZ ESTRUTURAL · Método Identidade');
+    lines.push('  DIRETRIZ ESTRUTURAL');
     lines.push(`  Paciente: ${pacienteNome} · ${d}`);
     lines.push('═══════════════════════════════════════');
     lines.push('');
