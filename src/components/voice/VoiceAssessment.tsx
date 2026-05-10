@@ -594,7 +594,8 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
   };
 
   // ── Cria uma Diretriz Oficial a partir da diretriz_tratamento gerada pela IA ──
-  const criarDiretrizDaVoz = async () => {
+  // intent: 'aprovar' = salva ativa + nota no prontuário | 'personalizar' = abre editor para refinar
+  const criarDiretrizDaVoz = async (intent: 'aprovar' | 'personalizar' = 'aprovar') => {
     if (!user || !assessment?.diretriz_tratamento || !pacienteId) {
       toast({
         title: 'Não foi possível criar a diretriz',
