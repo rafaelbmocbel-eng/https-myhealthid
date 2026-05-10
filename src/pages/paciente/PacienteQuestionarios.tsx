@@ -359,7 +359,7 @@ export default function PacienteQuestionarios() {
                                 setViewMode('viewing');
                               }}
                             >
-                              <Eye className="h-3.5 w-3.5" />
+                              <Eye className="icon-sm" />
                               Ver
                             </Button>
                           )}

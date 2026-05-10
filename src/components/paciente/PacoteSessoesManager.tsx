@@ -125,7 +125,7 @@ export default function PacoteSessoesManager({ pacienteId, compact = false }: Pa
         onClick={pacoteAtivo ? () => openEdit(pacoteAtivo) : openNew}
         title={pacoteAtivo ? 'Editar pacote' : 'Criar pacote'}
       >
-        <Package className="h-3.5 w-3.5 mx-auto mb-1 text-muted-foreground" />
+        <Package className="icon-sm mx-auto mb-1 text-muted-foreground" />
         {pacoteAtivo ? (
           <>
             <div className="text-base font-bold leading-tight">

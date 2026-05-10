@@ -167,7 +167,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
               <Card key={e.key} className={`p-2.5 ${inactive ? 'opacity-60' : ''}`}>
                 <div className="flex items-start gap-2">
                   <div className={`h-7 w-7 rounded-lg flex items-center justify-center shrink-0 ${e.color}`}>
-                    <Icon className="h-3.5 w-3.5" />
+                    <Icon className="icon-sm" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="text-[11px] font-bold leading-tight truncate">{e.label}</div>
@@ -187,7 +187,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Diário */}
           <AccordionItem value="diario">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Heart className="h-3.5 w-3.5 text-rose-600" /> Diário de Saúde ({data.dailyLogs.length})</div>
+              <div className="flex items-center gap-2"><Heart className="icon-sm text-rose-600" /> Diário de Saúde ({data.dailyLogs.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -215,7 +215,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Exercícios */}
           <AccordionItem value="exerc">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Dumbbell className="h-3.5 w-3.5 text-amber-600" /> Exercícios ({data.execucoes.length} execuções)</div>
+              <div className="flex items-center gap-2"><Dumbbell className="icon-sm text-amber-600" /> Exercícios ({data.execucoes.length} execuções)</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -249,7 +249,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Agenda */}
           <AccordionItem value="agenda">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-blue-600" /> Agendamentos ({data.agendamentos.length})</div>
+              <div className="flex items-center gap-2"><Calendar className="icon-sm text-blue-600" /> Agendamentos ({data.agendamentos.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -272,7 +272,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Pagamentos */}
           <AccordionItem value="pag">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><DollarSign className="h-3.5 w-3.5 text-emerald-600" /> Pagamentos ({data.pagamentos.length})</div>
+              <div className="flex items-center gap-2"><DollarSign className="icon-sm text-emerald-600" /> Pagamentos ({data.pagamentos.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -295,7 +295,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Chat */}
           <AccordionItem value="chat">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><MessageCircle className="h-3.5 w-3.5 text-indigo-600" /> Chat ({data.chat.length})</div>
+              <div className="flex items-center gap-2"><MessageCircle className="icon-sm text-indigo-600" /> Chat ({data.chat.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -315,7 +315,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Wearables */}
           <AccordionItem value="health">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Activity className="h-3.5 w-3.5 text-cyan-600" /> Wearables / Saúde ({data.health.length})</div>
+              <div className="flex items-center gap-2"><Activity className="icon-sm text-cyan-600" /> Wearables / Saúde ({data.health.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -342,7 +342,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Refeições */}
           <AccordionItem value="meals">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Apple className="h-3.5 w-3.5 text-orange-600" /> Refeições ({data.meals.length})</div>
+              <div className="flex items-center gap-2"><Apple className="icon-sm text-orange-600" /> Refeições ({data.meals.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -366,7 +366,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Composição */}
           <AccordionItem value="body">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Ruler className="h-3.5 w-3.5 text-teal-600" /> Composição corporal ({data.body.length})</div>
+              <div className="flex items-center gap-2"><Ruler className="icon-sm text-teal-600" /> Composição corporal ({data.body.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -392,7 +392,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Eventos */}
           <AccordionItem value="eventos">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><CalendarDays className="h-3.5 w-3.5 text-fuchsia-600" /> Eventos ({data.eventos.length})</div>
+              <div className="flex items-center gap-2"><CalendarDays className="icon-sm text-fuchsia-600" /> Eventos ({data.eventos.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -418,7 +418,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Questionários */}
           <AccordionItem value="quest">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><ClipboardList className="h-3.5 w-3.5 text-violet-600" /> Questionários ({data.respostas.length})</div>
+              <div className="flex items-center gap-2"><ClipboardList className="icon-sm text-violet-600" /> Questionários ({data.respostas.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">
@@ -438,7 +438,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           {/* Notificações */}
           <AccordionItem value="notif">
             <AccordionTrigger className="text-xs font-bold py-2 px-2">
-              <div className="flex items-center gap-2"><Bell className="h-3.5 w-3.5 text-yellow-600" /> Notificações ({data.notif.length})</div>
+              <div className="flex items-center gap-2"><Bell className="icon-sm text-yellow-600" /> Notificações ({data.notif.length})</div>
             </AccordionTrigger>
             <AccordionContent>
               <ScrollArea className="h-64">

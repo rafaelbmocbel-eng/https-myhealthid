@@ -209,22 +209,22 @@ export default function PacienteEventos() {
 
                       <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
                         <span className="flex items-center gap-1">
-                          <Calendar className="h-3.5 w-3.5 text-primary" />
+                          <Calendar className="icon-sm text-primary" />
                           {format(new Date(ev.data_evento + 'T12:00:00'), "EEE, dd MMM", { locale: ptBR })}
                         </span>
                         <span className="flex items-center gap-1">
-                          <Clock className="h-3.5 w-3.5 text-primary" />
+                          <Clock className="icon-sm text-primary" />
                           {ev.horario_inicio?.slice(0, 5)} – {ev.horario_fim?.slice(0, 5)}
                         </span>
                         {ev.local && (
                           <span className="flex items-center gap-1">
-                            <MapPin className="h-3.5 w-3.5 text-primary" />
+                            <MapPin className="icon-sm text-primary" />
                             {ev.local}
                           </span>
                         )}
                         {vagasRest !== null && vagasRest !== undefined && (
                           <span className="flex items-center gap-1">
-                            <Users className="h-3.5 w-3.5 text-primary" />
+                            <Users className="icon-sm text-primary" />
                             {vagasRest > 0 ? `${vagasRest} vaga${vagasRest > 1 ? 's' : ''}` : 'Esgotado'}
                           </span>
                         )}

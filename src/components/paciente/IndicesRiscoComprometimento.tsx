@@ -140,7 +140,7 @@ export default function IndicesRiscoComprometimento({ scores, parcial, className
     <div className={cn('clinical-card p-3', className)}>
       <div className="flex items-center justify-between mb-2">
         <h3 className="font-bold text-xs flex items-center gap-1.5">
-          <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+          <AlertTriangle className="icon-sm text-destructive" />
           Risco Biopsicossocial (MyID-100)
           {parcial && <span className="text-[9px] text-amber-600 font-normal">(parcial)</span>}
         </h3>

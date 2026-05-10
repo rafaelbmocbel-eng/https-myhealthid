@@ -343,7 +343,7 @@ export default function PacienteLogin() {
 
         <div className="relative flex items-center justify-between text-white/30 text-[11px]">
           <div className="flex items-center gap-1.5">
-            <ShieldCheck className="h-3.5 w-3.5" />
+            <ShieldCheck className="icon-sm" />
             <span>LGPD Compliant · Dados criptografados</span>
           </div>
           <span>© 2026</span>
@@ -523,7 +523,7 @@ export default function PacienteLogin() {
 
           {portalToken && (
             <div className="mt-4 flex items-start gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
-              <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+              <Sparkles className="icon-sm text-primary shrink-0 mt-0.5" />
               <p className="text-[11px] text-muted-foreground leading-snug">
                 <strong className="text-foreground">Link de convite detectado.</strong> Sua conta
                 será vinculada automaticamente ao seu terapeuta.

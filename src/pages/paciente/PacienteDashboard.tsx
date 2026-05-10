@@ -201,7 +201,7 @@ export default function PacienteDashboard() {
                     const Icon = s.icon;
                     return (
                       <div key={s.label} className="text-center px-2 py-1.5 rounded-lg bg-white/10">
-                        <Icon className="h-3.5 w-3.5 text-primary-foreground/70 mx-auto mb-0.5" />
+                        <Icon className="icon-sm text-primary-foreground/70 mx-auto mb-0.5" />
                         <div className="text-sm font-black text-primary-foreground">{s.value}</div>
                         <div className="text-[8px] text-primary-foreground/50">{s.label}</div>
                       </div>
@@ -278,9 +278,9 @@ export default function PacienteDashboard() {
                         className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
                         onClick={() => navigate('/paciente/questionarios')}
                       >
-                        <Fingerprint className="h-3.5 w-3.5 mr-1" />
+                        <Fingerprint className="icon-sm mr-1" />
                         {myIdPromptType === 'first' ? 'Responder agora' : 'Atualizar MyID'}
-                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                        <ChevronRight className="icon-sm ml-1" />
                       </Button>
                     </div>
                   </div>

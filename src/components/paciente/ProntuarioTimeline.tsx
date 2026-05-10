@@ -229,7 +229,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
           </div>
         </div>
         <Button variant="ghost" size="sm" className="gap-1.5 text-xs rounded-lg h-8" onClick={handleBackfill} disabled={syncing}>
-          {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+          {syncing ? <Loader2 className="icon-sm animate-spin" /> : <RefreshCw className="icon-sm" />}
           Sincronizar
         </Button>
       </div>
@@ -240,7 +240,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
               {/* Date header */}
               <div className="flex items-center gap-3 mb-4">
                 <div className="flex items-center gap-2 bg-muted/60 rounded-lg px-3 py-1.5">
-                  <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Calendar className="icon-sm text-muted-foreground" />
                   <span className="text-[11px] font-bold text-muted-foreground">
                     {format(parseISO(dateKey), "dd 'de' MMMM, yyyy", { locale: ptBR })}
                   </span>
@@ -286,7 +286,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                                   onClick={() => handleEditNote(nota)}
                                   title="Editar resumo"
                                 >
-                                  <Edit3 className="h-3.5 w-3.5" />
+                                  <Edit3 className="icon-sm" />
                                 </Button>
                                 <Button
                                   size="sm"
@@ -295,7 +295,7 @@ export default function ProntuarioTimeline({ notas, isLoading, pacienteNome }: P
                                   onClick={() => setDeleteTarget(nota.id)}
                                   title="Excluir registro"
                                 >
-                                  <Trash2 className="h-3.5 w-3.5" />
+                                  <Trash2 className="icon-sm" />
                                 </Button>
                               </>
                             )}

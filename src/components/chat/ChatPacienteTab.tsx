@@ -71,7 +71,7 @@ export default function ChatPacienteTab({ pacienteId, pacienteNome, pacienteTele
           {whatsappLink && (
             <Button variant="ghost" size="icon" asChild className="h-8 w-8">
               <a href={whatsappLink} target="_blank" rel="noopener noreferrer">
-                <ExternalLink className="h-3.5 w-3.5 text-green-600" />
+                <ExternalLink className="icon-sm text-green-600" />
               </a>
             </Button>
           )}

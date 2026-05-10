@@ -157,7 +157,7 @@ export default function CIFSuggestionPanel({ myidResult, voiceAssessment, struct
                       </div>
                     </div>
                     <ConfIcon className={cn(
-                      'h-3.5 w-3.5 shrink-0 mt-0.5',
+                      'icon-sm shrink-0 mt-0.5',
                       code.confidence === 'alta' ? 'text-emerald-500' : code.confidence === 'media' ? 'text-blue-500' : 'text-orange-500'
                     )} />
                   </div>

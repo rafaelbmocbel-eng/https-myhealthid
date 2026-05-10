@@ -330,7 +330,7 @@ export default function MyIDDicasPessoais({ scores, myidScore, compact = false, 
                     <div className="p-3 rounded-xl bg-primary/5 border border-primary/20">
                       <div className="flex items-center gap-2 mb-2">
                         <div className="h-6 w-6 rounded-lg flex items-center justify-center bg-primary/10">
-                          <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                          <AlertTriangle className="icon-sm text-primary" />
                         </div>
                         <span className="text-xs font-bold text-primary">
                           Prioridade: {insights.driverInsight.driverLabel}
@@ -426,7 +426,7 @@ function DicaCard({ dica, mini = false }: { dica: DicaPersonalizada; mini?: bool
     return (
       <div className={cn("p-3 rounded-xl border", dica.bgClass, dica.borderClass)}>
         <div className="flex items-center gap-2 mb-1">
-          <Icon className={cn("h-3.5 w-3.5", dica.colorClass)} />
+          <Icon className={cn("icon-sm", dica.colorClass)} />
           <span className={cn("text-xs font-bold", dica.colorClass)}>{dica.titulo}</span>
           <span className={cn("text-[10px] font-black ml-auto", dica.colorClass)}>{dica.lossPoints > 0 ? `-${dica.lossPoints}pts` : '✓ 0pts'}</span>
         </div>

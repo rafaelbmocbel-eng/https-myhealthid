@@ -381,7 +381,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
 
         {/* Comparative scores table */}
         <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-          <ArrowUpDown className="h-3.5 w-3.5" /> Scores Médios: 1ª Avaliação vs Reavaliações
+          <ArrowUpDown className="icon-sm" /> Scores Médios: 1ª Avaliação vs Reavaliações
         </h4>
         <div className="overflow-x-auto mb-5">
           <table className="w-full text-xs">
@@ -417,8 +417,8 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
                       {delta != null ? `${delta > 0 ? '+' : ''}${delta.toFixed(1)}` : '—'}
                     </td>
                     <td className="text-center py-2 px-1">
-                      {isImproved ? <TrendingUp className="h-3.5 w-3.5 text-emerald-600 mx-auto" /> :
-                       isWorsened ? <TrendingUp className="h-3.5 w-3.5 text-red-500 mx-auto rotate-180" /> :
+                      {isImproved ? <TrendingUp className="icon-sm text-emerald-600 mx-auto" /> :
+                       isWorsened ? <TrendingUp className="icon-sm text-red-500 mx-auto rotate-180" /> :
                        <span className="text-muted-foreground text-[10px]">≈</span>}
                     </td>
                   </tr>
@@ -432,7 +432,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         {analysis.deltas.length > 0 && (
           <>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <GitBranch className="h-3.5 w-3.5" /> Variação Média por Paciente (Última − 1ª)
+              <GitBranch className="icon-sm" /> Variação Média por Paciente (Última − 1ª)
             </h4>
             <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-2 mb-5">
               {(['D', 'EFI', 'R', 'C', 'P', 'I', 'N', 'ID'] as const).map(key => {
@@ -460,7 +460,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         {analysis.reavaliacoes.length > 0 && (
           <>
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <BarChart3 className="h-3.5 w-3.5" /> Distribuição de Classificações: 1ª vs Reavaliações
+              <BarChart3 className="icon-sm" /> Distribuição de Classificações: 1ª vs Reavaliações
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -606,7 +606,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         {analysis.topPainTypes.length > 0 && (
           <div className="mt-5">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Layers className="h-3.5 w-3.5" /> Tipos de Dor × Intensidade Média
+              <Layers className="icon-sm" /> Tipos de Dor × Intensidade Média
             </h4>
             <div className="space-y-2">
               {analysis.topPainTypes.map(t => (
@@ -628,7 +628,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
         {Object.keys(analysis.funcByClass).length > 0 && (
           <div className="mt-5">
             <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-              <Zap className="h-3.5 w-3.5" /> Funcionalidade Média por Classificação
+              <Zap className="icon-sm" /> Funcionalidade Média por Classificação
             </h4>
             <div className="overflow-x-auto">
               <table className="w-full text-xs">
@@ -727,7 +727,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
               .map((t, idx) => (
                 <div key={idx} className={`rounded-lg border p-3 ${t.concordam > 60 ? 'border-red-200 bg-red-50/50 dark:bg-red-950/20' : t.concordam > 40 ? 'border-amber-200 bg-amber-50/50 dark:bg-amber-950/20' : 'bg-card'}`}>
                   <div className="flex items-start gap-2 mb-2">
-                    {t.concordam > 60 && <AlertTriangle className="h-3.5 w-3.5 text-red-500 mt-0.5 shrink-0" />}
+                    {t.concordam > 60 && <AlertTriangle className="icon-sm text-red-500 mt-0.5 shrink-0" />}
                     <p className="text-xs font-medium text-foreground flex-1">{t.item}</p>
                     <span className={`text-xs font-bold ${t.concordam > 60 ? 'text-red-600' : t.concordam > 40 ? 'text-amber-600' : 'text-emerald-600'}`}>
                       {t.concordam.toFixed(0)}% concordam

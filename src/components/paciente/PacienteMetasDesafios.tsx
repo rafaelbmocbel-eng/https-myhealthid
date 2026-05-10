@@ -398,7 +398,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           <Progress value={progressoGeral} className="h-2" />
           {concluidas === metas.length && metas.length > 0 && (
             <div className="flex items-center gap-1.5 mt-2">
-              <Trophy className="h-3.5 w-3.5 text-yellow-600" />
+              <Trophy className="icon-sm text-yellow-600" />
               <span className="text-[10px] font-bold text-yellow-700">
                 Todas as metas concluídas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} XP
               </span>
@@ -426,7 +426,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   <p className={`text-xs font-bold ${meta.concluida ? 'line-through text-muted-foreground' : 'text-foreground'}`}>
                     {meta.titulo}
                   </p>
-                  <Badge variant="outline" className="text-[8px] py-0 h-3.5 gap-0.5">
+                  <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
                     <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
                   </Badge>
                 </div>
@@ -463,7 +463,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   {missoesConcluidas}/{missoesConcluiveis.length} ✓
                 </span>
               )}
-              {showDicas ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+              {showDicas ? <ChevronUp className="icon-sm text-muted-foreground" /> : <ChevronDown className="icon-sm text-muted-foreground" />}
             </div>
           </div>
 
@@ -531,7 +531,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                             <span className={cn("text-[8px] font-black px-1.5 py-0.5 rounded-full", missao.bgClass, missao.colorClass)}>
                               {categoriaLabel[missao.categoria]}
                             </span>
-                            <Badge variant="outline" className="text-[8px] py-0 h-3.5 gap-0.5 ml-auto">
+                            <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5 ml-auto">
                               <Zap className="h-2 w-2" /> +{missao.xpRecompensa} XP
                             </Badge>
                           </div>
@@ -587,7 +587,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 </Badge>
               )}
             </div>
-            {showFases ? <ChevronUp className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />}
+            {showFases ? <ChevronUp className="icon-sm text-muted-foreground" /> : <ChevronDown className="icon-sm text-muted-foreground" />}
           </div>
 
           {showFases && (
@@ -597,7 +597,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="p-3">
                     <div className="flex items-center gap-2 mb-2">
-                      <AlertTriangle className="h-3.5 w-3.5 text-primary" />
+                      <AlertTriangle className="icon-sm text-primary" />
                       <span className="text-[11px] font-bold text-primary">
                         Prioridade: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
                       </span>
@@ -650,7 +650,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                       <div key={missao.id} className="flex items-center gap-2 p-1.5 rounded-lg bg-background/50">
                         <Trophy className="h-3 w-3 text-primary/60 shrink-0" />
                         <span className="text-[10px] text-foreground/70 flex-1">{missao.titulo}</span>
-                        <Badge variant="outline" className="text-[8px] py-0 h-3.5 gap-0.5">
+                        <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
                           <Zap className="h-2 w-2" /> +{missao.xp} XP
                         </Badge>
                       </div>

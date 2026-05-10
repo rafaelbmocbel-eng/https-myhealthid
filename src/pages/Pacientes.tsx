@@ -145,18 +145,18 @@ function LinkModalContent({ pac, links, gerando, gerarLink, copiarLink, cancelar
               const msg = `Olá ${pac.nome}! 🩺\n\nPreencha sua avaliação:\n${url}`;
               window.open(`https://wa.me/${pac.telefone!.replace(/\D/g, '')}?text=${encodeURIComponent(msg)}`, '_blank');
             }}>
-              <MessageCircle className="h-3.5 w-3.5" /> Enviar via WhatsApp
+              <MessageCircle className="icon-sm" /> Enviar via WhatsApp
             </Button>
           ) : (
             <Button className="flex-1 gap-2" onClick={() => copiarLink(linkAtivo.token)}>
-              <Copy className="h-3.5 w-3.5" /> Copiar Link
+              <Copy className="icon-sm" /> Copiar Link
             </Button>
           )}
           <Button variant="outline" className="gap-2" onClick={async () => {
             await cancelarLink(linkAtivo.id);
             await gerarLink(pac.id);
           }} disabled={gerando}>
-            {gerando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            {gerando ? <Loader2 className="icon-sm animate-spin" /> : <RefreshCw className="icon-sm" />}
             Renovar
           </Button>
         </div>
@@ -647,7 +647,7 @@ export default function Pacientes() {
           
           <Select value={sortBy} onValueChange={v => setSortBy(v as SortKey)}>
             <SelectTrigger className="w-48">
-              <ArrowUpDown className="h-3.5 w-3.5 mr-1.5" />
+              <ArrowUpDown className="icon-sm mr-1.5" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -737,14 +737,14 @@ export default function Pacientes() {
                             const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
                             window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}?text=${msg}`, '_blank');
                           }}>
-                          <MessageCircle className="h-3.5 w-3.5" />
+                          <MessageCircle className="icon-sm" />
                         </Button>
                       )}
                       <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
-                        <Edit2 className="h-3.5 w-3.5" />
+                        <Edit2 className="icon-sm" />
                       </Button>
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p)} title="Excluir">
-                        <Trash2 className="h-3.5 w-3.5" />
+                        <Trash2 className="icon-sm" />
                       </Button>
                     </div>
                   </div>

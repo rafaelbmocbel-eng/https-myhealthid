@@ -342,7 +342,7 @@ export default function CobZero() {
               <p className="text-muted-foreground text-sm">Protocolo Integrado de Escoliose | {avaliacao.dataAvaliacao}</p>
             </div>
             <Button variant="outline" size="sm" className="ml-auto text-xs" onClick={() => setSelectedPacienteId(null)}>
-              <Users className="h-3.5 w-3.5 mr-1" /> Trocar paciente
+              <Users className="icon-sm mr-1" /> Trocar paciente
             </Button>
           </div>
           <div className="flex items-center gap-4 mt-4">

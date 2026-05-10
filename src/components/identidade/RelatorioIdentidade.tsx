@@ -108,14 +108,14 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         <div className="flex flex-wrap gap-2">
           {pacienteId && (
             <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm" onClick={handleSalvar} disabled={salvando || salvo}>
-              {salvando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />}
+              {salvando ? <Loader2 className="icon-sm animate-spin" /> : <Save className="icon-sm" />}
               <span className="hidden sm:inline">{salvo ? 'Salvo ✓' : 'Salvar no Prontuário'}</span>
               <span className="sm:hidden">{salvo ? 'Salvo ✓' : 'Salvar'}</span>
             </Button>
           )}
           {pacienteId && (
             <Button className="bg-gradient-primary text-white gap-1.5 text-xs sm:text-sm" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
-              <Sparkles className="h-3.5 w-3.5" />
+              <Sparkles className="icon-sm" />
               <span className="hidden sm:inline">Gerar Diretriz</span>
               <span className="sm:hidden">Diretriz</span>
             </Button>
@@ -123,7 +123,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
           <Button variant="outline" size="sm" className="gap-1.5 text-xs sm:text-sm" onClick={() => {
             toast({ title: 'PDF do Relatório', description: 'Função de PDF está em adaptação para o novo MyID.' });
           }}>
-            <Download className="h-3.5 w-3.5" />
+            <Download className="icon-sm" />
             <span className="hidden sm:inline">PDF (Breve)</span>
             <span className="sm:hidden">PDF</span>
           </Button>
@@ -134,7 +134,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
               onClick={handleRespostaCompleta}
               disabled={gerandoPDF}
             >
-              {gerandoPDF ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              {gerandoPDF ? <Loader2 className="icon-sm animate-spin" /> : <FileText className="icon-sm" />}
               <span className="hidden sm:inline">Resposta Completa</span>
               <span className="sm:hidden">Completa</span>
             </Button>

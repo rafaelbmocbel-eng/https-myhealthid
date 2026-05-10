@@ -362,7 +362,7 @@ export default function PainelAcompanhamento({ pacientes, ultimosAgendamentos, t
           )}
         </div>
         <div className="flex items-center gap-1 text-muted-foreground">
-          {expanded ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+          {expanded ? <EyeOff className="icon-sm" /> : <Eye className="icon-sm" />}
           <span className="text-[10px]">{expanded ? 'Ocultar' : 'Expandir'}</span>
         </div>
       </button>

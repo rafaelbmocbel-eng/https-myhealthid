@@ -681,7 +681,7 @@ export default function Index() {
                     return (
                       <div key={s.label} className={`rounded-xl p-3 ${s.bg}`}>
                         <div className="flex items-center gap-1.5 mb-1">
-                          <Icon className={`h-3.5 w-3.5 ${s.color}`} />
+                          <Icon className={`icon-sm ${s.color}`} />
                           <span className="text-[10px] font-medium text-muted-foreground">{s.label}</span>
                         </div>
                         <div className={`text-xl font-black ${s.color}`}>{s.value.toFixed(1)}</div>
@@ -728,7 +728,7 @@ export default function Index() {
                   {amostraClinica.topClassificacoes.length > 0 && (
                     <div>
                       <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                        <ClipboardList className="h-3.5 w-3.5" /> Classificações
+                        <ClipboardList className="icon-sm" /> Classificações
                       </h3>
                       <div className="space-y-2">
                         {amostraClinica.topClassificacoes.map(cl => (
@@ -743,7 +743,7 @@ export default function Index() {
                   )}
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <Zap className="h-3.5 w-3.5" /> Funcionalidade Média (EFI)
+                      <Zap className="icon-sm" /> Funcionalidade Média (EFI)
                     </h3>
                     <div className="space-y-2">
                       {Object.entries(amostraClinica.funcMedia).map(([k, v]) => (
@@ -763,7 +763,7 @@ export default function Index() {
                 <div className="grid md:grid-cols-2 gap-5">
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5" /> Regiões de Dor Mais Frequentes
+                      <MapPin className="icon-sm" /> Regiões de Dor Mais Frequentes
                     </h3>
                     {amostraClinica.topRegioes.length > 0 ? (
                       <div className="space-y-2.5">
@@ -785,7 +785,7 @@ export default function Index() {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <Bone className="h-3.5 w-3.5" /> Unidades Corporais Comprometidas
+                      <Bone className="icon-sm" /> Unidades Corporais Comprometidas
                     </h3>
                     {amostraClinica.topUnidades.length > 0 ? (
                       <div className="space-y-2.5">
@@ -813,7 +813,7 @@ export default function Index() {
                 <div className="grid md:grid-cols-2 gap-5">
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <BedDouble className="h-3.5 w-3.5" /> Sub-Scores de Regulação (Média)
+                      <BedDouble className="icon-sm" /> Sub-Scores de Regulação (Média)
                     </h3>
                     <div className="space-y-3">
                       {Object.entries(amostraClinica.regMedia).map(([k, v]) => (
@@ -829,7 +829,7 @@ export default function Index() {
                   </div>
                   <div>
                     <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                      <Dumbbell className="h-3.5 w-3.5" /> Nível de Atividade Física
+                      <Dumbbell className="icon-sm" /> Nível de Atividade Física
                     </h3>
                     {amostraClinica.topAtividade.length > 0 ? (
                       <div className="space-y-2">
@@ -851,7 +851,7 @@ export default function Index() {
               {/* TAB: Comorbidades */}
               <TabsContent value="comorbidades">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Stethoscope className="h-3.5 w-3.5" /> Comorbidades Mais Prevalentes
+                  <Stethoscope className="icon-sm" /> Comorbidades Mais Prevalentes
                 </h3>
                 {amostraClinica.topComorbidades.length > 0 ? (
                   <div className="grid sm:grid-cols-2 gap-x-6 gap-y-2">
@@ -871,7 +871,7 @@ export default function Index() {
               {/* TAB: Tecidos */}
               <TabsContent value="tecidos">
                 <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3 flex items-center gap-1.5">
-                  <Activity className="h-3.5 w-3.5" /> Moduladores Teciduais (Média por UC)
+                  <Activity className="icon-sm" /> Moduladores Teciduais (Média por UC)
                 </h3>
                 <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
                   {Object.entries(amostraClinica.tecidosMedia).map(([nome, valor]) => (

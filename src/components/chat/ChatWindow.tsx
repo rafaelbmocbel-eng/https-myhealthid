@@ -233,7 +233,7 @@ export default function ChatWindow({ pacienteId, terapeutaId, remetente, classNa
               className="gap-1.5 text-xs"
               onClick={() => setShowSlotPicker(true)}
             >
-              <CalendarDays className="h-3.5 w-3.5" />
+              <CalendarDays className="icon-sm" />
               Agendar sessão agora
             </Button>
           </div>

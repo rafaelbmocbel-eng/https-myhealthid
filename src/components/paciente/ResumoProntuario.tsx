@@ -156,7 +156,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                 <div className="space-y-3">
                     <div className="flex items-center justify-between">
                         <div className="flex items-center gap-2">
-                            <Zap className="h-3.5 w-3.5 text-amber-500" />
+                            <Zap className="icon-sm text-amber-500" />
                             <span className="text-xs font-bold text-muted-foreground uppercase">Status das Diretrizes</span>
                         </div>
                         {temMudanca || (p1 && !p2) ? (
@@ -184,7 +184,7 @@ export default function ResumoProntuario({ pacienteId }: Props) {
                 {/* Evoluções Diárias */}
                 <div className="space-y-2">
                     <div className="flex items-center gap-2">
-                        <Activity className="h-3.5 w-3.5 text-blue-500" />
+                        <Activity className="icon-sm text-blue-500" />
                         <span className="text-xs font-bold text-muted-foreground uppercase">Evoluções Recentes</span>
                     </div>
                     <div className="space-y-1.5 ml-5">

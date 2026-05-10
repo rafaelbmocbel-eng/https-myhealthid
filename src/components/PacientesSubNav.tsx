@@ -27,7 +27,7 @@ export default function PacientesSubNav() {
                 : 'text-muted-foreground hover:text-foreground',
             )}
           >
-            <t.icon className="h-3.5 w-3.5 inline mr-1.5 -mt-0.5" />
+            <t.icon className="icon-sm inline mr-1.5 -mt-0.5" />
             {t.label}
           </button>
         );

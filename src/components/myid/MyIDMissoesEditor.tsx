@@ -124,7 +124,7 @@ export default function MyIDMissoesEditor({ pacienteId, terapeutaId, autoMissoes
             </div>
           </div>
           <Button size="sm" variant="outline" onClick={() => setShowAdd(true)} className="h-8 text-xs gap-1">
-            <Plus className="h-3.5 w-3.5" />
+            <Plus className="icon-sm" />
             Nova missão
           </Button>
         </div>
@@ -158,9 +158,9 @@ export default function MyIDMissoesEditor({ pacienteId, terapeutaId, autoMissoes
                       aria-label={m.ativo ? 'Ocultar do paciente' : 'Mostrar para o paciente'}
                     />
                     {m.ativo ? (
-                      <Eye className="h-3.5 w-3.5 text-muted-foreground" />
+                      <Eye className="icon-sm text-muted-foreground" />
                     ) : (
-                      <EyeOff className="h-3.5 w-3.5 text-muted-foreground" />
+                      <EyeOff className="icon-sm text-muted-foreground" />
                     )}
                   </div>
                 </div>
@@ -196,7 +196,7 @@ export default function MyIDMissoesEditor({ pacienteId, terapeutaId, autoMissoes
                       <p className="text-[11px] text-muted-foreground leading-snug mt-0.5">{m.descricao}</p>
                     </div>
                     <Button size="icon" variant="ghost" onClick={() => startEdit(m)} className="h-7 w-7 shrink-0">
-                      <Pencil className="h-3.5 w-3.5" />
+                      <Pencil className="icon-sm" />
                     </Button>
                   </div>
                 )}
@@ -252,7 +252,7 @@ function ManualRow({ missao, onRemove }: { missao: PacienteMissao; onRemove: () 
         </Badge>
         <span className="text-[10px] text-primary font-bold">+{missao.xp_recompensa}XP</span>
         <Button size="icon" variant="ghost" onClick={onRemove} className="h-7 w-7 ml-auto text-destructive">
-          <Trash2 className="h-3.5 w-3.5" />
+          <Trash2 className="icon-sm" />
         </Button>
       </div>
       <p className="text-xs font-semibold text-foreground leading-tight">{missao.titulo}</p>

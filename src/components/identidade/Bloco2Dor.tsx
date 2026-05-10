@@ -200,7 +200,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               onClick={() => { setRegioes([]); onChange({ regioes: [], scoreD: 0 }); }}
               className="flex items-center gap-2 px-3 py-2 rounded-lg border-2 border-dashed border-destructive/40 text-sm text-destructive/70 hover:text-destructive hover:border-destructive hover:bg-destructive/5 transition-all"
             >
-              <Eraser className="h-3.5 w-3.5" />
+              <Eraser className="icon-sm" />
               Limpar
             </button>
           )}
@@ -306,7 +306,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
               className={cn('h-8 gap-1 text-xs', isListening && 'border-destructive text-destructive')}
               onClick={() => handleVoice('observacaoGeral')}
             >
-              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isListening ? <MicOff className="icon-sm" /> : <Mic className="icon-sm" />}
               {isListening ? 'Parar' : 'Ditar'}
             </Button>
           )}

@@ -132,7 +132,7 @@ export function CobZeroWizard({ pacienteNome, pacienteId, onComplete, onCancel }
                                         "bg-muted/50 text-muted-foreground border-transparent"
                             )}
                         >
-                            {isDone ? <CheckCircle2 className="h-3.5 w-3.5" /> : <span className="text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full bg-current/10">{e.id}</span>}
+                            {isDone ? <CheckCircle2 className="icon-sm" /> : <span className="text-[10px] font-bold w-4 h-4 flex items-center justify-center rounded-full bg-current/10">{e.id}</span>}
                             <span className="text-xs font-semibold whitespace-nowrap">{e.label}</span>
                         </div>
                     );

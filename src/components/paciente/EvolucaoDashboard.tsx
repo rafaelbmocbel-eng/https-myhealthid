@@ -172,7 +172,7 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold text-muted-foreground">Resumo da Evolução</h3>
         <Button size="sm" variant="outline" className="gap-2 text-xs" onClick={handleExportPDF} disabled={exportando}>
-          {exportando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {exportando ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
           Exportar PDF
         </Button>
       </div>
@@ -326,9 +326,9 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
                 {s.delta === 0 ? (
                   <Minus className="h-3 w-3 text-muted-foreground" />
                 ) : s.improved ? (
-                  <TrendingUp className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                  <TrendingUp className="icon-sm text-emerald-600 dark:text-emerald-400" />
                 ) : (
-                  <TrendingDown className="h-3.5 w-3.5 text-destructive" />
+                  <TrendingDown className="icon-sm text-destructive" />
                 )}
                 <span className={`text-sm font-bold ${s.delta === 0 ? 'text-muted-foreground' : s.improved ? 'text-emerald-600 dark:text-emerald-400' : 'text-destructive'}`}>
                   {s.delta > 0 ? '+' : ''}{s.delta}

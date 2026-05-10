@@ -569,7 +569,7 @@ export default function PacientePerfil() {
                       className="h-8 gap-1.5 bg-background/80 backdrop-blur"
                       onClick={() => setDocsModalOpen(true)}
                     >
-                      <FileText className="h-3.5 w-3.5 text-primary" />
+                      <FileText className="icon-sm text-primary" />
                       <span className="text-xs font-semibold hidden sm:inline">Documentos</span>
                     </Button>
                   </TooltipTrigger>
@@ -919,7 +919,7 @@ export default function PacientePerfil() {
         {/* Observações inline (se houver) */}
         {paciente.observacoes && (
           <div className="mb-3 px-3 py-2 rounded-lg bg-amber-50/60 border border-amber-200/60 text-xs text-amber-900 flex items-start gap-2">
-            <FileText className="h-3.5 w-3.5 shrink-0 mt-0.5 text-amber-600" />
+            <FileText className="icon-sm shrink-0 mt-0.5 text-amber-600" />
             <span className="leading-snug">
               <span className="font-semibold">Observações:</span> {paciente.observacoes}
             </span>
@@ -963,7 +963,7 @@ export default function PacientePerfil() {
                 className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white shrink-0 w-full sm:w-auto"
               >
                 Revisar agora
-                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+                <ChevronRight className="icon-sm shrink-0" />
               </Button>
             </div>
           );

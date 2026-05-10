@@ -581,7 +581,7 @@ export default function Body3DAvatar({ value, onChange, structures, onStructures
                         onClick={addCustomStructure}
                         className="h-8 px-2"
                       >
-                        <Plus className="h-3.5 w-3.5" />
+                        <Plus className="icon-sm" />
                       </Button>
                     </div>
                   </>

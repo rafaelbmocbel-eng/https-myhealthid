@@ -13,7 +13,7 @@ export default function AgendaPatientStats({ pacienteId }: AgendaPatientStatsPro
     <div className="grid gap-2 border-t border-border/60 pt-3 sm:grid-cols-2">
       <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <CheckCircle2 className="h-3.5 w-3.5 text-primary" />
+          <CheckCircle2 className="icon-sm text-primary" />
           <span>Sessões realizadas</span>
         </div>
         <p className="mt-1 text-sm font-bold text-foreground">
@@ -23,7 +23,7 @@ export default function AgendaPatientStats({ pacienteId }: AgendaPatientStatsPro
 
       <div className="rounded-lg border border-border/60 bg-background/80 px-3 py-2">
         <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-          <Package className="h-3.5 w-3.5 text-primary" />
+          <Package className="icon-sm text-primary" />
           <span>Pacote ativo</span>
         </div>
         <p className="mt-1 text-sm font-bold text-foreground">

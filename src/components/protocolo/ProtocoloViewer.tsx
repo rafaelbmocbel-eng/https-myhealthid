@@ -249,7 +249,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
                 : 'text-muted-foreground hover:text-foreground'
                 }`}
             >
-              <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />
+              <Icon className="icon-sm sm:h-4 sm:w-4 shrink-0" />
               <span className="sm:hidden">{tab.label}</span>
               <span className="hidden sm:inline">{tab.fullLabel}</span>
             </button>

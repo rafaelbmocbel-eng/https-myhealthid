@@ -163,7 +163,7 @@ export default function IdFinalGauge({ value, maxValue = 50, compact = false }: 
 
       {/* Classification badge */}
       <div className={`-mt-1 px-4 py-1.5 rounded-full border-2 font-bold text-sm flex items-center gap-1.5 ${getBadgeStyle()}`}>
-        {isCritical && <AlertTriangle className="h-3.5 w-3.5" />}
+        {isCritical && <AlertTriangle className="icon-sm" />}
         {faixaAtual.label}
       </div>
 

@@ -139,7 +139,7 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
       <Dialog open={openCompact} onOpenChange={setOpenCompact}>
         <DialogTrigger asChild>
           <button className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md border bg-card hover:bg-muted/50 transition-colors text-xs">
-            <Shield className="h-3.5 w-3.5 text-primary shrink-0" />
+            <Shield className="icon-sm text-primary shrink-0" />
             <span className="font-medium">LGPD</span>
             {statusBadge}
           </button>
@@ -178,7 +178,7 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
             )}
             {!termoAtivo && !termoPendente && (
               <Button onClick={enviarTermo} disabled={enviando} size="sm" className="w-full gap-1.5 text-xs">
-                {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                {enviando ? <Loader2 className="icon-sm animate-spin" /> : <Send className="icon-sm" />}
                 Enviar Termo de Consentimento
               </Button>
             )}
@@ -223,7 +223,7 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
             <Dialog open={visualizando} onOpenChange={setVisualizando}>
               <DialogTrigger asChild>
                 <Button variant="outline" size="sm" className="gap-1.5 text-xs w-full">
-                  <Eye className="h-3.5 w-3.5" /> Visualizar e Registrar Aceite Manual
+                  <Eye className="icon-sm" /> Visualizar e Registrar Aceite Manual
                 </Button>
               </DialogTrigger>
               <DialogContent className="max-w-2xl max-h-[80vh]">
@@ -253,7 +253,7 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
 
         {!termoAtivo && !termoPendente && (
           <Button onClick={enviarTermo} disabled={enviando} size="sm" className="w-full gap-1.5 text-xs">
-            {enviando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+            {enviando ? <Loader2 className="icon-sm animate-spin" /> : <Send className="icon-sm" />}
             Enviar Termo de Consentimento
           </Button>
         )}
@@ -262,7 +262,7 @@ export default function TermoConsentimentoLGPD({ pacienteId, pacienteNome, compa
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm" className="gap-1.5 text-xs text-muted-foreground">
-                <Eye className="h-3.5 w-3.5" /> Ver termo completo
+                <Eye className="icon-sm" /> Ver termo completo
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-2xl max-h-[80vh]">

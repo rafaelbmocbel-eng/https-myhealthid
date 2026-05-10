@@ -147,7 +147,7 @@ export default function LinkActionsBar({ items, className }: LinkActionsBarProps
                   'disabled:opacity-60 disabled:cursor-wait',
                 )}
               >
-                <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+                <TypeIcon className="icon-sm shrink-0" />
                 <span className="hidden sm:inline">{item.label}</span>
                 {item.loading ? (
                   <Loader2 className="w-3 h-3 animate-spin shrink-0" />

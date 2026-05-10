@@ -156,10 +156,10 @@ export default function PacienteEvolucao() {
           <Tabs defaultValue="evolucao" className="w-full">
             <TabsList className="grid w-full grid-cols-2 h-10">
               <TabsTrigger value="evolucao" className="gap-1.5 text-xs">
-                <TrendingUp className="h-3.5 w-3.5" /> Evolução
+                <TrendingUp className="icon-sm" /> Evolução
               </TabsTrigger>
               <TabsTrigger value="prontuario" className="gap-1.5 text-xs">
-                <FileText className="h-3.5 w-3.5" /> Prontuário
+                <FileText className="icon-sm" /> Prontuário
               </TabsTrigger>
             </TabsList>
 
@@ -175,7 +175,7 @@ export default function PacienteEvolucao() {
                         <span className="text-lg text-muted-foreground">/100</span>
                       </div>
                       <div className="flex items-center gap-1.5 mt-1">
-                        <TrendIcon className={`h-3.5 w-3.5 ${trendColor}`} />
+                        <TrendIcon className={`icon-sm ${trendColor}`} />
                         <span className={`text-xs font-bold ${trendColor}`}>
                           {trend.delta > 0 ? '+' : ''}{trend.delta} pts vs semana anterior
                         </span>

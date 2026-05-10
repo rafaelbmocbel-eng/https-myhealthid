@@ -110,7 +110,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
             className="bg-identidade hover:bg-identidade/90 text-identidade-foreground gap-1.5 shrink-0"
             onClick={onIniciarAvaliacao}
           >
-            <Dumbbell className="h-3.5 w-3.5" />
+            <Dumbbell className="icon-sm" />
             Completar Avaliação
           </Button>
         </div>
@@ -124,7 +124,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
             <div className="clinical-card">
               <div className="flex items-center gap-2 mb-4">
                 <div className="h-6 w-6 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                  <BarChart3 className="h-3.5 w-3.5 text-amber-600" />
+                  <BarChart3 className="icon-sm text-amber-600" />
                 </div>
                 <h4 className="font-semibold text-sm">Perfil Parcial (Questionário Identidade)</h4>
                 <Badge variant="outline" className="ml-auto text-[10px] border-amber-200 text-amber-600">Parcial</Badge>
@@ -145,7 +145,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
           <div className="clinical-card">
             <div className="flex items-center gap-2 mb-4">
               <div className="h-6 w-6 rounded-md bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
-                <Activity className="h-3.5 w-3.5 text-amber-600" />
+                <Activity className="icon-sm text-amber-600" />
               </div>
               <h4 className="font-semibold text-sm">Scores Disponíveis</h4>
             </div>
@@ -183,7 +183,7 @@ export default function DashboardParcial({ scoresParciais, onIniciarAvaliacao }:
 
             <div className="mt-4 pt-3 border-t border-dashed">
               <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <AlertCircle className="h-3.5 w-3.5 text-amber-500" />
+                <AlertCircle className="icon-sm text-amber-500" />
                 <span>O <strong>ID Final</strong> será calculado após a avaliação estrutural presencial.</span>
               </div>
             </div>

@@ -297,7 +297,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
       <Tabs defaultValue="avaliacao" className="w-full">
         <TabsList className="grid w-full grid-cols-1 h-10 bg-muted/60 mb-6">
           <TabsTrigger value="avaliacao" className="text-xs gap-1 data-[state=active]:bg-blue-600 data-[state=active]:text-white">
-            <ClipboardList className="h-3.5 w-3.5" /> Avaliação
+            <ClipboardList className="icon-sm" /> Avaliação
           </TabsTrigger>
         </TabsList>
 
@@ -371,7 +371,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                           </div>
                         </div>
                         <Button size="sm" variant="outline" onClick={() => onVerRelatorio(av)}>
-                          <FileText className="h-3.5 w-3.5 mr-1" /> Relatório
+                          <FileText className="icon-sm mr-1" /> Relatório
                         </Button>
                       </div>
                     ))}
@@ -460,10 +460,10 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
                           </div>
                           <div className="flex gap-2">
                             <Button size="sm" variant="outline" onClick={() => onVerRelatorio(av)}>
-                              <FileText className="h-3.5 w-3.5 mr-1" /> Relatório
+                              <FileText className="icon-sm mr-1" /> Relatório
                             </Button>
                             <Button size="sm" variant="ghost" className="text-destructive" onClick={() => deletar(av.id)}>
-                              <Trash2 className="h-3.5 w-3.5" />
+                              <Trash2 className="icon-sm" />
                             </Button>
                           </div>
                         </div>

@@ -682,7 +682,7 @@ export default function PatientIntegratedDashboard({
 
                   <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
                     <div className="flex items-start gap-2">
-                      <Heart className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
+                      <Heart className="icon-sm text-primary shrink-0 mt-0.5" />
                       <p className="text-[10px] text-muted-foreground leading-relaxed">
                         Cada tecido tem seu relógio biológico. <strong>Respeitar esse tempo é a diferença entre recuperação completa e recidiva.</strong>
                         {hasSlowTissue && ' O fortalecimento muscular ao redor é seu principal mecanismo de proteção.'}
@@ -898,7 +898,7 @@ function ActiveDiretrizSection({ pacienteId }: { pacienteId: string }) {
                   onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
                   className="gap-1.5"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Sparkles className="icon-sm" />
                   Criar Diretriz
                 </Button>
               </div>
@@ -1003,7 +1003,7 @@ function ActiveDiretrizSection({ pacienteId }: { pacienteId: string }) {
                   className="w-full gap-1.5 text-xs"
                   onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
                 >
-                  <FileText className="h-3.5 w-3.5" />
+                  <FileText className="icon-sm" />
                   Ver detalhes completos
                 </Button>
               </>

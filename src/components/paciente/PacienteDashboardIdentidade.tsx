@@ -677,7 +677,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
             onClick={handleRespostaCompleta}
             disabled={gerandoRespostaCompleta}
           >
-            {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
             Resposta Completa
           </Button>
         </div>
@@ -695,7 +695,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
             onClick={handleRespostaCompleta}
             disabled={gerandoRespostaCompleta}
           >
-            {gerandoRespostaCompleta ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+            {gerandoRespostaCompleta ? <Loader2 className="icon-sm animate-spin" /> : <Download className="icon-sm" />}
             Resposta Completa
           </Button>
         </div>
@@ -863,7 +863,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
                                     setShowReport({ myid: result });
                                   }}
                                 >
-                                  <FileText className="h-3.5 w-3.5" />
+                                  <FileText className="icon-sm" />
                                   Gerar PDF
                                 </Button>
                               </div>

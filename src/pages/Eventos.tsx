@@ -641,51 +641,51 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
       <CardContent className="space-y-3">
         <div className="space-y-1 text-sm text-muted-foreground">
           <div className="flex items-center gap-2">
-            <Calendar className="h-3.5 w-3.5" />
+            <Calendar className="icon-sm" />
             {format(new Date(evento.data_evento + 'T12:00:00'), "dd 'de' MMMM, yyyy", { locale: ptBR })}
           </div>
           <div className="flex items-center gap-2">
-            <Clock className="h-3.5 w-3.5" />
+            <Clock className="icon-sm" />
             {evento.horario_inicio?.slice(0, 5)} – {evento.horario_fim?.slice(0, 5)}
           </div>
           {evento.local && (
             <div className="flex items-center gap-2">
-              <MapPin className="h-3.5 w-3.5" />
+              <MapPin className="icon-sm" />
               <span className="truncate">{evento.local}</span>
             </div>
           )}
           {evento.cobrar_pagamento && (
             <div className="flex items-center gap-2">
-              <DollarSign className="h-3.5 w-3.5" />
+              <DollarSign className="icon-sm" />
               R$ {Number(evento.valor).toFixed(2)}
             </div>
           )}
           {evento.vagas_max && (
             <div className="flex items-center gap-2">
-              <Users className="h-3.5 w-3.5" />
+              <Users className="icon-sm" />
               {evento.vagas_max} vagas
             </div>
           )}
         </div>
         <div className="flex items-center gap-1.5 pt-1">
           <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1.5 h-8">
-            <Eye className="h-3.5 w-3.5" /> Ver
+            <Eye className="icon-sm" /> Ver
           </Button>
           <div className="flex items-center gap-0.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditEvento} title="Editar evento">
-              <Pencil className="h-3.5 w-3.5" />
+              <Pencil className="icon-sm" />
             </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditQuestionario} title="Questionário">
-              <FileText className="h-3.5 w-3.5" />
+              <FileText className="icon-sm" />
             </Button>
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onCopy} title="Copiar link">
-              <Copy className="h-3.5 w-3.5" />
+              <Copy className="icon-sm" />
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={onToggle} title={evento.ativo ? 'Desativar' : 'Ativar'}>
-              {evento.ativo ? <X className="h-3.5 w-3.5" /> : <Check className="h-3.5 w-3.5" />}
+              {evento.ativo ? <X className="icon-sm" /> : <Check className="icon-sm" />}
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={onDelete} title="Deletar">
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="icon-sm" />
             </Button>
           </div>
         </div>

@@ -68,7 +68,7 @@ export default function HealthDashboardCards({ metrics, sleep, water, body, onAd
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                <Heart className="h-3.5 w-3.5 text-red-500" />
+                <Heart className="icon-sm text-red-500" />
               </div>
               <span className="text-[10px] font-semibold text-muted-foreground">Freq. Cardíaca</span>
             </div>
@@ -88,7 +88,7 @@ export default function HealthDashboardCards({ metrics, sleep, water, body, onAd
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                <Wind className="h-3.5 w-3.5 text-blue-500" />
+                <Wind className="icon-sm text-blue-500" />
               </div>
               <span className="text-[10px] font-semibold text-muted-foreground">SpO₂</span>
             </div>
@@ -105,7 +105,7 @@ export default function HealthDashboardCards({ metrics, sleep, water, body, onAd
           <CardContent className="p-3">
             <div className="flex items-center gap-2 mb-1">
               <div className="w-7 h-7 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                <Moon className="h-3.5 w-3.5 text-indigo-500" />
+                <Moon className="icon-sm text-indigo-500" />
               </div>
               <span className="text-[10px] font-semibold text-muted-foreground">Sono</span>
             </div>
@@ -129,7 +129,7 @@ export default function HealthDashboardCards({ metrics, sleep, water, body, onAd
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
                 <div className="w-7 h-7 rounded-lg bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
-                  <Droplets className="h-3.5 w-3.5 text-cyan-500" />
+                  <Droplets className="icon-sm text-cyan-500" />
                 </div>
                 <span className="text-[10px] font-semibold text-muted-foreground">Água</span>
               </div>
@@ -157,7 +157,7 @@ export default function HealthDashboardCards({ metrics, sleep, water, body, onAd
         <CardContent className="p-3">
           <div className="flex items-center gap-2 mb-2">
             <div className="w-7 h-7 rounded-lg bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-              <Scale className="h-3.5 w-3.5 text-purple-500" />
+              <Scale className="icon-sm text-purple-500" />
             </div>
             <span className="text-xs font-bold text-foreground">Composição Corporal</span>
           </div>

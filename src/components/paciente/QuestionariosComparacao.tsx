@@ -105,7 +105,7 @@ function VisualBarItem({ label, value, max = 10, icon: Icon, color }: { label: s
   const barColor = color || (value <= 3 ? '#10b981' : value <= 6 ? '#f59e0b' : '#ef4444');
   return (
     <div className="flex items-center gap-3">
-      {Icon && <Icon className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+      {Icon && <Icon className="icon-sm text-muted-foreground shrink-0" />}
       <div className="w-24 text-xs font-medium text-muted-foreground shrink-0 truncate">{label}</div>
       <div className="flex-1 h-3 rounded-full bg-muted overflow-hidden">
         <div className="h-full rounded-full transition-all duration-500" style={{ width: `${pct}%`, backgroundColor: barColor }} />
@@ -160,7 +160,7 @@ function Bloco1Detail({ dados }: { dados: any }) {
       {regioes.length > 0 && (
         <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            <AlertTriangle className="icon-sm text-destructive" />
             <span className="text-[10px] font-bold text-muted-foreground uppercase">{regioes.length} Região(ões) de Dor</span>
           </div>
           <div className="space-y-2">
@@ -208,7 +208,7 @@ function Bloco2Detail({ dados }: { dados: any }) {
       {regioes.length > 0 && (
         <div className="rounded-xl border bg-muted/30 p-3 space-y-2">
           <div className="flex items-center gap-2">
-            <AlertTriangle className="h-3.5 w-3.5 text-destructive" />
+            <AlertTriangle className="icon-sm text-destructive" />
             <span className="text-[10px] font-bold text-muted-foreground uppercase">{regioes.length} Região(ões) de Dor</span>
           </div>
           <div className="space-y-2">
@@ -292,7 +292,7 @@ function Bloco4Detail({ dados }: { dados: any }) {
         </div>
         {(dados.scoreP ?? 0) > 7.5 && (
           <div className="flex items-center gap-2 mt-2 p-2 rounded-lg bg-amber-50 border border-amber-200">
-            <AlertTriangle className="h-3.5 w-3.5 text-amber-600 shrink-0" />
+            <AlertTriangle className="icon-sm text-amber-600 shrink-0" />
             <span className="text-[10px] font-medium text-amber-700">Cinesiofobia acentuada — amplificador +2 no ID Final</span>
           </div>
         )}
@@ -343,7 +343,7 @@ function Bloco5Detail({ dados }: { dados: any }) {
       <div className="rounded-lg bg-background p-3 border space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <Icon className="h-3.5 w-3.5 text-muted-foreground" />
+            <Icon className="icon-sm text-muted-foreground" />
             <span className="text-xs font-semibold">{title}</span>
           </div>
           <div className="flex items-center gap-1">
@@ -392,7 +392,7 @@ function Bloco5Detail({ dados }: { dados: any }) {
       </div>
       {(dados.scoreR ?? 0) > 8 && (
         <div className="flex items-center gap-2 p-2 rounded-lg bg-red-50 border border-red-200">
-          <AlertTriangle className="h-3.5 w-3.5 text-destructive shrink-0" />
+          <AlertTriangle className="icon-sm text-destructive shrink-0" />
           <span className="text-[10px] font-medium text-red-700">Regulação crítica (R {'>'} 8) — amplificador +3 no ID Final</span>
         </div>
       )}
@@ -749,7 +749,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                         <div className="rounded-xl border bg-card p-4">
                           <div className="flex items-center gap-2 mb-3">
-                            <BarChart3 className="h-3.5 w-3.5 text-primary" />
+                            <BarChart3 className="icon-sm text-primary" />
                             <span className="text-xs font-semibold">Visão Geral dos Scores</span>
                           </div>
                           <div className="h-48">
@@ -772,7 +772,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                           return (
                             <div className="rounded-xl border bg-card p-4 flex flex-col justify-center">
                               <div className="flex items-center gap-2 mb-3">
-                                <PersonStanding className="h-3.5 w-3.5 text-primary" />
+                                <PersonStanding className="icon-sm text-primary" />
                                 <span className="text-xs font-semibold">Perfil de Terrenos</span>
                               </div>
                               <div className="flex items-center gap-4">
@@ -843,7 +843,7 @@ export default function QuestionariosComparacao({ linksAvPaciente, respostas, my
                                 ))}
                               </div>
                             )}
-                            <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                            <CheckCircle2 className="icon-sm text-emerald-500 shrink-0" />
                           </div>
                           {isExpanded && (
                             <div className="p-4 animate-slide-in">

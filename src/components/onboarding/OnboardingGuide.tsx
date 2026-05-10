@@ -120,7 +120,7 @@ export default function OnboardingGuide() {
             <Progress value={pct} className="h-1.5 mt-1.5" />
           </div>
           <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0" onClick={(e) => { e.stopPropagation(); handleDismiss(); }}>
-            <X className="h-3.5 w-3.5" />
+            <X className="icon-sm" />
           </Button>
         </div>
       </div>

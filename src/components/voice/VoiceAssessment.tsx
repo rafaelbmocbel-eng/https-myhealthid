@@ -990,7 +990,7 @@ ${resumoTecnicas}`;
                     }}
                     className="w-full gap-1.5 h-8 text-xs"
                   >
-                    {savingSoapNote ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Wand2 className="h-3.5 w-3.5" />}
+                    {savingSoapNote ? <Loader2 className="icon-sm animate-spin" /> : <Wand2 className="icon-sm" />}
                     {soapNoteSaved ? 'Nota SOAP salva no prontuário' : 'Salvar como nota SOAP no prontuário'}
                   </Button>
                 </div>
@@ -1289,8 +1289,8 @@ ${resumoTecnicas}`;
                         className="w-full gap-1.5 h-10 bg-primary text-primary-foreground"
                       >
                         {creatingDiretriz
-                          ? <Loader2 className="h-3.5 w-3.5 animate-spin shrink-0" />
-                          : <Sparkles className="h-3.5 w-3.5 shrink-0" />}
+                          ? <Loader2 className="icon-sm animate-spin shrink-0" />
+                          : <Sparkles className="icon-sm shrink-0" />}
                         Revisar diretriz IA
                       </Button>
                       <p className="text-[10px] text-muted-foreground text-center">
@@ -1642,7 +1642,7 @@ function SectionCard({ icon: Icon, title, sectionKey, expanded, toggle, children
               onClick={(e) => { e.stopPropagation(); onRemove(sectionKey); }}
               title="Excluir esta seção"
             >
-              <Trash2 className="h-3.5 w-3.5" />
+              <Trash2 className="icon-sm" />
             </Button>
           )}
           <button onClick={() => toggle(sectionKey)} className="p-1">
