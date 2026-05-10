@@ -931,6 +931,44 @@ export default function PacientePerfil() {
           <TermoConsentimentoLGPD pacienteId={id!} pacienteNome={`${paciente.nome} ${paciente.sobrenome}`} compact />
         </div>
 
+        {/* Banner: rascunhos de diretriz IA aguardando aprovação */}
+        {(() => {
+          const rascunhos = (protocolos || []).filter(
+            (p: any) => p.status === 'rascunho' && typeof p.origem === 'string' && p.origem.startsWith('ia_')
+          );
+          if (rascunhos.length === 0) return null;
+          const primeiro = rascunhos[0];
+          const origemLabel = primeiro.origem === 'ia_voz' ? 'Voz' : primeiro.origem === 'ia_escrita' ? 'Escrita' : primeiro.origem === 'ia_myid' ? 'MyID' : 'IA';
+          return (
+            <div className="mb-3 p-3 rounded-xl border border-amber-300/60 bg-amber-50/80 dark:bg-amber-900/20 dark:border-amber-700/40 flex items-start sm:items-center gap-3 flex-col sm:flex-row">
+              <div className="flex items-start gap-2 flex-1">
+                <Sparkles className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
+                <div className="text-xs">
+                  <p className="font-semibold text-amber-900 dark:text-amber-200">
+                    {rascunhos.length === 1
+                      ? `Diretriz IA · ${origemLabel} aguardando aprovação`
+                      : `${rascunhos.length} diretrizes IA aguardando aprovação`}
+                  </p>
+                  <p className="text-amber-800/80 dark:text-amber-300/80 leading-snug">
+                    Revise, edite e ative para enviá-la oficialmente ao prontuário do paciente.
+                  </p>
+                </div>
+              </div>
+              <Button
+                size="sm"
+                onClick={() => {
+                  setActiveTab('diretrizes');
+                  navigate(`/pacientes/${id}?tab=diretrizes&protocolo=${primeiro.id}`, { replace: true });
+                }}
+                className="gap-1.5 bg-amber-600 hover:bg-amber-700 text-white shrink-0 w-full sm:w-auto"
+              >
+                Revisar agora
+                <ChevronRight className="h-3.5 w-3.5 shrink-0" />
+              </Button>
+            </div>
+          );
+        })()}
+
         {/* ==== ABAS COMPLEMENTARES ==== */}
         <Tabs
           value={activeTab}
