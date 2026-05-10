@@ -234,6 +234,8 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                 perdas_calculadas={perdas_calculadas}
                 myid_100={myid_100}
                 red_flags_detected={red_flags_detected}
+                pacienteId={pacienteId}
+                terapeutaId={terapeutaId}
             />
 
 
