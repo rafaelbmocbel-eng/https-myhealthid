@@ -774,8 +774,8 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
 }
 
 /* ─── Event Card ─── */
-function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento }: {
-  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void;
+function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestionario, onEditEvento, onReativar }: {
+  evento: Evento; onView: () => void; onCopy: () => void; onToggle: () => void; onDelete: () => void; onEditQuestionario: () => void; onEditEvento: () => void; onReativar?: () => void;
 }) {
   const isPast = new Date(evento.data_evento) < new Date(new Date().toDateString());
   return (
