@@ -673,6 +673,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
   const [pixTipo, setPixTipo] = useState('cpf');
   const [pixNome, setPixNome] = useState('');
   const [linkPagamento, setLinkPagamento] = useState('');
+  const [categoria, setCategoria] = useState<EventoCategoria>('outro');
+  const [linkVideo, setLinkVideo] = useState('');
+  const [publicoAlvo, setPublicoAlvo] = useState<EventoPublicoAlvo>('publico');
 
   useEffect(() => {
     if (evento) {
@@ -690,6 +693,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
       setPixTipo(evento.pix_tipo || 'cpf');
       setPixNome(evento.pix_nome || '');
       setLinkPagamento(evento.link_pagamento || '');
+      setCategoria((evento.categoria as EventoCategoria) || 'outro');
+      setLinkVideo(evento.link_video || '');
+      setPublicoAlvo((evento.publico_alvo as EventoPublicoAlvo) || 'publico');
     }
   }, [evento]);
 
@@ -712,6 +718,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
       pix_tipo: pixTipo || 'cpf',
       pix_nome: pixNome || null,
       link_pagamento: linkPagamento || null,
+      categoria,
+      link_video: linkVideo || null,
+      publico_alvo: publicoAlvo,
     }, {
       onSuccess: () => onClose(),
     });
@@ -742,6 +751,9 @@ function EditarEventoDialog({ evento, open, onClose, editarEvento }: {
               pixTipo={pixTipo} setPixTipo={setPixTipo}
               pixNome={pixNome} setPixNome={setPixNome}
               linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+              categoria={categoria} setCategoria={setCategoria}
+              linkVideo={linkVideo} setLinkVideo={setLinkVideo}
+              publicoAlvo={publicoAlvo} setPublicoAlvo={setPublicoAlvo}
             />
             <Button onClick={handleSave} disabled={editarEvento.isPending} className="w-full">
               {editarEvento.isPending ? 'Salvando...' : 'Salvar Alterações'}
