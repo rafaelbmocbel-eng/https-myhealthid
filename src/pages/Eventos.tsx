@@ -320,6 +320,7 @@ function EventoFormFields({
   cobrarPagamento, setCobrarPagamento, valor, setValor,
   pixChave, setPixChave, pixTipo, setPixTipo, pixNome, setPixNome,
   linkPagamento, setLinkPagamento,
+  categoria, setCategoria, linkVideo, setLinkVideo, publicoAlvo, setPublicoAlvo,
 }: {
   titulo: string; setTitulo: (v: string) => void;
   descricao: string; setDescricao: (v: string) => void;
@@ -335,17 +336,45 @@ function EventoFormFields({
   pixTipo: string; setPixTipo: (v: string) => void;
   pixNome: string; setPixNome: (v: string) => void;
   linkPagamento: string; setLinkPagamento: (v: string) => void;
+  categoria: EventoCategoria; setCategoria: (v: EventoCategoria) => void;
+  linkVideo: string; setLinkVideo: (v: string) => void;
+  publicoAlvo: EventoPublicoAlvo; setPublicoAlvo: (v: EventoPublicoAlvo) => void;
 }) {
   return (
     <>
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="sm:col-span-2">
           <Label>Título *</Label>
-          <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Sábado de Recovery" />
+          <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Ex: Aula de alongamento" />
+        </div>
+        <div>
+          <Label>Categoria</Label>
+          <Select value={categoria} onValueChange={(v) => setCategoria(v as EventoCategoria)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {CATEGORIAS.map(c => (
+                <SelectItem key={c.value} value={c.value}>{c.icon} {c.label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label>Quem pode se inscrever</Label>
+          <Select value={publicoAlvo} onValueChange={(v) => setPublicoAlvo(v as EventoPublicoAlvo)}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="publico">🌐 Público (capta leads)</SelectItem>
+              <SelectItem value="pacientes_ativos">🔒 Só pacientes ativos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
         <div className="sm:col-span-2">
           <Label>Descrição do evento</Label>
           <Textarea value={descricao} onChange={e => setDescricao(e.target.value)} placeholder="Detalhes do evento..." rows={2} />
+        </div>
+        <div className="sm:col-span-2">
+          <Label className="flex items-center gap-1"><Video className="icon-sm" /> Link de vídeo (Zoom, Meet, YouTube)</Label>
+          <Input value={linkVideo} onChange={e => setLinkVideo(e.target.value)} placeholder="https://meet.google.com/... (opcional)" />
         </div>
         <div className="sm:col-span-2">
           <Label>Texto introdutório do formulário</Label>
@@ -367,7 +396,7 @@ function EventoFormFields({
           <Label>Horário Fim</Label>
           <Input type="time" value={horarioFim} onChange={e => setHorarioFim(e.target.value)} />
         </div>
-        <div>
+        <div className="sm:col-span-2">
           <Label>Vagas (vazio = ilimitado)</Label>
           <Input type="number" value={vagasMax} onChange={e => setVagasMax(e.target.value ? Number(e.target.value) : '')} min={1} />
         </div>
