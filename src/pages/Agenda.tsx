@@ -1445,6 +1445,9 @@ export default function Agenda() {
                               <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
                                 {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
                                 {sc.icon}
+                                {ag.paciente_id && (
+                                  <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                )}
                                 <span className="truncate">
                                   {format(parseISO(ag.data_inicio), 'HH:mm')}{' '}
                                   {layout.totalCols > 2
