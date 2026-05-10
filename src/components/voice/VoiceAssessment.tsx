@@ -709,7 +709,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         })
         .join('\n\n');
 
-      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por Voz)
+      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por ${mode === 'written' ? 'Texto' : 'Voz'})
 
 Queixa principal: ${queixa}
 Classificação: ${classif}
@@ -726,7 +726,7 @@ ${resumoTecnicas}`;
         referenciaId: protocoloId,
         dadosExtras: {
           protocolo_id: protocoloId,
-          origem: 'avaliacao_voz',
+          origem: origemDiretriz,
           classificacao: classif,
           queixa_principal: queixa,
         },
@@ -737,10 +737,18 @@ ${resumoTecnicas}`;
       queryClient.invalidateQueries({ queryKey: ['notas-prontuario'] });
       queryClient.invalidateQueries({ queryKey: ['evolucao-paciente'] });
 
-      toast({
-        title: '✅ Diretriz criada!',
-        description: 'Diretriz oficial registrada no paciente e no prontuário.',
-      });
+      if (intent === 'personalizar') {
+        toast({
+          title: '✏️ Rascunho criado — vamos personalizar',
+          description: 'Abrindo a aba Diretrizes para você ajustar fases, exercícios e técnicas.',
+        });
+        navigate(`/pacientes/${pacienteId}?tab=diretrizes&protocolo=${protocoloId}`);
+      } else {
+        toast({
+          title: '✅ Diretriz aprovada e enviada ao prontuário',
+          description: 'Diretriz oficial registrada e visível na aba Diretrizes do paciente.',
+        });
+      }
     } catch (err: any) {
       console.error('Erro ao criar diretriz a partir da voz:', err);
       toast({
