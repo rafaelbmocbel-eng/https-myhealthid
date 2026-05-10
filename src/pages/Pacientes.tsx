@@ -729,23 +729,43 @@ export default function Pacientes() {
                         )}
                       </div>
                     </div>
-                    {/* Actions — compact */}
-                    <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                    {/* Actions — primary (WhatsApp) + overflow menu */}
+                    <div className="flex items-center gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
                       {p.telefone && (
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-[#25D366] hover:bg-[#25D366]/10" title="WhatsApp"
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-9 w-9 text-[#25D366] hover:bg-[#25D366]/10"
+                          title="WhatsApp"
                           onClick={() => {
                             const msg = encodeURIComponent(`Olá ${p.nome}! 👋\n\n`);
                             window.open(`https://wa.me/55${p.telefone?.replace(/\D/g, '')}?text=${msg}`, '_blank');
-                          }}>
+                          }}
+                        >
                           <MessageCircle className="icon-sm" />
                         </Button>
                       )}
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEdit(p)} title="Editar">
-                        <Edit2 className="icon-sm" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:bg-destructive/10" onClick={() => handleDelete(p)} title="Excluir">
-                        <Trash2 className="icon-sm" />
-                      </Button>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 text-muted-foreground" title="Mais ações">
+                            <MoreHorizontal className="icon-sm" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-44">
+                          <DropdownMenuItem onClick={() => navigate(`/pacientes/${p.id}`)}>
+                            <User className="icon-sm mr-2" /> Abrir perfil
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => openEdit(p)}>
+                            <Edit2 className="icon-sm mr-2" /> Editar dados
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={() => handleDelete(p)}
+                            className="text-destructive focus:text-destructive"
+                          >
+                            <Trash2 className="icon-sm mr-2" /> Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
                     </div>
                   </div>
                 </div>
