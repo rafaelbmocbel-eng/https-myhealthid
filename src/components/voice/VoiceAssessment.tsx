@@ -1590,6 +1590,28 @@ ${resumoTecnicas}`;
           )}
         </CardContent>
       </Card>
+
+      {/* Pre-review modal: Aprovar | Editar | Descartar */}
+      {assessment?.diretriz_tratamento && pacienteId && (
+        <DiretrizIAReviewDialog
+          open={showReviewDialog}
+          onOpenChange={(v) => { if (!creatingDiretriz) setShowReviewDialog(v); }}
+          diretriz={assessment.diretriz_tratamento}
+          queixa={assessment.queixa_principal}
+          classificacao={assessment.classificacao_severidade}
+          origem={mode === 'written' ? 'ia_escrita' : 'ia_voz'}
+          loading={creatingDiretriz}
+          onAprovar={async () => {
+            await criarDiretrizDaVoz('aprovar');
+            setShowReviewDialog(false);
+          }}
+          onEditar={async () => {
+            await criarDiretrizDaVoz('personalizar');
+            setShowReviewDialog(false);
+          }}
+          onDescartar={() => setShowReviewDialog(false)}
+        />
+      )}
     </div>
   );
 }
