@@ -307,15 +307,20 @@ export default function ResearchDashboard() {
       })),
     }));
 
+    // Hash determinístico do dataset (reprodutibilidade)
+    const datasetSig = sample.map(p => `${p.id.slice(0,8)}:${avaliacoes.filter(a => a.paciente_id === p.id).length}`).sort().join('|');
+    const datasetHash = fnv1a(`${filters.period}|${filters.sexo}|${filters.faixa}|${datasetSig}`);
+
     return {
       n_pacientes_total: pacientes.length,
       n_amostra: sample.length,
       n_avaliacoes: avaliacoes.length,
       n_presencial: voz.length,
+      n_protocolos: data.protocolos.length,
       idade_media: +mean(idades).toFixed(1),
       idade_dp: +sd(idades).toFixed(1),
-      idade_min: Math.min(...idades, 0),
-      idade_max: Math.max(...idades, 0),
+      idade_min: idades.length ? Math.min(...idades) : 0,
+      idade_max: idades.length ? Math.max(...idades) : 0,
       sexo,
       faixas: Object.entries(faixas).map(([k, v]) => ({ faixa: k, n: v })),
       dimStats,
@@ -331,8 +336,15 @@ export default function ResearchDashboard() {
       dimCohen,
       corrMatrix,
       n_prepost: prePost.length,
+      subgruposSexo,
+      subgruposFaixa,
+      porDiretriz,
+      protStatus: Object.entries(protStatus).map(([k, v]) => ({ status: k, n: v })),
+      protocolosAnalise,
+      datasetHash,
+      filtros: filters,
     };
-  }, [data]);
+  }, [data, filters]);
 
   if (isLoading || !stats) {
     return <div className="flex justify-center py-20"><Loader2 className="icon-lg animate-spin text-primary" /></div>;
