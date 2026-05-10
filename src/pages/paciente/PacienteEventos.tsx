@@ -208,7 +208,27 @@ export default function PacienteEventos() {
                   <Card className="overflow-hidden hover:shadow-md transition-shadow">
                     <CardContent className="p-4 space-y-3">
                       <div className="flex items-start justify-between gap-2">
-                        <h2 className="text-sm font-bold text-foreground">{ev.titulo}</h2>
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-1.5">
+                            {ev.categoria && CATEGORIA_LABELS[ev.categoria] && (
+                              <Badge variant="secondary" className="text-[10px] h-5 px-1.5">
+                                <span className="mr-0.5">{CATEGORIA_LABELS[ev.categoria].emoji}</span>
+                                {CATEGORIA_LABELS[ev.categoria].label}
+                              </Badge>
+                            )}
+                            {ev.link_video && (
+                              <Badge variant="outline" className="text-[10px] h-5 px-1.5 border-primary/30 text-primary">
+                                <Video className="h-3 w-3 mr-0.5" /> Online
+                              </Badge>
+                            )}
+                            {ev.recorrencia_grupo_id && (
+                              <Badge variant="outline" className="text-[10px] h-5 px-1.5">
+                                <Repeat className="h-3 w-3 mr-0.5" /> Recorrente
+                              </Badge>
+                            )}
+                          </div>
+                          <h2 className="text-sm font-bold text-foreground">{ev.titulo}</h2>
+                        </div>
                         {jaInscrito && (
                           <Badge variant="outline" className="bg-accent/10 text-accent-foreground border-accent/20 text-[10px] shrink-0">
                             <CheckCircle2 className="h-3 w-3 mr-0.5" /> Inscrito
@@ -229,7 +249,7 @@ export default function PacienteEventos() {
                           <Clock className="icon-sm text-primary" />
                           {ev.horario_inicio?.slice(0, 5)} – {ev.horario_fim?.slice(0, 5)}
                         </span>
-                        {ev.local && (
+                        {ev.local && !ev.link_video && (
                           <span className="flex items-center gap-1">
                             <MapPin className="icon-sm text-primary" />
                             {ev.local}
@@ -252,6 +272,13 @@ export default function PacienteEventos() {
                       {!jaInscrito && !esgotado && (
                         <Button size="sm" className="w-full" onClick={() => openInscricao(ev)}>
                           Inscrever-se
+                        </Button>
+                      )}
+                      {jaInscrito && ev.link_video && (
+                        <Button size="sm" className="w-full" asChild>
+                          <a href={ev.link_video} target="_blank" rel="noopener noreferrer">
+                            <Video className="h-3.5 w-3.5 mr-1.5" /> Entrar na sala
+                          </a>
                         </Button>
                       )}
                       {jaInscrito && ev.cobrar_pagamento && ev.link_pagamento && (
