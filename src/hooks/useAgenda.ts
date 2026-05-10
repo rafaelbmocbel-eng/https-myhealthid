@@ -371,8 +371,8 @@ export function useAgenda() {
     try {
       const { error } = await withAuthLockRetry(async () => {
         return cfg.id
-          ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-          : await supabase.from('config_agenda').insert(payload);
+          ? await supabase.from('config_agenda').update(payload as any).eq('id', cfg.id)
+          : await supabase.from('config_agenda').insert(payload as any);
       });
 
       if (error) throw error;
