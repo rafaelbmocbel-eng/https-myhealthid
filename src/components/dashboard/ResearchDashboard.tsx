@@ -421,6 +421,36 @@ export default function ResearchDashboard() {
     exportToCsv(`pesquisa_protocolos_${format(new Date(), 'yyyyMMdd')}.csv`, stats.porDiretriz);
   };
 
+  const exportPdfReport = async () => {
+    try {
+      await gerarPdfResearchReport({
+        filtros: stats.filtros,
+        datasetHash: stats.datasetHash,
+        n_pacientes_total: stats.n_pacientes_total,
+        n_amostra: stats.n_amostra,
+        n_avaliacoes: stats.n_avaliacoes,
+        n_presencial: stats.n_presencial,
+        n_protocolos: stats.n_protocolos,
+        n_prepost: stats.n_prepost,
+        n_red_flags: stats.n_red_flags,
+        pct_red_flags: stats.pct_red_flags,
+        idade_media: stats.idade_media,
+        idade_dp: stats.idade_dp,
+        idade_min: stats.idade_min,
+        idade_max: stats.idade_max,
+        sexo: stats.sexo,
+        dimStats: stats.dimStats,
+        dimCohen: stats.dimCohen,
+        porDiretriz: stats.porDiretriz,
+        subgruposSexo: stats.subgruposSexo,
+        subgruposFaixa: stats.subgruposFaixa,
+      });
+      toast({ title: 'Relatório PDF gerado', description: 'O download foi iniciado.' });
+    } catch (e) {
+      toast({ title: 'Erro ao gerar PDF', description: String(e), variant: 'destructive' });
+    }
+  };
+
   return (
     <div className="space-y-4">
       <DashboardFilters value={filters} onChange={setFilters} showSubgroups />
