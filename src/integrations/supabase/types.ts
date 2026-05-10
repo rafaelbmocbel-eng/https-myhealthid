@@ -3768,10 +3768,12 @@ export type Database = {
         Returns: {
           assinatura_status: string
           consulta_mensal_disponivel: boolean
+          is_in_trial: boolean
           is_premium: boolean
           paciente_id: string
           proxima_cobranca: string
           tipo_conta: string
+          trial_ate: string
           ultima_sessao_mensal_em: string
         }[]
       }

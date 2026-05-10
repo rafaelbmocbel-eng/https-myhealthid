@@ -34,9 +34,22 @@ export function useWellnessAccess() {
   const isPremium = tipoConta === 'wellness_premium';
   const isWellness = isFree || isPremium;
 
+  const trialAte = data?.trial_ate as string | undefined;
+  const isInTrial = !!data?.is_in_trial;
+  const trialDiasRestantes = trialAte
+    ? Math.max(0, Math.ceil((new Date(trialAte).getTime() - Date.now()) / 86_400_000))
+    : 0;
+
+  // Consulta mensal NÃO entra no trial (só Premium pago)
+  const TRIAL_EXCLUDED: WellnessFeature[] = ['consulta_mensal'];
+
   const hasFeature = (feature: WellnessFeature): boolean => {
     if (isClinico || isPremium) return true;
-    if (isFree) return FREE_FEATURES.includes(feature);
+    if (isFree) {
+      if (FREE_FEATURES.includes(feature)) return true;
+      if (isInTrial && !TRIAL_EXCLUDED.includes(feature)) return true;
+      return false;
+    }
     return false;
   };
 
@@ -47,6 +60,9 @@ export function useWellnessAccess() {
     isFree,
     isPremium,
     isWellness,
+    isInTrial,
+    trialAte,
+    trialDiasRestantes,
     hasFeature,
     pacienteId: data?.paciente_id as string | undefined,
     consultaMensalDisponivel: !!data?.consulta_mensal_disponivel,
