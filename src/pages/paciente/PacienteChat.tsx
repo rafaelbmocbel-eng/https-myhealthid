@@ -11,6 +11,8 @@ import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 
 export default function PacienteChat() {
   const { user } = useAuth();
+  const navigate = useNavigate();
+  const { hasFeature, isFree } = useWellnessAccess();
   const [paciente, setPaciente] = useState<{ id: string; terapeuta_id: string; nome: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
