@@ -234,6 +234,8 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                 perdas_calculadas={perdas_calculadas}
                 myid_100={myid_100}
                 red_flags_detected={red_flags_detected}
+                pacienteId={pacienteId}
+                terapeutaId={terapeutaId}
             />
 
 
@@ -273,9 +275,11 @@ interface DetalhesTecnicosProps {
     perdas_calculadas: any;
     myid_100: any;
     red_flags_detected: boolean;
+    pacienteId?: string;
+    terapeutaId?: string;
 }
 
-function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected }: DetalhesTecnicosProps) {
+function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100, red_flags_detected, pacienteId, terapeutaId }: DetalhesTecnicosProps) {
     const [open, setOpen] = useState(false);
     const items = buildPerdasBreakdown(perdas_calculadas, myid_100?.driver_primario?.dimensao);
     const maxPerda = Math.max(...items.map(i => i.perda), 1);
@@ -327,7 +331,7 @@ function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100,
                         </Card>
                     )}
 
-                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} />
+                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} pacienteId={pacienteId} terapeutaId={terapeutaId} />
                 </div>
             )}
         </div>

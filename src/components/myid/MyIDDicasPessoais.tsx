@@ -9,6 +9,8 @@ import {
 import { useState } from 'react';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult, type ClinicalMission } from '@/utils/myid/clinicalInsights';
+import MyIDMissoesEditor from './MyIDMissoesEditor';
+import { buildAutoMissoes } from '@/utils/myid/buildAutoMissoes';
 
 interface Scores {
   D: number;
@@ -225,13 +227,17 @@ interface MyIDDicasPessoaisProps {
   myidScore?: number;
   compact?: boolean;
   className?: string;
+  pacienteId?: string;
+  terapeutaId?: string;
 }
 
-export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className }: MyIDDicasPessoaisProps) {
+export default function MyIDDicasPessoais({ scores, myidScore, compact = false, className, pacienteId, terapeutaId }: MyIDDicasPessoaisProps) {
   const [expandido, setExpandido] = useState(!compact);
   const [showInsights, setShowInsights] = useState(false);
   const dicas = gerarDicas(scores);
   const insights = myidScore ? gerarInsightsClinicosMyID(scores, myidScore) : null;
+  const showEditor = !!(pacienteId && terapeutaId);
+  const autoMissoes = showEditor ? buildAutoMissoes(scores, myidScore || 0) : [];
 
   if (dicas.length === 0) return null;
 
@@ -398,6 +404,12 @@ export default function MyIDDicasPessoais({ scores, myidScore, compact = false, 
                   </div>
                 </div>
               )}
+            </div>
+          )}
+
+          {showEditor && (
+            <div className="pt-3 border-t border-border">
+              <MyIDMissoesEditor pacienteId={pacienteId!} terapeutaId={terapeutaId!} autoMissoes={autoMissoes} />
             </div>
           )}
         </CardContent>
