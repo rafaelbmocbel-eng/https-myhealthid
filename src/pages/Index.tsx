@@ -404,6 +404,27 @@ export default function Index() {
         </header>
         </FadeIn>
 
+        {/* Vertente toggle */}
+        <div className="inline-flex p-1 rounded-xl border border-border/40 bg-card mb-5">
+          <button
+            onClick={() => setVertente('clinica')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'clinica' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <Stethoscope className="icon-xs" /> Visão Clínica
+          </button>
+          <button
+            onClick={() => setVertente('pesquisa')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'pesquisa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <FlaskConical className="icon-xs" /> Pesquisa Científica
+          </button>
+        </div>
+
+        {vertente === 'pesquisa' ? (
+          <ResearchDashboard />
+        ) : (
+        <>
+
         {/* Onboarding Guide */}
         <div className="mb-6">
           <OnboardingGuide />
