@@ -432,6 +432,93 @@ export default function ResearchDashboard() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="estatistica" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Análise pré/pós — Tamanho de efeito (Cohen's d)</h3>
+            <p className="text-caption mb-3">Pacientes com ≥2 avaliações (n = {stats.n_prepost}). |d| &lt; 0.2 trivial · 0.2–0.5 pequeno · 0.5–0.8 médio · &gt; 0.8 grande.</p>
+            {stats.n_prepost < 2 ? (
+              <p className="text-caption">Aguardando pacientes com pelo menos 2 avaliações para calcular efeito.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-1.5">Dimensão</th>
+                      <th className="text-right">n</th>
+                      <th className="text-right">Pré</th>
+                      <th className="text-right">Pós</th>
+                      <th className="text-right">Δ</th>
+                      <th className="text-right">Cohen's d</th>
+                      <th className="text-right">Magnitude</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.dimCohen.map(d => (
+                      <tr key={d.key} className="border-b border-border/20">
+                        <td className="py-1.5">{d.dimensao}</td>
+                        <td className="text-right">{d.n}</td>
+                        <td className="text-right">{d.media_pre}</td>
+                        <td className="text-right">{d.media_post}</td>
+                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>{d.delta > 0 ? '+' : ''}{d.delta}</td>
+                        <td className="text-right font-mono">{d.cohen_d}</td>
+                        <td className="text-right text-muted-foreground">{d.magnitude}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Matriz de correlação (Pearson) — dimensões MyID</h3>
+            <p className="text-caption mb-3">Correlações entre dimensões na última avaliação de cada paciente. |r| &gt; 0.5 = forte.</p>
+            <div className="overflow-x-auto">
+              <table className="text-[10px] border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-1"></th>
+                    {DIMENSOES.map(d => <th key={d.key} className="p-1 text-muted-foreground" style={{ writingMode: 'vertical-rl', height: 70 }}>{d.label.split(' ')[0]}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.corrMatrix.map(row => (
+                    <tr key={row.dim}>
+                      <td className="p-1 text-muted-foreground whitespace-nowrap">{row.dim.split(' ')[0]}</td>
+                      {row.cells.map((c, i) => {
+                        const a = Math.abs(c.r);
+                        const bg = c.r > 0
+                          ? `rgba(34, 197, 94, ${a})`
+                          : `rgba(239, 68, 68, ${a})`;
+                        return (
+                          <td key={i} className="p-1 text-center font-mono w-9 h-9" style={{ background: bg, color: a > 0.5 ? '#fff' : 'inherit' }}>
+                            {c.r.toFixed(2)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-start gap-2">
+              <FlaskConical className="icon-sm text-primary mt-0.5 shrink-0" />
+              <div>
+                <h3 className="h-card">Resumo metodológico (STROBE)</h3>
+                <p className="text-caption mt-1">
+                  Estudo observacional de coorte retrospectiva. Amostra de conveniência (n = {stats.n_amostra}),
+                  idade {stats.idade_media} ± {stats.idade_dp} anos. Avaliação primária: MyID v2.0 (escala 0–100, 9 dimensões).
+                  Análise pré/pós com pacientes com ≥2 medidas (n = {stats.n_prepost}). Tamanho de efeito por Cohen's d.
+                  Correlações intra-dimensionais por coeficiente de Pearson. Dados anonimizados via hash de ID.
+                </p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+
         <TabsContent value="evolucao" className="space-y-3 mt-3">
           <Card className="p-4">
             <h3 className="h-card mb-3">Avaliações MyID por mês</h3>
