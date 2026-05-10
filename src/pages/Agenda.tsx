@@ -180,6 +180,11 @@ export default function Agenda() {
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(52);
   const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  const pendentesTodayKey = `agenda-pendentes-dismissed-${format(new Date(), 'yyyy-MM-dd')}`;
+  const [pendentesDismissed, setPendentesDismissed] = useState(() => {
+    try { return localStorage.getItem(pendentesTodayKey) === '1'; } catch { return false; }
+  });
+  const [pendentesExpanded, setPendentesExpanded] = useState(false);
 
   // Drag-and-drop state
   const [dragging, setDragging] = useState<{
