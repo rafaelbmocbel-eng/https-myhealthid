@@ -581,9 +581,10 @@ export default function ResearchDashboard() {
                       <th className="text-right">n</th>
                       <th className="text-right">Pré</th>
                       <th className="text-right">Pós</th>
-                      <th className="text-right">Δ</th>
-                      <th className="text-right">Cohen's d</th>
-                      <th className="text-right">Magnitude</th>
+                      <th className="text-right">Δ (IC 95%)</th>
+                      <th className="text-right">d</th>
+                      <th className="text-right">t</th>
+                      <th className="text-right">p</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -593,9 +594,12 @@ export default function ResearchDashboard() {
                         <td className="text-right">{d.n}</td>
                         <td className="text-right">{d.media_pre}</td>
                         <td className="text-right">{d.media_post}</td>
-                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>{d.delta > 0 ? '+' : ''}{d.delta}</td>
-                        <td className="text-right font-mono">{d.cohen_d}</td>
-                        <td className="text-right text-muted-foreground">{d.magnitude}</td>
+                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>
+                          {d.delta > 0 ? '+' : ''}{d.delta} <span className="text-muted-foreground font-normal">{d.ci}</span>
+                        </td>
+                        <td className="text-right font-mono">{d.cohen_d} <span className="text-muted-foreground">({d.magnitude})</span></td>
+                        <td className="text-right font-mono">{d.t}</td>
+                        <td className={`text-right font-mono ${d.sig ? 'text-emerald-600 font-semibold' : 'text-muted-foreground'}`}>{d.p_label}</td>
                       </tr>
                     ))}
                   </tbody>
