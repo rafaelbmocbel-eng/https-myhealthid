@@ -493,6 +493,9 @@ export default function ResearchDashboard() {
         <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
           <FileText className="icon-xs" /> Codebook
         </Button>
+        <Button size="sm" variant="default" onClick={exportPdfReport} className="gap-1.5">
+          <FileDown className="icon-xs" /> Relatório PDF
+        </Button>
         <span className="text-[10px] text-muted-foreground ml-auto font-mono" title="Hash determinístico do dataset filtrado — use para reprodutibilidade">
           dataset#{stats.datasetHash}
         </span>
