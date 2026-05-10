@@ -17,6 +17,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
+const MyIDView = lazy(() => import("./pages/MyIDView"));
 const CobZero = lazy(() => import("./pages/CobZero"));
 
 const Agenda = lazy(() => import("./pages/Agenda"));
