@@ -51,6 +51,9 @@ const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
+      // Cache padrão: 30s "fresh" + 5min em memória → navegação instantânea entre páginas.
+      staleTime: 30_000,
+      gcTime: 5 * 60_000,
       retry: (failureCount, error) => {
         if (isAuthLockTimeoutError(error)) return failureCount < 5;
         return failureCount < 2;
@@ -62,6 +65,7 @@ const queryClient = new QueryClient({
         return Math.min(1000 * attemptIndex, 3000);
       },
       refetchOnWindowFocus: false,
+      refetchOnReconnect: 'always',
     },
     mutations: {
       retry: (failureCount, error) => isAuthLockTimeoutError(error) && failureCount < 2,
