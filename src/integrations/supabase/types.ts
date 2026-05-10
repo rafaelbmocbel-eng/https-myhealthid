@@ -127,6 +127,48 @@ export type Database = {
           },
         ]
       }
+      ausencias_terapeuta: {
+        Row: {
+          cor: string | null
+          created_at: string
+          data_fim: string
+          data_inicio: string
+          dia_inteiro: boolean
+          hora_fim: string | null
+          hora_inicio: string | null
+          id: string
+          motivo: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          cor?: string | null
+          created_at?: string
+          data_fim: string
+          data_inicio: string
+          dia_inteiro?: boolean
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          motivo?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          cor?: string | null
+          created_at?: string
+          data_fim?: string
+          data_inicio?: string
+          dia_inteiro?: boolean
+          hora_fim?: string | null
+          hora_inicio?: string | null
+          id?: string
+          motivo?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       avaliacoes: {
         Row: {
           created_at: string
@@ -529,6 +571,7 @@ export type Database = {
           servicos_ativos: Json
           slug: string | null
           terapeuta_id: string
+          turnos: Json
           updated_at: string
           vagas_por_horario: number
         }
@@ -543,6 +586,7 @@ export type Database = {
           servicos_ativos?: Json
           slug?: string | null
           terapeuta_id: string
+          turnos?: Json
           updated_at?: string
           vagas_por_horario?: number
         }
@@ -557,6 +601,7 @@ export type Database = {
           servicos_ativos?: Json
           slug?: string | null
           terapeuta_id?: string
+          turnos?: Json
           updated_at?: string
           vagas_por_horario?: number
         }
@@ -571,6 +616,7 @@ export type Database = {
           email_clinica: string | null
           endereco: string | null
           id: string
+          logo_url: string | null
           razao_social: string | null
           responsavel: string | null
           telefone: string | null
@@ -590,6 +636,7 @@ export type Database = {
           email_clinica?: string | null
           endereco?: string | null
           id?: string
+          logo_url?: string | null
           razao_social?: string | null
           responsavel?: string | null
           telefone?: string | null
@@ -609,6 +656,7 @@ export type Database = {
           email_clinica?: string | null
           endereco?: string | null
           id?: string
+          logo_url?: string | null
           razao_social?: string | null
           responsavel?: string | null
           telefone?: string | null
@@ -3507,6 +3555,17 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_ausencias_by_token: {
+        Args: { p_data_fim: string; p_data_inicio: string; p_token: string }
+        Returns: {
+          data_fim: string
+          data_inicio: string
+          dia_inteiro: boolean
+          hora_fim: string
+          hora_inicio: string
+          motivo: string
+        }[]
+      }
       get_config_agenda_by_funil_slug: {
         Args: { p_slug: string }
         Returns: {
@@ -3614,6 +3673,7 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_turnos_by_token: { Args: { p_token: string }; Returns: Json }
       has_active_agenda_link: {
         Args: { p_terapeuta_id: string }
         Returns: boolean
