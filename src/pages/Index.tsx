@@ -24,11 +24,14 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
+import ResearchDashboard from '@/components/dashboard/ResearchDashboard';
+import { FlaskConical } from 'lucide-react';
 
 export default function Index() {
   const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
   const { servicos } = useServicosAtivos();
+  const [vertente, setVertente] = useState<'clinica' | 'pesquisa'>('clinica');
 
   const { data: pacientes = [] } = useQuery({
     queryKey: ['pacientes-count', user?.id],
@@ -400,6 +403,27 @@ export default function Index() {
           </p>
         </header>
         </FadeIn>
+
+        {/* Vertente toggle */}
+        <div className="inline-flex p-1 rounded-xl border border-border/40 bg-card mb-5">
+          <button
+            onClick={() => setVertente('clinica')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'clinica' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <Stethoscope className="icon-xs" /> Visão Clínica
+          </button>
+          <button
+            onClick={() => setVertente('pesquisa')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'pesquisa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+          >
+            <FlaskConical className="icon-xs" /> Pesquisa Científica
+          </button>
+        </div>
+
+        {vertente === 'pesquisa' ? (
+          <ResearchDashboard />
+        ) : (
+        <>
 
         {/* Onboarding Guide */}
         <div className="mb-6">
@@ -859,7 +883,8 @@ export default function Index() {
           </section>
         )}
 
-
+        </>
+        )}
 
       </div>
 
