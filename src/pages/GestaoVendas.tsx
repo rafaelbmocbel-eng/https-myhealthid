@@ -35,6 +35,7 @@ import { useFunil } from '@/hooks/useFunil';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
+import DetectarAbandonoCard from '@/components/crm/DetectarAbandonoCard';
 
 // ── Classificação automática (shared with Pacientes) ──────────────────────
 type ClassificacaoTag = 'novo' | 'recorrente' | 'lead' | 'inadimplente' | 'a_pagar';
