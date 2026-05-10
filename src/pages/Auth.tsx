@@ -72,8 +72,8 @@ export default function Auth() {
           </p>
           <div className="mt-8 grid grid-cols-2 gap-3">
             {[
-              { icon: '🧬', label: 'Método Identidade' },
-              { icon: '🦴', label: 'COB° ZERO Escoliose' },
+              { icon: '🧬', label: 'Avaliação MyID' },
+              { icon: '📋', label: 'Prontuário Digital' },
               { icon: '📊', label: 'Protocolos & Evidências' },
               { icon: '📅', label: 'Agenda Inteligente' },
             ].map(f => (
