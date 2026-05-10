@@ -675,6 +675,7 @@ export default function Pacientes() {
               const ultimoAg = ultimosAgendamentos[p.id];
               const tag = getClassificacao(p.id, p.created_at);
               const tagCfg = CLASSIFICACOES.find(c => c.key === tag)!;
+              const pend = pendenciasPorPaciente[p.id];
               return (
                 <div key={p.id} className="clinical-card group p-3 sm:p-4 hover:shadow-md transition-all cursor-pointer" onClick={() => navigate(`/pacientes/${p.id}`)}>
                   <div className="flex items-center gap-3 sm:gap-4">
@@ -688,6 +689,26 @@ export default function Pacientes() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
                         <span className="font-semibold text-foreground text-sm">{p.nome} {p.sobrenome}</span>
+                        {pend && pend.count > 0 && (
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 animate-pulse"
+                              >
+                                <Bell className="h-2.5 w-2.5" /> {pend.count} pendência{pend.count > 1 ? 's' : ''}
+                              </Badge>
+                            </TooltipTrigger>
+                            <TooltipContent side="top" className="max-w-xs">
+                              <div className="space-y-1">
+                                <p className="font-semibold text-xs">Pendências no perfil:</p>
+                                {pend.titulos.map((t, i) => (
+                                  <p key={i} className="text-xs">• {t}</p>
+                                ))}
+                              </div>
+                            </TooltipContent>
+                          </Tooltip>
+                        )}
                         {linkAtivo && (
                           <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
