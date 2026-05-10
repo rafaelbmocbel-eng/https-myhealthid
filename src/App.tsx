@@ -92,6 +92,7 @@ const App = () => (
           <ScrollToTop />
           <AuthProvider>
             <RouteRestorer />
+            <GlobalBackButton />
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
