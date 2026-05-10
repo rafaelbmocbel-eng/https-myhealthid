@@ -131,9 +131,9 @@ export default function ResumoNarrativo({ pacienteId, notas }: Props) {
         latest.score_n != null ? `Neural: ${Number(latest.score_n).toFixed(1)}` : null,
       ].filter(Boolean);
 
-      let avalText = `Avaliação presencial do Método Identidade realizada em ${format(parseISO(latest.created_at), 'dd/MM/yyyy')}.`;
+      let avalText = `Avaliação presencial realizada em ${format(parseISO(latest.created_at), 'dd/MM/yyyy')}.`;
       if (latest.classificacao) avalText += ` Classificação: ${latest.classificacao}.`;
-      if (latest.id_final != null) avalText += ` ID Final: ${Number(latest.id_final).toFixed(1)}.`;
+      if (latest.id_final != null) avalText += ` Score Final: ${Number(latest.id_final).toFixed(1)}.`;
       if (scores.length > 0) avalText += ` Scores dimensionais: ${scores.join(', ')}.`;
       if (avalPresenciais.length > 1) {
         avalText += ` Total de ${avalPresenciais.length} avaliações presenciais registradas.`;
@@ -141,16 +141,16 @@ export default function ResumoNarrativo({ pacienteId, notas }: Props) {
       paragrafos.push(avalText);
     }
 
-    // --- 4. COB° ZERO ---
+    // --- 4. Avaliação Estrutural ---
     if (avaliacoesCob.length > 0) {
       const latest = avaliacoesCob[avaliacoesCob.length - 1];
-      let cobText = `Avaliação COB° ZERO realizada em ${latest.data_avaliacao}.`;
+      let cobText = `Avaliação estrutural realizada em ${latest.data_avaliacao}.`;
       if (latest.cobb_angle != null) cobText += ` Ângulo de Cobb: ${latest.cobb_angle}°.`;
       if (latest.lenke_type) cobText += ` Classificação Lenke: Tipo ${latest.lenke_type}.`;
       if (latest.risco_level) cobText += ` Nível de risco: ${latest.risco_level}.`;
       if (latest.risco_percentage != null) cobText += ` Percentual de risco: ${latest.risco_percentage}%.`;
       if (avaliacoesCob.length > 1) {
-        cobText += ` Total de ${avaliacoesCob.length} avaliações COB° ZERO registradas.`;
+        cobText += ` Total de ${avaliacoesCob.length} avaliações estruturais registradas.`;
       }
       paragrafos.push(cobText);
     }
