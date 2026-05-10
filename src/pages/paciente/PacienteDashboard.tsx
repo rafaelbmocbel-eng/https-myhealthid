@@ -69,7 +69,8 @@ export default function PacienteDashboard() {
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
   const notifications = usePacienteNotifications(user?.id);
-  const { isFree, isInTrial, trialDiasRestantes } = useWellnessAccess();
+  const { isFree, isInTrial, trialDiasRestantes, emCarencia, bloqueadoClinico, diasRestantesCarencia } = useWellnessAccess();
+  const [profissional, setProfissional] = useState<{ nome?: string; whatsapp?: string }>({});
 
   useEffect(() => {
     if (!user) return;
