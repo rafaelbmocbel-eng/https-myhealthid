@@ -82,6 +82,19 @@ const LazyFallback = forwardRef<HTMLDivElement>((_props, ref) => (
 ));
 LazyFallback.displayName = "LazyFallback";
 
+// Prefetch de rotas mais usadas em idle, para navegação instantânea.
+if (typeof window !== "undefined") {
+  const w = window as Window & { requestIdleCallback?: (cb: () => void) => void };
+  const idle = (cb: () => void) =>
+    typeof w.requestIdleCallback === "function" ? w.requestIdleCallback(cb) : window.setTimeout(cb, 1500);
+  idle(() => {
+    void import("./pages/Agenda");
+    void import("./pages/Pacientes");
+    void import("./pages/PacientePerfil");
+    void import("./components/AppLayout");
+  });
+}
+
 const App = () => (
   <ThemeProvider attribute="class" defaultTheme="light" enableSystem disableTransitionOnChange>
     <QueryClientProvider client={queryClient}>

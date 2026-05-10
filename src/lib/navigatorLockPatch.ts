@@ -33,8 +33,11 @@ export function installSupabaseLockPatch() {
             : null;
 
       // Evita timeout de 10s no lock interno do auth token.
+      // Passamos um Lock fake (não null) para evitar o warning do gotrue
+      // "Navigator LockManager returned a null lock".
       if (typeof name === "string" && name.includes(SUPABASE_LOCK_PREFIX) && callback) {
-        return Promise.resolve().then(() => callback(null));
+        const fakeLock = { name, mode: "exclusive" as LockMode };
+        return Promise.resolve().then(() => callback(fakeLock as Lock));
       }
 
       if (typeof optionsOrCallback === "function") {
