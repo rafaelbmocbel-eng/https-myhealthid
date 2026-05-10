@@ -33,6 +33,7 @@ interface Props {
 
 const STATUS_LABELS: Record<string, { label: string; color: string }> = {
   ativo: { label: 'Ativo', color: 'bg-emerald-100 text-emerald-700' },
+  rascunho: { label: 'Rascunho IA', color: 'bg-amber-100 text-amber-700' },
   concluido: { label: 'Concluído', color: 'bg-blue-100 text-blue-700' },
   pausado: { label: 'Pausado', color: 'bg-amber-100 text-amber-700' },
 };
