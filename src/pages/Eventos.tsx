@@ -832,9 +832,15 @@ function EventoCard({ evento, onView, onCopy, onToggle, onDelete, onEditQuestion
           )}
         </div>
         <div className="flex items-center gap-1.5 pt-1">
-          <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1.5 h-8">
-            <Eye className="icon-sm" /> Ver
-          </Button>
+          {isPast && onReativar ? (
+            <Button variant="default" size="sm" onClick={onReativar} className="flex-1 gap-1.5 h-8">
+              <RotateCcw className="icon-sm" /> Reativar
+            </Button>
+          ) : (
+            <Button variant="outline" size="sm" onClick={onView} className="flex-1 gap-1.5 h-8">
+              <Eye className="icon-sm" /> Ver
+            </Button>
+          )}
           <div className="flex items-center gap-0.5">
             <Button variant="outline" size="icon" className="h-8 w-8" onClick={onEditEvento} title="Editar evento">
               <Pencil className="icon-sm" />
