@@ -327,7 +327,7 @@ function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100,
                         </Card>
                     )}
 
-                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} />
+                    <MyIDDicasPessoais scores={scores} myidScore={myid_100 ?? myidScoreValue ?? 0} pacienteId={pacienteId} terapeutaId={terapeutaId} />
                 </div>
             )}
         </div>
