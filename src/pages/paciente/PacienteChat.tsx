@@ -1,10 +1,13 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import ChatWindow from '@/components/chat/ChatWindow';
-import { MessageSquare, Loader2 } from 'lucide-react';
+import { MessageSquare, Loader2, Lock, Sparkles } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { useWellnessAccess } from '@/hooks/useWellnessAccess';
 
 export default function PacienteChat() {
   const { user } = useAuth();
