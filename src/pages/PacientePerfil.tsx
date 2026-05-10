@@ -744,6 +744,11 @@ export default function PacientePerfil() {
                   return items;
                 })()}
               />
+              <IdentidadePortavelActions
+                pacienteId={paciente.id}
+                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+              />
             </div>
           </div>
         </div>
