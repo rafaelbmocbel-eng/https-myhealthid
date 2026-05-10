@@ -20,6 +20,7 @@ import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
+import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 
 interface PacienteInfo {
   id: string;
