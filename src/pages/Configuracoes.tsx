@@ -22,6 +22,8 @@ import ThemeToggle from '@/components/ThemeToggle';
 import AiCreditsBanner from '@/components/AiCreditsBanner';
 import ControleMensal from '@/components/configuracoes/ControleMensal';
 import ConfigClinica from '@/components/configuracoes/ConfigClinica';
+import TurnosEditor from '@/components/configuracoes/TurnosEditor';
+import AusenciasManager from '@/components/configuracoes/AusenciasManager';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -97,83 +99,12 @@ export default function Configuracoes() {
         {/* Controle Mensal de Atendimentos e Repasse */}
         <ControleMensal />
 
-        {/* Dias de atendimento */}
-        <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <CalendarDays className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Dias de Atendimento</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Dias desmarcados ficam como <strong>livres</strong> (sem atendimento) na agenda e na agenda pública.
-          </p>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {Object.entries(DIAS_LABEL).map(([key, label]) => {
-              const ativo = form.dias_semana[key] ?? false;
-              return (
-                <button
-                  key={key}
-                  onClick={() => updateDia(key, !ativo)}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl border-2 transition-all',
-                    ativo
-                      ? 'border-primary bg-primary/5'
-                      : 'border-dashed border-muted-foreground/20 opacity-50',
-                  )}
-                >
-                  <Switch checked={ativo} onCheckedChange={(v) => updateDia(key, v)} />
-                  <span className={cn('text-sm font-medium', ativo ? 'text-foreground' : 'text-muted-foreground')}>
-                    {label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
+        {/* Horários por dia (turnos múltiplos) */}
+        <TurnosEditor form={form} onChange={setForm} />
 
-        {/* Horários */}
-        <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Horários de Trabalho</h2>
-          </div>
-          <p className="text-xs text-muted-foreground mb-4">
-            Horários fora deste intervalo serão considerados <strong>livres</strong>.
-          </p>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <div>
-              <Label className="text-xs font-medium mb-1.5 block">Início do expediente</Label>
-              <Input
-                type="time"
-                value={form.horario_inicio?.slice(0, 5) || '08:00'}
-                onChange={e => setForm(f => ({ ...f, horario_inicio: e.target.value + ':00' }))}
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1.5 block">Fim do expediente</Label>
-              <Input
-                type="time"
-                value={form.horario_fim?.slice(0, 5) || '18:00'}
-                onChange={e => setForm(f => ({ ...f, horario_fim: e.target.value + ':00' }))}
-              />
-            </div>
-            <div>
-              <Label className="text-xs font-medium mb-1.5 block">Duração padrão (min)</Label>
-              <Select
-                value={String(form.duracao_padrao)}
-                onValueChange={v => setForm(f => ({ ...f, duracao_padrao: Number(v) }))}
-              >
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  {DURACAO_OPTIONS.map(d => (
-                    <SelectItem key={d} value={String(d)}>{d} minutos</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
-        </div>
+        {/* Ausências, feriados e férias */}
+        <AusenciasManager />
 
-        {/* Intervalo entre sessões */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
             <Clock className="h-4 w-4 text-muted-foreground" />

@@ -28,6 +28,13 @@ export interface Agendamento {
   pacientes?: Paciente;
 }
 
+export interface TurnoBloco {
+  inicio: string; // HH:MM
+  fim: string;    // HH:MM
+}
+
+export type TurnosPorDia = Partial<Record<'seg'|'ter'|'qua'|'qui'|'sex'|'sab'|'dom', TurnoBloco[]>>;
+
 export interface ConfigAgenda {
   id?: string;
   horario_inicio: string;
@@ -37,6 +44,7 @@ export interface ConfigAgenda {
   intervalo_entre_sessoes: number;
   vagas_por_horario: number;
   slug?: string;
+  turnos?: TurnosPorDia;
 }
 
 const DEFAULT_CONFIG: ConfigAgenda = {
@@ -46,6 +54,7 @@ const DEFAULT_CONFIG: ConfigAgenda = {
   dias_semana: { seg: true, ter: true, qua: true, qui: true, sex: true, sab: false, dom: false },
   intervalo_entre_sessoes: 0,
   vagas_por_horario: 1,
+  turnos: {},
 };
 
 export function useAgenda() {
@@ -362,8 +371,8 @@ export function useAgenda() {
     try {
       const { error } = await withAuthLockRetry(async () => {
         return cfg.id
-          ? await supabase.from('config_agenda').update(payload).eq('id', cfg.id)
-          : await supabase.from('config_agenda').insert(payload);
+          ? await supabase.from('config_agenda').update(payload as any).eq('id', cfg.id)
+          : await supabase.from('config_agenda').insert(payload as any);
       });
 
       if (error) throw error;
