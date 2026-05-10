@@ -37,6 +37,7 @@ import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
+import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
 import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
@@ -888,6 +889,23 @@ export default function Agenda() {
     await executeConfirmar(id);
   };
 
+  const handleConfirmarWhatsApp = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
+    if (!ag) return;
+    const pac = pacientes.find(p => p.id === ag.paciente_id);
+    if (!pac?.telefone) {
+      toast({ title: 'Sem telefone', description: 'Este paciente não tem telefone cadastrado.', variant: 'destructive' });
+      return;
+    }
+    // 1. Confirma o agendamento
+    await handleConfirmar(id);
+    // 2. Abre WhatsApp com mensagem pronta
+    const dataFmt = format(parseISO(ag.data_inicio), "EEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR });
+    const nome = `${pac.nome} ${pac.sobrenome || ''}`.trim();
+    await shareConfirmacaoSessao(nome, pac.telefone, dataFmt);
+    toast({ title: '✅ Confirmado + WhatsApp aberto', description: 'Mensagem pronta para envio.' });
+  };
+
   const executeRecusar = async (id: string) => {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'cancelado' });
@@ -1072,8 +1090,11 @@ export default function Agenda() {
                       <Button size="sm" variant="outline" className="h-7 text-xs border-red-300 text-red-600 hover:bg-red-50 hover:text-red-700" onClick={() => handleRecusar(ag.id)}>
                         <X className="h-3 w-3 mr-1" /> Recusar
                       </Button>
-                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmar(ag.id)}>
+                      <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => handleConfirmar(ag.id)}>
                         <CheckCircle2 className="h-3 w-3 mr-1" /> Confirmar
+                      </Button>
+                      <Button size="sm" className="h-7 text-xs bg-emerald-600 hover:bg-emerald-700 text-white" onClick={() => handleConfirmarWhatsApp(ag.id)} title="Confirma e abre WhatsApp com mensagem pronta">
+                        <MessageCircle className="h-3 w-3 mr-1" /> Confirmar + WhatsApp
                       </Button>
                     </div>
                   </div>
