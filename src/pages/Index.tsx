@@ -25,6 +25,7 @@ import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 import ResearchDashboard from '@/components/dashboard/ResearchDashboard';
+import ClinicalInsights from '@/components/dashboard/ClinicalInsights';
 import { FlaskConical } from 'lucide-react';
 
 export default function Index() {
@@ -424,6 +425,9 @@ export default function Index() {
           <ResearchDashboard />
         ) : (
         <>
+
+        {/* Painel estratégico — usa todos os dados gerados */}
+        <ClinicalInsights />
 
         {/* Onboarding Guide */}
         <div className="mb-6">

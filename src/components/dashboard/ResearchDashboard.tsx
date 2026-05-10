@@ -46,6 +46,29 @@ function sd(arr: number[]): number {
   const m = mean(v);
   return Math.sqrt(v.reduce((s, x) => s + (x - m) ** 2, 0) / (v.length - 1));
 }
+function pearson(x: number[], y: number[]): number {
+  const n = Math.min(x.length, y.length);
+  if (n < 3) return 0;
+  const mx = mean(x), my = mean(y);
+  let num = 0, dx = 0, dy = 0;
+  for (let i = 0; i < n; i++) { const a = x[i]-mx, b = y[i]-my; num += a*b; dx += a*a; dy += b*b; }
+  const den = Math.sqrt(dx * dy);
+  return den ? +(num / den).toFixed(3) : 0;
+}
+function cohensD(pre: number[], post: number[]): number {
+  if (pre.length < 2 || post.length < 2) return 0;
+  const m1 = mean(pre), m2 = mean(post);
+  const s1 = sd(pre), s2 = sd(post);
+  const sp = Math.sqrt(((pre.length-1)*s1*s1 + (post.length-1)*s2*s2) / (pre.length + post.length - 2));
+  return sp ? +((m2 - m1) / sp).toFixed(3) : 0;
+}
+function interpretD(d: number): string {
+  const a = Math.abs(d);
+  if (a < 0.2) return 'trivial';
+  if (a < 0.5) return 'pequeno';
+  if (a < 0.8) return 'médio';
+  return 'grande';
+}
 
 export default function ResearchDashboard() {
   const { user } = useAuth();
@@ -139,6 +162,41 @@ export default function ResearchDashboard() {
     });
     const temporal = Object.entries(porMes).sort().map(([mes, n]) => ({ mes, n }));
 
+    // Pré/pós: pacientes com >=2 avaliações — Cohen's d por dimensão
+    const prePost = sample.map(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      if (avs.length < 2) return null;
+      return { pre: avs[0], post: avs[avs.length - 1] };
+    }).filter(Boolean) as { pre: any; post: any }[];
+
+    const dimCohen = DIMENSOES.map(d => {
+      const pre = prePost.map(x => Number(x.pre[d.key])).filter(Number.isFinite);
+      const post = prePost.map(x => Number(x.post[d.key])).filter(Number.isFinite);
+      const dval = cohensD(pre, post);
+      return {
+        dimensao: d.label, key: d.key, n: pre.length,
+        media_pre: +mean(pre).toFixed(1), media_post: +mean(post).toFixed(1),
+        delta: +(mean(post) - mean(pre)).toFixed(1),
+        cohen_d: dval, magnitude: interpretD(dval),
+      };
+    });
+
+    // Matriz de correlação entre dimensões (na última avaliação de cada paciente)
+    const ultimas = sample.map(p => {
+      const avs = avaliacoes.filter(a => a.paciente_id === p.id).sort((a,b) => a.created_at.localeCompare(b.created_at));
+      return avs[avs.length - 1];
+    }).filter(Boolean);
+    const corrMatrix = DIMENSOES.map(d1 => ({
+      dim: d1.label,
+      cells: DIMENSOES.map(d2 => ({
+        dim: d2.label,
+        r: pearson(
+          ultimas.map(a => Number(a[d1.key])).filter(Number.isFinite),
+          ultimas.map(a => Number(a[d2.key])).filter(Number.isFinite),
+        ),
+      })),
+    }));
+
     return {
       n_pacientes_total: pacientes.length,
       n_amostra: sample.length,
@@ -160,6 +218,9 @@ export default function ResearchDashboard() {
       sample,
       avaliacoes,
       voz,
+      dimCohen,
+      corrMatrix,
+      n_prepost: prePost.length,
     };
   }, [data]);
 
@@ -206,6 +267,32 @@ export default function ResearchDashboard() {
     ]);
   };
 
+  const exportCodebook = () => {
+    const cb = [
+      { variavel: 'paciente_id', tipo: 'string', descricao: 'ID anonimizado (8 chars)', valores: 'hash' },
+      { variavel: 'idade', tipo: 'numeric', descricao: 'Idade em anos', valores: '0-120' },
+      { variavel: 'sexo', tipo: 'categorical', descricao: 'Sexo informado', valores: 'masculino/feminino/outro/não informado' },
+      { variavel: 'n_avaliacoes', tipo: 'numeric', descricao: 'Total de avaliações MyID concluídas', valores: '>=1' },
+      { variavel: 'myid_score', tipo: 'numeric', descricao: 'Score global MyID (última avaliação)', valores: '0-100, maior=melhor' },
+      ...DIMENSOES.map(d => ({ variavel: d.key, tipo: 'numeric', descricao: `${d.label} — score por dimensão`, valores: '0-100, <50 = crítico' })),
+      { variavel: 'red_flags', tipo: 'numeric', descricao: 'Quantidade de red flags identificados', valores: '>=0' },
+      { variavel: 'classificacao', tipo: 'categorical', descricao: 'Classificação clínica final do MyID', valores: 'várias' },
+    ];
+    exportToCsv(`pesquisa_codebook_${format(new Date(), 'yyyyMMdd')}.csv`, cb, [
+      { key: 'variavel', label: 'Variável' }, { key: 'tipo', label: 'Tipo' },
+      { key: 'descricao', label: 'Descrição' }, { key: 'valores', label: 'Valores' },
+    ]);
+  };
+
+  const exportPrePost = () => {
+    const rows = stats.dimCohen.map(d => ({
+      dimensao: d.dimensao, n: d.n,
+      media_pre: d.media_pre, media_post: d.media_post, delta: d.delta,
+      cohen_d: d.cohen_d, magnitude: d.magnitude,
+    }));
+    exportToCsv(`pesquisa_prepost_cohen_${format(new Date(), 'yyyyMMdd')}.csv`, rows);
+  };
+
   return (
     <div className="space-y-4">
       {/* Header KPIs */}
@@ -233,19 +320,26 @@ export default function ResearchDashboard() {
       {/* Export bar */}
       <div className="flex flex-wrap gap-2">
         <Button size="sm" variant="outline" onClick={exportRawCSV} className="gap-1.5">
-          <Download className="icon-xs" /> CSV — Dados brutos (anonimizado)
+          <Download className="icon-xs" /> CSV — Dados brutos
         </Button>
         <Button size="sm" variant="outline" onClick={exportTabela1} className="gap-1.5">
-          <FileText className="icon-xs" /> CSV — Tabela 1 (resumo descritivo)
+          <FileText className="icon-xs" /> Tabela 1 (descritivo)
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportPrePost} className="gap-1.5">
+          <FileText className="icon-xs" /> Pré/pós + Cohen's d
+        </Button>
+        <Button size="sm" variant="outline" onClick={exportCodebook} className="gap-1.5">
+          <FileText className="icon-xs" /> Codebook
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={setTab}>
-        <TabsList className="grid grid-cols-4 w-full">
-          <TabsTrigger value="demografia" className="text-[11px] sm:text-xs">Demografia</TabsTrigger>
-          <TabsTrigger value="myid" className="text-[11px] sm:text-xs">MyID</TabsTrigger>
-          <TabsTrigger value="presencial" className="text-[11px] sm:text-xs">Presencial</TabsTrigger>
-          <TabsTrigger value="evolucao" className="text-[11px] sm:text-xs">Evolução</TabsTrigger>
+        <TabsList className="grid grid-cols-5 w-full">
+          <TabsTrigger value="demografia" className="text-[10px] sm:text-xs">Demografia</TabsTrigger>
+          <TabsTrigger value="myid" className="text-[10px] sm:text-xs">MyID</TabsTrigger>
+          <TabsTrigger value="presencial" className="text-[10px] sm:text-xs">Presencial</TabsTrigger>
+          <TabsTrigger value="estatistica" className="text-[10px] sm:text-xs">Estatística</TabsTrigger>
+          <TabsTrigger value="evolucao" className="text-[10px] sm:text-xs">Evolução</TabsTrigger>
         </TabsList>
 
         <TabsContent value="demografia" className="space-y-3 mt-3">
@@ -335,6 +429,93 @@ export default function ResearchDashboard() {
                 ))}
               </div>
             )}
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="estatistica" className="space-y-3 mt-3">
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Análise pré/pós — Tamanho de efeito (Cohen's d)</h3>
+            <p className="text-caption mb-3">Pacientes com ≥2 avaliações (n = {stats.n_prepost}). |d| &lt; 0.2 trivial · 0.2–0.5 pequeno · 0.5–0.8 médio · &gt; 0.8 grande.</p>
+            {stats.n_prepost < 2 ? (
+              <p className="text-caption">Aguardando pacientes com pelo menos 2 avaliações para calcular efeito.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs">
+                  <thead className="text-muted-foreground">
+                    <tr className="border-b border-border/40">
+                      <th className="text-left py-1.5">Dimensão</th>
+                      <th className="text-right">n</th>
+                      <th className="text-right">Pré</th>
+                      <th className="text-right">Pós</th>
+                      <th className="text-right">Δ</th>
+                      <th className="text-right">Cohen's d</th>
+                      <th className="text-right">Magnitude</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {stats.dimCohen.map(d => (
+                      <tr key={d.key} className="border-b border-border/20">
+                        <td className="py-1.5">{d.dimensao}</td>
+                        <td className="text-right">{d.n}</td>
+                        <td className="text-right">{d.media_pre}</td>
+                        <td className="text-right">{d.media_post}</td>
+                        <td className={`text-right font-medium ${d.delta > 0 ? 'text-emerald-600' : d.delta < 0 ? 'text-destructive' : ''}`}>{d.delta > 0 ? '+' : ''}{d.delta}</td>
+                        <td className="text-right font-mono">{d.cohen_d}</td>
+                        <td className="text-right text-muted-foreground">{d.magnitude}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+
+          <Card className="p-4">
+            <h3 className="h-card mb-1">Matriz de correlação (Pearson) — dimensões MyID</h3>
+            <p className="text-caption mb-3">Correlações entre dimensões na última avaliação de cada paciente. |r| &gt; 0.5 = forte.</p>
+            <div className="overflow-x-auto">
+              <table className="text-[10px] border-collapse">
+                <thead>
+                  <tr>
+                    <th className="p-1"></th>
+                    {DIMENSOES.map(d => <th key={d.key} className="p-1 text-muted-foreground" style={{ writingMode: 'vertical-rl', height: 70 }}>{d.label.split(' ')[0]}</th>)}
+                  </tr>
+                </thead>
+                <tbody>
+                  {stats.corrMatrix.map(row => (
+                    <tr key={row.dim}>
+                      <td className="p-1 text-muted-foreground whitespace-nowrap">{row.dim.split(' ')[0]}</td>
+                      {row.cells.map((c, i) => {
+                        const a = Math.abs(c.r);
+                        const bg = c.r > 0
+                          ? `rgba(34, 197, 94, ${a})`
+                          : `rgba(239, 68, 68, ${a})`;
+                        return (
+                          <td key={i} className="p-1 text-center font-mono w-9 h-9" style={{ background: bg, color: a > 0.5 ? '#fff' : 'inherit' }}>
+                            {c.r.toFixed(2)}
+                          </td>
+                        );
+                      })}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+
+          <Card className="p-4">
+            <div className="flex items-start gap-2">
+              <FlaskConical className="icon-sm text-primary mt-0.5 shrink-0" />
+              <div>
+                <h3 className="h-card">Resumo metodológico (STROBE)</h3>
+                <p className="text-caption mt-1">
+                  Estudo observacional de coorte retrospectiva. Amostra de conveniência (n = {stats.n_amostra}),
+                  idade {stats.idade_media} ± {stats.idade_dp} anos. Avaliação primária: MyID v2.0 (escala 0–100, 9 dimensões).
+                  Análise pré/pós com pacientes com ≥2 medidas (n = {stats.n_prepost}). Tamanho de efeito por Cohen's d.
+                  Correlações intra-dimensionais por coeficiente de Pearson. Dados anonimizados via hash de ID.
+                </p>
+              </div>
+            </div>
           </Card>
         </TabsContent>
 
