@@ -67,9 +67,22 @@ export function MyIDFaseTransicao({
   proximaFase,
   scoreParcial,
   dimensoesPreenchidas = [],
+  partialScores,
   onContinuar,
   onSalvarESair,
 }: Props) {
+  // Builds a partial fingerprint where unfilled dimensions render muted/gray.
+  const partialFingerprint = (() => {
+    if (!partialScores) return null;
+    const filled = new Set(dimensoesPreenchidas);
+    const rings = getMyIDFingerprintData(partialScores).map((r) => {
+      const key = r.scoreKey || '';
+      if (filled.has(key)) return r;
+      return { ...r, value: 0, color: 'hsl(var(--muted-foreground) / 0.25)' };
+    });
+    return rings;
+  })();
+
   if (modo === 'inicio') {
     return (
       <div className="max-w-2xl mx-auto px-4 py-8 space-y-6 text-center animate-in fade-in zoom-in-95 duration-500">
