@@ -9,6 +9,7 @@ import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteRestorer from "./components/RouteRestorer";
+import GlobalBackButton from "./components/GlobalBackButton";
 
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
