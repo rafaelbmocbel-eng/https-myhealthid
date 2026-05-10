@@ -75,5 +75,12 @@ export function useWellnessAccess() {
     pacienteId: data?.paciente_id as string | undefined,
     consultaMensalDisponivel: !!data?.consulta_mensal_disponivel,
     proximaCobranca: data?.proxima_cobranca as string | undefined,
+    // acesso clínico
+    acessoClinico,
+    acessoClinicoExpiraEm,
+    diasRestantesCarencia,
+    emCarencia,
+    bloqueadoClinico,
+    podeReceberAtividadesNovas,
   };
 }
