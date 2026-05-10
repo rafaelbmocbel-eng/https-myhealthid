@@ -5,8 +5,10 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical } from 'lucide-react';
+import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical, FileDown } from 'lucide-react';
 import { exportToCsv } from '@/utils/exportCsv';
+import { gerarPdfResearchReport } from '@/utils/pdfResearchReport';
+import { toast } from '@/hooks/use-toast';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line, CartesianGrid, Legend,
