@@ -426,6 +426,9 @@ export default function Index() {
         ) : (
         <>
 
+        {/* Painel estratégico — usa todos os dados gerados */}
+        <ClinicalInsights />
+
         {/* Onboarding Guide */}
         <div className="mb-6">
           <OnboardingGuide />
