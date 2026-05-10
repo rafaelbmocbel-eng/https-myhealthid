@@ -889,6 +889,23 @@ export default function Agenda() {
     await executeConfirmar(id);
   };
 
+  const handleConfirmarWhatsApp = async (id: string) => {
+    const ag = agendamentos.find(a => a.id === id);
+    if (!ag) return;
+    const pac = pacientes.find(p => p.id === ag.paciente_id);
+    if (!pac?.telefone) {
+      toast({ title: 'Sem telefone', description: 'Este paciente não tem telefone cadastrado.', variant: 'destructive' });
+      return;
+    }
+    // 1. Confirma o agendamento
+    await handleConfirmar(id);
+    // 2. Abre WhatsApp com mensagem pronta
+    const dataFmt = format(parseISO(ag.data_inicio), "EEEE, d 'de' MMM 'às' HH:mm", { locale: ptBR });
+    const nome = `${pac.nome} ${pac.sobrenome || ''}`.trim();
+    await shareConfirmacaoSessao(nome, pac.telefone, dataFmt);
+    toast({ title: '✅ Confirmado + WhatsApp aberto', description: 'Mensagem pronta para envio.' });
+  };
+
   const executeRecusar = async (id: string) => {
     const ag = agendamentos.find(a => a.id === id);
     await updateAgendamento(id, { status: 'cancelado' });
