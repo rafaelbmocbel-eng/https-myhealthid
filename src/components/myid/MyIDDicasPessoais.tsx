@@ -9,6 +9,8 @@ import {
 import { useState } from 'react';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult, type ClinicalMission } from '@/utils/myid/clinicalInsights';
+import MyIDMissoesEditor from './MyIDMissoesEditor';
+import { buildAutoMissoes } from '@/utils/myid/buildAutoMissoes';
 
 interface Scores {
   D: number;
