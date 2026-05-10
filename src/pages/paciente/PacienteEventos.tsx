@@ -32,7 +32,20 @@ interface Evento {
   valor: number;
   link_pagamento: string | null;
   descricao_formulario: string | null;
+  categoria: string | null;
+  link_video: string | null;
+  recorrencia_grupo_id: string | null;
 }
+
+const CATEGORIA_LABELS: Record<string, { label: string; emoji: string }> = {
+  aula: { label: 'Aula', emoji: '🧘' },
+  workshop: { label: 'Workshop', emoji: '🛠️' },
+  live: { label: 'Live', emoji: '🎥' },
+  triagem: { label: 'Triagem', emoji: '🩺' },
+  desafio: { label: 'Desafio', emoji: '🏆' },
+  sazonal: { label: 'Sazonal', emoji: '🎉' },
+  outro: { label: 'Evento', emoji: '📌' },
+};
 
 interface Pergunta {
   id: string;
