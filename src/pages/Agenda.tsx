@@ -37,6 +37,7 @@ import { gerarEvolucaoSessaoConcluida } from '@/utils/evolucaoAutoNotes';
 import { PacienteSelect } from '@/components/paciente/PacienteSelect';
 import LembreteEncerramento from '@/components/agenda/LembreteEncerramento';
 import AgendaPatientStats from '@/components/agenda/AgendaPatientStats';
+import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
 import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
