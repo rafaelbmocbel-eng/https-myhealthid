@@ -62,6 +62,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [step, setStep] = useState<Step>('record');
   const [isEditingTranscript, setIsEditingTranscript] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
