@@ -1015,6 +1015,7 @@ export type Database = {
       eventos: {
         Row: {
           ativo: boolean
+          categoria: string
           cobrar_pagamento: boolean
           created_at: string
           data_evento: string
@@ -1023,11 +1024,16 @@ export type Database = {
           horario_fim: string
           horario_inicio: string
           id: string
+          lembrete_1h_enviado: boolean
+          lembrete_24h_enviado: boolean
           link_pagamento: string | null
+          link_video: string | null
           local: string | null
           pix_chave: string | null
           pix_nome: string | null
           pix_tipo: string | null
+          publico_alvo: string
+          recorrencia_grupo_id: string | null
           terapeuta_id: string
           titulo: string
           updated_at: string
@@ -1036,6 +1042,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          categoria?: string
           cobrar_pagamento?: boolean
           created_at?: string
           data_evento: string
@@ -1044,11 +1051,16 @@ export type Database = {
           horario_fim?: string
           horario_inicio?: string
           id?: string
+          lembrete_1h_enviado?: boolean
+          lembrete_24h_enviado?: boolean
           link_pagamento?: string | null
+          link_video?: string | null
           local?: string | null
           pix_chave?: string | null
           pix_nome?: string | null
           pix_tipo?: string | null
+          publico_alvo?: string
+          recorrencia_grupo_id?: string | null
           terapeuta_id: string
           titulo: string
           updated_at?: string
@@ -1057,6 +1069,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          categoria?: string
           cobrar_pagamento?: boolean
           created_at?: string
           data_evento?: string
@@ -1065,11 +1078,16 @@ export type Database = {
           horario_fim?: string
           horario_inicio?: string
           id?: string
+          lembrete_1h_enviado?: boolean
+          lembrete_24h_enviado?: boolean
           link_pagamento?: string | null
+          link_video?: string | null
           local?: string | null
           pix_chave?: string | null
           pix_nome?: string | null
           pix_tipo?: string | null
+          publico_alvo?: string
+          recorrencia_grupo_id?: string | null
           terapeuta_id?: string
           titulo?: string
           updated_at?: string
@@ -3463,6 +3481,7 @@ export type Database = {
       eventos_publicos: {
         Row: {
           ativo: boolean | null
+          categoria: string | null
           cobrar_pagamento: boolean | null
           created_at: string | null
           data_evento: string | null
@@ -3471,6 +3490,7 @@ export type Database = {
           horario_fim: string | null
           horario_inicio: string | null
           id: string | null
+          link_video: string | null
           local: string | null
           terapeuta_id: string | null
           titulo: string | null
@@ -3480,6 +3500,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean | null
+          categoria?: string | null
           cobrar_pagamento?: boolean | null
           created_at?: string | null
           data_evento?: string | null
@@ -3488,6 +3509,7 @@ export type Database = {
           horario_fim?: string | null
           horario_inicio?: string | null
           id?: string | null
+          link_video?: string | null
           local?: string | null
           terapeuta_id?: string | null
           titulo?: string | null
@@ -3497,6 +3519,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean | null
+          categoria?: string | null
           cobrar_pagamento?: boolean | null
           created_at?: string | null
           data_evento?: string | null
@@ -3505,6 +3528,7 @@ export type Database = {
           horario_fim?: string | null
           horario_inicio?: string | null
           id?: string | null
+          link_video?: string | null
           local?: string | null
           terapeuta_id?: string | null
           titulo?: string | null
