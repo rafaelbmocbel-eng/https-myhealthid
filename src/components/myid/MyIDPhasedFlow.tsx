@@ -3,7 +3,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Clock, CheckCircle2 } from 'lucide-react';
 import { Bloco1 } from './steps/Bloco1';
 import { Bloco2 } from './steps/Bloco2';
 import { Bloco3 } from './steps/Bloco3';
