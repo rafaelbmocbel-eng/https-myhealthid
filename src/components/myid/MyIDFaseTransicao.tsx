@@ -55,9 +55,11 @@ interface Props {
   proximaFase?: 1 | 2 | 3 | 4;
   scoreParcial?: number;
   dimensoesPreenchidas?: string[];
+  partialScores?: Record<string, number>;
   onContinuar: () => void;
   onSalvarESair?: () => void;
 }
+
 
 export function MyIDFaseTransicao({
   modo,
