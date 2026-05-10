@@ -194,7 +194,50 @@ export default function Eventos() {
                     pixTipo={pixTipo} setPixTipo={setPixTipo}
                     pixNome={pixNome} setPixNome={setPixNome}
                     linkPagamento={linkPagamento} setLinkPagamento={setLinkPagamento}
+                    categoria={categoria} setCategoria={setCategoria}
+                    linkVideo={linkVideo} setLinkVideo={setLinkVideo}
+                    publicoAlvo={publicoAlvo} setPublicoAlvo={setPublicoAlvo}
                   />
+
+                  <Separator />
+
+                  {/* Recurrence */}
+                  <div className="space-y-3 rounded-lg border border-border/40 p-3 bg-muted/30">
+                    <Label className="flex items-center gap-2 text-base font-semibold">
+                      <Repeat className="icon-sm" /> Repetir evento
+                    </Label>
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      <div>
+                        <Label className="text-xs">Frequência</Label>
+                        <Select value={recorrenciaTipo} onValueChange={(v) => setRecorrenciaTipo(v as any)}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="nao">Não repetir (único)</SelectItem>
+                            <SelectItem value="diaria">Diariamente (ex: desafio 30 dias)</SelectItem>
+                            <SelectItem value="semanal">Semanalmente (ex: aula toda quarta)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      {recorrenciaTipo !== 'nao' && (
+                        <>
+                          <div>
+                            <Label className="text-xs">A cada</Label>
+                            <Input type="number" min={1} max={12} value={recorrenciaIntervalo}
+                              onChange={e => setRecorrenciaIntervalo(Number(e.target.value) || 1)} />
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              {recorrenciaTipo === 'semanal' ? 'semana(s)' : 'dia(s)'}
+                            </p>
+                          </div>
+                          <div>
+                            <Label className="text-xs">Total de eventos</Label>
+                            <Input type="number" min={2} max={52} value={recorrenciaOcorrencias}
+                              onChange={e => setRecorrenciaOcorrencias(Number(e.target.value) || 2)} />
+                            <p className="text-[10px] text-muted-foreground mt-1">máx. 52</p>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
 
                   <Separator />
 
