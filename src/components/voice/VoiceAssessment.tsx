@@ -568,6 +568,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setTranscript('');
     setEditedTranscript('');
     setAudioBase64(null);
+    setAudioBlob(null);
     setAssessment(null);
     setIsSaved(false);
     setRecordingTime(0);
