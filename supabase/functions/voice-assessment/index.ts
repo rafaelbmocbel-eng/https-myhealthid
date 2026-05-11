@@ -291,12 +291,37 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
 
+    let audioBase64ToUse = audioBase64;
+    let audioMimeTypeToUse = audioMimeType;
+
+    // Se recebemos signedUrl, baixamos o áudio e convertemos para base64
+    if (signedUrl && !audioBase64ToUse) {
+      try {
+        const audioRes = await fetch(signedUrl);
+        if (!audioRes.ok) throw new Error(`Storage download failed: ${audioRes.status}`);
+        const audioBuffer = await audioRes.arrayBuffer();
+        audioBase64ToUse = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+        // infer mime from signedUrl or default
+        const urlLower = signedUrl.toLowerCase();
+        if (urlLower.includes('.webm')) audioMimeTypeToUse = 'audio/webm';
+        else if (urlLower.includes('.m4a') || urlLower.includes('.mp4')) audioMimeTypeToUse = 'audio/mp4';
+        else if (urlLower.includes('.ogg')) audioMimeTypeToUse = 'audio/ogg';
+        else audioMimeTypeToUse = audioMimeType || 'audio/webm';
+        console.log(`[voice-assessment] Downloaded audio from signedUrl: ${audioBase64ToUse.length} chars base64`);
+      } catch (err) {
+        console.error("[voice-assessment] Failed to download audio from signedUrl:", err);
+        return new Response(JSON.stringify({ error: "Não foi possível baixar o áudio do storage. Tente novamente." }), {
+          status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+    }
+
     const hasText = transcript && transcript.trim().length >= 20;
-    const hasAudio = audioBase64 && audioBase64.length > 100;
+    const hasAudio = audioBase64ToUse && audioBase64ToUse.length > 100;
 
     if (!hasText && !hasAudio) {
       return new Response(JSON.stringify({ error: "Envie áudio ou transcrição com pelo menos algumas frases." }), {
