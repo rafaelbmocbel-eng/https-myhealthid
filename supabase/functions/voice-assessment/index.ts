@@ -370,7 +370,7 @@ serve(async (req) => {
               {
                 role: "user",
                 content: [
-                  { type: "input_audio", input_audio: { data: audioBase64, format: audioFormat } },
+                  { type: "input_audio", input_audio: { data: audioBase64ToUse, format: audioFormat } },
                   { type: "text", text: "Transcreva o áudio inteiro fielmente, palavra por palavra, em PT-BR." },
                 ],
               },
