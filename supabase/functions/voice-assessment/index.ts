@@ -410,7 +410,12 @@ serve(async (req) => {
     // ───────────────────────────────────────────────────────────────
     const userContent: any[] = [];
 
-    if (hasAudio) {
+    // Otimização: se já temos transcrição fiel (Pass 1 ou input do usuário),
+    // NÃO reenvia o áudio para o Pass 2. Isso corta ~50% do upload e reduz
+    // significativamente a latência da análise estruturada.
+    const attachAudioToPass2 = hasAudio && !faithfulTranscript;
+
+    if (attachAudioToPass2) {
       userContent.push({
         type: "input_audio",
         input_audio: { data: audioBase64ToUse, format: audioFormat },
