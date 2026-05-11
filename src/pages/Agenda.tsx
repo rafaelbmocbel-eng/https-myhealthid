@@ -670,29 +670,64 @@ export default function Agenda() {
       }
 
       if (form.recorrencia !== 'none') {
-        // Batch create all recurring appointments in one insert
         const grupoId = crypto.randomUUID();
-        const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
         const totalWeeks = form.recorrencia_semanas;
-        const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
-
+        const baseStart = new Date(form.data_inicio);
+        const baseEnd = new Date(form.data_fim);
+        const durMs = baseEnd.getTime() - baseStart.getTime();
         const allItems: Omit<Agendamento, 'id'>[] = [];
-        for (let i = 0; i <= totalSlots; i++) {
-          const newStart = new Date(form.data_inicio);
-          newStart.setDate(newStart.getDate() + (intervalDays * i));
-          const newEnd = new Date(form.data_fim);
-          newEnd.setDate(newEnd.getDate() + (intervalDays * i));
 
-          allItems.push({
-            ...payload,
-            data_inicio: newStart.toISOString(),
-            data_fim: newEnd.toISOString(),
-            recorrencia_grupo_id: grupoId,
-          } as Omit<Agendamento, 'id'>);
+        if (form.recorrencia === 'dias_semana') {
+          const dias = [...form.recorrencia_dias].sort((a, b) => a - b);
+          if (dias.length === 0) {
+            toast({ title: 'Selecione ao menos um dia da semana', variant: 'destructive' });
+            setSubmitting(false);
+            return;
+          }
+          // Itera dia a dia por totalWeeks*7 dias a partir do início
+          const startDay = new Date(baseStart);
+          startDay.setHours(0, 0, 0, 0);
+          for (let d = 0; d < totalWeeks * 7; d++) {
+            const cursor = new Date(startDay);
+            cursor.setDate(cursor.getDate() + d);
+            if (!dias.includes(cursor.getDay())) continue;
+            const newStart = new Date(cursor);
+            newStart.setHours(baseStart.getHours(), baseStart.getMinutes(), 0, 0);
+            // só inclui datas >= baseStart
+            if (newStart.getTime() < baseStart.getTime()) continue;
+            const newEnd = new Date(newStart.getTime() + durMs);
+            allItems.push({
+              ...payload,
+              data_inicio: newStart.toISOString(),
+              data_fim: newEnd.toISOString(),
+              recorrencia_grupo_id: grupoId,
+            } as Omit<Agendamento, 'id'>);
+          }
+        } else {
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
+          for (let i = 0; i <= totalSlots; i++) {
+            const newStart = new Date(baseStart);
+            newStart.setDate(newStart.getDate() + (intervalDays * i));
+            const newEnd = new Date(baseEnd);
+            newEnd.setDate(newEnd.getDate() + (intervalDays * i));
+            allItems.push({
+              ...payload,
+              data_inicio: newStart.toISOString(),
+              data_fim: newEnd.toISOString(),
+              recorrencia_grupo_id: grupoId,
+            } as Omit<Agendamento, 'id'>);
+          }
+        }
+
+        if (allItems.length === 0) {
+          toast({ title: 'Nenhuma sessão gerada', description: 'Verifique os dias e o período.', variant: 'destructive' });
+          setSubmitting(false);
+          return;
         }
 
         await createBatchAgendamentos(allItems);
-        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência por ${totalWeeks} semanas.` });
       } else {
         await createAgendamento(payload as Omit<Agendamento, 'id'>);
       }
