@@ -85,8 +85,9 @@ interface FormData {
   paciente_id: string; titulo: string;
   data_inicio: string; data_fim: string;
   status: string; tipo_atendimento: string; observacoes: string;
-  recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal';
+  recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal' | 'dias_semana';
   recorrencia_semanas: number;
+  recorrencia_dias: number[]; // 0=dom, 1=seg, ..., 6=sáb
   membro_equipe_id: string;
 }
 
