@@ -71,6 +71,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [transcript, setTranscript] = useState('');
   const [editedTranscript, setEditedTranscript] = useState('');
   const [audioBase64, setAudioBase64] = useState<string | null>(null);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioMimeType, setAudioMimeType] = useState<string>('audio/webm');
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -218,6 +219,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        setAudioBlob(blob);
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
@@ -406,21 +408,29 @@ Detalhes completos no Histórico de Avaliações.`;
     }
   };
 
+  const uploadAudioToStorage = async (blob: Blob): Promise<string> => {
+    if (!user) throw new Error('Usuário não autenticado');
+    const ext = audioMimeType.includes('webm') ? 'webm' : audioMimeType.includes('mp4') ? 'm4a' : 'ogg';
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error: upError } = await supabase.storage
+      .from('audio-temp')
+      .upload(path, blob, { contentType: audioMimeType, upsert: false });
+    if (upError) throw new Error(`Falha no upload do áudio: ${upError.message}`);
+    const { data: signedData, error: signError } = await supabase.storage
+      .from('audio-temp')
+      .createSignedUrl(path, 3600); // 1 hora
+    if (signError || !signedData?.signedUrl) {
+      // tenta limpar o upload falho
+      await supabase.storage.from('audio-temp').remove([path]);
+      throw new Error(`Falha ao gerar link do áudio: ${signError?.message || 'unknown'}`);
+    }
+    return signedData.signedUrl;
+  };
+
   const processAssessment = async () => {
     const text = editedTranscript.trim();
     if (!audioBase64 && text.length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Adicione mais conteúdo ou grave áudio.', variant: 'destructive' });
-      return;
-    }
-
-    // Hard guard: avoid sending huge payloads that the AI gateway will reject (413)
-    // ~20MB base64 ≈ 15MB raw audio. Opus 64kbps ≈ ~30 min.
-    if (audioBase64 && audioBase64.length > 20 * 1024 * 1024) {
-      toast({
-        title: 'Áudio muito longo',
-        description: 'Grave trechos menores (até ~25 min) ou divida a consulta em partes.',
-        variant: 'destructive',
-      });
       return;
     }
 
@@ -430,10 +440,26 @@ Detalhes completos no Histórico de Avaliações.`;
     try {
       const body: any = { serviceType, patientName, patientAge, patientSex };
 
-      if (audioBase64) {
+      // Se há áudio grande (>3.5MB base64), faz upload para storage e passa signed URL
+      if (audioBase64 && audioBase64.length > 3.5 * 1024 * 1024) {
+        if (!audioBlob) {
+          toast({
+            title: 'Áudio não disponível',
+            description: 'O áudio é muito longo para envio direto e não pode ser recuperado deste rascunho. Grave novamente.',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
+        }
+        toast({ title: 'Enviando áudio...', description: 'O áudio está sendo carregado para processamento.' });
+        const signedUrl = await uploadAudioToStorage(audioBlob);
+        body.signedUrl = signedUrl;
+        body.audioMimeType = audioMimeType;
+      } else if (audioBase64) {
         body.audioBase64 = audioBase64;
         body.audioMimeType = audioMimeType;
       }
+
       if (text.length >= 20) {
         body.transcript = contextPrefix ? `${contextPrefix}\n\n${text}` : text;
       } else if (contextPrefix) {
@@ -566,6 +592,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setTranscript('');
     setEditedTranscript('');
     setAudioBase64(null);
+    setAudioBlob(null);
     setAssessment(null);
     setIsSaved(false);
     setRecordingTime(0);
@@ -920,7 +947,7 @@ ${resumoTecnicas}`;
                 placeholder="Texto da transcrição..."
               />
               <div className="flex gap-2">
-                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
+                <Button size="sm" variant="outline" onClick={() => { setAudioBase64(null); setAudioBlob(null); setTranscript(''); setRecordingTime(0); setStep('record'); }}>
                   <Mic className="h-4 w-4 mr-1" />Gravar Mais Áudio
                 </Button>
                 <Button
@@ -1545,6 +1572,7 @@ ${resumoTecnicas}`;
                       const result = reader.result as string;
                       const base64 = result.split(',')[1];
                       setAudioBase64(base64);
+                      setAudioBlob(file);
                       setAudioMimeType(file.type || 'audio/mpeg');
                       // estimate duration display via file size
                       setRecordingTime(0);
