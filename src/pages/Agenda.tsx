@@ -85,8 +85,9 @@ interface FormData {
   paciente_id: string; titulo: string;
   data_inicio: string; data_fim: string;
   status: string; tipo_atendimento: string; observacoes: string;
-  recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal';
+  recorrencia: 'none' | 'semanal' | 'quinzenal' | 'mensal' | 'dias_semana';
   recorrencia_semanas: number;
+  recorrencia_dias: number[]; // 0=dom, 1=seg, ..., 6=sáb
   membro_equipe_id: string;
 }
 
@@ -463,7 +464,7 @@ export default function Agenda() {
     paciente_id: '', titulo: '',
     data_inicio: '', data_fim: '',
     status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-    recorrencia: 'none', recorrencia_semanas: 4,
+    recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
     membro_equipe_id: '',
   });
 
@@ -606,7 +607,7 @@ export default function Agenda() {
       data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-      recorrencia: 'none', recorrencia_semanas: 4,
+      recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
       membro_equipe_id: '',
     });
     setModal({ open: true });
@@ -623,6 +624,7 @@ export default function Agenda() {
       observacoes: ag.observacoes || '',
       recorrencia: 'none',
       recorrencia_semanas: 4,
+      recorrencia_dias: [],
       membro_equipe_id: (ag as any).membro_equipe_id || '',
     });
     setModal({ open: true, agendamento: ag });
@@ -657,7 +659,54 @@ export default function Agenda() {
         setSubmitting(false);
         return;
       }
-      await updateAgendamento(modal.agendamento.id, payload);
+
+      // Se o usuário ativou recorrência ao editar um agendamento que ainda não é recorrente,
+      // atualiza o atual e cria as ocorrências futuras na mesma série.
+      if (form.recorrencia !== 'none') {
+        const grupoId = crypto.randomUUID();
+        await updateAgendamento(modal.agendamento.id, { ...payload, recorrencia_grupo_id: grupoId });
+
+        const baseStart = new Date(form.data_inicio);
+        const baseEnd = new Date(form.data_fim);
+        const durMs = baseEnd.getTime() - baseStart.getTime();
+        const totalWeeks = form.recorrencia_semanas;
+        const extras: Omit<Agendamento, 'id'>[] = [];
+
+        if (form.recorrencia === 'dias_semana') {
+          const dias = [...form.recorrencia_dias].sort((a, b) => a - b);
+          if (dias.length === 0) {
+            toast({ title: 'Selecione ao menos um dia da semana', variant: 'destructive' });
+            setSubmitting(false);
+            return;
+          }
+          const startDay = new Date(baseStart);
+          startDay.setHours(0, 0, 0, 0);
+          for (let d = 1; d < totalWeeks * 7; d++) {
+            const cursor = new Date(startDay);
+            cursor.setDate(cursor.getDate() + d);
+            if (!dias.includes(cursor.getDay())) continue;
+            const newStart = new Date(cursor);
+            newStart.setHours(baseStart.getHours(), baseStart.getMinutes(), 0, 0);
+            const newEnd = new Date(newStart.getTime() + durMs);
+            extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
+          }
+        } else {
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
+          for (let i = 1; i <= totalSlots; i++) {
+            const newStart = new Date(baseStart);
+            newStart.setDate(newStart.getDate() + (intervalDays * i));
+            const newEnd = new Date(baseEnd);
+            newEnd.setDate(newEnd.getDate() + (intervalDays * i));
+            extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
+          }
+        }
+
+        if (extras.length > 0) await createBatchAgendamentos(extras);
+        toast({ title: `✅ Recorrência criada!`, description: `${extras.length + 1} sessões nesta série.` });
+      } else {
+        await updateAgendamento(modal.agendamento.id, payload);
+      }
     } else {
       // Check capacity before creating
       const overlapping = countOverlapping(payload.data_inicio, payload.data_fim);
@@ -668,29 +717,64 @@ export default function Agenda() {
       }
 
       if (form.recorrencia !== 'none') {
-        // Batch create all recurring appointments in one insert
         const grupoId = crypto.randomUUID();
-        const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
         const totalWeeks = form.recorrencia_semanas;
-        const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
-
+        const baseStart = new Date(form.data_inicio);
+        const baseEnd = new Date(form.data_fim);
+        const durMs = baseEnd.getTime() - baseStart.getTime();
         const allItems: Omit<Agendamento, 'id'>[] = [];
-        for (let i = 0; i <= totalSlots; i++) {
-          const newStart = new Date(form.data_inicio);
-          newStart.setDate(newStart.getDate() + (intervalDays * i));
-          const newEnd = new Date(form.data_fim);
-          newEnd.setDate(newEnd.getDate() + (intervalDays * i));
 
-          allItems.push({
-            ...payload,
-            data_inicio: newStart.toISOString(),
-            data_fim: newEnd.toISOString(),
-            recorrencia_grupo_id: grupoId,
-          } as Omit<Agendamento, 'id'>);
+        if (form.recorrencia === 'dias_semana') {
+          const dias = [...form.recorrencia_dias].sort((a, b) => a - b);
+          if (dias.length === 0) {
+            toast({ title: 'Selecione ao menos um dia da semana', variant: 'destructive' });
+            setSubmitting(false);
+            return;
+          }
+          // Itera dia a dia por totalWeeks*7 dias a partir do início
+          const startDay = new Date(baseStart);
+          startDay.setHours(0, 0, 0, 0);
+          for (let d = 0; d < totalWeeks * 7; d++) {
+            const cursor = new Date(startDay);
+            cursor.setDate(cursor.getDate() + d);
+            if (!dias.includes(cursor.getDay())) continue;
+            const newStart = new Date(cursor);
+            newStart.setHours(baseStart.getHours(), baseStart.getMinutes(), 0, 0);
+            // só inclui datas >= baseStart
+            if (newStart.getTime() < baseStart.getTime()) continue;
+            const newEnd = new Date(newStart.getTime() + durMs);
+            allItems.push({
+              ...payload,
+              data_inicio: newStart.toISOString(),
+              data_fim: newEnd.toISOString(),
+              recorrencia_grupo_id: grupoId,
+            } as Omit<Agendamento, 'id'>);
+          }
+        } else {
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
+          for (let i = 0; i <= totalSlots; i++) {
+            const newStart = new Date(baseStart);
+            newStart.setDate(newStart.getDate() + (intervalDays * i));
+            const newEnd = new Date(baseEnd);
+            newEnd.setDate(newEnd.getDate() + (intervalDays * i));
+            allItems.push({
+              ...payload,
+              data_inicio: newStart.toISOString(),
+              data_fim: newEnd.toISOString(),
+              recorrencia_grupo_id: grupoId,
+            } as Omit<Agendamento, 'id'>);
+          }
+        }
+
+        if (allItems.length === 0) {
+          toast({ title: 'Nenhuma sessão gerada', description: 'Verifique os dias e o período.', variant: 'destructive' });
+          setSubmitting(false);
+          return;
         }
 
         await createBatchAgendamentos(allItems);
-        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência ${form.recorrencia} por ${totalWeeks} semanas.` });
+        toast({ title: `✅ ${allItems.length} sessões agendadas!`, description: `Recorrência por ${totalWeeks} semanas.` });
       } else {
         await createAgendamento(payload as Omit<Agendamento, 'id'>);
       }
@@ -1880,32 +1964,88 @@ export default function Agenda() {
               </div>
             </div>
 
-            {/* Recorrência (só para novos) */}
-            {!modal.agendamento && (
-              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
-                <div>
-                  <Label className="text-xs font-bold">Recorrência</Label>
-                  <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
-                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sessão única</SelectItem>
-                      <SelectItem value="semanal">Semanal (mesmo dia/horário)</SelectItem>
-                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.recorrencia !== 'none' && (
-                  <div>
-                    <Label className="text-xs font-bold">Por quantas semanas?</Label>
-                    <Input type="number" min={2} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Serão criadas {Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total
-                    </p>
+            {/* Recorrência — disponível ao adicionar e ao editar */}
+            {(() => {
+              const isExistingRecurring = !!modal.agendamento?.recorrencia_grupo_id;
+              const diasLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+              const diasFull = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+              return (
+                <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold flex items-center gap-1.5">
+                      <Repeat className="h-3.5 w-3.5" /> Repetir agendamento
+                    </Label>
+                    {isExistingRecurring && (
+                      <span className="text-[10px] text-muted-foreground">Já é uma série recorrente</span>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                  {isExistingRecurring ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Este agendamento faz parte de uma série. Para alterar a recorrência, exclua a série e crie uma nova.
+                    </p>
+                  ) : (
+                    <>
+                      <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sessão única</SelectItem>
+                          <SelectItem value="semanal">Semanal (mesmo dia/horário)</SelectItem>
+                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="dias_semana">Dias específicos da semana</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {form.recorrencia === 'dias_semana' && (
+                        <div>
+                          <Label className="text-xs font-bold">Dias de atendimento</Label>
+                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                            {diasLabels.map((lbl, idx) => {
+                              const active = form.recorrencia_dias.includes(idx);
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setForm(f => ({
+                                    ...f,
+                                    recorrencia_dias: active
+                                      ? f.recorrencia_dias.filter(d => d !== idx)
+                                      : [...f.recorrencia_dias, idx],
+                                  }))}
+                                  title={diasFull[idx]}
+                                  className={`h-9 w-9 rounded-full text-xs font-bold border transition ${
+                                    active
+                                      ? 'bg-primary text-primary-foreground border-primary'
+                                      : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                  }`}
+                                >
+                                  {lbl}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-1.5">
+                            Selecione um ou mais dias da semana (ex: seg, qua, sex)
+                          </p>
+                        </div>
+                      )}
+
+                      {form.recorrencia !== 'none' && (
+                        <div>
+                          <Label className="text-xs font-bold">Por quantas semanas?</Label>
+                          <Input type="number" min={1} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {form.recorrencia === 'dias_semana'
+                              ? `Aprox. ${form.recorrencia_dias.length * form.recorrencia_semanas} sessões serão criadas`
+                              : `Serão criadas ${Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total`}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Observações */}
             <div>
