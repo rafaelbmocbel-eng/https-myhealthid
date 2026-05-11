@@ -624,6 +624,7 @@ export default function Agenda() {
       observacoes: ag.observacoes || '',
       recorrencia: 'none',
       recorrencia_semanas: 4,
+      recorrencia_dias: [],
       membro_equipe_id: (ag as any).membro_equipe_id || '',
     });
     setModal({ open: true, agendamento: ag });
