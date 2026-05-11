@@ -309,7 +309,8 @@ serve(async (req) => {
         const CHUNK = 0x8000;
         let binary = '';
         for (let i = 0; i < bytes.length; i += CHUNK) {
-          binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)) as unknown as number[]);
+          // Uint8Array works directly with apply — no Array.from copy
+          binary += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK) as unknown as number[]);
         }
         audioBase64ToUse = btoa(binary);
         // infer mime from signedUrl or default
