@@ -464,7 +464,7 @@ export default function Agenda() {
     paciente_id: '', titulo: '',
     data_inicio: '', data_fim: '',
     status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-    recorrencia: 'none', recorrencia_semanas: 4,
+    recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
     membro_equipe_id: '',
   });
 
