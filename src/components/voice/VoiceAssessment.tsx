@@ -1572,6 +1572,7 @@ ${resumoTecnicas}`;
                       const result = reader.result as string;
                       const base64 = result.split(',')[1];
                       setAudioBase64(base64);
+                      setAudioBlob(file);
                       setAudioMimeType(file.type || 'audio/mpeg');
                       // estimate duration display via file size
                       setRecordingTime(0);
