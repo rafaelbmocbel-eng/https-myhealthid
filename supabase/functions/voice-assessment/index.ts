@@ -405,7 +405,7 @@ serve(async (req) => {
     if (hasAudio) {
       userContent.push({
         type: "input_audio",
-        input_audio: { data: audioBase64, format: audioFormat },
+        input_audio: { data: audioBase64ToUse, format: audioFormat },
       });
     }
 
