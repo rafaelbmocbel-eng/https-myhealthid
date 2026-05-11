@@ -219,6 +219,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       recorder.onstop = () => {
         stream.getTracks().forEach(t => t.stop());
         const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+        setAudioBlob(blob);
         const reader = new FileReader();
         reader.onloadend = () => {
           const base64 = (reader.result as string).split(',')[1];
