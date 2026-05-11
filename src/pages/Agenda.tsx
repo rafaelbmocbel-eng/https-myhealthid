@@ -1964,32 +1964,88 @@ export default function Agenda() {
               </div>
             </div>
 
-            {/* Recorrência (só para novos) */}
-            {!modal.agendamento && (
-              <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
-                <div>
-                  <Label className="text-xs font-bold">Recorrência</Label>
-                  <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
-                    <SelectTrigger className="mt-1.5"><SelectValue /></SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none">Sessão única</SelectItem>
-                      <SelectItem value="semanal">Semanal (mesmo dia/horário)</SelectItem>
-                      <SelectItem value="quinzenal">Quinzenal</SelectItem>
-                      <SelectItem value="mensal">Mensal</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {form.recorrencia !== 'none' && (
-                  <div>
-                    <Label className="text-xs font-bold">Por quantas semanas?</Label>
-                    <Input type="number" min={2} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
-                    <p className="text-[10px] text-muted-foreground mt-1">
-                      Serão criadas {Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total
-                    </p>
+            {/* Recorrência — disponível ao adicionar e ao editar */}
+            {(() => {
+              const isExistingRecurring = !!modal.agendamento?.recorrencia_grupo_id;
+              const diasLabels = ['D', 'S', 'T', 'Q', 'Q', 'S', 'S'];
+              const diasFull = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+              return (
+                <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-bold flex items-center gap-1.5">
+                      <Repeat className="h-3.5 w-3.5" /> Repetir agendamento
+                    </Label>
+                    {isExistingRecurring && (
+                      <span className="text-[10px] text-muted-foreground">Já é uma série recorrente</span>
+                    )}
                   </div>
-                )}
-              </div>
-            )}
+                  {isExistingRecurring ? (
+                    <p className="text-[11px] text-muted-foreground">
+                      Este agendamento faz parte de uma série. Para alterar a recorrência, exclua a série e crie uma nova.
+                    </p>
+                  ) : (
+                    <>
+                      <Select value={form.recorrencia} onValueChange={v => setForm(f => ({ ...f, recorrencia: v as any }))}>
+                        <SelectTrigger className="mt-1"><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Sessão única</SelectItem>
+                          <SelectItem value="semanal">Semanal (mesmo dia/horário)</SelectItem>
+                          <SelectItem value="quinzenal">Quinzenal</SelectItem>
+                          <SelectItem value="mensal">Mensal</SelectItem>
+                          <SelectItem value="dias_semana">Dias específicos da semana</SelectItem>
+                        </SelectContent>
+                      </Select>
+
+                      {form.recorrencia === 'dias_semana' && (
+                        <div>
+                          <Label className="text-xs font-bold">Dias de atendimento</Label>
+                          <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                            {diasLabels.map((lbl, idx) => {
+                              const active = form.recorrencia_dias.includes(idx);
+                              return (
+                                <button
+                                  key={idx}
+                                  type="button"
+                                  onClick={() => setForm(f => ({
+                                    ...f,
+                                    recorrencia_dias: active
+                                      ? f.recorrencia_dias.filter(d => d !== idx)
+                                      : [...f.recorrencia_dias, idx],
+                                  }))}
+                                  title={diasFull[idx]}
+                                  className={`h-9 w-9 rounded-full text-xs font-bold border transition ${
+                                    active
+                                      ? 'bg-primary text-primary-foreground border-primary'
+                                      : 'bg-background text-muted-foreground border-border hover:border-primary/50'
+                                  }`}
+                                >
+                                  {lbl}
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <p className="text-[10px] text-muted-foreground mt-1.5">
+                            Selecione um ou mais dias da semana (ex: seg, qua, sex)
+                          </p>
+                        </div>
+                      )}
+
+                      {form.recorrencia !== 'none' && (
+                        <div>
+                          <Label className="text-xs font-bold">Por quantas semanas?</Label>
+                          <Input type="number" min={1} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
+                          <p className="text-[10px] text-muted-foreground mt-1">
+                            {form.recorrencia === 'dias_semana'
+                              ? `Aprox. ${form.recorrencia_dias.length * form.recorrencia_semanas} sessões serão criadas`
+                              : `Serão criadas ${Math.floor((form.recorrencia_semanas * 7) / (form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30)) + 1} sessões no total`}
+                          </p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
+              );
+            })()}
 
             {/* Observações */}
             <div>
