@@ -607,7 +607,7 @@ export default function Agenda() {
       data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
       data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
       status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-      recorrencia: 'none', recorrencia_semanas: 4,
+      recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
       membro_equipe_id: '',
     });
     setModal({ open: true });
