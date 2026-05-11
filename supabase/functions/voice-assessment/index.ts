@@ -339,13 +339,13 @@ serve(async (req) => {
     // Normalize mime once (used by both passes)
     let audioFormat = "webm";
     if (hasAudio) {
-      const cleanMime = (audioMimeType || "audio/webm").split(";")[0].toLowerCase().trim();
+      const cleanMime = (audioMimeTypeToUse || "audio/webm").split(";")[0].toLowerCase().trim();
       if (cleanMime.includes("webm")) audioFormat = "webm";
       else if (cleanMime.includes("mp4") || cleanMime.includes("m4a") || cleanMime.includes("aac")) audioFormat = "mp4";
       else if (cleanMime.includes("mpeg") || cleanMime.includes("mp3")) audioFormat = "mp3";
       else if (cleanMime.includes("wav")) audioFormat = "wav";
       else if (cleanMime.includes("ogg")) audioFormat = "ogg";
-      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> format=${audioFormat}, base64Len=${audioBase64.length}`);
+      console.log(`[voice-assessment] Audio: mime=${cleanMime} -> format=${audioFormat}, base64Len=${audioBase64ToUse.length}`);
     }
 
     // ───────────────────────────────────────────────────────────────
