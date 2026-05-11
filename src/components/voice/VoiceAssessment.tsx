@@ -408,21 +408,29 @@ Detalhes completos no Histórico de Avaliações.`;
     }
   };
 
+  const uploadAudioToStorage = async (blob: Blob): Promise<string> => {
+    if (!user) throw new Error('Usuário não autenticado');
+    const ext = audioMimeType.includes('webm') ? 'webm' : audioMimeType.includes('mp4') ? 'm4a' : 'ogg';
+    const path = `${user.id}/${Date.now()}.${ext}`;
+    const { error: upError } = await supabase.storage
+      .from('audio-temp')
+      .upload(path, blob, { contentType: audioMimeType, upsert: false });
+    if (upError) throw new Error(`Falha no upload do áudio: ${upError.message}`);
+    const { data: signedData, error: signError } = await supabase.storage
+      .from('audio-temp')
+      .createSignedUrl(path, 3600); // 1 hora
+    if (signError || !signedData?.signedUrl) {
+      // tenta limpar o upload falho
+      await supabase.storage.from('audio-temp').remove([path]);
+      throw new Error(`Falha ao gerar link do áudio: ${signError?.message || 'unknown'}`);
+    }
+    return signedData.signedUrl;
+  };
+
   const processAssessment = async () => {
     const text = editedTranscript.trim();
     if (!audioBase64 && text.length < 20) {
       toast({ title: 'Conteúdo insuficiente', description: 'Adicione mais conteúdo ou grave áudio.', variant: 'destructive' });
-      return;
-    }
-
-    // Hard guard: avoid sending huge payloads that the AI gateway will reject (413)
-    // ~20MB base64 ≈ 15MB raw audio. Opus 64kbps ≈ ~30 min.
-    if (audioBase64 && audioBase64.length > 20 * 1024 * 1024) {
-      toast({
-        title: 'Áudio muito longo',
-        description: 'Grave trechos menores (até ~25 min) ou divida a consulta em partes.',
-        variant: 'destructive',
-      });
       return;
     }
 
@@ -432,10 +440,26 @@ Detalhes completos no Histórico de Avaliações.`;
     try {
       const body: any = { serviceType, patientName, patientAge, patientSex };
 
-      if (audioBase64) {
+      // Se há áudio grande (>3.5MB base64), faz upload para storage e passa signed URL
+      if (audioBase64 && audioBase64.length > 3.5 * 1024 * 1024) {
+        if (!audioBlob) {
+          toast({
+            title: 'Áudio não disponível',
+            description: 'O áudio é muito longo para envio direto e não pode ser recuperado deste rascunho. Grave novamente.',
+            variant: 'destructive',
+          });
+          setIsProcessing(false);
+          return;
+        }
+        toast({ title: 'Enviando áudio...', description: 'O áudio está sendo carregado para processamento.' });
+        const signedUrl = await uploadAudioToStorage(audioBlob);
+        body.signedUrl = signedUrl;
+        body.audioMimeType = audioMimeType;
+      } else if (audioBase64) {
         body.audioBase64 = audioBase64;
         body.audioMimeType = audioMimeType;
       }
+
       if (text.length >= 20) {
         body.transcript = contextPrefix ? `${contextPrefix}\n\n${text}` : text;
       } else if (contextPrefix) {
