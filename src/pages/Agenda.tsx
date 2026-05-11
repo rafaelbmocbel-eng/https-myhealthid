@@ -659,7 +659,54 @@ export default function Agenda() {
         setSubmitting(false);
         return;
       }
-      await updateAgendamento(modal.agendamento.id, payload);
+
+      // Se o usuário ativou recorrência ao editar um agendamento que ainda não é recorrente,
+      // atualiza o atual e cria as ocorrências futuras na mesma série.
+      if (form.recorrencia !== 'none') {
+        const grupoId = crypto.randomUUID();
+        await updateAgendamento(modal.agendamento.id, { ...payload, recorrencia_grupo_id: grupoId });
+
+        const baseStart = new Date(form.data_inicio);
+        const baseEnd = new Date(form.data_fim);
+        const durMs = baseEnd.getTime() - baseStart.getTime();
+        const totalWeeks = form.recorrencia_semanas;
+        const extras: Omit<Agendamento, 'id'>[] = [];
+
+        if (form.recorrencia === 'dias_semana') {
+          const dias = [...form.recorrencia_dias].sort((a, b) => a - b);
+          if (dias.length === 0) {
+            toast({ title: 'Selecione ao menos um dia da semana', variant: 'destructive' });
+            setSubmitting(false);
+            return;
+          }
+          const startDay = new Date(baseStart);
+          startDay.setHours(0, 0, 0, 0);
+          for (let d = 1; d < totalWeeks * 7; d++) {
+            const cursor = new Date(startDay);
+            cursor.setDate(cursor.getDate() + d);
+            if (!dias.includes(cursor.getDay())) continue;
+            const newStart = new Date(cursor);
+            newStart.setHours(baseStart.getHours(), baseStart.getMinutes(), 0, 0);
+            const newEnd = new Date(newStart.getTime() + durMs);
+            extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
+          }
+        } else {
+          const intervalDays = form.recorrencia === 'semanal' ? 7 : form.recorrencia === 'quinzenal' ? 14 : 30;
+          const totalSlots = Math.floor((totalWeeks * 7) / intervalDays);
+          for (let i = 1; i <= totalSlots; i++) {
+            const newStart = new Date(baseStart);
+            newStart.setDate(newStart.getDate() + (intervalDays * i));
+            const newEnd = new Date(baseEnd);
+            newEnd.setDate(newEnd.getDate() + (intervalDays * i));
+            extras.push({ ...payload, data_inicio: newStart.toISOString(), data_fim: newEnd.toISOString(), recorrencia_grupo_id: grupoId } as Omit<Agendamento, 'id'>);
+          }
+        }
+
+        if (extras.length > 0) await createBatchAgendamentos(extras);
+        toast({ title: `✅ Recorrência criada!`, description: `${extras.length + 1} sessões nesta série.` });
+      } else {
+        await updateAgendamento(modal.agendamento.id, payload);
+      }
     } else {
       // Check capacity before creating
       const overlapping = countOverlapping(payload.data_inicio, payload.data_fim);
