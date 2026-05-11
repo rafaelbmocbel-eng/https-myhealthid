@@ -304,7 +304,14 @@ serve(async (req) => {
         const audioRes = await fetch(signedUrl);
         if (!audioRes.ok) throw new Error(`Storage download failed: ${audioRes.status}`);
         const audioBuffer = await audioRes.arrayBuffer();
-        audioBase64ToUse = btoa(String.fromCharCode(...new Uint8Array(audioBuffer)));
+        // Convert to base64 in chunks to avoid call-stack overflow on large files
+        const bytes = new Uint8Array(audioBuffer);
+        const CHUNK = 0x8000;
+        let binary = '';
+        for (let i = 0; i < bytes.length; i += CHUNK) {
+          binary += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + CHUNK)) as unknown as number[]);
+        }
+        audioBase64ToUse = btoa(binary);
         // infer mime from signedUrl or default
         const urlLower = signedUrl.toLowerCase();
         if (urlLower.includes('.webm')) audioMimeTypeToUse = 'audio/webm';
