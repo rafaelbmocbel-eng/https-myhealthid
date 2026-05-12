@@ -1312,7 +1312,7 @@ ${resumoTecnicas}`;
                       <Button
                         size="sm"
                         onClick={() => setShowReviewDialog(true)}
-                        disabled={creatingDiretriz || !isSaved}
+                        disabled={creatingDiretriz}
                         className="w-full gap-1.5 h-10 bg-primary text-primary-foreground"
                       >
                         {creatingDiretriz
@@ -1324,11 +1324,6 @@ ${resumoTecnicas}`;
                         Veja a sugestão completa antes de aprovar, editar ou descartar.
                       </p>
                     </div>
-                  )}
-                  {!isSaved && !diretrizCreatedId && (
-                    <p className="text-[10px] text-muted-foreground mt-1.5 text-center">
-                      Salve a avaliação primeiro para criar a diretriz oficial.
-                    </p>
                   )}
                 </div>
               )}
