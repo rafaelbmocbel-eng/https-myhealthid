@@ -15,6 +15,7 @@ import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
+import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
@@ -36,6 +37,10 @@ interface VoiceAssessmentProps {
   onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void;
   /** Region catalog used by the pain extractor (id+label list). Required if onPainExtracted is set. */
   painRegionsCatalog?: { regions: Array<{ id: string; label: string }>; catalog?: Record<string, { categories: Record<string, string[]> }> };
+  /** Current pain map from the body avatar — persisted with the assessment so it survives reloads */
+  painMap?: Record<string, number>;
+  /** Optional MyID context summary for prontuário note */
+  myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -59,7 +64,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -90,6 +95,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showProntuarioReview, setShowProntuarioReview] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
@@ -350,7 +356,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       const origem = mode === 'written' ? 'escrita' : 'voice_assessment';
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
-        _meta: { origem, mode, savedAt: new Date().toISOString() },
+        _meta: {
+          origem,
+          mode,
+          savedAt: new Date().toISOString(),
+          mapa_dor: painMap || null,
+          myid_contexto: myidContext || null,
+        },
       };
       const payload = {
         terapeuta_id: user.id,
@@ -366,7 +378,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       let avaliacaoId = savedAssessmentIdRef.current;
 
       if (avaliacaoId) {
-        // Update existing record (dedupe — evita duplicatas em re-saves silenciosos)
         const { error: updError } = await supabase
           .from('avaliacoes_voz')
           .update(payload)
@@ -383,51 +394,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         savedAssessmentIdRef.current = avaliacaoId;
       }
 
-      let noteWarning: string | null = null;
+      const noteWarning: string | null = null;
 
-      if (pacienteId) {
-        const hipoteses = assessmentToSave.hipoteses_diagnosticas?.slice(0, 3).map((h: any) => h.diagnostico).join(', ') || 'N/I';
-        const descricao = `Avaliação por ${mode === 'written' ? 'Escrita' : 'Voz'} — ${SERVICE_LABELS[serviceType]}
-Queixa: ${assessmentToSave.queixa_principal || 'N/I'}
-Dor EVA: ${assessmentToSave.dor?.intensidade_eva || '?'}/10 — ${assessmentToSave.dor?.tipo || 'N/I'}
-Classificação: ${assessmentToSave.classificacao_severidade || 'N/I'}
-Hipóteses: ${hipoteses}
-${assessmentToSave.resumo_clinico?.substring(0, 200) || ''}
-Detalhes completos no Histórico de Avaliações.`;
-
-        const notaPayload = {
-          paciente_id: pacienteId,
-          terapeuta_id: user.id,
-          tipo: 'avaliacao_voz',
-          titulo: `Avaliação por ${mode === 'written' ? 'Escrita' : 'Voz'} — ${SERVICE_LABELS[serviceType]}`,
-          descricao,
-          dados_extras: normalizeJson({ assessment: assessmentToSave, transcricao: transcriptToSave, origem }),
-          referencia_id: avaliacaoId,
-        };
-
-        if (savedNoteIdRef.current) {
-          const { error: noteError } = await (supabase as any)
-            .from('notas_prontuario')
-            .update(notaPayload)
-            .eq('id', savedNoteIdRef.current);
-          if (noteError) {
-            console.error('Erro ao atualizar nota de prontuário:', noteError);
-            noteWarning = noteError.message;
-          }
-        } else {
-          const { data: notaIns, error: noteError } = await (supabase as any)
-            .from('notas_prontuario')
-            .insert(notaPayload)
-            .select('id')
-            .single();
-          if (noteError) {
-            console.error('Erro ao salvar nota de prontuário da avaliação por voz:', noteError);
-            noteWarning = noteError.message;
-          } else {
-            savedNoteIdRef.current = notaIns?.id ?? null;
-          }
-        }
-      }
+      // NOTA: o envio para o prontuário é controlado pelo profissional via ProntuarioReviewDialog.
+      // O auto-save mantém apenas o histórico (avaliacoes_voz) atualizado.
 
       setIsSaved(true);
       // Invalidate prontuário & evolução queries so data appears immediately
@@ -439,12 +409,10 @@ Detalhes completos no Histórico de Avaliações.`;
 
       if (!options?.silent) {
         toast({
-          title: noteWarning ? 'Avaliação salva com aviso' : '💾 Avaliação salva!',
-          description: noteWarning
-            ? 'A avaliação foi salva no histórico, mas a nota do prontuário não pôde ser criada agora.'
-            : pacienteId
-              ? 'Salva no histórico e no prontuário do paciente.'
-              : 'Salva no histórico com sucesso.',
+          title: '💾 Avaliação salva no histórico',
+          description: pacienteId
+            ? 'Use "Revisar e enviar ao prontuário" para escolher o que vai para o paciente.'
+            : 'Salva no histórico com sucesso.',
         });
       }
 
@@ -957,6 +925,12 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                   <><CheckCircle2 className="h-4 w-4" />Salvo automaticamente</>
                 )}
               </Badge>
+            )}
+            {pacienteId && isSaved && (
+              <Button size="sm" onClick={() => setShowProntuarioReview(true)} className="bg-primary text-primary-foreground">
+                <FileText className="h-4 w-4 mr-1" />
+                {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Revisar e enviar ao prontuário'}
+              </Button>
             )}
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
@@ -1697,6 +1671,21 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             setShowReviewDialog(false);
           }}
           onDescartar={() => setShowReviewDialog(false)}
+        />
+      )}
+
+      {pacienteId && assessment && (
+        <ProntuarioReviewDialog
+          open={showProntuarioReview}
+          onOpenChange={setShowProntuarioReview}
+          assessment={assessment}
+          pacienteId={pacienteId}
+          servico={serviceType}
+          avaliacaoId={savedAssessmentIdRef.current}
+          noteId={savedNoteIdRef.current}
+          myidContext={myidContext}
+          painMap={painMap}
+          onSaved={(id) => { savedNoteIdRef.current = id; }}
         />
       )}
     </div>

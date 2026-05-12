@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Sparkles } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
+import { supabase } from '@/integrations/supabase/client';
 
 interface Props {
   pacienteId: string;
@@ -21,6 +22,27 @@ export default function AvaliacaoPresencial({
   const [painMap, setPainMap] = useState<Record<string, number>>({});
   const [structState, setStructState] = useState<Record<string, string[]>>({});
   const painText = painMapToText(painMap);
+
+  // Carrega o último mapa de dor salvo desse paciente para que a marcação persista entre sessões
+  useEffect(() => {
+    if (!pacienteId) return;
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('avaliacoes_voz')
+        .select('resultado')
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (cancelled || !data) return;
+      const meta = (data.resultado as any)?._meta;
+      if (meta?.mapa_dor && typeof meta.mapa_dor === 'object') {
+        setPainMap((prev) => (Object.keys(prev).length ? prev : meta.mapa_dor));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [pacienteId]);
 
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
@@ -77,6 +99,7 @@ export default function AvaliacaoPresencial({
           onAssessmentComplete={onAssessmentComplete}
           onPainExtracted={handlePainExtracted}
           painRegionsCatalog={painRegionsCatalog}
+          painMap={painMap}
         />
       </div>
 
