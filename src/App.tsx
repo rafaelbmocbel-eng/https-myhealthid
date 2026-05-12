@@ -116,6 +116,7 @@ const App = () => (
                 <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/precos" element={<Precos />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
