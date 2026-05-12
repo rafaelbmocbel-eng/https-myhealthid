@@ -95,6 +95,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [creatingDiretriz, setCreatingDiretriz] = useState(false);
   const [diretrizCreatedId, setDiretrizCreatedId] = useState<string | null>(null);
   const [showReviewDialog, setShowReviewDialog] = useState(false);
+  const [showProntuarioReview, setShowProntuarioReview] = useState(false);
   const [showFullEditor, setShowFullEditor] = useState(false);
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
