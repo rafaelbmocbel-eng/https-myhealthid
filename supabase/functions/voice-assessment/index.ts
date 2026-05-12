@@ -494,6 +494,34 @@ serve(async (req) => {
       String(transcript || "");
     delete assessment.transcricao;
 
+    // ── Contabiliza uso de IA mensal (não-bloqueante) ──
+    try {
+      const authHeader = req.headers.get("Authorization");
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+      const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (authHeader && SUPABASE_URL && SERVICE_KEY) {
+        const userRes = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+          headers: { Authorization: authHeader, apikey: SERVICE_KEY },
+        });
+        if (userRes.ok) {
+          const u = await userRes.json();
+          if (u?.id) {
+            await fetch(`${SUPABASE_URL}/rest/v1/rpc/incrementar_uso_ia`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: SERVICE_KEY,
+                Authorization: `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({ p_user_id: u.id, p_tipo: "voice_assessment" }),
+            }).catch((e) => console.warn("[voice-assessment] incrementar_uso_ia falhou:", e));
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[voice-assessment] uso_ia tracking error (non-blocking):", e);
+    }
+
     return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
