@@ -1,11 +1,11 @@
 import { useState } from 'react';
-import { useEventoDetalhe, useEventoRespostas, type Evento, type EventoInscricao, type EventoPergunta } from '@/hooks/useEventos';
+import { useEventoDetalhe, useEventoRespostas, useMarcarInscricaoPaga, type Evento, type EventoInscricao, type EventoPergunta } from '@/hooks/useEventos';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { ArrowLeft, Users, UserPlus, UserCheck, Copy, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Users, UserPlus, UserCheck, Copy, ChevronRight, DollarSign, CheckCircle2, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
