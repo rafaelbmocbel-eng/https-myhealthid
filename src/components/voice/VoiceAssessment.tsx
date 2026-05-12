@@ -550,14 +550,11 @@ Detalhes completos no Histórico de Avaliações.`;
         }
       }
 
-      const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
-
+      // NÃO salvar automaticamente — usuário revisa e confirma manualmente
       setStep('result');
       toast({
-        title: saveResult.saved ? '✅ Avaliação gerada e salva!' : '✅ Avaliação gerada!',
-        description: saveResult.saved
-          ? 'Ela já foi adicionada automaticamente ao histórico.'
-          : 'Não consegui salvar automaticamente; use o botão para tentar novamente.',
+        title: '✅ Avaliação gerada!',
+        description: 'Revise os campos e clique em "Salvar no Prontuário" para confirmar.',
       });
     } catch (err: any) {
       console.error('[VoiceAssessment] processAssessment error:', err);
@@ -943,6 +940,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
+
+        {!isSaved && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 flex items-center gap-2 text-sm text-amber-900 dark:text-amber-100">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span>Avaliação <strong>ainda não salva</strong>. Revise os campos abaixo e clique em <strong>Salvar no Prontuário</strong> para confirmar.</span>
+          </div>
+        )}
 
         {/* ── Editor Completo (JSON estruturado de toda a avaliação) ── */}
         {showFullEditor && (
