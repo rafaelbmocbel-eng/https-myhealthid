@@ -1673,6 +1673,21 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           onDescartar={() => setShowReviewDialog(false)}
         />
       )}
+
+      {pacienteId && assessment && (
+        <ProntuarioReviewDialog
+          open={showProntuarioReview}
+          onOpenChange={setShowProntuarioReview}
+          assessment={assessment}
+          pacienteId={pacienteId}
+          servico={serviceType}
+          avaliacaoId={savedAssessmentIdRef.current}
+          noteId={savedNoteIdRef.current}
+          myidContext={myidContext}
+          painMap={painMap}
+          onSaved={(id) => { savedNoteIdRef.current = id; }}
+        />
+      )}
     </div>
   );
 }
