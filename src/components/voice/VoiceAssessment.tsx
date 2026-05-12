@@ -941,6 +941,13 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </div>
 
+        {!isSaved && (
+          <div className="rounded-lg border border-amber-300 bg-amber-50 dark:bg-amber-950/30 px-3 py-2 flex items-center gap-2 text-sm text-amber-900 dark:text-amber-100">
+            <Sparkles className="h-4 w-4 shrink-0" />
+            <span>Avaliação <strong>ainda não salva</strong>. Revise os campos abaixo e clique em <strong>Salvar no Prontuário</strong> para confirmar.</span>
+          </div>
+        )}
+
         {/* ── Editor Completo (JSON estruturado de toda a avaliação) ── */}
         {showFullEditor && (
           <Card className="border-primary/40 ring-2 ring-primary/20">
