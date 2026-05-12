@@ -31,6 +31,7 @@ const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
 const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
+const Precos = lazy(() => import("./pages/Precos"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
