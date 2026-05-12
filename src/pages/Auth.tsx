@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
 
 export default function Auth() {
@@ -127,7 +128,14 @@ export default function Auth() {
               <Input id="email" type="email" placeholder="terapeuta@clinica.com" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} required className="h-11 rounded-xl" />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="password">Senha</Label>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="password">Senha</Label>
+                {tab === 'login' && (
+                  <Link to="/recuperar-senha" className="text-xs font-semibold hover:underline" style={{ color: 'hsl(40 95% 52%)' }}>
+                    Esqueci minha senha?
+                  </Link>
+                )}
+              </div>
               <div className="relative">
                 <Input id="password" type={showPassword ? 'text' : 'password'} placeholder="••••••••" value={form.password} onChange={e => setForm(f => ({ ...f, password: e.target.value }))} required className="pr-10 h-11 rounded-xl" />
                 <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
