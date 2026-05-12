@@ -29,6 +29,7 @@ const moodEmoji = (m: number) => ['😞','😕','😐','🙂','😄'][Math.max(0
 export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [deverOpen, setDeverOpen] = useState(false);
   const since30 = subDays(new Date(), 30).toISOString();
   const since7 = subDays(new Date(), 7).toISOString();
 
