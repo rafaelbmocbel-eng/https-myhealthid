@@ -16,6 +16,7 @@ export type Database = {
     Tables: {
       agendamentos: {
         Row: {
+          clinica_id: string | null
           cor: string | null
           created_at: string
           data_fim: string
@@ -32,6 +33,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          clinica_id?: string | null
           cor?: string | null
           created_at?: string
           data_fim: string
@@ -48,6 +50,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          clinica_id?: string | null
           cor?: string | null
           created_at?: string
           data_fim?: string
@@ -559,6 +562,165 @@ export type Database = {
           },
         ]
       }
+      clinica_convites: {
+        Row: {
+          clinica_id: string
+          created_at: string
+          email: string
+          expira_em: string
+          id: string
+          papel: Database["public"]["Enums"]["clinica_papel"]
+          status: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          clinica_id: string
+          created_at?: string
+          email: string
+          expira_em?: string
+          id?: string
+          papel?: Database["public"]["Enums"]["clinica_papel"]
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Update: {
+          clinica_id?: string
+          created_at?: string
+          email?: string
+          expira_em?: string
+          id?: string
+          papel?: Database["public"]["Enums"]["clinica_papel"]
+          status?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinica_convites_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinica_membros: {
+        Row: {
+          aceito_em: string | null
+          clinica_id: string
+          comissao_percentual: number | null
+          convidado_em: string
+          created_at: string
+          id: string
+          papel: Database["public"]["Enums"]["clinica_papel"]
+          status: Database["public"]["Enums"]["clinica_membro_status"]
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          aceito_em?: string | null
+          clinica_id: string
+          comissao_percentual?: number | null
+          convidado_em?: string
+          created_at?: string
+          id?: string
+          papel?: Database["public"]["Enums"]["clinica_papel"]
+          status?: Database["public"]["Enums"]["clinica_membro_status"]
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          aceito_em?: string | null
+          clinica_id?: string
+          comissao_percentual?: number | null
+          convidado_em?: string
+          created_at?: string
+          id?: string
+          papel?: Database["public"]["Enums"]["clinica_papel"]
+          status?: Database["public"]["Enums"]["clinica_membro_status"]
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinica_membros_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinica_pacientes_lixeira: {
+        Row: {
+          apagado_em: string
+          apagado_por: string
+          clinica_id: string | null
+          expira_em: string
+          id: string
+          motivo: string | null
+          paciente_id: string
+        }
+        Insert: {
+          apagado_em?: string
+          apagado_por: string
+          clinica_id?: string | null
+          expira_em?: string
+          id?: string
+          motivo?: string | null
+          paciente_id: string
+        }
+        Update: {
+          apagado_em?: string
+          apagado_por?: string
+          clinica_id?: string | null
+          expira_em?: string
+          id?: string
+          motivo?: string | null
+          paciente_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clinica_pacientes_lixeira_clinica_id_fkey"
+            columns: ["clinica_id"]
+            isOneToOne: false
+            referencedRelation: "clinicas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      clinicas: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          dono_user_id: string
+          id: string
+          limite_profissionais: number
+          nome: string
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          dono_user_id: string
+          id?: string
+          limite_profissionais?: number
+          nome: string
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          dono_user_id?: string
+          id?: string
+          limite_profissionais?: number
+          nome?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       config_agenda: {
         Row: {
           created_at: string
@@ -682,6 +844,7 @@ export type Database = {
           observacoes: string | null
           paciente_id: string
           plano_nome: string | null
+          profissional_user_id: string | null
           status: string
           terapeuta_id: string
           tipo_atendimento: string | null
@@ -701,6 +864,7 @@ export type Database = {
           observacoes?: string | null
           paciente_id: string
           plano_nome?: string | null
+          profissional_user_id?: string | null
           status?: string
           terapeuta_id: string
           tipo_atendimento?: string | null
@@ -720,6 +884,7 @@ export type Database = {
           observacoes?: string | null
           paciente_id?: string
           plano_nome?: string | null
+          profissional_user_id?: string | null
           status?: string
           terapeuta_id?: string
           tipo_atendimento?: string | null
@@ -1986,6 +2151,7 @@ export type Database = {
       pacientes: {
         Row: {
           ativo: boolean
+          clinica_id: string | null
           cpf: string | null
           created_at: string
           data_nascimento: string | null
@@ -2010,6 +2176,7 @@ export type Database = {
         }
         Insert: {
           ativo?: boolean
+          clinica_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
@@ -2034,6 +2201,7 @@ export type Database = {
         }
         Update: {
           ativo?: boolean
+          clinica_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
@@ -3788,8 +3956,20 @@ export type Database = {
         Args: { p_paciente_id: string; p_terapeuta_id: string }
         Returns: boolean
       }
+      has_clinica_role: {
+        Args: {
+          _clinica_id: string
+          _papel?: Database["public"]["Enums"]["clinica_papel"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
       has_module_access: {
         Args: { p_module: string; p_user_id: string }
+        Returns: boolean
+      }
+      is_clinica_dono: {
+        Args: { _clinica_id: string; _user_id: string }
         Returns: boolean
       }
       link_agenda_valido_por_token: {
@@ -3819,7 +3999,8 @@ export type Database = {
       }
     }
     Enums: {
-      [_ in never]: never
+      clinica_membro_status: "convidado" | "ativo" | "removido"
+      clinica_papel: "dono" | "profissional" | "recepcao"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3946,6 +4127,9 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      clinica_membro_status: ["convidado", "ativo", "removido"],
+      clinica_papel: ["dono", "profissional", "recepcao"],
+    },
   },
 } as const
