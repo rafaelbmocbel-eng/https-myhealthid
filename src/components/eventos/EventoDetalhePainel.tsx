@@ -19,6 +19,7 @@ interface Props {
 
 export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props) {
   const { data, isLoading } = useEventoDetalhe(eventoId);
+  const marcarPago = useMarcarInscricaoPaga();
   const [selectedInscricao, setSelectedInscricao] = useState<string | null>(null);
 
   if (!evento) return null;
@@ -27,6 +28,11 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
   const perguntas = data?.perguntas || [];
   const novos = inscritos.filter(i => !i.ja_era_paciente).length;
   const ativos = inscritos.filter(i => i.ja_era_paciente).length;
+  const valorUnit = Number(evento.valor) || 0;
+  const pagosCount = inscritos.filter(i => i.pago).length;
+  const pendentesCount = inscritos.length - pagosCount;
+  const receitaConfirmada = pagosCount * valorUnit;
+  const receitaPendente = pendentesCount * valorUnit;
 
   const copyLink = () => {
     navigator.clipboard.writeText(`${getBaseUrl()}/evento/${eventoId}`);
