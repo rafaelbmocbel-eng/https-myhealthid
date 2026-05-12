@@ -1,103 +1,82 @@
+## Objetivo
+Refinar o que vai da Avaliação Presencial (voz + MyID) para o prontuário do paciente, dando ao profissional controle granular sobre o que é compartilhado, o que fica só para ele, e tornando diretrizes e hipóteses editáveis e personalizáveis por cliente.
 
-# MY HEALTH ID + Add-on Clínica — Sprint 0 (Dark-Launch)
+## Regras finais por seção
 
-Objetivo: preparar a fundação para multi-profissional **sem mudar absolutamente nada** no que você e a Aleteia veem hoje. Tudo fica "dormindo" até o dono ativar o add-on.
+| Seção | Vai pro prontuário? | Editável? |
+|---|---|---|
+| Resumo clínico (voz) + Resumo MyID | **Sempre** (com data do momento) | Texto livre |
+| Análise da dor | **Sempre** | Texto livre |
+| Funcionalidade | **Sempre** | Texto livre |
+| Fatores psicossociais | **Sempre** | Texto livre |
+| Hipóteses diagnósticas | **Opcional**: profissional escolhe 1+ e pode editar/personalizar | Sim — nome, probabilidade, justificativa |
+| Outras hipóteses + Raciocínio clínico | **Só visível ao profissional** (no histórico da avaliação, nunca na nota) | — |
+| Raciocínio clínico (selecionado) | **Opcional**: trecho que o profissional marca vai pro prontuário | Sim |
+| Mapeamento CIF | **Sempre** | — |
+| Diretrizes de tratamento (3 fases) | **Sempre**, com fase de Manutenção adicionada | Cada fase editável: trocar exercícios/técnicas do catálogo + campos livres |
+| Insights baseados em evidências | **Nunca** vai pro prontuário — só painel do profissional | — |
+| Boneco/mapa de dor | **Vai**, e marcação persiste entre reaberturas | — |
 
----
+## Fluxo proposto
 
-## Princípio de segurança
-
-- Nenhuma tela atual muda de lugar, cor ou comportamento.
-- Toda a lógica nova só "acorda" se `clinicas.ativa = true` para aquele dono.
-- Quem não tem clínica ativada continua sendo tratado como **solo** (modo atual, idêntico).
-- Reversível: desativar o add-on devolve tudo ao estado solo.
-
----
-
-## O que será criado no banco (4 tabelas novas, todas vazias no início)
-
-```text
-clinicas
- ├── id, dono_user_id (FK auth), nome, ativa (bool, default false)
- ├── limite_profissionais (default 20)
- └── timestamps
-
-clinica_membros          → quem trabalha na clínica
- ├── clinica_id, user_id, papel ('dono' | 'profissional' | 'recepcao')
- ├── status ('convidado' | 'ativo' | 'removido')
- ├── comissao_percentual (numeric, opcional)
- └── convidado_em, aceito_em
-
-clinica_convites         → convites pendentes (por e-mail OU usuário existente)
- ├── clinica_id, email, papel, token, expira_em, status
-
-clinica_pacientes_lixeira → pacientes "apagados" recuperáveis (soft delete)
- ├── paciente_id, clinica_id, apagado_por, apagado_em, expira_em (30d)
+```
+[Avaliação salva] → [Modal "Revisar antes de enviar ao prontuário"]
+   ├─ Pré-marcadas: Resumo, Dor, Funcionalidade, Psicossocial, CIF, Diretriz, Boneco
+   ├─ Hipóteses: lista com checkbox por hipótese + edição inline
+   ├─ Raciocínio: cada bloco com checkbox "incluir trecho"
+   ├─ Insights: badge "uso interno — não vai ao prontuário"
+   └─ Diretriz: editor por fase (Aguda / Subaguda / Avançada / **Manutenção novo**)
+        ├─ Lista de exercícios da fase com [editar][remover][+ adicionar do catálogo]
+        ├─ Lista de técnicas idem
+        └─ Campos livres: objetivo, frequência, critérios de progressão
+[Confirmar] → cria 1 nota única no prontuário com seções selecionadas + dados_extras (mapa dor, snapshot diretriz)
 ```
 
-E **2 colunas opcionais** (nullable, default NULL) em tabelas existentes:
+## Mudanças de código
 
-- `pacientes.clinica_id` → NULL = paciente solo (igual hoje)
-- `agendamentos.clinica_id` → NULL = solo
-- `controle_sessoes.profissional_user_id` → quem realizou (já vai usar `terapeuta_id` como fallback)
+### 1. `src/components/voice/VoiceAssessment.tsx`
+- Após auto-save, abrir um novo `ProntuarioReviewDialog` antes de criar/atualizar a nota.
+- Mover a criação da nota para dentro do dialog (substitui o bloco atual em ~L389-420).
+- Garantir que `painMap` recebido via `clinicalContext` seja preservado em `assessment.dados_extras.mapa_dor` e re-aplicado ao reabrir a avaliação (corrige "marcação some na primeira avaliação").
 
-> NULL em todas essas colunas = comportamento atual 100% preservado.
+### 2. Novo `src/components/voice/ProntuarioReviewDialog.tsx`
+- Props: `assessment`, `transcricao`, `pacienteId`, `myidContext` (score + delta + dimensões críticas), `onConfirm`.
+- Estado local com:
+  - `seçõesIncluidas` (Set) — pré-marcadas conforme tabela acima.
+  - `hipotesesSelecionadas` (Set de índices) + edição inline de cada hipótese.
+  - `racicinioSelecionado` (Set de chaves) + edição.
+  - `diretrizFases` editável (ver §3).
+- Renderiza badge "uso interno" em Insights e Outras Hipóteses.
+- Ao confirmar: monta descrição textual + `dados_extras` com `mapa_dor`, `diretriz_snapshot`, `myid_contexto`, `selecoes`.
 
----
+### 3. Novo `src/components/voice/DiretrizFasesEditor.tsx`
+- Renderiza 4 fases: Aguda, Subaguda, Avançada, **Manutenção** (nova).
+- Por fase:
+  - Lista editável de exercícios (nome, séries, reps, observação) + botão "Adicionar do catálogo" (lê `exercicios` do supabase do terapeuta) + "Adicionar livre".
+  - Lista editável de técnicas + adição livre.
+  - Campos: objetivo, frequência semanal, critérios de progressão.
+- Fase Manutenção pré-preenchida com sugestões derivadas das avaliações disponíveis: continuidade de musculação/mobilidade, ajustes cinético-corporais (postura, padrões de marcha) baseados em achados do MyID e do bloco funcional, frequência reduzida 1-2x/semana, reavaliação trimestral.
 
-## Matriz de permissões (quando o add-on for ativado)
+### 4. Persistência do mapa de dor
+- Em `VoiceAssessment` recuperar mapa de `assessment.dados_extras.mapa_dor` quando reabrir avaliação existente.
+- Garantir que ao salvar (auto-save) o `painMap` atual seja sempre mesclado em `dados_extras` da `avaliacoes_voz` (não só na nota).
+- Investigar componente do avatar 3D e propagar `initialPainMap` na primeira avaliação do paciente.
 
-| Ação | Dono | Profissional convidado | Recepção |
-|---|---|---|---|
-| Ver caixa total da clínica | ✅ | ❌ | ✅ (só leitura) |
-| Ver financeiro próprio + comissão | ✅ | ✅ | ❌ |
-| Vender, parcelar, registrar pagamento | ✅ | ✅ | ✅ |
-| Editar **preços de serviços** | ✅ | ❌ | ❌ |
-| Editar **configurações da clínica** (logo, Z-API, dados, integrações) | ✅ | ❌ | ❌ |
-| **Convidar/remover** profissionais | ✅ | ❌ | ❌ |
-| **Apagar paciente** | ✅ (soft delete + lixeira 30d) | ❌ | ❌ |
-| **Restaurar** paciente da lixeira | ✅ | ❌ | ❌ |
-| Editar prontuário, MyID, agenda dos próprios pacientes | ✅ | ✅ | ❌ |
-| Acessar pacientes de outros profissionais | ✅ | ❌ (só os atribuídos) | ✅ (só agendar) |
+### 5. Hipóteses "outras" e Raciocínio fica só no profissional
+- A nota do prontuário inclui apenas o que foi selecionado.
+- O painel de avaliação (histórico) continua mostrando tudo (já é o comportamento atual).
 
-Tudo isso é validado por **RLS no banco** (usando uma função `has_clinica_role(user_id, clinica_id, papel)`), então nem por API direta dá pra burlar.
-
----
-
-## O que NÃO entra na Sprint 0 (fica para Sprint 1+)
-
-- Telas de "Equipe da Clínica", convites, painel do dono
-- Caixa unificado, repasse, comissões automáticas
-- Split de pagamento Asaas
-- White-label por clínica
-
-A Sprint 0 só prepara o terreno. **Você não verá nada novo na UI.**
-
----
+### 6. Insights — sem alteração no painel do profissional, apenas garantir que **nunca** sejam concatenados em `descricao` da nota nem em `dados_extras` enviados ao paciente.
 
 ## Detalhes técnicos
 
-- **Soft delete de pacientes:** vira `pacientes.ativo = false` + linha em `clinica_pacientes_lixeira` com `expira_em = now() + 30 days`. Só some de verdade após 30 dias (job de limpeza).
-- **Comissão:** `clinica_membros.comissao_percentual` define o % que vai aparecer no extrato pessoal do profissional (campo informativo na Sprint 0, cálculo real na Sprint 1).
-- **RLS nova função:**
-  ```sql
-  has_clinica_role(_user uuid, _clinica uuid, _papel text) → boolean
-  ```
-  Usada em todas as policies novas, segue o padrão Security Definer já adotado no projeto.
-- **Migração de dados:** zero. Nenhuma linha existente é tocada. `clinica_id` fica NULL em tudo.
-- **Flag de feature:** `clinicas.ativa = false` por padrão. Front lê isso uma vez no login e só renderiza UI extra se `true`.
+- Catálogo de exercícios: usar tabela `exercicios` filtrada por `terapeuta_id`, igual ao que `Protocolos` usa.
+- Snapshot da diretriz: reusar `createDiretrizSnapshot` / `createLegacyDiretrizSnapshot` em `src/lib/protocoloSnapshot.ts` para manter compatibilidade.
+- `notas_prontuario.dados_extras` (jsonb existente) recebe: `{ mapa_dor, diretriz_snapshot, myid_contexto, selecoes: { hipoteses: [...], raciocinio: [...] }, versao_revisao: 2 }`.
+- Edição posterior da nota: o usuário pode reabrir o dialog para a mesma avaliação (botão "Revisar envio ao prontuário" no card da avaliação) e a nota é atualizada (UPDATE) por `referencia_id`.
+- Sem mudanças de schema. Sem novas migrações.
 
----
-
-## Entregáveis da Sprint 0
-
-1. Migration criando as 4 tabelas + 3 colunas nullable + função `has_clinica_role` + RLS.
-2. Hook `useClinicaContext()` que retorna `{ clinica, papel, permissoes }` ou `null` (modo solo).
-3. Componente `<ClinicaGuard requires="dono">` (só renderiza filhos se permissão bater) — fica criado mas **não é usado em nenhuma tela ainda**.
-4. Memória `mem://arquitetura/multi-profissional-clinica` com a matriz de permissões.
-
-Depois disso aprovado, partimos pra **Sprint 1: tela de ativação do add-on + convites + painel do dono**, sem mexer em mais nada do app atual.
-
----
-
-Confirma esse escopo da Sprint 0 que eu já abro a migration?
+## Fora de escopo
+- Refatorar geração da diretriz pela IA.
+- Mudar comportamento da página de Protocolos.
+- Alterar MyID em si (apenas leitura do score/delta para contexto).
