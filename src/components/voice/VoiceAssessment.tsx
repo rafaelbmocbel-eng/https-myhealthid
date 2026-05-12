@@ -568,6 +568,12 @@ Detalhes completos no Histórico de Avaliações.`;
       });
     } finally {
       setIsProcessing(false);
+      // Cleanup do áudio em audio-temp após processamento (sucesso ou erro)
+      const orphanPath = uploadedAudioPathRef.current;
+      if (orphanPath) {
+        uploadedAudioPathRef.current = null;
+        void supabase.storage.from('audio-temp').remove([orphanPath]).catch(() => { /* noop */ });
+      }
     }
   };
 
