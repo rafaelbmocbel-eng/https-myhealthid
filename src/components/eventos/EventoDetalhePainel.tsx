@@ -82,6 +82,36 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
         </Card>
       </div>
 
+      {/* Receita (apenas eventos pagos) */}
+      {evento.cobrar_pagamento && valorUnit > 0 && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4 text-emerald-500" /> Receita do evento
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <div className="text-lg font-bold text-emerald-600">R$ {receitaConfirmada.toFixed(2)}</div>
+                <div className="text-[11px] text-muted-foreground">Confirmada ({pagosCount})</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold text-amber-600">R$ {receitaPendente.toFixed(2)}</div>
+                <div className="text-[11px] text-muted-foreground">Pendente ({pendentesCount})</div>
+              </div>
+              <div>
+                <div className="text-lg font-bold">R$ {(receitaConfirmada + receitaPendente).toFixed(2)}</div>
+                <div className="text-[11px] text-muted-foreground">Potencial total</div>
+              </div>
+            </div>
+            <p className="text-[11px] text-muted-foreground mt-3 text-center">
+              Valor unitário: R$ {valorUnit.toFixed(2)} · Confirme pagamentos manualmente abaixo quando receber o PIX.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Inscriptions list */}
       <Card>
         <CardHeader>
@@ -96,34 +126,61 @@ export default function EventoDetalhePainel({ eventoId, evento, onBack }: Props)
             <ScrollArea className="max-h-[500px]">
               <div className="space-y-2">
                 {inscritos.map((ins, idx) => (
-                  <button
+                  <div
                     key={ins.id}
-                    onClick={() => setSelectedInscricao(ins.id)}
-                    className="w-full flex items-center justify-between p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors text-left"
+                    className="w-full p-3 rounded-lg border bg-card hover:bg-muted/50 transition-colors"
                   >
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}.</span>
-                        <span className="font-medium text-sm truncate">{ins.nome}</span>
-                        <Badge variant={ins.ja_era_paciente ? 'default' : 'secondary'} className="text-[10px] shrink-0">
-                          {ins.ja_era_paciente ? 'Paciente ativo' : 'Novo'}
-                        </Badge>
-                        {evento.cobrar_pagamento && (
-                          <Badge variant={ins.pago ? 'default' : 'destructive'} className="text-[10px] shrink-0">
-                            {ins.pago ? 'Pago' : 'Pendente'}
+                    <div className="flex items-start justify-between gap-2">
+                      <button
+                        onClick={() => setSelectedInscricao(ins.id)}
+                        className="min-w-0 flex-1 text-left"
+                      >
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-xs font-mono text-muted-foreground w-5">{idx + 1}.</span>
+                          <span className="font-medium text-sm truncate">{ins.nome}</span>
+                          <Badge variant={ins.ja_era_paciente ? 'default' : 'secondary'} className="text-[10px] shrink-0">
+                            {ins.ja_era_paciente ? 'Paciente ativo' : 'Novo'}
                           </Badge>
-                        )}
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 pl-7">
-                        {ins.email && <span>{ins.email}</span>}
-                        {ins.telefone && <span> · {ins.telefone}</span>}
-                        <span> · {format(new Date(ins.created_at), 'dd/MM HH:mm')}</span>
-                      </div>
+                          {evento.cobrar_pagamento && (
+                            <Badge variant={ins.pago ? 'default' : 'destructive'} className="text-[10px] shrink-0">
+                              {ins.pago ? 'Pago' : 'Pendente'}
+                            </Badge>
+                          )}
+                        </div>
+                        <div className="text-xs text-muted-foreground mt-0.5 pl-7">
+                          {ins.email && <span>{ins.email}</span>}
+                          {ins.telefone && <span> · {ins.telefone}</span>}
+                          <span> · {format(new Date(ins.created_at), 'dd/MM HH:mm')}</span>
+                        </div>
+                      </button>
+                      {perguntas.length > 0 && (
+                        <ChevronRight
+                          className="h-4 w-4 text-muted-foreground shrink-0 mt-1 cursor-pointer"
+                          onClick={() => setSelectedInscricao(ins.id)}
+                        />
+                      )}
                     </div>
-                    {perguntas.length > 0 && (
-                      <ChevronRight className="h-4 w-4 text-muted-foreground shrink-0 ml-2" />
+                    {evento.cobrar_pagamento && (
+                      <div className="mt-2 pl-7">
+                        <Button
+                          variant={ins.pago ? 'outline' : 'default'}
+                          size="sm"
+                          className="h-7 text-[11px] gap-1.5"
+                          disabled={marcarPago.isPending}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            marcarPago.mutate({ inscricaoId: ins.id, pago: !ins.pago });
+                          }}
+                        >
+                          {ins.pago ? (
+                            <><XCircle className="h-3 w-3" /> Desmarcar pago</>
+                          ) : (
+                            <><CheckCircle2 className="h-3 w-3" /> Confirmar pagamento</>
+                          )}
+                        </Button>
+                      </div>
                     )}
-                  </button>
+                  </div>
                 ))}
               </div>
             </ScrollArea>
