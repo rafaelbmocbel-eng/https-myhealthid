@@ -470,6 +470,16 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           </AccordionItem>
         </Accordion>
       </Card>
+
+      {user && (
+        <DeverDeCasaDialog
+          open={deverOpen}
+          onOpenChange={setDeverOpen}
+          pacienteId={pacienteId}
+          pacienteNome={pacienteNome}
+          terapeutaId={user.id}
+        />
+      )}
     </div>
   );
 }
