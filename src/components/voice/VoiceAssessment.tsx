@@ -644,6 +644,8 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setRecordingTime(0);
     setEditingField(null);
     setStep('record');
+    savedAssessmentIdRef.current = null;
+    savedNoteIdRef.current = null;
     void clearDraft(draftKey);
   };
 
