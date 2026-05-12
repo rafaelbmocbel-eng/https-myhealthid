@@ -463,6 +463,7 @@ Detalhes completos no Histórico de Avaliações.`;
       await supabase.storage.from('audio-temp').remove([path]);
       throw new Error(`Falha ao gerar link do áudio: ${signError?.message || 'unknown'}`);
     }
+    uploadedAudioPathRef.current = path;
     return signedData.signedUrl;
   };
 
