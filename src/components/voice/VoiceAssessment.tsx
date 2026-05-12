@@ -196,6 +196,20 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     );
   }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
 
+  // Auto-save em edições — após o primeiro save, qualquer alteração é gravada (debounced)
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
+  useEffect(() => {
+    if (!isSaved || !assessment || step !== 'result') return;
+    setAutoSaveStatus('saving');
+    const t = setTimeout(async () => {
+      const r = await saveAssessment(assessment, editedTranscript, { silent: true });
+      setAutoSaveStatus(r.saved ? 'saved' : 'idle');
+      if (r.saved) setTimeout(() => setAutoSaveStatus('idle'), 1500);
+    }, 1200);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [assessment, editedTranscript]);
+
   const startRecording = useCallback(async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
