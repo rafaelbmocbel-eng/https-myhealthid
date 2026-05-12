@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -8,8 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Ruler, Bell
+  TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap
 } from 'lucide-react';
+import DeverDeCasaDialog from './DeverDeCasaDialog';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
@@ -27,6 +29,7 @@ const moodEmoji = (m: number) => ['😞','😕','😐','🙂','😄'][Math.max(0
 export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
+  const [deverOpen, setDeverOpen] = useState(false);
   const since30 = subDays(new Date(), 30).toISOString();
   const since7 = subDays(new Date(), 7).toISOString();
 
@@ -136,6 +139,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
               Visão completa — sem precisar abrir o portal do cliente
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
+              {user && (
+                <button
+                  onClick={() => setDeverOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[11px] font-semibold hover:opacity-90"
+                >
+                  <GraduationCap className="h-3 w-3" /> Dever de Casa
+                </button>
+              )}
               {portalToken && (
                 <>
                   <button onClick={copyLink} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90">
@@ -459,6 +470,16 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
           </AccordionItem>
         </Accordion>
       </Card>
+
+      {user && (
+        <DeverDeCasaDialog
+          open={deverOpen}
+          onOpenChange={setDeverOpen}
+          pacienteId={pacienteId}
+          pacienteNome={pacienteNome}
+          terapeutaId={user.id}
+        />
+      )}
     </div>
   );
 }
