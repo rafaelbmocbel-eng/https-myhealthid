@@ -550,11 +550,14 @@ Detalhes completos no Histórico de Avaliações.`;
         }
       }
 
-      // NÃO salvar automaticamente — usuário revisa e confirma manualmente
+      const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
+
       setStep('result');
       toast({
-        title: '✅ Avaliação gerada!',
-        description: 'Revise os campos e clique em "Salvar no Prontuário" para confirmar.',
+        title: saveResult.saved ? '✅ Avaliação gerada e salva!' : '✅ Avaliação gerada!',
+        description: saveResult.saved
+          ? 'Salva automaticamente. Edite à vontade — as alterações são salvas sozinhas.'
+          : 'Não consegui salvar automaticamente; use o botão para tentar novamente.',
       });
     } catch (err: any) {
       console.error('[VoiceAssessment] processAssessment error:', err);
