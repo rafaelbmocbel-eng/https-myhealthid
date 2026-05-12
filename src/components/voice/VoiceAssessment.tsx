@@ -99,6 +99,9 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const hasRestoredDraftRef = useRef(false);
+  const savedAssessmentIdRef = useRef<string | null>(null);
+  const savedNoteIdRef = useRef<string | null>(null);
+  const uploadedAudioPathRef = useRef<string | null>(null);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
