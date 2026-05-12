@@ -333,30 +333,47 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
     setIsSaving(true);
     try {
+      const origem = mode === 'written' ? 'escrita' : 'voice_assessment';
+      const resultadoComOrigem = {
+        ...normalizeJson(assessmentToSave),
+        _meta: { origem, mode, savedAt: new Date().toISOString() },
+      };
       const payload = {
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
         servico: serviceType,
         transcricao: transcriptToSave || 'Avaliação por áudio',
-        resultado: normalizeJson(assessmentToSave),
+        resultado: resultadoComOrigem,
         classificacao_severidade: assessmentToSave.classificacao_severidade || null,
         queixa_principal: assessmentToSave.queixa_principal || null,
       };
 
-      const { error: saveError } = await supabase
-        .from('avaliacoes_voz')
-        .insert(payload)
-        .select('id')
-        .single();
+      let avaliacaoId = savedAssessmentIdRef.current;
 
-      if (saveError) throw saveError;
+      if (avaliacaoId) {
+        // Update existing record (dedupe — evita duplicatas em re-saves silenciosos)
+        const { error: updError } = await supabase
+          .from('avaliacoes_voz')
+          .update(payload)
+          .eq('id', avaliacaoId);
+        if (updError) throw updError;
+      } else {
+        const { data: inserted, error: saveError } = await supabase
+          .from('avaliacoes_voz')
+          .insert(payload)
+          .select('id')
+          .single();
+        if (saveError) throw saveError;
+        avaliacaoId = inserted?.id ?? null;
+        savedAssessmentIdRef.current = avaliacaoId;
+      }
 
       let noteWarning: string | null = null;
 
       if (pacienteId) {
         const hipoteses = assessmentToSave.hipoteses_diagnosticas?.slice(0, 3).map((h: any) => h.diagnostico).join(', ') || 'N/I';
-        const descricao = `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}
+        const descricao = `Avaliação por ${mode === 'written' ? 'Escrita' : 'Voz'} — ${SERVICE_LABELS[serviceType]}
 Queixa: ${assessmentToSave.queixa_principal || 'N/I'}
 Dor EVA: ${assessmentToSave.dor?.intensidade_eva || '?'}/10 — ${assessmentToSave.dor?.tipo || 'N/I'}
 Classificação: ${assessmentToSave.classificacao_severidade || 'N/I'}
@@ -364,18 +381,37 @@ Hipóteses: ${hipoteses}
 ${assessmentToSave.resumo_clinico?.substring(0, 200) || ''}
 Detalhes completos no Histórico de Avaliações.`;
 
-        const { error: noteError } = await supabase.from('notas_prontuario').insert({
+        const notaPayload = {
           paciente_id: pacienteId,
           terapeuta_id: user.id,
           tipo: 'avaliacao_voz',
-          titulo: `Avaliação por Voz — ${SERVICE_LABELS[serviceType]}`,
+          titulo: `Avaliação por ${mode === 'written' ? 'Escrita' : 'Voz'} — ${SERVICE_LABELS[serviceType]}`,
           descricao,
-          dados_extras: normalizeJson({ assessment: assessmentToSave, transcricao: transcriptToSave }),
-        });
+          dados_extras: normalizeJson({ assessment: assessmentToSave, transcricao: transcriptToSave, origem }),
+          referencia_id: avaliacaoId,
+        };
 
-        if (noteError) {
-          console.error('Erro ao salvar nota de prontuário da avaliação por voz:', noteError);
-          noteWarning = noteError.message;
+        if (savedNoteIdRef.current) {
+          const { error: noteError } = await (supabase as any)
+            .from('notas_prontuario')
+            .update(notaPayload)
+            .eq('id', savedNoteIdRef.current);
+          if (noteError) {
+            console.error('Erro ao atualizar nota de prontuário:', noteError);
+            noteWarning = noteError.message;
+          }
+        } else {
+          const { data: notaIns, error: noteError } = await (supabase as any)
+            .from('notas_prontuario')
+            .insert(notaPayload)
+            .select('id')
+            .single();
+          if (noteError) {
+            console.error('Erro ao salvar nota de prontuário da avaliação por voz:', noteError);
+            noteWarning = noteError.message;
+          } else {
+            savedNoteIdRef.current = notaIns?.id ?? null;
+          }
         }
       }
 
