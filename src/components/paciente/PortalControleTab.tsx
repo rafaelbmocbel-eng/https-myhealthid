@@ -139,6 +139,14 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
               Visão completa — sem precisar abrir o portal do cliente
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
+              {user && (
+                <button
+                  onClick={() => setDeverOpen(true)}
+                  className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[11px] font-semibold hover:opacity-90"
+                >
+                  <GraduationCap className="h-3 w-3" /> Dever de Casa
+                </button>
+              )}
               {portalToken && (
                 <>
                   <button onClick={copyLink} className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-primary text-primary-foreground text-[11px] font-semibold hover:opacity-90">
