@@ -24,6 +24,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signUp: (email: string, password: string, nome: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: Error | null }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -135,6 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await withAuthLockRetry(() =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/nova-senha`,
+        })
+      );
+      return { error };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Falha ao enviar e-mail de recuperação.') };
+    }
+  };
+
   const signOut = async () => {
     try {
       await withAuthLockRetry(() => supabase.auth.signOut());
@@ -144,7 +158,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, authReady, signIn, signUp, signOut }}>
+    <AuthContext.Provider value={{ user, session, profile, loading, authReady, signIn, signUp, signOut, resetPassword }}>
       {children}
     </AuthContext.Provider>
   );
