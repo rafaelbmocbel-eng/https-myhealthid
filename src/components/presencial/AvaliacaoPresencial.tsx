@@ -99,6 +99,7 @@ export default function AvaliacaoPresencial({
           onAssessmentComplete={onAssessmentComplete}
           onPainExtracted={handlePainExtracted}
           painRegionsCatalog={painRegionsCatalog}
+          painMap={painMap}
         />
       </div>
 
