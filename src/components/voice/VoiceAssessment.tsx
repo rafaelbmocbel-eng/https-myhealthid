@@ -37,6 +37,10 @@ interface VoiceAssessmentProps {
   onPainExtracted?: (findings: Array<{ region_id: string; intensity: number; structures: string[] }>) => void;
   /** Region catalog used by the pain extractor (id+label list). Required if onPainExtracted is set. */
   painRegionsCatalog?: { regions: Array<{ id: string; label: string }>; catalog?: Record<string, { categories: Record<string, string[]> }> };
+  /** Current pain map from the body avatar — persisted with the assessment so it survives reloads */
+  painMap?: Record<string, number>;
+  /** Optional MyID context summary for prontuário note */
+  myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
