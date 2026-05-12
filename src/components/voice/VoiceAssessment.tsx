@@ -729,37 +729,35 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         .insert(fasesPayload);
       if (fasesErr) throw fasesErr;
 
-      // 3) Nota no prontuário
-      const resumoTecnicas = fasesConfig
-        .map((cfg) => {
-          const fase = diretriz?.[cfg.key] || {};
-          const tecs = (fase.tecnicas || []).map((t: any) => `• ${t.tecnica}`).join('\n');
-          return `${cfg.titulo}${fase.duracao_semanas ? ` (${fase.duracao_semanas})` : ''}\n${tecs || '• (sem técnicas registradas)'}`;
-        })
-        .join('\n\n');
+      // 3) Cruza referência: ao invés de criar nota duplicada `conduta_diretriz`,
+      //    atualiza a nota original `avaliacao_voz` com o protocolo_id criado.
+      try {
+        const { data: notaVoz } = await (supabase as any)
+          .from('notas_prontuario')
+          .select('id, dados_extras')
+          .eq('paciente_id', pacienteId)
+          .eq('terapeuta_id', user.id)
+          .eq('tipo', 'avaliacao_voz')
+          .order('created_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
 
-      const descricao = `🎯 DIRETRIZ DE TRATAMENTO REGISTRADA (a partir de Avaliação por ${mode === 'written' ? 'Texto' : 'Voz'})
-
-Queixa principal: ${queixa}
-Classificação: ${classif}
-Frequência sugerida: ${diretriz.frequencia_sugerida || 'N/I'}
-Prognóstico: ${diretriz.prognostico || 'N/I'}
-
-${resumoTecnicas}`;
-
-      await adicionarNotaProntuario({
-        pacienteId,
-        tipo: 'conduta_diretriz',
-        titulo: `Diretriz — ${queixa}`,
-        descricao,
-        referenciaId: protocoloId,
-        dadosExtras: {
-          protocolo_id: protocoloId,
-          origem: origemDiretriz,
-          classificacao: classif,
-          queixa_principal: queixa,
-        },
-      });
+        if (notaVoz?.id) {
+          await (supabase as any)
+            .from('notas_prontuario')
+            .update({
+              dados_extras: {
+                ...(notaVoz.dados_extras || {}),
+                diretriz_protocolo_id: protocoloId,
+                diretriz_origem: origemDiretriz,
+                diretriz_classificacao: classif,
+              },
+            })
+            .eq('id', notaVoz.id);
+        }
+      } catch (e) {
+        console.warn('[criarDiretrizDaVoz] cross-ref update falhou (não bloqueante):', e);
+      }
 
       setDiretrizCreatedId(protocoloId);
       queryClient.invalidateQueries({ queryKey: ['protocolos-paciente'] });
