@@ -926,6 +926,12 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 )}
               </Badge>
             )}
+            {pacienteId && isSaved && (
+              <Button size="sm" onClick={() => setShowProntuarioReview(true)} className="bg-primary text-primary-foreground">
+                <FileText className="h-4 w-4 mr-1" />
+                {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Revisar e enviar ao prontuário'}
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
