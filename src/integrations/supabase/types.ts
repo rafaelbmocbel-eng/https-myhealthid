@@ -2382,9 +2382,12 @@ export type Database = {
           ativo: boolean
           created_at: string
           descricao: string | null
+          destaque: boolean
           id: string
+          limite_ia_mensal: number
           modulos: Json
           nome: string
+          ordem: number
           preco_mensal: number
           stripe_price_id: string | null
           updated_at: string
@@ -2393,9 +2396,12 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           descricao?: string | null
+          destaque?: boolean
           id?: string
+          limite_ia_mensal?: number
           modulos?: Json
           nome: string
+          ordem?: number
           preco_mensal?: number
           stripe_price_id?: string | null
           updated_at?: string
@@ -2404,9 +2410,12 @@ export type Database = {
           ativo?: boolean
           created_at?: string
           descricao?: string | null
+          destaque?: boolean
           id?: string
+          limite_ia_mensal?: number
           modulos?: Json
           nome?: string
+          ordem?: number
           preco_mensal?: number
           stripe_price_id?: string | null
           updated_at?: string
@@ -3528,6 +3537,36 @@ export type Database = {
           },
         ]
       }
+      uso_ia_mensal: {
+        Row: {
+          ano_mes: string
+          created_at: string
+          id: string
+          quantidade: number
+          tipo: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ano_mes: string
+          created_at?: string
+          id?: string
+          quantidade?: number
+          tipo?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ano_mes?: string
+          created_at?: string
+          id?: string
+          quantidade?: number
+          tipo?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       vendas: {
         Row: {
           cliente_nome: string | null
@@ -3968,6 +4007,10 @@ export type Database = {
         Args: { p_module: string; p_user_id: string }
         Returns: boolean
       }
+      incrementar_uso_ia: {
+        Args: { p_tipo?: string; p_user_id: string }
+        Returns: number
+      }
       is_clinica_dono: {
         Args: { _clinica_id: string; _user_id: string }
         Returns: boolean
@@ -3982,6 +4025,19 @@ export type Database = {
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
       link_patient_user_by_email: { Args: never; Returns: string }
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
+      meu_plano_atual: {
+        Args: never
+        Returns: {
+          data_fim: string
+          limite_ia_mensal: number
+          modulos: Json
+          plano_id: string
+          plano_nome: string
+          preco_mensal: number
+          status: string
+          uso_ia_atual: number
+        }[]
+      }
       salvar_fase_myid: {
         Args: {
           p_dimensoes: Json

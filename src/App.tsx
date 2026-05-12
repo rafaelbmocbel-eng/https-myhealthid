@@ -31,6 +31,7 @@ const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
 const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
+const Precos = lazy(() => import("./pages/Precos"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -115,6 +116,7 @@ const App = () => (
                 <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
+                <Route path="/precos" element={<Precos />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
