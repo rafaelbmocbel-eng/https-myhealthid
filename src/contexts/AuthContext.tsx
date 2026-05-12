@@ -136,6 +136,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const resetPassword = async (email: string) => {
+    try {
+      const { error } = await withAuthLockRetry(() =>
+        supabase.auth.resetPasswordForEmail(email, {
+          redirectTo: `${window.location.origin}/nova-senha`,
+        })
+      );
+      return { error };
+    } catch (error) {
+      return { error: error instanceof Error ? error : new Error('Falha ao enviar e-mail de recuperação.') };
+    }
+  };
+
   const signOut = async () => {
     try {
       await withAuthLockRetry(() => supabase.auth.signOut());
