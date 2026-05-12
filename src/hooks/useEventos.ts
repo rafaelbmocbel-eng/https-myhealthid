@@ -194,6 +194,24 @@ export function useEventos() {
   return { ...eventosQuery, criarEvento, editarEvento, salvarPerguntas, toggleEvento, deletarEvento };
 }
 
+export function useMarcarInscricaoPaga() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ inscricaoId, pago }: { inscricaoId: string; pago: boolean }) => {
+      const { error } = await supabase
+        .from('evento_inscricoes')
+        .update({ pago } as any)
+        .eq('id', inscricaoId);
+      if (error) throw error;
+    },
+    onSuccess: (_, { pago }) => {
+      toast.success(pago ? 'Pagamento confirmado!' : 'Pagamento desmarcado');
+      qc.invalidateQueries({ queryKey: ['evento-detalhe'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+}
+
 export function useEventoDetalhe(eventoId: string | null) {
   return useQuery({
     queryKey: ['evento-detalhe', eventoId],
