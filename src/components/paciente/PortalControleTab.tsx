@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card } from '@/components/ui/card';
@@ -8,8 +9,9 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Ruler, Bell
+  TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap
 } from 'lucide-react';
+import DeverDeCasaDialog from './DeverDeCasaDialog';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
