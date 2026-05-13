@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
@@ -24,8 +24,8 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
-import ResearchDashboard from '@/components/dashboard/ResearchDashboard';
-import ClinicalInsights from '@/components/dashboard/ClinicalInsights';
+const ResearchDashboard = lazy(() => import('@/components/dashboard/ResearchDashboard'));
+const ClinicalInsights = lazy(() => import('@/components/dashboard/ClinicalInsights'));
 import { FlaskConical } from 'lucide-react';
 
 export default function Index() {
@@ -138,9 +138,7 @@ export default function Index() {
 
   
 
-  const { data: amostraClinica } = useQuery({
-    queryKey: ['amostra-clinica', user?.id, avaliacoesRaw.length],
-    queryFn: async () => {
+  const amostraClinica = useMemo(() => {
       const avaliacoes = avaliacoesRaw;
       if (!avaliacoes || avaliacoes.length === 0) return null;
       const n = avaliacoes.length;
@@ -287,9 +285,7 @@ export default function Index() {
         topAtividade: toRanked(atividadeFisica, 5),
         tecidosMedia, regMedia, funcMedia,
       };
-    },
-    enabled: !!user,
-  });
+  }, [avaliacoesRaw]);
 
   const [isGeneratingLink, setIsGeneratingLink] = useState(false);
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -422,12 +418,16 @@ export default function Index() {
         </div>
 
         {vertente === 'pesquisa' ? (
-          <ResearchDashboard />
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+            <ResearchDashboard />
+          </Suspense>
         ) : (
         <>
 
         {/* Painel estratégico — usa todos os dados gerados */}
-        <ClinicalInsights />
+        <Suspense fallback={null}>
+          <ClinicalInsights />
+        </Suspense>
 
         {/* Onboarding Guide */}
         <div className="mb-6">
