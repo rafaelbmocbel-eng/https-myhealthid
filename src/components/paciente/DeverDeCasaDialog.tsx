@@ -32,6 +32,7 @@ interface CatalogItem {
   tempo_duracao: string | null;
   nivel_dificuldade: string;
   regiao_corporal: any;
+  perfis_indicados: any;
 }
 
 interface Selecionado {
