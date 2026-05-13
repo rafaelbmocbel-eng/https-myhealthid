@@ -11,7 +11,7 @@ import {
   Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { gerarRecibo } from '@/utils/pdfDocumentos';
+// gerarRecibo é carregado dinamicamente no clique para reduzir bundle inicial
 
 interface Props {
   pacienteId: string;
