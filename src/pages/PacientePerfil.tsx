@@ -1051,14 +1051,16 @@ export default function PacientePerfil() {
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
           <TabsContent value="diretrizes" className="mt-4 space-y-6">
-            <PacienteDashboardIdentidade
-              paciente={paciente as any}
-              onBack={() => navigate('/pacientes')}
-              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              subTab="avaliacoes"
-            />
+            <Suspense fallback={LazyFallback}>
+              <PacienteDashboardIdentidade
+                paciente={paciente as any}
+                onBack={() => navigate('/pacientes')}
+                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                subTab="avaliacoes"
+              />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
