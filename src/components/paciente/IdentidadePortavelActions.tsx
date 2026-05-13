@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
 import { Download, Share2, Loader2, Fingerprint } from 'lucide-react';
-import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
+// gerarPDFRespostaCompleta carregado dinamicamente no clique
 import { getBaseUrl } from '@/utils/linkUrls';
 import { format, parseISO } from 'date-fns';
 
