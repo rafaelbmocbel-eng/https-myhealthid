@@ -22,11 +22,12 @@ interface Props {
   pacienteNome: string;
   portalToken?: string | null;
   telefone?: string | null;
+  tipoConta?: string | null;
 }
 
 const moodEmoji = (m: number) => ['😞','😕','😐','🙂','😄'][Math.max(0, Math.min(4, m - 1))];
 
-export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone }: Props) {
+export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone, tipoConta }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [deverOpen, setDeverOpen] = useState(false);
@@ -139,7 +140,7 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
               Visão completa — sem precisar abrir o portal do cliente
             </p>
             <div className="flex flex-wrap gap-2 mt-2">
-              {user && (
+              {user && tipoConta !== 'wellness_free' && (
                 <button
                   onClick={() => setDeverOpen(true)}
                   className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg bg-amber-500 text-white text-[11px] font-semibold hover:opacity-90"

@@ -1124,6 +1124,7 @@ export default function PacientePerfil() {
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
                   portalToken={paciente.portal_token}
                   telefone={paciente.telefone}
+                  tipoConta={paciente.tipo_conta}
                 />
                 <ChatPacienteTab
                   pacienteId={id!}
