@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Loader2, Plus, Search, Trash2, Check, Dumbbell,
-  TrendingUp, MessageSquare, X
+  TrendingUp, MessageSquare, X, Sparkles
 } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -32,6 +32,7 @@ interface CatalogItem {
   tempo_duracao: string | null;
   nivel_dificuldade: string;
   regiao_corporal: any;
+  perfis_indicados: any;
 }
 
 interface Selecionado {
@@ -44,7 +45,18 @@ interface Selecionado {
   orientacoes: string;
 }
 
-const CATEGORIAS = ['Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
+const CATEGORIAS = ['Sugeridos MyID', 'Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
+
+// Mapa: dimensão MyID com perda alta → perfis do catálogo
+const DIM_TO_PERFIS: Record<string, string[]> = {
+  D: ['DOR_PERCEBIDA'],
+  EFI: ['FUNCIONALIDADE_COMPROMETIDA'],
+  P: ['PSICO_COMPORTAMENTAL'],
+  R: ['REGULACAO_CRITICA'],
+  AF: ['FUNCIONALIDADE_COMPROMETIDA', 'ESTRUTURAL'],
+  ERG: ['ESTRUTURAL', 'ERGONOMIA'],
+  HID: ['HIDRATACAO'],
+};
 
 export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, pacienteNome, terapeutaId }: Props) {
   const { toast } = useToast();
@@ -55,7 +67,8 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
   // Catalog
   const [catalogo, setCatalogo] = useState<CatalogItem[]>([]);
   const [busca, setBusca] = useState('');
-  const [categoria, setCategoria] = useState('Todas');
+  const [categoria, setCategoria] = useState('Sugeridos MyID');
+  const [perfisRecomendados, setPerfisRecomendados] = useState<Set<string>>(new Set());
 
   // Plan being built
   const [titulo, setTitulo] = useState('Dever de Casa');
@@ -76,7 +89,7 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
     setLoading(true);
     Promise.all([
       supabase.from('exercicios_biblioteca')
-        .select('id, nome, categoria, descricao, tempo_duracao, nivel_dificuldade, regiao_corporal')
+        .select('id, nome, categoria, descricao, tempo_duracao, nivel_dificuldade, regiao_corporal, perfis_indicados')
         .order('categoria').order('nome'),
       supabase.from('studio_treinos')
         .select('id, titulo, frequencia, duracao_estimada, created_at, ativo, publicado')
@@ -88,21 +101,52 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
         .eq('paciente_id', pacienteId)
         .gte('data_execucao', subDays(new Date(), 30).toISOString())
         .order('data_execucao', { ascending: false }),
-    ]).then(([cat, tre, exe]) => {
+      // Último MyID concluído para sugerir exercícios
+      supabase.from('myid_avaliacoes')
+        .select('resultado_processado, dimensoes_preenchidas')
+        .eq('paciente_id', pacienteId)
+        .eq('status', 'concluido')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]).then(([cat, tre, exe, myid]) => {
       setCatalogo((cat.data || []) as CatalogItem[]);
       setTreinosAtivos(tre.data || []);
       setExecucoes(exe.data || []);
+
+      // Extrai dimensões fracas do MyID e mapeia para perfis do catálogo
+      const perfis = new Set<string>();
+      const scores = (myid.data?.resultado_processado as any)?.scores || {};
+      Object.entries(scores).forEach(([dim, val]) => {
+        const v = Number(val);
+        if (Number.isNaN(v)) return;
+        // Demanda alta (D, EFI, P, I) ou capacidade baixa (R, AF, ERG, HID)
+        const isDemanda = ['D', 'EFI', 'P', 'I'].includes(dim);
+        const fraca = isDemanda ? v >= 6 : v <= 5;
+        if (fraca && DIM_TO_PERFIS[dim]) {
+          DIM_TO_PERFIS[dim].forEach(p => perfis.add(p));
+        }
+      });
+      setPerfisRecomendados(perfis);
+      // Se não há MyID, cai pra "Todas"
+      if (perfis.size === 0) setCategoria('Todas');
       setLoading(false);
     });
   }, [open, pacienteId]);
 
   const filtered = useMemo(() => {
     return catalogo.filter(c => {
-      if (categoria !== 'Todas' && c.categoria !== categoria) return false;
+      if (categoria === 'Sugeridos MyID') {
+        const perfisEx = Array.isArray(c.perfis_indicados) ? c.perfis_indicados : [];
+        if (perfisRecomendados.size === 0) return false;
+        if (!perfisEx.some((p: string) => perfisRecomendados.has(p))) return false;
+      } else if (categoria !== 'Todas' && c.categoria !== categoria) {
+        return false;
+      }
       if (busca && !c.nome.toLowerCase().includes(busca.toLowerCase())) return false;
       return true;
     });
-  }, [catalogo, busca, categoria]);
+  }, [catalogo, busca, categoria, perfisRecomendados]);
 
   const addCatalogo = (c: CatalogItem) => {
     if (selecionados.find(s => s.catalogo_id === c.id)) return;
@@ -247,18 +291,34 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
                       />
                     </div>
                     <div className="flex gap-1 overflow-x-auto pb-1">
-                      {CATEGORIAS.map(c => (
-                        <button
-                          key={c}
-                          onClick={() => setCategoria(c)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                            categoria === c ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      ))}
+                      {CATEGORIAS.map(c => {
+                        const isMyID = c === 'Sugeridos MyID';
+                        const disabled = isMyID && perfisRecomendados.size === 0;
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => !disabled && setCategoria(c)}
+                            disabled={disabled}
+                            title={disabled ? 'Paciente ainda não respondeu o MyID' : undefined}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
+                              categoria === c
+                                ? (isMyID ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground')
+                                : disabled
+                                  ? 'bg-muted/30 text-muted-foreground/40 cursor-not-allowed'
+                                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {isMyID && <Sparkles className="icon-xs" />}
+                            {c}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {categoria === 'Sugeridos MyID' && perfisRecomendados.size > 0 && (
+                      <p className="text-[10px] text-amber-700 dark:text-amber-400 px-1">
+                        Filtrado pelas dimensões fracas do último MyID — {filtered.length} atividade(s).
+                      </p>
+                    )}
                   </div>
                   <ScrollArea className="flex-1 px-4">
                     <div className="space-y-1.5 pb-4">
