@@ -1089,7 +1089,9 @@ export default function PacientePerfil() {
                   <FileText className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Questionários Remotos</h3>
                 </div>
-                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+                <Suspense fallback={LazyFallback}>
+                  <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+                </Suspense>
               </div>
             )}
 
