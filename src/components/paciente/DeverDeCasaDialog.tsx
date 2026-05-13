@@ -89,7 +89,7 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
     setLoading(true);
     Promise.all([
       supabase.from('exercicios_biblioteca')
-        .select('id, nome, categoria, descricao, tempo_duracao, nivel_dificuldade, regiao_corporal')
+        .select('id, nome, categoria, descricao, tempo_duracao, nivel_dificuldade, regiao_corporal, perfis_indicados')
         .order('categoria').order('nome'),
       supabase.from('studio_treinos')
         .select('id, titulo, frequencia, duracao_estimada, created_at, ativo, publicado')
@@ -101,21 +101,52 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
         .eq('paciente_id', pacienteId)
         .gte('data_execucao', subDays(new Date(), 30).toISOString())
         .order('data_execucao', { ascending: false }),
-    ]).then(([cat, tre, exe]) => {
+      // Último MyID concluído para sugerir exercícios
+      supabase.from('myid_avaliacoes')
+        .select('resultado_processado, dimensoes_preenchidas')
+        .eq('paciente_id', pacienteId)
+        .eq('status', 'concluido')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle(),
+    ]).then(([cat, tre, exe, myid]) => {
       setCatalogo((cat.data || []) as CatalogItem[]);
       setTreinosAtivos(tre.data || []);
       setExecucoes(exe.data || []);
+
+      // Extrai dimensões fracas do MyID e mapeia para perfis do catálogo
+      const perfis = new Set<string>();
+      const scores = (myid.data?.resultado_processado as any)?.scores || {};
+      Object.entries(scores).forEach(([dim, val]) => {
+        const v = Number(val);
+        if (Number.isNaN(v)) return;
+        // Demanda alta (D, EFI, P, I) ou capacidade baixa (R, AF, ERG, HID)
+        const isDemanda = ['D', 'EFI', 'P', 'I'].includes(dim);
+        const fraca = isDemanda ? v >= 6 : v <= 5;
+        if (fraca && DIM_TO_PERFIS[dim]) {
+          DIM_TO_PERFIS[dim].forEach(p => perfis.add(p));
+        }
+      });
+      setPerfisRecomendados(perfis);
+      // Se não há MyID, cai pra "Todas"
+      if (perfis.size === 0) setCategoria('Todas');
       setLoading(false);
     });
   }, [open, pacienteId]);
 
   const filtered = useMemo(() => {
     return catalogo.filter(c => {
-      if (categoria !== 'Todas' && c.categoria !== categoria) return false;
+      if (categoria === 'Sugeridos MyID') {
+        const perfisEx = Array.isArray(c.perfis_indicados) ? c.perfis_indicados : [];
+        if (perfisRecomendados.size === 0) return false;
+        if (!perfisEx.some((p: string) => perfisRecomendados.has(p))) return false;
+      } else if (categoria !== 'Todas' && c.categoria !== categoria) {
+        return false;
+      }
       if (busca && !c.nome.toLowerCase().includes(busca.toLowerCase())) return false;
       return true;
     });
-  }, [catalogo, busca, categoria]);
+  }, [catalogo, busca, categoria, perfisRecomendados]);
 
   const addCatalogo = (c: CatalogItem) => {
     if (selecionados.find(s => s.catalogo_id === c.id)) return;
