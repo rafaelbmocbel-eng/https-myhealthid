@@ -1037,14 +1037,16 @@ export default function PacientePerfil() {
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
           <TabsContent value="historico" className="mt-4">
-            <PacienteDashboardIdentidade
-              paciente={paciente as any}
-              onBack={() => navigate('/pacientes')}
-              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              subTab="historico"
-            />
+            <Suspense fallback={LazyFallback}>
+              <PacienteDashboardIdentidade
+                paciente={paciente as any}
+                onBack={() => navigate('/pacientes')}
+                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                subTab="historico"
+              />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
