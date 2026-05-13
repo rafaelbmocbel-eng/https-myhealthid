@@ -310,27 +310,7 @@ export default function PacientePerfil() {
     return { numeroAtual, totalRealizadas, ultimaSessao };
   }, [sessoesPaciente]);
 
-  const { data: tratamentosMap = {} } = useQuery({
-    queryKey: ['tratamentos-perfil', id, protocolos.map((p: any) => p.id).join(',')],
-    queryFn: async () => {
-      const protIds = protocolos.map((p: any) => p.id);
-      if (protIds.length === 0) return {};
-      const { data, error } = await (supabase as any)
-        .from('protocolo_tratamentos')
-        .select('*, tecnica:tecnica_id(nome, categoria, nivel_evidencia, descricao, indicacoes, contraindicacoes, complexidade, parametros)')
-        .in('protocolo_id', protIds)
-        .eq('ativo', true)
-        .order('fase_numero');
-      if (error) throw error;
-      const map: Record<string, any[]> = {};
-      (data || []).forEach((t: any) => {
-        if (!map[t.protocolo_id]) map[t.protocolo_id] = [];
-        map[t.protocolo_id].push(t);
-      });
-      return map;
-    },
-    enabled: protocolos.length > 0,
-  });
+  // (query 'tratamentos-perfil' removida — não era consumida em lugar nenhum)
 
   // Calculate session metrics (must be before early returns)
   const sessionMetrics = useMemo(() => {
