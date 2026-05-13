@@ -247,6 +247,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
           observacoes: t.observacoes,
         })),
       };
+      const { gerarPDFProtocolo } = await import('@/utils/pdfGenerator');
       await gerarPDFProtocolo(pdfData);
       toast({ title: 'PDF gerado com sucesso!' });
     } catch {
