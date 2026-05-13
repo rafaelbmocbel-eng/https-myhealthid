@@ -1,82 +1,65 @@
-## Objetivo
-Refinar o que vai da Avaliação Presencial (voz + MyID) para o prontuário do paciente, dando ao profissional controle granular sobre o que é compartilhado, o que fica só para ele, e tornando diretrizes e hipóteses editáveis e personalizáveis por cliente.
 
-## Regras finais por seção
+# Contar Minha História — Voz Guiada do Paciente
 
-| Seção | Vai pro prontuário? | Editável? |
-|---|---|---|
-| Resumo clínico (voz) + Resumo MyID | **Sempre** (com data do momento) | Texto livre |
-| Análise da dor | **Sempre** | Texto livre |
-| Funcionalidade | **Sempre** | Texto livre |
-| Fatores psicossociais | **Sempre** | Texto livre |
-| Hipóteses diagnósticas | **Opcional**: profissional escolhe 1+ e pode editar/personalizar | Sim — nome, probabilidade, justificativa |
-| Outras hipóteses + Raciocínio clínico | **Só visível ao profissional** (no histórico da avaliação, nunca na nota) | — |
-| Raciocínio clínico (selecionado) | **Opcional**: trecho que o profissional marca vai pro prontuário | Sim |
-| Mapeamento CIF | **Sempre** | — |
-| Diretrizes de tratamento (3 fases) | **Sempre**, com fase de Manutenção adicionada | Cada fase editável: trocar exercícios/técnicas do catálogo + campos livres |
-| Insights baseados em evidências | **Nunca** vai pro prontuário — só painel do profissional | — |
-| Boneco/mapa de dor | **Vai**, e marcação persiste entre reaberturas | — |
+## Visão geral
+Adicionar no **portal do paciente** um botão "Contar minha história de dor" que abre uma página com perguntas guiadas curtas. O paciente responde por voz (ou texto), a IA estrutura tudo e o resultado entra como **avaliação inicial** (se for a primeira) ou como **atualização** (se já existir histórico) no perfil clínico — pronta para o profissional revisar e complementar com o exame físico.
 
-## Fluxo proposto
+## Por que faz sentido
+- Já existe a infra: `VoiceAssessment`, `useSpeechToText`, edge functions `voice-assessment` e `extract-pain-from-voice`, e `avaliacoes_voz` no banco.
+- Já existe o `MyID` (questionário mãe). Hoje o paciente preenche por formulário; isso adiciona um caminho **conversacional por voz** mais leve para queixas/atualizações entre MyIDs.
+- Mantém a regra de ouro: IA é **suporte à decisão**, profissional valida.
 
-```
-[Avaliação salva] → [Modal "Revisar antes de enviar ao prontuário"]
-   ├─ Pré-marcadas: Resumo, Dor, Funcionalidade, Psicossocial, CIF, Diretriz, Boneco
-   ├─ Hipóteses: lista com checkbox por hipótese + edição inline
-   ├─ Raciocínio: cada bloco com checkbox "incluir trecho"
-   ├─ Insights: badge "uso interno — não vai ao prontuário"
-   └─ Diretriz: editor por fase (Aguda / Subaguda / Avançada / **Manutenção novo**)
-        ├─ Lista de exercícios da fase com [editar][remover][+ adicionar do catálogo]
-        ├─ Lista de técnicas idem
-        └─ Campos livres: objetivo, frequência, critérios de progressão
-[Confirmar] → cria 1 nota única no prontuário com seções selecionadas + dados_extras (mapa dor, snapshot diretriz)
-```
+## Fluxo do paciente
+1. No dashboard do portal aparece um card "Conte como você está" (CTA primário se nunca avaliou; CTA secundário "Atualizar minha história" se já tem avaliação).
+2. Clica → abre `/portal/historia` (rota dentro do PortalGate).
+3. Tela com 4–6 perguntas guiadas, uma por vez (cartões grandes, mobile-first):
+   - Onde dói? (com avatar para tocar regiões — opcional)
+   - Como começou? Quando?
+   - Como é a dor (pontada, queimação, peso…)?
+   - O que melhora / o que piora?
+   - Algo mudou nas últimas semanas?
+   - Como isso afeta seu dia (sono, trabalho, humor)?
+4. Cada pergunta tem botão grande de **microfone** + textarea. Pode ditar e editar.
+5. Ao final: tela de revisão + "Enviar para meu profissional".
 
-## Mudanças de código
+## O que a IA faz no envio
+- Junta as respostas em um transcript único.
+- Chama `extract-pain-from-voice` para mapa de dor (regiões + intensidade + estruturas).
+- Chama `voice-assessment` para gerar resumo clínico estruturado (queixa principal, início, características, fatores, impacto funcional, red flags).
+- Salva em `avaliacoes_voz` com `_meta.origem = 'portal_paciente'`, `_meta.mapa_dor`, `_meta.tipo = 'inicial' | 'atualizacao'`.
+- Cria notificação para o profissional (`tipo = 'historia_paciente'`).
+- Se for a primeira avaliação, marca como **avaliação inicial pendente de exame físico**.
 
-### 1. `src/components/voice/VoiceAssessment.tsx`
-- Após auto-save, abrir um novo `ProntuarioReviewDialog` antes de criar/atualizar a nota.
-- Mover a criação da nota para dentro do dialog (substitui o bloco atual em ~L389-420).
-- Garantir que `painMap` recebido via `clinicalContext` seja preservado em `assessment.dados_extras.mapa_dor` e re-aplicado ao reabrir a avaliação (corrige "marcação some na primeira avaliação").
+## O que o profissional vê
+- Notificação "🎙️ {Paciente} contou a história — pronto para revisar".
+- No perfil do paciente, na aba **Acompanhamento / Histórico**, aparece o card da história com:
+  - Resumo IA + transcript original + avatar com mapa de dor.
+  - Botão "Continuar avaliação" → abre `AvaliacaoPresencial` já pré-preenchido (mapa de dor + contexto).
+  - Botão "Marcar como avaliação inicial" (se ainda não houver).
+- Tudo rastreado em `evolucao_paciente` automaticamente (já existe trigger).
 
-### 2. Novo `src/components/voice/ProntuarioReviewDialog.tsx`
-- Props: `assessment`, `transcricao`, `pacienteId`, `myidContext` (score + delta + dimensões críticas), `onConfirm`.
-- Estado local com:
-  - `seçõesIncluidas` (Set) — pré-marcadas conforme tabela acima.
-  - `hipotesesSelecionadas` (Set de índices) + edição inline de cada hipótese.
-  - `racicinioSelecionado` (Set de chaves) + edição.
-  - `diretrizFases` editável (ver §3).
-- Renderiza badge "uso interno" em Insights e Outras Hipóteses.
-- Ao confirmar: monta descrição textual + `dados_extras` com `mapa_dor`, `diretriz_snapshot`, `myid_contexto`, `selecoes`.
+## Regras
+- **Inicial vs atualização**: a primeira história do paciente conta como avaliação inicial (status "aguardando exame físico"). As próximas são atualizações que entram no histórico longitudinal.
+- **Frequência**: máx. 1 envio a cada 24h (anti-spam, igual padrão do MyID mensal).
+- **LGPD**: reusar `PacienteConsentimentoLGPD` — bloqueia o envio se não aceito.
+- **Privacidade**: áudio não é armazenado; só transcript + resumo (mesma política atual do `VoiceAssessment`).
+- **Espelhamento Portal↔Pro**: respeita a regra do projeto — toda feature do paciente tem contrapartida no painel do profissional.
 
-### 3. Novo `src/components/voice/DiretrizFasesEditor.tsx`
-- Renderiza 4 fases: Aguda, Subaguda, Avançada, **Manutenção** (nova).
-- Por fase:
-  - Lista editável de exercícios (nome, séries, reps, observação) + botão "Adicionar do catálogo" (lê `exercicios` do supabase do terapeuta) + "Adicionar livre".
-  - Lista editável de técnicas + adição livre.
-  - Campos: objetivo, frequência semanal, critérios de progressão.
-- Fase Manutenção pré-preenchida com sugestões derivadas das avaliações disponíveis: continuidade de musculação/mobilidade, ajustes cinético-corporais (postura, padrões de marcha) baseados em achados do MyID e do bloco funcional, frequência reduzida 1-2x/semana, reavaliação trimestral.
+## Tech (resumo)
+- Frontend paciente: nova página `src/pages/paciente/PacienteHistoria.tsx` + card no `PacienteDashboard`.
+- Rota dentro de `PortalGate`.
+- Reusa `useSpeechToText`, `VoiceAssessment` (modo `voice` simplificado) e `Body3DAvatar` opcional.
+- Backend: reusa edge functions existentes `voice-assessment` + `extract-pain-from-voice`. Sem novas tabelas — usa `avaliacoes_voz` com flags em `_meta`.
+- Sem mudança de RLS (paciente já pode inserir em `avaliacoes_voz` do próprio `paciente_id`).
 
-### 4. Persistência do mapa de dor
-- Em `VoiceAssessment` recuperar mapa de `assessment.dados_extras.mapa_dor` quando reabrir avaliação existente.
-- Garantir que ao salvar (auto-save) o `painMap` atual seja sempre mesclado em `dados_extras` da `avaliacoes_voz` (não só na nota).
-- Investigar componente do avatar 3D e propagar `initialPainMap` na primeira avaliação do paciente.
-
-### 5. Hipóteses "outras" e Raciocínio fica só no profissional
-- A nota do prontuário inclui apenas o que foi selecionado.
-- O painel de avaliação (histórico) continua mostrando tudo (já é o comportamento atual).
-
-### 6. Insights — sem alteração no painel do profissional, apenas garantir que **nunca** sejam concatenados em `descricao` da nota nem em `dados_extras` enviados ao paciente.
-
-## Detalhes técnicos
-
-- Catálogo de exercícios: usar tabela `exercicios` filtrada por `terapeuta_id`, igual ao que `Protocolos` usa.
-- Snapshot da diretriz: reusar `createDiretrizSnapshot` / `createLegacyDiretrizSnapshot` em `src/lib/protocoloSnapshot.ts` para manter compatibilidade.
-- `notas_prontuario.dados_extras` (jsonb existente) recebe: `{ mapa_dor, diretriz_snapshot, myid_contexto, selecoes: { hipoteses: [...], raciocinio: [...] }, versao_revisao: 2 }`.
-- Edição posterior da nota: o usuário pode reabrir o dialog para a mesma avaliação (botão "Revisar envio ao prontuário" no card da avaliação) e a nota é atualizada (UPDATE) por `referencia_id`.
-- Sem mudanças de schema. Sem novas migrações.
+## Entregáveis
+1. Página `PacienteHistoria` com perguntas guiadas + voz.
+2. Card de entrada no `PacienteDashboard`.
+3. Hook `useEnviarHistoria` que chama as edges e salva.
+4. Card "História do paciente" na aba de Acompanhamento do perfil pro.
+5. Notificação + auto-evolução.
 
 ## Fora de escopo
-- Refatorar geração da diretriz pela IA.
-- Mudar comportamento da página de Protocolos.
-- Alterar MyID em si (apenas leitura do score/delta para contexto).
+- Nova IA/modelo (usa Gemini Flash já configurado).
+- Substituir o MyID — ele continua sendo o questionário mãe oficial.
+- Áudio persistido / transcrição offline.

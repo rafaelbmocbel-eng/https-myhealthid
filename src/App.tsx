@@ -53,6 +53,7 @@ const PacienteSaude = lazy(() => import("./pages/paciente/PacienteSaude"));
 const PacienteEventos = lazy(() => import("./pages/paciente/PacienteEventos"));
 const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
 const PacientePlano = lazy(() => import("./pages/paciente/PacientePlano"));
+const PacienteHistoria = lazy(() => import("./pages/paciente/PacienteHistoria"));
 const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
@@ -155,6 +156,7 @@ const App = () => (
                 <Route path="/paciente/chat" element={<ProtectedPatientRoute><PacienteChat /></ProtectedPatientRoute>} />
                 <Route path="/paciente/perfil" element={<ProtectedPatientRoute><PacientePerfilPage /></ProtectedPatientRoute>} />
                 <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
+                <Route path="/paciente/historia" element={<ProtectedPatientRoute><PacienteHistoria /></ProtectedPatientRoute>} />
 
                 {/* Wellness public signup (freemium) */}
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />

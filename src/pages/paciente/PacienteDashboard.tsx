@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock, Mic
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -290,6 +290,32 @@ export default function PacienteDashboard() {
               </Card>
             </motion.div>
           )}
+
+          {/* Conte sua história — voz guiada */}
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
+            <Card
+              className="border-0 shadow-md overflow-hidden cursor-pointer"
+              style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(213 55% 28%) 100%)' }}
+              onClick={() => navigate('/paciente/historia')}
+            >
+              <CardContent className="p-4 flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                  <Mic className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <h3 className="text-sm font-black text-primary-foreground">
+                    {stats.avaliacoes === 0 ? '🎙️ Conte como você está' : '🎙️ Atualize sua história'}
+                  </h3>
+                  <p className="text-[11px] text-primary-foreground/75 mt-0.5">
+                    {stats.avaliacoes === 0
+                      ? 'Responda em voz algumas perguntas — adianta sua avaliação inicial.'
+                      : 'Mande uma atualização rápida do que mudou desde a última vez.'}
+                  </p>
+                </div>
+                <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
+              </CardContent>
+            </Card>
+          </motion.div>
 
           {/* PWA Install Banner */}
           <PwaInstallBanner />
