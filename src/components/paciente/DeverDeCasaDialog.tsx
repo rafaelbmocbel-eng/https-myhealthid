@@ -67,7 +67,8 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
   // Catalog
   const [catalogo, setCatalogo] = useState<CatalogItem[]>([]);
   const [busca, setBusca] = useState('');
-  const [categoria, setCategoria] = useState('Todas');
+  const [categoria, setCategoria] = useState('Sugeridos MyID');
+  const [perfisRecomendados, setPerfisRecomendados] = useState<Set<string>>(new Set());
 
   // Plan being built
   const [titulo, setTitulo] = useState('Dever de Casa');
