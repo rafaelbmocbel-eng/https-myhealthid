@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { gerarPDFProtocolo, PDFProtocolo } from '@/utils/pdfGenerator';
+import type { PDFProtocolo } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import ProtocoloViewer from '@/components/protocolo/ProtocoloViewer';
 import {
