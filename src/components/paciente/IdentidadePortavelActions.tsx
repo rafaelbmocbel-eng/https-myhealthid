@@ -47,6 +47,7 @@ export default function IdentidadePortavelActions({ pacienteId, pacienteNome, te
     setExportando(true);
     try {
       const r: any = ultimaMyID.resultado_processado;
+      const { gerarPDFRespostaCompleta } = await import('@/utils/pdfRespostaCompleta');
       await gerarPDFRespostaCompleta({
         pacienteId,
         terapeutaNome,
