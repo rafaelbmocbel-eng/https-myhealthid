@@ -107,21 +107,10 @@ export default function PacientePerfil() {
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { avaliacoes: avaliacoesId, isLoading: loadingId } = useAvaliacoesIdentidade(id);
   const { avaliacoes: avaliacoesCob, isLoading: loadingCob } = useAvaliacoesCobZero(id);
-  const { evolucoes: evolucoesId } = useEvolucaoPaciente(id);
-  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(id);
-  const { data: avaliacoesVoz = [], isLoading: loadingVoz } = useQuery({
-    queryKey: ['avaliacoes-voz', user?.id, id],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('avaliacoes_voz')
-        .select('*')
-        .eq('paciente_id', id!)
-        .order('created_at', { ascending: false });
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!user && !!id,
-  });
+  // Queries pesadas só quando a aba "Evolução / Prontuário" está aberta
+  const evolucaoTabAtiva = activeTab === 'evolucao-prontuario';
+  const { evolucoes: evolucoesId } = useEvolucaoPaciente(evolucaoTabAtiva ? id : undefined);
+  const { notas: notasProntuario, isLoading: loadingNotas } = useNotasProntuario(evolucaoTabAtiva ? id : undefined);
   const [gerandoAgenda, setGerandoAgenda] = useState(false);
   const [gerandoMyIDLink, setGerandoMyIDLink] = useState(false);
   const [agendandoNovo, setAgendandoNovo] = useState(false);
@@ -235,7 +224,7 @@ export default function PacientePerfil() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user && !!id,
+    enabled: !!user && !!id && evolucaoTabAtiva,
   });
 
   const { data: linksAgenda = [] } = useQuery({
@@ -321,27 +310,7 @@ export default function PacientePerfil() {
     return { numeroAtual, totalRealizadas, ultimaSessao };
   }, [sessoesPaciente]);
 
-  const { data: tratamentosMap = {} } = useQuery({
-    queryKey: ['tratamentos-perfil', id, protocolos.map((p: any) => p.id).join(',')],
-    queryFn: async () => {
-      const protIds = protocolos.map((p: any) => p.id);
-      if (protIds.length === 0) return {};
-      const { data, error } = await (supabase as any)
-        .from('protocolo_tratamentos')
-        .select('*, tecnica:tecnica_id(nome, categoria, nivel_evidencia, descricao, indicacoes, contraindicacoes, complexidade, parametros)')
-        .in('protocolo_id', protIds)
-        .eq('ativo', true)
-        .order('fase_numero');
-      if (error) throw error;
-      const map: Record<string, any[]> = {};
-      (data || []).forEach((t: any) => {
-        if (!map[t.protocolo_id]) map[t.protocolo_id] = [];
-        map[t.protocolo_id].push(t);
-      });
-      return map;
-    },
-    enabled: protocolos.length > 0,
-  });
+  // (query 'tratamentos-perfil' removida — não era consumida em lugar nenhum)
 
   // Calculate session metrics (must be before early returns)
   const sessionMetrics = useMemo(() => {
