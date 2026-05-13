@@ -116,6 +116,7 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
         + (pacote?.nome_pacote ? ` — pacote ${pacote.nome_pacote}` : '')
         + ` (recebimento em ${new Date(p.created_at).toLocaleDateString('pt-BR')})`;
 
+      const { gerarRecibo } = await import('@/utils/pdfDocumentos');
       const doc = await gerarRecibo({
         clinica: clinicaRes.data || null,
         terapeuta: {
