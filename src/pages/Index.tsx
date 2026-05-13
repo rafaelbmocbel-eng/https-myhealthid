@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo, lazy, Suspense } from 'react';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Activity, AlignCenter, ArrowRight, Users, CalendarDays,
@@ -24,8 +24,8 @@ import { DashboardSkeleton } from '@/components/ui/skeleton-card';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
-import ResearchDashboard from '@/components/dashboard/ResearchDashboard';
-import ClinicalInsights from '@/components/dashboard/ClinicalInsights';
+const ResearchDashboard = lazy(() => import('@/components/dashboard/ResearchDashboard'));
+const ClinicalInsights = lazy(() => import('@/components/dashboard/ClinicalInsights'));
 import { FlaskConical } from 'lucide-react';
 
 export default function Index() {
