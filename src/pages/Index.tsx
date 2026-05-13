@@ -418,12 +418,16 @@ export default function Index() {
         </div>
 
         {vertente === 'pesquisa' ? (
-          <ResearchDashboard />
+          <Suspense fallback={<div className="py-12 flex justify-center"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+            <ResearchDashboard />
+          </Suspense>
         ) : (
         <>
 
         {/* Painel estratégico — usa todos os dados gerados */}
-        <ClinicalInsights />
+        <Suspense fallback={null}>
+          <ClinicalInsights />
+        </Suspense>
 
         {/* Onboarding Guide */}
         <div className="mb-6">
