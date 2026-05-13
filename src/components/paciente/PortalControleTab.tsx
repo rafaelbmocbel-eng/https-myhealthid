@@ -22,11 +22,12 @@ interface Props {
   pacienteNome: string;
   portalToken?: string | null;
   telefone?: string | null;
+  tipoConta?: string | null;
 }
 
 const moodEmoji = (m: number) => ['😞','😕','😐','🙂','😄'][Math.max(0, Math.min(4, m - 1))];
 
-export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone }: Props) {
+export default function PortalControleTab({ pacienteId, pacienteNome, portalToken, telefone, tipoConta }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [deverOpen, setDeverOpen] = useState(false);
