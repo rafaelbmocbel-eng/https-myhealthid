@@ -291,18 +291,34 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
                       />
                     </div>
                     <div className="flex gap-1 overflow-x-auto pb-1">
-                      {CATEGORIAS.map(c => (
-                        <button
-                          key={c}
-                          onClick={() => setCategoria(c)}
-                          className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors ${
-                            categoria === c ? 'bg-primary text-primary-foreground' : 'bg-muted/50 text-muted-foreground hover:bg-muted'
-                          }`}
-                        >
-                          {c}
-                        </button>
-                      ))}
+                      {CATEGORIAS.map(c => {
+                        const isMyID = c === 'Sugeridos MyID';
+                        const disabled = isMyID && perfisRecomendados.size === 0;
+                        return (
+                          <button
+                            key={c}
+                            onClick={() => !disabled && setCategoria(c)}
+                            disabled={disabled}
+                            title={disabled ? 'Paciente ainda não respondeu o MyID' : undefined}
+                            className={`px-2.5 py-1 rounded-full text-[11px] font-semibold whitespace-nowrap transition-colors inline-flex items-center gap-1 ${
+                              categoria === c
+                                ? (isMyID ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground')
+                                : disabled
+                                  ? 'bg-muted/30 text-muted-foreground/40 cursor-not-allowed'
+                                  : 'bg-muted/50 text-muted-foreground hover:bg-muted'
+                            }`}
+                          >
+                            {isMyID && <Sparkles className="icon-xs" />}
+                            {c}
+                          </button>
+                        );
+                      })}
                     </div>
+                    {categoria === 'Sugeridos MyID' && perfisRecomendados.size > 0 && (
+                      <p className="text-[10px] text-amber-700 dark:text-amber-400 px-1">
+                        Filtrado pelas dimensões fracas do último MyID — {filtered.length} atividade(s).
+                      </p>
+                    )}
                   </div>
                   <ScrollArea className="flex-1 px-4">
                     <div className="space-y-1.5 pb-4">
