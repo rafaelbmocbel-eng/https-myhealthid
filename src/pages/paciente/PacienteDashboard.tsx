@@ -394,7 +394,9 @@ export default function PacienteDashboard() {
           {/* MyID Dashboard */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
             {paciente && (
-              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+              <Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+              </Suspense>
             )}
           </motion.div>
 
