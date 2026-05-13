@@ -1012,14 +1012,16 @@ export default function PacientePerfil() {
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
             <div className="mb-4">
-              <PacienteDashboardIdentidade
-                paciente={paciente as any}
-                onBack={() => navigate('/pacientes')}
-                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                subTab="integrada"
-              />
+              <Suspense fallback={LazyFallback}>
+                <PacienteDashboardIdentidade
+                  paciente={paciente as any}
+                  onBack={() => navigate('/pacientes')}
+                  onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  subTab="integrada"
+                />
+              </Suspense>
             </div>
           )}
 
