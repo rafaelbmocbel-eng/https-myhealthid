@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/components/ui/use-toast';
 import {
   Loader2, Plus, Search, Trash2, Check, Dumbbell,
-  TrendingUp, MessageSquare, X
+  TrendingUp, MessageSquare, X, Sparkles
 } from 'lucide-react';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
