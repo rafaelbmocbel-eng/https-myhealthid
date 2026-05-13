@@ -45,7 +45,18 @@ interface Selecionado {
   orientacoes: string;
 }
 
-const CATEGORIAS = ['Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
+const CATEGORIAS = ['Sugeridos MyID', 'Todas', 'Alongamento', 'Mobilidade', 'Fortalecimento', 'Postura', 'Respiração', 'Funcional', 'Propriocepção', 'Relaxamento'];
+
+// Mapa: dimensão MyID com perda alta → perfis do catálogo
+const DIM_TO_PERFIS: Record<string, string[]> = {
+  D: ['DOR_PERCEBIDA'],
+  EFI: ['FUNCIONALIDADE_COMPROMETIDA'],
+  P: ['PSICO_COMPORTAMENTAL'],
+  R: ['REGULACAO_CRITICA'],
+  AF: ['FUNCIONALIDADE_COMPROMETIDA', 'ESTRUTURAL'],
+  ERG: ['ESTRUTURAL', 'ERGONOMIA'],
+  HID: ['HIDRATACAO'],
+};
 
 export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, pacienteNome, terapeutaId }: Props) {
   const { toast } = useToast();
