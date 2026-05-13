@@ -11,7 +11,7 @@ import {
   Plus, CheckCircle, Clock, XCircle, DollarSign, Loader2, CreditCard, Receipt,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { gerarRecibo } from '@/utils/pdfDocumentos';
+// gerarRecibo é carregado dinamicamente no clique para reduzir bundle inicial
 
 interface Props {
   pacienteId: string;
@@ -116,6 +116,7 @@ export default function PacienteFinanceiroTab({ pacienteId, pacienteNome }: Prop
         + (pacote?.nome_pacote ? ` — pacote ${pacote.nome_pacote}` : '')
         + ` (recebimento em ${new Date(p.created_at).toLocaleDateString('pt-BR')})`;
 
+      const { gerarRecibo } = await import('@/utils/pdfDocumentos');
       const doc = await gerarRecibo({
         clinica: clinicaRes.data || null,
         terapeuta: {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -14,7 +14,7 @@ import { ptBR } from 'date-fns/locale';
 import { motion } from 'framer-motion';
 import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
-import PatientIntegratedDashboard from '@/components/paciente/PatientIntegratedDashboard';
+const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
@@ -394,7 +394,9 @@ export default function PacienteDashboard() {
           {/* MyID Dashboard */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
             {paciente && (
-              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+              <Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+                <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+              </Suspense>
             )}
           </motion.div>
 

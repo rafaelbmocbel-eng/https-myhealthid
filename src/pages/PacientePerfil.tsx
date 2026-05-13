@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -29,8 +29,8 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { useAvaliacoesIdentidade, useAvaliacoesCobZero } from '@/hooks/useAvaliacoesSalvas';
 import { useToast } from '@/hooks/use-toast';
 import { useAgenda } from '@/hooks/useAgenda';
-import QuestionariosComparacao from '@/components/paciente/QuestionariosComparacao';
-import EvolucaoDashboard from '@/components/paciente/EvolucaoDashboard';
+const QuestionariosComparacao = lazy(() => import('@/components/paciente/QuestionariosComparacao'));
+const EvolucaoDashboard = lazy(() => import('@/components/paciente/EvolucaoDashboard'));
 import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
@@ -49,7 +49,7 @@ import { useAcessoClinicoPaciente } from '@/hooks/useAcessoClinicoPaciente';
 import PacoteSessoesManager from '@/components/paciente/PacoteSessoesManager';
 import PacienteFinanceiroTab from '@/components/paciente/PacienteFinanceiroTab';
 import ChatPacienteTab from '@/components/chat/ChatPacienteTab';
-import PacienteDashboardIdentidade from '@/components/paciente/PacienteDashboardIdentidade';
+const PacienteDashboardIdentidade = lazy(() => import('@/components/paciente/PacienteDashboardIdentidade'));
 import LinkActionsBar, { type LinkActionItem } from '@/components/paciente/LinkActionsBar';
 import IdentidadePortavelActions from '@/components/paciente/IdentidadePortavelActions';
 import ResumoRapido30s from '@/components/paciente/ResumoRapido30s';
@@ -81,6 +81,12 @@ const SERVICOS_MAP: Record<string, { label: string; color: string; icon: React.R
   cob_zero: { label: 'Estrutural (legado)', color: 'bg-muted text-muted-foreground border-border', icon: <AlignCenter className="h-3 w-3" /> },
   agenda_premium: { label: 'Agenda Premium', color: 'bg-amber-100 text-amber-700 border-amber-200', icon: <CalendarDays className="h-3 w-3" /> },
 };
+
+const LazyFallback = (
+  <div className="flex items-center justify-center py-12">
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  </div>
+);
 
 export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
@@ -1006,14 +1012,16 @@ export default function PacientePerfil() {
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
           {!activeTab && (
             <div className="mb-4">
-              <PacienteDashboardIdentidade
-                paciente={paciente as any}
-                onBack={() => navigate('/pacientes')}
-                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                subTab="integrada"
-              />
+              <Suspense fallback={LazyFallback}>
+                <PacienteDashboardIdentidade
+                  paciente={paciente as any}
+                  onBack={() => navigate('/pacientes')}
+                  onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                  subTab="integrada"
+                />
+              </Suspense>
             </div>
           )}
 
@@ -1029,26 +1037,30 @@ export default function PacientePerfil() {
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
           <TabsContent value="historico" className="mt-4">
-            <PacienteDashboardIdentidade
-              paciente={paciente as any}
-              onBack={() => navigate('/pacientes')}
-              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              subTab="historico"
-            />
+            <Suspense fallback={LazyFallback}>
+              <PacienteDashboardIdentidade
+                paciente={paciente as any}
+                onBack={() => navigate('/pacientes')}
+                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                subTab="historico"
+              />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
           <TabsContent value="diretrizes" className="mt-4 space-y-6">
-            <PacienteDashboardIdentidade
-              paciente={paciente as any}
-              onBack={() => navigate('/pacientes')}
-              onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-              subTab="avaliacoes"
-            />
+            <Suspense fallback={LazyFallback}>
+              <PacienteDashboardIdentidade
+                paciente={paciente as any}
+                onBack={() => navigate('/pacientes')}
+                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
+                subTab="avaliacoes"
+              />
+            </Suspense>
           </TabsContent>
 
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
@@ -1063,7 +1075,9 @@ export default function PacientePerfil() {
                   <Activity className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Avaliações</h3>
                 </div>
-                <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
+                <Suspense fallback={LazyFallback}>
+                  <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
+                </Suspense>
               </div>
             ) : (
               <EmptyState icon={<BarChart3 />} title="Dados insuficientes" subtitle="São necessárias pelo menos 2 avaliações para gerar o comparativo evolutivo." />
@@ -1075,7 +1089,9 @@ export default function PacientePerfil() {
                   <FileText className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Questionários Remotos</h3>
                 </div>
-                <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+                <Suspense fallback={LazyFallback}>
+                  <QuestionariosComparacao linksAvPaciente={linksAvaliacao} respostas={respostasPaciente} />
+                </Suspense>
               </div>
             )}
 
