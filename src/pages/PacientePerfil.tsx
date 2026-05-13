@@ -224,7 +224,7 @@ export default function PacientePerfil() {
       if (error) throw error;
       return data || [];
     },
-    enabled: !!user && !!id,
+    enabled: !!user && !!id && evolucaoTabAtiva,
   });
 
   const { data: linksAgenda = [] } = useQuery({
