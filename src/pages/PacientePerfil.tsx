@@ -1075,7 +1075,9 @@ export default function PacientePerfil() {
                   <Activity className="h-4 w-4 text-primary" />
                   <h3 className="font-semibold text-sm">Evolução — Avaliações</h3>
                 </div>
-                <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
+                <Suspense fallback={LazyFallback}>
+                  <EvolucaoDashboard evolucoes={evolucoesId} pacienteNome={`${paciente?.nome} ${paciente?.sobrenome}`} />
+                </Suspense>
               </div>
             ) : (
               <EmptyState icon={<BarChart3 />} title="Dados insuficientes" subtitle="São necessárias pelo menos 2 avaliações para gerar o comparativo evolutivo." />
