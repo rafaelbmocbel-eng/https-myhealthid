@@ -20,18 +20,49 @@ export default function NovaSenha() {
   const [validHash, setValidHash] = useState(false);
 
   useEffect(() => {
+    // O Supabase consome o hash da URL (#access_token=...&type=recovery)
+    // automaticamente ao iniciar e dispara o evento PASSWORD_RECOVERY.
+    // Também pode já ter consumido antes deste componente montar — então
+    // checamos: (1) hash bruto, (2) evento PASSWORD_RECOVERY, (3) sessão ativa.
     const hash = window.location.hash;
-    const hasRecovery = hash.includes('type=recovery');
-    setValidHash(hasRecovery);
-    setCheckingHash(false);
-
-    if (!hasRecovery) {
-      toast({
-        title: 'Link inválido',
-        description: 'O link de recuperação expirou ou é inválido. Solicite um novo.',
-        variant: 'destructive',
-      });
+    if (hash.includes('type=recovery')) {
+      setValidHash(true);
+      setCheckingHash(false);
+      return;
     }
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY' || (event === 'SIGNED_IN' && session)) {
+        setValidHash(true);
+        setCheckingHash(false);
+      }
+    });
+
+    // Fallback: se já houver sessão (hash já consumido antes do mount), permite
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session) {
+        setValidHash(true);
+        setCheckingHash(false);
+      } else {
+        // Aguarda 1.5s pelo evento; se não vier, considera inválido
+        setTimeout(() => {
+          setCheckingHash((prev) => {
+            if (prev) {
+              setValidHash(false);
+              toast({
+                title: 'Link inválido',
+                description: 'O link de recuperação expirou ou é inválido. Solicite um novo.',
+                variant: 'destructive',
+              });
+              return false;
+            }
+            return prev;
+          });
+        }, 1500);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, [toast]);
 
   const handleSubmit = async (e: React.FormEvent) => {
