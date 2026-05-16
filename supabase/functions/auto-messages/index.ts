@@ -157,6 +157,58 @@ Deno.serve(async (req) => {
       created++;
     }
 
+    // ─── 3b. REATIVAÇÃO (inativo 30-60 dias, com acesso clínico) ───
+    const thirtyDaysAgo = new Date(now);
+    thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+    const sixtyDaysAgo = new Date(now);
+    sixtyDaysAgo.setDate(sixtyDaysAgo.getDate() - 60);
+
+    for (const pac of allPacientes || []) {
+      const { data: lastAg } = await supabase
+        .from("agendamentos")
+        .select("data_inicio")
+        .eq("paciente_id", pac.id)
+        .order("data_inicio", { ascending: false })
+        .limit(1);
+
+      if (!lastAg || lastAg.length === 0) continue;
+      const lastDate = new Date(lastAg[0].data_inicio);
+      const daysSince = Math.floor((now.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
+      if (daysSince < 30 || daysSince > 60) continue;
+
+      // Só envia se já teve acesso clínico (foi paciente ativo de fato)
+      const { data: acesso } = await supabase
+        .from("acesso_clinico_paciente")
+        .select("id")
+        .eq("paciente_id", pac.id)
+        .limit(1);
+      if (!acesso || acesso.length === 0) continue;
+
+      // Throttle: 1x a cada 14 dias
+      const fourteenDaysAgoDate = new Date(now);
+      fourteenDaysAgoDate.setDate(fourteenDaysAgoDate.getDate() - 14);
+
+      const { data: existing } = await supabase
+        .from("chat_mensagens")
+        .select("id")
+        .eq("paciente_id", pac.id)
+        .eq("tipo", "reativacao")
+        .gte("created_at", fourteenDaysAgoDate.toISOString())
+        .limit(1);
+
+      if (existing && existing.length > 0) continue;
+
+      await supabase.from("chat_mensagens").insert({
+        terapeuta_id: pac.terapeuta_id,
+        paciente_id: pac.id,
+        remetente: "sistema",
+        tipo: "reativacao",
+        mensagem: `💙 Olá ${pac.nome}! Notamos que faz ${daysSince} dias desde sua última sessão. Sua evolução é importante para nós — que tal retomarmos seu cuidado? Toque abaixo para agendar um retorno especial! 🌟`,
+        metadata: { show_slots: true, reactivation: true },
+      });
+      created++;
+    }
+
     // ─── 4. ANIVERSÁRIO ───
     const todayMMDD = `${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
 
