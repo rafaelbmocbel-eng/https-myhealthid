@@ -244,7 +244,7 @@ function TodosOsLinks() {
               <div key={p.id} className="border rounded-xl overflow-hidden">
                 {/* Cabeçalho do paciente */}
                 <div className="flex items-center gap-3 p-4 bg-card">
-                  <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                  <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                     {p.nome[0]}{p.sobrenome?.[0] || ''}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -291,7 +291,7 @@ function TodosOsLinks() {
                     ) : (
                       <Button
                         size="sm"
-                        className="h-7 text-xs gap-1 bg-gradient-primary text-white"
+                        className="h-7 text-xs gap-1 rounded-xl"
                         onClick={() => gerarLinkAvaliacao(p.id)}
                         disabled={gerando?.id === p.id && gerando?.tipo === 'av'}
                       >
@@ -440,7 +440,7 @@ function RespostasERelatorios() {
                   className="w-full flex items-center gap-3 p-4 hover:bg-accent/5 transition-colors text-left"
                   onClick={() => setExpandido(isOpen ? null : link.id)}
                 >
-                  <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                  <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                     {getNome(link.paciente_id)[0]}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -655,7 +655,7 @@ function ControleAtendimentos() {
                   onClick={() => setExpandido(aberto ? null : p.id)}
                   className="w-full flex items-center gap-3 p-4 text-left hover:bg-muted/30 transition-colors"
                 >
-                  <div className="h-9 w-9 rounded-full bg-gradient-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
+                  <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center shrink-0 text-white font-bold text-sm">
                     {p.nome.charAt(0)}
                   </div>
                   <div className="flex-1 min-w-0">
@@ -714,7 +714,7 @@ export default function Relatorios() {
       <div className="container py-8 max-w-4xl">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
-          <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
             <FileText className="h-6 w-6 text-white" />
           </div>
           <div>

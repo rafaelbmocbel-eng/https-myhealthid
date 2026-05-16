@@ -284,7 +284,7 @@ export default function Protocolos() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center">
+            <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
               <ClipboardList className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -296,7 +296,7 @@ export default function Protocolos() {
           </div>
           <Button
             onClick={() => navigate('/metodo-identidade')}
-            className="bg-gradient-primary text-white gap-2"
+            className="rounded-xl gap-2"
           >
             <Plus className="h-4 w-4" />
             <span className="hidden sm:inline">Nova Avaliação</span>
@@ -336,7 +336,7 @@ export default function Protocolos() {
                       </p>
                     </div>
                     <Button
-                      className="bg-gradient-primary text-white gap-2 shrink-0"
+                      className="rounded-xl gap-2 shrink-0"
                       size="sm"
                       onClick={() => setAnaliseAvaliacao(av)}
                     >
@@ -375,7 +375,7 @@ export default function Protocolos() {
             <p className="text-muted-foreground mb-6">
               Conclua uma avaliação MyID para gerar uma diretriz automaticamente.
             </p>
-            <Button onClick={() => navigate('/metodo-identidade')} className="bg-gradient-primary text-white">
+            <Button onClick={() => navigate('/metodo-identidade')} className="rounded-xl">
               <Plus className="h-4 w-4 mr-2" />
               Iniciar Avaliação
             </Button>
@@ -559,7 +559,7 @@ function StructuralDiretrizCard({ pacienteNome, date, data }: { pacienteNome: st
           </p>
         </div>
         {!guidelines && (
-          <Button className="bg-gradient-primary text-white gap-2 shrink-0" size="sm" onClick={generate}>
+          <Button className="rounded-xl gap-2 shrink-0" size="sm" onClick={generate}>
             <Zap className="icon-sm" /> Gerar Diretriz
           </Button>
         )}
