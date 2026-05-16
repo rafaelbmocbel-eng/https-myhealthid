@@ -412,42 +412,24 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
             <div className="space-y-6">
                 {/* ── KPI Cards ── */}
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-                    <Card className="bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-none">
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg"><Users className="h-5 w-5" /></div>
-                            <div><p className="text-[10px] opacity-80 uppercase font-bold">Pacientes</p><h3 className="text-2xl font-black">{totalPacientes}</h3></div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-gradient-to-br from-amber-500 to-amber-600 text-white border-none">
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg"><Clock className="h-5 w-5" /></div>
-                            <div><p className="text-[10px] opacity-80 uppercase font-bold">Pendentes</p><h3 className="text-2xl font-black">{linksPendentes}</h3></div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-card border">
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className="p-2 bg-muted rounded-lg text-muted-foreground"><TrendingUp className="h-5 w-5" /></div>
-                            <div><p className="text-[10px] text-muted-foreground uppercase font-bold">Sessões/Mês</p><h3 className="text-2xl font-black">{sessoesMes}</h3></div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-card border">
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className="p-2 bg-muted rounded-lg text-muted-foreground"><Activity className="h-5 w-5" /></div>
-                            <div><p className="text-[10px] text-muted-foreground uppercase font-bold">Avaliações/Mês</p><h3 className="text-2xl font-black">{avaliacoesMes}</h3></div>
-                        </CardContent>
-                    </Card>
-                    <Card className="bg-gradient-to-br from-emerald-500 to-emerald-600 text-white border-none">
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className="p-2 bg-white/20 rounded-lg"><DollarSign className="h-5 w-5" /></div>
-                            <div><p className="text-[10px] opacity-80 uppercase font-bold">Receita/Mês</p><h3 className="text-xl font-black">R$ {receitaMes.toLocaleString('pt-BR')}</h3></div>
-                        </CardContent>
-                    </Card>
-                    <Card className={`border ${taxaFaltas > 15 ? 'bg-gradient-to-br from-red-500 to-red-600 text-white border-none' : 'bg-card'}`}>
-                        <CardContent className="p-3 flex items-center gap-3">
-                            <div className={`p-2 rounded-lg ${taxaFaltas > 15 ? 'bg-white/20' : 'bg-muted text-muted-foreground'}`}><XCircle className="h-5 w-5" /></div>
-                            <div><p className={`text-[10px] uppercase font-bold ${taxaFaltas > 15 ? 'opacity-80' : 'text-muted-foreground'}`}>Faltas/Mês</p><h3 className="text-2xl font-black">{taxaFaltas}%</h3></div>
-                        </CardContent>
-                    </Card>
+                    {[
+                        { label: 'Pacientes', value: totalPacientes, Icon: Users, accent: 'text-primary' },
+                        { label: 'Pendentes', value: linksPendentes, Icon: Clock, accent: 'text-amber-600 dark:text-amber-400' },
+                        { label: 'Sessões/Mês', value: sessoesMes, Icon: TrendingUp, accent: 'text-muted-foreground' },
+                        { label: 'Avaliações/Mês', value: avaliacoesMes, Icon: Activity, accent: 'text-muted-foreground' },
+                        { label: 'Receita/Mês', value: `R$ ${receitaMes.toLocaleString('pt-BR')}`, Icon: DollarSign, accent: 'text-emerald-600 dark:text-emerald-400' },
+                        { label: 'Faltas/Mês', value: `${taxaFaltas}%`, Icon: XCircle, accent: taxaFaltas > 15 ? 'text-destructive' : 'text-muted-foreground' },
+                    ].map(({ label, value, Icon, accent }) => (
+                        <Card key={label} className="rounded-xl border-border/40 shadow-xs">
+                            <CardContent className="p-4 flex items-end justify-between gap-2">
+                                <div className="min-w-0">
+                                    <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1.5 truncate">{label}</p>
+                                    <h3 className="text-xl sm:text-2xl font-semibold tracking-tight tabular-nums truncate">{value}</h3>
+                                </div>
+                                <Icon className={`icon-sm shrink-0 ${accent}`} />
+                            </CardContent>
+                        </Card>
+                    ))}
                 </div>
 
                 {/* Aniversariantes */}
