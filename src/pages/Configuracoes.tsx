@@ -192,7 +192,7 @@ export default function Configuracoes() {
           <Button
             onClick={handleSave}
             disabled={saving}
-            className="bg-gradient-primary text-white gap-2 min-w-[160px]"
+            className="gap-2 min-w-[160px] rounded-xl"
           >
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />

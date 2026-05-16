@@ -596,24 +596,24 @@ export default function Pacientes() {
           </div>
         </div>
 
-        {/* ── Main Tabs ── */}
-        <div className="flex gap-1 bg-muted/50 p-1 rounded-xl mb-5">
+        {/* ── Main Tabs (clean / minimal) ── */}
+        <div className="flex gap-1 bg-muted/40 p-1 rounded-xl mb-5">
           {([
-            { id: 'clientes' as MainTab, label: 'Clientes', icon: Users, activeClass: 'bg-blue-50 text-blue-700 ring-1 ring-blue-200 dark:bg-blue-500/15 dark:text-blue-300 dark:ring-blue-500/30', inactiveClass: 'text-blue-700/60 hover:text-blue-700 dark:text-blue-300/60 dark:hover:text-blue-300' },
-            { id: 'crm' as MainTab, label: 'CRM', icon: MessageSquare, activeClass: 'bg-violet-50 text-violet-700 ring-1 ring-violet-200 dark:bg-violet-500/15 dark:text-violet-300 dark:ring-violet-500/30', inactiveClass: 'text-violet-700/60 hover:text-violet-700 dark:text-violet-300/60 dark:hover:text-violet-300' },
-            { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign, activeClass: 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200 dark:bg-emerald-500/15 dark:text-emerald-300 dark:ring-emerald-500/30', inactiveClass: 'text-emerald-700/60 hover:text-emerald-700 dark:text-emerald-300/60 dark:hover:text-emerald-300' },
+            { id: 'clientes' as MainTab, label: 'Clientes', icon: Users },
+            { id: 'crm' as MainTab, label: 'CRM', icon: MessageSquare },
+            { id: 'financeiro' as MainTab, label: 'Financeiro', icon: DollarSign },
           ]).map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveMainTab(tab.id)}
               className={cn(
-                'flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-lg text-sm font-bold transition-all',
+                'flex-1 flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-all',
                 activeMainTab === tab.id
-                  ? `shadow-sm ${tab.activeClass}`
-                  : tab.inactiveClass
+                  ? 'bg-background text-foreground shadow-xs ring-1 ring-border/40'
+                  : 'text-muted-foreground hover:text-foreground'
               )}
             >
-              <tab.icon className="h-4 w-4" />
+              <tab.icon className="icon-sm" />
               <span>{tab.label}</span>
             </button>
           ))}
