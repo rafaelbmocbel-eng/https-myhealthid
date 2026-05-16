@@ -23,6 +23,7 @@ import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { cn } from '@/lib/utils';
 
 interface PacienteInfo {
   id: string;
