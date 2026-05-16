@@ -25,9 +25,9 @@ export function getPatientColor(id: string) {
     // Retornar estilos Tailwind inline ou classes CSS dinâmicas
     // Como estamos usando Tailwind no projeto, vamos retornar um objeto de estilo inline para maior flexibilidade
     return {
-        backgroundColor: `hsl(${h}, 70%, 95%)`,
-        borderColor: `hsl(${h}, 60%, 80%)`,
-        color: `hsl(${h}, 80%, 25%)`,
-        borderLeftColor: `hsl(${h}, 70%, 50%)`
+        backgroundColor: `hsl(${h}, 35%, 97%)`,
+        borderColor: `hsl(${h}, 25%, 88%)`,
+        color: `hsl(${h}, 50%, 28%)`,
+        borderLeftColor: `hsl(${h}, 55%, 55%)`
     };
 }
