@@ -400,7 +400,7 @@ export default function Index() {
           </h1>
 
           {/* Hero card — próximo atendimento ou estado vazio */}
-          <div className="mt-5 rounded-2xl border border-border/50 bg-gradient-to-br from-card to-muted/30 p-5 sm:p-6">
+          <div className="mt-5 rounded-2xl border border-border/50 bg-muted/30 p-5 sm:p-6">
             {proximoAtendimento ? (
               <button
                 type="button"
@@ -483,7 +483,7 @@ export default function Index() {
         {/* Quick stats — secundários, mais leves */}
         <StaggerContainer className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Pacientes ativos', value: pacientes.length, icon: Users, href: '/pacientes' },
+            { label: 'Pacientes', value: pacientes.length, icon: Users, href: '/pacientes' },
             { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, href: '/agenda' },
             { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, href: '/pacientes' },
           ].map(stat => {
