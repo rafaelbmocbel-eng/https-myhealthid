@@ -35,6 +35,9 @@ const DYNAMIC_IMPORT_ERROR_PATTERN =
   /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
 
 const reloadOnDynamicImportFailure = () => {
+  // Skip in dev — Vite HMR frequently invalidates chunks and would reload the
+  // page mid-edit, kicking the user out of whatever they were doing.
+  if (import.meta.env.DEV) return;
   // Don't reload if the tab is hidden — the user just brought the app back
   // from background; a reload would wipe their state.
   if (document.visibilityState !== "visible") {
