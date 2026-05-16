@@ -73,7 +73,7 @@ export default function CobEtapaPrograma({ avaliacao, onNext, onBack }: Props) {
       <div className="clinical-card bg-primary/5 border-primary/20">
         <div className="flex justify-between">
           <Button variant="outline" onClick={onBack}><ChevronLeft className="h-4 w-4 mr-1" />Voltar</Button>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary gap-2">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary gap-2">
             <BarChart3 className="h-4 w-4" />Gerar Relatório COB° ZERO
           </Button>
         </div>

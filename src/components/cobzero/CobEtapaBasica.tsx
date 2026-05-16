@@ -79,7 +79,7 @@ export default function CobEtapaBasica({ data, onChange, onNext }: Props) {
 
       <div className="clinical-card bg-primary/5 border-primary/20">
         <div className="flex justify-end">
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Antropometria <ChevronRight className="h-4 w-4 ml-1" />
           </Button>
         </div>

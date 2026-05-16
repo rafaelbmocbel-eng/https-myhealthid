@@ -28,7 +28,7 @@ export default function Navigation() {
       <div className="container flex h-16 items-center justify-between">
         {/* Logo */}
         <Link to="/" className="flex items-center gap-2 group">
-          <div className="h-10 w-10 rounded-xl bg-gradient-primary flex items-center justify-center text-white font-bold text-sm">
+          <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center text-white font-bold text-sm">
             MH
           </div>
           <div>
@@ -66,7 +66,7 @@ export default function Navigation() {
             <>
               <Button variant="ghost" className="hidden md:flex items-center gap-2 text-sm" asChild>
                 <Link to="/agenda">
-                  <div className="h-7 w-7 rounded-full bg-gradient-primary flex items-center justify-center">
+                  <div className="h-7 w-7 rounded-full bg-primary flex items-center justify-center">
                     <User className="h-4 w-4 text-white" />
                   </div>
                   {profile?.nome || user.email?.split('@')[0] || 'Terapeuta'}
@@ -78,7 +78,7 @@ export default function Navigation() {
               </Button>
             </>
           ) : (
-            <Button asChild size="sm" className="hidden md:flex bg-gradient-primary text-white">
+            <Button asChild size="sm" className="hidden md:flex bg-primary text-primary-foreground">
               <Link to="/auth">Entrar</Link>
             </Button>
           )}

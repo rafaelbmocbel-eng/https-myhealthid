@@ -146,7 +146,7 @@ Diretriz criada no cardápio de técnicas e salva automaticamente no prontuário
           <Button
             onClick={salvarProtocolo}
             disabled={salvando}
-            className="bg-gradient-primary text-white gap-2 shrink-0"
+            className="bg-primary text-primary-foreground gap-2 shrink-0"
           >
             {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Salvar Diretriz

@@ -114,7 +114,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
             </Button>
           )}
           {pacienteId && (
-            <Button className="bg-gradient-primary text-white gap-1.5 text-xs sm:text-sm" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
+            <Button className="bg-primary text-primary-foreground gap-1.5 text-xs sm:text-sm" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
               <Sparkles className="icon-sm" />
               <span className="hidden sm:inline">Gerar Diretriz</span>
               <span className="sm:hidden">Diretriz</span>

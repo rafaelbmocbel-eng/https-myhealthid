@@ -491,7 +491,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
                 />
               </div>
 
-              <Button className="w-full bg-gradient-primary text-white" onClick={() => setModalRegiao(null)}>
+              <Button className="w-full bg-primary text-primary-foreground" onClick={() => setModalRegiao(null)}>
                 Salvar região ✓
               </Button>
             </div>
@@ -506,7 +506,7 @@ export default function Bloco2Dor({ data, onChange, onNext, onBack }: Props) {
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
           <span className="text-sm text-muted-foreground">Score D: <strong className="text-primary">{scoreD.toFixed(1)}/10</strong></span>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Funcionalidade
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

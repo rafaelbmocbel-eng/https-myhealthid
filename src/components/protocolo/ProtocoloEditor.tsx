@@ -384,7 +384,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
             {currentStep === 1 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     {/* Header card */}
-                    <div className="clinical-card bg-gradient-primary text-white">
+                    <div className="clinical-card bg-primary text-primary-foreground">
                         <div className="flex items-start justify-between">
                             <div>
                                 <div className="text-xs opacity-70 uppercase tracking-widest mb-1 flex items-center gap-2">
@@ -665,7 +665,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
             {currentStep === 3 && (
                 <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     {/* Resumo geral */}
-                    <div className="clinical-card bg-gradient-primary text-white">
+                    <div className="clinical-card bg-primary text-primary-foreground">
                         <div className="flex items-center gap-3 mb-3">
                             <CheckCircle2 className="h-5 w-5" />
                             <h2 className="text-lg font-bold">Resumo da Diretriz</h2>
@@ -762,7 +762,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                             <Button
                                 size="sm"
                                 onClick={() => setCurrentStep(prev => prev + 1)}
-                                className="bg-gradient-primary text-white gap-1"
+                                className="bg-primary text-primary-foreground gap-1"
                             >
                                 <span>{currentStep === 1 ? 'Personalizar' : 'Revisar'}</span>
                                 <ArrowRight className="icon-sm" />
@@ -772,7 +772,7 @@ Diretriz gerada a partir da avaliação. Detalhes completos na aba Diretrizes.`;
                                 size="sm"
                                 onClick={handleSalvar}
                                 disabled={salvando || (totalExSelecionados === 0 && totalTecSelecionados === 0)}
-                                className="bg-gradient-primary text-white gap-1.5 px-5"
+                                className="bg-primary text-primary-foreground gap-1.5 px-5"
                             >
                                 {salvando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
                                 Salvar Diretriz

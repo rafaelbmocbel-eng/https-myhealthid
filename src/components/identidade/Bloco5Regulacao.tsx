@@ -162,7 +162,7 @@ export default function Bloco5Regulacao({ data, onChange, onNext, onBack }: Prop
           <Button variant="outline" onClick={onBack}>
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Estrutural
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

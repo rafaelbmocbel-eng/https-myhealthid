@@ -1304,7 +1304,7 @@ export default function PacientePerfil() {
                 </div>
                 <div className="flex gap-3 pt-2">
                   <Button variant="outline" className="flex-1" onClick={() => setEditModalOpen(false)}>Cancelar</Button>
-                  <Button className="flex-1 bg-gradient-primary text-white" onClick={handleSaveEdit} disabled={submittingEdit}>
+                  <Button className="flex-1 bg-primary text-primary-foreground" onClick={handleSaveEdit} disabled={submittingEdit}>
                     {submittingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
                   </Button>
                 </div>

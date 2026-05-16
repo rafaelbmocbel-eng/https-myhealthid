@@ -1026,7 +1026,7 @@ function StructuralDiretrizButton({ data, pacienteId }: { data: StructuralAssess
         Para mesclar os dados de Identidade Estrutural nesta sessão e gerar prescrições por fases em uma nova diretriz, acesse o painel.
       </div>
       <Button
-        className="w-full bg-gradient-primary text-white gap-2"
+        className="w-full bg-primary text-primary-foreground gap-2"
         onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
       >
         <Sparkles className="h-4 w-4" />

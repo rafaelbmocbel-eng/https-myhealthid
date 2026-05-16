@@ -454,7 +454,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           </div>
           <Button
             size="sm"
-            className="bg-gradient-primary text-white gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
+            className="bg-primary text-primary-foreground gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
             onClick={handleNovaDiretrizManual}
           >
             <Plus className="h-4 w-4" /> Nova Diretriz
@@ -483,7 +483,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         </div>
         <Button
           size="sm"
-          className="bg-gradient-primary text-white gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
+          className="bg-primary text-primary-foreground gap-2 font-bold px-4 h-9 shadow-lg hover:shadow-primary/20 transition-all rounded-xl"
           onClick={handleNovaDiretrizManual}
         >
           <Plus className="h-4 w-4" /> Nova Diretriz
@@ -515,7 +515,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                     <Badge className="bg-amber-100 text-amber-700 border-0 text-[10px]">{demandasCount} demandas</Badge>
                   </div>
                 </div>
-                <Button size="sm" className="bg-gradient-primary text-white gap-1 h-7 text-xs shadow-sm"
+                <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-7 text-xs shadow-sm"
                   onClick={() => setAnalisandoAvaliacao(av)}>
                   <Zap className="h-3 w-3" /> Gerar
                 </Button>
