@@ -757,9 +757,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <Clock className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Cliente há</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Cliente há</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -771,9 +771,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <Activity className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Avaliações</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Avaliações</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {avaliacoesId.length + avaliacoesCob.length}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -785,9 +785,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <CalendarDays className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Próxima</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Próxima</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {agendamentosFuturos[0]
                 ? (() => {
                     const d = parseISO(agendamentosFuturos[0].data_inicio);
@@ -816,10 +816,10 @@ export default function PacientePerfil() {
               >
                 <div className="flex items-center gap-1.5 text-primary mb-1">
                   <Package className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide">Sessões</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Sessões</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
                   #{sessoesInfo.numeroAtual || 0}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -893,10 +893,10 @@ export default function PacientePerfil() {
               >
                 <div className="flex items-center gap-1.5 text-emerald-700 mb-1">
                   <DollarSign className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide">Financeiro</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Financeiro</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
                   {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
