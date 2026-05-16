@@ -107,7 +107,7 @@ export default function Configuracoes() {
 
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-muted-foreground" />
+            <Clock className="icon-sm text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">Intervalo entre Sessões</h2>
           </div>
           <div className="max-w-xs">
@@ -131,7 +131,7 @@ export default function Configuracoes() {
         {/* Link de Agendamento Online (Geral) */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Link2 className="h-4 w-4 text-primary" />
+            <Link2 className="icon-sm text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">Link de Agendamento Online</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
@@ -162,7 +162,7 @@ export default function Configuracoes() {
         {/* Vagas por horário */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="h-4 w-4 text-primary" />
+            <Users className="icon-sm text-muted-foreground" />
             <h2 className="text-sm font-semibold text-foreground">Vagas por Horário</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
@@ -331,7 +331,7 @@ function ClientRegistrationLink() {
     return (
       <div className="clinical-card mb-6">
         <div className="flex items-center gap-2 mb-4">
-          <UserPlus className="h-4 w-4 text-primary" />
+          <UserPlus className="icon-sm text-muted-foreground" />
           <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
         </div>
         <p className="text-xs text-muted-foreground">
@@ -344,7 +344,7 @@ function ClientRegistrationLink() {
   return (
     <div className="clinical-card mb-6">
       <div className="flex items-center gap-2 mb-4">
-        <UserPlus className="h-4 w-4 text-primary" />
+        <UserPlus className="icon-sm text-muted-foreground" />
         <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
