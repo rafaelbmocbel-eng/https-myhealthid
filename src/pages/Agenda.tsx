@@ -1531,8 +1531,8 @@ export default function Agenda() {
                               onMouseDown={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               onTouchStart={e => { e.stopPropagation(); handleDragStart(e, ag, di); }}
                               className={cn(
-                                'absolute rounded-lg border-l-[6px] px-2 py-1.5 overflow-hidden cursor-grab select-none pointer-events-auto shadow-sm',
-                                'hover:brightness-95 hover:shadow-md transition-all z-10',
+                                'absolute rounded-md border border-l-[3px] px-2 py-1 overflow-hidden cursor-grab select-none pointer-events-auto',
+                                'hover:brightness-[0.98] hover:shadow-sm transition-all z-10',
                                 isDraggingThis && 'opacity-50 shadow-lg ring-2 ring-primary/40 cursor-grabbing',
                                 !memberColor && (sc.bg + ' ' + sc.border + ' ' + sc.text)
                               )}
@@ -1550,7 +1550,7 @@ export default function Agenda() {
                                 ...(isDraggingThis ? { transform: `translate(${dragDelta.dx}px, ${dragDelta.dy}px)`, zIndex: 50, transition: 'none' } : {}),
                               }}
                             >
-                              <div className="flex items-center gap-0.5 text-[9px] font-semibold truncate pr-5">
+                              <div className="flex items-center gap-0.5 text-[10px] font-medium truncate pr-5 tracking-tight">
                                 {ag.recorrencia_grupo_id && <Repeat className="h-2.5 w-2.5 shrink-0 opacity-60" />}
                                 {sc.icon}
                                 {ag.paciente_id && (
@@ -1568,7 +1568,7 @@ export default function Agenda() {
                                 </span>
                               </div>
                               {layout.totalCols > 1 && (
-                                <div className="absolute top-1 right-1 flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full text-[9px] font-black shadow-sm" style={{
+                                <div className="absolute top-0.5 right-0.5 flex items-center justify-center min-w-[16px] h-[16px] px-1 rounded-full text-[9px] font-semibold" style={{
                                   backgroundColor: memberColor?.borderLeftColor || sc.border.replace('border-', ''),
                                   color: '#fff',
                                 }}>
