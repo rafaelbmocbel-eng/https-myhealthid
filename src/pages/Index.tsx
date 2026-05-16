@@ -494,11 +494,13 @@ export default function Index() {
                   to={stat.href}
                   className="block rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
                 >
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Icon className="icon-xs text-muted-foreground/70" />
-                    <span className="text-micro truncate">{stat.label}</span>
+                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1.5 truncate">
+                    {stat.label}
                   </div>
-                  <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">{stat.value}</div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums leading-none">{stat.value}</div>
+                    <Icon className="icon-xs text-muted-foreground/50 mb-0.5 shrink-0" />
+                  </div>
                 </Link>
               </StaggerItem>
             );
