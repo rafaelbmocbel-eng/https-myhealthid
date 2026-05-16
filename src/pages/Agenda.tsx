@@ -1973,7 +1973,7 @@ export default function Agenda() {
                 <div className="space-y-3 p-3 bg-muted/30 rounded-lg border">
                   <div className="flex items-center justify-between">
                     <Label className="text-xs font-bold flex items-center gap-1.5">
-                      <Repeat className="h-3.5 w-3.5" /> Repetir agendamento
+                      <Repeat className="h-4 w-4" /> Repetir agendamento
                     </Label>
                     {isExistingRecurring && (
                       <span className="text-[10px] text-muted-foreground">Já é uma série recorrente</span>

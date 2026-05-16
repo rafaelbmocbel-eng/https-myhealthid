@@ -110,7 +110,7 @@ export default function IdentidadePortavelActions({ pacienteId, pacienteNome, te
           onClick={handleExportarPDF}
           disabled={exportando || !hasMyID}
         >
-          {exportando ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+          {exportando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
           <span className="text-xs font-semibold">Exportar PDF</span>
         </Button>
         <Button
@@ -120,7 +120,7 @@ export default function IdentidadePortavelActions({ pacienteId, pacienteNome, te
           onClick={handleCompartilharLink}
           disabled={!hasMyID}
         >
-          <Share2 className="h-3.5 w-3.5" />
+          <Share2 className="h-4 w-4" />
           <span className="text-xs font-semibold">Compartilhar MyID</span>
         </Button>
       </div>

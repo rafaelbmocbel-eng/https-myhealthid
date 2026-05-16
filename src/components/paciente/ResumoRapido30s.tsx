@@ -61,7 +61,7 @@ export default function ResumoRapido30s({ pacienteId, pacienteNome }: Props) {
         className="h-8 gap-1.5"
         onClick={handleAbrir}
       >
-        <Sparkles className="h-3.5 w-3.5 text-primary" />
+        <Sparkles className="h-4 w-4 text-primary" />
         <span className="text-xs font-semibold">Resumo em 30s</span>
       </Button>
 
@@ -88,10 +88,10 @@ export default function ResumoRapido30s({ pacienteId, pacienteNome }: Props) {
               </div>
               <div className="flex gap-2 justify-end">
                 <Button size="sm" variant="ghost" onClick={gerarResumo}>
-                  <RefreshCw className="h-3.5 w-3.5 mr-1.5" /> Regenerar
+                  <RefreshCw className="h-4 w-4 mr-1.5" /> Regenerar
                 </Button>
                 <Button size="sm" variant="outline" onClick={handleCopiar}>
-                  <Copy className="h-3.5 w-3.5 mr-1.5" /> Copiar
+                  <Copy className="h-4 w-4 mr-1.5" /> Copiar
                 </Button>
               </div>
               <p className="text-[10px] text-muted-foreground text-center">

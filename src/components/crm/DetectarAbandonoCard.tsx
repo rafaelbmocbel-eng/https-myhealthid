@@ -128,7 +128,7 @@ export default function DetectarAbandonoCard({ diasMinimos = 21 }: Props) {
           onClick={() => handleReativar(p)}
           disabled={!p.telefone}
         >
-          <MessageCircle className="h-3.5 w-3.5 text-emerald-600" />
+          <MessageCircle className="h-4 w-4 text-emerald-600" />
           <span className="text-xs">Reativar</span>
         </Button>
       </div>
