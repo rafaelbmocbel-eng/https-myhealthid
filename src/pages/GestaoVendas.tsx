@@ -807,7 +807,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                                     <DialogFooter>
                                         <Button variant="outline" onClick={() => setPaymentModal(prev => ({ ...prev, open: false }))}>Cancelar</Button>
                                         <Button
-                                            className="bg-gradient-primary text-white"
+                                            className="rounded-xl"
                                             disabled={upsertSessao.isPending}
                                             onClick={() => {
                                                 upsertSessao.mutate({
@@ -1159,7 +1159,7 @@ export default function GestaoVendas({ embedded = false }: { embedded?: boolean 
                 <button
                     onClick={() => setFabOpen(!fabOpen)}
                     className={cn(
-                        'h-14 w-14 rounded-full bg-gradient-primary text-white shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95',
+                        'h-14 w-14 rounded-full rounded-xl shadow-lg flex items-center justify-center transition-all hover:scale-105 active:scale-95',
                         fabOpen && 'rotate-45'
                     )}
                 >
