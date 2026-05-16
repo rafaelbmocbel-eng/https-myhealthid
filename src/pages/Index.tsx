@@ -389,15 +389,61 @@ export default function Index() {
     <AppLayout>
       <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-2 sm:px-6">
-        {/* Welcome header */}
+        {/* Welcome header — hero com foco no "agora" */}
         <FadeIn>
         <header className="mb-6 sm:mb-8">
-          <h1 className="h-page">
-            {saudacao}, {profile?.nome || 'Terapeuta'}
-          </h1>
-          <p className="text-caption mt-1.5 capitalize">
+          <p className="text-caption capitalize">
             {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
           </p>
+          <h1 className="h-page mt-1">
+            {saudacao}, {profile?.nome || 'Terapeuta'}
+          </h1>
+
+          {/* Hero card — próximo atendimento ou estado vazio */}
+          <div className="mt-5 rounded-2xl border border-border/50 bg-gradient-to-br from-card to-muted/30 p-5 sm:p-6">
+            {proximoAtendimento ? (
+              <button
+                type="button"
+                onClick={() => (proximoAtendimento as any).pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
+                className="w-full text-left flex items-center justify-between gap-4 group"
+              >
+                <div className="min-w-0">
+                  <div className="text-micro text-muted-foreground">Próximo atendimento</div>
+                  <div className="mt-1 flex items-baseline gap-2">
+                    <span className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums text-foreground">
+                      {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
+                    </span>
+                    <span className="text-sm text-muted-foreground">
+                      {formatDistanceToNow(parseISO(proximoAtendimento.data_inicio), { addSuffix: true, locale: ptBR })}
+                    </span>
+                  </div>
+                  <div className="mt-1.5 text-sm font-medium text-foreground truncate">
+                    {(proximoAtendimento as any).pacientes
+                      ? `${(proximoAtendimento as any).pacientes.nome} ${(proximoAtendimento as any).pacientes.sobrenome || ''}`
+                      : (proximoAtendimento as any).titulo || 'Atendimento'}
+                  </div>
+                </div>
+                <ArrowRight className="icon-md text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
+              </button>
+            ) : (
+              <div className="flex items-center justify-between gap-4">
+                <div>
+                  <div className="text-micro text-muted-foreground">Hoje</div>
+                  <div className="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+                    {agendamentosHoje.length === 0 ? 'Agenda livre' : 'Sem mais agendamentos'}
+                  </div>
+                  <div className="mt-1.5 text-caption">
+                    {agendamentosHoje.length > 0
+                      ? `${agendamentosHoje.length} ${agendamentosHoje.length === 1 ? 'atendimento' : 'atendimentos'} concluídos hoje`
+                      : 'Aproveite para revisar protocolos ou contatar pacientes'}
+                  </div>
+                </div>
+                <Button asChild variant="outline" size="sm" className="shrink-0">
+                  <Link to="/agenda">Ver agenda</Link>
+                </Button>
+              </div>
+            )}
+          </div>
         </header>
         </FadeIn>
 
@@ -434,37 +480,26 @@ export default function Index() {
           <OnboardingGuide />
         </div>
 
-        {/* Quick stats — clean row */}
-        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+        {/* Quick stats — secundários, mais leves */}
+        <StaggerContainer className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Pacientes', value: pacientes.length, icon: Users },
-            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays },
-            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList },
-            {
-              label: 'Próximo',
-              value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—',
-              icon: Clock,
-              onClick: () => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`),
-              subtitle: proximoAtendimento?.pacientes ? `${(proximoAtendimento as any).pacientes.nome}` : undefined,
-            },
+            { label: 'Pacientes ativos', value: pacientes.length, icon: Users, href: '/pacientes' },
+            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, href: '/agenda' },
+            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, href: '/pacientes' },
           ].map(stat => {
             const Icon = stat.icon;
-            const clickable = !!(stat as any).onClick;
             return (
               <StaggerItem key={stat.label}>
-                <div
-                  className={`rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors ${clickable ? 'cursor-pointer hover:border-primary/40' : ''}`}
-                  onClick={(stat as any).onClick}
+                <Link
+                  to={stat.href}
+                  className="block rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-micro">{stat.label}</span>
+                  <div className="flex items-center gap-1.5 mb-1.5">
                     <Icon className="icon-xs text-muted-foreground/70" />
+                    <span className="text-micro truncate">{stat.label}</span>
                   </div>
-                  <div className="text-2xl font-semibold text-foreground tracking-tight">{stat.value}</div>
-                  {(stat as any).subtitle && (
-                    <div className="text-[11px] text-muted-foreground truncate mt-0.5">{(stat as any).subtitle}</div>
-                  )}
-                </div>
+                  <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">{stat.value}</div>
+                </Link>
               </StaggerItem>
             );
           })}
