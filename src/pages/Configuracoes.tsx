@@ -107,8 +107,8 @@ export default function Configuracoes() {
 
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Clock className="h-4 w-4 text-muted-foreground" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Intervalo entre Sessões</h2>
+            <Clock className="icon-sm text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Intervalo entre Sessões</h2>
           </div>
           <div className="max-w-xs">
             <Label className="text-xs font-medium mb-1.5 block">Minutos de intervalo</Label>
@@ -131,8 +131,8 @@ export default function Configuracoes() {
         {/* Link de Agendamento Online (Geral) */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Link2 className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Agendamento Online</h2>
+            <Link2 className="icon-sm text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Link de Agendamento Online</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
             Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento.
@@ -162,8 +162,8 @@ export default function Configuracoes() {
         {/* Vagas por horário */}
         <div className="clinical-card mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Users className="h-4 w-4 text-primary" />
-            <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Vagas por Horário</h2>
+            <Users className="icon-sm text-muted-foreground" />
+            <h2 className="text-sm font-semibold text-foreground">Vagas por Horário</h2>
           </div>
           <p className="text-xs text-muted-foreground mb-4">
             Quantos pacientes podem agendar no <strong>mesmo horário</strong> simultaneamente.
@@ -331,8 +331,8 @@ function ClientRegistrationLink() {
     return (
       <div className="clinical-card mb-6">
         <div className="flex items-center gap-2 mb-4">
-          <UserPlus className="h-4 w-4 text-primary" />
-          <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Cadastro de Cliente</h2>
+          <UserPlus className="icon-sm text-muted-foreground" />
+          <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
         </div>
         <p className="text-xs text-muted-foreground">
           Configure um <strong>slug</strong> no campo acima (Link de Agendamento) para gerar seu link de cadastro de novos clientes.
@@ -344,8 +344,8 @@ function ClientRegistrationLink() {
   return (
     <div className="clinical-card mb-6">
       <div className="flex items-center gap-2 mb-4">
-        <UserPlus className="h-4 w-4 text-primary" />
-        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Link de Cadastro de Cliente</h2>
+        <UserPlus className="icon-sm text-muted-foreground" />
+        <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
         Compartilhe este link para que novos clientes criem sua conta e entrem automaticamente no seu banco de dados com acesso ao portal.
