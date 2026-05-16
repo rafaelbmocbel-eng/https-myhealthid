@@ -591,20 +591,16 @@ export default function PacientePerfil() {
             </div>
 
             {/* Identity row */}
-            <div className="flex items-start gap-3 sm:gap-4">
+            <div className="flex items-center gap-3 sm:gap-4">
               <div
-                className="h-14 w-14 sm:h-16 sm:w-16 rounded-2xl flex items-center justify-center shrink-0 text-white font-black text-lg sm:text-xl shadow-lg ring-4 ring-background"
-                style={{
-                  background:
-                    'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--primary) / 0.7) 100%)',
-                }}
+                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center shrink-0 bg-primary/10 text-primary font-semibold text-base sm:text-lg ring-1 ring-primary/15"
               >
                 {paciente.nome[0]}
                 {paciente.sobrenome?.[0] || ''}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <h1 className="text-lg sm:text-2xl font-black text-foreground leading-tight truncate">
+                  <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground leading-tight truncate">
                     {paciente.nome} {paciente.sobrenome}
                   </h1>
                   {acessoClinico && (
@@ -614,41 +610,50 @@ export default function PacientePerfil() {
                     />
                   )}
                 </div>
-                {/* Contact pills */}
-                <div className="flex flex-wrap items-center gap-1.5 mt-1.5">
+                {/* Contact line — inline, separated by dots */}
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 mt-1 text-[11px] text-muted-foreground">
                   {idade !== null && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 text-[10px] font-medium text-muted-foreground">
-                      <Calendar className="h-2.5 w-2.5" />
+                    <span className="inline-flex items-center gap-1">
+                      <Calendar className="h-3 w-3" />
                       {idade} anos
                     </span>
                   )}
                   {paciente.genero && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 text-[10px] font-medium text-muted-foreground capitalize">
-                      <User className="h-2.5 w-2.5" />
-                      {paciente.genero}
-                    </span>
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <span className="inline-flex items-center gap-1 capitalize">
+                        <User className="h-3 w-3" />
+                        {paciente.genero}
+                      </span>
+                    </>
                   )}
                   {paciente.telefone && (
-                    <a
-                      href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 hover:bg-emerald-100 text-[10px] font-medium text-emerald-700 border border-emerald-200 transition-colors"
-                      title="Abrir conversa no WhatsApp"
-                    >
-                      <Phone className="h-2.5 w-2.5" />
-                      {paciente.telefone}
-                    </a>
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <a
+                        href={`https://wa.me/${paciente.telefone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="inline-flex items-center gap-1 text-emerald-700 hover:underline"
+                        title="Abrir conversa no WhatsApp"
+                      >
+                        <Phone className="h-3 w-3" />
+                        {paciente.telefone}
+                      </a>
+                    </>
                   )}
                   {paciente.email && (
-                    <a
-                      href={`mailto:${paciente.email}`}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-muted/70 hover:bg-muted text-[10px] font-medium text-muted-foreground transition-colors max-w-[200px] truncate"
-                      title={paciente.email}
-                    >
-                      <Mail className="h-2.5 w-2.5 shrink-0" />
-                      <span className="truncate">{paciente.email}</span>
-                    </a>
+                    <>
+                      <span className="text-muted-foreground/40">·</span>
+                      <a
+                        href={`mailto:${paciente.email}`}
+                        className="inline-flex items-center gap-1 hover:text-foreground transition-colors max-w-[200px] truncate"
+                        title={paciente.email}
+                      >
+                        <Mail className="h-3 w-3 shrink-0" />
+                        <span className="truncate">{paciente.email}</span>
+                      </a>
+                    </>
                   )}
                 </div>
               </div>
@@ -752,9 +757,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <Clock className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Cliente há</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Cliente há</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {formatDistanceToNow(new Date(paciente.created_at), { locale: ptBR }).replace('cerca de ', '~')}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -766,9 +771,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <Activity className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Avaliações</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Avaliações</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {avaliacoesId.length + avaliacoesCob.length}
             </div>
             <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -780,9 +785,9 @@ export default function PacientePerfil() {
           <div className="rounded-xl border border-border/60 bg-card p-3 hover:shadow-md transition-shadow">
             <div className="flex items-center gap-1.5 text-muted-foreground mb-1">
               <CalendarDays className="h-3 w-3" />
-              <span className="text-[10px] font-semibold uppercase tracking-wide">Próxima</span>
+              <span className="text-[10px] font-medium uppercase tracking-wider">Próxima</span>
             </div>
-            <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+            <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
               {agendamentosFuturos[0]
                 ? (() => {
                     const d = parseISO(agendamentosFuturos[0].data_inicio);
@@ -811,10 +816,10 @@ export default function PacientePerfil() {
               >
                 <div className="flex items-center gap-1.5 text-primary mb-1">
                   <Package className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide">Sessões</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Sessões</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
                   #{sessoesInfo.numeroAtual || 0}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">
@@ -888,10 +893,10 @@ export default function PacientePerfil() {
               >
                 <div className="flex items-center gap-1.5 text-emerald-700 mb-1">
                   <DollarSign className="h-3 w-3" />
-                  <span className="text-[10px] font-semibold uppercase tracking-wide">Financeiro</span>
+                  <span className="text-[10px] font-medium uppercase tracking-wider">Financeiro</span>
                   <ChevronRight className="h-3 w-3 ml-auto opacity-0 group-hover:opacity-100 transition-opacity" />
                 </div>
-                <div className="text-base sm:text-lg font-black leading-tight text-foreground">
+                <div className="text-base sm:text-lg font-semibold tracking-tight leading-tight text-foreground">
                   {finResumo.pago > 0 ? fmtBRL(finResumo.pago) : 'R$ 0'}
                 </div>
                 <div className="text-[10px] text-muted-foreground mt-0.5">

@@ -23,6 +23,7 @@ import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
 import { useWellnessAccess } from '@/hooks/useWellnessAccess';
+import { cn } from '@/lib/utils';
 
 interface PacienteInfo {
   id: string;
@@ -185,77 +186,78 @@ export default function PacienteDashboard() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          {/* Welcome card with stats integrated */}
+          {/* Welcome — Apple Health style: progress ring + KPIs */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
-            <Card className="overflow-hidden border-0 shadow-md"
-              style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(213 55% 28%) 100%)' }}
-            >
-              <CardContent className="p-4">
-                <div className="flex items-start justify-between mb-3">
-                  <div>
-                    <h1 className="text-lg font-black text-primary-foreground">
-                      {getGreeting()}, {paciente?.nome || '...'} 👋
+            <Card className="border-border/40 shadow-xs">
+              <CardContent className="p-5">
+                {/* Greeting */}
+                <div className="flex items-center justify-between mb-4">
+                  <div className="min-w-0">
+                    <p className="text-xs text-muted-foreground">{getGreeting()}</p>
+                    <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">
+                      {paciente?.nome || '...'}
                     </h1>
-                    <p className="text-[11px] text-primary-foreground/60 mt-0.5">
-                      Acompanhe sua evolução e próximas consultas.
-                    </p>
                   </div>
-                  <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-white/15 backdrop-blur-sm">
-                    <LevelIcon className="h-3 w-3 text-primary-foreground" />
-                    <span className="text-[10px] font-bold text-primary-foreground">{level.label}</span>
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60">
+                    <LevelIcon className={cn('h-3.5 w-3.5', level.color)} />
+                    <span className="text-[11px] font-medium text-foreground">{level.label}</span>
                   </div>
                 </div>
 
-                {/* Inline stats */}
-                <div className="grid grid-cols-3 gap-2 mb-2">
-                  {[
-                    { icon: CalendarDays, value: proximasConsultas.length, label: 'Consultas' },
-                    { icon: Fingerprint, value: stats.avaliacoes, label: 'Avaliações' },
-                    { icon: Flame, value: stats.consultas, label: 'Sessões' },
-                  ].map(s => {
-                    const Icon = s.icon;
-                    return (
-                      <div key={s.label} className="text-center px-2 py-1.5 rounded-lg bg-white/10">
-                        <Icon className="icon-sm text-primary-foreground/70 mx-auto mb-0.5" />
-                        <div className="text-sm font-black text-primary-foreground">{s.value}</div>
-                        <div className="text-[8px] text-primary-foreground/50">{s.label}</div>
-                      </div>
-                    );
-                  })}
+                {/* Ring + inline stats */}
+                <div className="flex items-center gap-4">
+                  {/* SVG Progress Ring */}
+                  <div className="relative shrink-0">
+                    <svg width="84" height="84" viewBox="0 0 84 84" className="-rotate-90">
+                      <circle cx="42" cy="42" r="36" fill="none" stroke="hsl(var(--muted))" strokeWidth="7" />
+                      <motion.circle
+                        cx="42" cy="42" r="36" fill="none"
+                        stroke="hsl(var(--primary))"
+                        strokeWidth="7"
+                        strokeLinecap="round"
+                        strokeDasharray={2 * Math.PI * 36}
+                        initial={{ strokeDashoffset: 2 * Math.PI * 36 }}
+                        animate={{
+                          strokeDashoffset:
+                            2 * Math.PI * 36 * (1 - Math.min(1, level.next ? xp / level.next : 1)),
+                        }}
+                        transition={{ duration: 1.1, delay: 0.25, ease: 'easeOut' }}
+                      />
+                    </svg>
+                    <div className="absolute inset-0 flex flex-col items-center justify-center">
+                      <span className="text-base font-semibold text-foreground leading-none">{xp}</span>
+                      <span className="text-[9px] text-muted-foreground mt-0.5">XP</span>
+                    </div>
+                  </div>
+
+                  {/* KPIs stacked */}
+                  <div className="flex-1 grid grid-cols-3 gap-2 min-w-0">
+                    {[
+                      { icon: CalendarDays, value: proximasConsultas.length, label: 'Consultas' },
+                      { icon: Fingerprint, value: stats.avaliacoes, label: 'Avaliações' },
+                      { icon: Flame, value: stats.consultas, label: 'Sessões' },
+                    ].map(s => {
+                      const Icon = s.icon;
+                      return (
+                        <div key={s.label} className="flex flex-col items-start">
+                          <Icon className="h-3.5 w-3.5 text-muted-foreground mb-1" />
+                          <div className="text-base font-semibold text-foreground leading-none">{s.value}</div>
+                          <div className="text-[10px] text-muted-foreground mt-1 truncate w-full">{s.label}</div>
+                        </div>
+                      );
+                    })}
+                  </div>
                 </div>
 
-                {/* XP bar + Streak inline */}
-                <div className="flex items-center gap-3">
-                  {level.next && (
-                    <div className="flex-1 space-y-0.5">
-                      <div className="flex justify-between text-[9px] text-primary-foreground/50">
-                        <span>{xp} XP</span>
-                        <span>{level.next} XP</span>
-                      </div>
-                      <div className="h-1.5 bg-white/10 rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ background: 'hsl(var(--accent))' }}
-                          initial={{ width: 0 }}
-                          animate={{ width: `${Math.min(100, (xp / level.next) * 100)}%` }}
-                          transition={{ duration: 1, delay: 0.3 }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                  {notifications.streak > 1 && (
-                    <div className="flex items-center gap-1 px-2 py-1 rounded-lg bg-white/10 shrink-0">
-                      <span className="text-xs">🔥</span>
-                      <span className="text-[10px] font-bold text-primary-foreground">{notifications.streak}d</span>
-                    </div>
-                  )}
-                  {/* Inline badges */}
-                  {stats.avaliacoes >= 1 && (
-                    <Badge variant="outline" className="bg-white/10 border-white/20 text-primary-foreground text-[8px] h-5 gap-0.5 shrink-0">
-                      <ClipboardList className="h-2.5 w-2.5" /> {stats.avaliacoes}ª
-                    </Badge>
-                  )}
-                </div>
+                {/* Streak footer */}
+                {notifications.streak > 1 && (
+                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between">
+                    <span className="text-[11px] text-muted-foreground">Sequência ativa</span>
+                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
+                      🔥 {notifications.streak} dias
+                    </span>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </motion.div>
