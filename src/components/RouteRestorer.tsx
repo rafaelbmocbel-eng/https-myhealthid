@@ -59,10 +59,9 @@ export default function RouteRestorer() {
     // Never restore for users currently on patient routes
     if (location.pathname.startsWith('/paciente')) return;
 
-    if (
-      isProfessionalRoute(saved) &&
-      (location.pathname === '/' || location.pathname === '/auth' || location.pathname === '/agenda')
-    ) {
+    // Only restore after login (/auth landing). Never redirect away from "/" —
+    // the home page (Início) is a destination, not a transient landing.
+    if (isProfessionalRoute(saved) && location.pathname === '/auth') {
       navigate(saved, { replace: true });
     }
   }, [user, loading, authReady, navigate, location.pathname]);
