@@ -400,7 +400,7 @@ export default function Index() {
           </h1>
 
           {/* Hero card — próximo atendimento ou estado vazio */}
-          <div className="mt-5 rounded-2xl border border-border/50 bg-gradient-to-br from-card to-muted/30 p-5 sm:p-6">
+          <div className="mt-5 rounded-2xl border border-border/50 bg-muted/30 p-5 sm:p-6">
             {proximoAtendimento ? (
               <button
                 type="button"
@@ -483,7 +483,7 @@ export default function Index() {
         {/* Quick stats — secundários, mais leves */}
         <StaggerContainer className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Pacientes ativos', value: pacientes.length, icon: Users, href: '/pacientes' },
+            { label: 'Pacientes', value: pacientes.length, icon: Users, href: '/pacientes' },
             { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, href: '/agenda' },
             { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, href: '/pacientes' },
           ].map(stat => {
@@ -494,11 +494,13 @@ export default function Index() {
                   to={stat.href}
                   className="block rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
                 >
-                  <div className="flex items-center gap-1.5 mb-1.5">
-                    <Icon className="icon-xs text-muted-foreground/70" />
-                    <span className="text-micro truncate">{stat.label}</span>
+                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1.5 truncate">
+                    {stat.label}
                   </div>
-                  <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">{stat.value}</div>
+                  <div className="flex items-end justify-between gap-2">
+                    <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums leading-none">{stat.value}</div>
+                    <Icon className="icon-xs text-muted-foreground/50 mb-0.5 shrink-0" />
+                  </div>
                 </Link>
               </StaggerItem>
             );
