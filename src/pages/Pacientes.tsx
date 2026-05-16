@@ -170,7 +170,7 @@ function LinkModalContent({ pac, links, gerando, gerarLink, copiarLink, cancelar
       <div className="p-3 rounded-lg bg-muted/50 border border-dashed text-center text-sm text-muted-foreground">
         Nenhum link ativo para este paciente
       </div>
-      <Button className="w-full bg-gradient-primary text-white gap-2" onClick={async () => {
+      <Button className="w-full rounded-xl gap-2" onClick={async () => {
         const novo = await gerarLink(pac.id);
         if (novo) copiarLink(novo.token);
       }} disabled={gerando}>
@@ -589,7 +589,7 @@ export default function Pacientes() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
-              <Button onClick={openNew} className="bg-gradient-primary text-white gap-2 rounded-xl h-10" size="sm">
+              <Button onClick={openNew} className="rounded-xl gap-2 rounded-xl h-10" size="sm">
                 <Plus className="icon-sm" /> <span className="hidden sm:inline">Novo paciente</span><span className="sm:hidden">Novo</span>
               </Button>
             </div>
@@ -681,7 +681,7 @@ export default function Pacientes() {
                   <div className="flex items-center gap-3 sm:gap-4">
                     {/* Avatar with status dot */}
                     <div className="relative shrink-0">
-                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-gradient-primary flex items-center justify-center text-white font-bold text-sm">
+                      <div className="h-10 w-10 sm:h-11 sm:w-11 rounded-full bg-primary flex items-center justify-center text-white font-bold text-sm">
                         {p.nome[0]}{p.sobrenome?.[0] || ''}
                       </div>
                       <div className={cn('absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white', status.color)} title={status.label} />
@@ -935,7 +935,7 @@ export default function Pacientes() {
             </div>
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
-              <Button className="flex-1 bg-gradient-primary text-white" onClick={handleSave} disabled={submitting}>
+              <Button className="flex-1 rounded-xl" onClick={handleSave} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Salvar'}
               </Button>
             </div>
