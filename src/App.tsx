@@ -116,6 +116,8 @@ const App = () => (
             <Suspense fallback={<LazyFallback />}>
               <Routes>
                 <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
+                <Route path="/index" element={<Navigate to="/" replace />} />
+                <Route path="/inicio" element={<Navigate to="/" replace />} />
                 <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
