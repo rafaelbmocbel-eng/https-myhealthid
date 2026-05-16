@@ -480,37 +480,26 @@ export default function Index() {
           <OnboardingGuide />
         </div>
 
-        {/* Quick stats — clean row */}
-        <StaggerContainer className="grid grid-cols-2 md:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
+        {/* Quick stats — secundários, mais leves */}
+        <StaggerContainer className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
           {[
-            { label: 'Pacientes', value: pacientes.length, icon: Users },
-            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays },
-            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList },
-            {
-              label: 'Próximo',
-              value: proximoAtendimento ? format(parseISO(proximoAtendimento.data_inicio), 'HH:mm') : '—',
-              icon: Clock,
-              onClick: () => proximoAtendimento?.pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`),
-              subtitle: proximoAtendimento?.pacientes ? `${(proximoAtendimento as any).pacientes.nome}` : undefined,
-            },
+            { label: 'Pacientes ativos', value: pacientes.length, icon: Users, href: '/pacientes' },
+            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, href: '/agenda' },
+            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, href: '/pacientes' },
           ].map(stat => {
             const Icon = stat.icon;
-            const clickable = !!(stat as any).onClick;
             return (
               <StaggerItem key={stat.label}>
-                <div
-                  className={`rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors ${clickable ? 'cursor-pointer hover:border-primary/40' : ''}`}
-                  onClick={(stat as any).onClick}
+                <Link
+                  to={stat.href}
+                  className="block rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
                 >
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-micro">{stat.label}</span>
+                  <div className="flex items-center gap-1.5 mb-1.5">
                     <Icon className="icon-xs text-muted-foreground/70" />
+                    <span className="text-micro truncate">{stat.label}</span>
                   </div>
-                  <div className="text-2xl font-semibold text-foreground tracking-tight">{stat.value}</div>
-                  {(stat as any).subtitle && (
-                    <div className="text-[11px] text-muted-foreground truncate mt-0.5">{(stat as any).subtitle}</div>
-                  )}
-                </div>
+                  <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums">{stat.value}</div>
+                </Link>
               </StaggerItem>
             );
           })}
