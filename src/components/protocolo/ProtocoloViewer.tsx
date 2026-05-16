@@ -126,7 +126,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
               <span className="hidden sm:inline">Nova Diretriz</span>
             </Button>
           )}
-          <Button onClick={onExportPDF} className="bg-gradient-primary text-white gap-2" size="sm">
+          <Button onClick={onExportPDF} className="bg-primary text-primary-foreground gap-2" size="sm">
             <Download className="h-4 w-4" />
             <span className="hidden sm:inline">Exportar PDF</span>
           </Button>

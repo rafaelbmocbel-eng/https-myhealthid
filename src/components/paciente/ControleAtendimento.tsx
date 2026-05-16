@@ -252,7 +252,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddPacienteModal(false)} disabled={addingPaciente}>Cancelar</Button>
-            <Button className="bg-gradient-primary text-white" disabled={addingPaciente} onClick={async () => {
+            <Button className="bg-primary text-primary-foreground" disabled={addingPaciente} onClick={async () => {
               if (!addPacienteForm.pacienteId) {
                 toast({ title: 'Selecione um paciente', variant: 'destructive' });
                 return;
@@ -357,7 +357,7 @@ export default function ControleAtendimento({ embedded = false }: ControleAtendi
                 <span className="text-sm font-bold">Atendimentos</span>
                 <span className="text-[10px] text-muted-foreground hidden sm:inline-block ml-2">(Toque no ícone para alterar status)</span>
               </div>
-              <Button size="sm" className="h-7 text-xs gap-1 bg-gradient-primary text-white" onClick={() => setAddPacienteModal(true)}>
+              <Button size="sm" className="h-7 text-xs gap-1 bg-primary text-primary-foreground" onClick={() => setAddPacienteModal(true)}>
                 <Plus className="h-3 w-3" /> Adicionar Paciente
               </Button>
             </div>

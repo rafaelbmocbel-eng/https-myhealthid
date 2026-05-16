@@ -604,7 +604,7 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
                   onChange={e => updateRegiao(modalRegiao, r => ({ ...r, observacaoPaciente: e.target.value }))} rows={2} className="resize-none text-sm" />
               </div>
 
-              <Button className="w-full bg-gradient-primary text-white" onClick={() => setModalRegiao(null)}>
+              <Button className="w-full bg-primary text-primary-foreground" onClick={() => setModalRegiao(null)}>
                 Salvar região ✓
               </Button>
             </div>
@@ -622,7 +622,7 @@ export default function Bloco1Anamnese({ data, bloco2Data, onChange, onBloco2Cha
               {regioes.length > 0 && <> · Score D: <strong className="text-primary">{scoreD.toFixed(1)}/10</strong></>}
             </span>
           </div>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Funcionalidade
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

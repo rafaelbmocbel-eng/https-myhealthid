@@ -356,7 +356,7 @@ export default function Bloco6Estrutural({ data, onChange, onNext, onBack }: Pro
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
           <span className="text-sm text-muted-foreground">Soma: <strong className="text-primary">{scoreE.toFixed(1)} pontos</strong></span>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Gerar Relatório ID
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

@@ -49,14 +49,14 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
             </Button>
           )}
           {pacienteId && (
-            <Button className="bg-gradient-primary text-white gap-2" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
+            <Button className="bg-primary text-primary-foreground gap-2" size="sm" onClick={() => navigate(`/pacientes/${pacienteId}?tab=protocolos`)}>
               <Sparkles className="h-4 w-4" />
               Gerar Diretriz
             </Button>
           )}
           <Button variant="outline" size="sm" className="gap-2"><Share2 className="h-4 w-4" />Compartilhar</Button>
           <Button variant="outline" size="sm" className="gap-2"><Plus className="h-4 w-4" />Reavaliação</Button>
-          <Button size="sm" className="gap-2 bg-gradient-primary text-white"><Download className="h-4 w-4" />Download PDF</Button>
+          <Button size="sm" className="gap-2 bg-primary text-primary-foreground"><Download className="h-4 w-4" />Download PDF</Button>
         </div>
       </div>
 
@@ -139,7 +139,7 @@ export default function RelatorioCobZero({ avaliacao, pacienteId, onBack }: Prop
                 <span><span className="text-muted-foreground">{m.baseline}{m.unit}</span> → <span className="font-bold text-success">≤{m.meta}{m.unit}</span></span>
               </div>
               <div className="h-2 bg-muted rounded-full">
-                <div className="h-2 bg-gradient-primary rounded-full" style={{ width: '10%' }} />
+                <div className="h-2 bg-primary rounded-full" style={{ width: '10%' }} />
               </div>
             </div>
           ))}

@@ -274,7 +274,7 @@ export default function ConfigClinica() {
 
       {/* Save */}
       <div className="flex justify-end mb-6">
-        <Button onClick={handleSave} disabled={saving} className="bg-gradient-primary text-white gap-2 min-w-[200px]">
+        <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground gap-2 min-w-[200px]">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
           {saved ? 'Salvo!' : 'Salvar dados da clínica'}
         </Button>

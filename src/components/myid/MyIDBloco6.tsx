@@ -152,7 +152,7 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
         <div className="flex items-center justify-between">
           <Button variant="outline" onClick={onBack}><ChevronLeft className="h-4 w-4 mr-1" />Voltar</Button>
           <Button onClick={onSubmit} disabled={submitting}
-            className="bg-gradient-primary text-white shadow-primary">
+            className="bg-primary text-primary-foreground shadow-primary">
             {submitting ? 'Enviando...' : 'Finalizar Questionário'}
             <CheckCircle2 className="h-4 w-4 ml-1" />
           </Button>

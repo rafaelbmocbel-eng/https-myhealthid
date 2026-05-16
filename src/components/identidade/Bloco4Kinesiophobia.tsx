@@ -158,7 +158,7 @@ export default function Bloco4Kinesiophobia({ data, onChange, onNext, onBack }: 
             <ChevronLeft className="h-4 w-4 mr-1" />Voltar
           </Button>
           <span className="text-sm text-muted-foreground">{respostas.filter(r => r > 0).length}/11 respondidas</span>
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Regulação Neurovegetativa
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

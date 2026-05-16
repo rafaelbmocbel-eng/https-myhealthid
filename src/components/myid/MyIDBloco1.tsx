@@ -135,7 +135,7 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
       {/* Avançar */}
       <div className="clinical-card bg-primary/5 border-primary/20">
         <div className="flex items-center justify-end">
-          <Button onClick={onNext} className="bg-gradient-primary text-white shadow-primary">
+          <Button onClick={onNext} className="bg-primary text-primary-foreground shadow-primary">
             Próximo: Mapeamento da Dor
             <ChevronRight className="h-4 w-4 ml-1" />
           </Button>

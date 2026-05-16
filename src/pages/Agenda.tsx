@@ -1138,7 +1138,7 @@ export default function Agenda() {
                 </button>
               ))}
             </div>
-            <Button size="sm" className="bg-gradient-primary text-white gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
+            <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
             </Button>
           </div>
@@ -2055,7 +2055,7 @@ export default function Agenda() {
 
             {/* Actions */}
             <div className="flex gap-2 pt-1">
-              <Button className="flex-1 bg-gradient-primary text-white gap-2" onClick={handleSave} disabled={submitting}>
+              <Button className="flex-1 bg-primary text-primary-foreground gap-2" onClick={handleSave} disabled={submitting}>
                 {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 {modal.agendamento ? 'Salvar' : 'Agendar'}
               </Button>
