@@ -199,7 +199,7 @@ export default function PacienteDashboard() {
                     </h1>
                   </div>
                   <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60">
-                    <LevelIcon className={cn('h-3.5 w-3.5', level.color)} />
+                    <LevelIcon className={cn('h-4 w-4', level.color)} />
                     <span className="text-[11px] font-medium text-foreground">{level.label}</span>
                   </div>
                 </div>
@@ -240,7 +240,7 @@ export default function PacienteDashboard() {
                       const Icon = s.icon;
                       return (
                         <div key={s.label} className="flex flex-col items-start">
-                          <Icon className="h-3.5 w-3.5 text-muted-foreground mb-1" />
+                          <Icon className="h-4 w-4 text-muted-foreground mb-1" />
                           <div className="text-base font-semibold text-foreground leading-none">{s.value}</div>
                           <div className="text-[10px] text-muted-foreground mt-1 truncate w-full">{s.label}</div>
                         </div>

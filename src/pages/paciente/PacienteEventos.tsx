@@ -277,7 +277,7 @@ export default function PacienteEventos() {
                       {jaInscrito && ev.link_video && (
                         <Button size="sm" className="w-full" asChild>
                           <a href={ev.link_video} target="_blank" rel="noopener noreferrer">
-                            <Video className="h-3.5 w-3.5 mr-1.5" /> Entrar na sala
+                            <Video className="h-4 w-4 mr-1.5" /> Entrar na sala
                           </a>
                         </Button>
                       )}

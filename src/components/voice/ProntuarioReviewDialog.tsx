@@ -535,7 +535,7 @@ export default function ProntuarioReviewDialog({
             {Array.isArray(assessment?.insights_baseados_evidencia) && assessment.insights_baseados_evidencia.length > 0 && (
               <section className="rounded-lg border border-dashed p-3 bg-muted/30">
                 <div className="flex items-center gap-1.5 mb-1.5">
-                  <Lightbulb className="h-3.5 w-3.5 text-amber-600" />
+                  <Lightbulb className="h-4 w-4 text-amber-600" />
                   <span className="text-xs font-medium">Insights baseados em evidências</span>
                   <Badge variant="outline" className="text-[10px] ml-auto"><EyeOff className="h-3 w-3 mr-1" />Uso interno — não vai ao prontuário</Badge>
                 </div>
@@ -550,7 +550,7 @@ export default function ProntuarioReviewDialog({
         <DialogFooter className="border-t pt-3">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>Cancelar</Button>
           <Button onClick={handleConfirm} disabled={saving}>
-            <Save className="h-3.5 w-3.5 mr-1.5" />
+            <Save className="h-4 w-4 mr-1.5" />
             {saving ? 'Enviando...' : (noteId ? 'Atualizar prontuário' : 'Enviar ao prontuário')}
           </Button>
         </DialogFooter>
