@@ -7,46 +7,36 @@ const corsHeaders = {
 }
 
 async function getZapiCreds(req: Request, body: any) {
-  // 1) Credenciais explícitas (modo "testar conexão" pelo painel)
+  // Always require an authenticated therapist
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader?.startsWith('Bearer ')) throw new Error('unauthorized')
+  const supabase = createClient(
+    Deno.env.get('SUPABASE_URL')!,
+    Deno.env.get('SUPABASE_ANON_KEY')!,
+    { global: { headers: { Authorization: authHeader } } },
+  )
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('unauthorized')
+
+  // Allow the "test connection" panel to send explicit credentials, but only
+  // if the caller is an authenticated therapist.
   if (body.instanceId && body.token) {
     return { instanceId: body.instanceId, token: body.token, clientToken: body.clientToken || '' }
   }
 
-  // 2) Credenciais do terapeuta autenticado (config_clinica)
-  const authHeader = req.headers.get('Authorization')
-  if (authHeader) {
-    try {
-      const supabase = createClient(
-        Deno.env.get('SUPABASE_URL')!,
-        Deno.env.get('SUPABASE_ANON_KEY')!,
-        { global: { headers: { Authorization: authHeader } } },
-      )
-      const { data: { user } } = await supabase.auth.getUser()
-      if (user) {
-        const { data } = await supabase
-          .from('config_clinica')
-          .select('zapi_instance_id, zapi_token, zapi_client_token, zapi_ativo')
-          .eq('terapeuta_id', user.id)
-          .maybeSingle()
-        if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
-          return {
-            instanceId: data.zapi_instance_id,
-            token: data.zapi_token,
-            clientToken: data.zapi_client_token || '',
-          }
-        }
-      }
-    } catch (e) {
-      console.warn('Falha ao buscar credenciais do terapeuta:', e)
+  const { data } = await supabase
+    .from('config_clinica')
+    .select('zapi_instance_id, zapi_token, zapi_client_token, zapi_ativo')
+    .eq('terapeuta_id', user.id)
+    .maybeSingle()
+  if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
+    return {
+      instanceId: data.zapi_instance_id,
+      token: data.zapi_token,
+      clientToken: data.zapi_client_token || '',
     }
   }
-
-  // 3) Fallback: secrets globais
-  const instanceId = Deno.env.get('ZAPI_INSTANCE_ID')
-  const token = Deno.env.get('ZAPI_TOKEN')
-  const clientToken = Deno.env.get('ZAPI_CLIENT_TOKEN') || ''
-  if (!instanceId || !token) throw new Error('Credenciais Z-API não configuradas')
-  return { instanceId, token, clientToken }
+  throw new Error('Credenciais Z-API do terapeuta não configuradas')
 }
 
 serve(async (req: any) => {
