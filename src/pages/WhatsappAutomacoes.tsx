@@ -387,7 +387,25 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                 <Textarea rows={2} value={cfg.mensagem_no_show || ""}
                   onChange={(e) => setCfg({ ...cfg, mensagem_no_show: e.target.value })} />
                 <p className="text-micro text-muted-foreground mt-1">Enviada quando a falta é registrada automaticamente e a sessão é contabilizada no pacote.</p>
-              </div>
+                <div className="mt-3 space-y-2 p-3 rounded-lg bg-muted/30 border border-border/40">
+                  <p className="text-xs font-medium">Exceções de contabilização</p>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Switch checked={cfg.no_show_perdoar_primeira !== false}
+                      onCheckedChange={(v) => setCfg({ ...cfg, no_show_perdoar_primeira: v })} />
+                    <div className="flex-1">
+                      <p className="text-sm">Perdoar a primeira falta</p>
+                      <p className="text-micro text-muted-foreground">A 1ª ausência do paciente é marcada como falta mas não desconta do pacote.</p>
+                    </div>
+                  </label>
+                  <label className="flex items-start gap-3 cursor-pointer">
+                    <Switch checked={cfg.no_show_so_com_pacote !== false}
+                      onCheckedChange={(v) => setCfg({ ...cfg, no_show_so_com_pacote: v })} />
+                    <div className="flex-1">
+                      <p className="text-sm">Só registrar se houver pacote ativo</p>
+                      <p className="text-micro text-muted-foreground">Pacientes avulsos não recebem falta automática.</p>
+                    </div>
+                  </label>
+                </div>
               <div>
                 <Label className="text-xs">Pós-sessão (check-in)</Label>
                 <Textarea rows={2} value={cfg.mensagem_pos_sessao || ""}
