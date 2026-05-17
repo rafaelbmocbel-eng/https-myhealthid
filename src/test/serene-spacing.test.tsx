@@ -70,6 +70,8 @@ const LEGACY_ALLOWLIST: RegExp[] = [
   /pages\/PacientePerfil\.tsx$/,
   // Componentes Patient* com layouts próprios
   /PatientIntegratedDashboard\.tsx$/,
+  // O próprio arquivo de teste contém as regex que matchariam
+  /test\/serene-spacing\.test\.tsx$/,
 ];
 
 function walk(dir: string, out: string[] = []): string[] {
