@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles, Bot } from 'lucide-react';
+import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles, Bot, Kanban } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
 import { useWhatsappTemplates, useWhatsappNotas } from '@/hooks/useWhatsappExtras';
