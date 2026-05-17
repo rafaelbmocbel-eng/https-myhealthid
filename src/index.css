@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=Playfair+Display:ital,wght@0,600;0,700;1,600;1,700&display=swap");
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -410,6 +410,24 @@
   .icon-md { @apply h-5 w-5 shrink-0; }
   .icon-lg { @apply h-6 w-6 shrink-0; }
   .icon-xl { @apply h-8 w-8 shrink-0; }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SISTEMA TIPOGRÁFICO PREMIUM — Serif display para números/scores
+     Use .font-display em hero numbers (scores MyID, XP, streaks).
+     Combina Playfair Display italic com Inter no corpo.
+     ═══════════════════════════════════════════════════════════════════ */
+  .font-display {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
+  .font-display-roman {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-style: normal;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+  }
 
   .text-gradient-primary {
     background: var(--gradient-primary);

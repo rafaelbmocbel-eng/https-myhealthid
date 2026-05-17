@@ -186,81 +186,64 @@ export default function PacienteDashboard() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          {/* Welcome — Apple Health style: progress ring + KPIs */}
+          {/* Welcome — Serene Health Premium: avatar gradient ring + name + streak chip */}
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
-            <Card className="border-border/40 shadow-xs">
-              <CardContent className="p-5">
-                {/* Greeting */}
-                <div className="flex items-center justify-between mb-4">
-                  <div className="min-w-0">
-                    <p className="text-xs text-muted-foreground">{getGreeting()}</p>
-                    <h1 className="text-xl font-semibold tracking-tight text-foreground truncate">
-                      {paciente?.nome || '...'}
-                    </h1>
-                  </div>
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60">
-                    <LevelIcon className={cn('h-4 w-4', level.color)} />
-                    <span className="text-[11px] font-medium text-foreground">{level.label}</span>
-                  </div>
-                </div>
-
-                {/* Ring + inline stats */}
-                <div className="flex items-center gap-4">
-                  {/* SVG Progress Ring */}
-                  <div className="relative shrink-0">
-                    <svg width="84" height="84" viewBox="0 0 84 84" className="-rotate-90">
-                      <circle cx="42" cy="42" r="36" fill="none" stroke="hsl(var(--muted))" strokeWidth="7" />
-                      <motion.circle
-                        cx="42" cy="42" r="36" fill="none"
-                        stroke="hsl(var(--primary))"
-                        strokeWidth="7"
-                        strokeLinecap="round"
-                        strokeDasharray={2 * Math.PI * 36}
-                        initial={{ strokeDashoffset: 2 * Math.PI * 36 }}
-                        animate={{
-                          strokeDashoffset:
-                            2 * Math.PI * 36 * (1 - Math.min(1, level.next ? xp / level.next : 1)),
-                        }}
-                        transition={{ duration: 1.1, delay: 0.25, ease: 'easeOut' }}
-                      />
-                    </svg>
-                    <div className="absolute inset-0 flex flex-col items-center justify-center">
-                      <span className="text-base font-semibold text-foreground leading-none">{xp}</span>
-                      <span className="text-[9px] text-muted-foreground mt-0.5">XP</span>
+            <div className="flex items-center justify-between px-1 pt-1">
+              <div className="flex items-center gap-3 min-w-0">
+                {/* Avatar with gradient ring */}
+                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-primary/60 p-0.5 shrink-0">
+                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
+                    <div className="w-full h-full bg-muted flex items-center justify-center text-sm font-semibold text-foreground">
+                      {(paciente?.nome?.[0] || '?').toUpperCase()}{(paciente?.sobrenome?.[0] || '').toUpperCase()}
                     </div>
                   </div>
+                </div>
+                <div className="min-w-0">
+                  <p className="text-[11px] text-muted-foreground font-medium">{getGreeting()}</p>
+                  <h1 className="h-page truncate">{paciente?.nome || '...'}</h1>
+                  {(notifications.streak > 0 || xp > 0) && (
+                    <div className="flex items-center gap-1.5 mt-0.5">
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                      <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
+                        {notifications.streak > 1
+                          ? `${notifications.streak} dias de foco`
+                          : `${level.label} · ${xp} XP`}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 shrink-0">
+                <LevelIcon className={cn('h-4 w-4', level.color)} />
+                <span className="text-[11px] font-medium text-foreground">{level.label}</span>
+              </div>
+            </div>
+          </motion.div>
 
-                  {/* KPIs stacked */}
-                  <div className="flex-1 grid grid-cols-3 gap-2 min-w-0">
-                    {[
-                      { icon: CalendarDays, value: proximasConsultas.length, label: 'Consultas' },
-                      { icon: Fingerprint, value: stats.avaliacoes, label: 'Avaliações' },
-                      { icon: Flame, value: stats.consultas, label: 'Sessões' },
-                    ].map(s => {
-                      const Icon = s.icon;
-                      return (
-                        <div key={s.label} className="flex flex-col items-start">
-                          <Icon className="h-4 w-4 text-muted-foreground mb-1" />
-                          <div className="text-base font-semibold text-foreground leading-none">{s.value}</div>
-                          <div className="text-[10px] text-muted-foreground mt-1 truncate w-full">{s.label}</div>
-                        </div>
-                      );
-                    })}
+          {/* Próxima Sessão — warm gold alert (premium feel) */}
+          {proximasConsultas.length > 0 && (
+            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.5}>
+              <button
+                onClick={() => navigate('/paciente/agenda')}
+                className="w-full rounded-2xl border border-accent/25 bg-accent/5 p-4 flex items-center justify-between gap-3 hover:bg-accent/10 transition-colors text-left"
+              >
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center shadow-xs shrink-0">
+                    <CalendarDays className="h-5 w-5 text-accent" />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-[10px] uppercase tracking-widest font-bold text-accent/90 mb-0.5">
+                      Próxima Sessão
+                    </p>
+                    <p className="text-sm font-semibold text-foreground truncate">
+                      {format(parseISO(proximasConsultas[0].data_inicio), "EEE, d MMM · HH:mm", { locale: ptBR })}
+                    </p>
                   </div>
                 </div>
-
-                {/* Streak footer */}
-                {notifications.streak > 1 && (
-                  <div className="mt-4 pt-3 border-t border-border/40 flex items-center justify-between">
-                    <span className="text-[11px] text-muted-foreground">Sequência ativa</span>
-                    <span className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground">
-                      🔥 {notifications.streak} dias
-                    </span>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          </motion.div>
+                <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
+              </button>
+            </motion.div>
+          )}
 
           {/* Bloqueio total — pacote terminou há mais de 60 dias */}
           {bloqueadoClinico && (
@@ -439,17 +422,17 @@ export default function PacienteDashboard() {
             {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </motion.div>
 
-          {/* Upcoming appointments — compact */}
-          {proximasConsultas.length > 0 && (
+          {/* Upcoming appointments — compact, skip first (already shown at top) */}
+          {proximasConsultas.length > 1 && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold text-foreground">Próximas consultas</h2>
+                <h2 className="text-sm font-bold text-foreground">Outras consultas</h2>
                 <button onClick={() => navigate('/paciente/agenda')} className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
                   Ver agenda <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
               <div className="space-y-1.5">
-                {proximasConsultas.map((ag) => (
+                {proximasConsultas.slice(1).map((ag) => (
                   <Card key={ag.id} className="hover:shadow-sm transition-shadow">
                     <CardContent className="p-2.5 flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
