@@ -151,13 +151,6 @@ function Shell({ embedded, children }: { embedded: boolean; children: React.Reac
   return <AppLayout>{children}</AppLayout>;
 }
 
-function _End() {
-  return null;
-}
-
-function _unused() {
-  );
-}
 
 function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => void }) {
   const [texto, setTexto] = useState('');
