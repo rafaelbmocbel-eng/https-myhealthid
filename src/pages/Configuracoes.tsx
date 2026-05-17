@@ -70,9 +70,9 @@ export default function Configuracoes() {
 
   return (
     <AppLayout>
-      <div className="px-2 sm:px-0 py-4 sm:py-8 max-w-2xl mx-auto w-full">
+      <div className="container py-4 sm:py-6 max-w-2xl">
         {/* Hero — clean & airy */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-5 sm:mb-7">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <div className="eyebrow-accent mb-1.5">Ajustes</div>
