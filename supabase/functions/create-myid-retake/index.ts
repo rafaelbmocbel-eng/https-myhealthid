@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -10,6 +11,8 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    let userId: string;
+    try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
     const { paciente_id, terapeuta_id } = await req.json();
 
     if (!paciente_id || !terapeuta_id) {
@@ -17,10 +20,28 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    if (terapeuta_id !== userId) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
+
+    // Verify patient belongs to this therapist
+    const { data: ownedPatient } = await supabase
+      .from("pacientes")
+      .select("id")
+      .eq("id", paciente_id)
+      .eq("terapeuta_id", userId)
+      .maybeSingle();
+    if (!ownedPatient) {
+      return new Response(JSON.stringify({ error: "Patient not owned by this therapist" }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Check if there's already a pending/in-progress evaluation
     const { data: pending } = await supabase
