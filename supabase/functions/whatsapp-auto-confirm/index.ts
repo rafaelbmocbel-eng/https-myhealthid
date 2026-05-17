@@ -54,14 +54,14 @@ Deno.serve(async (req) => {
     );
 
     const now = Date.now();
-    let enviados24 = 0, enviados2h = 0, enviadosPos = 0;
+    let enviados24 = 0, enviados2h = 0, enviadosPos = 0, noShows = 0;
 
     // Cache de configurações por terapeuta
     const cfgCache = new Map<string, any>();
     async function getCfg(tid: string) {
       if (cfgCache.has(tid)) return cfgCache.get(tid);
       const { data } = await admin.from("whatsapp_automacoes")
-        .select("auto_confirmacao_24h, mensagem_confirmacao, mensagem_lembrete_2h, mensagem_pos_sessao, gatilhos_ativos")
+        .select("auto_confirmacao_24h, mensagem_confirmacao, mensagem_lembrete_2h, mensagem_pos_sessao, mensagem_no_show, gatilhos_ativos")
         .eq("terapeuta_id", tid).maybeSingle();
       cfgCache.set(tid, data);
       return data;
