@@ -74,7 +74,7 @@ export default function TurnosEditor({ form, onChange }: Props) {
   };
 
   return (
-    <div className="clinical-card mb-6">
+    <div className="clinical-card mb-4 sm:mb-5">
       <div className="flex items-center gap-2 mb-2">
         <Clock className="icon-sm text-primary shrink-0" />
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Horários por Dia</h2>
