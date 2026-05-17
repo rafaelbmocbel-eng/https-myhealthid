@@ -20,7 +20,7 @@ const ESTAGIOS = [
   { v: "perdido", l: "Perdido" },
 ];
 
-export default function CrmCadencias() {
+export default function CrmCadencias({ embedded = false }: { embedded?: boolean } = {}) {
   const [cadencias, setCadencias] = useState<any[]>([]);
   const [passosByCad, setPassosByCad] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
