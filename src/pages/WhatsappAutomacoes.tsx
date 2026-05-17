@@ -15,7 +15,7 @@ const DIAS = [
   { k: "qui", l: "Qui" }, { k: "sex", l: "Sex" }, { k: "sab", l: "Sáb" }, { k: "dom", l: "Dom" },
 ];
 
-export default function WhatsappAutomacoes() {
+export default function WhatsappAutomacoes({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<any>(null);
