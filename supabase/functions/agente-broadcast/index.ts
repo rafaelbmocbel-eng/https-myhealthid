@@ -1,5 +1,6 @@
 // Agente broadcast — dispara campanha de mensagens em massa personalizadas pela IA
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
@@ -40,6 +41,7 @@ async function enviarWhatsapp(admin: any, terapeuta_id: string, phone: string, m
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
   try {
     const { broadcast_id } = await req.json();
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);

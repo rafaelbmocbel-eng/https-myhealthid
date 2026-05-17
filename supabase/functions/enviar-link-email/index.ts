@@ -1,4 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { requireUser } from "../_shared/auth.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -14,7 +16,27 @@ serve(async (req) => {
   }
 
   try {
+    let userId: string;
+    try { ({ userId } = await requireUser(req)); } catch (r) { return r as Response; }
     const { patientName, patientEmail, linkUrl, linkType } = await req.json();
+
+    // Verify the email belongs to a patient owned by this therapist
+    const admin = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!,
+    );
+    const { data: pac } = await admin
+      .from('pacientes')
+      .select('id')
+      .eq('terapeuta_id', userId)
+      .ilike('email', String(patientEmail || '').trim())
+      .limit(1)
+      .maybeSingle();
+    if (!pac) {
+      return new Response(JSON.stringify({ error: 'Paciente não encontrado para este terapeuta' }), {
+        status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
     const safeName = esc(String(patientName || ''));
     const safeUrl = esc(String(linkUrl || ''));
 

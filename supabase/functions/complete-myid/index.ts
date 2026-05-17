@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { avaliacao_id, link_avaliacao_id, paciente_id: directPacienteId, terapeuta_id: directTerapeutaId, result, raw_data } = await req.json();
+    const { avaliacao_id, link_avaliacao_id, token_acesso, result, raw_data } = await req.json();
 
     if (!result) {
       return new Response(JSON.stringify({ error: "result is required" }), {
@@ -18,8 +18,8 @@ serve(async (req) => {
       });
     }
 
-    if (!avaliacao_id && !link_avaliacao_id && (!directPacienteId || !directTerapeutaId)) {
-      return new Response(JSON.stringify({ error: "avaliacao_id, link_avaliacao_id, or (paciente_id + terapeuta_id) required" }), {
+    if (!avaliacao_id && !link_avaliacao_id) {
+      return new Response(JSON.stringify({ error: "avaliacao_id or link_avaliacao_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -28,10 +28,19 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    let pacienteId: string | null = directPacienteId || null;
-    let terapeutaId: string | null = directTerapeutaId || null;
+    // Authorization: require either a valid therapist JWT OR a matching token_acesso
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    let authorizedUserId: string | null = null;
+    if (authHeader?.startsWith("Bearer ")) {
+      const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+      const { data } = await anon.auth.getUser(authHeader.replace("Bearer ", "").trim());
+      if (data?.user) authorizedUserId = data.user.id;
+    }
 
-    // Path A: via myid_avaliacoes
+    let pacienteId: string | null = null;
+    let terapeutaId: string | null = null;
+
+    // Path A: via myid_avaliacoes (requires token match OR therapist auth)
     if (avaliacao_id) {
       const { data: avaliacao, error: fetchErr } = await supabase
         .from("myid_avaliacoes")
@@ -42,6 +51,14 @@ serve(async (req) => {
       if (fetchErr || !avaliacao) {
         return new Response(JSON.stringify({ error: "Avaliação não encontrada" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const tokenMatch = token_acesso && avaliacao.token_acesso === token_acesso;
+      const therapistMatch = authorizedUserId && authorizedUserId === avaliacao.terapeuta_id;
+      if (!tokenMatch && !therapistMatch) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -56,18 +73,21 @@ serve(async (req) => {
       terapeutaId = avaliacao.terapeuta_id;
     }
 
-    // Path B: via links_avaliacao
+    // Path B: via links_avaliacao (must be active + not expired)
     if (!pacienteId && link_avaliacao_id) {
       const { data: link } = await supabase
         .from("links_avaliacao")
-        .select("paciente_id, terapeuta_id")
+        .select("paciente_id, terapeuta_id, status, data_expiracao")
         .eq("id", link_avaliacao_id)
         .single();
 
-      if (link) {
-        pacienteId = link.paciente_id;
-        terapeutaId = link.terapeuta_id;
+      if (!link || link.status !== "ativo" || (link.data_expiracao && new Date(link.data_expiracao) < new Date())) {
+        return new Response(JSON.stringify({ error: "Link inválido ou expirado" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
+      pacienteId = link.paciente_id;
+      terapeutaId = link.terapeuta_id;
     }
 
     if (!pacienteId || !terapeutaId) {

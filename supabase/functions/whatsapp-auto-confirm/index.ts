@@ -1,6 +1,7 @@
 // Lembretes automáticos de agenda via WhatsApp (cron a cada 10min).
 // 3 janelas: 24h antes (confirmação) | 2h antes (lembrete) | 1h depois (pós-sessão).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -47,6 +48,7 @@ async function registrarEnvio(admin: any, terapeuta_id: string, paciente_id: str
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

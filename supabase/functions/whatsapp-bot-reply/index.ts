@@ -1,5 +1,6 @@
 // Agente IA conversacional do WhatsApp — responde, agenda, escala, com contexto clínico
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico, buildSystemPrompt } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
@@ -275,6 +276,7 @@ async function chamarLLM(messages: any[], systemPrompt: string, allowTools = tru
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
 
   try {
     const { conversa_id, mensagem_id } = await req.json();

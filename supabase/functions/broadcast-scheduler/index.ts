@@ -1,5 +1,6 @@
 // Cron: dispara broadcasts agendados cujo agendado_para já passou
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -8,6 +9,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,

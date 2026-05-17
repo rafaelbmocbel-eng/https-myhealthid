@@ -1,4 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    try { await requireUser(req); } catch (r) { return r as Response; }
     const SUMUP_API_KEY = Deno.env.get('SUMUP_API_KEY');
     if (!SUMUP_API_KEY) {
       throw new Error('SUMUP_API_KEY is not configured');

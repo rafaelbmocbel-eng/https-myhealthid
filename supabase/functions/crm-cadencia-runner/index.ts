@@ -1,5 +1,6 @@
 // Processa execuções pendentes de cadências CRM — invocado via cron a cada 15min
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -25,6 +26,7 @@ async function enviarWhatsapp(supa: any, terapeuta_id: string, phone: string, me
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
   try {
     const admin = createClient(
       Deno.env.get("SUPABASE_URL")!,
