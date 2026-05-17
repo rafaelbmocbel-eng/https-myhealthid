@@ -145,31 +145,89 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         .select("paciente_id").eq("terapeuta_id", userId).lt("updated_at", limite);
       return [...new Set((data || []).map((d: any) => d.paciente_id))].filter(Boolean) as string[];
     }
+    if (seg === "myid_critico" || seg === "myid_moderado" || seg === "myid_saudavel") {
+      const { data: todos } = await base;
+      const ids = (todos || []).map((p: any) => p.id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from("myid_avaliacoes")
+        .select("paciente_id, myid_score_parcial, updated_at")
+        .in("paciente_id", ids)
+        .eq("status", "concluido")
+        .order("updated_at", { ascending: false });
+      const ultimoScore = new Map<string, number>();
+      (data || []).forEach((r: any) => {
+        if (!ultimoScore.has(r.paciente_id)) ultimoScore.set(r.paciente_id, Number(r.myid_score_parcial || 0));
+      });
+      const range = seg === "myid_critico" ? (s: number) => s < 50
+        : seg === "myid_moderado" ? (s: number) => s >= 50 && s < 75
+        : (s: number) => s >= 75;
+      return [...ultimoScore.entries()].filter(([_, s]) => range(s)).map(([id]) => id);
+    }
+    if (seg === "aniversariantes_mes") {
+      const { data } = await supabase.from("pacientes")
+        .select("id, data_nascimento")
+        .eq("terapeuta_id", userId).eq("ativo", true).not("telefone", "is", null)
+        .not("data_nascimento", "is", null);
+      const mes = new Date().getMonth() + 1;
+      return (data || []).filter((p: any) => {
+        const m = new Date(p.data_nascimento).getMonth() + 1;
+        return m === mes;
+      }).map((p: any) => p.id);
+    }
+    if (seg === "pacote_acabando") {
+      const { data } = await supabase.from("pacotes_sessoes")
+        .select("paciente_id, total_sessoes, sessoes_utilizadas")
+        .eq("terapeuta_id", userId).eq("status", "ativo");
+      return (data || [])
+        .filter((p: any) => (p.total_sessoes - p.sessoes_utilizadas) <= 2)
+        .map((p: any) => p.paciente_id);
+    }
     return [];
   };
 
   const dispararBroadcast = async () => {
-    if (!broadcast.titulo || !broadcast.intencao) {
-      return toast.error("Preencha título e mensagem base");
+    if (!broadcast.titulo) return toast.error("Preencha o título");
+    const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
+    if (!usaAB && !broadcast.intencao) return toast.error("Preencha a mensagem base");
+    if (usaAB && broadcast.variantes.some(v => !v.texto.trim())) {
+      return toast.error("Preencha o texto de todas as variantes A/B");
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const ids = await resolverSegmento(user.id, broadcast.segmento);
     if (ids.length === 0) return toast.error("Nenhum paciente encontrado nesse segmento");
+
+    const agendado = broadcast.agendar && broadcast.agendado_para;
+    const agendadoDate = agendado ? new Date(broadcast.agendado_para) : null;
+    if (agendado && (!agendadoDate || agendadoDate.getTime() <= Date.now())) {
+      return toast.error("Data de agendamento deve ser no futuro");
+    }
+
     const { data: b, error } = await supabase.from("agente_broadcasts").insert({
       terapeuta_id: user.id,
       titulo: broadcast.titulo,
-      intencao: broadcast.intencao,
+      intencao: usaAB ? broadcast.variantes[0].texto : broadcast.intencao,
       filtro: { segmento: broadcast.segmento },
       paciente_ids: ids,
       status: "agendado",
       total: ids.length,
-    }).select().single();
+      agendado_para: agendado ? agendadoDate!.toISOString() : null,
+      ab_variantes: usaAB ? broadcast.variantes : [],
+    } as any).select().single();
     if (error || !b) return toast.error("Erro ao criar broadcast: " + (error?.message || ""));
-    const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
-    if (err2) return toast.error("Erro ao disparar: " + err2.message);
-    toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
-    setBroadcast({ titulo: "", intencao: "", segmento: "todos" });
+
+    if (agendado) {
+      toast.success(`Campanha agendada para ${agendadoDate!.toLocaleString("pt-BR")} — ${ids.length} paciente(s)`);
+    } else {
+      const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
+      if (err2) return toast.error("Erro ao disparar: " + err2.message);
+      toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
+    }
+    setBroadcast({
+      titulo: "", intencao: "", segmento: "todos",
+      agendar: false, agendado_para: "",
+      abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+    });
   };
 
   if (loading || !cfg) return <div className="p-6">Carregando…</div>;
