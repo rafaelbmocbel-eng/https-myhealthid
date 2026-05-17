@@ -18,6 +18,9 @@ export interface WAConversa {
   bot_ativo?: boolean;
   intencao_atual?: string | null;
   lead_score?: number;
+  atribuido_a?: string | null;
+  sla_responder_ate?: string | null;
+  primeiro_resposta_em?: string | null;
 }
 
 export interface WAMensagem {

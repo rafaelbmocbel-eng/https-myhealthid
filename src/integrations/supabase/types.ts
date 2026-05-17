@@ -4006,6 +4006,8 @@ export type Database = {
           palavras_escalonamento: string[]
           pausar_bot_apos_humano: boolean
           prompt_extra: string | null
+          sla_ativo: boolean
+          sla_minutos: number
           terapeuta_id: string
           tom_voz: string
           updated_at: string
@@ -4029,6 +4031,8 @@ export type Database = {
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
           prompt_extra?: string | null
+          sla_ativo?: boolean
+          sla_minutos?: number
           terapeuta_id: string
           tom_voz?: string
           updated_at?: string
@@ -4052,6 +4056,8 @@ export type Database = {
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
           prompt_extra?: string | null
+          sla_ativo?: boolean
+          sla_minutos?: number
           terapeuta_id?: string
           tom_voz?: string
           updated_at?: string
@@ -4062,6 +4068,7 @@ export type Database = {
       whatsapp_conversas: {
         Row: {
           arquivada: boolean
+          atribuido_a: string | null
           bot_ativo: boolean
           created_at: string
           foto_url: string | null
@@ -4075,7 +4082,9 @@ export type Database = {
           pipeline_motivo_perda: string | null
           pipeline_stage: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at: string
+          primeiro_resposta_em: string | null
           requer_atencao: boolean
+          sla_responder_ate: string | null
           tags: string[] | null
           telefone: string
           terapeuta_id: string
@@ -4087,6 +4096,7 @@ export type Database = {
         }
         Insert: {
           arquivada?: boolean
+          atribuido_a?: string | null
           bot_ativo?: boolean
           created_at?: string
           foto_url?: string | null
@@ -4100,7 +4110,9 @@ export type Database = {
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at?: string
+          primeiro_resposta_em?: string | null
           requer_atencao?: boolean
+          sla_responder_ate?: string | null
           tags?: string[] | null
           telefone: string
           terapeuta_id: string
@@ -4112,6 +4124,7 @@ export type Database = {
         }
         Update: {
           arquivada?: boolean
+          atribuido_a?: string | null
           bot_ativo?: boolean
           created_at?: string
           foto_url?: string | null
@@ -4125,7 +4138,9 @@ export type Database = {
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at?: string
+          primeiro_resposta_em?: string | null
           requer_atencao?: boolean
+          sla_responder_ate?: string | null
           tags?: string[] | null
           telefone?: string
           terapeuta_id?: string
@@ -4144,6 +4159,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_filtros_salvos: {
+        Row: {
+          created_at: string
+          filtros: Json
+          id: string
+          nome: string
+          ordem: number
+          terapeuta_id: string
+        }
+        Insert: {
+          created_at?: string
+          filtros?: Json
+          id?: string
+          nome: string
+          ordem?: number
+          terapeuta_id: string
+        }
+        Update: {
+          created_at?: string
+          filtros?: Json
+          id?: string
+          nome?: string
+          ordem?: number
+          terapeuta_id?: string
+        }
+        Relationships: []
       }
       whatsapp_hsm_templates: {
         Row: {
