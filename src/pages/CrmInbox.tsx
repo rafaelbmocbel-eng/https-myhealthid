@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
 import { Switch } from '@/components/ui/switch';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
-import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useWhatsappFiltrosSalvos, useAtribuirConversa, getSLAStatus } from '@/hooks/useWhatsappExtras';
+import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useAtribuirConversa, getSLAStatus } from '@/hooks/useWhatsappExtras';
 import { buildTemplateContext, aplicarVariaveis, TEMPLATE_VARIAVEIS } from '@/utils/whatsappTemplateVars';
 import { formatPhoneNumber } from '@/utils/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
