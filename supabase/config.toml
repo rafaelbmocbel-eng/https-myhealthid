@@ -26,3 +26,9 @@ verify_jwt = false
 
 [functions.whatsapp-auto-confirm]
 verify_jwt = false
+
+[functions.agente-proativo]
+verify_jwt = false
+
+[functions.agente-broadcast]
+verify_jwt = false
