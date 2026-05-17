@@ -38,6 +38,7 @@ import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
+import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
