@@ -77,7 +77,7 @@ export default function Configuracoes() {
             <div className="min-w-0">
               <div className="eyebrow-accent mb-1.5">Ajustes</div>
               <h1 className="h-page">Configurações</h1>
-              <p className="text-caption mt-0.5">Horários, módulos e preferências da clínica</p>
+              <p className="text-caption mt-1">Horários, módulos e preferências da clínica</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <ThemeToggle />
