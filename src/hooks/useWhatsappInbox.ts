@@ -15,6 +15,9 @@ export interface WAConversa {
   nao_lidas: number;
   arquivada: boolean;
   tags: string[] | null;
+  bot_ativo?: boolean;
+  intencao_atual?: string | null;
+  lead_score?: number;
 }
 
 export interface WAMensagem {
