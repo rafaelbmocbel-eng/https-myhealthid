@@ -826,3 +826,28 @@ function BotToggle({ conversa }: { conversa: WAConversa }) {
     </div>
   );
 }
+
+function AtribuirButton({ conversa }: { conversa: WAConversa }) {
+  const [userId, setUserId] = useState<string | null>(null);
+  const atribuir = useAtribuirConversa();
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
+  const minha = conversa.atribuido_a && conversa.atribuido_a === userId;
+  const semDono = !conversa.atribuido_a;
+  return (
+    <Button
+      variant={minha ? 'default' : semDono ? 'outline' : 'ghost'}
+      size="sm"
+      className="gap-1.5"
+      title={minha ? 'Conversa sua — clique para liberar' : semDono ? 'Assumir conversa' : 'Atribuída a outro — assumir'}
+      onClick={() => {
+        if (!userId) return;
+        atribuir.mutate({ conversa_id: conversa.id, atribuido_a: minha ? null : userId });
+      }}
+    >
+      <User className="icon-xs" />
+      {minha ? 'Minha' : semDono ? 'Assumir' : 'Atribuída'}
+    </Button>
+  );
+}
