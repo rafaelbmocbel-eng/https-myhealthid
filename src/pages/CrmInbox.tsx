@@ -383,3 +383,23 @@ function NotasButton({ conversaId }: { conversaId: string }) {
     </Sheet>
   );
 }
+
+function BotToggle({ conversa }: { conversa: WAConversa }) {
+  const [ativo, setAtivo] = useState(conversa.bot_ativo ?? true);
+  useEffect(() => { setAtivo(conversa.bot_ativo ?? true); }, [conversa.id, conversa.bot_ativo]);
+  const toggle = async (v: boolean) => {
+    setAtivo(v);
+    const { error } = await supabase
+      .from('whatsapp_conversas')
+      .update({ bot_ativo: v })
+      .eq('id', conversa.id);
+    if (error) { toast.error('Erro: ' + error.message); setAtivo(!v); }
+    else toast.success(v ? 'Bot ativado nessa conversa' : 'Bot pausado nessa conversa');
+  };
+  return (
+    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/40">
+      <Bot className="icon-xs text-muted-foreground" />
+      <Switch checked={ativo} onCheckedChange={toggle} />
+    </div>
+  );
+}
