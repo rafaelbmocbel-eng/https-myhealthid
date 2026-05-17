@@ -39,6 +39,13 @@ export default function CrmInbox() {
           icon={<MessageCircle className="icon-lg" />}
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
+          actions={
+            <Link to="/crm/automacoes">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Bot className="icon-xs" /> Automações
+              </Button>
+            </Link>
+          }
         />
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 h-[calc(100dvh-220px)] min-h-[500px]">
