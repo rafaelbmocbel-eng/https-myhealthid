@@ -392,15 +392,15 @@ export default function Index() {
         {/* Welcome header — hero com foco no "agora" */}
         <FadeIn>
         <header className="mb-6 sm:mb-8">
-          <p className="text-caption capitalize">
+          <div className="eyebrow-accent mb-2 capitalize">
             {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </p>
-          <h1 className="h-page mt-1">
+          </div>
+          <h1 className="h-page">
             {saudacao}, {profile?.nome || 'Terapeuta'}
           </h1>
 
           {/* Hero card — próximo atendimento ou estado vazio */}
-          <div className="mt-5 rounded-2xl border border-border/50 bg-muted/30 p-5 sm:p-6">
+          <div className="mt-5 rounded-2xl border border-accent/25 bg-accent/5 p-5 sm:p-6 transition-shadow hover:shadow-xs">
             {proximoAtendimento ? (
               <button
                 type="button"
@@ -408,9 +408,9 @@ export default function Index() {
                 className="w-full text-left flex items-center justify-between gap-4 group"
               >
                 <div className="min-w-0">
-                  <div className="text-micro text-muted-foreground">Próximo atendimento</div>
-                  <div className="mt-1 flex items-baseline gap-2">
-                    <span className="text-3xl sm:text-4xl font-semibold tracking-tight tabular-nums text-foreground">
+                  <div className="metric-label">Próximo atendimento</div>
+                  <div className="mt-1.5 flex items-baseline gap-2">
+                    <span className="metric-value text-4xl sm:text-5xl tabular-nums text-foreground">
                       {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
                     </span>
                     <span className="text-sm text-muted-foreground">
