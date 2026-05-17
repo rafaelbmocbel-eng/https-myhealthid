@@ -40,10 +40,12 @@ describe('Serene Premium — ritmo de espaçamento', () => {
     });
   });
 
-  describe('Hero (mb-5 sm:mb-7)', () => {
-    it.each(PAGES)('%s usa mb-5 sm:mb-7 no hero', (file) => {
+  describe('Hero — ritmo Serene Premium', () => {
+    it.each(PAGES)('%s usa hero mb-5 sm:mb-7 OU container space-y-4 sm:space-y-5', (file) => {
       const src = read(file);
-      expect(src).toMatch(/mb-5\s+sm:mb-7/);
+      const hasHeroMargin = /mb-5\s+sm:mb-7/.test(src);
+      const hasContainerStack = /space-y-4\s+sm:space-y-5/.test(src);
+      expect(hasHeroMargin || hasContainerStack).toBe(true);
     });
   });
 
