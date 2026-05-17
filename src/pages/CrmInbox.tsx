@@ -31,6 +31,7 @@ type StageTab = 'todos' | 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'per
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [filaTab, setFilaTab] = useState<FilaTab>('todas');
+  const [stageTab, setStageTab] = useState<StageTab>('todos');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
