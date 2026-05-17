@@ -183,6 +183,38 @@ async function executarTool(admin: any, name: string, args: any, ctx: any, terap
       return { ok: true, data_confirmada: data_inicio.toLocaleString("pt-BR") };
     }
 
+    if (name === "confirmar_proxima_sessao") {
+      if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura encontrada." };
+      await admin.from("agendamentos").update({
+        status: "confirmado",
+        confirmado_pelo_paciente_em: new Date().toISOString(),
+      }).eq("id", ctx.proxima_sessao.id);
+      await admin.from("notificacoes").insert({
+        terapeuta_id, tipo: "confirmacao_paciente",
+        titulo: "✅ Paciente confirmou sessão",
+        descricao: `${ctx.paciente.nome} confirmou ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}.`,
+        rota: `/agenda`,
+        metadata: { agendamento_id: ctx.proxima_sessao.id },
+      });
+      return { ok: true, mensagem_ao_paciente: "Sessão confirmada! Te espero. 💙" };
+    }
+
+    if (name === "reagendar_proxima_sessao") {
+      if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura para reagendar." };
+      await admin.from("agendamentos").update({
+        status: "cancelado",
+        observacao: `Reagendamento solicitado via bot: ${args.motivo || "—"}`,
+      }).eq("id", ctx.proxima_sessao.id);
+      await admin.from("notificacoes").insert({
+        terapeuta_id, tipo: "reagendamento_solicitado",
+        titulo: "🔄 Paciente quer reagendar",
+        descricao: `${ctx.paciente.nome} pediu para remarcar ${new Date(ctx.proxima_sessao.data).toLocaleString("pt-BR")}.`,
+        rota: `/agenda`,
+        metadata: { agendamento_id: ctx.proxima_sessao.id },
+      });
+      return { ok: true, mensagem_ao_paciente: "Sem problema! Vou te mostrar horários disponíveis — me diga qual prefere." };
+    }
+
     if (name === "cancelar_proxima_sessao") {
       if (!ctx.proxima_sessao) return { ok: false, erro: "Nenhuma sessão futura encontrada." };
       await admin.from("agendamentos").update({
