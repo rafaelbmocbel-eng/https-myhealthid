@@ -185,13 +185,22 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
           {(conversa.nome_contato || conversa.telefone).slice(0, 2).toUpperCase()}
         </AvatarFallback></Avatar>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-medium truncate flex items-center gap-2">
             {conversa.nome_contato || formatPhoneNumber(conversa.telefone)}
+            {conversa.intencao_atual && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {conversa.intencao_atual}
+              </span>
+            )}
+            {typeof conversa.lead_score === 'number' && conversa.lead_score > 0 && (
+              <span className="text-[10px] text-muted-foreground">⭐ {conversa.lead_score}</span>
+            )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <Phone className="icon-xs" /> {formatPhoneNumber(conversa.telefone)}
           </div>
         </div>
+        <BotToggle conversa={conversa} />
         <NotasButton conversaId={conversa.id} />
         {conversa.paciente_id && (
           <Link to={`/pacientes/${conversa.paciente_id}`}>
