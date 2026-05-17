@@ -4018,6 +4018,8 @@ export type Database = {
           mensagem_no_show: string | null
           mensagem_pos_sessao: string | null
           mensagem_saudacao: string
+          no_show_perdoar_primeira: boolean
+          no_show_so_com_pacote: boolean
           palavras_escalonamento: string[]
           pausar_bot_apos_humano: boolean
           prompt_extra: string | null
@@ -4046,6 +4048,8 @@ export type Database = {
           mensagem_no_show?: string | null
           mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
+          no_show_perdoar_primeira?: boolean
+          no_show_so_com_pacote?: boolean
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
           prompt_extra?: string | null
@@ -4074,6 +4078,8 @@ export type Database = {
           mensagem_no_show?: string | null
           mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
+          no_show_perdoar_primeira?: boolean
+          no_show_so_com_pacote?: boolean
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
           prompt_extra?: string | null
