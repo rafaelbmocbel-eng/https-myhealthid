@@ -26,6 +26,7 @@ export type Database = {
           id: string
           lembrete_2h_enviado_em: string | null
           membro_equipe_id: string | null
+          no_show_processado_em: string | null
           observacoes: string | null
           paciente_id: string | null
           pos_sessao_enviado_em: string | null
@@ -47,6 +48,7 @@ export type Database = {
           id?: string
           lembrete_2h_enviado_em?: string | null
           membro_equipe_id?: string | null
+          no_show_processado_em?: string | null
           observacoes?: string | null
           paciente_id?: string | null
           pos_sessao_enviado_em?: string | null
@@ -68,6 +70,7 @@ export type Database = {
           id?: string
           lembrete_2h_enviado_em?: string | null
           membro_equipe_id?: string | null
+          no_show_processado_em?: string | null
           observacoes?: string | null
           paciente_id?: string | null
           pos_sessao_enviado_em?: string | null
@@ -4012,6 +4015,7 @@ export type Database = {
           mensagem_confirmacao: string
           mensagem_fora_horario: string
           mensagem_lembrete_2h: string | null
+          mensagem_no_show: string | null
           mensagem_pos_sessao: string | null
           mensagem_saudacao: string
           palavras_escalonamento: string[]
@@ -4039,6 +4043,7 @@ export type Database = {
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
           mensagem_lembrete_2h?: string | null
+          mensagem_no_show?: string | null
           mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
           palavras_escalonamento?: string[]
@@ -4066,6 +4071,7 @@ export type Database = {
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
           mensagem_lembrete_2h?: string | null
+          mensagem_no_show?: string | null
           mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
           palavras_escalonamento?: string[]

@@ -21,6 +21,7 @@ const DIAS = [
 const GATILHOS: { k: string; label: string; desc: string }[] = [
   { k: "confirmacao_24h", label: "Confirmação 24h antes", desc: "Pede SIM/REAGENDAR no dia anterior" },
   { k: "lembrete_2h", label: "Lembrete 2h antes", desc: "Lembrete rápido no dia da sessão" },
+  { k: "no_show_automatico", label: "No-show automático", desc: "Se não confirmar nem cancelar até a hora, marca FALTA e contabiliza a sessão" },
   { k: "pos_sessao", label: "Pós-sessão (check-in)", desc: "Pergunta como está se sentindo 2h depois" },
   { k: "exercicio_pendente", label: "Exercícios pendentes", desc: "Quando há missões/exercícios não feitos" },
   { k: "myid_vencido", label: "MyID vencido (30 dias)", desc: "Convida a refazer a avaliação mensal" },
@@ -78,7 +79,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         max_turnos_bot: 5,
         usar_contexto_clinico: true,
         gatilhos_ativos: {
-          confirmacao_24h: true, lembrete_2h: true, pos_sessao: true,
+          confirmacao_24h: true, lembrete_2h: true, no_show_automatico: true, pos_sessao: true,
           exercicio_pendente: true, myid_vencido: true, reengajamento: true,
           aniversario: true, pagamento_pendente: false,
         },
@@ -376,9 +377,16 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   onChange={(e) => setCfg({ ...cfg, mensagem_confirmacao: e.target.value })} />
               </div>
               <div>
-                <Label className="text-xs">2h antes (lembrete)</Label>
+                <Label className="text-xs">2h antes (lembrete + aviso final)</Label>
                 <Textarea rows={2} value={cfg.mensagem_lembrete_2h || ""}
                   onChange={(e) => setCfg({ ...cfg, mensagem_lembrete_2h: e.target.value })} />
+                <p className="text-micro text-muted-foreground mt-1">Dica: informe que após esse horário a sessão será contabilizada.</p>
+              </div>
+              <div>
+                <Label className="text-xs">No-show (após a hora sem confirmar/cancelar)</Label>
+                <Textarea rows={2} value={cfg.mensagem_no_show || ""}
+                  onChange={(e) => setCfg({ ...cfg, mensagem_no_show: e.target.value })} />
+                <p className="text-micro text-muted-foreground mt-1">Enviada quando a falta é registrada automaticamente e a sessão é contabilizada no pacote.</p>
               </div>
               <div>
                 <Label className="text-xs">Pós-sessão (check-in)</Label>
