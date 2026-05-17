@@ -127,7 +127,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       const { data: todos } = await base;
       const ids = (todos || []).map((p: any) => p.id);
       if (ids.length === 0) return [];
-      const { data } = await supabase.from("missoes_paciente")
+      const { data } = await supabase.from("paciente_missoes")
         .select("paciente_id").eq("status", "pendente").in("paciente_id", ids);
       return [...new Set((data || []).map((d: any) => d.paciente_id))] as string[];
     }
