@@ -1,5 +1,6 @@
 // Agente proativo — roda via cron a cada 15 min e dispara mensagens contextualizadas
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 import { montarContextoClinico } from "../_shared/agente-contexto.ts";
 
 const corsHeaders = {
@@ -131,6 +132,7 @@ async function dispararAniversario(ctx: DispatchCtx) {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
 
   const admin = createClient(
     Deno.env.get("SUPABASE_URL")!,

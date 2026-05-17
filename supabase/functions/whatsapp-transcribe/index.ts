@@ -1,6 +1,7 @@
 // Transcreve áudios recebidos via WhatsApp usando Lovable AI (Gemini).
 // Chamado pelo webhook ou manualmente para uma mensagem específica.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireInternal } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -9,6 +10,7 @@ const corsHeaders = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  try { requireInternal(req); } catch (r) { return r as Response; }
 
   try {
     const { mensagem_id } = await req.json();
