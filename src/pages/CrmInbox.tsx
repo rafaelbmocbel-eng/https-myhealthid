@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export default function CrmInbox() {
+export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
