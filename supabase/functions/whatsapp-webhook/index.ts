@@ -130,6 +130,26 @@ Deno.serve(async (req) => {
     });
     if (mErr) throw mErr;
 
+    // Dispara transcrição em background se for áudio recebido
+    if (tipo === "audio" && !fromMe && midia_url) {
+      try {
+        const { data: novaMsg } = await admin
+          .from("whatsapp_mensagens_inbox")
+          .select("id")
+          .eq("conversa_id", conversaId)
+          .eq("zapi_message_id", messageId)
+          .maybeSingle();
+        if (novaMsg?.id) {
+          // não aguarda — fire and forget
+          fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-transcribe`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ mensagem_id: novaMsg.id }),
+          }).catch((e) => console.warn("transcribe trigger failed:", e));
+        }
+      } catch (e) { console.warn("transcribe trigger lookup failed:", e); }
+    }
+
     return new Response(JSON.stringify({ ok: true, conversa_id: conversaId }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
