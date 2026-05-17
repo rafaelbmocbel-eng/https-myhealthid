@@ -20,3 +20,9 @@ verify_jwt = false
 
 [functions.whatsapp-transcribe]
 verify_jwt = false
+
+[functions.whatsapp-bot-reply]
+verify_jwt = false
+
+[functions.whatsapp-auto-confirm]
+verify_jwt = false
