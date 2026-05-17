@@ -1,5 +1,6 @@
 // Extrai mapa de dor (regiões + intensidade + estruturas) a partir da
 // transcrição/áudio de uma avaliação clínica usando Lovable AI.
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -14,6 +15,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
+    try { await requireUser(req); } catch (r) { return r as Response; }
     const {
       transcript,
       regions,
