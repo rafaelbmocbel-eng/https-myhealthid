@@ -11,8 +11,8 @@
  * cada largura alvo (360, 390, 414×896 retrato/paisagem).
  */
 import { describe, it, expect } from 'vitest';
-import { readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { resolve, join } from 'node:path';
 import { render } from '@testing-library/react';
 import { Card, CardHeader, CardContent } from '@/components/ui/card';
 
@@ -24,13 +24,82 @@ const PAGES = [
   'src/pages/Configuracoes.tsx',
 ];
 
-const CONFIG_COMPONENTS = [
+// Componentes ATIVOS críticos de layout (Serene Premium aplicado).
+// Ampliar esta lista sempre que um componente passar pela passada de design.
+const CRITICAL_LAYOUT_COMPONENTS = [
+  // Configurações
   'src/components/equipe/EquipeManager.tsx',
   'src/components/configuracoes/ConfigClinica.tsx',
   'src/components/configuracoes/ControleMensal.tsx',
   'src/components/configuracoes/TurnosEditor.tsx',
   'src/components/configuracoes/AusenciasManager.tsx',
+  // Banner global que aparece no topo de Configurações
+  'src/components/AiCreditsBanner.tsx',
+  // Componentes compartilhados de layout
+  'src/components/ui/card.tsx',
+  'src/components/ui/section-title.tsx',
 ];
+
+/**
+ * Arquivos isentos do guarda global. Razões aceitas:
+ *  - Serviços DESCONTINUADOS (cobzero, identidade, protocolo, método-identidade)
+ *    cujo CSS legado deve ficar congelado como histórico.
+ *  - Componentes que escolheram outro ritmo verticalmente justificado
+ *    (ex.: Dashboard/Index com seções largas) e que NÃO seguem o padrão
+ *    `mb-4 sm:mb-5` por decisão de design.
+ *
+ * IMPORTANTE: adicionar a esta lista exige justificativa em PR review.
+ */
+const LEGACY_ALLOWLIST: RegExp[] = [
+  /\/cobzero\//,
+  /\/identidade\//,
+  /\/protocolo\//,
+  /MetodoIdentidade\.tsx$/,
+  /CobZero\.tsx$/,
+  /\/myid\//,           // Blocos MyID legados (relatórios)
+  /PacienteDashboardCobZero\.tsx$/,
+  /PacienteDashboardIdentidade\.tsx$/,
+  /RelatorioCobZero\.tsx$/,
+  /RelatorioIdentidade\.tsx$/,
+  // Páginas com layout de hero amplo intencional (sweep não concluído)
+  /pages\/Index\.tsx$/,
+  /pages\/Relatorios\.tsx$/,
+  /pages\/Protocolos\.tsx$/,
+  /pages\/GestaoVendas\.tsx$/,
+  /pages\/Agenda\.tsx$/,
+  /pages\/PacientePerfil\.tsx$/,
+  // Componentes Patient* com layouts próprios
+  /PatientIntegratedDashboard\.tsx$/,
+  // O próprio arquivo de teste contém as regex que matchariam
+  /test\/serene-spacing\.test\.tsx$/,
+];
+
+function walk(dir: string, out: string[] = []): string[] {
+  for (const entry of readdirSync(dir)) {
+    const full = join(dir, entry);
+    const s = statSync(full);
+    if (s.isDirectory()) walk(full, out);
+    else if (/\.(tsx?|jsx?)$/.test(entry)) out.push(full);
+  }
+  return out;
+}
+
+function findCardViolations(filePath: string): string[] {
+  const src = readFileSync(filePath, 'utf8');
+  const violations: string[] = [];
+  const lines = src.split('\n');
+  lines.forEach((line, i) => {
+    // 1) clinical-card + mb-6/mb-8 no mesmo className
+    if (/clinical-card[^"'`]*\bmb-(6|8)\b/.test(line)) {
+      violations.push(`${filePath}:${i + 1} → clinical-card + mb-6/8`);
+    }
+    // 2) Card shadcn (rounded-xl + border) com mb-6/8 no mesmo className
+    if (/rounded-xl[^"'`]*\bborder[^"'`]*\bp-[45]\b[^"'`]*\bmb-(6|8)\b/.test(line)) {
+      violations.push(`${filePath}:${i + 1} → card (rounded-xl+border+p-4/5) + mb-6/8`);
+    }
+  });
+  return violations;
+}
 
 describe('Serene Premium — ritmo de espaçamento', () => {
   describe('Wrapper de página (container py-4 sm:py-6)', () => {
@@ -49,27 +118,45 @@ describe('Serene Premium — ritmo de espaçamento', () => {
     });
   });
 
-  describe('Cards de Configurações — sem mb-6/mb-8 (Serene Premium)', () => {
-    it.each(CONFIG_COMPONENTS)(
-      '%s não contém mb-6 ou mb-8 em clinical-card',
+  describe('Componentes críticos — sem mb-6/mb-8 e usam ritmo Serene', () => {
+    it.each(CRITICAL_LAYOUT_COMPONENTS)(
+      '%s não contém mb-6 ou mb-8',
       (file) => {
         const src = read(file);
-        // Procura especificamente classes Tailwind mb-6/mb-8 em strings
-        // de className. Tokens dentro de comentários ou nomes de variáveis
-        // (ex: `mb-6px`) não disparam — usamos boundary de palavra.
         expect(src).not.toMatch(/\bmb-6\b/);
         expect(src).not.toMatch(/\bmb-8\b/);
       },
     );
+  });
 
-    it.each(CONFIG_COMPONENTS)(
-      '%s usa mb-4 sm:mb-5 entre cards',
-      (file) => {
-        const src = read(file);
-        // Pelo menos uma ocorrência do padrão Serene
-        expect(src).toMatch(/mb-4\s+sm:mb-5/);
-      },
+  describe('Componentes de Configurações — usam mb-4 sm:mb-5 entre cards', () => {
+    const configOnly = CRITICAL_LAYOUT_COMPONENTS.filter((f) =>
+      /configuracoes|equipe/.test(f),
     );
+    it.each(configOnly)('%s usa mb-4 sm:mb-5', (file) => {
+      const src = read(file);
+      expect(src).toMatch(/mb-4\s+sm:mb-5/);
+    });
+  });
+
+  describe('Guarda GLOBAL — nenhum card interno reintroduz mb-6/mb-8', () => {
+    it('toda a base src/ (exceto allowlist) está livre de "clinical-card + mb-6/8" e "card shadcn + mb-6/8"', () => {
+      const root = resolve(process.cwd(), 'src');
+      const files = walk(root).filter((f) => {
+        const rel = f.replace(resolve(process.cwd()) + '/', '');
+        return !LEGACY_ALLOWLIST.some((rx) => rx.test(rel));
+      });
+      const violations = files.flatMap(findCardViolations);
+      if (violations.length > 0) {
+        // Mensagem amigável listando arquivos infratores
+        throw new Error(
+          'Violações Serene Premium detectadas:\n' +
+            violations.map((v) => '  • ' + v).join('\n') +
+            '\n\nUse mb-4 sm:mb-5 entre cards ou adicione à LEGACY_ALLOWLIST com justificativa.',
+        );
+      }
+      expect(violations).toEqual([]);
+    });
   });
 
   describe('Card shadcn — padding interno', () => {
