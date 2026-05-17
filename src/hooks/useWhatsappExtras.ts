@@ -60,6 +60,29 @@ export function useWhatsappTemplates() {
   return { ...query, salvar, remover, incrementarUso };
 }
 
+/** Busca global: retorna IDs de conversas cujas mensagens contêm o termo. */
+export function useGlobalMessageSearch(termo: string) {
+  const { user } = useAuth();
+  return useQuery({
+    queryKey: ['wa-msg-search', user?.id, termo],
+    queryFn: async () => {
+      const q = termo.trim();
+      if (!user || q.length < 3) return [] as string[];
+      const safe = q.replace(/[%,]/g, ' ');
+      const { data, error } = await supabase
+        .from('whatsapp_mensagens_inbox')
+        .select('conversa_id')
+        .eq('terapeuta_id', user.id)
+        .or(`conteudo.ilike.%${safe}%,transcricao.ilike.%${safe}%`)
+        .limit(300);
+      if (error) throw error;
+      return Array.from(new Set((data || []).map((r: any) => r.conversa_id as string)));
+    },
+    enabled: !!user && termo.trim().length >= 3,
+    staleTime: 10_000,
+  });
+}
+
 export interface WANota {
   id: string;
   conversa_id: string;
