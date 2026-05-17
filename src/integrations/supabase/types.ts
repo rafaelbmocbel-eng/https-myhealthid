@@ -3739,6 +3739,121 @@ export type Database = {
           },
         ]
       }
+      whatsapp_conversas: {
+        Row: {
+          arquivada: boolean
+          created_at: string
+          foto_url: string | null
+          id: string
+          nao_lidas: number
+          nome_contato: string | null
+          paciente_id: string | null
+          tags: string[] | null
+          telefone: string
+          terapeuta_id: string
+          ultima_direcao: string | null
+          ultima_mensagem: string | null
+          ultima_mensagem_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivada?: boolean
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nao_lidas?: number
+          nome_contato?: string | null
+          paciente_id?: string | null
+          tags?: string[] | null
+          telefone: string
+          terapeuta_id: string
+          ultima_direcao?: string | null
+          ultima_mensagem?: string | null
+          ultima_mensagem_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivada?: boolean
+          created_at?: string
+          foto_url?: string | null
+          id?: string
+          nao_lidas?: number
+          nome_contato?: string | null
+          paciente_id?: string | null
+          tags?: string[] | null
+          telefone?: string
+          terapeuta_id?: string
+          ultima_direcao?: string | null
+          ultima_mensagem?: string | null
+          ultima_mensagem_em?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_conversas_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_mensagens_inbox: {
+        Row: {
+          conteudo: string | null
+          conversa_id: string
+          created_at: string
+          direcao: string
+          erro: string | null
+          id: string
+          metadata: Json | null
+          midia_url: string | null
+          status: string
+          terapeuta_id: string
+          tipo: string
+          transcricao: string | null
+          zapi_message_id: string | null
+        }
+        Insert: {
+          conteudo?: string | null
+          conversa_id: string
+          created_at?: string
+          direcao: string
+          erro?: string | null
+          id?: string
+          metadata?: Json | null
+          midia_url?: string | null
+          status?: string
+          terapeuta_id: string
+          tipo?: string
+          transcricao?: string | null
+          zapi_message_id?: string | null
+        }
+        Update: {
+          conteudo?: string | null
+          conversa_id?: string
+          created_at?: string
+          direcao?: string
+          erro?: string | null
+          id?: string
+          metadata?: Json | null
+          midia_url?: string | null
+          status?: string
+          terapeuta_id?: string
+          tipo?: string
+          transcricao?: string | null
+          zapi_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_mensagens_inbox_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       eventos_publicos: {

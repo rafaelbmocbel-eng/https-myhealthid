@@ -27,6 +27,7 @@ const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
 const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
 const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const CrmInbox = lazy(() => import("./pages/CrmInbox"));
 const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
@@ -138,6 +139,7 @@ const App = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<Navigate to="/pacientes?tab=crm" replace />} />
+                <Route path="/crm/inbox" element={<PatientGuard><CrmInbox /></PatientGuard>} />
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
