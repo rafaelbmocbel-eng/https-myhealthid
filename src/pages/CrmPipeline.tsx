@@ -236,6 +236,6 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
           Arraste os cards entre as colunas para mudar a etapa.
         </p>
       </div>
-    </AppLayout>
+    </Wrapper>
   );
 }
