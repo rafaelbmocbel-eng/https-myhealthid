@@ -168,8 +168,9 @@ export default function Eventos() {
       <div className="container py-6 max-w-6xl space-y-6">
         <div className="flex items-end justify-between gap-3 mb-2">
           <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Eventos</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">Crie eventos, colete inscrições e questionários</p>
+            <div className="eyebrow-accent mb-1.5">Comunidade</div>
+            <h1 className="h-page">Eventos</h1>
+            <p className="text-caption mt-0.5">Crie eventos, colete inscrições e questionários</p>
           </div>
           <Dialog open={openCreate} onOpenChange={setOpenCreate}>
             <DialogTrigger asChild>
