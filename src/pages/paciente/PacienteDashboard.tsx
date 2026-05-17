@@ -422,17 +422,17 @@ export default function PacienteDashboard() {
             {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </motion.div>
 
-          {/* Upcoming appointments — compact */}
-          {proximasConsultas.length > 0 && (
+          {/* Upcoming appointments — compact, skip first (already shown at top) */}
+          {proximasConsultas.length > 1 && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
               <div className="flex items-center justify-between mb-2">
-                <h2 className="text-sm font-bold text-foreground">Próximas consultas</h2>
+                <h2 className="text-sm font-bold text-foreground">Outras consultas</h2>
                 <button onClick={() => navigate('/paciente/agenda')} className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
                   Ver agenda <ChevronRight className="h-3 w-3" />
                 </button>
               </div>
               <div className="space-y-1.5">
-                {proximasConsultas.map((ag) => (
+                {proximasConsultas.slice(1).map((ag) => (
                   <Card key={ag.id} className="hover:shadow-sm transition-shadow">
                     <CardContent className="p-2.5 flex items-center gap-2.5">
                       <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
