@@ -124,9 +124,11 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
       return (todos || []).map((p: any) => p.id).filter((id: string) => !ativos.has(id));
     }
     if (seg === "exercicio_pendente") {
+      const { data: todos } = await base;
+      const ids = (todos || []).map((p: any) => p.id);
+      if (ids.length === 0) return [];
       const { data } = await supabase.from("missoes_paciente")
-        .select("paciente_id, pacientes!inner(terapeuta_id, ativo, telefone)")
-        .eq("status", "pendente").eq("pacientes.terapeuta_id", userId).eq("pacientes.ativo", true);
+        .select("paciente_id").eq("status", "pendente").in("paciente_id", ids);
       return [...new Set((data || []).map((d: any) => d.paciente_id))] as string[];
     }
     if (seg === "myid_vencido") {
