@@ -140,8 +140,8 @@ export async function montarContextoClinico(
     };
   }
 
-  // Exercícios pendentes (missoes_paciente status pendente)
-  const { count } = await admin.from("missoes_paciente")
+  // Exercícios pendentes (paciente_missoes status pendente)
+  const { count } = await admin.from("paciente_missoes")
     .select("id", { count: "exact", head: true })
     .eq("paciente_id", paciente_id)
     .eq("status", "pendente");
