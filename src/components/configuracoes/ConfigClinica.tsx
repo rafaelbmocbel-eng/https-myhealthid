@@ -118,12 +118,12 @@ export default function ConfigClinica() {
     }
   };
 
-  if (loading) return <div className="clinical-card mb-6 h-32 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
+  if (loading) return <div className="clinical-card mb-4 sm:mb-5 h-32 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
     <>
       {/* Identidade da clínica */}
-      <div className="clinical-card mb-6">
+      <div className="clinical-card mb-4 sm:mb-5">
         <div className="flex items-center gap-2 mb-4">
           <Building2 className="h-4 w-4 text-primary" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Identidade da Clínica</h2>
@@ -146,7 +146,7 @@ export default function ConfigClinica() {
       </div>
 
       {/* Logo da clínica */}
-      <div className="clinical-card mb-6">
+      <div className="clinical-card mb-4 sm:mb-5">
         <div className="flex items-center gap-2 mb-2">
           <ImageIcon className="icon-sm text-primary shrink-0" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Logo da Clínica</h2>
@@ -189,7 +189,7 @@ export default function ConfigClinica() {
       </div>
 
 
-      <div className="clinical-card mb-6">
+      <div className="clinical-card mb-4 sm:mb-5">
         <div className="flex items-center gap-2 mb-4">
           <MapPin className="h-4 w-4 text-primary" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Contato e Localização</h2>
@@ -228,7 +228,7 @@ export default function ConfigClinica() {
       </div>
 
       {/* WhatsApp próprio (Z-API) */}
-      <div className="clinical-card mb-6 border-2 border-emerald-500/20">
+      <div className="clinical-card mb-4 sm:mb-5 border-2 border-emerald-500/20">
         <div className="flex items-center gap-2 mb-2">
           <MessageCircle className="h-4 w-4 text-emerald-600" />
           <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">WhatsApp Próprio</h2>
@@ -273,7 +273,7 @@ export default function ConfigClinica() {
       </div>
 
       {/* Save */}
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-end mb-4 sm:mb-5">
         <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground gap-2 min-w-[200px]">
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : saved ? <CheckCircle2 className="h-4 w-4" /> : <Save className="h-4 w-4" />}
           {saved ? 'Salvo!' : 'Salvar dados da clínica'}

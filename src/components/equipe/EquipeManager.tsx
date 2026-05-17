@@ -27,7 +27,7 @@ export default function EquipeManager() {
   if (loading) return <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-primary" /></div>;
 
   return (
-    <div className="clinical-card mb-6">
+    <div className="clinical-card mb-4 sm:mb-5">
       <div className="flex items-center gap-2 mb-4">
         <Users className="h-4 w-4 text-primary" />
         <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Equipe / Profissionais</h2>

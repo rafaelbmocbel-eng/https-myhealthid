@@ -204,7 +204,7 @@ export default function ControleMensal() {
   };
 
   return (
-    <div className="clinical-card mb-6">
+    <div className="clinical-card mb-4 sm:mb-5">
       <div className="flex items-center justify-between gap-2 mb-4 flex-wrap">
         <div className="flex items-center gap-2">
           <FileText className="icon-sm text-primary shrink-0" />

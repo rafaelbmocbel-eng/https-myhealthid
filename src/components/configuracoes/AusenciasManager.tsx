@@ -45,7 +45,7 @@ export default function AusenciasManager() {
   };
 
   return (
-    <div className="clinical-card mb-6">
+    <div className="clinical-card mb-4 sm:mb-5">
       <div className="flex items-center justify-between mb-2">
         <div className="flex items-center gap-2">
           <CalendarOff className="icon-sm text-primary shrink-0" />
