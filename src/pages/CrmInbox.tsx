@@ -29,7 +29,7 @@ export default function CrmInbox() {
     <AppLayout>
       <div className="p-4 sm:p-6">
         <PageHeader
-          icon={MessageCircle}
+          icon={<MessageCircle className="icon-lg" />}
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
         />
