@@ -33,20 +33,21 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
   });
 
   return (
-    <AppLayout>
-      <div className="p-4 sm:p-6">
+  const body = (
+    <div className={embedded ? '' : 'p-4 sm:p-6'}>
+      {!embedded && (
         <PageHeader
           icon={<MessageCircle className="icon-lg" />}
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
           actions={
             <div className="flex gap-2">
-              <Link to="/crm/pipeline">
+              <Link to="/crm?tab=pipeline">
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Kanban className="icon-xs" /> Pipeline
                 </Button>
               </Link>
-              <Link to="/crm/automacoes">
+              <Link to="/crm?tab=automacoes">
                 <Button variant="outline" size="sm" className="gap-1.5">
                   <Bot className="icon-xs" /> Automações
                 </Button>
@@ -54,8 +55,11 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
           }
         />
+      )}
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 h-[calc(100dvh-220px)] min-h-[500px]">
+      <div className={cn('grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 min-h-[500px]', embedded ? 'mt-0 h-[calc(100dvh-160px)]' : 'mt-4 h-[calc(100dvh-220px)]')}>
+  );
+  // placeholder line replaced below
           {/* Lista */}
           <div className={cn(
             "rounded-xl border border-border/40 bg-card shadow-xs flex flex-col overflow-hidden",
