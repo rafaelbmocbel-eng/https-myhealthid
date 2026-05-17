@@ -344,11 +344,11 @@ function ClientRegistrationLink() {
 
   return (
     <div className="clinical-card mb-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3">
         <UserPlus className="icon-sm text-muted-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
+        <h2 className="h-section">Link de Cadastro de Cliente</h2>
       </div>
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="text-caption mb-4">
         Compartilhe este link para que novos clientes criem sua conta e entrem automaticamente no seu banco de dados com acesso ao portal.
       </p>
       <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border border-primary/10">
