@@ -157,7 +157,67 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(JSON.stringify({ ok: true, enviados24, enviados2h, enviadosPos }), {
+    // ── JANELA 4: T+10min a T+30min — no-show automático
+    // Se o paciente não confirmou nem cancelou, marca como 'falta',
+    // incrementa o pacote (sessão contabilizada) e avisa pelo WhatsApp.
+    {
+      const start = new Date(now - 30 * 60000).toISOString();
+      const end   = new Date(now - 10 * 60000).toISOString();
+      const { data: ags } = await admin.from("agendamentos")
+        .select("id, terapeuta_id, paciente_id, data_inicio, status, no_show_processado_em, confirmado_pelo_paciente_em")
+        .gte("data_inicio", start).lte("data_inicio", end)
+        .in("status", ["agendado", "confirmacao_pendente"])
+        .is("no_show_processado_em", null)
+        .is("confirmado_pelo_paciente_em", null);
+      for (const ag of ags || []) {
+        const cfg = await getCfg(ag.terapeuta_id);
+        if (!(cfg?.gatilhos_ativos?.no_show_automatico)) continue;
+        const info = await processarPaciente(ag);
+        if (!info) continue;
+
+        // Marca como falta + contabiliza pacote (espelha incrementar_pacote_ao_concluir)
+        await admin.from("agendamentos").update({
+          status: "falta",
+          no_show_processado_em: new Date().toISOString(),
+          observacoes: "No-show automático: paciente não confirmou nem cancelou em até 2h.",
+        }).eq("id", ag.id);
+
+        const { data: pac } = await admin.from("pacotes_sessoes")
+          .select("id, sessoes_utilizadas, total_sessoes")
+          .eq("paciente_id", ag.paciente_id)
+          .eq("terapeuta_id", ag.terapeuta_id)
+          .eq("status", "ativo")
+          .order("created_at", { ascending: true })
+          .limit(1).maybeSingle();
+        if (pac && pac.sessoes_utilizadas < pac.total_sessoes) {
+          await admin.from("pacotes_sessoes").update({
+            sessoes_utilizadas: pac.sessoes_utilizadas + 1,
+            updated_at: new Date().toISOString(),
+          }).eq("id", pac.id);
+        }
+
+        const msg = aplicar(
+          cfg.mensagem_no_show || "Oi {nome}, notamos que você não compareceu nem avisou sobre a sessão de hoje às {horario}. Conforme combinado, sessões não canceladas com 2h de antecedência são contabilizadas. Se houve algum imprevisto, fale com a gente. 💙",
+          info.nome, info.hora, info.data,
+        );
+        const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg);
+        if (ok) {
+          await registrarEnvio(admin, ag.terapeuta_id, ag.paciente_id, info.pac.telefone, msg);
+        }
+
+        await admin.from("notificacoes").insert({
+          terapeuta_id: ag.terapeuta_id,
+          tipo: "no_show_automatico",
+          titulo: "⚠️ Falta registrada automaticamente",
+          descricao: `${info.pac.nome || "Paciente"} não compareceu à sessão de ${info.data} ${info.hora}. Sessão contabilizada.`,
+          rota: `/agenda`,
+          metadata: { agendamento_id: ag.id, paciente_id: ag.paciente_id },
+        });
+        noShows++;
+      }
+    }
+
+    return new Response(JSON.stringify({ ok: true, enviados24, enviados2h, enviadosPos, noShows }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e: any) {
