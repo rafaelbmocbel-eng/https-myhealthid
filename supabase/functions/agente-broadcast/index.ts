@@ -56,7 +56,19 @@ Deno.serve(async (req) => {
       total: (bc.paciente_ids || []).length,
     }).eq("id", broadcast_id);
 
-    // Resposta imediata; processa async (até timeout do edge runtime)
+    // Variantes A/B: [{ key:'A', texto:'...', peso: 50 }, ...]
+    const variantes: { key: string; texto: string; peso: number }[] = Array.isArray(bc.ab_variantes) && bc.ab_variantes.length
+      ? bc.ab_variantes
+      : [{ key: "A", texto: bc.intencao, peso: 100 }];
+    const pesoTotal = variantes.reduce((s, v) => s + (v.peso || 0), 0) || 100;
+    const pickVariante = () => {
+      let r = Math.random() * pesoTotal;
+      for (const v of variantes) { r -= (v.peso || 0); if (r <= 0) return v; }
+      return variantes[0];
+    };
+    const stats: Record<string, { enviados: number; erros: number }> = {};
+    variantes.forEach(v => stats[v.key] = { enviados: 0, erros: 0 });
+
     (async () => {
       let enviados = 0, erros = 0;
       for (const paciente_id of bc.paciente_ids || []) {
@@ -64,24 +76,29 @@ Deno.serve(async (req) => {
           const { data: pac } = await admin.from("pacientes")
             .select("telefone").eq("id", paciente_id).maybeSingle();
           if (!pac?.telefone) { erros++; continue; }
+          const variante = pickVariante();
           const ctxClinico = await montarContextoClinico(admin, bc.terapeuta_id, paciente_id, pac.telefone, null);
-          const msg = await gerarMensagem(buildSystemPrompt(ctxClinico), bc.intencao);
+          const msg = await gerarMensagem(buildSystemPrompt(ctxClinico), variante.texto);
           const ok = await enviarWhatsapp(admin, bc.terapeuta_id, pac.telefone, msg);
           await admin.from("agente_disparos").insert({
             terapeuta_id: bc.terapeuta_id, paciente_id, gatilho: "broadcast",
             ref_id: broadcast_id, conteudo: msg,
             status: ok ? "enviado" : "erro",
+            metadata: { variante: variante.key },
           });
-          if (ok) enviados++; else erros++;
-          await admin.from("agente_broadcasts").update({ enviados, erros }).eq("id", broadcast_id);
-          await new Promise(r => setTimeout(r, 5000)); // 5s entre envios
-        } catch (e: any) {
+          if (ok) { enviados++; stats[variante.key].enviados++; }
+          else { erros++; stats[variante.key].erros++; }
+          await admin.from("agente_broadcasts").update({
+            enviados, erros, resultado_variantes: stats,
+          }).eq("id", broadcast_id);
+          await new Promise(r => setTimeout(r, 5000));
+        } catch (_e) {
           erros++;
         }
       }
       await admin.from("agente_broadcasts").update({
         status: "concluido", concluido_em: new Date().toISOString(),
-        enviados, erros,
+        enviados, erros, resultado_variantes: stats,
       }).eq("id", broadcast_id);
     })();
 
