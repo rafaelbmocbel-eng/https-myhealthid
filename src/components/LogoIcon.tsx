@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import logoSrc from '@/assets/logo-myhealthid.jpg';
+import logoSrc from '@/assets/logo-myhealthid.png';
 
 export default function LogoIcon({
   size = 40,
