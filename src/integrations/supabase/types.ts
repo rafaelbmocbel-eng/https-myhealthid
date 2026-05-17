@@ -86,6 +86,114 @@ export type Database = {
           },
         ]
       }
+      agente_broadcasts: {
+        Row: {
+          concluido_em: string | null
+          created_at: string
+          enviados: number
+          erros: number
+          filtro: Json
+          id: string
+          iniciado_em: string | null
+          intencao: string
+          paciente_ids: string[]
+          status: string
+          terapeuta_id: string
+          titulo: string
+          total: number
+          updated_at: string
+        }
+        Insert: {
+          concluido_em?: string | null
+          created_at?: string
+          enviados?: number
+          erros?: number
+          filtro?: Json
+          id?: string
+          iniciado_em?: string | null
+          intencao: string
+          paciente_ids?: string[]
+          status?: string
+          terapeuta_id: string
+          titulo: string
+          total?: number
+          updated_at?: string
+        }
+        Update: {
+          concluido_em?: string | null
+          created_at?: string
+          enviados?: number
+          erros?: number
+          filtro?: Json
+          id?: string
+          iniciado_em?: string | null
+          intencao?: string
+          paciente_ids?: string[]
+          status?: string
+          terapeuta_id?: string
+          titulo?: string
+          total?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      agente_disparos: {
+        Row: {
+          conteudo: string
+          conversa_id: string | null
+          created_at: string
+          erro: string | null
+          gatilho: string
+          id: string
+          paciente_id: string | null
+          ref_id: string | null
+          respondido_em: string | null
+          status: string
+          terapeuta_id: string
+        }
+        Insert: {
+          conteudo: string
+          conversa_id?: string | null
+          created_at?: string
+          erro?: string | null
+          gatilho: string
+          id?: string
+          paciente_id?: string | null
+          ref_id?: string | null
+          respondido_em?: string | null
+          status?: string
+          terapeuta_id: string
+        }
+        Update: {
+          conteudo?: string
+          conversa_id?: string | null
+          created_at?: string
+          erro?: string | null
+          gatilho?: string
+          id?: string
+          paciente_id?: string | null
+          ref_id?: string | null
+          respondido_em?: string | null
+          status?: string
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agente_disparos_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "agente_disparos_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assinaturas: {
         Row: {
           created_at: string
@@ -3875,15 +3983,21 @@ export type Database = {
           delay_resposta_segundos: number
           detectar_intencao: boolean
           dias_semana: Json
+          gatilhos_ativos: Json
           horario_fim: string
           horario_inicio: string
           id: string
+          max_turnos_bot: number
           mensagem_confirmacao: string
           mensagem_fora_horario: string
           mensagem_saudacao: string
+          palavras_escalonamento: string[]
           pausar_bot_apos_humano: boolean
+          prompt_extra: string | null
           terapeuta_id: string
+          tom_voz: string
           updated_at: string
+          usar_contexto_clinico: boolean
         }
         Insert: {
           auto_confirmacao_24h?: boolean
@@ -3892,15 +4006,21 @@ export type Database = {
           delay_resposta_segundos?: number
           detectar_intencao?: boolean
           dias_semana?: Json
+          gatilhos_ativos?: Json
           horario_fim?: string
           horario_inicio?: string
           id?: string
+          max_turnos_bot?: number
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
           mensagem_saudacao?: string
+          palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
+          prompt_extra?: string | null
           terapeuta_id: string
+          tom_voz?: string
           updated_at?: string
+          usar_contexto_clinico?: boolean
         }
         Update: {
           auto_confirmacao_24h?: boolean
@@ -3909,15 +4029,21 @@ export type Database = {
           delay_resposta_segundos?: number
           detectar_intencao?: boolean
           dias_semana?: Json
+          gatilhos_ativos?: Json
           horario_fim?: string
           horario_inicio?: string
           id?: string
+          max_turnos_bot?: number
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
           mensagem_saudacao?: string
+          palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
+          prompt_extra?: string | null
           terapeuta_id?: string
+          tom_voz?: string
           updated_at?: string
+          usar_contexto_clinico?: boolean
         }
         Relationships: []
       }
@@ -3930,15 +4056,18 @@ export type Database = {
           id: string
           intencao_atual: string | null
           lead_score: number
+          motivo_escalonamento: string | null
           nao_lidas: number
           nome_contato: string | null
           paciente_id: string | null
           pipeline_motivo_perda: string | null
           pipeline_stage: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at: string
+          requer_atencao: boolean
           tags: string[] | null
           telefone: string
           terapeuta_id: string
+          turnos_bot: number
           ultima_direcao: string | null
           ultima_mensagem: string | null
           ultima_mensagem_em: string | null
@@ -3952,15 +4081,18 @@ export type Database = {
           id?: string
           intencao_atual?: string | null
           lead_score?: number
+          motivo_escalonamento?: string | null
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at?: string
+          requer_atencao?: boolean
           tags?: string[] | null
           telefone: string
           terapeuta_id: string
+          turnos_bot?: number
           ultima_direcao?: string | null
           ultima_mensagem?: string | null
           ultima_mensagem_em?: string | null
@@ -3974,15 +4106,18 @@ export type Database = {
           id?: string
           intencao_atual?: string | null
           lead_score?: number
+          motivo_escalonamento?: string | null
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
           pipeline_updated_at?: string
+          requer_atencao?: boolean
           tags?: string[] | null
           telefone?: string
           terapeuta_id?: string
+          turnos_bot?: number
           ultima_direcao?: string | null
           ultima_mensagem?: string | null
           ultima_mensagem_em?: string | null
