@@ -367,6 +367,25 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                 </div>
               ))}
             </div>
+            <div className="space-y-3 pt-2 border-t border-border/40">
+              <p className="text-caption font-medium">Mensagens enviadas automaticamente</p>
+              <p className="text-micro text-muted-foreground">Variáveis: {`{nome}`}, {`{horario}`}, {`{data}`}. O bot interpreta SIM/REAGENDAR/CANCELAR nas respostas e atualiza a agenda.</p>
+              <div>
+                <Label className="text-xs">24h antes (confirmação)</Label>
+                <Textarea rows={2} value={cfg.mensagem_confirmacao || ""}
+                  onChange={(e) => setCfg({ ...cfg, mensagem_confirmacao: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">2h antes (lembrete)</Label>
+                <Textarea rows={2} value={cfg.mensagem_lembrete_2h || ""}
+                  onChange={(e) => setCfg({ ...cfg, mensagem_lembrete_2h: e.target.value })} />
+              </div>
+              <div>
+                <Label className="text-xs">Pós-sessão (check-in)</Label>
+                <Textarea rows={2} value={cfg.mensagem_pos_sessao || ""}
+                  onChange={(e) => setCfg({ ...cfg, mensagem_pos_sessao: e.target.value })} />
+              </div>
+            </div>
           </Card>
         </TabsContent>
 
