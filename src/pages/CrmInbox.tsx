@@ -29,11 +29,14 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
   const [busca, setBusca] = useState('');
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
+  const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
 
   const filtradas = conversas.filter(c => {
     const q = busca.toLowerCase().trim();
     if (!q) return true;
-    return (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
+    const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
+    const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
+    return matchMeta || matchMsg;
   });
 
   return (
@@ -72,7 +75,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
               <div className="relative">
                 <Search className="icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
-                  placeholder="Buscar conversa..."
+                  placeholder="Buscar nome, telefone ou texto…"
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
                   className="pl-8 h-9"
@@ -226,12 +229,17 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
     }
   }
 
-  function aplicarTemplate(tpl: typeof templates[number]) {
-    let conteudo = tpl.conteudo;
-    const nome = (conversa.nome_contato || '').split(' ')[0];
-    conteudo = conteudo.replace(/\{nome\}/g, nome || 'olá');
-    setTexto(conteudo);
-    incrementarUso(tpl.id);
+  async function aplicarTemplate(tpl: typeof templates[number]) {
+    try {
+      const ctx = await buildTemplateContext(conversa);
+      setTexto(aplicarVariaveis(tpl.conteudo, ctx));
+      incrementarUso(tpl.id);
+    } catch {
+      // fallback minimalista
+      const nome = (conversa.nome_contato || '').split(' ')[0] || 'olá';
+      setTexto(tpl.conteudo.replace(/\{nome\}/g, nome));
+      incrementarUso(tpl.id);
+    }
   }
 
   async function transcrever(msgId: string) {
@@ -436,7 +444,7 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
           </PopoverContent>
         </Popover>
         <Input
-          placeholder='Mensagem ou legenda... (use / para templates)'
+          placeholder='Mensagem… use / pra templates ou {nome} {próxima_sessão}'
           value={texto}
           onChange={e => setTexto(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
