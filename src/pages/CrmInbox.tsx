@@ -482,32 +482,165 @@ function TemplatesPopover({ templates, onPick }: {
   templates: ReturnType<typeof useWhatsappTemplates>['data'];
   onPick: (t: any) => void;
 }) {
+  const [openManager, setOpenManager] = useState(false);
   return (
-    <Popover>
-      <PopoverTrigger asChild>
-        <Button variant="outline" size="icon" title="Respostas rápidas">
-          <Zap className="icon-sm" />
-        </Button>
-      </PopoverTrigger>
-      <PopoverContent align="start" className="w-72 p-1 max-h-80 overflow-y-auto">
-        {(templates ?? []).length === 0 && (
-          <div className="text-xs text-muted-foreground p-3">Nenhum template ainda.</div>
-        )}
-        {(templates ?? []).map(t => (
-          <button
-            key={t.id}
-            onClick={() => onPick(t)}
-            className="w-full text-left p-2 rounded-md hover:bg-muted flex items-start gap-2"
-          >
-            <Badge variant="outline" className="text-[10px] font-mono shrink-0">{t.atalho}</Badge>
-            <div className="min-w-0 flex-1">
-              <div className="text-xs font-medium">{t.titulo}</div>
-              <div className="text-[11px] text-muted-foreground line-clamp-2">{t.conteudo}</div>
+    <>
+      <Popover>
+        <PopoverTrigger asChild>
+          <Button variant="outline" size="icon" title="Respostas rápidas">
+            <Zap className="icon-sm" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent align="start" className="w-80 p-0 overflow-hidden">
+          <div className="px-3 py-2 border-b border-border/40 flex items-center justify-between">
+            <span className="text-xs font-medium">Respostas rápidas</span>
+            <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs" onClick={() => setOpenManager(true)}>
+              <Pencil className="icon-xs" /> Gerenciar
+            </Button>
+          </div>
+          <div className="max-h-72 overflow-y-auto p-1">
+            {(templates ?? []).length === 0 && (
+              <div className="text-xs text-muted-foreground p-3 text-center">
+                Nenhum template ainda.
+                <Button variant="link" className="h-auto p-0 ml-1 text-xs" onClick={() => setOpenManager(true)}>
+                  Criar agora
+                </Button>
+              </div>
+            )}
+            {(templates ?? []).map(t => (
+              <button
+                key={t.id}
+                onClick={() => onPick(t)}
+                className="w-full text-left p-2 rounded-md hover:bg-muted flex items-start gap-2"
+              >
+                <Badge variant="outline" className="text-[10px] font-mono shrink-0">{t.atalho}</Badge>
+                <div className="min-w-0 flex-1">
+                  <div className="text-xs font-medium">{t.titulo}</div>
+                  <div className="text-[11px] text-muted-foreground line-clamp-2">{t.conteudo}</div>
+                </div>
+              </button>
+            ))}
+          </div>
+        </PopoverContent>
+      </Popover>
+      <TemplatesManager open={openManager} onOpenChange={setOpenManager} />
+    </>
+  );
+}
+
+function TemplatesManager({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
+  const { data: templates = [], salvar, remover } = useWhatsappTemplates();
+  const [edit, setEdit] = useState<{ id?: string; atalho: string; titulo: string; conteudo: string } | null>(null);
+
+  function novo() {
+    setEdit({ atalho: '/', titulo: '', conteudo: '' });
+  }
+
+  async function handleSalvar() {
+    if (!edit) return;
+    const atalho = edit.atalho.startsWith('/') ? edit.atalho : `/${edit.atalho}`;
+    if (atalho.length < 2 || !edit.titulo.trim() || !edit.conteudo.trim()) {
+      toast.error('Preencha atalho, título e conteúdo.');
+      return;
+    }
+    try {
+      await salvar.mutateAsync({ id: edit.id, atalho, titulo: edit.titulo.trim(), conteudo: edit.conteudo });
+      toast.success('Template salvo');
+      setEdit(null);
+    } catch (e: any) {
+      toast.error('Erro: ' + e.message);
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="max-w-xl max-h-[90dvh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2"><Zap className="icon-sm" /> Respostas rápidas</DialogTitle>
+        </DialogHeader>
+
+        {!edit ? (
+          <div className="space-y-3">
+            <Button size="sm" onClick={novo} className="w-full gap-1.5">
+              <Plus className="icon-xs" /> Novo template
+            </Button>
+            <div className="space-y-1.5 max-h-[50dvh] overflow-y-auto pr-1">
+              {templates.length === 0 && (
+                <div className="text-xs text-muted-foreground text-center py-6">
+                  Crie atalhos como <code className="font-mono">/oi</code> ou <code className="font-mono">/confirma</code> e digite no chat para inserir.
+                </div>
+              )}
+              {templates.map(t => (
+                <div key={t.id} className="rounded-lg border border-border/40 p-2.5 flex items-start gap-2">
+                  <Badge variant="outline" className="text-[10px] font-mono shrink-0">{t.atalho}</Badge>
+                  <div className="min-w-0 flex-1">
+                    <div className="text-xs font-medium">{t.titulo}</div>
+                    <div className="text-[11px] text-muted-foreground line-clamp-2">{t.conteudo}</div>
+                  </div>
+                  <Button size="sm" variant="ghost" className="h-7 px-1.5" onClick={() => setEdit({ id: t.id, atalho: t.atalho, titulo: t.titulo, conteudo: t.conteudo })}>
+                    <Pencil className="icon-xs" />
+                  </Button>
+                  <Button size="sm" variant="ghost" className="h-7 px-1.5" onClick={async () => { await remover.mutateAsync(t.id); toast.success('Removido'); }}>
+                    <Trash2 className="icon-xs" />
+                  </Button>
+                </div>
+              ))}
             </div>
-          </button>
-        ))}
-      </PopoverContent>
-    </Popover>
+            <div className="rounded-lg bg-muted/40 p-2.5">
+              <div className="text-[11px] font-medium mb-1.5">Variáveis disponíveis</div>
+              <div className="flex flex-wrap gap-1">
+                {TEMPLATE_VARIAVEIS.map(v => (
+                  <Badge key={v.chave} variant="secondary" className="text-[10px] font-mono cursor-default" title={v.descricao}>
+                    {'{' + v.chave + '}'}
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            <div className="grid grid-cols-[120px_1fr] gap-2">
+              <div>
+                <Label className="text-xs">Atalho</Label>
+                <Input value={edit.atalho} onChange={e => setEdit({ ...edit, atalho: e.target.value })} placeholder="/oi" className="font-mono" />
+              </div>
+              <div>
+                <Label className="text-xs">Título</Label>
+                <Input value={edit.titulo} onChange={e => setEdit({ ...edit, titulo: e.target.value })} placeholder="Saudação inicial" />
+              </div>
+            </div>
+            <div>
+              <Label className="text-xs">Conteúdo</Label>
+              <Textarea
+                value={edit.conteudo}
+                onChange={e => setEdit({ ...edit, conteudo: e.target.value })}
+                placeholder="Olá {nome}! Confirmando sua sessão {próxima_sessão}. Responda SIM ou REAGENDAR."
+                rows={5}
+              />
+              <div className="mt-1.5 flex flex-wrap gap-1">
+                {TEMPLATE_VARIAVEIS.map(v => (
+                  <button
+                    key={v.chave}
+                    type="button"
+                    onClick={() => setEdit(s => s ? { ...s, conteudo: s.conteudo + '{' + v.chave + '}' } : s)}
+                    className="text-[10px] font-mono px-1.5 py-0.5 rounded border border-border/60 hover:bg-muted"
+                    title={v.descricao}
+                  >
+                    {'{' + v.chave + '}'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <DialogFooter className="gap-2">
+              <Button variant="outline" onClick={() => setEdit(null)}>Cancelar</Button>
+              <Button onClick={handleSalvar} disabled={salvar.isPending}>
+                {salvar.isPending ? <Loader2 className="icon-sm animate-spin" /> : 'Salvar'}
+              </Button>
+            </DialogFooter>
+          </div>
+        )}
+      </DialogContent>
+    </Dialog>
   );
 }
 
