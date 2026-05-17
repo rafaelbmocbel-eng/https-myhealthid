@@ -49,8 +49,9 @@ export function useWhatsappConversas() {
         .select('*')
         .eq('terapeuta_id', user!.id)
         .eq('arquivada', false)
-        .order('ultima_mensagem_em', { ascending: false })
-        .limit(200);
+        .order('ultima_mensagem_em', { ascending: false, nullsFirst: false })
+        .order('created_at', { ascending: false })
+        .limit(500);
       if (error) throw error;
       return (data || []) as WAConversa[];
     },
