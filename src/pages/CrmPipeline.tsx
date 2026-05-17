@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Input } from '@/components/ui/input';
-import { Kanban, MessageCircle, Phone, Search, User } from 'lucide-react';
+import { Kanban, MessageCircle, Phone, Search, User, Zap, TrendingUp } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -119,11 +119,23 @@ export default function CrmPipeline() {
           title="Pipeline CRM"
           subtitle="Acompanhe leads do primeiro contato ao fechamento"
           actions={
-            <Link to="/crm/inbox">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <MessageCircle className="icon-xs" /> Inbox
-              </Button>
-            </Link>
+            <div className="flex gap-2 flex-wrap">
+              <Link to="/crm/metricas">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <TrendingUp className="icon-xs" /> Métricas
+                </Button>
+              </Link>
+              <Link to="/crm/cadencias">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Zap className="icon-xs" /> Cadências
+                </Button>
+              </Link>
+              <Link to="/crm/inbox">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <MessageCircle className="icon-xs" /> Inbox
+                </Button>
+              </Link>
+            </div>
           }
         />
 

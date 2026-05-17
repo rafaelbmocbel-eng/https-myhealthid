@@ -913,6 +913,131 @@ export type Database = {
           },
         ]
       }
+      crm_cadencia_execucoes: {
+        Row: {
+          agendado_para: string
+          cadencia_id: string
+          conversa_id: string
+          created_at: string
+          enviado_em: string | null
+          erro: string | null
+          id: string
+          passo_id: string
+          status: string
+          terapeuta_id: string
+        }
+        Insert: {
+          agendado_para: string
+          cadencia_id: string
+          conversa_id: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          passo_id: string
+          status?: string
+          terapeuta_id: string
+        }
+        Update: {
+          agendado_para?: string
+          cadencia_id?: string
+          conversa_id?: string
+          created_at?: string
+          enviado_em?: string | null
+          erro?: string | null
+          id?: string
+          passo_id?: string
+          status?: string
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadencia_execucoes_cadencia_id_fkey"
+            columns: ["cadencia_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadencias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_cadencia_execucoes_passo_id_fkey"
+            columns: ["passo_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadencia_passos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_cadencia_passos: {
+        Row: {
+          ativo: boolean
+          cadencia_id: string
+          created_at: string
+          delay_horas: number
+          id: string
+          mensagem: string
+          ordem: number
+        }
+        Insert: {
+          ativo?: boolean
+          cadencia_id: string
+          created_at?: string
+          delay_horas?: number
+          id?: string
+          mensagem: string
+          ordem: number
+        }
+        Update: {
+          ativo?: boolean
+          cadencia_id?: string
+          created_at?: string
+          delay_horas?: number
+          id?: string
+          mensagem?: string
+          ordem?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_cadencia_passos_cadencia_id_fkey"
+            columns: ["cadencia_id"]
+            isOneToOne: false
+            referencedRelation: "crm_cadencias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_cadencias: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          descricao: string | null
+          estagio_gatilho: string
+          id: string
+          nome: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          estagio_gatilho: string
+          id?: string
+          nome: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          descricao?: string | null
+          estagio_gatilho?: string
+          id?: string
+          nome?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       daily_logs: {
         Row: {
           created_at: string

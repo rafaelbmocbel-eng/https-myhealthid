@@ -38,6 +38,7 @@ import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
+import { TimelineUnificada } from '@/components/paciente/TimelineUnificada';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import SoapNoteForm from '@/components/prontuario/SoapNoteForm';
 import TermoConsentimentoLGPD from '@/components/prontuario/TermoConsentimentoLGPD';
@@ -1071,6 +1072,7 @@ export default function PacientePerfil() {
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
             <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
+            <TimelineUnificada pacienteId={id!} />
             <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
 
