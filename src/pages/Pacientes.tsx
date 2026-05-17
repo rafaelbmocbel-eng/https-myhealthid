@@ -546,7 +546,7 @@ export default function Pacientes() {
             <div className="min-w-0">
               <div className="eyebrow-accent mb-1.5">Cadastro</div>
               <h1 className="h-page">Pacientes</h1>
-              <p className="text-caption mt-0.5">
+              <p className="text-caption mt-1">
                 {pacientes.length} {pacientes.length === 1 ? 'cadastrado' : 'cadastrados'}
               </p>
             </div>
