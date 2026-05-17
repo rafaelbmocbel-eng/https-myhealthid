@@ -100,7 +100,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             "rounded-xl border border-border/40 bg-card shadow-xs flex flex-col overflow-hidden",
             selecionada && "hidden md:flex"
           )}>
-            <div className="p-3 border-b border-border/40">
+            <div className="p-3 border-b border-border/40 space-y-2">
               <div className="relative">
                 <Search className="icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -110,6 +110,74 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                   className="pl-8 h-9"
                 />
               </div>
+              <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
+                {([
+                  ['todas', 'Todas'],
+                  ['minhas', 'Minhas'],
+                  ['nao_atribuidas', 'Sem dono'],
+                  ['atrasadas', 'SLA ⏰'],
+                ] as [FilaTab, string][]).map(([k, label]) => (
+                  <button
+                    key={k}
+                    onClick={() => setFilaTab(k)}
+                    className={cn(
+                      "shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1",
+                      filaTab === k
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : "bg-background border-border/60 text-muted-foreground hover:bg-muted/50"
+                    )}
+                  >
+                    {label}
+                    <span className="opacity-70">{contagens[k]}</span>
+                  </button>
+                ))}
+              </div>
+              {filtrosSalvos.length > 0 && (
+                <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
+                  {filtrosSalvos.map(f => (
+                    <button
+                      key={f.id}
+                      onClick={() => {
+                        if (f.filtros.filaTab) setFilaTab(f.filtros.filaTab);
+                        if (f.filtros.busca !== undefined) setBusca(f.filtros.busca);
+                      }}
+                      className="shrink-0 text-[10px] px-2 py-0.5 rounded border border-dashed border-border/60 text-muted-foreground hover:bg-muted/40 flex items-center gap-1"
+                    >
+                      {f.nome}
+                      <X
+                        className="icon-xs hover:text-destructive"
+                        onClick={(e) => { e.stopPropagation(); removerFiltro.mutate(f.id); }}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
+              {(filaTab !== 'todas' || busca) && (
+                <Popover open={salvarFiltroAberto} onOpenChange={setSalvarFiltroAberto}>
+                  <PopoverTrigger asChild>
+                    <button className="text-[10px] text-primary hover:underline">+ salvar filtro atual</button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-64 p-3 space-y-2">
+                    <Label className="text-xs">Nome do filtro</Label>
+                    <Input
+                      value={novoFiltroNome}
+                      onChange={e => setNovoFiltroNome(e.target.value)}
+                      placeholder="Ex.: Leads quentes"
+                      className="h-8 text-sm"
+                    />
+                    <Button
+                      size="sm"
+                      className="w-full"
+                      onClick={async () => {
+                        if (!novoFiltroNome.trim()) return;
+                        await salvarFiltro.mutateAsync({ nome: novoFiltroNome.trim(), filtros: { filaTab, busca } });
+                        setNovoFiltroNome(''); setSalvarFiltroAberto(false);
+                        toast.success('Filtro salvo');
+                      }}
+                    >Salvar</Button>
+                  </PopoverContent>
+                </Popover>
+              )}
             </div>
             <ScrollArea className="flex-1">
               {isLoading ? (
@@ -118,9 +186,14 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                 </div>
               ) : filtradas.length === 0 ? (
                 <div className="p-6 text-center text-sm text-muted-foreground">
-                  Nenhuma conversa ainda. Configure o webhook Z-API para receber mensagens.
+                  Nenhuma conversa nesse filtro.
                 </div>
-              ) : filtradas.map(c => (
+              ) : filtradas.map(c => {
+                const sla = getSLAStatus(c);
+                const slaColor = sla.status === 'atrasado' ? 'bg-destructive/15 text-destructive border-destructive/30'
+                  : sla.status === 'em_breve' ? 'bg-amber-500/15 text-amber-600 border-amber-500/30'
+                  : '';
+                return (
                 <button
                   key={c.id}
                   onClick={() => setSelecionada(c)}
@@ -156,9 +229,17 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                         </Badge>
                       )}
                     </div>
+                    {(sla.status === 'atrasado' || sla.status === 'em_breve') && (
+                      <div className={cn("inline-flex items-center gap-1 mt-1 text-[10px] px-1.5 py-0.5 rounded border", slaColor)}>
+                        {sla.status === 'atrasado' ? `Atrasado ${sla.minutos}min` : `SLA em ${sla.minutos}min`}
+                      </div>
+                    )}
+                    {c.atribuido_a === userId && (
+                      <span className="ml-1 mt-1 inline-block text-[10px] text-primary">• minha</span>
+                    )}
                   </div>
                 </button>
-              ))}
+              );})}
             </ScrollArea>
           </div>
 
