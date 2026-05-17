@@ -79,7 +79,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         max_turnos_bot: 5,
         usar_contexto_clinico: true,
         gatilhos_ativos: {
-          confirmacao_24h: true, lembrete_2h: true, pos_sessao: true,
+          confirmacao_24h: true, lembrete_2h: true, no_show_automatico: true, pos_sessao: true,
           exercicio_pendente: true, myid_vencido: true, reengajamento: true,
           aniversario: true, pagamento_pendente: false,
         },
