@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label';
 import WhatsappAutomacoes from '@/pages/WhatsappAutomacoes';
 import { Switch } from '@/components/ui/switch';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
-import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useWhatsappFiltrosSalvos, useAtribuirConversa, getSLAStatus } from '@/hooks/useWhatsappExtras';
+import { useWhatsappTemplates, useWhatsappNotas, useGlobalMessageSearch, useAtribuirConversa, getSLAStatus } from '@/hooks/useWhatsappExtras';
 import { buildTemplateContext, aplicarVariaveis, TEMPLATE_VARIAVEIS } from '@/utils/whatsappTemplateVars';
 import { formatPhoneNumber } from '@/utils/whatsapp';
 import { formatDistanceToNow } from 'date-fns';
@@ -26,32 +26,45 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
-type StageTab = 'todos' | 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
+type ColunaWS = 'pendentes' | 'andamento' | 'conversas' | 'fechadas';
+
+const DOT_BY_STAGE: Record<string, string> = {
+  novo: 'bg-sky-400',
+  qualificado: 'bg-amber-400',
+  agendado: 'bg-violet-400',
+  fechado: 'bg-emerald-500',
+  perdido: 'bg-rose-400',
+};
+
+function colunaDe(c: any): ColunaWS {
+  const stage = c.pipeline_stage || 'novo';
+  if (stage === 'fechado' || stage === 'perdido') return 'fechadas';
+  if ((c.nao_lidas || 0) > 0) return 'pendentes';
+  if (stage === 'qualificado' || stage === 'agendado') return 'andamento';
+  return 'conversas';
+}
 
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [filaTab, setFilaTab] = useState<FilaTab>('todas');
-  const [stageTab, setStageTab] = useState<StageTab>('todos');
+  const [coluna, setColuna] = useState<ColunaWS>('pendentes');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
-  const { data: filtrosSalvos = [], salvar: salvarFiltro, remover: removerFiltro } = useWhatsappFiltrosSalvos();
-  const [salvarFiltroAberto, setSalvarFiltroAberto] = useState(false);
-  const [novoFiltroNome, setNovoFiltroNome] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
-  const filtradas = conversas.filter(c => {
+  // Busca + fila base
+  const baseFiltradas = conversas.filter(c => {
     const q = busca.toLowerCase().trim();
     if (q) {
       const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
       const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
-    if (stageTab !== 'todos' && (c.pipeline_stage || 'novo') !== stageTab) return false;
     if (filaTab === 'minhas') return c.atribuido_a === userId;
     if (filaTab === 'nao_atribuidas') return !c.atribuido_a;
     if (filaTab === 'atrasadas') {
@@ -61,7 +74,17 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
     return true;
   });
 
-  const contagens = {
+  // Contagens por coluna WeSeller
+  const contagensColuna: Record<ColunaWS, number> = {
+    pendentes: baseFiltradas.filter(c => colunaDe(c) === 'pendentes').length,
+    andamento: baseFiltradas.filter(c => colunaDe(c) === 'andamento').length,
+    conversas: baseFiltradas.filter(c => colunaDe(c) === 'conversas').length,
+    fechadas: baseFiltradas.filter(c => colunaDe(c) === 'fechadas').length,
+  };
+
+  const filtradas = baseFiltradas.filter(c => colunaDe(c) === coluna);
+
+  const contagensFila = {
     todas: conversas.length,
     minhas: conversas.filter(c => c.atribuido_a === userId).length,
     nao_atribuidas: conversas.filter(c => !c.atribuido_a).length,
@@ -71,14 +94,12 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
     }).length,
   };
 
-  const contagensStage: Record<StageTab, number> = {
-    todos: conversas.length,
-    novo: conversas.filter(c => (c.pipeline_stage || 'novo') === 'novo').length,
-    qualificado: conversas.filter(c => c.pipeline_stage === 'qualificado').length,
-    agendado: conversas.filter(c => c.pipeline_stage === 'agendado').length,
-    fechado: conversas.filter(c => c.pipeline_stage === 'fechado').length,
-    perdido: conversas.filter(c => c.pipeline_stage === 'perdido').length,
-  };
+  const COLUNAS: { key: ColunaWS; label: string }[] = [
+    { key: 'pendentes', label: 'Pendentes' },
+    { key: 'andamento', label: 'Andamento' },
+    { key: 'conversas', label: 'Conversas' },
+    { key: 'fechadas', label: 'Fechadas' },
+  ];
 
   return (
     <Shell embedded={embedded}>
@@ -105,21 +126,22 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
           />
         )}
 
-        <div className={cn('grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 min-h-[500px]', embedded ? 'mt-0 h-[calc(100dvh-160px)]' : 'mt-4 h-[calc(100dvh-220px)]')}>
+        <div className={cn('grid grid-cols-1 md:grid-cols-[360px_1fr] gap-4 min-h-[500px]', embedded ? 'mt-0 h-[calc(100dvh-160px)]' : 'mt-4 h-[calc(100dvh-220px)]')}>
 
-          {/* Lista */}
+          {/* Lista — estilo WeSeller */}
           <div className={cn(
-            "rounded-xl border border-border/40 bg-card shadow-xs flex flex-col overflow-hidden",
+            "rounded-xl border border-border/40 shadow-xs flex flex-col overflow-hidden bg-[#f7f5f0]",
             selecionada && "hidden md:flex"
           )}>
-            <div className="p-3 border-b border-border/40 space-y-2">
+            {/* Header: busca + fila */}
+            <div className="p-3 bg-white border-b border-black/5 space-y-2">
               <div className="relative">
                 <Search className="icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar nome, telefone ou texto…"
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
-                  className="pl-8 h-9"
+                  className="pl-8 h-9 rounded-full bg-muted/40 border-transparent focus-visible:bg-white"
                 />
               </div>
               <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
@@ -135,147 +157,125 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                     className={cn(
                       "shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1",
                       filaTab === k
-                        ? "bg-primary text-primary-foreground border-primary"
+                        ? "bg-[#00a884] text-white border-[#00a884]"
                         : "bg-background border-border/60 text-muted-foreground hover:bg-muted/50"
                     )}
                   >
                     {label}
-                    <span className="opacity-70">{contagens[k]}</span>
+                    <span className="opacity-70">{contagensFila[k]}</span>
                   </button>
                 ))}
               </div>
-              <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
-                {([
-                  ['todos', 'Todos', 'bg-muted'],
-                  ['novo', '🆕 Novo', 'bg-blue-500/10 text-blue-600 border-blue-500/30'],
-                  ['qualificado', '⭐ Qualificado', 'bg-purple-500/10 text-purple-600 border-purple-500/30'],
-                  ['agendado', '📅 Agendado', 'bg-amber-500/10 text-amber-600 border-amber-500/30'],
-                  ['fechado', '✅ Paciente', 'bg-green-500/10 text-green-600 border-green-500/30'],
-                  ['perdido', '❌ Perdido', 'bg-destructive/10 text-destructive border-destructive/30'],
-                ] as [StageTab, string, string][]).map(([k, label, color]) => (
+            </div>
+
+            {/* Tabs colunas WeSeller */}
+            <div className="flex gap-1 px-2 pt-2 pb-1 bg-[#f7f5f0] overflow-x-auto scrollbar-none border-b border-black/5">
+              {COLUNAS.map(col => {
+                const ativo = coluna === col.key;
+                const count = contagensColuna[col.key];
+                return (
                   <button
-                    key={k}
-                    onClick={() => setStageTab(k)}
+                    key={col.key}
+                    onClick={() => setColuna(col.key)}
                     className={cn(
-                      "shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1",
-                      stageTab === k
-                        ? "bg-primary text-primary-foreground border-primary"
-                        : cn("border-border/60 hover:opacity-80", color)
+                      "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative",
+                      ativo
+                        ? "bg-white text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
+                        : "text-muted-foreground hover:text-foreground"
                     )}
                   >
-                    {label}
-                    <span className="opacity-70">{contagensStage[k]}</span>
+                    {count > 0 && (
+                      <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-md bg-[#25D366] text-white text-[10px] font-semibold">
+                        {count}
+                      </span>
+                    )}
+                    {col.label}
                   </button>
-                ))}
-              </div>
-              {filtrosSalvos.length > 0 && (
-                <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
-                  {filtrosSalvos.map(f => (
-                    <button
-                      key={f.id}
-                      onClick={() => {
-                        if (f.filtros.filaTab) setFilaTab(f.filtros.filaTab);
-                        if (f.filtros.busca !== undefined) setBusca(f.filtros.busca);
-                      }}
-                      className="shrink-0 text-[10px] px-2 py-0.5 rounded border border-dashed border-border/60 text-muted-foreground hover:bg-muted/40 flex items-center gap-1"
-                    >
-                      {f.nome}
-                      <X
-                        className="icon-xs hover:text-destructive"
-                        onClick={(e) => { e.stopPropagation(); removerFiltro.mutate(f.id); }}
-                      />
-                    </button>
-                  ))}
-                </div>
-              )}
-              {(filaTab !== 'todas' || busca) && (
-                <Popover open={salvarFiltroAberto} onOpenChange={setSalvarFiltroAberto}>
-                  <PopoverTrigger asChild>
-                    <button className="text-[10px] text-primary hover:underline">+ salvar filtro atual</button>
-                  </PopoverTrigger>
-                  <PopoverContent className="w-64 p-3 space-y-2">
-                    <Label className="text-xs">Nome do filtro</Label>
-                    <Input
-                      value={novoFiltroNome}
-                      onChange={e => setNovoFiltroNome(e.target.value)}
-                      placeholder="Ex.: Leads quentes"
-                      className="h-8 text-sm"
-                    />
-                    <Button
-                      size="sm"
-                      className="w-full"
-                      onClick={async () => {
-                        if (!novoFiltroNome.trim()) return;
-                        await salvarFiltro.mutateAsync({ nome: novoFiltroNome.trim(), filtros: { filaTab, busca } });
-                        setNovoFiltroNome(''); setSalvarFiltroAberto(false);
-                        toast.success('Filtro salvo');
-                      }}
-                    >Salvar</Button>
-                  </PopoverContent>
-                </Popover>
-              )}
+                );
+              })}
             </div>
-            <ScrollArea className="flex-1">
-              {isLoading ? (
-                <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
-                  <Loader2 className="icon-sm animate-spin" /> Carregando...
-                </div>
-              ) : filtradas.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  Nenhuma conversa nesse filtro.
-                </div>
-              ) : filtradas.map(c => {
-                const sla = getSLAStatus(c);
-                const slaColor = sla.status === 'atrasado' ? 'bg-destructive/15 text-destructive border-destructive/30'
-                  : sla.status === 'em_breve' ? 'bg-amber-500/15 text-amber-600 border-amber-500/30'
-                  : '';
-                return (
-                <button
-                  key={c.id}
-                  onClick={() => setSelecionada(c)}
-                  className={cn(
-                    "w-full text-left p-3 border-b border-border/30 hover:bg-muted/40 transition-colors flex gap-3 items-start",
-                    selecionada?.id === c.id && "bg-muted/60"
-                  )}
-                >
-                  <Avatar className="h-10 w-10 shrink-0">
-                    <AvatarFallback className="text-xs">
-                      {(c.nome_contato || c.telefone).slice(0, 2).toUpperCase()}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-medium truncate">
-                        {c.nome_contato || formatPhoneNumber(c.telefone)}
-                      </span>
-                      {c.ultima_mensagem_em && (
-                        <span className="text-[10px] text-muted-foreground shrink-0">
-                          {formatDistanceToNow(new Date(c.ultima_mensagem_em), { locale: ptBR, addSuffix: false })}
-                        </span>
-                      )}
-                    </div>
-                    <div className="flex items-center justify-between gap-2 mt-0.5">
-                      <span className="text-xs text-muted-foreground truncate">
-                        {c.ultima_direcao === 'saida' && '✓ '}
-                        {c.ultima_mensagem || '—'}
-                      </span>
-                      {c.nao_lidas > 0 && (
-                        <Badge className="h-5 min-w-5 px-1.5 text-[10px] shrink-0">
-                          {c.nao_lidas}
-                        </Badge>
-                      )}
-                    </div>
-                    {(sla.status === 'atrasado' || sla.status === 'em_breve') && (
-                      <div className={cn("inline-flex items-center gap-1 mt-1 text-[10px] px-1.5 py-0.5 rounded border", slaColor)}>
-                        {sla.status === 'atrasado' ? `Atrasado ${sla.minutos}min` : `SLA em ${sla.minutos}min`}
-                      </div>
-                    )}
-                    {c.atribuido_a === userId && (
-                      <span className="ml-1 mt-1 inline-block text-[10px] text-primary">• minha</span>
-                    )}
+
+            {/* Cards */}
+            <ScrollArea className="flex-1 bg-[#f7f5f0]">
+              <div className="p-2 space-y-2">
+                {isLoading ? (
+                  <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
+                    <Loader2 className="icon-sm animate-spin" /> Carregando...
                   </div>
-                </button>
-              );})}
+                ) : filtradas.length === 0 ? (
+                  <div className="p-8 text-center text-xs text-muted-foreground">
+                    Nenhuma conversa em <strong>{COLUNAS.find(c => c.key === coluna)?.label}</strong>.
+                  </div>
+                ) : filtradas.map(c => {
+                  const sla = getSLAStatus(c);
+                  const stage = c.pipeline_stage || 'novo';
+                  const dot = DOT_BY_STAGE[stage] || 'bg-muted-foreground/30';
+                  const ativo = selecionada?.id === c.id;
+                  const horaCurta = c.ultima_mensagem_em
+                    ? new Date(c.ultima_mensagem_em).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                    : '';
+                  return (
+                    <button
+                      key={c.id}
+                      onClick={() => setSelecionada(c)}
+                      className={cn(
+                        "w-full text-left bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-black/5 px-3 py-2.5 hover:shadow-md transition-all",
+                        ativo && "ring-2 ring-[#00a884]/40"
+                      )}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <Avatar className="h-10 w-10 shrink-0">
+                          <AvatarFallback className="text-xs bg-muted">
+                            {(c.nome_contato || c.telefone).slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="text-[13px] font-medium text-foreground truncate">
+                              {c.nome_contato || formatPhoneNumber(c.telefone)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground shrink-0">{horaCurta}</span>
+                          </div>
+                          <div className="flex items-center justify-between gap-2 mt-0.5">
+                            <span className="text-[12px] text-muted-foreground truncate">
+                              {c.ultima_direcao === 'saida' && '✓ '}
+                              {c.ultima_mensagem || '—'}
+                            </span>
+                            {c.nao_lidas > 0 && (
+                              <span className="inline-flex items-center justify-center h-5 min-w-5 px-1.5 rounded-full bg-[#25D366] text-white text-[10px] font-semibold shrink-0">
+                                {c.nao_lidas}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      {/* footer card: dot + tag + menu */}
+                      <div className="mt-2 pt-2 border-t border-black/5 flex items-center gap-2">
+                        <span className={cn("h-2.5 w-2.5 rounded-full", dot)} title={stage} />
+                        {c.intencao_atual && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[120px]">
+                            {c.intencao_atual}
+                          </span>
+                        )}
+                        {(sla.status === 'atrasado' || sla.status === 'em_breve') && (
+                          <span className={cn(
+                            "text-[10px] px-1.5 py-0.5 rounded border",
+                            sla.status === 'atrasado'
+                              ? "bg-destructive/15 text-destructive border-destructive/30"
+                              : "bg-amber-500/15 text-amber-600 border-amber-500/30",
+                          )}>
+                            {sla.status === 'atrasado' ? `${sla.minutos}min atraso` : `SLA ${sla.minutos}min`}
+                          </span>
+                        )}
+                        {c.atribuido_a === userId && (
+                          <span className="text-[10px] text-[#00a884] font-medium">• minha</span>
+                        )}
+                        <div className="ml-auto text-muted-foreground/60 text-base leading-none select-none">⋯</div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             </ScrollArea>
           </div>
 
