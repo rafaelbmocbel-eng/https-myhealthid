@@ -17,6 +17,7 @@ export type Database = {
       agendamentos: {
         Row: {
           clinica_id: string | null
+          confirmacao_enviada_em: string | null
           cor: string | null
           created_at: string
           data_fim: string
@@ -34,6 +35,7 @@ export type Database = {
         }
         Insert: {
           clinica_id?: string | null
+          confirmacao_enviada_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim: string
@@ -51,6 +53,7 @@ export type Database = {
         }
         Update: {
           clinica_id?: string | null
+          confirmacao_enviada_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim?: string
