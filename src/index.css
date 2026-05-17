@@ -429,6 +429,32 @@
     letter-spacing: -0.02em;
   }
 
+  /* Métricas/KPIs — números grandes com tipografia editorial (Serene Health Premium) */
+  .metric-value {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    line-height: 1;
+  }
+  .metric-label {
+    @apply text-[10px] sm:text-[11px] font-medium text-muted-foreground uppercase;
+    letter-spacing: 0.08em;
+  }
+  /* Eyebrow dourado: pequeno dot + label uppercase, usado acima de títulos premium */
+  .eyebrow-accent {
+    @apply inline-flex items-center gap-1.5 text-[10px] font-semibold uppercase text-accent;
+    letter-spacing: 0.1em;
+  }
+  .eyebrow-accent::before {
+    content: '';
+    display: inline-block;
+    width: 5px;
+    height: 5px;
+    border-radius: 9999px;
+    background: hsl(var(--accent));
+  }
+
   .text-gradient-primary {
     background: var(--gradient-primary);
     -webkit-background-clip: text;
