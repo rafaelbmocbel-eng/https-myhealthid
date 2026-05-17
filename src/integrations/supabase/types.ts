@@ -18,14 +18,17 @@ export type Database = {
         Row: {
           clinica_id: string | null
           confirmacao_enviada_em: string | null
+          confirmado_pelo_paciente_em: string | null
           cor: string | null
           created_at: string
           data_fim: string
           data_inicio: string
           id: string
+          lembrete_2h_enviado_em: string | null
           membro_equipe_id: string | null
           observacoes: string | null
           paciente_id: string | null
+          pos_sessao_enviado_em: string | null
           recorrencia_grupo_id: string | null
           status: string
           terapeuta_id: string
@@ -36,14 +39,17 @@ export type Database = {
         Insert: {
           clinica_id?: string | null
           confirmacao_enviada_em?: string | null
+          confirmado_pelo_paciente_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim: string
           data_inicio: string
           id?: string
+          lembrete_2h_enviado_em?: string | null
           membro_equipe_id?: string | null
           observacoes?: string | null
           paciente_id?: string | null
+          pos_sessao_enviado_em?: string | null
           recorrencia_grupo_id?: string | null
           status?: string
           terapeuta_id: string
@@ -54,14 +60,17 @@ export type Database = {
         Update: {
           clinica_id?: string | null
           confirmacao_enviada_em?: string | null
+          confirmado_pelo_paciente_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim?: string
           data_inicio?: string
           id?: string
+          lembrete_2h_enviado_em?: string | null
           membro_equipe_id?: string | null
           observacoes?: string | null
           paciente_id?: string | null
+          pos_sessao_enviado_em?: string | null
           recorrencia_grupo_id?: string | null
           status?: string
           terapeuta_id?: string
@@ -4002,6 +4011,8 @@ export type Database = {
           max_turnos_bot: number
           mensagem_confirmacao: string
           mensagem_fora_horario: string
+          mensagem_lembrete_2h: string | null
+          mensagem_pos_sessao: string | null
           mensagem_saudacao: string
           palavras_escalonamento: string[]
           pausar_bot_apos_humano: boolean
@@ -4027,6 +4038,8 @@ export type Database = {
           max_turnos_bot?: number
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
+          mensagem_lembrete_2h?: string | null
+          mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
@@ -4052,6 +4065,8 @@ export type Database = {
           max_turnos_bot?: number
           mensagem_confirmacao?: string
           mensagem_fora_horario?: string
+          mensagem_lembrete_2h?: string | null
+          mensagem_pos_sessao?: string | null
           mensagem_saudacao?: string
           palavras_escalonamento?: string[]
           pausar_bot_apos_humano?: boolean
