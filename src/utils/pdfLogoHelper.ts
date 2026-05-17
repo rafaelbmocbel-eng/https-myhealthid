@@ -1,5 +1,5 @@
 import jsPDF from 'jspdf';
-import logoSrc from '@/assets/logo-myhealthid.jpg';
+import logoSrc from '@/assets/logo-myhealthid.png';
 
 /**
  * Loads the MyHealthID logo and adds it to a jsPDF document.
