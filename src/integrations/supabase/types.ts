@@ -17,6 +17,7 @@ export type Database = {
       agendamentos: {
         Row: {
           clinica_id: string | null
+          confirmacao_enviada_em: string | null
           cor: string | null
           created_at: string
           data_fim: string
@@ -34,6 +35,7 @@ export type Database = {
         }
         Insert: {
           clinica_id?: string | null
+          confirmacao_enviada_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim: string
@@ -51,6 +53,7 @@ export type Database = {
         }
         Update: {
           clinica_id?: string | null
+          confirmacao_enviada_em?: string | null
           cor?: string | null
           created_at?: string
           data_fim?: string
@@ -3739,12 +3742,69 @@ export type Database = {
           },
         ]
       }
+      whatsapp_automacoes: {
+        Row: {
+          auto_confirmacao_24h: boolean
+          bot_ativo: boolean
+          created_at: string
+          delay_resposta_segundos: number
+          detectar_intencao: boolean
+          dias_semana: Json
+          horario_fim: string
+          horario_inicio: string
+          id: string
+          mensagem_confirmacao: string
+          mensagem_fora_horario: string
+          mensagem_saudacao: string
+          pausar_bot_apos_humano: boolean
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          auto_confirmacao_24h?: boolean
+          bot_ativo?: boolean
+          created_at?: string
+          delay_resposta_segundos?: number
+          detectar_intencao?: boolean
+          dias_semana?: Json
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          mensagem_confirmacao?: string
+          mensagem_fora_horario?: string
+          mensagem_saudacao?: string
+          pausar_bot_apos_humano?: boolean
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          auto_confirmacao_24h?: boolean
+          bot_ativo?: boolean
+          created_at?: string
+          delay_resposta_segundos?: number
+          detectar_intencao?: boolean
+          dias_semana?: Json
+          horario_fim?: string
+          horario_inicio?: string
+          id?: string
+          mensagem_confirmacao?: string
+          mensagem_fora_horario?: string
+          mensagem_saudacao?: string
+          pausar_bot_apos_humano?: boolean
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_conversas: {
         Row: {
           arquivada: boolean
+          bot_ativo: boolean
           created_at: string
           foto_url: string | null
           id: string
+          intencao_atual: string | null
+          lead_score: number
           nao_lidas: number
           nome_contato: string | null
           paciente_id: string | null
@@ -3758,9 +3818,12 @@ export type Database = {
         }
         Insert: {
           arquivada?: boolean
+          bot_ativo?: boolean
           created_at?: string
           foto_url?: string | null
           id?: string
+          intencao_atual?: string | null
+          lead_score?: number
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
@@ -3774,9 +3837,12 @@ export type Database = {
         }
         Update: {
           arquivada?: boolean
+          bot_ativo?: boolean
           created_at?: string
           foto_url?: string | null
           id?: string
+          intencao_atual?: string | null
+          lead_score?: number
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
@@ -3794,6 +3860,57 @@ export type Database = {
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_intencoes: {
+        Row: {
+          confianca: number
+          conversa_id: string
+          created_at: string
+          id: string
+          intencao: string
+          mensagem_id: string | null
+          metadata: Json | null
+          resumo: string | null
+          terapeuta_id: string
+        }
+        Insert: {
+          confianca?: number
+          conversa_id: string
+          created_at?: string
+          id?: string
+          intencao: string
+          mensagem_id?: string | null
+          metadata?: Json | null
+          resumo?: string | null
+          terapeuta_id: string
+        }
+        Update: {
+          confianca?: number
+          conversa_id?: string
+          created_at?: string
+          id?: string
+          intencao?: string
+          mensagem_id?: string | null
+          metadata?: Json | null
+          resumo?: string | null
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_intencoes_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_intencoes_mensagem_id_fkey"
+            columns: ["mensagem_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_mensagens_inbox"
             referencedColumns: ["id"]
           },
         ]

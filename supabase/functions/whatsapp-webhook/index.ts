@@ -130,24 +130,34 @@ Deno.serve(async (req) => {
     });
     if (mErr) throw mErr;
 
-    // Dispara transcrição em background se for áudio recebido
-    if (tipo === "audio" && !fromMe && midia_url) {
-      try {
-        const { data: novaMsg } = await admin
-          .from("whatsapp_mensagens_inbox")
-          .select("id")
-          .eq("conversa_id", conversaId)
-          .eq("zapi_message_id", messageId)
-          .maybeSingle();
-        if (novaMsg?.id) {
-          // não aguarda — fire and forget
-          fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-transcribe`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ mensagem_id: novaMsg.id }),
-          }).catch((e) => console.warn("transcribe trigger failed:", e));
-        }
-      } catch (e) { console.warn("transcribe trigger lookup failed:", e); }
+    // Lookup do id da mensagem recém-inserida (para transcrição e bot)
+    let novaMsgId: string | null = null;
+    try {
+      const { data: novaMsg } = await admin
+        .from("whatsapp_mensagens_inbox")
+        .select("id")
+        .eq("conversa_id", conversaId)
+        .eq("zapi_message_id", messageId)
+        .maybeSingle();
+      novaMsgId = novaMsg?.id ?? null;
+    } catch (e) { console.warn("lookup nova msg falhou:", e); }
+
+    // Transcrição de áudio em background
+    if (tipo === "audio" && !fromMe && midia_url && novaMsgId) {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-transcribe`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ mensagem_id: novaMsgId }),
+      }).catch((e) => console.warn("transcribe trigger failed:", e));
+    }
+
+    // Bot de resposta + detecção de intenção (apenas msgs de entrada)
+    if (!fromMe && novaMsgId) {
+      fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-bot-reply`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ conversa_id: conversaId, mensagem_id: novaMsgId }),
+      }).catch((e) => console.warn("bot-reply trigger failed:", e));
     }
 
     return new Response(JSON.stringify({ ok: true, conversa_id: conversaId }), {

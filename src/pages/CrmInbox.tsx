@@ -9,7 +9,8 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles } from 'lucide-react';
+import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles, Bot } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
 import { useWhatsappTemplates, useWhatsappNotas } from '@/hooks/useWhatsappExtras';
 import { formatPhoneNumber } from '@/utils/whatsapp';
@@ -38,6 +39,13 @@ export default function CrmInbox() {
           icon={<MessageCircle className="icon-lg" />}
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
+          actions={
+            <Link to="/crm/automacoes">
+              <Button variant="outline" size="sm" className="gap-1.5">
+                <Bot className="icon-xs" /> Automações
+              </Button>
+            </Link>
+          }
         />
 
         <div className="mt-4 grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 h-[calc(100dvh-220px)] min-h-[500px]">
@@ -185,13 +193,22 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
           {(conversa.nome_contato || conversa.telefone).slice(0, 2).toUpperCase()}
         </AvatarFallback></Avatar>
         <div className="flex-1 min-w-0">
-          <div className="text-sm font-medium truncate">
+          <div className="text-sm font-medium truncate flex items-center gap-2">
             {conversa.nome_contato || formatPhoneNumber(conversa.telefone)}
+            {conversa.intencao_atual && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                {conversa.intencao_atual}
+              </span>
+            )}
+            {typeof conversa.lead_score === 'number' && conversa.lead_score > 0 && (
+              <span className="text-[10px] text-muted-foreground">⭐ {conversa.lead_score}</span>
+            )}
           </div>
           <div className="text-xs text-muted-foreground flex items-center gap-1">
             <Phone className="icon-xs" /> {formatPhoneNumber(conversa.telefone)}
           </div>
         </div>
+        <BotToggle conversa={conversa} />
         <NotasButton conversaId={conversa.id} />
         {conversa.paciente_id && (
           <Link to={`/pacientes/${conversa.paciente_id}`}>
@@ -371,5 +388,25 @@ function NotasButton({ conversaId }: { conversaId: string }) {
         </div>
       </SheetContent>
     </Sheet>
+  );
+}
+
+function BotToggle({ conversa }: { conversa: WAConversa }) {
+  const [ativo, setAtivo] = useState(conversa.bot_ativo ?? true);
+  useEffect(() => { setAtivo(conversa.bot_ativo ?? true); }, [conversa.id, conversa.bot_ativo]);
+  const toggle = async (v: boolean) => {
+    setAtivo(v);
+    const { error } = await supabase
+      .from('whatsapp_conversas')
+      .update({ bot_ativo: v })
+      .eq('id', conversa.id);
+    if (error) { toast.error('Erro: ' + error.message); setAtivo(!v); }
+    else toast.success(v ? 'Bot ativado nessa conversa' : 'Bot pausado nessa conversa');
+  };
+  return (
+    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md border border-border/40">
+      <Bot className="icon-xs text-muted-foreground" />
+      <Switch checked={ativo} onCheckedChange={toggle} />
+    </div>
   );
 }
