@@ -131,11 +131,11 @@ export default function Configuracoes() {
 
         {/* Link de Agendamento Online (Geral) */}
         <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Link2 className="icon-sm text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Link de Agendamento Online</h2>
+            <h2 className="h-section">Link de Agendamento Online</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-caption mb-4">
             Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento.
           </p>
 
