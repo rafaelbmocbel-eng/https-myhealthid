@@ -26,6 +26,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
+type StageTab = 'todos' | 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
 
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
