@@ -25,19 +25,48 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
+
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
+  const [filaTab, setFilaTab] = useState<FilaTab>('todas');
+  const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
+  const { data: filtrosSalvos = [], salvar: salvarFiltro, remover: removerFiltro } = useWhatsappFiltrosSalvos();
+  const [salvarFiltroAberto, setSalvarFiltroAberto] = useState(false);
+  const [novoFiltroNome, setNovoFiltroNome] = useState('');
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
+  }, []);
 
   const filtradas = conversas.filter(c => {
     const q = busca.toLowerCase().trim();
-    if (!q) return true;
-    const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
-    const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
-    return matchMeta || matchMsg;
+    if (q) {
+      const matchMeta = (c.nome_contato || '').toLowerCase().includes(q) || c.telefone.includes(q);
+      const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
+      if (!matchMeta && !matchMsg) return false;
+    }
+    if (filaTab === 'minhas') return c.atribuido_a === userId;
+    if (filaTab === 'nao_atribuidas') return !c.atribuido_a;
+    if (filaTab === 'atrasadas') {
+      const s = getSLAStatus(c);
+      return s.status === 'atrasado' || s.status === 'em_breve';
+    }
+    return true;
   });
+
+  const contagens = {
+    todas: conversas.length,
+    minhas: conversas.filter(c => c.atribuido_a === userId).length,
+    nao_atribuidas: conversas.filter(c => !c.atribuido_a).length,
+    atrasadas: conversas.filter(c => {
+      const s = getSLAStatus(c);
+      return s.status === 'atrasado' || s.status === 'em_breve';
+    }).length,
+  };
 
   return (
     <Shell embedded={embedded}>
