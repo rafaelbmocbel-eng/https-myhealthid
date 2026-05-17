@@ -156,6 +156,11 @@ function Shell({ embedded, children }: { embedded: boolean; children: React.Reac
 function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => void }) {
   const [texto, setTexto] = useState('');
   const [transcribingId, setTranscribingId] = useState<string | null>(null);
+  const [buscaMsg, setBuscaMsg] = useState('');
+  const [showBusca, setShowBusca] = useState(false);
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const docInputRef = useRef<HTMLInputElement>(null);
   const { data: mensagens = [], enviar, marcarLida } = useWhatsappMensagens(conversa.id);
   const { data: templates = [], incrementarUso } = useWhatsappTemplates();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -168,16 +173,54 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
     return templates.filter(t => t.atalho.slice(1).toLowerCase().startsWith(q)).slice(0, 6);
   }, [texto, templates]);
 
+  // Filtro de mensagens dentro da conversa
+  const mensagensFiltradas = useMemo(() => {
+    const q = buscaMsg.toLowerCase().trim();
+    if (!q) return mensagens;
+    return mensagens.filter(m =>
+      (m.conteudo || '').toLowerCase().includes(q) ||
+      (m.transcricao || '').toLowerCase().includes(q)
+    );
+  }, [mensagens, buscaMsg]);
+
   useEffect(() => { marcarLida.mutate(); /* eslint-disable-next-line */ }, [conversa.id]);
   useEffect(() => {
-    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
-  }, [mensagens.length]);
+    if (!buscaMsg) scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [mensagens.length, buscaMsg]);
 
   async function handleSend(content?: string) {
     const t = (content ?? texto).trim();
     if (!t) return;
     setTexto('');
     try { await enviar.mutateAsync({ conversa, texto: t }); } catch { setTexto(t); }
+  }
+
+  async function handleMediaUpload(file: File, mediaType: 'image' | 'document') {
+    const max = mediaType === 'image' ? 5 * 1024 * 1024 : 16 * 1024 * 1024;
+    if (file.size > max) {
+      toast.error(`Arquivo maior que ${max / 1024 / 1024}MB`);
+      return;
+    }
+    setUploadingMedia(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('Não autenticado');
+      const ext = file.name.split('.').pop() || (mediaType === 'image' ? 'jpg' : 'pdf');
+      const path = `${user.id}/${conversa.id}/${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage.from('whatsapp-media').upload(path, file, { upsert: false });
+      if (upErr) throw upErr;
+      const { data: { publicUrl } } = supabase.storage.from('whatsapp-media').getPublicUrl(path);
+      const caption = texto.trim() || undefined;
+      setTexto('');
+      await enviar.mutateAsync({ conversa, texto: caption, mediaUrl: publicUrl, mediaType, fileName: file.name });
+      toast.success(mediaType === 'image' ? 'Imagem enviada' : 'Documento enviado');
+    } catch (e: any) {
+      toast.error('Erro ao enviar: ' + e.message);
+    } finally {
+      setUploadingMedia(false);
+      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (docInputRef.current) docInputRef.current.value = '';
+    }
   }
 
   function aplicarTemplate(tpl: typeof templates[number]) {
