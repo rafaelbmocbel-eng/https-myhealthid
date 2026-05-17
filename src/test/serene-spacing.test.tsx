@@ -116,27 +116,45 @@ describe('Serene Premium — ritmo de espaçamento', () => {
     });
   });
 
-  describe('Cards de Configurações — sem mb-6/mb-8 (Serene Premium)', () => {
-    it.each(CONFIG_COMPONENTS)(
-      '%s não contém mb-6 ou mb-8 em clinical-card',
+  describe('Componentes críticos — sem mb-6/mb-8 e usam ritmo Serene', () => {
+    it.each(CRITICAL_LAYOUT_COMPONENTS)(
+      '%s não contém mb-6 ou mb-8',
       (file) => {
         const src = read(file);
-        // Procura especificamente classes Tailwind mb-6/mb-8 em strings
-        // de className. Tokens dentro de comentários ou nomes de variáveis
-        // (ex: `mb-6px`) não disparam — usamos boundary de palavra.
         expect(src).not.toMatch(/\bmb-6\b/);
         expect(src).not.toMatch(/\bmb-8\b/);
       },
     );
+  });
 
-    it.each(CONFIG_COMPONENTS)(
-      '%s usa mb-4 sm:mb-5 entre cards',
-      (file) => {
-        const src = read(file);
-        // Pelo menos uma ocorrência do padrão Serene
-        expect(src).toMatch(/mb-4\s+sm:mb-5/);
-      },
+  describe('Componentes de Configurações — usam mb-4 sm:mb-5 entre cards', () => {
+    const configOnly = CRITICAL_LAYOUT_COMPONENTS.filter((f) =>
+      /configuracoes|equipe/.test(f),
     );
+    it.each(configOnly)('%s usa mb-4 sm:mb-5', (file) => {
+      const src = read(file);
+      expect(src).toMatch(/mb-4\s+sm:mb-5/);
+    });
+  });
+
+  describe('Guarda GLOBAL — nenhum card interno reintroduz mb-6/mb-8', () => {
+    it('toda a base src/ (exceto allowlist) está livre de "clinical-card + mb-6/8" e "card shadcn + mb-6/8"', () => {
+      const root = resolve(process.cwd(), 'src');
+      const files = walk(root).filter((f) => {
+        const rel = f.replace(resolve(process.cwd()) + '/', '');
+        return !LEGACY_ALLOWLIST.some((rx) => rx.test(rel));
+      });
+      const violations = files.flatMap(findCardViolations);
+      if (violations.length > 0) {
+        // Mensagem amigável listando arquivos infratores
+        throw new Error(
+          'Violações Serene Premium detectadas:\n' +
+            violations.map((v) => '  • ' + v).join('\n') +
+            '\n\nUse mb-4 sm:mb-5 entre cards ou adicione à LEGACY_ALLOWLIST com justificativa.',
+        );
+      }
+      expect(violations).toEqual([]);
+    });
   });
 
   describe('Card shadcn — padding interno', () => {
