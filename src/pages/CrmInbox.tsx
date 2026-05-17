@@ -51,6 +51,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
       const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
+    if (stageTab !== 'todos' && (c.pipeline_stage || 'novo') !== stageTab) return false;
     if (filaTab === 'minhas') return c.atribuido_a === userId;
     if (filaTab === 'nao_atribuidas') return !c.atribuido_a;
     if (filaTab === 'atrasadas') {
@@ -68,6 +69,15 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
       const s = getSLAStatus(c);
       return s.status === 'atrasado' || s.status === 'em_breve';
     }).length,
+  };
+
+  const contagensStage: Record<StageTab, number> = {
+    todos: conversas.length,
+    novo: conversas.filter(c => (c.pipeline_stage || 'novo') === 'novo').length,
+    qualificado: conversas.filter(c => c.pipeline_stage === 'qualificado').length,
+    agendado: conversas.filter(c => c.pipeline_stage === 'agendado').length,
+    fechado: conversas.filter(c => c.pipeline_stage === 'fechado').length,
+    perdido: conversas.filter(c => c.pipeline_stage === 'perdido').length,
   };
 
   return (
