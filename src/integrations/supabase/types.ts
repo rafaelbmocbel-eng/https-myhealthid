@@ -88,15 +88,19 @@ export type Database = {
       }
       agente_broadcasts: {
         Row: {
+          ab_variantes: Json
+          agendado_para: string | null
           concluido_em: string | null
           created_at: string
           enviados: number
           erros: number
           filtro: Json
+          hsm_template_id: string | null
           id: string
           iniciado_em: string | null
           intencao: string
           paciente_ids: string[]
+          resultado_variantes: Json
           status: string
           terapeuta_id: string
           titulo: string
@@ -104,15 +108,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          ab_variantes?: Json
+          agendado_para?: string | null
           concluido_em?: string | null
           created_at?: string
           enviados?: number
           erros?: number
           filtro?: Json
+          hsm_template_id?: string | null
           id?: string
           iniciado_em?: string | null
           intencao: string
           paciente_ids?: string[]
+          resultado_variantes?: Json
           status?: string
           terapeuta_id: string
           titulo: string
@@ -120,15 +128,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          ab_variantes?: Json
+          agendado_para?: string | null
           concluido_em?: string | null
           created_at?: string
           enviados?: number
           erros?: number
           filtro?: Json
+          hsm_template_id?: string | null
           id?: string
           iniciado_em?: string | null
           intencao?: string
           paciente_ids?: string[]
+          resultado_variantes?: Json
           status?: string
           terapeuta_id?: string
           titulo?: string
@@ -4132,6 +4144,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_hsm_templates: {
+        Row: {
+          categoria: string
+          conteudo: string
+          created_at: string
+          id: string
+          idioma: string
+          meta_template_id: string | null
+          nome: string
+          status: string
+          terapeuta_id: string
+          updated_at: string
+          variaveis: Json
+        }
+        Insert: {
+          categoria?: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          idioma?: string
+          meta_template_id?: string | null
+          nome: string
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+          variaveis?: Json
+        }
+        Update: {
+          categoria?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          idioma?: string
+          meta_template_id?: string | null
+          nome?: string
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+          variaveis?: Json
+        }
+        Relationships: []
       }
       whatsapp_intencoes: {
         Row: {

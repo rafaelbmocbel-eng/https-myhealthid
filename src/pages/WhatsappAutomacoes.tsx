@@ -40,7 +40,15 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<any>(null);
   const [stats, setStats] = useState({ enviados7d: 0, escalados7d: 0, gatilhoTop: "—" });
-  const [broadcast, setBroadcast] = useState({ titulo: "", intencao: "", segmento: "todos" });
+  const [broadcast, setBroadcast] = useState<{
+    titulo: string; intencao: string; segmento: string;
+    agendar: boolean; agendado_para: string;
+    abAtivo: boolean; variantes: { key: string; texto: string; peso: number }[];
+  }>({
+    titulo: "", intencao: "", segmento: "todos",
+    agendar: false, agendado_para: "",
+    abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+  });
   const [palavraNova, setPalavraNova] = useState("");
 
   useEffect(() => {
@@ -137,31 +145,89 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
         .select("paciente_id").eq("terapeuta_id", userId).lt("updated_at", limite);
       return [...new Set((data || []).map((d: any) => d.paciente_id))].filter(Boolean) as string[];
     }
+    if (seg === "myid_critico" || seg === "myid_moderado" || seg === "myid_saudavel") {
+      const { data: todos } = await base;
+      const ids = (todos || []).map((p: any) => p.id);
+      if (!ids.length) return [];
+      const { data } = await supabase.from("myid_avaliacoes")
+        .select("paciente_id, myid_score_parcial, updated_at")
+        .in("paciente_id", ids)
+        .eq("status", "concluido")
+        .order("updated_at", { ascending: false });
+      const ultimoScore = new Map<string, number>();
+      (data || []).forEach((r: any) => {
+        if (!ultimoScore.has(r.paciente_id)) ultimoScore.set(r.paciente_id, Number(r.myid_score_parcial || 0));
+      });
+      const range = seg === "myid_critico" ? (s: number) => s < 50
+        : seg === "myid_moderado" ? (s: number) => s >= 50 && s < 75
+        : (s: number) => s >= 75;
+      return [...ultimoScore.entries()].filter(([_, s]) => range(s)).map(([id]) => id);
+    }
+    if (seg === "aniversariantes_mes") {
+      const { data } = await supabase.from("pacientes")
+        .select("id, data_nascimento")
+        .eq("terapeuta_id", userId).eq("ativo", true).not("telefone", "is", null)
+        .not("data_nascimento", "is", null);
+      const mes = new Date().getMonth() + 1;
+      return (data || []).filter((p: any) => {
+        const m = new Date(p.data_nascimento).getMonth() + 1;
+        return m === mes;
+      }).map((p: any) => p.id);
+    }
+    if (seg === "pacote_acabando") {
+      const { data } = await supabase.from("pacotes_sessoes")
+        .select("paciente_id, total_sessoes, sessoes_utilizadas")
+        .eq("terapeuta_id", userId).eq("status", "ativo");
+      return (data || [])
+        .filter((p: any) => (p.total_sessoes - p.sessoes_utilizadas) <= 2)
+        .map((p: any) => p.paciente_id);
+    }
     return [];
   };
 
   const dispararBroadcast = async () => {
-    if (!broadcast.titulo || !broadcast.intencao) {
-      return toast.error("Preencha título e mensagem base");
+    if (!broadcast.titulo) return toast.error("Preencha o título");
+    const usaAB = broadcast.abAtivo && broadcast.variantes.length >= 2;
+    if (!usaAB && !broadcast.intencao) return toast.error("Preencha a mensagem base");
+    if (usaAB && broadcast.variantes.some(v => !v.texto.trim())) {
+      return toast.error("Preencha o texto de todas as variantes A/B");
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
     const ids = await resolverSegmento(user.id, broadcast.segmento);
     if (ids.length === 0) return toast.error("Nenhum paciente encontrado nesse segmento");
+
+    const agendado = broadcast.agendar && broadcast.agendado_para;
+    const agendadoDate = agendado ? new Date(broadcast.agendado_para) : null;
+    if (agendado && (!agendadoDate || agendadoDate.getTime() <= Date.now())) {
+      return toast.error("Data de agendamento deve ser no futuro");
+    }
+
     const { data: b, error } = await supabase.from("agente_broadcasts").insert({
       terapeuta_id: user.id,
       titulo: broadcast.titulo,
-      intencao: broadcast.intencao,
+      intencao: usaAB ? broadcast.variantes[0].texto : broadcast.intencao,
       filtro: { segmento: broadcast.segmento },
       paciente_ids: ids,
       status: "agendado",
       total: ids.length,
-    }).select().single();
+      agendado_para: agendado ? agendadoDate!.toISOString() : null,
+      ab_variantes: usaAB ? broadcast.variantes : [],
+    } as any).select().single();
     if (error || !b) return toast.error("Erro ao criar broadcast: " + (error?.message || ""));
-    const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
-    if (err2) return toast.error("Erro ao disparar: " + err2.message);
-    toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
-    setBroadcast({ titulo: "", intencao: "", segmento: "todos" });
+
+    if (agendado) {
+      toast.success(`Campanha agendada para ${agendadoDate!.toLocaleString("pt-BR")} — ${ids.length} paciente(s)`);
+    } else {
+      const { error: err2 } = await supabase.functions.invoke("agente-broadcast", { body: { broadcast_id: b.id } });
+      if (err2) return toast.error("Erro ao disparar: " + err2.message);
+      toast.success(`Broadcast enviando para ${ids.length} paciente(s) — 1 a cada 5s`);
+    }
+    setBroadcast({
+      titulo: "", intencao: "", segmento: "todos",
+      agendar: false, agendado_para: "",
+      abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+    });
   };
 
   if (loading || !cfg) return <div className="p-6">Carregando…</div>;
@@ -349,13 +415,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               <Input placeholder="Ex.: Campanha verão" value={broadcast.titulo}
                 onChange={(e) => setBroadcast({ ...broadcast, titulo: e.target.value })} />
             </div>
-            <div>
-              <Label>Intenção / mensagem base</Label>
-              <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale muito a pena retomar seus exercícios — sua evolução depende da consistência."
-                value={broadcast.intencao}
-                onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
-              <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
-            </div>
+
             <div>
               <Label>Segmento</Label>
               <Select value={broadcast.segmento} onValueChange={(v) => setBroadcast({ ...broadcast, segmento: v })}>
@@ -365,10 +425,81 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   <SelectItem value="sem_sessao_30d">Sem sessão há 30+ dias</SelectItem>
                   <SelectItem value="exercicio_pendente">Com exercícios pendentes</SelectItem>
                   <SelectItem value="myid_vencido">MyID vencido (30+ dias)</SelectItem>
+                  <SelectItem value="myid_critico">MyID crítico (score &lt; 50)</SelectItem>
+                  <SelectItem value="myid_moderado">MyID moderado (50–74)</SelectItem>
+                  <SelectItem value="myid_saudavel">MyID saudável (≥ 75)</SelectItem>
+                  <SelectItem value="aniversariantes_mes">Aniversariantes do mês</SelectItem>
+                  <SelectItem value="pacote_acabando">Pacote acabando (≤ 2 sessões)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={dispararBroadcast}>Disparar broadcast</Button>
+
+            <div className="rounded-xl border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Teste A/B</Label>
+                  <p className="text-micro">Compara 2 abordagens — IA personaliza cada variante.</p>
+                </div>
+                <Switch checked={broadcast.abAtivo}
+                  onCheckedChange={(v) => setBroadcast({ ...broadcast, abAtivo: v })} />
+              </div>
+              {!broadcast.abAtivo ? (
+                <div>
+                  <Label>Intenção / mensagem base</Label>
+                  <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale a pena retomar os exercícios."
+                    value={broadcast.intencao}
+                    onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
+                  <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {broadcast.variantes.map((v, i) => (
+                    <div key={v.key} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm">Variante {v.key}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-micro">Peso %</Label>
+                          <Input type="number" min={0} max={100} className="w-20 h-8"
+                            value={v.peso}
+                            onChange={(e) => {
+                              const nv = [...broadcast.variantes];
+                              nv[i] = { ...v, peso: +e.target.value };
+                              setBroadcast({ ...broadcast, variantes: nv });
+                            }} />
+                        </div>
+                      </div>
+                      <Textarea rows={3} placeholder={`Texto base da variante ${v.key}`}
+                        value={v.texto}
+                        onChange={(e) => {
+                          const nv = [...broadcast.variantes];
+                          nv[i] = { ...v, texto: e.target.value };
+                          setBroadcast({ ...broadcast, variantes: nv });
+                        }} />
+                    </div>
+                  ))}
+                  <p className="text-micro">Resultado por variante fica visível no histórico após o envio.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Agendar envio</Label>
+                  <p className="text-micro">Dispara automaticamente na data escolhida.</p>
+                </div>
+                <Switch checked={broadcast.agendar}
+                  onCheckedChange={(v) => setBroadcast({ ...broadcast, agendar: v })} />
+              </div>
+              {broadcast.agendar && (
+                <Input type="datetime-local" value={broadcast.agendado_para}
+                  onChange={(e) => setBroadcast({ ...broadcast, agendado_para: e.target.value })} />
+              )}
+            </div>
+
+            <Button onClick={dispararBroadcast}>
+              {broadcast.agendar ? "Agendar campanha" : "Disparar agora"}
+            </Button>
           </Card>
         </TabsContent>
       </Tabs>
