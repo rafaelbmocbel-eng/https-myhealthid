@@ -39,7 +39,7 @@ interface Lead {
   pipeline_updated_at: string;
 }
 
-export default function CrmPipeline() {
+export default function CrmPipeline({ embedded = false }: { embedded?: boolean } = {}) {
   const { user } = useAuth();
   const qc = useQueryClient();
   const [busca, setBusca] = useState('');
