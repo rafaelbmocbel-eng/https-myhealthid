@@ -40,11 +40,18 @@ export default function CrmInbox() {
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
           actions={
-            <Link to="/crm/automacoes">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Bot className="icon-xs" /> Automações
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/crm/pipeline">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Kanban className="icon-xs" /> Pipeline
+                </Button>
+              </Link>
+              <Link to="/crm/automacoes">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Bot className="icon-xs" /> Automações
+                </Button>
+              </Link>
+            </div>
           }
         />
 
