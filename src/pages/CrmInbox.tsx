@@ -268,7 +268,16 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
             <Phone className="icon-xs" /> {formatPhoneNumber(conversa.telefone)}
           </div>
         </div>
+        <Button
+          variant="ghost" size="sm"
+          onClick={() => setShowBusca(v => !v)}
+          title="Buscar nesta conversa"
+          className="px-2"
+        >
+          <Search className="icon-xs" />
+        </Button>
         <BotToggle conversa={conversa} />
+        <BotConfigPanel />
         <NotasButton conversaId={conversa.id} />
         {conversa.paciente_id && (
           <Link to={`/pacientes/${conversa.paciente_id}`}>
@@ -278,6 +287,27 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
           </Link>
         )}
       </div>
+
+      {showBusca && (
+        <div className="px-3 py-2 border-b border-border/40 bg-muted/20 flex items-center gap-2">
+          <Search className="icon-xs text-muted-foreground" />
+          <Input
+            placeholder="Buscar nesta conversa..."
+            value={buscaMsg}
+            onChange={e => setBuscaMsg(e.target.value)}
+            className="h-8 text-xs"
+            autoFocus
+          />
+          {buscaMsg && (
+            <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+              {mensagensFiltradas.length} resultado{mensagensFiltradas.length !== 1 ? 's' : ''}
+            </span>
+          )}
+          <Button variant="ghost" size="sm" className="px-1.5" onClick={() => { setShowBusca(false); setBuscaMsg(''); }}>
+            <X className="icon-xs" />
+          </Button>
+        </div>
+      )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/20">
         {mensagens.length === 0 && (
