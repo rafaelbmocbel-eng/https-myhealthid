@@ -406,6 +406,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                     </div>
                   </label>
                 </div>
+              </div>
               <div>
                 <Label className="text-xs">Pós-sessão (check-in)</Label>
                 <Textarea rows={2} value={cfg.mensagem_pos_sessao || ""}
