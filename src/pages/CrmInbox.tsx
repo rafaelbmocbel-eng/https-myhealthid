@@ -397,6 +397,7 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
         >
           <Search className="icon-xs" />
         </Button>
+        <AtribuirButton conversa={conversa} />
         <BotToggle conversa={conversa} />
         <BotConfigPanel />
         <NotasButton conversaId={conversa.id} />
