@@ -10,7 +10,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { avaliacao_id, link_avaliacao_id, paciente_id: directPacienteId, terapeuta_id: directTerapeutaId, result, raw_data } = await req.json();
+    const { avaliacao_id, link_avaliacao_id, token_acesso, result, raw_data } = await req.json();
 
     if (!result) {
       return new Response(JSON.stringify({ error: "result is required" }), {
@@ -18,8 +18,8 @@ serve(async (req) => {
       });
     }
 
-    if (!avaliacao_id && !link_avaliacao_id && (!directPacienteId || !directTerapeutaId)) {
-      return new Response(JSON.stringify({ error: "avaliacao_id, link_avaliacao_id, or (paciente_id + terapeuta_id) required" }), {
+    if (!avaliacao_id && !link_avaliacao_id) {
+      return new Response(JSON.stringify({ error: "avaliacao_id or link_avaliacao_id required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -28,8 +28,17 @@ serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    let pacienteId: string | null = directPacienteId || null;
-    let terapeutaId: string | null = directTerapeutaId || null;
+    // Authorization: require either a valid therapist JWT OR a matching token_acesso
+    const authHeader = req.headers.get("Authorization") || req.headers.get("authorization");
+    let authorizedUserId: string | null = null;
+    if (authHeader?.startsWith("Bearer ")) {
+      const anon = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
+      const { data } = await anon.auth.getUser(authHeader.replace("Bearer ", "").trim());
+      if (data?.user) authorizedUserId = data.user.id;
+    }
+
+    let pacienteId: string | null = null;
+    let terapeutaId: string | null = null;
 
     // Path A: via myid_avaliacoes
     if (avaliacao_id) {
