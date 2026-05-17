@@ -310,10 +310,12 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
       )}
 
       <div ref={scrollRef} className="flex-1 overflow-y-auto p-4 space-y-2 bg-muted/20">
-        {mensagens.length === 0 && (
-          <div className="text-center text-xs text-muted-foreground py-8">Sem mensagens ainda</div>
+        {mensagensFiltradas.length === 0 && (
+          <div className="text-center text-xs text-muted-foreground py-8">
+            {buscaMsg ? 'Nenhuma mensagem encontrada' : 'Sem mensagens ainda'}
+          </div>
         )}
-        {mensagens.map(m => (
+        {mensagensFiltradas.map(m => (
           <div key={m.id} className={cn("flex", m.direcao === 'saida' ? "justify-end" : "justify-start")}>
             <div className={cn(
               "max-w-[75%] rounded-2xl px-3.5 py-2 text-sm shadow-xs",
@@ -342,7 +344,20 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
                 </div>
               )}
               {m.tipo === 'imagem' && m.midia_url && (
-                <img src={m.midia_url} alt="" className="rounded-lg max-w-full mb-1" />
+                <a href={m.midia_url} target="_blank" rel="noreferrer">
+                  <img src={m.midia_url} alt="" className="rounded-lg max-w-full mb-1" />
+                </a>
+              )}
+              {m.tipo === 'documento' && m.midia_url && (
+                <a
+                  href={m.midia_url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 mb-1 underline underline-offset-2"
+                >
+                  <FileText className="icon-sm shrink-0" />
+                  <span className="text-xs truncate">Abrir documento</span>
+                </a>
               )}
               {m.conteudo && (
                 <div className="whitespace-pre-wrap break-words">{m.conteudo}</div>
@@ -379,10 +394,46 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
         </div>
       )}
 
+      <input
+        ref={fileInputRef}
+        type="file"
+        accept="image/*"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f, 'image'); }}
+      />
+      <input
+        ref={docInputRef}
+        type="file"
+        accept="application/pdf"
+        className="hidden"
+        onChange={e => { const f = e.target.files?.[0]; if (f) handleMediaUpload(f, 'document'); }}
+      />
+
       <div className="p-3 border-t border-border/40 flex gap-2 items-end">
         <TemplatesPopover templates={templates} onPick={aplicarTemplate} />
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" size="icon" title="Anexar" disabled={uploadingMedia || enviar.isPending}>
+              {uploadingMedia ? <Loader2 className="icon-sm animate-spin" /> : <Paperclip className="icon-sm" />}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-44 p-1">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted text-sm flex items-center gap-2"
+            >
+              <ImageIcon className="icon-sm" /> Imagem
+            </button>
+            <button
+              onClick={() => docInputRef.current?.click()}
+              className="w-full text-left px-2 py-1.5 rounded-md hover:bg-muted text-sm flex items-center gap-2"
+            >
+              <FileText className="icon-sm" /> PDF
+            </button>
+          </PopoverContent>
+        </Popover>
         <Input
-          placeholder='Digite uma mensagem... (use / para templates)'
+          placeholder='Mensagem ou legenda... (use / para templates)'
           value={texto}
           onChange={e => setTexto(e.target.value)}
           onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
@@ -393,6 +444,26 @@ function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => v
         </Button>
       </div>
     </>
+  );
+}
+
+function BotConfigPanel() {
+  return (
+    <Sheet>
+      <SheetTrigger asChild>
+        <Button variant="outline" size="sm" className="gap-1.5" title="Configurar bot e automações">
+          <Settings className="icon-xs" /> <span className="hidden sm:inline">Bot</span>
+        </Button>
+      </SheetTrigger>
+      <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto p-0">
+        <SheetHeader className="px-4 pt-4 pb-2 border-b border-border/40 sticky top-0 bg-background z-10">
+          <SheetTitle className="flex items-center gap-2">
+            <Bot className="icon-sm text-primary" /> Configuração do Bot &amp; Automações
+          </SheetTitle>
+        </SheetHeader>
+        <WhatsappAutomacoes embedded />
+      </SheetContent>
+    </Sheet>
   );
 }
 
