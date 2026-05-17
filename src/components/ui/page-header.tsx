@@ -4,23 +4,17 @@ import { cn } from '@/lib/utils';
 interface PageHeaderProps {
   title: string;
   subtitle?: string;
+  eyebrow?: string;
   icon?: React.ReactNode;
   actions?: React.ReactNode;
   className?: string;
 }
 
 /**
- * Cabeçalho de página padronizado.
- * Mantém hierarquia tipográfica e espaçamentos consistentes em todo o app.
- *
- * Uso:
- *   <PageHeader
- *     title="Pacientes"
- *     subtitle="Gestão completa dos seus clientes"
- *     actions={<Button>Novo</Button>}
- *   />
+ * Cabeçalho de página padronizado (Serene Health Premium).
+ * - `eyebrow` opcional renderiza pequeno label dourado uppercase acima do título.
  */
-export function PageHeader({ title, subtitle, icon, actions, className }: PageHeaderProps) {
+export function PageHeader({ title, subtitle, eyebrow, icon, actions, className }: PageHeaderProps) {
   return (
     <header
       className={cn(
@@ -33,6 +27,7 @@ export function PageHeader({ title, subtitle, icon, actions, className }: PageHe
           <div className="shrink-0 mt-0.5 text-muted-foreground/70">{icon}</div>
         )}
         <div className="min-w-0">
+          {eyebrow && <div className="eyebrow-accent mb-1.5">{eyebrow}</div>}
           <h1 className="h-page truncate">{title}</h1>
           {subtitle && (
             <p className="text-caption mt-1 line-clamp-2">{subtitle}</p>

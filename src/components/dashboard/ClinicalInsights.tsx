@@ -172,13 +172,13 @@ export default function ClinicalInsights() {
         {kpis.map(k => {
           const Icon = k.icon;
           return (
-            <div key={k.label} className="rounded-xl border border-border/40 bg-card p-3">
+            <div key={k.label} className="rounded-xl border border-border/40 bg-card p-3 transition-shadow hover:shadow-xs">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-micro">{k.label}</span>
+                <span className="metric-label">{k.label}</span>
                 <Icon className="icon-xs text-muted-foreground/70" />
               </div>
-              <div className={`text-base sm:text-lg font-semibold tracking-tight ${k.tone}`}>{k.value}</div>
-              <div className="text-[10px] text-muted-foreground mt-0.5">{k.sub}</div>
+              <div className={`metric-value text-2xl sm:text-3xl ${k.tone}`}>{k.value}</div>
+              <div className="text-[10px] text-muted-foreground mt-1">{k.sub}</div>
             </div>
           );
         })}
