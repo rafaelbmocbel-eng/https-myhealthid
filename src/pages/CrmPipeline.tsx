@@ -111,33 +111,36 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
     }
   };
 
+  const Wrapper = embedded ? (({ children }: any) => <>{children}</>) : AppLayout;
   return (
-    <AppLayout>
-      <div className="p-4 sm:p-6">
-        <PageHeader
-          icon={<Kanban className="icon-lg" />}
-          title="Pipeline CRM"
-          subtitle="Acompanhe leads do primeiro contato ao fechamento"
-          actions={
-            <div className="flex gap-2 flex-wrap">
-              <Link to="/crm/metricas">
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <TrendingUp className="icon-xs" /> Métricas
-                </Button>
-              </Link>
-              <Link to="/crm/cadencias">
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <Zap className="icon-xs" /> Cadências
-                </Button>
-              </Link>
-              <Link to="/crm/inbox">
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <MessageCircle className="icon-xs" /> Inbox
-                </Button>
-              </Link>
-            </div>
-          }
-        />
+    <Wrapper>
+      <div className={embedded ? '' : 'p-4 sm:p-6'}>
+        {!embedded && (
+          <PageHeader
+            icon={<Kanban className="icon-lg" />}
+            title="Pipeline CRM"
+            subtitle="Acompanhe leads do primeiro contato ao fechamento"
+            actions={
+              <div className="flex gap-2 flex-wrap">
+                <Link to="/crm?tab=metricas">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <TrendingUp className="icon-xs" /> Métricas
+                  </Button>
+                </Link>
+                <Link to="/crm?tab=cadencias">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Zap className="icon-xs" /> Cadências
+                  </Button>
+                </Link>
+                <Link to="/crm?tab=inbox">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <MessageCircle className="icon-xs" /> Inbox
+                  </Button>
+                </Link>
+              </div>
+            }
+          />
+        )}
 
         <div className="mt-4 mb-3 max-w-sm relative">
           <Search className="icon-xs absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
