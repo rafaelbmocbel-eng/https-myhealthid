@@ -167,6 +167,8 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                     <span className="opacity-70">{contagensStage[k]}</span>
                   </button>
                 ))}
+              </div>
+              {filtrosSalvos.length > 0 && (
                 <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
                   {filtrosSalvos.map(f => (
                     <button
