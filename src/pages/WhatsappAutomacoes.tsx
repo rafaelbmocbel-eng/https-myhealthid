@@ -415,13 +415,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               <Input placeholder="Ex.: Campanha verão" value={broadcast.titulo}
                 onChange={(e) => setBroadcast({ ...broadcast, titulo: e.target.value })} />
             </div>
-            <div>
-              <Label>Intenção / mensagem base</Label>
-              <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale muito a pena retomar seus exercícios — sua evolução depende da consistência."
-                value={broadcast.intencao}
-                onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
-              <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
-            </div>
+
             <div>
               <Label>Segmento</Label>
               <Select value={broadcast.segmento} onValueChange={(v) => setBroadcast({ ...broadcast, segmento: v })}>
@@ -431,10 +425,81 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   <SelectItem value="sem_sessao_30d">Sem sessão há 30+ dias</SelectItem>
                   <SelectItem value="exercicio_pendente">Com exercícios pendentes</SelectItem>
                   <SelectItem value="myid_vencido">MyID vencido (30+ dias)</SelectItem>
+                  <SelectItem value="myid_critico">MyID crítico (score &lt; 50)</SelectItem>
+                  <SelectItem value="myid_moderado">MyID moderado (50–74)</SelectItem>
+                  <SelectItem value="myid_saudavel">MyID saudável (≥ 75)</SelectItem>
+                  <SelectItem value="aniversariantes_mes">Aniversariantes do mês</SelectItem>
+                  <SelectItem value="pacote_acabando">Pacote acabando (≤ 2 sessões)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={dispararBroadcast}>Disparar broadcast</Button>
+
+            <div className="rounded-xl border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Teste A/B</Label>
+                  <p className="text-micro">Compara 2 abordagens — IA personaliza cada variante.</p>
+                </div>
+                <Switch checked={broadcast.abAtivo}
+                  onCheckedChange={(v) => setBroadcast({ ...broadcast, abAtivo: v })} />
+              </div>
+              {!broadcast.abAtivo ? (
+                <div>
+                  <Label>Intenção / mensagem base</Label>
+                  <Textarea rows={4} placeholder="Ex.: Quero te lembrar que vale a pena retomar os exercícios."
+                    value={broadcast.intencao}
+                    onChange={(e) => setBroadcast({ ...broadcast, intencao: e.target.value })} />
+                  <p className="text-micro mt-1">A IA reescreve isso personalizado para cada paciente.</p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {broadcast.variantes.map((v, i) => (
+                    <div key={v.key} className="space-y-2">
+                      <div className="flex items-center justify-between gap-2">
+                        <Label className="text-sm">Variante {v.key}</Label>
+                        <div className="flex items-center gap-2">
+                          <Label className="text-micro">Peso %</Label>
+                          <Input type="number" min={0} max={100} className="w-20 h-8"
+                            value={v.peso}
+                            onChange={(e) => {
+                              const nv = [...broadcast.variantes];
+                              nv[i] = { ...v, peso: +e.target.value };
+                              setBroadcast({ ...broadcast, variantes: nv });
+                            }} />
+                        </div>
+                      </div>
+                      <Textarea rows={3} placeholder={`Texto base da variante ${v.key}`}
+                        value={v.texto}
+                        onChange={(e) => {
+                          const nv = [...broadcast.variantes];
+                          nv[i] = { ...v, texto: e.target.value };
+                          setBroadcast({ ...broadcast, variantes: nv });
+                        }} />
+                    </div>
+                  ))}
+                  <p className="text-micro">Resultado por variante fica visível no histórico após o envio.</p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-xl border border-border/40 p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label className="text-sm">Agendar envio</Label>
+                  <p className="text-micro">Dispara automaticamente na data escolhida.</p>
+                </div>
+                <Switch checked={broadcast.agendar}
+                  onCheckedChange={(v) => setBroadcast({ ...broadcast, agendar: v })} />
+              </div>
+              {broadcast.agendar && (
+                <Input type="datetime-local" value={broadcast.agendado_para}
+                  onChange={(e) => setBroadcast({ ...broadcast, agendado_para: e.target.value })} />
+              )}
+            </div>
+
+            <Button onClick={dispararBroadcast}>
+              {broadcast.agendar ? "Agendar campanha" : "Disparar agora"}
+            </Button>
           </Card>
         </TabsContent>
       </Tabs>
