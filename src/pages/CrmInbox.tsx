@@ -39,7 +39,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
         {!embedded && (
           <PageHeader
             icon={<MessageCircle className="icon-lg" />}
-            title="Inbox WhatsApp"
+            title="WhatsApp"
             subtitle="Conversas em tempo real com pacientes e leads"
             actions={
               <div className="flex gap-2">
