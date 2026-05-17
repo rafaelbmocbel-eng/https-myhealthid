@@ -26,7 +26,23 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
-type StageTab = 'todos' | 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
+type ColunaWS = 'pendentes' | 'andamento' | 'conversas' | 'fechadas';
+
+const DOT_BY_STAGE: Record<string, string> = {
+  novo: 'bg-sky-400',
+  qualificado: 'bg-amber-400',
+  agendado: 'bg-violet-400',
+  fechado: 'bg-emerald-500',
+  perdido: 'bg-rose-400',
+};
+
+function colunaDe(c: any): ColunaWS {
+  const stage = c.pipeline_stage || 'novo';
+  if (stage === 'fechado' || stage === 'perdido') return 'fechadas';
+  if ((c.nao_lidas || 0) > 0) return 'pendentes';
+  if (stage === 'qualificado' || stage === 'agendado') return 'andamento';
+  return 'conversas';
+}
 
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
