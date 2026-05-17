@@ -75,8 +75,9 @@ export default function Configuracoes() {
         <div className="mb-6 sm:mb-8">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
-              <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Configurações</h1>
-              <p className="text-sm text-muted-foreground mt-0.5">Horários, módulos e preferências da clínica</p>
+              <div className="eyebrow-accent mb-1.5">Ajustes</div>
+              <h1 className="h-page">Configurações</h1>
+              <p className="text-caption mt-0.5">Horários, módulos e preferências da clínica</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <ThemeToggle />
