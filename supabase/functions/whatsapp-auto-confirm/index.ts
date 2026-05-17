@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     async function getCfg(tid: string) {
       if (cfgCache.has(tid)) return cfgCache.get(tid);
       const { data } = await admin.from("whatsapp_automacoes")
-        .select("auto_confirmacao_24h, mensagem_confirmacao, mensagem_lembrete_2h, mensagem_pos_sessao, mensagem_no_show, gatilhos_ativos")
+        .select("auto_confirmacao_24h, mensagem_confirmacao, mensagem_lembrete_2h, mensagem_pos_sessao, mensagem_no_show, gatilhos_ativos, no_show_perdoar_primeira, no_show_so_com_pacote")
         .eq("terapeuta_id", tid).maybeSingle();
       cfgCache.set(tid, data);
       return data;
