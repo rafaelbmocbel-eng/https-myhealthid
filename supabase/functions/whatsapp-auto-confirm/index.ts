@@ -175,13 +175,7 @@ Deno.serve(async (req) => {
         const info = await processarPaciente(ag);
         if (!info) continue;
 
-        // Marca como falta + contabiliza pacote (espelha incrementar_pacote_ao_concluir)
-        await admin.from("agendamentos").update({
-          status: "falta",
-          no_show_processado_em: new Date().toISOString(),
-          observacoes: "No-show automático: paciente não confirmou nem cancelou em até 2h.",
-        }).eq("id", ag.id);
-
+        // Exceção 1: só com pacote ativo
         const { data: pac } = await admin.from("pacotes_sessoes")
           .select("id, sessoes_utilizadas, total_sessoes")
           .eq("paciente_id", ag.paciente_id)
@@ -189,17 +183,41 @@ Deno.serve(async (req) => {
           .eq("status", "ativo")
           .order("created_at", { ascending: true })
           .limit(1).maybeSingle();
-        if (pac && pac.sessoes_utilizadas < pac.total_sessoes) {
+        if (cfg.no_show_so_com_pacote && !pac) continue;
+
+        // Exceção 2: perdoar primeira falta do paciente
+        let perdoada = false;
+        if (cfg.no_show_perdoar_primeira) {
+          const { count } = await admin.from("agendamentos")
+            .select("id", { count: "exact", head: true })
+            .eq("paciente_id", ag.paciente_id)
+            .eq("terapeuta_id", ag.terapeuta_id)
+            .eq("status", "falta")
+            .not("no_show_processado_em", "is", null);
+          if ((count || 0) === 0) perdoada = true;
+        }
+
+        const obsTxt = perdoada
+          ? "No-show automático: primeira falta — perdoada (não contabilizada)."
+          : "No-show automático: paciente não confirmou nem cancelou em até 2h.";
+
+        await admin.from("agendamentos").update({
+          status: "falta",
+          no_show_processado_em: new Date().toISOString(),
+          observacoes: obsTxt,
+        }).eq("id", ag.id);
+
+        if (!perdoada && pac && pac.sessoes_utilizadas < pac.total_sessoes) {
           await admin.from("pacotes_sessoes").update({
             sessoes_utilizadas: pac.sessoes_utilizadas + 1,
             updated_at: new Date().toISOString(),
           }).eq("id", pac.id);
         }
 
-        const msg = aplicar(
-          cfg.mensagem_no_show || "Oi {nome}, notamos que você não compareceu nem avisou sobre a sessão de hoje às {horario}. Conforme combinado, sessões não canceladas com 2h de antecedência são contabilizadas. Se houve algum imprevisto, fale com a gente. 💙",
-          info.nome, info.hora, info.data,
-        );
+        const msgBase = perdoada
+          ? "Oi {nome}, notamos que você não compareceu à sessão de hoje às {horario}. Como é sua primeira ausência, não vamos contabilizar — mas combinamos avisar com pelo menos 2h de antecedência, ok? 💙"
+          : (cfg.mensagem_no_show || "Oi {nome}, notamos que você não compareceu nem avisou sobre a sessão de hoje às {horario}. Conforme combinado, sessões não canceladas com 2h de antecedência são contabilizadas. Se houve algum imprevisto, fale com a gente. 💙");
+        const msg = aplicar(msgBase, info.nome, info.hora, info.data);
         const ok = await enviarWhatsapp(admin, ag.terapeuta_id, info.pac.telefone, msg);
         if (ok) {
           await registrarEnvio(admin, ag.terapeuta_id, ag.paciente_id, info.pac.telefone, msg);
@@ -208,10 +226,10 @@ Deno.serve(async (req) => {
         await admin.from("notificacoes").insert({
           terapeuta_id: ag.terapeuta_id,
           tipo: "no_show_automatico",
-          titulo: "⚠️ Falta registrada automaticamente",
-          descricao: `${info.pac.nome || "Paciente"} não compareceu à sessão de ${info.data} ${info.hora}. Sessão contabilizada.`,
+          titulo: perdoada ? "🟡 Falta perdoada (primeira)" : "⚠️ Falta registrada automaticamente",
+          descricao: `${info.pac.nome || "Paciente"} não compareceu à sessão de ${info.data} ${info.hora}. ${perdoada ? "Não contabilizada (primeira falta)." : "Sessão contabilizada."}`,
           rota: `/agenda`,
-          metadata: { agendamento_id: ag.id, paciente_id: ag.paciente_id },
+          metadata: { agendamento_id: ag.id, paciente_id: ag.paciente_id, perdoada },
         });
         noShows++;
       }
