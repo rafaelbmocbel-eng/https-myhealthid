@@ -26,10 +26,12 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
 type FilaTab = 'todas' | 'minhas' | 'nao_atribuidas' | 'atrasadas';
+type StageTab = 'todos' | 'novo' | 'qualificado' | 'agendado' | 'fechado' | 'perdido';
 
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [filaTab, setFilaTab] = useState<FilaTab>('todas');
+  const [stageTab, setStageTab] = useState<StageTab>('todos');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
@@ -49,6 +51,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
       const matchMsg = q.length >= 3 && idsGlobais.includes(c.id);
       if (!matchMeta && !matchMsg) return false;
     }
+    if (stageTab !== 'todos' && (c.pipeline_stage || 'novo') !== stageTab) return false;
     if (filaTab === 'minhas') return c.atribuido_a === userId;
     if (filaTab === 'nao_atribuidas') return !c.atribuido_a;
     if (filaTab === 'atrasadas') {
@@ -66,6 +69,15 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
       const s = getSLAStatus(c);
       return s.status === 'atrasado' || s.status === 'em_breve';
     }).length,
+  };
+
+  const contagensStage: Record<StageTab, number> = {
+    todos: conversas.length,
+    novo: conversas.filter(c => (c.pipeline_stage || 'novo') === 'novo').length,
+    qualificado: conversas.filter(c => c.pipeline_stage === 'qualificado').length,
+    agendado: conversas.filter(c => c.pipeline_stage === 'agendado').length,
+    fechado: conversas.filter(c => c.pipeline_stage === 'fechado').length,
+    perdido: conversas.filter(c => c.pipeline_stage === 'perdido').length,
   };
 
   return (
@@ -129,6 +141,30 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                   >
                     {label}
                     <span className="opacity-70">{contagens[k]}</span>
+                  </button>
+                ))}
+              </div>
+              <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
+                {([
+                  ['todos', 'Todos', 'bg-muted'],
+                  ['novo', '🆕 Novo', 'bg-blue-500/10 text-blue-600 border-blue-500/30'],
+                  ['qualificado', '⭐ Qualificado', 'bg-purple-500/10 text-purple-600 border-purple-500/30'],
+                  ['agendado', '📅 Agendado', 'bg-amber-500/10 text-amber-600 border-amber-500/30'],
+                  ['fechado', '✅ Paciente', 'bg-green-500/10 text-green-600 border-green-500/30'],
+                  ['perdido', '❌ Perdido', 'bg-destructive/10 text-destructive border-destructive/30'],
+                ] as [StageTab, string, string][]).map(([k, label, color]) => (
+                  <button
+                    key={k}
+                    onClick={() => setStageTab(k)}
+                    className={cn(
+                      "shrink-0 text-[11px] px-2.5 py-1 rounded-full border transition-colors flex items-center gap-1",
+                      stageTab === k
+                        ? "bg-primary text-primary-foreground border-primary"
+                        : cn("border-border/60 hover:opacity-80", color)
+                    )}
+                  >
+                    {label}
+                    <span className="opacity-70">{contagensStage[k]}</span>
                   </button>
                 ))}
               </div>
