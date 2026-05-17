@@ -9,7 +9,7 @@ import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
-import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles, Bot } from 'lucide-react';
+import { Search, Send, MessageCircle, Phone, User, Loader2, Zap, StickyNote, Trash2, Plus, Sparkles, Bot, Kanban } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useWhatsappConversas, useWhatsappMensagens, type WAConversa } from '@/hooks/useWhatsappInbox';
 import { useWhatsappTemplates, useWhatsappNotas } from '@/hooks/useWhatsappExtras';
@@ -40,11 +40,18 @@ export default function CrmInbox() {
           title="Inbox WhatsApp"
           subtitle="Conversas em tempo real com pacientes e leads"
           actions={
-            <Link to="/crm/automacoes">
-              <Button variant="outline" size="sm" className="gap-1.5">
-                <Bot className="icon-xs" /> Automações
-              </Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link to="/crm/pipeline">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Kanban className="icon-xs" /> Pipeline
+                </Button>
+              </Link>
+              <Link to="/crm/automacoes">
+                <Button variant="outline" size="sm" className="gap-1.5">
+                  <Bot className="icon-xs" /> Automações
+                </Button>
+              </Link>
+            </div>
           }
         />
 

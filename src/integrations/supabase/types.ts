@@ -3808,6 +3808,9 @@ export type Database = {
           nao_lidas: number
           nome_contato: string | null
           paciente_id: string | null
+          pipeline_motivo_perda: string | null
+          pipeline_stage: Database["public"]["Enums"]["crm_pipeline_stage"]
+          pipeline_updated_at: string
           tags: string[] | null
           telefone: string
           terapeuta_id: string
@@ -3827,6 +3830,9 @@ export type Database = {
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
+          pipeline_motivo_perda?: string | null
+          pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
+          pipeline_updated_at?: string
           tags?: string[] | null
           telefone: string
           terapeuta_id: string
@@ -3846,6 +3852,9 @@ export type Database = {
           nao_lidas?: number
           nome_contato?: string | null
           paciente_id?: string | null
+          pipeline_motivo_perda?: string | null
+          pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
+          pipeline_updated_at?: string
           tags?: string[] | null
           telefone?: string
           terapeuta_id?: string
@@ -4357,6 +4366,12 @@ export type Database = {
     Enums: {
       clinica_membro_status: "convidado" | "ativo" | "removido"
       clinica_papel: "dono" | "profissional" | "recepcao"
+      crm_pipeline_stage:
+        | "novo"
+        | "qualificado"
+        | "agendado"
+        | "fechado"
+        | "perdido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4486,6 +4501,13 @@ export const Constants = {
     Enums: {
       clinica_membro_status: ["convidado", "ativo", "removido"],
       clinica_papel: ["dono", "profissional", "recepcao"],
+      crm_pipeline_stage: [
+        "novo",
+        "qualificado",
+        "agendado",
+        "fechado",
+        "perdido",
+      ],
     },
   },
 } as const
