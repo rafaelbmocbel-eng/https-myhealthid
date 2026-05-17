@@ -132,3 +132,74 @@ export function useWhatsappNotas(conversaId: string | null) {
 
   return { ...query, adicionar, remover };
 }
+
+/** SLA helpers */
+export type SLAStatus = 'ok' | 'em_breve' | 'atrasado' | 'respondido' | 'sem_sla';
+
+export function getSLAStatus(c: { sla_responder_ate?: string | null; primeiro_resposta_em?: string | null }): {
+  status: SLAStatus; minutos: number;
+} {
+  if (!c.sla_responder_ate) return { status: 'sem_sla', minutos: 0 };
+  if (c.primeiro_resposta_em) return { status: 'respondido', minutos: 0 };
+  const diff = (new Date(c.sla_responder_ate).getTime() - Date.now()) / 60000;
+  if (diff < 0) return { status: 'atrasado', minutos: Math.abs(Math.round(diff)) };
+  if (diff < 10) return { status: 'em_breve', minutos: Math.round(diff) };
+  return { status: 'ok', minutos: Math.round(diff) };
+}
+
+/** Filtros salvos */
+export interface WAFiltroSalvo {
+  id: string;
+  nome: string;
+  filtros: Record<string, any>;
+  ordem: number;
+}
+
+export function useWhatsappFiltrosSalvos() {
+  const { user } = useAuth();
+  const qc = useQueryClient();
+  const query = useQuery({
+    queryKey: ['wa-filtros', user?.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('whatsapp_filtros_salvos')
+        .select('*')
+        .eq('terapeuta_id', user!.id)
+        .order('ordem', { ascending: true });
+      if (error) throw error;
+      return (data || []) as WAFiltroSalvo[];
+    },
+    enabled: !!user,
+  });
+  const salvar = useMutation({
+    mutationFn: async (f: { nome: string; filtros: Record<string, any> }) => {
+      const { error } = await supabase.from('whatsapp_filtros_salvos').insert({
+        terapeuta_id: user!.id, nome: f.nome, filtros: f.filtros,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wa-filtros', user?.id] }),
+  });
+  const remover = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('whatsapp_filtros_salvos').delete().eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wa-filtros', user?.id] }),
+  });
+  return { ...query, salvar, remover };
+}
+
+/** Atribuir conversa */
+export function useAtribuirConversa() {
+  const qc = useQueryClient();
+  const { user } = useAuth();
+  return useMutation({
+    mutationFn: async ({ conversa_id, atribuido_a }: { conversa_id: string; atribuido_a: string | null }) => {
+      const { error } = await supabase.from('whatsapp_conversas')
+        .update({ atribuido_a }).eq('id', conversa_id);
+      if (error) throw error;
+    },
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['wa-conversas', user?.id] }),
+  });
+}
