@@ -377,9 +377,16 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                   onChange={(e) => setCfg({ ...cfg, mensagem_confirmacao: e.target.value })} />
               </div>
               <div>
-                <Label className="text-xs">2h antes (lembrete)</Label>
+                <Label className="text-xs">2h antes (lembrete + aviso final)</Label>
                 <Textarea rows={2} value={cfg.mensagem_lembrete_2h || ""}
                   onChange={(e) => setCfg({ ...cfg, mensagem_lembrete_2h: e.target.value })} />
+                <p className="text-micro text-muted-foreground mt-1">Dica: informe que após esse horário a sessão será contabilizada.</p>
+              </div>
+              <div>
+                <Label className="text-xs">No-show (após a hora sem confirmar/cancelar)</Label>
+                <Textarea rows={2} value={cfg.mensagem_no_show || ""}
+                  onChange={(e) => setCfg({ ...cfg, mensagem_no_show: e.target.value })} />
+                <p className="text-micro text-muted-foreground mt-1">Enviada quando a falta é registrada automaticamente e a sessão é contabilizada no pacote.</p>
               </div>
               <div>
                 <Label className="text-xs">Pós-sessão (check-in)</Label>
