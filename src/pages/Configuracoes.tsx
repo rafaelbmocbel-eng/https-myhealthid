@@ -106,7 +106,7 @@ export default function Configuracoes() {
         {/* Ausências, feriados e férias */}
         <AusenciasManager />
 
-        <div className="clinical-card mb-6">
+        <div className="clinical-card mb-4 sm:mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Clock className="icon-sm text-muted-foreground" />
             <h2 className="h-section">Intervalo entre Sessões</h2>
@@ -125,12 +125,12 @@ export default function Configuracoes() {
         </div>
 
         {/* Preferências de Notificação */}
-        <div className="mb-6">
+        <div className="mb-4 sm:mb-5">
           <NotificationPreferences />
         </div>
 
         {/* Link de Agendamento Online (Geral) */}
-        <div className="clinical-card mb-6">
+        <div className="clinical-card mb-4 sm:mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Link2 className="icon-sm text-muted-foreground" />
             <h2 className="h-section">Link de Agendamento Online</h2>
@@ -161,7 +161,7 @@ export default function Configuracoes() {
         <ClientRegistrationLink />
 
         {/* Vagas por horário */}
-        <div className="clinical-card mb-6">
+        <div className="clinical-card mb-4 sm:mb-5">
           <div className="flex items-center gap-2 mb-3">
             <Users className="icon-sm text-muted-foreground" />
             <h2 className="h-section">Vagas por Horário</h2>
@@ -330,7 +330,7 @@ function ClientRegistrationLink() {
 
   if (!slug) {
     return (
-      <div className="clinical-card mb-6">
+      <div className="clinical-card mb-4 sm:mb-5">
         <div className="flex items-center gap-2 mb-3">
           <UserPlus className="icon-sm text-muted-foreground" />
           <h2 className="h-section">Link de Cadastro de Cliente</h2>
@@ -343,7 +343,7 @@ function ClientRegistrationLink() {
   }
 
   return (
-    <div className="clinical-card mb-6">
+    <div className="clinical-card mb-4 sm:mb-5">
       <div className="flex items-center gap-2 mb-3">
         <UserPlus className="icon-sm text-muted-foreground" />
         <h2 className="h-section">Link de Cadastro de Cliente</h2>
