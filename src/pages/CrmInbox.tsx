@@ -21,7 +21,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
-export default function CrmInbox() {
+export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
@@ -33,29 +33,32 @@ export default function CrmInbox() {
   });
 
   return (
-    <AppLayout>
-      <div className="p-4 sm:p-6">
-        <PageHeader
-          icon={<MessageCircle className="icon-lg" />}
-          title="Inbox WhatsApp"
-          subtitle="Conversas em tempo real com pacientes e leads"
-          actions={
-            <div className="flex gap-2">
-              <Link to="/crm/pipeline">
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <Kanban className="icon-xs" /> Pipeline
-                </Button>
-              </Link>
-              <Link to="/crm/automacoes">
-                <Button variant="outline" size="sm" className="gap-1.5">
-                  <Bot className="icon-xs" /> Automações
-                </Button>
-              </Link>
-            </div>
-          }
-        />
+    <Shell embedded={embedded}>
+      <div className={embedded ? '' : 'p-4 sm:p-6'}>
+        {!embedded && (
+          <PageHeader
+            icon={<MessageCircle className="icon-lg" />}
+            title="Inbox WhatsApp"
+            subtitle="Conversas em tempo real com pacientes e leads"
+            actions={
+              <div className="flex gap-2">
+                <Link to="/crm?tab=pipeline">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Kanban className="icon-xs" /> Pipeline
+                  </Button>
+                </Link>
+                <Link to="/crm?tab=automacoes">
+                  <Button variant="outline" size="sm" className="gap-1.5">
+                    <Bot className="icon-xs" /> Automações
+                  </Button>
+                </Link>
+              </div>
+            }
+          />
+        )}
 
-        <div className="mt-4 grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 h-[calc(100dvh-220px)] min-h-[500px]">
+        <div className={cn('grid grid-cols-1 md:grid-cols-[340px_1fr] gap-4 min-h-[500px]', embedded ? 'mt-0 h-[calc(100dvh-160px)]' : 'mt-4 h-[calc(100dvh-220px)]')}>
+
           {/* Lista */}
           <div className={cn(
             "rounded-xl border border-border/40 bg-card shadow-xs flex flex-col overflow-hidden",
@@ -139,9 +142,15 @@ export default function CrmInbox() {
           </div>
         </div>
       </div>
-    </AppLayout>
+    </Shell>
   );
 }
+
+function Shell({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  if (embedded) return <>{children}</>;
+  return <AppLayout>{children}</AppLayout>;
+}
+
 
 function ChatPanel({ conversa, onBack }: { conversa: WAConversa; onBack: () => void }) {
   const [texto, setTexto] = useState('');

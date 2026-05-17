@@ -11,7 +11,7 @@ const STAGE_LABELS: Record<Stage, string> = {
   novo: "Novo", qualificado: "Qualificado", agendado: "Agendado", fechado: "Fechado", perdido: "Perdido",
 };
 
-export default function CrmMetricas() {
+export default function CrmMetricas({ embedded = false }: { embedded?: boolean } = {}) {
   const [periodo, setPeriodo] = useState<"7" | "30" | "90">("30");
   const [stats, setStats] = useState<{
     porEstagio: Record<string, number>;
@@ -75,10 +75,10 @@ export default function CrmMetricas() {
   }, [periodo]);
 
   return (
-    <div className="min-h-screen bg-background p-3 sm:p-6 max-w-6xl mx-auto">
+    <div className={embedded ? 'p-3 sm:p-5' : 'min-h-screen bg-background p-3 sm:p-6 max-w-6xl mx-auto'}>
       <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
         <div className="flex items-center gap-3">
-          <Link to="/crm/pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>
+          {!embedded && <Link to="/crm?tab=pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>}
           <div>
             <h1 className="h-page flex items-center gap-2"><TrendingUp className="icon-md text-primary" /> Métricas CRM</h1>
             <p className="text-caption text-muted-foreground">Performance do funil de vendas</p>

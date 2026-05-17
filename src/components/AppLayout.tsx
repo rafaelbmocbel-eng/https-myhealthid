@@ -133,35 +133,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
           )}
           <GlobalSearch />
           <div className="ml-auto flex items-center gap-1 md:gap-2">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <button
-                  className="h-10 w-10 rounded-xl bg-card/80 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/5 border border-border/50 transition-all hover:shadow-md active:scale-95"
-                  aria-label="CRM"
-                >
-                  <Kanban className="h-5 w-5" />
-                </button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56">
-                <DropdownMenuLabel>CRM</DropdownMenuLabel>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => navigate('/crm/pipeline')}>
-                  <GitBranch className="h-4 w-4 mr-2" /> Pipeline (Kanban)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/crm/inbox')}>
-                  <MessageSquare className="h-4 w-4 mr-2" /> Inbox WhatsApp
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/crm/cadencias')}>
-                  <Zap className="h-4 w-4 mr-2" /> Cadências
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/crm/metricas')}>
-                  <BarChart3 className="h-4 w-4 mr-2" /> Métricas
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => navigate('/crm/automacoes')}>
-                  <Zap className="h-4 w-4 mr-2" /> Automações
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            <button
+              onClick={() => navigate('/crm')}
+              className="h-10 w-10 rounded-xl bg-card/80 flex items-center justify-center text-muted-foreground hover:text-primary hover:bg-primary/5 border border-border/50 transition-all hover:shadow-md active:scale-95"
+              aria-label="CRM"
+              title="CRM"
+            >
+              <Kanban className="h-5 w-5" />
+            </button>
             <NotificationCenter />
             <ThemeToggle />
             {!isMobile && <QuickActions />}

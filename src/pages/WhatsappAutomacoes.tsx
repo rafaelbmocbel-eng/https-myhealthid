@@ -15,7 +15,7 @@ const DIAS = [
   { k: "qui", l: "Qui" }, { k: "sex", l: "Sex" }, { k: "sab", l: "Sáb" }, { k: "dom", l: "Dom" },
 ];
 
-export default function WhatsappAutomacoes() {
+export default function WhatsappAutomacoes({ embedded = false }: { embedded?: boolean } = {}) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<any>(null);
@@ -65,8 +65,8 @@ export default function WhatsappAutomacoes() {
   };
 
   return (
-    <div className="container max-w-3xl py-6 space-y-4">
-      <PageHeader title="Automações do WhatsApp" subtitle="Bot de primeira resposta, confirmação 24h e detecção de intenção." />
+    <div className={embedded ? 'p-3 sm:p-5 space-y-4' : 'container max-w-3xl py-6 space-y-4'}>
+      {!embedded && <PageHeader title="Automações do WhatsApp" subtitle="Bot de primeira resposta, confirmação 24h e detecção de intenção." />}
 
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-3">

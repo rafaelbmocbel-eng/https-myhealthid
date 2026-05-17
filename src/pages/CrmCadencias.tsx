@@ -20,7 +20,7 @@ const ESTAGIOS = [
   { v: "perdido", l: "Perdido" },
 ];
 
-export default function CrmCadencias() {
+export default function CrmCadencias({ embedded = false }: { embedded?: boolean } = {}) {
   const [cadencias, setCadencias] = useState<any[]>([]);
   const [passosByCad, setPassosByCad] = useState<Record<string, any[]>>({});
   const [loading, setLoading] = useState(true);
@@ -85,10 +85,10 @@ export default function CrmCadencias() {
   }
 
   return (
-    <div className="min-h-screen bg-background p-3 sm:p-6 max-w-5xl mx-auto">
+    <div className={embedded ? 'p-3 sm:p-5' : 'min-h-screen bg-background p-3 sm:p-6 max-w-5xl mx-auto'}>
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center gap-3">
-          <Link to="/crm/pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>
+          {!embedded && <Link to="/crm?tab=pipeline"><Button variant="ghost" size="icon"><ArrowLeft className="icon-md" /></Button></Link>}
           <div>
             <h1 className="h-page flex items-center gap-2"><Zap className="icon-md text-primary" /> Cadências de Follow-up</h1>
             <p className="text-caption text-muted-foreground">Sequências automáticas disparadas quando o lead muda de estágio</p>
