@@ -77,7 +77,7 @@ export default function Configuracoes() {
             <div className="min-w-0">
               <div className="eyebrow-accent mb-1.5">Ajustes</div>
               <h1 className="h-page">Configurações</h1>
-              <p className="text-caption mt-0.5">Horários, módulos e preferências da clínica</p>
+              <p className="text-caption mt-1">Horários, módulos e preferências da clínica</p>
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <ThemeToggle />
@@ -107,9 +107,9 @@ export default function Configuracoes() {
         <AusenciasManager />
 
         <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Clock className="icon-sm text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Intervalo entre Sessões</h2>
+            <h2 className="h-section">Intervalo entre Sessões</h2>
           </div>
           <div className="max-w-xs">
             <Label className="text-xs font-medium mb-1.5 block">Minutos de intervalo</Label>
@@ -131,11 +131,11 @@ export default function Configuracoes() {
 
         {/* Link de Agendamento Online (Geral) */}
         <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Link2 className="icon-sm text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Link de Agendamento Online</h2>
+            <h2 className="h-section">Link de Agendamento Online</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-caption mb-4">
             Use este link geral para permitir que <strong>novos pacientes</strong> realizem o auto-agendamento.
           </p>
 
@@ -162,11 +162,11 @@ export default function Configuracoes() {
 
         {/* Vagas por horário */}
         <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Users className="icon-sm text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Vagas por Horário</h2>
+            <h2 className="h-section">Vagas por Horário</h2>
           </div>
-          <p className="text-xs text-muted-foreground mb-4">
+          <p className="text-caption mb-4">
             Quantos pacientes podem agendar no <strong>mesmo horário</strong> simultaneamente.
           </p>
           <div className="max-w-xs">
@@ -331,11 +331,11 @@ function ClientRegistrationLink() {
   if (!slug) {
     return (
       <div className="clinical-card mb-6">
-        <div className="flex items-center gap-2 mb-4">
+        <div className="flex items-center gap-2 mb-3">
           <UserPlus className="icon-sm text-muted-foreground" />
-          <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
+          <h2 className="h-section">Link de Cadastro de Cliente</h2>
         </div>
-        <p className="text-xs text-muted-foreground">
+        <p className="text-caption">
           Configure um <strong>slug</strong> no campo acima (Link de Agendamento) para gerar seu link de cadastro de novos clientes.
         </p>
       </div>
@@ -344,11 +344,11 @@ function ClientRegistrationLink() {
 
   return (
     <div className="clinical-card mb-6">
-      <div className="flex items-center gap-2 mb-4">
+      <div className="flex items-center gap-2 mb-3">
         <UserPlus className="icon-sm text-muted-foreground" />
-        <h2 className="text-sm font-semibold text-foreground">Link de Cadastro de Cliente</h2>
+        <h2 className="h-section">Link de Cadastro de Cliente</h2>
       </div>
-      <p className="text-xs text-muted-foreground mb-4">
+      <p className="text-caption mb-4">
         Compartilhe este link para que novos clientes criem sua conta e entrem automaticamente no seu banco de dados com acesso ao portal.
       </p>
       <div className="flex items-center gap-2 p-3 bg-muted/30 rounded-xl border border-primary/10">
