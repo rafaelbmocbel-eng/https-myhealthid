@@ -7,8 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Bot, Clock, MessageCircle, Sparkles } from "lucide-react";
+import { Bot, Clock, MessageCircle, Sparkles, Megaphone, Zap, AlertTriangle, BarChart3 } from "lucide-react";
 import { PageHeader } from "@/components/ui/page-header";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const DIAS = [
   { k: "seg", l: "Seg" }, { k: "ter", l: "Ter" }, { k: "qua", l: "Qua" },
