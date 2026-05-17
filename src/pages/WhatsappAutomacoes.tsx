@@ -65,8 +65,8 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   };
 
   return (
-    <div className="container max-w-3xl py-6 space-y-4">
-      <PageHeader title="Automações do WhatsApp" subtitle="Bot de primeira resposta, confirmação 24h e detecção de intenção." />
+    <div className={embedded ? 'p-3 sm:p-5 space-y-4' : 'container max-w-3xl py-6 space-y-4'}>
+      {!embedded && <PageHeader title="Automações do WhatsApp" subtitle="Bot de primeira resposta, confirmação 24h e detecção de intenção." />}
 
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-3">
