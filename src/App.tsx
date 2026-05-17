@@ -144,11 +144,12 @@ const App = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<Navigate to="/pacientes?tab=crm" replace />} />
-                <Route path="/crm/inbox" element={<PatientGuard><CrmInbox /></PatientGuard>} />
-                <Route path="/crm/automacoes" element={<PatientGuard><WhatsappAutomacoes /></PatientGuard>} />
-                <Route path="/crm/pipeline" element={<PatientGuard><CrmPipeline /></PatientGuard>} />
-                <Route path="/crm/cadencias" element={<PatientGuard><CrmCadencias /></PatientGuard>} />
-                <Route path="/crm/metricas" element={<PatientGuard><CrmMetricas /></PatientGuard>} />
+                <Route path="/crm" element={<PatientGuard><CrmHub /></PatientGuard>} />
+                <Route path="/crm/inbox" element={<Navigate to="/crm?tab=inbox" replace />} />
+                <Route path="/crm/automacoes" element={<Navigate to="/crm?tab=automacoes" replace />} />
+                <Route path="/crm/pipeline" element={<Navigate to="/crm?tab=pipeline" replace />} />
+                <Route path="/crm/cadencias" element={<Navigate to="/crm?tab=cadencias" replace />} />
+                <Route path="/crm/metricas" element={<Navigate to="/crm?tab=metricas" replace />} />
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
