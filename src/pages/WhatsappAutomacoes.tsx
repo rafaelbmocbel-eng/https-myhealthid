@@ -398,6 +398,25 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                 onChange={(e) => setCfg({ ...cfg, max_turnos_bot: +e.target.value })} />
               <p className="text-micro mt-1">Se a conversa passar disso sem resolver, alerta um humano.</p>
             </div>
+            <div className="rounded-lg border border-border/40 p-3 space-y-3">
+              <div className="flex items-center justify-between gap-3">
+                <div>
+                  <Label className="text-sm">SLA de resposta humana</Label>
+                  <p className="text-micro">Conversas sem resposta nesse prazo ficam destacadas em vermelho na aba "SLA ⏰".</p>
+                </div>
+                <Switch checked={cfg.sla_ativo !== false}
+                  onCheckedChange={(v) => setCfg({ ...cfg, sla_ativo: v })} />
+              </div>
+              {cfg.sla_ativo !== false && (
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs">Responder em até</Label>
+                  <Input type="number" min={1} max={1440} className="w-24 h-9"
+                    value={cfg.sla_minutos ?? 30}
+                    onChange={(e) => setCfg({ ...cfg, sla_minutos: +e.target.value })} />
+                  <span className="text-xs text-muted-foreground">minutos</span>
+                </div>
+              )}
+            </div>
           </Card>
         </TabsContent>
 
