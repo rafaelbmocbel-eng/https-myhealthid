@@ -40,7 +40,15 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
   const [saving, setSaving] = useState(false);
   const [cfg, setCfg] = useState<any>(null);
   const [stats, setStats] = useState({ enviados7d: 0, escalados7d: 0, gatilhoTop: "—" });
-  const [broadcast, setBroadcast] = useState({ titulo: "", intencao: "", segmento: "todos" });
+  const [broadcast, setBroadcast] = useState<{
+    titulo: string; intencao: string; segmento: string;
+    agendar: boolean; agendado_para: string;
+    abAtivo: boolean; variantes: { key: string; texto: string; peso: number }[];
+  }>({
+    titulo: "", intencao: "", segmento: "todos",
+    agendar: false, agendado_para: "",
+    abAtivo: false, variantes: [{ key: "A", texto: "", peso: 50 }, { key: "B", texto: "", peso: 50 }],
+  });
   const [palavraNova, setPalavraNova] = useState("");
 
   useEffect(() => {
