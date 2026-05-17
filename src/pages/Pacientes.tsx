@@ -622,9 +622,30 @@ export default function Pacientes() {
 
         {/* ── Tab Content ── */}
         {activeMainTab === 'crm' && (
-          <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <GestaoVendas embedded />
-          </Suspense>
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+              {[
+                { label: 'Pipeline', icon: BarChart3, path: '/crm/pipeline', desc: 'Kanban de leads' },
+                { label: 'Inbox', icon: MessageSquare, path: '/crm/inbox', desc: 'WhatsApp' },
+                { label: 'Cadências', icon: Zap, path: '/crm/cadencias', desc: 'Follow-ups' },
+                { label: 'Métricas', icon: Activity, path: '/crm/metricas', desc: 'Conversão' },
+                { label: 'Automações', icon: Bell, path: '/crm/automacoes', desc: 'Bot & regras' },
+              ].map(item => (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className="rounded-xl border border-border/40 bg-card hover:border-primary/40 hover:shadow-sm p-3 text-left transition-all active:scale-95"
+                >
+                  <item.icon className="h-4 w-4 text-primary mb-1.5" />
+                  <div className="text-sm font-medium text-foreground">{item.label}</div>
+                  <div className="text-[11px] text-muted-foreground">{item.desc}</div>
+                </button>
+              ))}
+            </div>
+            <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+              <GestaoVendas embedded />
+            </Suspense>
+          </div>
         )}
 
         {activeMainTab === 'financeiro' && (
