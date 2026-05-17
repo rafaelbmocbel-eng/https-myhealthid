@@ -107,9 +107,9 @@ export default function Configuracoes() {
         <AusenciasManager />
 
         <div className="clinical-card mb-6">
-          <div className="flex items-center gap-2 mb-4">
+          <div className="flex items-center gap-2 mb-3">
             <Clock className="icon-sm text-muted-foreground" />
-            <h2 className="text-sm font-semibold text-foreground">Intervalo entre Sessões</h2>
+            <h2 className="h-section">Intervalo entre Sessões</h2>
           </div>
           <div className="max-w-xs">
             <Label className="text-xs font-medium mb-1.5 block">Minutos de intervalo</Label>
