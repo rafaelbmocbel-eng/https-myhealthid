@@ -143,7 +143,7 @@ const App = () => (
                 <Route path="/myid/ver/:token" element={<MyIDView />} />
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
-                <Route path="/crm" element={<Navigate to="/pacientes?tab=crm" replace />} />
+                
                 <Route path="/crm" element={<PatientGuard><CrmHub /></PatientGuard>} />
                 <Route path="/crm/inbox" element={<Navigate to="/crm?tab=inbox" replace />} />
                 <Route path="/crm/automacoes" element={<Navigate to="/crm?tab=automacoes" replace />} />
