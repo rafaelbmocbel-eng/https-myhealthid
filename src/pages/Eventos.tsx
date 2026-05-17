@@ -165,8 +165,8 @@ export default function Eventos() {
 
   return (
     <AppLayout>
-      <div className="container py-6 max-w-6xl space-y-6">
-        <div className="flex items-end justify-between gap-3 mb-5 sm:mb-6">
+      <div className="container py-4 sm:py-6 max-w-6xl space-y-4 sm:space-y-5">
+        <div className="flex items-end justify-between gap-3 mb-1">
           <div className="min-w-0">
             <div className="eyebrow-accent mb-1.5">Comunidade</div>
             <h1 className="h-page">Eventos</h1>

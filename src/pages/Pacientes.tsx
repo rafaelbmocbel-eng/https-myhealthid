@@ -539,9 +539,9 @@ export default function Pacientes() {
 
   return (
     <AppLayout>
-      <div className="container py-6 max-w-6xl">
+      <div className="container py-4 sm:py-6 max-w-6xl">
         {/* Hero — clean & airy */}
-        <div className="mb-6 sm:mb-8">
+        <div className="mb-5 sm:mb-7">
           <div className="flex items-end justify-between gap-3">
             <div className="min-w-0">
               <div className="eyebrow-accent mb-1.5">Cadastro</div>
