@@ -27,6 +27,7 @@ const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
 const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
 const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const CrmInbox = lazy(() => import("./pages/CrmInbox"));
 const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
