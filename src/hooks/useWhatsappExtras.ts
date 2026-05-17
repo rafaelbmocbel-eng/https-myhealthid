@@ -50,9 +50,9 @@ export function useWhatsappTemplates() {
   });
 
   const incrementarUso = async (id: string) => {
-    await supabase.rpc('increment' as never, {}).catch(() => null);
+    const atual = query.data?.find(t => t.id === id)?.uso_count ?? 0;
     await supabase.from('whatsapp_templates')
-      .update({ uso_count: (query.data?.find(t => t.id === id)?.uso_count ?? 0) + 1 })
+      .update({ uso_count: atual + 1 })
       .eq('id', id);
     qc.invalidateQueries({ queryKey: ['wa-templates', user?.id] });
   };
