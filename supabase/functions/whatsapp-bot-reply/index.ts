@@ -78,8 +78,27 @@ const tools = [
   {
     type: "function",
     function: {
+      name: "confirmar_proxima_sessao",
+      description: "Confirma a próxima sessão pendente do paciente. Use quando ele responder SIM/confirmo/ok/pode ser/positivo a um lembrete de agendamento.",
+      parameters: { type: "object", properties: {} },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "reagendar_proxima_sessao",
+      description: "Cancela a próxima sessão e inicia processo de reagendamento. Use quando o paciente pedir para remarcar/mudar horário/trocar dia.",
+      parameters: {
+        type: "object",
+        properties: { motivo: { type: "string" } },
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
       name: "cancelar_proxima_sessao",
-      description: "Cancela a próxima sessão agendada do paciente.",
+      description: "Cancela a próxima sessão agendada do paciente sem reagendar.",
       parameters: {
         type: "object",
         properties: { motivo: { type: "string" } },
