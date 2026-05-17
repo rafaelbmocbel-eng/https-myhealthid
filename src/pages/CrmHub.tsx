@@ -13,7 +13,7 @@ const WhatsappAutomacoes = lazy(() => import('./WhatsappAutomacoes'));
 type TabKey = 'inbox' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
-  { key: 'inbox', label: 'Inbox', icon: MessageCircle, desc: 'Conversas' },
+  { key: 'inbox', label: 'WhatsApp', icon: MessageCircle, desc: 'Conversas' },
   { key: 'pipeline', label: 'Pipeline', icon: Kanban, desc: 'Kanban' },
   { key: 'cadencias', label: 'Cadências', icon: Zap, desc: 'Follow-ups' },
   { key: 'metricas', label: 'Métricas', icon: TrendingUp, desc: 'Conversão' },

@@ -134,7 +134,7 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
                 </Link>
                 <Link to="/crm?tab=inbox">
                   <Button variant="outline" size="sm" className="gap-1.5">
-                    <MessageCircle className="icon-xs" /> Inbox
+                    <MessageCircle className="icon-xs" /> WhatsApp
                   </Button>
                 </Link>
               </div>
