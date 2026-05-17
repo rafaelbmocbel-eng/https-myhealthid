@@ -3854,6 +3854,74 @@ export type Database = {
           },
         ]
       }
+      whatsapp_notas: {
+        Row: {
+          conteudo: string
+          conversa_id: string
+          created_at: string
+          id: string
+          terapeuta_id: string
+        }
+        Insert: {
+          conteudo: string
+          conversa_id: string
+          created_at?: string
+          id?: string
+          terapeuta_id: string
+        }
+        Update: {
+          conteudo?: string
+          conversa_id?: string
+          created_at?: string
+          id?: string
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_notas_conversa_id_fkey"
+            columns: ["conversa_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_conversas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whatsapp_templates: {
+        Row: {
+          atalho: string
+          categoria: string | null
+          conteudo: string
+          created_at: string
+          id: string
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+          uso_count: number
+        }
+        Insert: {
+          atalho: string
+          categoria?: string | null
+          conteudo: string
+          created_at?: string
+          id?: string
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+          uso_count?: number
+        }
+        Update: {
+          atalho?: string
+          categoria?: string | null
+          conteudo?: string
+          created_at?: string
+          id?: string
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+          uso_count?: number
+        }
+        Relationships: []
+      }
     }
     Views: {
       eventos_publicos: {
