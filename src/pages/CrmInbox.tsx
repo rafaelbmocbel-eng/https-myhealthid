@@ -142,7 +142,20 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
           </div>
         </div>
       </div>
-    </AppLayout>
+    </Shell>
+  );
+}
+
+function Shell({ embedded, children }: { embedded: boolean; children: React.ReactNode }) {
+  if (embedded) return <>{children}</>;
+  return <AppLayout>{children}</AppLayout>;
+}
+
+function _End() {
+  return null;
+}
+
+function _unused() {
   );
 }
 
