@@ -73,15 +73,28 @@ serve(async (req: any) => {
       )
     }
 
-    // Modo SEND: envia mensagem
-    const { phone, message } = body
-    if (!phone || !message) throw new Error('Phone and message are required')
+    // Modo SEND: envia mensagem (texto, imagem ou documento)
+    const { phone, message, mediaUrl, mediaType, caption, fileName } = body
+    if (!phone) throw new Error('Phone is required')
     const cleanPhone = String(phone).replace(/\D/g, '')
 
-    const response = await fetch(`${baseUrl}/send-text`, {
+    let endpoint = 'send-text'
+    let payload: any = { phone: cleanPhone, message }
+
+    if (mediaUrl && mediaType === 'image') {
+      endpoint = 'send-image'
+      payload = { phone: cleanPhone, image: mediaUrl, caption: caption || '' }
+    } else if (mediaUrl && mediaType === 'document') {
+      endpoint = 'send-document/pdf'
+      payload = { phone: cleanPhone, document: mediaUrl, fileName: fileName || 'documento.pdf', caption: caption || '' }
+    } else if (!message) {
+      throw new Error('Message or media is required')
+    }
+
+    const response = await fetch(`${baseUrl}/${endpoint}`, {
       method: 'POST',
       headers,
-      body: JSON.stringify({ phone: cleanPhone, message }),
+      body: JSON.stringify(payload),
     })
 
     if (!response.ok) {

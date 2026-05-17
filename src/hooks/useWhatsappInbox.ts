@@ -97,7 +97,16 @@ export function useWhatsappMensagens(conversaId: string | null) {
   }, [conversaId, qc]);
 
   const enviar = useMutation({
-    mutationFn: async ({ conversa, texto }: { conversa: WAConversa; texto: string }) => {
+    mutationFn: async ({
+      conversa, texto, mediaUrl, mediaType, fileName,
+    }: {
+      conversa: WAConversa;
+      texto?: string;
+      mediaUrl?: string;
+      mediaType?: 'image' | 'document';
+      fileName?: string;
+    }) => {
+      const tipoMsg = mediaType === 'image' ? 'imagem' : mediaType === 'document' ? 'documento' : 'texto';
       // 1) registra como "enviando"
       const { data: msg, error: insErr } = await supabase
         .from('whatsapp_mensagens_inbox')
@@ -105,8 +114,9 @@ export function useWhatsappMensagens(conversaId: string | null) {
           conversa_id: conversa.id,
           terapeuta_id: user!.id,
           direcao: 'saida',
-          tipo: 'texto',
-          conteudo: texto,
+          tipo: tipoMsg,
+          conteudo: texto || null,
+          midia_url: mediaUrl || null,
           status: 'enviando',
         })
         .select('id').single();
@@ -114,7 +124,14 @@ export function useWhatsappMensagens(conversaId: string | null) {
 
       // 2) envia via Z-API
       const { error: sendErr } = await supabase.functions.invoke('send-whatsapp', {
-        body: { phone: conversa.telefone, message: texto },
+        body: {
+          phone: conversa.telefone,
+          message: texto,
+          mediaUrl,
+          mediaType,
+          caption: texto,
+          fileName,
+        },
       });
 
       // 3) atualiza status
