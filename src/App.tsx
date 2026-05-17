@@ -139,6 +139,7 @@ const App = () => (
                 <Route path="/funil/:slug" element={<FunilPublico />} />
                 <Route path="/relatorios" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/crm" element={<Navigate to="/pacientes?tab=crm" replace />} />
+                <Route path="/crm/inbox" element={<PatientGuard><CrmInbox /></PatientGuard>} />
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
