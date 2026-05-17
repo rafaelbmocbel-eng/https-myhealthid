@@ -47,21 +47,15 @@ function colunaDe(c: any): ColunaWS {
 export default function CrmInbox({ embedded = false }: { embedded?: boolean } = {}) {
   const [busca, setBusca] = useState('');
   const [filaTab, setFilaTab] = useState<FilaTab>('todas');
-  const [stageTab, setStageTab] = useState<StageTab>('todos');
+  const [coluna, setColuna] = useState<ColunaWS>('pendentes');
   const [userId, setUserId] = useState<string | null>(null);
   const [selecionada, setSelecionada] = useState<WAConversa | null>(null);
   const { data: conversas = [], isLoading } = useWhatsappConversas();
   const { data: idsGlobais = [] } = useGlobalMessageSearch(busca);
-  const { data: filtrosSalvos = [], salvar: salvarFiltro, remover: removerFiltro } = useWhatsappFiltrosSalvos();
-  const [salvarFiltroAberto, setSalvarFiltroAberto] = useState(false);
-  const [novoFiltroNome, setNovoFiltroNome] = useState('');
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
-
-  const [coluna, setColuna] = useState<ColunaWS>('pendentes');
-  const [filaTab, setFilaTab] = useState<FilaTab>('todas');
 
   // Busca + fila base
   const baseFiltradas = conversas.filter(c => {
