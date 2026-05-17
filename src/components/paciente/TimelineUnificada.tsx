@@ -53,11 +53,11 @@ export function TimelineUnificada({ pacienteId }: { pacienteId: string }) {
         const { data: convs } = await supabase.from("whatsapp_conversas")
           .select("id").eq("terapeuta_id", pac.terapeuta_id).ilike("telefone", `%${tel}%`);
         if (convs?.length) {
-          const { data: msgs } = await supabase.from("whatsapp_mensagens")
+          const { data: msgs } = await (supabase as any).from("whatsapp_mensagens_inbox")
             .select("id, conteudo, transcricao, direcao, created_at, tipo")
             .in("conversa_id", convs.map(c => c.id))
             .order("created_at", { ascending: false }).limit(50);
-          (msgs || []).forEach(m => ev.push({
+          (msgs || []).forEach((m: any) => ev.push({
             id: `msg-${m.id}`, tipo: "mensagem", data: m.created_at,
             titulo: m.direcao === "entrada" ? "Paciente enviou" : "Você respondeu",
             descricao: (m.conteudo || m.transcricao || `[${m.tipo}]`).slice(0, 200),
@@ -78,13 +78,13 @@ export function TimelineUnificada({ pacienteId }: { pacienteId: string }) {
 
       // Pagamentos
       const { data: pgs } = await supabase.from("pagamentos_paciente")
-        .select("id, valor, status, metodo, created_at, descricao")
+        .select("id, valor, status, forma_pagamento, created_at, descricao")
         .eq("paciente_id", pacienteId)
         .order("created_at", { ascending: false }).limit(30);
-      (pgs || []).forEach(p => ev.push({
+      (pgs || []).forEach((p: any) => ev.push({
         id: `pg-${p.id}`, tipo: "pagamento", data: p.created_at,
         titulo: `R$ ${Number(p.valor).toFixed(2)} · ${p.status}`,
-        descricao: `${p.metodo || ""} ${p.descricao ? "· " + p.descricao : ""}`.trim(),
+        descricao: `${p.forma_pagamento || ""} ${p.descricao ? "· " + p.descricao : ""}`.trim(),
       }));
 
       // MyID
@@ -100,13 +100,13 @@ export function TimelineUnificada({ pacienteId }: { pacienteId: string }) {
 
       // Evolução
       const { data: evos } = await supabase.from("evolucao_paciente")
-        .select("id, tipo, descricao, created_at")
+        .select("id, classificacao, observacoes, myid_score, data_registro, numero_avaliacao")
         .eq("paciente_id", pacienteId)
-        .order("created_at", { ascending: false }).limit(20);
-      (evos || []).forEach(e => ev.push({
-        id: `ev-${e.id}`, tipo: "evolucao", data: e.created_at,
-        titulo: e.tipo || "Evolução",
-        descricao: e.descricao?.slice(0, 200),
+        .order("data_registro", { ascending: false }).limit(20);
+      (evos || []).forEach((e: any) => ev.push({
+        id: `ev-${e.id}`, tipo: "evolucao", data: e.data_registro,
+        titulo: `Avaliação #${e.numero_avaliacao || "?"}${e.myid_score ? ` · MyID ${Math.round(e.myid_score)}` : ""}`,
+        descricao: e.classificacao || e.observacoes?.slice(0, 200),
       }));
 
       ev.sort((a, b) => new Date(b.data).getTime() - new Date(a.data).getTime());

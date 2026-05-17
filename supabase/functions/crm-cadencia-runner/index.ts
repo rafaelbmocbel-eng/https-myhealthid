@@ -73,12 +73,13 @@ Deno.serve(async (req) => {
           status: "enviado", enviado_em: new Date().toISOString(),
         }).eq("id", exec.id);
         // Registra mensagem na thread
-        await admin.from("whatsapp_mensagens").insert({
+        await admin.from("whatsapp_mensagens_inbox").insert({
           conversa_id: exec.conversa_id,
           terapeuta_id: exec.terapeuta_id,
           direcao: "saida",
           conteudo: msg,
           tipo: "texto",
+          status: "enviada",
           metadata: { origem: "cadencia", cadencia_id: exec.cadencia_id, passo_ordem: passo.ordem },
         });
         enviados++;
