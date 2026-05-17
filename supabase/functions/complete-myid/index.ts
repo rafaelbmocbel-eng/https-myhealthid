@@ -40,7 +40,7 @@ serve(async (req) => {
     let pacienteId: string | null = null;
     let terapeutaId: string | null = null;
 
-    // Path A: via myid_avaliacoes
+    // Path A: via myid_avaliacoes (requires token match OR therapist auth)
     if (avaliacao_id) {
       const { data: avaliacao, error: fetchErr } = await supabase
         .from("myid_avaliacoes")
@@ -51,6 +51,14 @@ serve(async (req) => {
       if (fetchErr || !avaliacao) {
         return new Response(JSON.stringify({ error: "Avaliação não encontrada" }), {
           status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const tokenMatch = token_acesso && avaliacao.token_acesso === token_acesso;
+      const therapistMatch = authorizedUserId && authorizedUserId === avaliacao.terapeuta_id;
+      if (!tokenMatch && !therapistMatch) {
+        return new Response(JSON.stringify({ error: "Unauthorized" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
 
@@ -65,18 +73,21 @@ serve(async (req) => {
       terapeutaId = avaliacao.terapeuta_id;
     }
 
-    // Path B: via links_avaliacao
+    // Path B: via links_avaliacao (must be active + not expired)
     if (!pacienteId && link_avaliacao_id) {
       const { data: link } = await supabase
         .from("links_avaliacao")
-        .select("paciente_id, terapeuta_id")
+        .select("paciente_id, terapeuta_id, status, data_expiracao")
         .eq("id", link_avaliacao_id)
         .single();
 
-      if (link) {
-        pacienteId = link.paciente_id;
-        terapeutaId = link.terapeuta_id;
+      if (!link || link.status !== "ativo" || (link.data_expiracao && new Date(link.data_expiracao) < new Date())) {
+        return new Response(JSON.stringify({ error: "Link inválido ou expirado" }), {
+          status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
       }
+      pacienteId = link.paciente_id;
+      terapeutaId = link.terapeuta_id;
     }
 
     if (!pacienteId || !terapeutaId) {
