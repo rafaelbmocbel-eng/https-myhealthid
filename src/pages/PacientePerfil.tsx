@@ -521,7 +521,7 @@ export default function PacientePerfil() {
             className="absolute inset-x-0 top-0 h-24 sm:h-28 opacity-90"
             style={{
               background:
-                'linear-gradient(135deg, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.05) 50%, hsl(40 95% 52% / 0.12) 100%)',
+                'linear-gradient(135deg, hsl(var(--primary) / 0.18) 0%, hsl(var(--primary) / 0.05) 50%, hsl(190 85% 50% / 0.12) 100%)',
             }}
           />
           <div

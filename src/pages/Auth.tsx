@@ -60,14 +60,14 @@ export default function Auth() {
         <div className="flex items-center gap-3">
           <LogoIcon size={44} />
           <div>
-            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></div>
+            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span></div>
             <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
           </div>
         </div>
         <div>
           <h2 className="text-4xl font-black text-white leading-tight mb-4">
             Sua identidade<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>clínica digital</span>
+            <span style={{ color: 'hsl(190 85% 50%)' }}>clínica digital</span>
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-md">
             Avaliação multidimensional da dor, protocolos baseados em evidências, escoliose integrada e agenda inteligente — tudo em uma plataforma.
@@ -131,7 +131,7 @@ export default function Auth() {
               <div className="flex items-center justify-between">
                 <Label htmlFor="password">Senha</Label>
                 {tab === 'login' && (
-                  <Link to="/recuperar-senha" className="text-xs font-semibold hover:underline" style={{ color: 'hsl(40 95% 52%)' }}>
+                  <Link to="/recuperar-senha" className="text-xs font-semibold hover:underline" style={{ color: 'hsl(190 85% 50%)' }}>
                     Esqueci minha senha?
                   </Link>
                 )}
@@ -150,7 +150,7 @@ export default function Auth() {
 
           <p className="text-center text-xs text-muted-foreground mt-6">
             {tab === 'login' ? 'Não tem conta?' : 'Já tem conta?'}{' '}
-            <button onClick={() => setTab(tab === 'login' ? 'register' : 'login')} className="font-semibold hover:underline" style={{ color: 'hsl(40 95% 52%)' }}>
+            <button onClick={() => setTab(tab === 'login' ? 'register' : 'login')} className="font-semibold hover:underline" style={{ color: 'hsl(190 85% 50%)' }}>
               {tab === 'login' ? 'Cadastrar' : 'Entrar'}
             </button>
           </p>

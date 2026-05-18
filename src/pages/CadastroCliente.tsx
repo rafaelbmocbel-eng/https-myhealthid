@@ -88,7 +88,7 @@ export default function CadastroCliente() {
           <LogoIcon size={44} />
           <div>
             <div className="text-sm font-black text-white tracking-wide">
-              My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
+              My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span>
             </div>
             <div className="text-xs text-white/50">Portal do Paciente</div>
           </div>
@@ -96,7 +96,7 @@ export default function CadastroCliente() {
         <div>
           <h2 className="text-3xl lg:text-4xl font-black text-white leading-tight mb-4">
             Comece sua jornada de<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>saúde integrada</span>
+            <span style={{ color: 'hsl(190 85% 50%)' }}>saúde integrada</span>
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-md">
             Cadastre-se para acessar seu portal personalizado com evolução, exercícios guiados, agenda interativa e muito mais.
@@ -192,7 +192,7 @@ export default function CadastroCliente() {
             <button
               onClick={() => navigate('/paciente/login')}
               className="font-semibold hover:underline"
-              style={{ color: 'hsl(40 95% 52%)' }}
+              style={{ color: 'hsl(190 85% 50%)' }}
             >
               Entrar
             </button>
