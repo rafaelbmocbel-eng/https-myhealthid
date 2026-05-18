@@ -19,7 +19,7 @@ import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
-  Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
+  Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
