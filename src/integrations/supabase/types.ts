@@ -2592,6 +2592,48 @@ export type Database = {
           },
         ]
       }
+      pagamentos_paciente_auditoria: {
+        Row: {
+          acao: string
+          ator_user_id: string | null
+          campos_alterados: string[] | null
+          created_at: string
+          dados_antigos: Json | null
+          dados_novos: Json | null
+          id: string
+          origem: string
+          paciente_id: string | null
+          pagamento_id: string
+          terapeuta_id: string | null
+        }
+        Insert: {
+          acao: string
+          ator_user_id?: string | null
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_antigos?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          origem: string
+          paciente_id?: string | null
+          pagamento_id: string
+          terapeuta_id?: string | null
+        }
+        Update: {
+          acao?: string
+          ator_user_id?: string | null
+          campos_alterados?: string[] | null
+          created_at?: string
+          dados_antigos?: Json | null
+          dados_novos?: Json | null
+          id?: string
+          origem?: string
+          paciente_id?: string | null
+          pagamento_id?: string
+          terapeuta_id?: string | null
+        }
+        Relationships: []
+      }
       pesquisas_nps: {
         Row: {
           comentario: string | null
