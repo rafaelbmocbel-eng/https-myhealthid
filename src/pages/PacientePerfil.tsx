@@ -548,6 +548,22 @@ export default function PacientePerfil() {
                       variant="outline"
                       size="sm"
                       className="h-8 gap-1.5 bg-background/80 backdrop-blur"
+                      onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
+                    >
+                      <CalendarPlus className="icon-sm text-primary" />
+                      <span className="text-xs font-semibold hidden sm:inline">Agendar</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Novo agendamento para este paciente
+                  </TooltipContent>
+                </Tooltip>
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 bg-background/80 backdrop-blur"
                       onClick={() => setDocsModalOpen(true)}
                     >
                       <FileText className="icon-sm text-primary" />
