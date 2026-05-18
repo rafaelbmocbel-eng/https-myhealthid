@@ -546,7 +546,14 @@ export default function Index() {
                 const inicio = parseISO(ag.data_inicio);
                 const isPast = inicio < new Date();
                 return (
-                  <div key={ag.id} className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors ${isPast ? 'opacity-50' : 'hover:bg-muted/50'}`}>
+                  <div
+                    key={ag.id}
+                    role={ag.pacientes?.id ? 'button' : undefined}
+                    tabIndex={ag.pacientes?.id ? 0 : undefined}
+                    onClick={() => ag.pacientes?.id && navigate(`/pacientes/${ag.pacientes.id}`)}
+                    onKeyDown={(e) => { if (ag.pacientes?.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/pacientes/${ag.pacientes.id}`); } }}
+                    className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors ${isPast ? 'opacity-50' : ''} ${ag.pacientes?.id ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                  >
                     <div className="text-sm font-mono font-semibold text-foreground w-12 shrink-0 tabular-nums">
                       {format(inicio, 'HH:mm')}
                     </div>
