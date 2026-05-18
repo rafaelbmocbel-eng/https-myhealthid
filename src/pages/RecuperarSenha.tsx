@@ -61,9 +61,8 @@ export default function RecuperarSenha() {
       {/* Right panel – form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <LogoIcon size={34} />
-            <span className="font-black text-sm text-foreground">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></span>
+          <div className="mb-8 lg:hidden flex justify-center">
+            <img src={logoFull} alt="My Health ID" className="h-14 w-auto" />
           </div>
 
           <Link to="/auth" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground mb-4">
