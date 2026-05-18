@@ -4495,14 +4495,6 @@ export type Database = {
       }
     }
     Functions: {
-      _security_test_pagamentos: {
-        Args: never
-        Returns: {
-          caso: string
-          detalhe: string
-          resultado: string
-        }[]
-      }
       count_evento_inscricoes: {
         Args: { p_evento_id: string }
         Returns: number
