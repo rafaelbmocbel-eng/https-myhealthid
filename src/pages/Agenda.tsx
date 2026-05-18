@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
