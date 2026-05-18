@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
+import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function CadastroCliente() {
   const { slug } = useParams<{ slug: string }>();
@@ -118,17 +119,8 @@ export default function CadastroCliente() {
       </div>
 
       {/* Mobile header */}
-      <div
-        className="md:hidden w-full py-4 px-4 flex items-center gap-3 shrink-0"
-        style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 12%) 100%)' }}
-      >
-        <LogoIcon size={32} />
-        <div>
-          <div className="text-sm font-black text-white tracking-wide">
-            My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
-          </div>
-          <div className="text-[10px] text-white/50">Cadastro de Cliente</div>
-        </div>
+      <div className="md:hidden w-full py-4 px-4 flex items-center justify-center shrink-0 bg-white border-b border-border/40">
+        <img src={logoFull} alt="My Health ID" className="h-10 w-auto" />
       </div>
 
       {/* Form panel */}

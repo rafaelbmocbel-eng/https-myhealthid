@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Sparkles, Fingerprint, CheckCircle2 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
+import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function WellnessCadastro() {
   const navigate = useNavigate();
@@ -94,8 +95,8 @@ export default function WellnessCadastro() {
         <div className="w-full max-w-md space-y-6">
           {/* Hero */}
           <div className="text-center space-y-3">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-primary/10">
-              <LogoIcon className="h-8 w-8" />
+            <div className="flex justify-center">
+              <img src={logoFull} alt="My Health ID" className="h-14 w-auto" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground">Descubra seu MyID</h1>
