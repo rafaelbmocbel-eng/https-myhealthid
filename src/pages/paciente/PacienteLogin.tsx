@@ -352,8 +352,8 @@ export default function PacienteLogin() {
       </div>
 
       {/* ============ Mobile header ============ */}
-      <div className="md:hidden relative w-full py-5 px-4 flex items-center justify-center shrink-0 bg-white border-b border-border/40">
-        <img src={logoFull} alt="My Health ID — Portal do Paciente" className="h-12 w-auto" />
+      <div className="md:hidden relative w-full py-4 px-4 shrink-0 bg-white border-b border-border/40">
+        <img src={logoFull} alt="My Health ID — Portal do Paciente" className="w-full h-auto max-h-36 object-contain" />
       </div>
 
       {/* ============ Right panel — Form ============ */}
