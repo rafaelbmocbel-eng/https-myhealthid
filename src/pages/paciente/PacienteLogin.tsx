@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, Heart, Activity, Calendar, Dumbbell, LineChart, ShieldCheck, Sparkles, Lock, Mail, User as UserIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
+import logoFull from '@/assets/logo-myhealthid-full.webp';
 import { withAuthLockRetry } from '@/lib/authLock';
 
 export default function PacienteLogin() {
