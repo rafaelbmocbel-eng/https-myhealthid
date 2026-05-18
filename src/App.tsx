@@ -176,6 +176,9 @@ const App = () => (
                 {/* Wellness public signup (freemium) */}
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
 
+                {/* Preview público do dashboard (mock, sem auth) */}
+                <Route path="/preview/dashboard" element={<DashboardPreview />} />
+
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </Suspense>
