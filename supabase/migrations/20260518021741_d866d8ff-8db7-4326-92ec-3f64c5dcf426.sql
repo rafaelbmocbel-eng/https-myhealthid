@@ -1,0 +1,1 @@
+DROP FUNCTION IF EXISTS public._security_test_pagamentos();
