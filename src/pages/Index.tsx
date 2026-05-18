@@ -48,7 +48,7 @@ export default function Index() {
     queryFn: async () => {
       const today = new Date();
       const { data } = await supabase.from('agendamentos')
-        .select('*, pacientes(nome, sobrenome)')
+        .select('*, pacientes(id, nome, sobrenome)')
         .eq('terapeuta_id', user!.id)
         .gte('data_inicio', startOfDay(today).toISOString())
         .lte('data_inicio', endOfDay(today).toISOString())
