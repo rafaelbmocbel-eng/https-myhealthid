@@ -95,8 +95,8 @@ export default function WellnessCadastro() {
         <div className="w-full max-w-md space-y-6">
           {/* Hero */}
           <div className="text-center space-y-3">
-            <div className="flex justify-center">
-              <img src={logoFull} alt="My Health ID" className="h-14 w-auto" />
+            <div>
+              <img src={logoFull} alt="My Health ID" className="w-full h-auto max-h-40 object-contain" />
             </div>
             <div>
               <h1 className="text-2xl font-black text-foreground">Descubra seu MyID</h1>
