@@ -103,7 +103,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
                 background: 'linear-gradient(135deg, hsl(190 85% 50%), hsl(210 80% 40%))',
                 color: 'hsl(213 55% 14%)',
                 fontWeight: 700,
-                boxShadow: '0 4px 16px hsl(40 95% 52% / 0.4)',
+                boxShadow: '0 4px 16px hsl(190 85% 50% / 0.4)',
               } : {}}
             >
               <Icon className={cn('shrink-0', collapsed ? 'h-5 w-5' : 'h-4 w-4')} />
