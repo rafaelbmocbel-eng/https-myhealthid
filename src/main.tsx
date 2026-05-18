@@ -65,7 +65,14 @@ window.addEventListener("unhandledrejection", (event) => {
       : typeof event.reason === "string"
         ? event.reason
         : "";
-  if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message)) return;
+  if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message) && !STALE_CHUNK_ERROR_PATTERN.test(message)) return;
+  event.preventDefault();
+  reloadOnDynamicImportFailure();
+});
+
+window.addEventListener("error", (event) => {
+  const message = event.error instanceof Error ? event.error.message : event.message || "";
+  if (!STALE_CHUNK_ERROR_PATTERN.test(message)) return;
   event.preventDefault();
   reloadOnDynamicImportFailure();
 });
