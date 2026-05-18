@@ -18,7 +18,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useToast } from '@/hooks/use-toast';
 import {
   Users, Plus, Search, Phone, Mail, Calendar, Edit2, Trash2,
-  Loader2, User, Activity, AlignCenter, CalendarDays, Link2, Copy, RefreshCw,
+  Loader2, User, Activity, AlignCenter, CalendarDays, CalendarPlus, Link2, Copy, RefreshCw,
   ArrowUpDown, MessageCircle, ClipboardList, Clock, FileText, Zap, Send, UserPlus, Download, BarChart3,
   DollarSign, MessageSquare, MoreHorizontal, Bell,
 } from 'lucide-react';
@@ -756,6 +756,9 @@ export default function Pacientes() {
                         <DropdownMenuContent align="end" className="w-44">
                           <DropdownMenuItem onClick={() => navigate(`/pacientes/${p.id}`)}>
                             <User className="icon-sm mr-2" /> Abrir perfil
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/agenda?novo=1&paciente=${p.id}`)}>
+                            <CalendarPlus className="icon-sm mr-2" /> Agendar sessão
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(p)}>
                             <Edit2 className="icon-sm mr-2" /> Editar dados

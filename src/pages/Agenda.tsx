@@ -25,7 +25,7 @@ import { Textarea } from '@/components/ui/textarea';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, Agendamento, Paciente } from '@/hooks/useAgenda';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useSearchParams } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { supabase } from '@/integrations/supabase/client';
@@ -612,6 +612,26 @@ export default function Agenda() {
     });
     setModal({ open: true });
   };
+
+  // Pré-preenche modal quando vindo de outro módulo: /agenda?novo=1&paciente=<id>
+  const [searchParams, setSearchParams] = useSearchParams();
+  const prefillHandledRef = useRef(false);
+  useEffect(() => {
+    if (prefillHandledRef.current) return;
+    if (loading) return;
+    if (searchParams.get('novo') !== '1') return;
+    const pacienteId = searchParams.get('paciente') || '';
+    prefillHandledRef.current = true;
+    openNew(new Date());
+    if (pacienteId) {
+      setForm(f => ({ ...f, paciente_id: pacienteId }));
+    }
+    // limpa params para não reabrir
+    const next = new URLSearchParams(searchParams);
+    next.delete('novo');
+    next.delete('paciente');
+    setSearchParams(next, { replace: true });
+  }, [loading, searchParams, setSearchParams]);
 
   const openEdit = (ag: Agendamento) => {
     setForm({

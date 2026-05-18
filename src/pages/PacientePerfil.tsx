@@ -19,7 +19,7 @@ import {
   ArrowLeft, User, Mail, Phone, Calendar, FileText, Activity,
   CalendarDays, Link2, Copy, Loader2, Clock, MessageCircle,
   TrendingUp, AlignCenter, ExternalLink, ClipboardList, BarChart3, ChevronRight,
-  Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints,
+  Plus, Trash2, Edit, Dumbbell, AlertTriangle, Droplets, Footprints, CalendarPlus,
   BedDouble, Cigarette, Wine, Armchair, Shield, Heart, Sparkles, Stethoscope, DollarSign, Package, Target, LayoutDashboard, Smartphone,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays, isBefore, isAfter, startOfToday, formatDistanceToNow } from 'date-fns';
@@ -542,6 +542,22 @@ export default function PacientePerfil() {
                 <span className="text-xs font-medium hidden sm:inline">Pacientes</span>
               </Button>
               <div className="flex items-center gap-1">
+                <Tooltip delayDuration={0}>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-8 gap-1.5 bg-background/80 backdrop-blur"
+                      onClick={() => navigate(`/agenda?novo=1&paciente=${id}`)}
+                    >
+                      <CalendarPlus className="icon-sm text-primary" />
+                      <span className="text-xs font-semibold hidden sm:inline">Agendar</span>
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom" className="text-xs">
+                    Novo agendamento para este paciente
+                  </TooltipContent>
+                </Tooltip>
                 <Tooltip delayDuration={0}>
                   <TooltipTrigger asChild>
                     <Button
