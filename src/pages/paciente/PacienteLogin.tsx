@@ -352,21 +352,8 @@ export default function PacienteLogin() {
       </div>
 
       {/* ============ Mobile header ============ */}
-      <div
-        className="md:hidden relative w-full py-5 px-4 flex items-center gap-3 shrink-0 overflow-hidden"
-        style={{ background: 'linear-gradient(135deg, hsl(213 55% 18%) 0%, hsl(213 55% 10%) 100%)' }}
-      >
-        <div
-          className="pointer-events-none absolute -top-10 -right-10 w-40 h-40 rounded-full opacity-30 blur-2xl"
-          style={{ background: 'radial-gradient(circle, hsl(40 95% 52% / 0.5), transparent 70%)' }}
-        />
-        <LogoIcon size={36} />
-        <div className="relative">
-          <div className="text-sm font-black text-white tracking-wide">
-            My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
-          </div>
-          <div className="text-[10px] text-white/50">Portal do Paciente</div>
-        </div>
+      <div className="md:hidden relative w-full py-5 px-4 flex items-center justify-center shrink-0 bg-white border-b border-border/40">
+        <img src={logoFull} alt="My Health ID — Portal do Paciente" className="h-12 w-auto" />
       </div>
 
       {/* ============ Right panel — Form ============ */}
