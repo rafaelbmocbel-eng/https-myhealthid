@@ -301,7 +301,7 @@ export default function PacienteLogin() {
           <LogoIcon size={44} />
           <div>
             <div className="text-sm font-black text-white tracking-wide">
-              My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span>
+              My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span>
             </div>
             <div className="text-xs text-white/50">Portal do Paciente</div>
           </div>
@@ -309,12 +309,12 @@ export default function PacienteLogin() {
 
         <div className="relative">
           <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur border border-white/10 mb-5">
-            <Sparkles className="h-3 w-3" style={{ color: 'hsl(40 95% 62%)' }} />
+            <Sparkles className="h-3 w-3" style={{ color: 'hsl(190 85% 60%)' }} />
             <span className="text-[11px] font-semibold text-white/80">Sua jornada de saúde, integrada</span>
           </div>
           <h2 className="text-3xl lg:text-4xl font-black text-white leading-[1.1] mb-4">
             Um portal feito<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>para você</span> evoluir
+            <span style={{ color: 'hsl(190 85% 50%)' }}>para você</span> evoluir
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-md mb-8">
             Acompanhe sua evolução, acesse exercícios personalizados, registre seu diário e
@@ -331,7 +331,7 @@ export default function PacienteLogin() {
                   className="shrink-0 w-8 h-8 rounded-lg flex items-center justify-center"
                   style={{ background: 'hsl(40 95% 52% / 0.15)' }}
                 >
-                  <f.icon className="h-4 w-4" style={{ color: 'hsl(40 95% 62%)' }} />
+                  <f.icon className="h-4 w-4" style={{ color: 'hsl(190 85% 60%)' }} />
                 </div>
                 <div className="min-w-0">
                   <div className="text-xs font-bold text-white">{f.label}</div>

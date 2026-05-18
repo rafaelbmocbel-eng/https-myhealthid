@@ -67,7 +67,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
               <div className="text-sm font-black leading-tight text-white tracking-widest uppercase">
                 My Health
               </div>
-              <div className="text-xs font-black leading-none tracking-wide" style={{ color: 'hsl(40 95% 52%)' }}>
+              <div className="text-xs font-black leading-none tracking-wide" style={{ color: 'hsl(190 85% 50%)' }}>
                 ID
               </div>
             </div>
@@ -100,7 +100,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
                   : 'text-white/60 hover:text-white hover:bg-white/10',
               )}
               style={active ? {
-                background: 'linear-gradient(135deg, hsl(40 95% 52%), hsl(35 90% 45%))',
+                background: 'linear-gradient(135deg, hsl(190 85% 50%), hsl(210 80% 40%))',
                 color: 'hsl(213 55% 14%)',
                 fontWeight: 700,
                 boxShadow: '0 4px 16px hsl(40 95% 52% / 0.4)',
@@ -147,7 +147,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
               <div className="flex items-center gap-3 px-4 py-3 rounded-xl bg-white/10 mb-1">
                 <div
                   className="h-8 w-8 rounded-lg flex items-center justify-center shrink-0"
-                  style={{ background: 'linear-gradient(135deg, hsl(40 95% 52%), hsl(35 90% 45%))' }}
+                  style={{ background: 'linear-gradient(135deg, hsl(190 85% 50%), hsl(210 80% 40%))' }}
                 >
                   <User className="h-4 w-4" style={{ color: 'hsl(213 55% 14%)' }} />
                 </div>

@@ -42,14 +42,14 @@ export default function RecuperarSenha() {
         <div className="flex items-center gap-3">
           <LogoIcon size={44} />
           <div>
-            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></div>
+            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span></div>
             <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
           </div>
         </div>
         <div>
           <h2 className="text-4xl font-black text-white leading-tight mb-4">
             Recupere o acesso<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>à sua conta</span>
+            <span style={{ color: 'hsl(190 85% 50%)' }}>à sua conta</span>
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-md">
             Enviaremos um link seguro para o seu e-mail. Basta clicar no link para criar uma nova senha.

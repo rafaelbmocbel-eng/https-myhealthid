@@ -138,14 +138,14 @@ export default function NovaSenha() {
         <div className="flex items-center gap-3">
           <LogoIcon size={44} />
           <div>
-            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></div>
+            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span></div>
             <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
           </div>
         </div>
         <div>
           <h2 className="text-4xl font-black text-white leading-tight mb-4">
             Nova senha<br />
-            <span style={{ color: 'hsl(40 95% 52%)' }}>com segurança</span>
+            <span style={{ color: 'hsl(190 85% 50%)' }}>com segurança</span>
           </h2>
           <p className="text-white/60 text-sm leading-relaxed max-w-md">
             Escolha uma senha forte e única para proteger sua conta na plataforma.
@@ -159,7 +159,7 @@ export default function NovaSenha() {
         <div className="w-full max-w-md">
           <div className="flex items-center gap-2 mb-8 lg:hidden">
             <LogoIcon size={34} />
-            <span className="font-black text-sm text-foreground">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></span>
+            <span className="font-black text-sm text-foreground">My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span></span>
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-1">Criar nova senha</h1>
