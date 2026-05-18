@@ -119,8 +119,8 @@ export default function CadastroCliente() {
       </div>
 
       {/* Mobile header */}
-      <div className="md:hidden w-full py-4 px-4 flex items-center justify-center shrink-0 bg-white border-b border-border/40">
-        <img src={logoFull} alt="My Health ID" className="h-10 w-auto" />
+      <div className="md:hidden w-full py-4 px-4 shrink-0 bg-white border-b border-border/40">
+        <img src={logoFull} alt="My Health ID" className="w-full h-auto max-h-36 object-contain" />
       </div>
 
       {/* Form panel */}
