@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
+import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
@@ -91,9 +92,8 @@ export default function Auth() {
       {/* Right panel – form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="flex items-center gap-2 mb-8 lg:hidden">
-            <LogoIcon size={34} />
-            <span className="font-black text-sm text-foreground">My Health <span style={{ color: 'hsl(40 95% 52%)' }}>ID</span></span>
+          <div className="mb-8 lg:hidden flex justify-center">
+            <img src={logoFull} alt="My Health ID" className="h-14 w-auto" />
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-1">
