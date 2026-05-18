@@ -19,6 +19,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
 const MyIDView = lazy(() => import("./pages/MyIDView"));
 const CobZero = lazy(() => import("./pages/CobZero"));
+const DashboardPreview = lazy(() => import("./pages/DashboardPreview"));
 
 const Agenda = lazy(() => import("./pages/Agenda"));
 const Pacientes = lazy(() => import("./pages/Pacientes"));
