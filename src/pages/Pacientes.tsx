@@ -757,6 +757,9 @@ export default function Pacientes() {
                           <DropdownMenuItem onClick={() => navigate(`/pacientes/${p.id}`)}>
                             <User className="icon-sm mr-2" /> Abrir perfil
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate(`/agenda?novo=1&paciente=${p.id}`)}>
+                            <CalendarPlus className="icon-sm mr-2" /> Agendar sessão
+                          </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openEdit(p)}>
                             <Edit2 className="icon-sm mr-2" /> Editar dados
                           </DropdownMenuItem>
