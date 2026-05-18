@@ -9,6 +9,7 @@ import { Eye, EyeOff, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Link } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
+import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function Auth() {
   const { user, signIn, signUp, loading } = useAuth();
