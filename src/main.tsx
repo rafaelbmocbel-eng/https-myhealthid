@@ -31,6 +31,8 @@ if (!isSafeForSW && "serviceWorker" in navigator) {
 // This prevents the "app reinicia ao reabrir" issue on mobile, where the OS
 // suspends the tab, chunks expire, and an automatic reload kills user state.
 const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
+const STALE_CHUNK_ERROR_PATTERN =
+  /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object \(evaluating '.*\.default'\)/i;
 const DYNAMIC_IMPORT_ERROR_PATTERN =
   /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
 
