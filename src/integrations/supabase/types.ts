@@ -533,6 +533,7 @@ export type Database = {
           id: string
           paciente_id: string | null
           paciente_nome: string | null
+          perfil_profissional: Database["public"]["Enums"]["perfil_profissional"]
           queixa_principal: string | null
           resultado: Json
           servico: string
@@ -546,6 +547,7 @@ export type Database = {
           id?: string
           paciente_id?: string | null
           paciente_nome?: string | null
+          perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
           queixa_principal?: string | null
           resultado: Json
           servico: string
@@ -559,6 +561,7 @@ export type Database = {
           id?: string
           paciente_id?: string | null
           paciente_nome?: string | null
+          perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
           queixa_principal?: string | null
           resultado?: Json
           servico?: string
@@ -750,6 +753,9 @@ export type Database = {
           created_at: string
           id: string
           papel: Database["public"]["Enums"]["clinica_papel"]
+          perfil_profissional:
+            | Database["public"]["Enums"]["perfil_profissional"]
+            | null
           status: Database["public"]["Enums"]["clinica_membro_status"]
           updated_at: string
           user_id: string
@@ -762,6 +768,9 @@ export type Database = {
           created_at?: string
           id?: string
           papel?: Database["public"]["Enums"]["clinica_papel"]
+          perfil_profissional?:
+            | Database["public"]["Enums"]["perfil_profissional"]
+            | null
           status?: Database["public"]["Enums"]["clinica_membro_status"]
           updated_at?: string
           user_id: string
@@ -774,6 +783,9 @@ export type Database = {
           created_at?: string
           id?: string
           papel?: Database["public"]["Enums"]["clinica_papel"]
+          perfil_profissional?:
+            | Database["public"]["Enums"]["perfil_profissional"]
+            | null
           status?: Database["public"]["Enums"]["clinica_membro_status"]
           updated_at?: string
           user_id?: string
@@ -2634,6 +2646,42 @@ export type Database = {
         }
         Relationships: []
       }
+      perfis_profissionais: {
+        Row: {
+          blocos_ativos: Json
+          created_at: string
+          descricao: string | null
+          id: Database["public"]["Enums"]["perfil_profissional"]
+          nome_exibicao: string
+          prompt_sistema: string
+          schema_saida: Json
+          template_evolucao: string | null
+          updated_at: string
+        }
+        Insert: {
+          blocos_ativos?: Json
+          created_at?: string
+          descricao?: string | null
+          id: Database["public"]["Enums"]["perfil_profissional"]
+          nome_exibicao: string
+          prompt_sistema: string
+          schema_saida?: Json
+          template_evolucao?: string | null
+          updated_at?: string
+        }
+        Update: {
+          blocos_ativos?: Json
+          created_at?: string
+          descricao?: string | null
+          id?: Database["public"]["Enums"]["perfil_profissional"]
+          nome_exibicao?: string
+          prompt_sistema?: string
+          schema_saida?: Json
+          template_evolucao?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       pesquisas_nps: {
         Row: {
           comentario: string | null
@@ -2834,6 +2882,7 @@ export type Database = {
           especialidade: string | null
           id: string
           nome: string
+          perfil_profissional: Database["public"]["Enums"]["perfil_profissional"]
           sobrenome: string
           telefone: string | null
           updated_at: string
@@ -2848,6 +2897,7 @@ export type Database = {
           especialidade?: string | null
           id?: string
           nome?: string
+          perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
           sobrenome?: string
           telefone?: string | null
           updated_at?: string
@@ -2862,6 +2912,7 @@ export type Database = {
           especialidade?: string | null
           id?: string
           nome?: string
+          perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
           sobrenome?: string
           telefone?: string | null
           updated_at?: string
@@ -4797,6 +4848,13 @@ export type Database = {
         | "agendado"
         | "fechado"
         | "perdido"
+      perfil_profissional:
+        | "fisioterapeuta"
+        | "medico"
+        | "psicologo"
+        | "nutricionista"
+        | "educador_fisico"
+        | "terapeuta_ocupacional"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4932,6 +4990,14 @@ export const Constants = {
         "agendado",
         "fechado",
         "perdido",
+      ],
+      perfil_profissional: [
+        "fisioterapeuta",
+        "medico",
+        "psicologo",
+        "nutricionista",
+        "educador_fisico",
+        "terapeuta_ocupacional",
       ],
     },
   },
