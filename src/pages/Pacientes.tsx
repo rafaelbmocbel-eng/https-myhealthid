@@ -200,6 +200,13 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<string[]>([]);
+  const pinRecent = (id: string) => {
+    setRecentlyAddedIds(prev => (prev.includes(id) ? prev : [id, ...prev]));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => prev.filter(x => x !== id));
+    }, 30000);
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMainTab = (searchParams.get('tab') as MainTab) || 'clientes';
   const setActiveMainTab = (tab: MainTab) => {
@@ -438,6 +445,7 @@ export default function Pacientes() {
         const { data, error } = await supabase.from('pacientes').insert(payload).select().single();
         if (error) throw error;
         pacienteId = data.id;
+        pinRecent(data.id);
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
@@ -515,6 +523,13 @@ export default function Pacientes() {
       return true;
     });
     return [...list].sort((a, b) => {
+      const aRecent = recentlyAddedIds.indexOf(a.id);
+      const bRecent = recentlyAddedIds.indexOf(b.id);
+      if (aRecent !== -1 || bRecent !== -1) {
+        if (aRecent === -1) return 1;
+        if (bRecent === -1) return -1;
+        return aRecent - bRecent;
+      }
       if (sortBy === 'nome') return a.nome.localeCompare(b.nome);
       if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'ultimo_agendamento') {
@@ -524,7 +539,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao]);
+  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
