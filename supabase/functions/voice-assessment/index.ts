@@ -293,9 +293,35 @@ serve(async (req) => {
 
   try {
     try { await requireUser(req); } catch (r) { return r as Response; }
-    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl } = await req.json();
+    const { transcript, audioBase64, audioMimeType, serviceType, patientName, patientAge, patientSex, signedUrl, perfilProfissional } = await req.json();
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    // ── Carrega lente profissional (se fornecida) para trocar o system prompt ──
+    let activeSystemPrompt = MULTIDISCIPLINARY_SYSTEM_PROMPT;
+    if (perfilProfissional && perfilProfissional !== 'fisioterapeuta') {
+      try {
+        const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
+        const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (SUPABASE_URL && SERVICE_KEY) {
+          const r = await fetch(
+            `${SUPABASE_URL}/rest/v1/perfis_profissionais?id=eq.${perfilProfissional}&select=prompt_sistema`,
+            { headers: { apikey: SERVICE_KEY, Authorization: `Bearer ${SERVICE_KEY}` } }
+          );
+          if (r.ok) {
+            const rows = await r.json();
+            const lentePrompt = rows?.[0]?.prompt_sistema;
+            if (lentePrompt && lentePrompt !== 'LENTE_FISIO') {
+              // Mantém a definição estrutural do schema (SOAP, CIF, diretriz) mas troca o foco clínico.
+              activeSystemPrompt = `${lentePrompt}\n\nMantenha a estrutura SOAP, classifique severidade, sinalize red flags, e popule a função estruturada (campos não pertinentes à sua profissão podem ficar vazios ou genéricos, mas NUNCA invente dados).`;
+              console.log(`[voice-assessment] Lente ativa: ${perfilProfissional}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[voice-assessment] Falha ao carregar lente, usando default:", e);
+      }
+    }
 
     let audioBase64ToUse = audioBase64;
     let audioMimeTypeToUse = audioMimeType;
@@ -445,7 +471,7 @@ serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: MULTIDISCIPLINARY_SYSTEM_PROMPT },
+          { role: "system", content: activeSystemPrompt },
           { role: "user", content: userContent },
         ],
         tools: [TOOL_SCHEMA],
