@@ -41,6 +41,8 @@ interface VoiceAssessmentProps {
   painMap?: Record<string, number>;
   /** Optional MyID context summary for prontuário note */
   myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
+  /** Lente profissional ativa — define prompt da IA e fica registrada no avaliacoes_voz. */
+  perfilProfissional?: string;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -64,7 +66,7 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -364,7 +366,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           myid_contexto: myidContext || null,
         },
       };
-      const payload = {
+      const payload: any = {
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
@@ -374,6 +376,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         classificacao_severidade: assessmentToSave.classificacao_severidade || null,
         queixa_principal: assessmentToSave.queixa_principal || null,
       };
+      if (perfilProfissional) payload.perfil_profissional = perfilProfissional;
 
       let avaliacaoId = savedAssessmentIdRef.current;
 
@@ -460,7 +463,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     setIsSaved(false);
 
     try {
-      const body: any = { serviceType, patientName, patientAge, patientSex };
+      const body: any = { serviceType, patientName, patientAge, patientSex, perfilProfissional };
 
       // Se há áudio grande (>3.5MB base64), faz upload para storage e passa signed URL
       if (audioBase64 && audioBase64.length > 3.5 * 1024 * 1024) {

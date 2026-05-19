@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ClipboardList, Sparkles } from 'lucide-react';
+import { ClipboardList, Sparkles, Stethoscope } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
+import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 interface Props {
   pacienteId: string;
@@ -19,13 +20,16 @@ export default function AvaliacaoPresencial({
   onAssessmentComplete,
 }: Props) {
   const navigate = useNavigate();
+  const { data: lente } = useLenteAtiva();
   const [painMap, setPainMap] = useState<Record<string, number>>({});
   const [structState, setStructState] = useState<Record<string, string[]>>({});
   const painText = painMapToText(painMap);
 
+  const mostraAvatar = temBloco(lente, 'avatar');
+
   // Carrega o último mapa de dor salvo desse paciente para que a marcação persista entre sessões
   useEffect(() => {
-    if (!pacienteId) return;
+    if (!pacienteId || !mostraAvatar) return;
     let cancelled = false;
     (async () => {
       const { data } = await supabase
@@ -42,7 +46,7 @@ export default function AvaliacaoPresencial({
       }
     })();
     return () => { cancelled = true; };
-  }, [pacienteId]);
+  }, [pacienteId, mostraAvatar]);
 
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
@@ -75,20 +79,32 @@ export default function AvaliacaoPresencial({
 
   return (
     <div className="space-y-3">
-      {/* MyID — link minimalista */}
-      <button
-        onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
-        className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
-      >
-        <ClipboardList className="h-3 w-3" />
-        <span>MyID Presencial</span>
-      </button>
+      {/* Topo: MyID + chip da lente ativa */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <button
+          onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
+          className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+        >
+          <ClipboardList className="h-3 w-3" />
+          <span>MyID Presencial</span>
+        </button>
+        {lente && (
+          <button
+            onClick={() => navigate('/configuracoes')}
+            className="inline-flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground transition-colors rounded-full border border-border/40 px-2 py-0.5"
+            title="Trocar profissão em Configurações"
+          >
+            <Stethoscope className="h-3 w-3" />
+            <span>Lente: {lente.nome_exibicao}</span>
+          </button>
+        )}
+      </div>
 
       {/* Voz / Áudio / Escrita — sem moldura */}
       <div className="space-y-2">
         <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
           <Sparkles className="h-3 w-3" />
-          A IA estrutura a avaliação e marca o avatar a partir da sua fala.
+          A IA estrutura a avaliação{mostraAvatar ? ' e marca o avatar' : ''} a partir da sua fala.
         </p>
         <VoiceAssessment
           mode="voice"
@@ -97,19 +113,22 @@ export default function AvaliacaoPresencial({
           patientName={patientName}
           contextPrefix={painText || undefined}
           onAssessmentComplete={onAssessmentComplete}
-          onPainExtracted={handlePainExtracted}
-          painRegionsCatalog={painRegionsCatalog}
-          painMap={painMap}
+          onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
+          painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
+          painMap={mostraAvatar ? painMap : undefined}
+          perfilProfissional={lente?.id}
         />
       </div>
 
-      {/* Avatar — recebe marcações automáticas da voz */}
-      <Body3DAvatar
-        value={painMap}
-        onChange={setPainMap}
-        structures={structState}
-        onStructuresChange={setStructState}
-      />
+      {/* Avatar — só para lentes que têm o bloco 'avatar' (fisio, T.O.) */}
+      {mostraAvatar && (
+        <Body3DAvatar
+          value={painMap}
+          onChange={setPainMap}
+          structures={structState}
+          onStructuresChange={setStructState}
+        />
+      )}
     </div>
   );
 }
