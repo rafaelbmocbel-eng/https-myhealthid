@@ -24,6 +24,7 @@ import ControleMensal from '@/components/configuracoes/ControleMensal';
 import ConfigClinica from '@/components/configuracoes/ConfigClinica';
 import TurnosEditor from '@/components/configuracoes/TurnosEditor';
 import AusenciasManager from '@/components/configuracoes/AusenciasManager';
+import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissionalCard';
 
 const DIAS_LABEL: Record<string, string> = {
   seg: 'Segunda', ter: 'Terça', qua: 'Quarta', qui: 'Quinta', sex: 'Sexta', sab: 'Sábado', dom: 'Domingo',
@@ -90,6 +91,9 @@ export default function Configuracoes() {
 
         {/* Status de créditos da IA */}
         <AiCreditsBanner />
+
+        {/* Perfil profissional / lente da avaliação */}
+        <PerfilProfissionalCard />
 
         {/* Equipe / Profissionais */}
         <EquipeManager />
