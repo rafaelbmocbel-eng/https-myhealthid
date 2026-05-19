@@ -200,6 +200,13 @@ export default function Pacientes() {
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
+  const [recentlyAddedIds, setRecentlyAddedIds] = useState<string[]>([]);
+  const pinRecent = (id: string) => {
+    setRecentlyAddedIds(prev => (prev.includes(id) ? prev : [id, ...prev]));
+    setTimeout(() => {
+      setRecentlyAddedIds(prev => prev.filter(x => x !== id));
+    }, 30000);
+  };
   const [searchParams, setSearchParams] = useSearchParams();
   const activeMainTab = (searchParams.get('tab') as MainTab) || 'clientes';
   const setActiveMainTab = (tab: MainTab) => {
