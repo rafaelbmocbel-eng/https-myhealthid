@@ -523,6 +523,13 @@ export default function Pacientes() {
       return true;
     });
     return [...list].sort((a, b) => {
+      const aRecent = recentlyAddedIds.indexOf(a.id);
+      const bRecent = recentlyAddedIds.indexOf(b.id);
+      if (aRecent !== -1 || bRecent !== -1) {
+        if (aRecent === -1) return 1;
+        if (bRecent === -1) return -1;
+        return aRecent - bRecent;
+      }
       if (sortBy === 'nome') return a.nome.localeCompare(b.nome);
       if (sortBy === 'created_at') return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       if (sortBy === 'ultimo_agendamento') {
@@ -532,7 +539,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao]);
+  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
