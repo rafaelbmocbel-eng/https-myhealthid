@@ -366,7 +366,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
           myid_contexto: myidContext || null,
         },
       };
-      const payload = {
+      const payload: any = {
         terapeuta_id: user.id,
         paciente_id: pacienteId || null,
         paciente_nome: patientName || null,
@@ -376,6 +376,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         classificacao_severidade: assessmentToSave.classificacao_severidade || null,
         queixa_principal: assessmentToSave.queixa_principal || null,
       };
+      if (perfilProfissional) payload.perfil_profissional = perfilProfissional;
 
       let avaliacaoId = savedAssessmentIdRef.current;
 
