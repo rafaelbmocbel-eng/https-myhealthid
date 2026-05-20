@@ -142,29 +142,16 @@ async function embedBatch(texts: string[]): Promise<number[][]> {
   return j.data.map((d: any) => d.embedding);
 }
 
-Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-
+async function runIngestion(opts: {
+  mode: "initial" | "weekly";
+  maxPerQuery: number;
+  dryRun: boolean;
+  activeQueries: typeof QUERIES;
+  mindate?: string;
+  logId?: string;
+}) {
+  const { mode, maxPerQuery, dryRun, activeQueries, mindate, logId } = opts;
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
-  const body = await req.json().catch(() => ({}));
-  const mode: "initial" | "weekly" = body.mode ?? "weekly";
-  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 800 : 50), 2000);
-  const dryRun: boolean = !!body.dryRun;
-  const filterAreas: string[] | null = Array.isArray(body.areas) && body.areas.length ? body.areas : null;
-  const activeQueries = filterAreas ? QUERIES.filter((q) => filterAreas.includes(q.area)) : QUERIES;
-
-  // Weekly mode: only fetch articles from the last 10 days
-  const mindate = mode === "weekly"
-    ? new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "/")
-    : undefined;
-
-  const { data: logRow } = await supabase.from("evidence_ingestion_log").insert({
-    source: "pubmed+europepmc",
-    query: `mode=${mode}`,
-    status: "running",
-  }).select("id").single();
-  const logId = logRow?.id;
-
   let totalFetched = 0, totalInserted = 0, totalSkipped = 0, errors = 0;
   const errorDetails: any[] = [];
 
