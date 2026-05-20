@@ -20,6 +20,7 @@ export interface ClinicaInfo {
   cidade?: string | null;
   uf?: string | null;
   cep?: string | null;
+  horario_funcionamento?: string | null;
 }
 
 export interface TerapeutaInfo {
