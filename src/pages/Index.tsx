@@ -603,57 +603,6 @@ export default function Index() {
           <OnboardingGuide />
         </div>
 
-        {/* Quick stats — secundários, mais leves */}
-        <StaggerContainer className="grid grid-cols-3 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
-          {[
-            { label: 'Pacientes', value: pacientes.length, icon: Users, href: '/pacientes' },
-            { label: 'Hoje', value: agendamentosHoje.length, icon: CalendarDays, href: '/agenda' },
-            { label: 'Pendentes', value: avaliacoesPendentes.length, icon: ClipboardList, href: '/pacientes' },
-          ].map(stat => {
-            const Icon = stat.icon;
-            return (
-              <StaggerItem key={stat.label}>
-                <Link
-                  to={stat.href}
-                  className="block rounded-xl border border-border/40 bg-card p-3 sm:p-4 transition-colors hover:border-primary/40 hover:bg-muted/30"
-                >
-                  <div className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground/70 mb-1.5 truncate">
-                    {stat.label}
-                  </div>
-                  <div className="flex items-end justify-between gap-2">
-                    <div className="text-2xl font-semibold text-foreground tracking-tight tabular-nums leading-none">{stat.value}</div>
-                    <Icon className="icon-xs text-muted-foreground/50 mb-0.5 shrink-0" />
-                  </div>
-                </Link>
-              </StaggerItem>
-            );
-          })}
-        </StaggerContainer>
-
-        {/* Service modules — clean list, no gradients */}
-        <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-3 mb-6 sm:mb-8">
-          {[
-            { label: 'Agenda', sublabel: `${agendamentosHoje.length} hoje`, icon: CalendarDays, href: '/agenda' },
-          ].map(mod => {
-            const Icon = mod.icon;
-            return (
-              <Link
-                key={mod.href}
-                to={mod.href}
-                className="rounded-xl border border-border/40 bg-card p-3 sm:p-4 flex items-center gap-3 hover:border-primary/40 transition-colors group"
-              >
-                <div className="h-9 w-9 rounded-lg bg-muted/60 flex items-center justify-center shrink-0 group-hover:bg-primary/10 transition-colors">
-                  <Icon className="icon-sm text-foreground/70 group-hover:text-primary transition-colors" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="h-card truncate">{mod.label}</div>
-                  <div className="text-caption mt-0.5">{mod.sublabel}</div>
-                </div>
-                <ArrowRight className="icon-sm text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all" />
-              </Link>
-            );
-          })}
-        </div>
 
         {/* Today's schedule */}
         {agendamentosHoje.length > 0 && (
