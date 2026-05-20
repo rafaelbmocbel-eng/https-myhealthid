@@ -248,10 +248,7 @@ async function runIngestion(opts: {
         status: errors > 0 && totalInserted === 0 ? "failed" : "completed",
       }).eq("id", logId);
     }
-
-    return new Response(JSON.stringify({
-      mode, totalFetched, totalInserted, totalSkipped, errors, dryRun,
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return { mode, totalFetched, totalInserted, totalSkipped, errors, dryRun };
   } catch (e) {
     if (logId) {
       await supabase.from("evidence_ingestion_log").update({
@@ -261,8 +258,44 @@ async function runIngestion(opts: {
         error_details: [...errorDetails, { fatal: String(e) }],
       }).eq("id", logId);
     }
-    return new Response(JSON.stringify({ error: String(e) }), {
-      status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    throw e;
   }
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
+  const body = await req.json().catch(() => ({}));
+  const mode: "initial" | "weekly" = body.mode ?? "weekly";
+  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 800 : 50), 2000);
+  const dryRun: boolean = !!body.dryRun;
+  const filterAreas: string[] | null = Array.isArray(body.areas) && body.areas.length ? body.areas : null;
+  const activeQueries = filterAreas ? QUERIES.filter((q) => filterAreas.includes(q.area)) : QUERIES;
+  const mindate = mode === "weekly"
+    ? new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10).replace(/-/g, "/")
+    : undefined;
+
+  const { data: logRow } = await supabase.from("evidence_ingestion_log").insert({
+    source: "pubmed+europepmc",
+    query: `mode=${mode} areas=${filterAreas?.join(",") ?? "all"}`,
+    status: "running",
+  }).select("id").single();
+  const logId = logRow?.id;
+
+  // Run in background to avoid 150s edge timeout
+  // @ts-ignore EdgeRuntime is available in Supabase Edge Functions
+  EdgeRuntime.waitUntil(
+    runIngestion({ mode, maxPerQuery, dryRun, activeQueries, mindate, logId }).catch((e) => {
+      console.error("ingest-pubmed background error:", e);
+    })
+  );
+
+  return new Response(JSON.stringify({
+    status: "started",
+    logId,
+    mode,
+    areas: filterAreas ?? "all",
+    message: "Ingestão rodando em background. Acompanhe pelo histórico.",
+  }), { status: 202, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 });
