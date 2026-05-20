@@ -482,14 +482,55 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               </div>
             )}
 
-            <Button
-              className="w-full bg-gradient-to-r from-primary to-accent text-primary-foreground"
-              onClick={handleGerar}
-              disabled={gerando}
-            >
-              {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
-              Gerar PDF e Baixar
-            </Button>
+            {previewUrl && (
+              <div className="rounded-xl border border-border overflow-hidden bg-muted/30">
+                <div className="flex items-center justify-between px-3 py-2 bg-muted/60 border-b border-border">
+                  <div className="flex items-center gap-2 text-xs font-medium">
+                    <Eye className="icon-sm text-primary" />
+                    Pré-visualização (atualize após editar)
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => {
+                      if (previewUrl) URL.revokeObjectURL(previewUrl);
+                      setPreviewUrl(null);
+                    }}
+                  >
+                    <EyeOff className="icon-sm mr-1" /> Fechar
+                  </Button>
+                </div>
+                <iframe
+                  src={previewUrl}
+                  title="Pré-visualização do documento"
+                  className="w-full h-[60vh] bg-white"
+                />
+              </div>
+            )}
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={handlePreview}
+                disabled={previewLoading || gerando}
+              >
+                {previewLoading ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Eye className="h-4 w-4 mr-2" />}
+                {previewUrl ? 'Atualizar pré-visualização' : 'Pré-visualizar'}
+              </Button>
+              <Button
+                className="flex-1 bg-gradient-to-r from-primary to-accent text-primary-foreground"
+                onClick={handleGerar}
+                disabled={gerando}
+              >
+                {gerando ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                Gerar PDF e Baixar
+              </Button>
+            </div>
+            <p className="text-[11px] text-muted-foreground text-center">
+              Edite os campos acima e clique em <strong>Atualizar pré-visualização</strong> para ver as mudanças antes de baixar.
+            </p>
           </div>
         )}
       </DialogContent>
