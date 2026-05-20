@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Users, Settings, PartyPopper, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, PartyPopper, BookOpen, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';

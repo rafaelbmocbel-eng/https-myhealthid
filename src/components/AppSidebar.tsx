@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, PartyPopper, MessageCircle,
-  type LucideIcon,
+  BookOpen, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
