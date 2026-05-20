@@ -121,6 +121,22 @@ export default function BaseCientifica() {
       setIngesting(null);
     }
   };
+  const runIngestArea = async (areaKey: string, areaLabel: string, mode: "initial" | "weekly") => {
+    setIngestingArea(areaKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("ingest-pubmed", {
+        body: { mode, maxPerQuery: mode === "initial" ? 800 : 50, areas: [areaKey] },
+      });
+      if (error) throw error;
+      toast.success(`${areaLabel}: ingestão iniciada em background. Acompanhe pelo histórico abaixo.`);
+      setTimeout(load, 2000);
+    } catch (e: any) {
+      toast.error(`${areaLabel}: ${e?.message ?? e}`);
+    } finally {
+      setIngestingArea(null);
+    }
+  };
+
 
   const runSearch = async () => {
     if (search.trim().length < 5) return;
