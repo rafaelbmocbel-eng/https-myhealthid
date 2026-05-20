@@ -5,7 +5,7 @@ import logoSrc from '@/assets/logo-myhealthid.png';
  * Loads the MyHealthID logo and adds it to a jsPDF document.
  * Falls back to a drawn circle logo if image loading fails.
  */
-export async function addLogoToDoc(doc: jsPDF, x: number, y: number, size: number): Promise<void> {
+export async function addLogoToDoc(doc: jsPDF, x: number, y: number, size: number, customUrl?: string): Promise<void> {
   try {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -13,7 +13,7 @@ export async function addLogoToDoc(doc: jsPDF, x: number, y: number, size: numbe
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = () => reject(new Error('Failed to load logo'));
-      img.src = logoSrc;
+      img.src = customUrl || logoSrc;
     });
 
     // Draw circular clip via canvas
