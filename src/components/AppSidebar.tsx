@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, PartyPopper, MessageCircle,
-  type LucideIcon,
+  BookOpen, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -20,6 +20,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Base Científica', href: '/base-cientifica', icon: BookOpen },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
