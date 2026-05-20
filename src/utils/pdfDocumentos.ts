@@ -210,10 +210,10 @@ async function drawFooter(doc: jsPDF, terapeuta: TerapeutaInfo, clinica?: Clinic
   if (terapeuta.registro) reg.push(terapeuta.registro);
   if (reg.length) doc.text(reg.join(' · '), 105, yBase + 36, { align: 'center' });
 
-  // Rodapé
-  doc.setFontSize(7);
+  // Rodapé — assinatura discreta "feito por My Health ID"
+  doc.setFontSize(6.5);
   doc.setTextColor(...MUTED);
-  doc.text('Documento emitido pelo sistema MY HEALTH ID', 105, 285, { align: 'center' });
+  doc.text('feito por My Health ID', 105, 285, { align: 'center' });
 }
 
 function pacienteLine(p: PacienteInfo): string {
