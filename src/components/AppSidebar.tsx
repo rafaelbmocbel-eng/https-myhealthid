@@ -20,6 +20,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Base Científica', href: '/base-cientifica', icon: BookOpen },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 

@@ -11,6 +11,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Início', href: '/', icon: LayoutDashboard },
   { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
+  { label: 'Base', href: '/base-cientifica', icon: BookOpen },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
 
