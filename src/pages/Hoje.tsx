@@ -66,11 +66,6 @@ export default function Hoje() {
 
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
-  const filtrados = busca.trim()
-    ? pacientes.filter((p: any) =>
-        `${p.nome} ${p.sobrenome || ''}`.toLowerCase().includes(busca.toLowerCase()))
-        .slice(0, 6)
-    : [];
 
   return (
     <AppLayout>
