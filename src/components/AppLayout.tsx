@@ -17,6 +17,7 @@ import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
 import NotificationCenter from './NotificationCenter';
+import TrialBanner from './TrialBanner';
 
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -146,6 +147,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
             {!isMobile && <QuickActions />}
           </div>
         </header>
+
+        <TrialBanner />
 
         <main className={cn(
           'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',

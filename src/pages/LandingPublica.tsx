@@ -267,6 +267,44 @@ export default function LandingPublica() {
         </div>
       </section>
 
+      {/* Segurança & Conformidade */}
+      <section className="border-t border-border/40 bg-muted/30">
+        <div className="mx-auto max-w-6xl px-4 py-14 sm:py-20">
+          <div className="grid grid-cols-1 items-center gap-10 md:grid-cols-2">
+            <div>
+              <div className="eyebrow-accent mb-2">Segurança em primeiro lugar</div>
+              <h2 className="text-3xl font-bold tracking-tight sm:text-4xl">
+                Dados clínicos protegidos por design.
+              </h2>
+              <p className="mt-3 text-muted-foreground">
+                Construído sobre infraestrutura cloud com Row-Level Security no banco, consentimentos LGPD versionados e isolamento total entre profissionais — um nunca enxerga os dados do outro sem permissão explícita.
+              </p>
+            </div>
+            <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+              {[
+                { icon: ShieldCheck, label: 'LGPD compliant', sub: 'Termos versionados' },
+                { icon: Lock, label: 'RLS no banco', sub: 'Isolamento por usuário' },
+                { icon: ShieldCheck, label: 'Backups diários', sub: 'Cloud gerenciada' },
+                { icon: Lock, label: 'Lente travada', sub: 'Sem cross-profissional' },
+              ].map(({ icon: Icon, label, sub }) => (
+                <li
+                  key={label}
+                  className="flex items-start gap-3 rounded-xl border border-border/40 bg-card p-4 shadow-xs"
+                >
+                  <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                    <Icon className="h-4 w-4" />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-sm font-semibold leading-tight">{label}</div>
+                    <div className="text-xs text-muted-foreground">{sub}</div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+      </section>
+
       {/* CTA final */}
       <section className="border-t border-border/40 bg-gradient-to-br from-primary/10 via-background to-accent/10">
         <div className="mx-auto max-w-4xl px-4 py-16 text-center sm:py-24">
