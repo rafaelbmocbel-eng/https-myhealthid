@@ -43,6 +43,7 @@ const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
 const Precos = lazy(() => import("./pages/Precos"));
 const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
 const NovaSenha = lazy(() => import("./pages/NovaSenha"));
+const BaseCientifica = lazy(() => import("./pages/BaseCientifica"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -159,6 +160,7 @@ const App = () => (
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
+                <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
 
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PacienteLogin />} />
