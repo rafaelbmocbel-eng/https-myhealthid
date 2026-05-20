@@ -208,9 +208,18 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
       case 'comparecimento':
         dados = { data, horaEntrada, horaSaida };
         break;
-      case 'atestado_fisio':
-        dados = { diasAfastamento, dataInicio: data, cid: cid || undefined, motivo: motivo || undefined };
+      case 'atestado_fisio': {
+        const cifAuto = sugerirCIF(motivo);
+        dados = {
+          diasAfastamento,
+          dataInicio: data,
+          cid: cid || undefined,
+          motivo: motivo || undefined,
+          cif: cifAuto?.cif,
+          cifDescricao: cifAuto?.desc,
+        };
         break;
+      }
       case 'declaracao_tratamento':
         dados = { desde, finalidade: finalidade || undefined, observacoes: observacoes || undefined };
         break;
@@ -377,7 +386,21 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                 </div>
                 <div className="col-span-2">
                   <Label htmlFor="motivo">Motivo clínico (opcional)</Label>
-                  <Textarea id="motivo" rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} />
+                  <Textarea id="motivo" rows={2} value={motivo} onChange={(e) => setMotivo(e.target.value)} placeholder="Ex: lombalgia aguda, pós-operatório de joelho…" />
+                  {(() => {
+                    const s = sugerirCIF(motivo);
+                    if (!s) return null;
+                    return (
+                      <div className="mt-2 flex items-start gap-2 p-2 rounded-lg bg-emerald-500/10 border border-emerald-500/30 text-xs">
+                        <Sparkles className="icon-sm text-emerald-600 shrink-0 mt-0.5" />
+                        <span>
+                          <strong>CIF sugerida:</strong> {s.cif} — {s.desc}
+                          <br />
+                          <span className="text-muted-foreground">Adicionada automaticamente ao documento.</span>
+                        </span>
+                      </div>
+                    );
+                  })()}
                 </div>
               </div>
             )}
