@@ -154,7 +154,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main className={cn(
           'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',
           'sm:px-4',
-          isMobile ? 'pb-24' : 'pb-12 px-6 lg:px-8 pt-6',
+          isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
         )}>
           {children}
         </main>
