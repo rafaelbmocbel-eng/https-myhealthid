@@ -21,6 +21,7 @@ export interface ClinicaInfo {
   uf?: string | null;
   cep?: string | null;
   horario_funcionamento?: string | null;
+  logo_url?: string | null;
 }
 
 export interface TerapeutaInfo {
@@ -49,6 +50,8 @@ export interface DocAtestadoFisioData {
   dataInicio: string;    // ISO date
   cid?: string;
   motivo?: string;
+  cif?: string;          // Classificação Internacional de Funcionalidade
+  cifDescricao?: string;
 }
 
 export interface DocDeclaracaoData {
@@ -121,7 +124,7 @@ function valorPorExtenso(v: number): string {
 
 async function drawHeader(doc: jsPDF, clinica?: ClinicaInfo | null) {
   const margin = 20;
-  await addLogoToDoc(doc, margin, 12, 18);
+  await addLogoToDoc(doc, margin, 12, 18, clinica?.logo_url || undefined);
 
   doc.setTextColor(...PRIMARY);
   doc.setFont('helvetica', 'bold');
@@ -228,7 +231,7 @@ export async function gerarAtestadoFisio(input: BaseInput & { dados: DocAtestado
   await drawHeader(doc, input.clinica);
   let y = drawTitle(doc, 'Atestado Fisioterapêutico', 50);
 
-  const text = `Atesto, para os devidos fins, que ${pacienteLine(input.paciente)} encontra-se sob tratamento fisioterapêutico, necessitando de afastamento de suas atividades habituais (laborais e/ou escolares) por um período de ${input.dados.diasAfastamento} (${input.dados.diasAfastamento === 1 ? 'um' : input.dados.diasAfastamento} dia${input.dados.diasAfastamento > 1 ? 's' : ''}), a contar de ${fmtDate(input.dados.dataInicio)}.${input.dados.cid ? `\n\nCID: ${input.dados.cid}` : ''}${input.dados.motivo ? `\n\nMotivo clínico: ${input.dados.motivo}` : ''}\n\nEmitido em conformidade com a Resolução COFFITO nº 414/2012 e nº 464/2016.`;
+  const text = `Atesto, para os devidos fins, que ${pacienteLine(input.paciente)} encontra-se sob tratamento fisioterapêutico, necessitando de afastamento de suas atividades habituais (laborais e/ou escolares) por um período de ${input.dados.diasAfastamento} (${input.dados.diasAfastamento === 1 ? 'um' : input.dados.diasAfastamento} dia${input.dados.diasAfastamento > 1 ? 's' : ''}), a contar de ${fmtDate(input.dados.dataInicio)}.${input.dados.cid ? `\n\nCID: ${input.dados.cid}` : ''}${input.dados.motivo ? `\n\nMotivo clínico: ${input.dados.motivo}` : ''}${input.dados.cif ? `\n\nCIF (Classificação Internacional de Funcionalidade): ${input.dados.cif}${input.dados.cifDescricao ? ` — ${input.dados.cifDescricao}` : ''}` : ''}\n\nEmitido em conformidade com a Resolução COFFITO nº 414/2012 e nº 464/2016.`;
 
   y = drawBody(doc, text, y + 4);
   await drawFooter(doc, input.terapeuta, input.clinica);
