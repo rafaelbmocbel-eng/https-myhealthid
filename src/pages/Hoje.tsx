@@ -3,8 +3,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Search, Plus, Users, Triangle, BarChart3, Brain, Zap,
-  Compass, History, MessageCircle, CalendarDays,
+  Search, Plus, Users, Triangle, BarChart3,
+  CalendarDays, MessageCircle, GitBranch, CalendarHeart,
+  BookOpen, Settings, Tag,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -155,6 +156,7 @@ export default function Hoje() {
               <div>
                 <div className="text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Iniciar</div>
                 <div className="text-2xl font-bold leading-tight">Avaliação</div>
+                <div className="text-[11px] opacity-80 mt-0.5">MyID v2.0</div>
               </div>
             </button>
 
@@ -168,19 +170,22 @@ export default function Hoje() {
               </div>
               <div>
                 <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Analytics</div>
-                <div className="text-2xl font-bold leading-tight">Comparar</div>
+                <div className="text-2xl font-bold leading-tight">Dashboard</div>
+                <div className="text-[11px] text-muted-foreground mt-0.5">Visão geral</div>
               </div>
             </button>
           </section>
 
-          {/* Pills de acesso rápido */}
+          {/* Pills de acesso rápido — todos os módulos */}
           <section className="grid grid-cols-2 gap-3">
-            <PillBtn icon={Brain} label="Testes" onClick={() => navigate('/pacientes')} />
-            <PillBtn icon={Zap} label="Drills" onClick={() => navigate('/protocolos')} />
+            <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
             <PillBtn icon={CalendarDays} label="Agenda" onClick={() => navigate('/agenda')} />
-            <PillBtn icon={MessageCircle} label="WhatsApp" onClick={() => navigate('/crm/inbox')} />
-            <PillBtn icon={Compass} label="Eventos" onClick={() => navigate('/eventos')} />
-            <PillBtn icon={History} label="Histórico" onClick={() => navigate('/relatorios')} />
+            <PillBtn icon={MessageCircle} label="WhatsApp" onClick={() => navigate('/crm?tab=inbox')} />
+            <PillBtn icon={GitBranch} label="CRM" onClick={() => navigate('/crm?tab=pipeline')} />
+            <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+            <PillBtn icon={BookOpen} label="Ciência" onClick={() => navigate('/base-cientifica')} />
+            <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
+            <PillBtn icon={Settings} label="Ajustes" onClick={() => navigate('/configuracoes')} />
           </section>
 
           {/* Stats */}
