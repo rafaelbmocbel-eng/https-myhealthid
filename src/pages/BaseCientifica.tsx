@@ -39,6 +39,7 @@ const AREAS = [
   { key: "fisioterapia", label: "Fisioterapia" },
   { key: "medicina", label: "Medicina" },
   { key: "psicologia", label: "Psicologia" },
+  { key: "neurociencia", label: "Neurociência" },
   { key: "nutricao", label: "Nutrição" },
   { key: "educacao_fisica", label: "Educação Física" },
   { key: "terapia_ocupacional", label: "Terapia Ocupacional" },
