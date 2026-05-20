@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
   Settings, LogOut, User, PartyPopper, MessageCircle,
-  BookOpen, type LucideIcon,
+  BookOpen, Sun, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
 
 const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
+  { label: 'Hoje', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle },
