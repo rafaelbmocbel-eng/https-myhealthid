@@ -156,7 +156,8 @@ export default function BaseCientifica() {
   };
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
+    <AppLayout>
+      <div className="container max-w-6xl py-6 space-y-6">
       <PageHeader
         title="Base Científica"
         subtitle="Revisões sistemáticas e metanálises do PubMed que sustentam as avaliações geradas pela IA."
