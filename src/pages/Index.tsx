@@ -390,63 +390,185 @@ export default function Index() {
     <AppLayout>
       <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-2 sm:px-6">
-        {/* Welcome header — hero com foco no "agora" */}
-        <FadeIn>
-        <header className="mb-6 sm:mb-8">
-          <div className="eyebrow-accent mb-2 capitalize">
-            {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-          </div>
-          <h1 className="h-page">
-            {saudacao}, {profile?.nome || 'Terapeuta'}
-          </h1>
 
-          {/* Hero card — próximo atendimento ou estado vazio */}
-          <div className="mt-5 rounded-2xl border border-accent/25 bg-accent/5 p-5 sm:p-6 transition-shadow hover:shadow-xs">
-            {proximoAtendimento ? (
-              <button
-                type="button"
-                onClick={() => (proximoAtendimento as any).pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
-                className="w-full text-left flex items-center justify-between gap-4 group"
-              >
-                <div className="min-w-0">
-                  <div className="metric-label">Próximo atendimento</div>
-                  <div className="mt-1.5 flex items-baseline gap-2">
-                    <span className="metric-value text-4xl sm:text-5xl tabular-nums text-foreground">
-                      {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
-                    </span>
-                    <span className="text-sm text-muted-foreground">
-                      {formatDistanceToNow(parseISO(proximoAtendimento.data_inicio), { addSuffix: true, locale: ptBR })}
+        {/* ============ COMMAND CENTER HEADER ============ */}
+        <FadeIn>
+        <header className="mb-5 sm:mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div>
+            <div className="text-[10px] font-semibold tracking-[0.18em] text-muted-foreground/70 uppercase mb-1 capitalize">
+              {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
+            </div>
+            <h1 className="h-page">
+              {saudacao}, <span className="text-muted-foreground font-normal">{profile?.nome || 'Terapeuta'}</span>
+            </h1>
+          </div>
+
+          {/* Module Hub — Linear/Arc style pill nav */}
+          <nav aria-label="Módulos" className="flex items-center gap-0.5 p-1 bg-muted/50 rounded-2xl border border-border/40 overflow-x-auto -mx-2 px-2 lg:mx-0 lg:px-1">
+            {[
+              { label: 'Agenda', icon: CalendarDays, href: '/agenda' },
+              { label: 'Pacientes', icon: Users, href: '/pacientes' },
+              { label: 'Inbox', icon: Inbox, href: '/crm?tab=inbox' },
+              { label: 'CRM', icon: BarChart3, href: '/crm' },
+              { label: 'Eventos', icon: Star, href: '/eventos' },
+              { label: 'Dashboard', icon: LayoutGrid, href: '/inicio-app', active: true },
+              { label: 'Ajustes', icon: Settings, href: '/configuracoes' },
+            ].map(m => {
+              const Icon = m.icon;
+              return (
+                <Link
+                  key={m.label}
+                  to={m.href}
+                  aria-current={m.active ? 'page' : undefined}
+                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all shrink-0 ${
+                    m.active
+                      ? 'bg-card text-foreground shadow-xs border border-border/40'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
+                  }`}
+                >
+                  <Icon className="icon-sm shrink-0" />
+                  <span className="text-[10px] font-medium leading-none">{m.label}</span>
+                </Link>
+              );
+            })}
+          </nav>
+        </header>
+        </FadeIn>
+
+        {/* ============ HERO ROW: Próxima Sessão (2/3) + Red Flags (1/3) ============ */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5">
+          {/* Próxima Sessão — premium navy card */}
+          <button
+            type="button"
+            onClick={() => proximoAtendimento && (proximoAtendimento as any).pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
+            disabled={!proximoAtendimento}
+            className="lg:col-span-2 text-left relative overflow-hidden rounded-2xl bg-[hsl(var(--primary))] text-primary-foreground p-5 sm:p-6 group transition-all hover:shadow-lg disabled:cursor-default"
+          >
+            <div className="relative z-10">
+              {proximoAtendimento ? (
+                <>
+                  <div className="flex items-center gap-2 mb-5 sm:mb-6">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase opacity-70">
+                      Próxima sessão · {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
                     </span>
                   </div>
-                  <div className="mt-1.5 text-sm font-medium text-foreground truncate">
+                  <div className="text-2xl sm:text-3xl font-light mb-1 truncate">
                     {(proximoAtendimento as any).pacientes
                       ? `${(proximoAtendimento as any).pacientes.nome} ${(proximoAtendimento as any).pacientes.sobrenome || ''}`
                       : (proximoAtendimento as any).titulo || 'Atendimento'}
                   </div>
-                </div>
-                <ArrowRight className="icon-md text-muted-foreground/60 group-hover:text-primary group-hover:translate-x-0.5 transition-all shrink-0" />
-              </button>
-            ) : (
-              <div className="flex items-center justify-between gap-4">
-                <div>
-                  <div className="text-micro text-muted-foreground">Hoje</div>
-                  <div className="mt-1 text-3xl sm:text-4xl font-semibold tracking-tight text-foreground">
+                  <div className="text-sm opacity-70 mb-5">
+                    {(proximoAtendimento as any).tipo_atendimento || 'Retorno'} ·{' '}
+                    {formatDistanceToNow(parseISO(proximoAtendimento.data_inicio), { addSuffix: true, locale: ptBR })}
+                  </div>
+                  <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground rounded-xl text-xs font-semibold border border-primary-foreground/10 transition-colors">
+                    Abrir prontuário
+                    <ArrowRight className="icon-xs group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2 mb-5 sm:mb-6">
+                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase opacity-70">Hoje</span>
+                  </div>
+                  <div className="text-2xl sm:text-3xl font-light mb-1">
                     {agendamentosHoje.length === 0 ? 'Agenda livre' : 'Sem mais agendamentos'}
                   </div>
-                  <div className="mt-1.5 text-caption">
+                  <div className="text-sm opacity-70 mb-5">
                     {agendamentosHoje.length > 0
-                      ? `${agendamentosHoje.length} ${agendamentosHoje.length === 1 ? 'atendimento' : 'atendimentos'} concluídos hoje`
+                      ? `${agendamentosHoje.length} ${agendamentosHoje.length === 1 ? 'atendimento concluído' : 'atendimentos concluídos'} hoje`
                       : 'Aproveite para revisar protocolos ou contatar pacientes'}
                   </div>
-                </div>
-                <Button asChild variant="outline" size="sm" className="shrink-0">
-                  <Link to="/agenda">Ver agenda</Link>
-                </Button>
+                  <Link
+                    to="/agenda"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground rounded-xl text-xs font-semibold border border-primary-foreground/10 transition-colors"
+                  >
+                    Ver agenda <ArrowRight className="icon-xs" />
+                  </Link>
+                </>
+              )}
+            </div>
+            <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
+          </button>
+
+          {/* Red Flags card */}
+          <div className="rounded-2xl border border-destructive/20 bg-card p-5 flex flex-col">
+            <div className="flex items-center justify-between mb-3">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive text-[10px] font-bold rounded-lg uppercase tracking-wider">
+                <AlertTriangle className="icon-xs" /> Red Flags
+              </span>
+              <span className="text-destructive font-semibold text-xl tabular-nums">{recentAlerts.length}</span>
+            </div>
+            {recentAlerts.length > 0 ? (
+              <div className="space-y-2 flex-1">
+                {recentAlerts.slice(0, 2).map(alert => (
+                  <button
+                    key={alert.id_final || alert.created_at}
+                    type="button"
+                    onClick={() => alert.paciente_id && navigate(`/pacientes/${alert.paciente_id}`)}
+                    className="w-full text-left flex items-start gap-2.5 p-2.5 bg-destructive/[0.04] rounded-xl border border-destructive/10 hover:border-destructive/30 transition-colors"
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-destructive mt-1.5 shrink-0" />
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs font-semibold text-foreground truncate">
+                        {(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}
+                      </p>
+                      <p className="text-[10px] text-muted-foreground truncate">
+                        Perímetro MyID · {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}
+                      </p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <div className="flex-1 flex items-center justify-center text-center py-4">
+                <p className="text-xs text-muted-foreground">Nenhum alerta crítico ativo.</p>
               </div>
             )}
+            {recentAlerts.length > 0 && (
+              <Link to="/pacientes" className="mt-3 text-[10px] font-bold text-destructive hover:underline text-center">
+                Revisar todos os riscos
+              </Link>
+            )}
           </div>
-        </header>
-        </FadeIn>
+        </div>
+
+        {/* ============ KPI STRIP (6 cards) ============ */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 sm:gap-3 mb-5 sm:mb-6">
+          {[
+            { label: 'Pacientes', value: pacientes.length, href: '/pacientes' },
+            { label: 'Hoje', value: agendamentosHoje.length, href: '/agenda' },
+            { label: 'Pendentes', value: avaliacoesPendentes.length, href: '/pacientes' },
+            { label: 'Presença', value: statsData ? `${statsData.taxaPresenca}%` : '—', href: '/inicio-app' },
+            { label: 'Sessões 30d', value: statsData?.sessoes30d ?? '—', href: '/agenda' },
+            { label: 'MyID-100', value: amostraClinica ? amostraClinica.scores.MyID.toFixed(1) : '—', href: '/pacientes', highlight: true },
+          ].map(k => (
+            <Link
+              key={k.label}
+              to={k.href}
+              className={`rounded-xl border p-3 sm:p-4 transition-colors ${
+                k.highlight
+                  ? 'border-accent/30 bg-accent/5 hover:border-accent/50'
+                  : 'border-border/40 bg-card hover:border-primary/40 hover:bg-muted/30'
+              }`}
+            >
+              <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 truncate ${k.highlight ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
+                {k.label}
+              </div>
+              <div
+                className={`tabular-nums leading-none ${
+                  k.highlight
+                    ? 'text-2xl sm:text-3xl italic font-semibold text-accent-foreground'
+                    : 'text-2xl font-semibold text-foreground tracking-tight'
+                }`}
+                style={k.highlight ? { fontFamily: "'Playfair Display', Georgia, serif" } : undefined}
+              >
+                {k.value}
+              </div>
+            </Link>
+          ))}
+        </div>
 
         {/* Vertente toggle */}
         <div className="inline-flex p-1 rounded-xl border border-border/40 bg-card mb-5">
