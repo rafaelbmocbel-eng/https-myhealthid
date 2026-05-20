@@ -19,6 +19,7 @@ type ConfigClinica = {
   cidade: string;
   uf: string;
   cep: string;
+  horario_funcionamento: string;
   logo_url: string;
   zapi_instance_id: string;
   zapi_token: string;
@@ -29,6 +30,7 @@ type ConfigClinica = {
 const EMPTY: ConfigClinica = {
   razao_social: '', cnpj: '', responsavel: '',
   telefone: '', email_clinica: '', endereco: '', cidade: '', uf: '', cep: '',
+  horario_funcionamento: '',
   logo_url: '',
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
 };
