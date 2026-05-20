@@ -61,21 +61,23 @@ export default function Hoje() {
   const { data: pendencias, isLoading: loadingPend } = useQuery({
     queryKey: ['hoje-pendencias', user?.id],
     queryFn: async () => {
-      const [myidPend, semMyid, msgsNaoLidas] = await Promise.all([
-        supabase.from('myid_avaliacoes').select('id, token_acesso, created_at', { count: 'exact' })
-          .eq('terapeuta_id', user!.id).eq('status', 'pendente')
-          .gte('created_at', subDays(today, 14).toISOString()),
-        supabase.from('pacientes').select('id, nome, sobrenome, created_at').eq('terapeuta_id', user!.id)
-          .eq('ativo', true).order('created_at', { ascending: false }).limit(50),
-        supabase.from('whatsapp_mensagens').select('id', { count: 'exact', head: true })
-          .eq('terapeuta_id', user!.id).eq('direcao', 'inbound').eq('lida', false),
-      ]);
+      const myidPend = await supabase.from('myid_avaliacoes')
+        .select('id', { count: 'exact', head: true })
+        .eq('terapeuta_id', user!.id).eq('status', 'pendente')
+        .gte('created_at', subDays(today, 14).toISOString());
+      const semMyid = await supabase.from('pacientes')
+        .select('id, created_at').eq('terapeuta_id', user!.id)
+        .eq('ativo', true).order('created_at', { ascending: false }).limit(50);
+      const msgsNaoLidas = await supabase.from('whatsapp_conversas')
+        .select('nao_lidas').eq('terapeuta_id', user!.id);
+      const msgs = (msgsNaoLidas.data || []).reduce((s: number, c: any) => s + (c.nao_lidas || 0), 0);
       return {
         myidPendentes: myidPend.count || 0,
         novosPacientes: (semMyid.data || []).filter((p: any) =>
           new Date(p.created_at) > subDays(today, 3)).length,
-        msgsNaoLidas: msgsNaoLidas.count || 0,
+        msgsNaoLidas: msgs,
       };
+
     },
     enabled: authReady && !!user,
     staleTime: 60_000,
