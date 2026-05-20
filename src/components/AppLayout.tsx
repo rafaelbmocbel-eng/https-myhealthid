@@ -148,6 +148,8 @@ export default function AppLayout({ children }: AppLayoutProps) {
           </div>
         </header>
 
+        <TrialBanner />
+
         <main className={cn(
           'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',
           'sm:px-4',
