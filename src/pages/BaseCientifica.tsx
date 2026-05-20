@@ -125,8 +125,8 @@ export default function BaseCientifica() {
     <div className="container max-w-6xl py-6 space-y-6">
       <PageHeader
         title="Base Científica"
-        description="Revisões sistemáticas e metanálises do PubMed que sustentam as avaliações geradas pela IA."
-        icon={BookOpen}
+        subtitle="Revisões sistemáticas e metanálises do PubMed que sustentam as avaliações geradas pela IA."
+        icon={<BookOpen className="icon-md" />}
       />
 
       {/* Stats */}
@@ -232,9 +232,9 @@ export default function BaseCientifica() {
         </div>
         {recent.length === 0 ? (
           <EmptyState
-            icon={BookOpen}
+            icon={<BookOpen className="icon-lg" />}
             title="Base vazia"
-            description="Clique em &quot;Carga inicial&quot; acima para popular com revisões sistemáticas e metanálises do PubMed."
+            description='Clique em "Carga inicial" acima para popular com revisões sistemáticas e metanálises do PubMed.'
           />
         ) : (
           <div className="space-y-3">
