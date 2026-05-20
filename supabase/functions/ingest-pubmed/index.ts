@@ -169,7 +169,7 @@ Deno.serve(async (req) => {
   const errorDetails: any[] = [];
 
   try {
-    for (const { area, query } of QUERIES) {
+    for (const { area, query } of activeQueries) {
       try {
         const pmids = await fetchPubMedIds(query, maxPerQuery, mindate);
         totalFetched += pmids.length;
