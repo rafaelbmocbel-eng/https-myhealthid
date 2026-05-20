@@ -928,6 +928,7 @@ export type Database = {
           id: string
           logo_url: string | null
           razao_social: string | null
+          registro_responsavel: string | null
           responsavel: string | null
           telefone: string | null
           terapeuta_id: string
@@ -949,6 +950,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           razao_social?: string | null
+          registro_responsavel?: string | null
           responsavel?: string | null
           telefone?: string | null
           terapeuta_id: string
@@ -970,6 +972,7 @@ export type Database = {
           id?: string
           logo_url?: string | null
           razao_social?: string | null
+          registro_responsavel?: string | null
           responsavel?: string | null
           telefone?: string | null
           terapeuta_id?: string

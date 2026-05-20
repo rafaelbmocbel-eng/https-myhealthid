@@ -1,0 +1,1 @@
+ALTER TABLE public.config_clinica ADD COLUMN IF NOT EXISTS registro_responsavel text;
