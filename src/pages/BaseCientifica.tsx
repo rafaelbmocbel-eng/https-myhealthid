@@ -9,6 +9,7 @@ import { SectionTitle } from "@/components/ui/section-title";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { Loader2, BookOpen, RefreshCw, Download, ExternalLink, Search } from "lucide-react";
+import AppLayout from "@/components/AppLayout";
 
 type Article = {
   id: string;
