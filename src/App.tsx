@@ -13,6 +13,7 @@ import GlobalBackButton from "./components/GlobalBackButton";
 
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
+const LandingPublica = lazy(() => import("./pages/LandingPublica"));
 const Auth = lazy(() => import("./pages/Auth"));
 const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
