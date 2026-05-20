@@ -432,15 +432,71 @@ serve(async (req) => {
     }
 
     // ───────────────────────────────────────────────────────────────
+    // EVIDÊNCIA CIENTÍFICA — busca top 5 revisões/metanálises relacionadas
+    // à transcrição e injeta no system prompt para citação na avaliação.
+    // ───────────────────────────────────────────────────────────────
+    let evidencias: any[] = [];
+    let evidenciaContext = "";
+    if (faithfulTranscript && faithfulTranscript.length > 50) {
+      try {
+        const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
+        const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+        if (SUPABASE_URL_E && SERVICE_KEY_E) {
+          const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+            body: JSON.stringify({
+              model: "google/gemini-embedding-001",
+              input: faithfulTranscript.slice(0, 6000),
+              dimensions: 1536,
+            }),
+          });
+          if (embRes.ok) {
+            const embJson = await embRes.json();
+            const queryEmb = embJson.data?.[0]?.embedding;
+            const areaMap: Record<string, string> = {
+              fisioterapeuta: "fisioterapia", medico: "medicina", psicologo: "psicologia",
+              nutricionista: "nutricao", educador_fisico: "educacao_fisica", terapeuta_ocupacional: "terapia_ocupacional",
+            };
+            const areaFilter = perfilProfissional && areaMap[perfilProfissional] ? [areaMap[perfilProfissional]] : null;
+            const rpcRes = await fetch(`${SUPABASE_URL_E}/rest/v1/rpc/match_evidence`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+              body: JSON.stringify({
+                query_embedding: queryEmb,
+                match_count: 5,
+                filter_areas: areaFilter,
+                min_year: new Date().getFullYear() - 15,
+              }),
+            });
+            if (rpcRes.ok) {
+              evidencias = await rpcRes.json();
+              if (Array.isArray(evidencias) && evidencias.length > 0) {
+                evidenciaContext = `\n\nEVIDÊNCIA CIENTÍFICA RELEVANTE (use estas referências para sustentar hipóteses, técnicas e citações no campo "insights_baseados_evidencia"; sempre cite autor/ano/journal):\n\n` +
+                  evidencias.map((e: any, i: number) =>
+                    `[${i + 1}] ${e.title}\n  ${(e.authors ?? []).slice(0, 3).join(", ")}${(e.authors ?? []).length > 3 ? " et al." : ""}. ${e.journal ?? ""} (${e.year ?? "—"}). ${e.study_type ?? ""}, evidência ${e.evidence_level ?? "—"}.\n  ${e.abstract ? e.abstract.slice(0, 400) + "..." : ""}\n  ${e.url ?? ""}`
+                  ).join("\n\n");
+                console.log(`[voice-assessment] Injetou ${evidencias.length} evidências no prompt`);
+                fetch(`${SUPABASE_URL_E}/rest/v1/rpc/increment_evidence_citation`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+                  body: JSON.stringify({ p_ids: evidencias.map((e: any) => e.id) }),
+                }).catch(() => {});
+              }
+            } else {
+              console.warn(`[voice-assessment] match_evidence falhou: ${rpcRes.status}`);
+            }
+          }
+        }
+      } catch (e) {
+        console.warn("[voice-assessment] evidence search non-blocking error:", e);
+      }
+    }
+
+    // ───────────────────────────────────────────────────────────────
     // PASS 2 — Avaliação clínica estruturada
-    // Sempre envia a transcrição literal (quando disponível) para o modelo
-    // analisar; mantém o áudio anexado como referência para nuances.
     // ───────────────────────────────────────────────────────────────
     const userContent: any[] = [];
-
-    // Otimização: se já temos transcrição fiel (Pass 1 ou input do usuário),
-    // NÃO reenvia o áudio para o Pass 2. Isso corta ~50% do upload e reduz
-    // significativamente a latência da análise estruturada.
     const attachAudioToPass2 = hasAudio && !faithfulTranscript;
 
     if (attachAudioToPass2) {
@@ -453,7 +509,7 @@ serve(async (req) => {
     if (faithfulTranscript) {
       userContent.push({
         type: "text",
-        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" da resposta deve conter EXATAMENTE o texto acima, palavra por palavra — não condense, não parafraseie.`,
+        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}${evidenciaContext}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" da resposta deve conter EXATAMENTE o texto acima, palavra por palavra — não condense, não parafraseie.`,
       });
     } else {
       userContent.push({
@@ -550,7 +606,7 @@ serve(async (req) => {
       console.warn("[voice-assessment] uso_ia tracking error (non-blocking):", e);
     }
 
-    return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length }), {
+    return new Response(JSON.stringify({ assessment, transcricao, transcript_length: transcricao.length, evidencias }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
