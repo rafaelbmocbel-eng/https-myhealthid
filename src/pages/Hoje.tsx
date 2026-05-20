@@ -3,9 +3,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Users, Triangle, BarChart3,
+  Users, LayoutDashboard,
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
-  BookOpen, Settings, Tag,
+  BookOpen, Settings,
 } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
