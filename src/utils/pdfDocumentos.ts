@@ -133,13 +133,17 @@ async function drawHeader(doc: jsPDF, clinica?: ClinicaInfo | null) {
   doc.setTextColor(...MUTED);
   const lineParts: string[] = [];
   if (clinica?.cnpj) lineParts.push(`CNPJ ${clinica.cnpj}`);
-  if (clinica?.endereco) lineParts.push(clinica.endereco);
-  if (clinica?.cidade) lineParts.push(`${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}`);
+  const endParts: string[] = [];
+  if (clinica?.endereco) endParts.push(clinica.endereco);
+  if (clinica?.cidade) endParts.push(`${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}`);
+  if (clinica?.cep) endParts.push(`CEP ${clinica.cep}`);
+  if (endParts.length) lineParts.push(endParts.join(', '));
   if (lineParts.length) doc.text(lineParts.join(' · '), margin + 22, 24);
 
   const contato: string[] = [];
   if (clinica?.telefone) contato.push(clinica.telefone);
   if (clinica?.email_clinica) contato.push(clinica.email_clinica);
+  if (clinica?.horario_funcionamento) contato.push(`Atend.: ${clinica.horario_funcionamento}`);
   if (contato.length) doc.text(contato.join(' · '), margin + 22, 28);
 
   doc.setDrawColor(...PRIMARY);
