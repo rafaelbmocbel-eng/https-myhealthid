@@ -34,24 +34,39 @@ const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] 
 
 // CIF (Classificação Internacional de Funcionalidade) — sugestão por palavras-chave do motivo
 const CIF_KEYWORDS: { keywords: string[]; cif: string; desc: string }[] = [
-  { keywords: ['lombar', 'lombalgia', 'coluna lombar', 'costas', 'hérnia de disco', 'hernia de disco'], cif: 'b28013.2', desc: 'Dor nas costas' },
-  { keywords: ['cervical', 'cervicalgia', 'pescoço', 'pescoco'], cif: 'b28010.2', desc: 'Dor na cabeça e pescoço' },
-  { keywords: ['ombro', 'manguito', 'bursite'], cif: 'b28014.2', desc: 'Dor no membro superior' },
-  { keywords: ['cotovelo', 'epicondilite', 'punho', 'mão', 'tunel do carpo', 'túnel do carpo'], cif: 'b28014.2', desc: 'Dor no membro superior' },
-  { keywords: ['joelho', 'condromalácia', 'condromalacia', 'menisco', 'ligamento'], cif: 'b28015.2', desc: 'Dor no membro inferior' },
-  { keywords: ['quadril', 'coxa', 'tornozelo', 'entorse', 'fascite plantar', 'pé', 'pe '], cif: 'b28015.2', desc: 'Dor no membro inferior' },
-  { keywords: ['pós-operatório', 'pós operatório', 'pos-operatorio', 'pos operatorio', 'cirurgia', 'cirúrgico'], cif: 's770.3', desc: 'Estruturas adicionais relacionadas ao movimento' },
-  { keywords: ['fratura'], cif: 's7702.3', desc: 'Ligamentos e fáscias' },
-  { keywords: ['marcha', 'andar', 'caminhar', 'deambulação'], cif: 'd450.2', desc: 'Andar' },
-  { keywords: ['levantar', 'sentar', 'transferência'], cif: 'd410.2', desc: 'Mudar a posição básica do corpo' },
-  { keywords: ['força', 'forca', 'fraqueza', 'atrofia'], cif: 'b730.2', desc: 'Funções da força muscular' },
-  { keywords: ['amplitude', 'rigidez', 'limitação articular', 'mobilidade'], cif: 'b710.2', desc: 'Funções da mobilidade articular' },
-  { keywords: ['equilíbrio', 'equilibrio', 'queda', 'tontura'], cif: 'b755.2', desc: 'Funções de reações motoras involuntárias' },
-  { keywords: ['avc', 'hemiplegia', 'hemiparesia', 'derrame'], cif: 'b730.3', desc: 'Funções da força muscular' },
-  { keywords: ['parkinson', 'neurológic', 'neurologic', 'esclerose'], cif: 'b760.2', desc: 'Controle do movimento voluntário' },
-  { keywords: ['respirat', 'pulmon', 'asma', 'dpoc'], cif: 'b440.2', desc: 'Funções da respiração' },
-  { keywords: ['tendinite', 'tendinopatia'], cif: 'b7800.2', desc: 'Sensação de rigidez muscular' },
+  // Dor por região
+  { keywords: ['lombar', 'lombalgia', 'coluna lombar', 'costas', 'dorsalgia', 'hérnia de disco', 'hernia de disco', 'ciática', 'ciatica', 'lombociatalgia'], cif: 'b28013.2', desc: 'Dor nas costas' },
+  { keywords: ['cervical', 'cervicalgia', 'pescoço', 'pescoco', 'torcicolo', 'cefaleia', 'cefaléia', 'enxaqueca'], cif: 'b28010.2', desc: 'Dor na cabeça e pescoço' },
+  { keywords: ['ombro', 'manguito', 'bursite', 'capsulite', 'ombro congelado'], cif: 'b28014.2', desc: 'Dor no membro superior' },
+  { keywords: ['cotovelo', 'epicondilite', 'punho', 'mão', 'mao', 'tunel do carpo', 'túnel do carpo', 'dedo', 'antebraço', 'antebraco'], cif: 'b28014.2', desc: 'Dor no membro superior' },
+  { keywords: ['joelho', 'condromalácia', 'condromalacia', 'menisco', 'ligamento cruzado', 'lca', 'patelar', 'patelofemoral'], cif: 'b28015.2', desc: 'Dor no membro inferior' },
+  { keywords: ['quadril', 'coxa', 'tornozelo', 'entorse', 'fascite plantar', 'pé', 'pe ', 'panturrilha', 'calcanhar', 'esporão'], cif: 'b28015.2', desc: 'Dor no membro inferior' },
+  { keywords: ['torácica', 'toracica', 'costela', 'tórax', 'torax'], cif: 'b28012.2', desc: 'Dor no tórax' },
+  { keywords: ['abdominal', 'abdome', 'pélvica', 'pelvica'], cif: 'b28016.2', desc: 'Dor nas articulações' },
+  // Estruturas
+  { keywords: ['pós-operatório', 'pós operatório', 'pos-operatorio', 'pos operatorio', 'cirurgia', 'cirúrgico', 'cirurgico', 'artroplastia', 'prótese', 'protese'], cif: 's770.3', desc: 'Estruturas adicionais relacionadas ao movimento' },
+  { keywords: ['fratura', 'osteossíntese', 'osteossintese'], cif: 's7702.3', desc: 'Ligamentos e fáscias' },
+  { keywords: ['artrose', 'osteoartrose', 'osteoartrite', 'artrite'], cif: 'b7101.2', desc: 'Mobilidade de várias articulações' },
+  { keywords: ['escoliose', 'cifose', 'lordose', 'desvio postural'], cif: 's7600.2', desc: 'Estrutura da coluna vertebral' },
+  // Atividade/Participação
+  { keywords: ['marcha', 'andar', 'caminhar', 'deambulação', 'deambulacao'], cif: 'd450.2', desc: 'Andar' },
+  { keywords: ['levantar', 'sentar', 'transferência', 'transferencia', 'mudar de posição'], cif: 'd410.2', desc: 'Mudar a posição básica do corpo' },
+  { keywords: ['atividade laboral', 'trabalho', 'afastamento', 'incapacidade'], cif: 'd850.2', desc: 'Trabalho remunerado' },
+  { keywords: ['esporte', 'esportiva', 'lazer', 'recreação', 'recreacao'], cif: 'd920.2', desc: 'Recreação e lazer' },
+  // Funções
+  { keywords: ['força', 'forca', 'fraqueza', 'atrofia', 'sarcopenia'], cif: 'b730.2', desc: 'Funções da força muscular' },
+  { keywords: ['amplitude', 'rigidez', 'limitação articular', 'limitacao articular', 'mobilidade', 'adm'], cif: 'b710.2', desc: 'Funções da mobilidade articular' },
+  { keywords: ['equilíbrio', 'equilibrio', 'queda', 'tontura', 'labirintite', 'vertigem'], cif: 'b755.2', desc: 'Funções de reações motoras involuntárias' },
+  { keywords: ['avc', 'hemiplegia', 'hemiparesia', 'derrame', 'acidente vascular'], cif: 'b730.3', desc: 'Funções da força muscular' },
+  { keywords: ['parkinson', 'neurológic', 'neurologic', 'esclerose', 'paralisia', 'medular'], cif: 'b760.2', desc: 'Controle do movimento voluntário' },
+  { keywords: ['respirat', 'pulmon', 'asma', 'dpoc', 'bronquite'], cif: 'b440.2', desc: 'Funções da respiração' },
+  { keywords: ['tendinite', 'tendinopatia', 'tendão', 'tendao'], cif: 'b7800.2', desc: 'Sensação de rigidez muscular' },
+  { keywords: ['edema', 'inchaço', 'inchaco', 'linfedema'], cif: 'b435.2', desc: 'Funções do sistema imunológico (linfático)' },
+  { keywords: ['cicatriz', 'pele'], cif: 's810.2', desc: 'Estrutura das áreas da pele' },
 ];
+
+// Fallback genérico para garantir que sempre haja uma CIF sugerida no laudo
+const CIF_FALLBACK = { cif: 'b28018.1', desc: 'Dor — não especificada (revisar e ajustar)' };
 
 function sugerirCIF(motivo: string): { cif: string; desc: string } | null {
   const m = (motivo || '').toLowerCase();
@@ -59,7 +74,8 @@ function sugerirCIF(motivo: string): { cif: string; desc: string } | null {
   for (const item of CIF_KEYWORDS) {
     if (item.keywords.some(k => m.includes(k))) return { cif: item.cif, desc: item.desc };
   }
-  return null;
+  // Sempre retorna algo quando há motivo descrito
+  return CIF_FALLBACK;
 }
 
 export default function DocumentosModal({ open, onOpenChange, paciente }: Props) {
