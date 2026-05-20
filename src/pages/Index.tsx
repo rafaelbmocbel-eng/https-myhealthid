@@ -604,92 +604,117 @@ export default function Index() {
         </div>
 
 
-        {/* ============ LOWER GRID 2/3 + 1/3: Agenda de hoje + Últimas atividades ============ */}
-        {(agendamentosHoje.length > 0 || atividadesRecentes.length > 0) && (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-6">
-          {/* Today's schedule — 2/3 */}
-          {agendamentosHoje.length > 0 && (
-            <section className="lg:col-span-2 rounded-xl border border-border/40 bg-card p-4 sm:p-5">
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="h-section">Agenda de hoje</h2>
-                <Button asChild variant="ghost" size="sm" className="text-primary h-8">
-                  <Link to="/agenda">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
-                </Button>
-              </div>
-              <div className="space-y-1">
-                {agendamentosHoje.slice(0, 6).map((ag: any) => {
-                  const inicio = parseISO(ag.data_inicio);
-                  const isPast = inicio < new Date();
-                  return (
-                    <div
-                      key={ag.id}
-                      role={ag.pacientes?.id ? 'button' : undefined}
-                      tabIndex={ag.pacientes?.id ? 0 : undefined}
-                      onClick={() => ag.pacientes?.id && navigate(`/pacientes/${ag.pacientes.id}`)}
-                      onKeyDown={(e) => { if (ag.pacientes?.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/pacientes/${ag.pacientes.id}`); } }}
-                      className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors ${isPast ? 'opacity-50' : ''} ${ag.pacientes?.id ? 'cursor-pointer hover:bg-muted/50' : ''}`}
-                    >
-                      <div className="text-sm font-mono font-semibold text-foreground w-12 shrink-0 tabular-nums">
-                        {format(inicio, 'HH:mm')}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">
-                          {ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : ag.titulo || 'Agendamento'}
-                        </div>
-                        <div className="text-caption">{ag.tipo_atendimento || 'Retorno'}</div>
-                      </div>
-                      <div className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
-                        ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' :
-                        ag.status === 'pendente' ? 'bg-amber-50 text-amber-700' :
-                        'bg-muted text-muted-foreground'
-                      }`}>
-                        {ag.status}
-                      </div>
+        {/* Today's schedule */}
+        {agendamentosHoje.length > 0 && (
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="h-section">Agenda de hoje</h2>
+              <Button asChild variant="ghost" size="sm" className="text-primary h-8">
+                <Link to="/agenda">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
+              </Button>
+            </div>
+            <div className="space-y-1">
+              {agendamentosHoje.slice(0, 5).map((ag: any) => {
+                const inicio = parseISO(ag.data_inicio);
+                const isPast = inicio < new Date();
+                return (
+                  <div
+                    key={ag.id}
+                    role={ag.pacientes?.id ? 'button' : undefined}
+                    tabIndex={ag.pacientes?.id ? 0 : undefined}
+                    onClick={() => ag.pacientes?.id && navigate(`/pacientes/${ag.pacientes.id}`)}
+                    onKeyDown={(e) => { if (ag.pacientes?.id && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); navigate(`/pacientes/${ag.pacientes.id}`); } }}
+                    className={`flex items-center gap-3 px-2 py-2.5 rounded-lg transition-colors ${isPast ? 'opacity-50' : ''} ${ag.pacientes?.id ? 'cursor-pointer hover:bg-muted/50' : ''}`}
+                  >
+                    <div className="text-sm font-mono font-semibold text-foreground w-12 shrink-0 tabular-nums">
+                      {format(inicio, 'HH:mm')}
                     </div>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-
-          {/* Feed de Atividades Recentes — 1/3 */}
-          {atividadesRecentes.length > 0 && (
-            <section className={`rounded-xl border border-border/40 bg-card p-4 sm:p-5 ${agendamentosHoje.length === 0 ? 'lg:col-span-3' : ''}`}>
-              <div className="flex items-center justify-between mb-4">
-                <h2 className="h-section">Últimas atividades</h2>
-                <Button asChild variant="ghost" size="sm" className="text-primary h-8">
-                  <Link to="/pacientes">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
-                </Button>
-              </div>
-              <div className="space-y-0.5">
-                {atividadesRecentes.slice(0, 6).map((item: any) => {
-                  const ActivityIcon = item.icon === 'calendar' ? CalendarDays : item.icon === 'clipboard' ? ClipboardList : item.icon === 'align' ? AlignCenter : UserPlus;
-                  return (
-                    <button
-                      type="button"
-                      key={item.id}
-                      className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
-                      onClick={() => item.pacienteId && navigate(`/pacientes/${item.pacienteId}`)}
-                    >
-                      <div className="h-8 w-8 rounded-lg bg-muted/70 flex items-center justify-center shrink-0">
-                        <ActivityIcon className="icon-sm text-foreground/70" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">
+                        {ag.pacientes ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}` : ag.titulo || 'Agendamento'}
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="text-sm font-medium text-foreground truncate">{item.pacienteNome}</div>
-                        <div className="text-caption truncate">{item.description}</div>
-                      </div>
-                      <div className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
-                        {formatDistanceToNow(parseISO(item.timestamp), { addSuffix: true, locale: ptBR })}
-                      </div>
-                    </button>
-                  );
-                })}
-              </div>
-            </section>
-          )}
-        </div>
+                      <div className="text-caption">{ag.tipo_atendimento || 'Retorno'}</div>
+                    </div>
+                    <div className={`text-[11px] font-medium px-2 py-0.5 rounded-full ${
+                      ag.status === 'confirmado' ? 'bg-emerald-50 text-emerald-700' :
+                      ag.status === 'pendente' ? 'bg-amber-50 text-amber-700' :
+                      'bg-muted text-muted-foreground'
+                    }`}>
+                      {ag.status}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </section>
         )}
 
+        {/* Alertas Clínicos Críticos (Red Flags) */}
+        {recentAlerts.length > 0 && (
+          <section className="rounded-xl border border-destructive/20 bg-destructive/[0.02] p-4 sm:p-5 mb-6">
+            <div className="flex items-center gap-2.5 mb-4">
+              <Shield className="icon-sm text-destructive" />
+              <div className="min-w-0">
+                <h2 className="h-section text-destructive">Alertas clínicos ativos</h2>
+                <p className="text-caption">Pacientes com Red Flags recentes</p>
+              </div>
+            </div>
+            <div className="grid sm:grid-cols-3 gap-2.5">
+              {recentAlerts.map(alert => (
+                <button
+                  key={alert.id_final || alert.created_at}
+                  type="button"
+                  className="text-left p-3 rounded-lg border border-destructive/15 bg-card hover:border-destructive/40 hover:bg-destructive/[0.04] transition-colors"
+                  onClick={() => alert.paciente_id && navigate(`/pacientes/${alert.paciente_id}`)}
+                >
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-sm font-semibold text-foreground truncate">{(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}</span>
+                  </div>
+                  <div className="text-caption">Perímetro de alerta MyID acionado</div>
+                  <div className="text-[10px] text-muted-foreground mt-1.5">
+                    {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}
+                  </div>
+                </button>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {/* Feed de Atividades Recentes */}
+        {atividadesRecentes.length > 0 && (
+          <section className="rounded-xl border border-border/40 bg-card p-4 sm:p-5 mb-6">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="h-section">Últimas atividades</h2>
+              <Button asChild variant="ghost" size="sm" className="text-primary h-8">
+                <Link to="/pacientes">Ver tudo <ArrowRight className="icon-xs ml-1" /></Link>
+              </Button>
+            </div>
+            <div className="space-y-0.5">
+              {atividadesRecentes.map((item: any) => {
+                const ActivityIcon = item.icon === 'calendar' ? CalendarDays : item.icon === 'clipboard' ? ClipboardList : item.icon === 'align' ? AlignCenter : UserPlus;
+                return (
+                  <button
+                    type="button"
+                    key={item.id}
+                    className="w-full flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-muted/50 transition-colors text-left"
+                    onClick={() => item.pacienteId && navigate(`/pacientes/${item.pacienteId}`)}
+                  >
+                    <div className="h-8 w-8 rounded-lg bg-muted/70 flex items-center justify-center shrink-0">
+                      <ActivityIcon className="icon-sm text-foreground/70" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium text-foreground truncate">{item.pacienteNome}</div>
+                      <div className="text-caption truncate">{item.description}</div>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground whitespace-nowrap shrink-0">
+                      {formatDistanceToNow(parseISO(item.timestamp), { addSuffix: true, locale: ptBR })}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </section>
+        )}
 
         {/* Estatísticas Gerais */}
         {statsData && (
