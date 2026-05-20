@@ -1,0 +1,1 @@
+update public.evidence_ingestion_log set status='failed', finished_at=now(), error_details='[{"reason":"timeout - superseded by per-area runs"}]'::jsonb where status='running';

@@ -22,16 +22,24 @@ const QUERIES: { area: string; query: string }[] = [
   // Medicina
   { area: "medicina", query: "(musculoskeletal disorders OR sports medicine) AND clinical guideline AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "medicina", query: "(red flags OR cauda equina OR radiculopathy) AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "medicina", query: "(internal medicine OR primary care OR family medicine) AND (systematic review[pt] OR meta-analysis[pt])" },
   // Psicologia
   { area: "psicologia", query: "(cognitive behavioral therapy OR mindfulness) AND (depression OR anxiety OR chronic pain) AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "psicologia", query: "(PHQ-9 OR GAD-7 OR fear-avoidance) AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "psicologia", query: "(psychotherapy OR ACT therapy OR trauma-focused) AND (systematic review[pt] OR meta-analysis[pt])" },
+  // Neurociência
+  { area: "neurociencia", query: "(neuroplasticity OR motor learning OR neural rehabilitation) AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "neurociencia", query: "(stroke OR Parkinson disease OR traumatic brain injury) AND rehabilitation AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "neurociencia", query: "(central sensitization OR pain neuroscience education) AND (systematic review[pt] OR meta-analysis[pt])" },
   // Nutrição
   { area: "nutricao", query: "(nutrition OR dietary intervention) AND (chronic disease OR obesity OR inflammation) AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "nutricao", query: "(protein intake OR mediterranean diet OR intermittent fasting) AND (systematic review[pt] OR meta-analysis[pt])" },
   // Educação física
   { area: "educacao_fisica", query: "(resistance training OR aerobic exercise OR periodization) AND (systematic review[pt] OR meta-analysis[pt])" },
   { area: "educacao_fisica", query: "(strength training OR HIIT OR exercise prescription) AND (systematic review[pt] OR meta-analysis[pt])" },
   // TO
   { area: "terapia_ocupacional", query: "(occupational therapy OR activities of daily living) AND (systematic review[pt] OR meta-analysis[pt])" },
+  { area: "terapia_ocupacional", query: "(hand therapy OR sensory integration OR cognitive rehabilitation) AND (systematic review[pt] OR meta-analysis[pt])" },
 ];
 
 interface PubMedArticle {
@@ -140,8 +148,10 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const body = await req.json().catch(() => ({}));
   const mode: "initial" | "weekly" = body.mode ?? "weekly";
-  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 1500 : 50), 2000);
+  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 800 : 50), 2000);
   const dryRun: boolean = !!body.dryRun;
+  const filterAreas: string[] | null = Array.isArray(body.areas) && body.areas.length ? body.areas : null;
+  const activeQueries = filterAreas ? QUERIES.filter((q) => filterAreas.includes(q.area)) : QUERIES;
 
   // Weekly mode: only fetch articles from the last 10 days
   const mindate = mode === "weekly"
@@ -159,7 +169,7 @@ Deno.serve(async (req) => {
   const errorDetails: any[] = [];
 
   try {
-    for (const { area, query } of QUERIES) {
+    for (const { area, query } of activeQueries) {
       try {
         const pmids = await fetchPubMedIds(query, maxPerQuery, mindate);
         totalFetched += pmids.length;
