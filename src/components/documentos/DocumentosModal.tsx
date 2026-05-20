@@ -542,17 +542,27 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
                     <Eye className="icon-sm text-primary" />
                     Pré-visualização (atualize após editar)
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 text-xs"
-                    onClick={() => {
-                      if (previewUrl) URL.revokeObjectURL(previewUrl);
-                      setPreviewUrl(null);
-                    }}
-                  >
-                    <EyeOff className="icon-sm mr-1" /> Fechar
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs gap-1"
+                      onClick={() => previewUrl && window.open(previewUrl, '_blank')}
+                    >
+                      <ExternalLink className="icon-sm" /> Abrir
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 text-xs"
+                      onClick={() => {
+                        if (previewUrl) URL.revokeObjectURL(previewUrl);
+                        setPreviewUrl(null);
+                      }}
+                    >
+                      <EyeOff className="icon-sm mr-1" /> Fechar
+                    </Button>
+                  </div>
                 </div>
                 <iframe
                   src={previewUrl}
