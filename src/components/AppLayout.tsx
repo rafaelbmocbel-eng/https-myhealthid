@@ -17,6 +17,7 @@ import GlobalSearch from './GlobalSearch';
 import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
 import NotificationCenter from './NotificationCenter';
+import TrialBanner from './TrialBanner';
 
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
