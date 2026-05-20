@@ -53,6 +53,7 @@ export default function BaseCientifica() {
   const [searchResults, setSearchResults] = useState<Article[]>([]);
   const [searching, setSearching] = useState(false);
   const [ingesting, setIngesting] = useState<"initial" | "weekly" | null>(null);
+  const [ingestingArea, setIngestingArea] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
 
   const load = async () => {
