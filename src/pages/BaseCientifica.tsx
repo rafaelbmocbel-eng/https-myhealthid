@@ -53,6 +53,7 @@ export default function BaseCientifica() {
   const [searchResults, setSearchResults] = useState<Article[]>([]);
   const [searching, setSearching] = useState(false);
   const [ingesting, setIngesting] = useState<"initial" | "weekly" | null>(null);
+  const [ingestingArea, setIngestingArea] = useState<string | null>(null);
   const [areaFilter, setAreaFilter] = useState<string | null>(null);
 
   const load = async () => {
@@ -120,6 +121,22 @@ export default function BaseCientifica() {
       setIngesting(null);
     }
   };
+  const runIngestArea = async (areaKey: string, areaLabel: string, mode: "initial" | "weekly") => {
+    setIngestingArea(areaKey);
+    try {
+      const { data, error } = await supabase.functions.invoke("ingest-pubmed", {
+        body: { mode, maxPerQuery: mode === "initial" ? 800 : 50, areas: [areaKey] },
+      });
+      if (error) throw error;
+      toast.success(`${areaLabel}: ingestão iniciada em background. Acompanhe pelo histórico abaixo.`);
+      setTimeout(load, 2000);
+    } catch (e: any) {
+      toast.error(`${areaLabel}: ${e?.message ?? e}`);
+    } finally {
+      setIngestingArea(null);
+    }
+  };
+
 
   const runSearch = async () => {
     if (search.trim().length < 5) return;
@@ -199,6 +216,49 @@ export default function BaseCientifica() {
             ))}
           </div>
         )}
+      </Card>
+
+      {/* Per-area ingestion */}
+      <Card className="p-5">
+        <SectionTitle
+          title="Atualizar por área"
+          description="Dispare a carga ou atualização individualmente para cada área da saúde. Roda em background — pode fechar a página."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+          {AREAS.map((a) => {
+            const busy = ingestingArea === a.key;
+            return (
+              <div key={a.key} className="flex items-center justify-between gap-2 border border-border/40 rounded-xl p-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm">{a.label}</div>
+                  <div className="text-caption text-muted-foreground">
+                    {(stats.byArea[a.key] ?? 0).toLocaleString("pt-BR")} artigos
+                  </div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !!ingesting}
+                    onClick={() => runIngestArea(a.key, a.label, "initial")}
+                    title="Carga inicial completa (~800 artigos)"
+                  >
+                    {busy ? <Loader2 className="icon-xs animate-spin" /> : <Download className="icon-xs" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !!ingesting}
+                    onClick={() => runIngestArea(a.key, a.label, "weekly")}
+                    title="Atualizar (últimos 10 dias)"
+                  >
+                    {busy ? <Loader2 className="icon-xs animate-spin" /> : <RefreshCw className="icon-xs" />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </Card>
 
       {/* Search */}
