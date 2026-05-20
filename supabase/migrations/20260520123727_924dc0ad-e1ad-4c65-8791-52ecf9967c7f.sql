@@ -1,0 +1,2 @@
+revoke execute on function public.match_evidence(vector, integer, text[], integer) from anon, authenticated;
+revoke execute on function public.increment_evidence_citation(uuid[]) from anon, authenticated;
