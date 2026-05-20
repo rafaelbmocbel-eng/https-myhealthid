@@ -13,6 +13,7 @@ type ConfigClinica = {
   razao_social: string;
   cnpj: string;
   responsavel: string;
+  registro_responsavel: string;
   telefone: string;
   email_clinica: string;
   endereco: string;
@@ -28,7 +29,7 @@ type ConfigClinica = {
 };
 
 const EMPTY: ConfigClinica = {
-  razao_social: '', cnpj: '', responsavel: '',
+  razao_social: '', cnpj: '', responsavel: '', registro_responsavel: '',
   telefone: '', email_clinica: '', endereco: '', cidade: '', uf: '', cep: '',
   horario_funcionamento: '',
   logo_url: '',
