@@ -9,6 +9,7 @@ import { SectionTitle } from "@/components/ui/section-title";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { Loader2, BookOpen, RefreshCw, Download, ExternalLink, Search } from "lucide-react";
+import AppLayout from "@/components/AppLayout";
 
 type Article = {
   id: string;
@@ -155,7 +156,8 @@ export default function BaseCientifica() {
   };
 
   return (
-    <div className="container max-w-6xl py-6 space-y-6">
+    <AppLayout>
+      <div className="container max-w-6xl py-6 space-y-6">
       <PageHeader
         title="Base Científica"
         subtitle="Revisões sistemáticas e metanálises do PubMed que sustentam as avaliações geradas pela IA."
@@ -318,7 +320,8 @@ export default function BaseCientifica() {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 
