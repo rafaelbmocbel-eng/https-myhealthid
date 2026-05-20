@@ -1,4 +1,4 @@
-import { useState, useLayoutEffect, useCallback } from 'react';
+import { useState, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { Kanban } from 'lucide-react';
 import {
@@ -35,6 +35,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
+  const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
 
   useLayoutEffect(() => {
     const check = () => {
@@ -153,14 +154,14 @@ export default function AppLayout({ children }: AppLayoutProps) {
         <main className={cn(
           'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',
           'sm:px-4',
-          isMobile ? 'pb-24' : 'pb-12 px-6 lg:px-8 pt-6',
+          isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
         )}>
           {children}
         </main>
       </div>
 
       {/* Mobile bottom navigation */}
-      {isMobile && !mobileOpen && <MobileBottomNav />}
+      {isMobile && !mobileOpen && !isHomePage && <MobileBottomNav />}
     </div>
   );
 }
