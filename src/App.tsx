@@ -44,6 +44,7 @@ const Precos = lazy(() => import("./pages/Precos"));
 const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
 const NovaSenha = lazy(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazy(() => import("./pages/BaseCientifica"));
+const Hoje = lazy(() => import("./pages/Hoje"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -139,6 +140,7 @@ const App = () => (
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
+                <Route path="/hoje" element={<PatientGuard><Hoje /></PatientGuard>} />
                 <Route path="/pacientes" element={<PatientGuard><Pacientes /></PatientGuard>} />
                 <Route path="/pacientes/:id" element={<PatientGuard><PacientePerfil /></PatientGuard>} />
                 <Route path="/protocolos" element={<Navigate to="/pacientes" replace />} />

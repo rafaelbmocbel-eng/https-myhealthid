@@ -19,7 +19,7 @@ export default function Auth() {
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
 
-  if (!loading && user) return <Navigate to="/agenda" replace />;
+  if (!loading && user) return <Navigate to="/hoje" replace />;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
