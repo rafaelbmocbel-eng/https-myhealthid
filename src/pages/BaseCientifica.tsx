@@ -218,6 +218,49 @@ export default function BaseCientifica() {
         )}
       </Card>
 
+      {/* Per-area ingestion */}
+      <Card className="p-5">
+        <SectionTitle
+          title="Atualizar por área"
+          description="Dispare a carga ou atualização individualmente para cada área da saúde. Roda em background — pode fechar a página."
+        />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+          {AREAS.map((a) => {
+            const busy = ingestingArea === a.key;
+            return (
+              <div key={a.key} className="flex items-center justify-between gap-2 border border-border/40 rounded-xl p-3">
+                <div className="min-w-0">
+                  <div className="font-medium text-sm">{a.label}</div>
+                  <div className="text-caption text-muted-foreground">
+                    {(stats.byArea[a.key] ?? 0).toLocaleString("pt-BR")} artigos
+                  </div>
+                </div>
+                <div className="flex gap-1.5 shrink-0">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !!ingesting}
+                    onClick={() => runIngestArea(a.key, a.label, "initial")}
+                    title="Carga inicial completa (~800 artigos)"
+                  >
+                    {busy ? <Loader2 className="icon-xs animate-spin" /> : <Download className="icon-xs" />}
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={busy || !!ingesting}
+                    onClick={() => runIngestArea(a.key, a.label, "weekly")}
+                    title="Atualizar (últimos 10 dias)"
+                  >
+                    {busy ? <Loader2 className="icon-xs animate-spin" /> : <RefreshCw className="icon-xs" />}
+                  </Button>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </Card>
+
       {/* Search */}
       <Card className="p-5">
         <SectionTitle title="Buscar na base" description="Busca semântica — encontra artigos pelo significado, não só por palavra-chave." />
