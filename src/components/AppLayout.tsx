@@ -35,6 +35,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
   const hideQuickActionsFab = location.pathname.startsWith('/pacientes');
+  const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
 
   useLayoutEffect(() => {
     const check = () => {
