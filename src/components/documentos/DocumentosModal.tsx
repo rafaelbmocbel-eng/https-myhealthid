@@ -172,49 +172,85 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo, paciente.id, user]);
 
+  const buildDados = () => {
+    let dados: any = {};
+    switch (tipo) {
+      case 'comparecimento':
+        dados = { data, horaEntrada, horaSaida };
+        break;
+      case 'atestado_fisio':
+        dados = { diasAfastamento, dataInicio: data, cid: cid || undefined, motivo: motivo || undefined };
+        break;
+      case 'declaracao_tratamento':
+        dados = { desde, finalidade: finalidade || undefined, observacoes: observacoes || undefined };
+        break;
+      case 'recibo':
+        dados = { valor, referente, formaPagamento, numeroSessoes };
+        break;
+      case 'laudo_cinetico':
+        dados = {
+          dataNascimento: paciente.data_nascimento,
+          sexo: paciente.sexo,
+          profissao: profissao || undefined,
+          queixaPrincipal,
+          hma,
+          hpp: hpp || undefined,
+          medicamentos: medicamentos || undefined,
+          exameFisico,
+          testesEspeciais: testesEspeciais || undefined,
+          diagnosticoFuncional,
+          cidPrincipal: cidPrincipal || undefined,
+          cifCodigos: cifCodigos || undefined,
+          myidScore: myidData?.score ?? null,
+          myidClassificacao: myidData?.classificacao ?? null,
+          myidDimensoes: myidData?.dimensoes,
+          objetivos,
+          conduta,
+          frequenciaSugerida: frequenciaSugerida || undefined,
+          prognostico: prognostico || undefined,
+        };
+        break;
+    }
+    return dados;
+  };
+
+  const handlePreview = async () => {
+    if (!tipo || !terapeuta) return;
+    setPreviewLoading(true);
+    try {
+      const doc = await gerarDocumento(tipo, { clinica, terapeuta, paciente }, buildDados());
+      const blob = doc.output('blob');
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+      const url = URL.createObjectURL(blob);
+      setPreviewUrl(url);
+    } catch (err: any) {
+      console.error('Erro no preview:', err);
+      toast({ title: 'Erro ao pré-visualizar', description: err.message, variant: 'destructive' });
+    } finally {
+      setPreviewLoading(false);
+    }
+  };
+
+  // Limpa URL ao fechar/trocar tipo
+  useEffect(() => {
+    return () => {
+      if (previewUrl) URL.revokeObjectURL(previewUrl);
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+  useEffect(() => {
+    if (previewUrl) {
+      URL.revokeObjectURL(previewUrl);
+      setPreviewUrl(null);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tipo]);
+
   const handleGerar = async () => {
     if (!tipo || !terapeuta || !user) return;
     setGerando(true);
     try {
-      let dados: any = {};
-      switch (tipo) {
-        case 'comparecimento':
-          dados = { data, horaEntrada, horaSaida };
-          break;
-        case 'atestado_fisio':
-          dados = { diasAfastamento, dataInicio: data, cid: cid || undefined, motivo: motivo || undefined };
-          break;
-        case 'declaracao_tratamento':
-          dados = { desde, finalidade: finalidade || undefined, observacoes: observacoes || undefined };
-          break;
-        case 'recibo':
-          dados = { valor, referente, formaPagamento, numeroSessoes };
-          break;
-        case 'laudo_cinetico':
-          dados = {
-            dataNascimento: paciente.data_nascimento,
-            sexo: paciente.sexo,
-            profissao: profissao || undefined,
-            queixaPrincipal,
-            hma,
-            hpp: hpp || undefined,
-            medicamentos: medicamentos || undefined,
-            exameFisico,
-            testesEspeciais: testesEspeciais || undefined,
-            diagnosticoFuncional,
-            cidPrincipal: cidPrincipal || undefined,
-            cifCodigos: cifCodigos || undefined,
-            myidScore: myidData?.score ?? null,
-            myidClassificacao: myidData?.classificacao ?? null,
-            myidDimensoes: myidData?.dimensoes,
-            objetivos,
-            conduta,
-            frequenciaSugerida: frequenciaSugerida || undefined,
-            prognostico: prognostico || undefined,
-          };
-          break;
-      }
-
+      const dados = buildDados();
       const doc = await gerarDocumento(tipo, { clinica, terapeuta, paciente }, dados);
       const filename = `${TIPO_DOCUMENTO_LABEL[tipo].replace(/\s/g, '_')}_${paciente.nome}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(filename);
