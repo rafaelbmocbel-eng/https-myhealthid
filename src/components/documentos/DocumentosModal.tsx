@@ -38,6 +38,8 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
   const [gerando, setGerando] = useState(false);
   const [clinica, setClinica] = useState<ClinicaInfo | null>(null);
   const [terapeuta, setTerapeuta] = useState<TerapeutaInfo | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   // Form fields (todos os tipos)
   const [data, setData] = useState(new Date().toISOString().split('T')[0]);
