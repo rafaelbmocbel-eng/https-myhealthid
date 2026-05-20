@@ -403,35 +403,6 @@ export default function Index() {
             </h1>
           </div>
 
-          {/* Module Hub — Linear/Arc style pill nav */}
-          <nav aria-label="Módulos" className="flex items-center gap-0.5 p-1 bg-muted/50 rounded-2xl border border-border/40 overflow-x-auto -mx-2 px-2 lg:mx-0 lg:px-1">
-            {[
-              { label: 'Agenda', icon: CalendarDays, href: '/agenda' },
-              { label: 'Pacientes', icon: Users, href: '/pacientes' },
-              { label: 'Inbox', icon: Inbox, href: '/crm?tab=inbox' },
-              { label: 'CRM', icon: BarChart3, href: '/crm' },
-              { label: 'Eventos', icon: Star, href: '/eventos' },
-              { label: 'Dashboard', icon: LayoutGrid, href: '/inicio-app', active: true },
-              { label: 'Ajustes', icon: Settings, href: '/configuracoes' },
-            ].map(m => {
-              const Icon = m.icon;
-              return (
-                <Link
-                  key={m.label}
-                  to={m.href}
-                  aria-current={m.active ? 'page' : undefined}
-                  className={`flex flex-col items-center gap-1 px-3 py-2 rounded-xl transition-all shrink-0 ${
-                    m.active
-                      ? 'bg-card text-foreground shadow-xs border border-border/40'
-                      : 'text-muted-foreground hover:text-foreground hover:bg-card/60'
-                  }`}
-                >
-                  <Icon className="icon-sm shrink-0" />
-                  <span className="text-[10px] font-medium leading-none">{m.label}</span>
-                </Link>
-              );
-            })}
-          </nav>
         </header>
         </FadeIn>
 
