@@ -168,7 +168,7 @@ export default function BaseCientifica() {
           <div className="text-caption text-muted-foreground">Total de artigos</div>
           <div className="h-card mt-1">{stats.total.toLocaleString("pt-BR")}</div>
         </Card>
-        {AREAS.slice(0, 3).map((a) => (
+        {AREAS.map((a) => (
           <Card key={a.key} className="p-4">
             <div className="text-caption text-muted-foreground">{a.label}</div>
             <div className="h-card mt-1">{(stats.byArea[a.key] ?? 0).toLocaleString("pt-BR")}</div>
