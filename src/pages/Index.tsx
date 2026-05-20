@@ -361,9 +361,9 @@ export default function Index() {
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
   if (loading) return (
-    <AppLayout>
+    <div className="min-h-[100dvh] bg-background">
       <DashboardSkeleton />
-    </AppLayout>
+    </div>
   );
 
   const proximoAtendimento = agendamentosHoje.find(a => {
@@ -387,9 +387,10 @@ export default function Index() {
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 
   return (
-    <AppLayout>
+    <div className="min-h-[100dvh] bg-background">
       <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6">
+
 
         {/* ============ GREETING ============ */}
         <FadeIn>
@@ -1003,6 +1004,6 @@ export default function Index() {
 
       {/* FAB removed — actions available via sidebar/module cards */}
       </PageTransition>
-    </AppLayout>
+    </div>
   );
 }
