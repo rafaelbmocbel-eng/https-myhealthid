@@ -148,8 +148,10 @@ Deno.serve(async (req) => {
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const body = await req.json().catch(() => ({}));
   const mode: "initial" | "weekly" = body.mode ?? "weekly";
-  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 1500 : 50), 2000);
+  const maxPerQuery: number = Math.min(body.maxPerQuery ?? (mode === "initial" ? 800 : 50), 2000);
   const dryRun: boolean = !!body.dryRun;
+  const filterAreas: string[] | null = Array.isArray(body.areas) && body.areas.length ? body.areas : null;
+  const activeQueries = filterAreas ? QUERIES.filter((q) => filterAreas.includes(q.area)) : QUERIES;
 
   // Weekly mode: only fetch articles from the last 10 days
   const mindate = mode === "weekly"
