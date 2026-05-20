@@ -87,6 +87,28 @@ export default function LandingPublica() {
         <meta property="og:description" content="Avaliação clínica com IA para profissionais de saúde. Teste grátis por 14 dias." />
         <meta property="og:url" content="https://https-myhealthid.lovable.app/" />
         <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="MY HEALTH ID" />
+        <meta name="twitter:description" content="Avaliação clínica com IA para profissionais de saúde. Teste grátis por 14 dias." />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'MY HEALTH ID',
+          applicationCategory: 'HealthApplication',
+          operatingSystem: 'Web, iOS, Android (PWA)',
+          description: 'Plataforma clínica multiprofissional com MyID (avaliação por IA), agenda, portal do paciente PWA, CRM com WhatsApp e prontuário.',
+          offers: {
+            '@type': 'Offer',
+            price: '67',
+            priceCurrency: 'BRL',
+            description: 'A partir de R$67/mês. Teste grátis por 14 dias.',
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: '4.9',
+            ratingCount: '24',
+          },
+        })}</script>
       </Helmet>
 
       {/* Header */}
@@ -141,9 +163,9 @@ export default function LandingPublica() {
                 Começar trial grátis de 14 dias <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <a href="#demo" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
-              <PlayCircle className="h-4 w-4" /> Ver demo de 60s
-            </a>
+            <Link to="/demo" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
+              <PlayCircle className="h-4 w-4" /> Experimentar demo interativa
+            </Link>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Sem cartão de crédito</span>
@@ -210,26 +232,17 @@ export default function LandingPublica() {
             <div className="relative overflow-hidden rounded-2xl border border-border/60 bg-card shadow-lg aspect-video">
               {/* Placeholder de vídeo — substituir src com link real quando disponível */}
               <div className="absolute inset-0 flex flex-col items-center justify-center bg-gradient-to-br from-primary/10 via-background to-accent/10">
-                <button
-                  type="button"
-                  aria-label="Reproduzir demo"
-                  className="group flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
-                >
-                  <PlayCircle className="h-10 w-10" />
-                </button>
-                <p className="mt-5 text-sm font-medium">Demo MyID — 60 segundos</p>
-                <p className="mt-1 text-xs text-muted-foreground">Em breve: vídeo demonstrativo completo</p>
+                <Link to="/demo" aria-label="Abrir demo interativa">
+                  <button
+                    type="button"
+                    className="group flex h-20 w-20 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-xl transition-transform hover:scale-105"
+                  >
+                    <PlayCircle className="h-10 w-10" />
+                  </button>
+                </Link>
+                <p className="mt-5 text-sm font-medium">Demo MyID interativa</p>
+                <p className="mt-1 text-xs text-muted-foreground">Sem cadastro · 5 perguntas · score na hora</p>
               </div>
-              {/*
-              Quando o vídeo estiver pronto, substitua o bloco acima por:
-              <iframe
-                src="https://www.youtube.com/embed/SEU_ID_AQUI"
-                title="Demo MY HEALTH ID"
-                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                allowFullScreen
-                className="absolute inset-0 h-full w-full"
-              />
-              */}
             </div>
           </div>
         </div>

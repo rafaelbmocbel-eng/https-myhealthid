@@ -14,6 +14,7 @@ import GlobalBackButton from "./components/GlobalBackButton";
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
 const LandingPublica = lazy(() => import("./pages/LandingPublica"));
+const DemoMyID = lazy(() => import("./pages/DemoMyID"));
 const Auth = lazy(() => import("./pages/Auth"));
 const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -133,6 +134,7 @@ const App = () => (
                 <Route path="/recuperar-senha" element={<RecuperarSenha />} />
                 <Route path="/nova-senha" element={<NovaSenha />} />
                 <Route path="/precos" element={<Precos />} />
+                <Route path="/demo" element={<DemoMyID />} />
                 <Route path="/avaliacoes" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/studio-personal-id" element={<Navigate to="/pacientes" replace />} />
                 <Route path="/agenda" element={<PatientGuard><Agenda /></PatientGuard>} />
