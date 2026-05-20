@@ -89,15 +89,30 @@ export default function BaseCientifica() {
   const runIngest = async (mode: "initial" | "weekly") => {
     setIngesting(mode);
     const confirmMsg = mode === "initial"
-      ? "Carga inicial pode levar 15-30 minutos e custar ~$30-50 em embeddings. Continuar?"
+      ? "Carga inicial roda 1 área por vez (~2-4 min cada, ~20 min total). Continuar?"
       : "Atualização incremental (últimos 10 dias). Continuar?";
     if (!confirm(confirmMsg)) { setIngesting(null); return; }
     try {
-      const { data, error } = await supabase.functions.invoke("ingest-pubmed", {
-        body: { mode, maxPerQuery: mode === "initial" ? 1500 : 50 },
-      });
-      if (error) throw error;
-      toast.success(`Ingestão ok: ${data?.totalInserted ?? 0} novos artigos, ${data?.totalSkipped ?? 0} já existiam.`);
+      if (mode === "initial") {
+        let totalIns = 0;
+        for (const a of AREAS) {
+          toast.info(`Carregando ${a.label}...`);
+          const { data, error } = await supabase.functions.invoke("ingest-pubmed", {
+            body: { mode: "initial", maxPerQuery: 800, areas: [a.key] },
+          });
+          if (error) { toast.error(`${a.label}: ${error.message}`); continue; }
+          totalIns += data?.totalInserted ?? 0;
+          toast.success(`${a.label}: +${data?.totalInserted ?? 0} artigos`);
+          await load();
+        }
+        toast.success(`Carga concluída: ${totalIns} novos artigos no total.`);
+      } else {
+        const { data, error } = await supabase.functions.invoke("ingest-pubmed", {
+          body: { mode, maxPerQuery: 50 },
+        });
+        if (error) throw error;
+        toast.success(`Ingestão ok: ${data?.totalInserted ?? 0} novos, ${data?.totalSkipped ?? 0} já existiam.`);
+      }
       load();
     } catch (e: any) {
       toast.error("Falha na ingestão: " + (e?.message ?? e));
