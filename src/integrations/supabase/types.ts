@@ -2883,6 +2883,8 @@ export type Database = {
           id: string
           nome: string
           perfil_profissional: Database["public"]["Enums"]["perfil_profissional"]
+          perfil_profissional_confirmado: boolean
+          perfil_profissional_confirmado_em: string | null
           sobrenome: string
           telefone: string | null
           updated_at: string
@@ -2898,6 +2900,8 @@ export type Database = {
           id?: string
           nome?: string
           perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
+          perfil_profissional_confirmado?: boolean
+          perfil_profissional_confirmado_em?: string | null
           sobrenome?: string
           telefone?: string | null
           updated_at?: string
@@ -2913,6 +2917,8 @@ export type Database = {
           id?: string
           nome?: string
           perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
+          perfil_profissional_confirmado?: boolean
+          perfil_profissional_confirmado_em?: string | null
           sobrenome?: string
           telefone?: string | null
           updated_at?: string
