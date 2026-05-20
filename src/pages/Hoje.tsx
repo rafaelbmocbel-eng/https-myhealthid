@@ -1,21 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useMemo } from 'react';
 import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Search, Plus, Users, Triangle, BarChart3,
+  Users, Triangle, BarChart3,
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
   BookOpen, Settings, Tag,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { cn } from '@/lib/utils';
 
 export default function Hoje() {
   const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
-  const [busca, setBusca] = useState('');
+
 
   const initials = useMemo(() => {
     const n = profile?.nome || '';
