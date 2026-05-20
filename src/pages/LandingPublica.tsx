@@ -163,9 +163,9 @@ export default function LandingPublica() {
                 Começar trial grátis de 14 dias <ArrowRight className="h-4 w-4" />
               </Button>
             </Link>
-            <a href="#demo" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
-              <PlayCircle className="h-4 w-4" /> Ver demo de 60s
-            </a>
+            <Link to="/demo" className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1.5">
+              <PlayCircle className="h-4 w-4" /> Experimentar demo interativa
+            </Link>
           </div>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-xs text-muted-foreground">
             <span className="inline-flex items-center gap-1"><CheckCircle2 className="h-3.5 w-3.5 text-primary" /> Sem cartão de crédito</span>
