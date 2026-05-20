@@ -124,16 +124,25 @@ function valorPorExtenso(v: number): string {
 
 async function drawHeader(doc: jsPDF, clinica?: ClinicaInfo | null) {
   const margin = 20;
-  await addLogoToDoc(doc, margin, 12, 18, clinica?.logo_url || undefined);
+  // Logo ampliada (~3x): 28mm
+  const logoSize = 28;
+  await addLogoToDoc(doc, margin, 10, logoSize, clinica?.logo_url || undefined);
+
+  const textX = margin + logoSize + 6;
+  const nome = clinica?.razao_social || 'MY HEALTH ID';
 
   doc.setTextColor(...PRIMARY);
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
-  doc.text(clinica?.razao_social || 'MY HEALTH ID', margin + 22, 19);
+  // Nome da clínica grande e proeminente
+  doc.setFontSize(18);
+  const nomeLines = doc.splitTextToSize(nome, 210 - textX - margin);
+  doc.text(nomeLines, textX, 19);
 
+  let yMeta = 19 + nomeLines.length * 6.5;
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(8.5);
   doc.setTextColor(...MUTED);
+
   const lineParts: string[] = [];
   if (clinica?.cnpj) lineParts.push(`CNPJ ${clinica.cnpj}`);
   const endParts: string[] = [];
@@ -141,17 +150,20 @@ async function drawHeader(doc: jsPDF, clinica?: ClinicaInfo | null) {
   if (clinica?.cidade) endParts.push(`${clinica.cidade}${clinica.uf ? '/' + clinica.uf : ''}`);
   if (clinica?.cep) endParts.push(`CEP ${clinica.cep}`);
   if (endParts.length) lineParts.push(endParts.join(', '));
-  if (lineParts.length) doc.text(lineParts.join(' · '), margin + 22, 24);
+  if (lineParts.length) {
+    doc.text(lineParts.join(' · '), textX, yMeta);
+    yMeta += 4;
+  }
 
   const contato: string[] = [];
   if (clinica?.telefone) contato.push(clinica.telefone);
   if (clinica?.email_clinica) contato.push(clinica.email_clinica);
   if (clinica?.horario_funcionamento) contato.push(`Atend.: ${clinica.horario_funcionamento}`);
-  if (contato.length) doc.text(contato.join(' · '), margin + 22, 28);
+  if (contato.length) doc.text(contato.join(' · '), textX, yMeta);
 
   doc.setDrawColor(...PRIMARY);
   doc.setLineWidth(0.5);
-  doc.line(margin, 33, 210 - margin, 33);
+  doc.line(margin, 42, 210 - margin, 42);
 }
 
 function drawTitle(doc: jsPDF, title: string, y: number): number {
