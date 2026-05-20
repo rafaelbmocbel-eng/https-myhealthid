@@ -13,6 +13,7 @@ import GlobalBackButton from "./components/GlobalBackButton";
 
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
+const LandingPublica = lazy(() => import("./pages/LandingPublica"));
 const Auth = lazy(() => import("./pages/Auth"));
 const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -122,9 +123,10 @@ const App = () => (
             <GlobalBackButton />
             <Suspense fallback={<LazyFallback />}>
               <Routes>
-                <Route path="/" element={<PatientGuard><Index /></PatientGuard>} />
-                <Route path="/index" element={<Navigate to="/" replace />} />
-                <Route path="/inicio" element={<Navigate to="/" replace />} />
+                <Route path="/" element={<LandingPublica />} />
+                <Route path="/inicio-app" element={<PatientGuard><Index /></PatientGuard>} />
+                <Route path="/index" element={<Navigate to="/inicio-app" replace />} />
+                <Route path="/inicio" element={<Navigate to="/inicio-app" replace />} />
                 <Route path="/metodo-identidade" element={<PatientGuard><MetodoIdentidade /></PatientGuard>} />
                 <Route path="/cob-zero" element={<PatientGuard><CobZero /></PatientGuard>} />
                 <Route path="/auth" element={<Auth />} />
