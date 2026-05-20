@@ -387,9 +387,10 @@ export default function Index() {
   const saudacao = hora < 12 ? 'Bom dia' : hora < 18 ? 'Boa tarde' : 'Boa noite';
 
   return (
-    <AppLayout>
+    <div className="min-h-[100dvh] bg-background">
       <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6">
+
 
         {/* ============ GREETING ============ */}
         <FadeIn>
