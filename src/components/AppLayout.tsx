@@ -161,7 +161,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
       </div>
 
       {/* Mobile bottom navigation */}
-      {isMobile && !mobileOpen && <MobileBottomNav />}
+      {isMobile && !mobileOpen && !isHomePage && <MobileBottomNav />}
     </div>
   );
 }
