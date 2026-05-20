@@ -1533,6 +1533,120 @@ export type Database = {
         }
         Relationships: []
       }
+      evidence_ingestion_log: {
+        Row: {
+          articles_fetched: number | null
+          articles_inserted: number | null
+          articles_skipped: number | null
+          error_details: Json | null
+          errors_count: number | null
+          finished_at: string | null
+          id: string
+          query: string | null
+          source: string
+          started_at: string
+          status: string
+        }
+        Insert: {
+          articles_fetched?: number | null
+          articles_inserted?: number | null
+          articles_skipped?: number | null
+          error_details?: Json | null
+          errors_count?: number | null
+          finished_at?: string | null
+          id?: string
+          query?: string | null
+          source: string
+          started_at?: string
+          status?: string
+        }
+        Update: {
+          articles_fetched?: number | null
+          articles_inserted?: number | null
+          articles_skipped?: number | null
+          error_details?: Json | null
+          errors_count?: number | null
+          finished_at?: string | null
+          id?: string
+          query?: string | null
+          source?: string
+          started_at?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      evidence_library: {
+        Row: {
+          abstract: string | null
+          authors: string[] | null
+          citation_count: number | null
+          created_at: string
+          doi: string | null
+          embedding: string | null
+          embedding_model: string | null
+          evidence_level: string | null
+          external_id: string
+          health_areas: string[]
+          id: string
+          journal: string | null
+          language: string | null
+          mesh_terms: string[] | null
+          pmid: string | null
+          source: string
+          study_type: string | null
+          title: string
+          updated_at: string
+          url: string | null
+          year: number | null
+        }
+        Insert: {
+          abstract?: string | null
+          authors?: string[] | null
+          citation_count?: number | null
+          created_at?: string
+          doi?: string | null
+          embedding?: string | null
+          embedding_model?: string | null
+          evidence_level?: string | null
+          external_id: string
+          health_areas?: string[]
+          id?: string
+          journal?: string | null
+          language?: string | null
+          mesh_terms?: string[] | null
+          pmid?: string | null
+          source?: string
+          study_type?: string | null
+          title: string
+          updated_at?: string
+          url?: string | null
+          year?: number | null
+        }
+        Update: {
+          abstract?: string | null
+          authors?: string[] | null
+          citation_count?: number | null
+          created_at?: string
+          doi?: string | null
+          embedding?: string | null
+          embedding_model?: string | null
+          evidence_level?: string | null
+          external_id?: string
+          health_areas?: string[]
+          id?: string
+          journal?: string | null
+          language?: string | null
+          mesh_terms?: string[] | null
+          pmid?: string | null
+          source?: string
+          study_type?: string | null
+          title?: string
+          updated_at?: string
+          url?: string | null
+          year?: number | null
+        }
+        Relationships: []
+      }
       evolucao_paciente: {
         Row: {
           avaliacao_anterior_id: string | null
@@ -4798,6 +4912,10 @@ export type Database = {
         Args: { p_module: string; p_user_id: string }
         Returns: boolean
       }
+      increment_evidence_citation: {
+        Args: { p_ids: string[] }
+        Returns: undefined
+      }
       incrementar_uso_ia: {
         Args: { p_tipo?: string; p_user_id: string }
         Returns: number
@@ -4816,6 +4934,29 @@ export type Database = {
       link_avaliacao_valido: { Args: { p_link_id: string }; Returns: boolean }
       link_patient_user_by_email: { Args: never; Returns: string }
       link_patient_user_by_token: { Args: { p_token: string }; Returns: string }
+      match_evidence: {
+        Args: {
+          filter_areas?: string[]
+          match_count?: number
+          min_year?: number
+          query_embedding: string
+        }
+        Returns: {
+          abstract: string
+          authors: string[]
+          doi: string
+          evidence_level: string
+          external_id: string
+          health_areas: string[]
+          id: string
+          journal: string
+          similarity: number
+          study_type: string
+          title: string
+          url: string
+          year: number
+        }[]
+      }
       meu_plano_atual: {
         Args: never
         Returns: {
