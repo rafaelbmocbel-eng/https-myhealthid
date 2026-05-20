@@ -12,7 +12,7 @@ import {
   CheckCircle2, XCircle, UserX, FileText, Brain, Heart, Bone,
   Zap, Shield, Gauge, MapPin, Stethoscope, Dumbbell, BedDouble,
   Battery, Briefcase, Sparkles, Link as LinkIcon, X, UserPlus, MessageCircle,
-  Inbox, Settings, Star, LayoutGrid, AlertTriangle
+  Inbox, Settings, Star, LayoutGrid, AlertTriangle, Search, PartyPopper
 } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
