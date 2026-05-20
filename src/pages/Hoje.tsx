@@ -7,6 +7,7 @@ import {
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
   BookOpen, Settings, Tag,
 } from 'lucide-react';
+
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -76,33 +77,31 @@ export default function Hoje() {
           {/* Dois tiles principais */}
           <section className="grid grid-cols-2 gap-3">
             <button
-              onClick={() => navigate('/pacientes')}
-              className="aspect-square rounded-3xl p-5 text-left flex flex-col justify-between
+              onClick={() => navigate('/agenda')}
+              className="h-32 rounded-3xl p-4 text-left flex flex-col justify-between
                          bg-gradient-to-br from-primary to-primary/80 text-primary-foreground shadow-md
                          hover:shadow-lg transition active:scale-[0.98]"
             >
-              <div className="h-11 w-11 rounded-2xl bg-white/15 backdrop-blur flex items-center justify-center">
-                <Triangle className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                <CalendarDays className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Iniciar</div>
-                <div className="text-2xl font-bold leading-tight">Avaliação</div>
-                <div className="text-[11px] opacity-80 mt-0.5">MyID v2.0</div>
+                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
+                <div className="text-xl font-bold leading-tight">Agenda</div>
               </div>
             </button>
 
             <button
-              onClick={() => navigate('/inicio-app')}
-              className="aspect-square rounded-3xl p-5 text-left flex flex-col justify-between
+              onClick={() => navigate('/crm?tab=inbox')}
+              className="h-32 rounded-3xl p-4 text-left flex flex-col justify-between
                          bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]"
             >
-              <div className="h-11 w-11 rounded-2xl bg-background border border-border/40 flex items-center justify-center text-primary">
-                <BarChart3 className="h-5 w-5" />
+              <div className="h-9 w-9 rounded-xl bg-background border border-border/40 flex items-center justify-center text-primary">
+                <MessageCircle className="h-4 w-4" />
               </div>
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Analytics</div>
-                <div className="text-2xl font-bold leading-tight">Dashboard</div>
-                <div className="text-[11px] text-muted-foreground mt-0.5">Visão geral</div>
+                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
+                <div className="text-xl font-bold leading-tight">WhatsApp CRM</div>
               </div>
             </button>
           </section>
