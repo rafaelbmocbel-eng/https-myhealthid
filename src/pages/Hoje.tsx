@@ -5,7 +5,7 @@ import { startOfDay, endOfDay } from 'date-fns';
 import {
   Search, Plus, Users, Triangle, BarChart3,
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
-  BookOpen, Settings, Tag, Sparkles,
+  BookOpen, Settings, Tag,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
