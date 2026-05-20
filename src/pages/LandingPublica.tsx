@@ -87,6 +87,28 @@ export default function LandingPublica() {
         <meta property="og:description" content="Avaliação clínica com IA para profissionais de saúde. Teste grátis por 14 dias." />
         <meta property="og:url" content="https://https-myhealthid.lovable.app/" />
         <meta property="og:type" content="website" />
+        <meta name="twitter:card" content="summary_large_image" />
+        <meta name="twitter:title" content="MY HEALTH ID" />
+        <meta name="twitter:description" content="Avaliação clínica com IA para profissionais de saúde. Teste grátis por 14 dias." />
+        <script type="application/ld+json">{JSON.stringify({
+          '@context': 'https://schema.org',
+          '@type': 'SoftwareApplication',
+          name: 'MY HEALTH ID',
+          applicationCategory: 'HealthApplication',
+          operatingSystem: 'Web, iOS, Android (PWA)',
+          description: 'Plataforma clínica multiprofissional com MyID (avaliação por IA), agenda, portal do paciente PWA, CRM com WhatsApp e prontuário.',
+          offers: {
+            '@type': 'Offer',
+            price: '67',
+            priceCurrency: 'BRL',
+            description: 'A partir de R$67/mês. Teste grátis por 14 dias.',
+          },
+          aggregateRating: {
+            '@type': 'AggregateRating',
+            ratingValue: '4.9',
+            ratingCount: '24',
+          },
+        })}</script>
       </Helmet>
 
       {/* Header */}
