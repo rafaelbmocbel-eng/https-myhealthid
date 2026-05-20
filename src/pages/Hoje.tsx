@@ -3,8 +3,9 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Search, Plus, Users, Triangle, BarChart3, Brain, Zap,
-  Compass, History, MessageCircle, CalendarDays,
+  Search, Plus, Users, Triangle, BarChart3,
+  CalendarDays, MessageCircle, GitBranch, CalendarHeart,
+  BookOpen, Settings, Tag, Sparkles,
 } from 'lucide-react';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
