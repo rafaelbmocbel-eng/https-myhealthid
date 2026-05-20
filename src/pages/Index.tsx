@@ -1004,6 +1004,6 @@ export default function Index() {
 
       {/* FAB removed — actions available via sidebar/module cards */}
       </PageTransition>
-    </AppLayout>
+    </div>
   );
 }
