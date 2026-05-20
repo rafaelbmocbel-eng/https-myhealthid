@@ -924,6 +924,7 @@ export type Database = {
           created_at: string
           email_clinica: string | null
           endereco: string | null
+          horario_funcionamento: string | null
           id: string
           logo_url: string | null
           razao_social: string | null
@@ -944,6 +945,7 @@ export type Database = {
           created_at?: string
           email_clinica?: string | null
           endereco?: string | null
+          horario_funcionamento?: string | null
           id?: string
           logo_url?: string | null
           razao_social?: string | null
@@ -964,6 +966,7 @@ export type Database = {
           created_at?: string
           email_clinica?: string | null
           endereco?: string | null
+          horario_funcionamento?: string | null
           id?: string
           logo_url?: string | null
           razao_social?: string | null

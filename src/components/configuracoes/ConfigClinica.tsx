@@ -19,6 +19,7 @@ type ConfigClinica = {
   cidade: string;
   uf: string;
   cep: string;
+  horario_funcionamento: string;
   logo_url: string;
   zapi_instance_id: string;
   zapi_token: string;
@@ -29,6 +30,7 @@ type ConfigClinica = {
 const EMPTY: ConfigClinica = {
   razao_social: '', cnpj: '', responsavel: '',
   telefone: '', email_clinica: '', endereco: '', cidade: '', uf: '', cep: '',
+  horario_funcionamento: '',
   logo_url: '',
   zapi_instance_id: '', zapi_token: '', zapi_client_token: '', zapi_ativo: false,
 };
@@ -223,6 +225,15 @@ export default function ConfigClinica() {
               <Label className="text-xs font-medium mb-1.5 block">CEP</Label>
               <Input value={form.cep} onChange={e => update('cep', e.target.value)} placeholder="00000-000" />
             </div>
+          </div>
+          <div className="sm:col-span-2">
+            <Label className="text-xs font-medium mb-1.5 block">Horário de funcionamento</Label>
+            <Input
+              value={form.horario_funcionamento}
+              onChange={e => update('horario_funcionamento', e.target.value)}
+              placeholder="Ex: Seg–Sex 08h–19h · Sáb 08h–12h"
+            />
+            <p className="text-[11px] text-muted-foreground mt-1">Aparece no cabeçalho dos documentos emitidos.</p>
           </div>
         </div>
       </div>
