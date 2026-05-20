@@ -115,12 +115,16 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
         (supabase as any).from('config_clinica').select('*').eq('terapeuta_id', user.id).maybeSingle(),
         supabase.from('profiles').select('nome, sobrenome, especialidade, crefito').eq('user_id', user.id).maybeSingle(),
       ]);
-      setClinica(clinicaRes.data || null);
+      const c = clinicaRes.data as any;
+      setClinica(c || null);
       const p = profileRes.data as any;
+      // Preferir responsável/registro salvos em config_clinica (editáveis em Configurações)
+      const respFull = (c?.responsavel || '').trim();
+      const [respFirst, ...respRest] = respFull ? respFull.split(' ') : [];
       setTerapeuta({
-        nome: p?.nome || user.email?.split('@')[0] || 'Terapeuta',
-        sobrenome: p?.sobrenome,
-        registro: p?.crefito,
+        nome: respFirst || p?.nome || user.email?.split('@')[0] || 'Terapeuta',
+        sobrenome: respRest.length ? respRest.join(' ') : (respFull ? undefined : p?.sobrenome),
+        registro: c?.registro_responsavel || p?.crefito,
         especialidade: p?.especialidade,
       });
     })();

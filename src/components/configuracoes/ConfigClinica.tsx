@@ -13,6 +13,7 @@ type ConfigClinica = {
   razao_social: string;
   cnpj: string;
   responsavel: string;
+  registro_responsavel: string;
   telefone: string;
   email_clinica: string;
   endereco: string;
@@ -28,7 +29,7 @@ type ConfigClinica = {
 };
 
 const EMPTY: ConfigClinica = {
-  razao_social: '', cnpj: '', responsavel: '',
+  razao_social: '', cnpj: '', responsavel: '', registro_responsavel: '',
   telefone: '', email_clinica: '', endereco: '', cidade: '', uf: '', cep: '',
   horario_funcionamento: '',
   logo_url: '',
@@ -141,8 +142,13 @@ export default function ConfigClinica() {
             <Input value={form.cnpj} onChange={e => update('cnpj', e.target.value)} placeholder="00.000.000/0000-00" />
           </div>
           <div>
-            <Label className="text-xs font-medium mb-1.5 block">Responsável</Label>
-            <Input value={form.responsavel} onChange={e => update('responsavel', e.target.value)} placeholder="Nome do responsável" />
+            <Label className="text-xs font-medium mb-1.5 block">Responsável técnico</Label>
+            <Input value={form.responsavel} onChange={e => update('responsavel', e.target.value)} placeholder="Ex: Dra. Maria Silva" />
+          </div>
+          <div>
+            <Label className="text-xs font-medium mb-1.5 block">Registro profissional (CREFITO/CRM)</Label>
+            <Input value={form.registro_responsavel} onChange={e => update('registro_responsavel', e.target.value)} placeholder="Ex: CREFITO-12/12345-F" />
+            <p className="text-[11px] text-muted-foreground mt-1">Aparece na assinatura dos documentos emitidos.</p>
           </div>
         </div>
       </div>
