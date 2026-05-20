@@ -106,15 +106,13 @@ export default function Hoje() {
             </button>
           </section>
 
-          {/* Pills de acesso rápido — todos os módulos */}
+          {/* Pills de acesso rápido — módulos restantes */}
           <section className="grid grid-cols-2 gap-3">
             <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
-            <PillBtn icon={CalendarDays} label="Agenda" onClick={() => navigate('/agenda')} />
-            <PillBtn icon={MessageCircle} label="WhatsApp" onClick={() => navigate('/crm?tab=inbox')} />
+            <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
             <PillBtn icon={GitBranch} label="CRM" onClick={() => navigate('/crm?tab=pipeline')} />
             <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
             <PillBtn icon={BookOpen} label="Ciência" onClick={() => navigate('/base-cientifica')} />
-            <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
             <PillBtn icon={Settings} label="Ajustes" onClick={() => navigate('/configuracoes')} />
           </section>
 
