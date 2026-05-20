@@ -4,10 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { PageHeader } from "@/components/PageHeader";
-import { SectionTitle } from "@/components/SectionTitle";
-import { EmptyState } from "@/components/EmptyState";
-import { Icon } from "@/components/Icon";
+import { PageHeader } from "@/components/ui/page-header";
+import { SectionTitle } from "@/components/ui/section-title";
+import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 import { Loader2, BookOpen, RefreshCw, Download, ExternalLink, Search } from "lucide-react";
 
