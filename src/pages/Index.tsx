@@ -361,9 +361,9 @@ export default function Index() {
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
   if (loading) return (
-    <AppLayout>
+    <div className="min-h-[100dvh] bg-background">
       <DashboardSkeleton />
-    </AppLayout>
+    </div>
   );
 
   const proximoAtendimento = agendamentosHoje.find(a => {
