@@ -320,7 +320,8 @@ export default function BaseCientifica() {
           </div>
         )}
       </Card>
-    </div>
+      </div>
+    </AppLayout>
   );
 }
 
