@@ -5,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt, Stethoscope, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { FileText, Download, Loader2, Calendar, ClipboardCheck, FileCheck, Receipt, Stethoscope, Sparkles, Eye, EyeOff, ExternalLink } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
@@ -31,6 +31,36 @@ const TIPOS: { value: TipoDocumento; label: string; icon: any; desc: string }[] 
   { value: 'declaracao_tratamento', label: 'Declaração de Tratamento', icon: FileCheck, desc: 'Confirma acompanhamento (sem dados clínicos).' },
   
 ];
+
+// CIF (Classificação Internacional de Funcionalidade) — sugestão por palavras-chave do motivo
+const CIF_KEYWORDS: { keywords: string[]; cif: string; desc: string }[] = [
+  { keywords: ['lombar', 'lombalgia', 'coluna lombar', 'costas', 'hérnia de disco', 'hernia de disco'], cif: 'b28013.2', desc: 'Dor nas costas' },
+  { keywords: ['cervical', 'cervicalgia', 'pescoço', 'pescoco'], cif: 'b28010.2', desc: 'Dor na cabeça e pescoço' },
+  { keywords: ['ombro', 'manguito', 'bursite'], cif: 'b28014.2', desc: 'Dor no membro superior' },
+  { keywords: ['cotovelo', 'epicondilite', 'punho', 'mão', 'tunel do carpo', 'túnel do carpo'], cif: 'b28014.2', desc: 'Dor no membro superior' },
+  { keywords: ['joelho', 'condromalácia', 'condromalacia', 'menisco', 'ligamento'], cif: 'b28015.2', desc: 'Dor no membro inferior' },
+  { keywords: ['quadril', 'coxa', 'tornozelo', 'entorse', 'fascite plantar', 'pé', 'pe '], cif: 'b28015.2', desc: 'Dor no membro inferior' },
+  { keywords: ['pós-operatório', 'pós operatório', 'pos-operatorio', 'pos operatorio', 'cirurgia', 'cirúrgico'], cif: 's770.3', desc: 'Estruturas adicionais relacionadas ao movimento' },
+  { keywords: ['fratura'], cif: 's7702.3', desc: 'Ligamentos e fáscias' },
+  { keywords: ['marcha', 'andar', 'caminhar', 'deambulação'], cif: 'd450.2', desc: 'Andar' },
+  { keywords: ['levantar', 'sentar', 'transferência'], cif: 'd410.2', desc: 'Mudar a posição básica do corpo' },
+  { keywords: ['força', 'forca', 'fraqueza', 'atrofia'], cif: 'b730.2', desc: 'Funções da força muscular' },
+  { keywords: ['amplitude', 'rigidez', 'limitação articular', 'mobilidade'], cif: 'b710.2', desc: 'Funções da mobilidade articular' },
+  { keywords: ['equilíbrio', 'equilibrio', 'queda', 'tontura'], cif: 'b755.2', desc: 'Funções de reações motoras involuntárias' },
+  { keywords: ['avc', 'hemiplegia', 'hemiparesia', 'derrame'], cif: 'b730.3', desc: 'Funções da força muscular' },
+  { keywords: ['parkinson', 'neurológic', 'neurologic', 'esclerose'], cif: 'b760.2', desc: 'Controle do movimento voluntário' },
+  { keywords: ['respirat', 'pulmon', 'asma', 'dpoc'], cif: 'b440.2', desc: 'Funções da respiração' },
+  { keywords: ['tendinite', 'tendinopatia'], cif: 'b7800.2', desc: 'Sensação de rigidez muscular' },
+];
+
+function sugerirCIF(motivo: string): { cif: string; desc: string } | null {
+  const m = (motivo || '').toLowerCase();
+  if (!m.trim()) return null;
+  for (const item of CIF_KEYWORDS) {
+    if (item.keywords.some(k => m.includes(k))) return { cif: item.cif, desc: item.desc };
+  }
+  return null;
+}
 
 export default function DocumentosModal({ open, onOpenChange, paciente }: Props) {
   const { user } = useAuth();
