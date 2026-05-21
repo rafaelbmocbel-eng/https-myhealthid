@@ -8,15 +8,17 @@ import RepasseConfigManager from '@/components/financeiro/RepasseConfigManager';
 import FechamentoProfissional from '@/components/financeiro/FechamentoProfissional';
 import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 
-export default function Financeiro() {
+export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
-    <div className="page-container space-y-4 sm:space-y-5">
-      <PageHeader
-        back
-        icon={<Wallet className="icon-md text-primary" />}
-        title="Controle Financeiro"
-        subtitle="Visão mensal de atendimentos particulares e por plano, com fechamento e recibo individual por profissional."
-      />
+    <div className={embedded ? 'space-y-4 sm:space-y-5' : 'page-container space-y-4 sm:space-y-5'}>
+      {!embedded && (
+        <PageHeader
+          back
+          icon={<Wallet className="icon-md text-primary" />}
+          title="Controle Financeiro"
+          subtitle="Visão mensal de atendimentos particulares e por plano, com fechamento e recibo individual por profissional."
+        />
+      )}
 
       <Tabs defaultValue="mensal" className="w-full">
         <TabsList className="grid w-full grid-cols-5">
