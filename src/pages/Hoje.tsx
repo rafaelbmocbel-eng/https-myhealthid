@@ -132,101 +132,108 @@ export default function Hoje() {
   return (
     <AppLayout>
       <div className="min-h-[100dvh]">
-        <div className="max-w-md md:max-w-none lg:max-w-6xl mx-auto px-4 md:px-8 pt-2 md:pt-4 pb-10 space-y-5 md:space-y-7">
+        <div className="max-w-md md:max-w-3xl lg:max-w-6xl mx-auto px-4 md:px-8 lg:px-10 pt-2 md:pt-6 lg:pt-8 pb-10 space-y-5 md:space-y-7">
 
           {/* Greeting */}
-          <header className="flex items-center gap-3 md:gap-4 pt-1">
-            <div className="h-11 w-11 md:h-16 md:w-16 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm md:text-lg font-bold shadow-sm ring-2 ring-background">
+          <header className="flex items-center gap-3 md:gap-5 pt-1">
+            <div className="h-11 w-11 md:h-16 md:w-16 lg:h-20 lg:w-20 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm md:text-lg lg:text-2xl font-bold shadow-sm ring-2 ring-background">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
               <div className="text-[11px] md:text-xs uppercase tracking-[0.18em] text-muted-foreground font-semibold">
                 {todayLabel}
               </div>
-              <div className="text-lg md:text-3xl font-bold leading-tight truncate">
+              <div className="text-lg md:text-3xl lg:text-4xl font-bold leading-tight truncate">
                 {greeting}, {firstName}
               </div>
             </div>
           </header>
 
-          {/* Próxima sessão — compact strip, leva ao Dashboard */}
-          <button
-            onClick={() => navigate('/inicio-app')}
-            className="w-full text-left rounded-2xl px-3.5 md:px-6 py-2.5 md:py-4 relative overflow-hidden
-                       bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
-                       text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
-                       flex items-center gap-3 md:gap-4"
-          >
-            <div className="h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-              <Clock className="h-3.5 w-3.5 md:h-5 md:w-5" />
+          {/* Desktop/Tablet: 2-column main area | Mobile: stacked */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 md:gap-6 lg:gap-7">
+
+            {/* LEFT column on lg — Próxima sessão + Stats */}
+            <div className="lg:col-span-5 space-y-5 md:space-y-6">
+              {/* Próxima sessão */}
+              <button
+                onClick={() => navigate('/inicio-app')}
+                className="w-full text-left rounded-2xl px-3.5 md:px-6 py-2.5 md:py-4 lg:py-5 relative overflow-hidden
+                           bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
+                           text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
+                           flex items-center gap-3 md:gap-4"
+              >
+                <div className="h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <Clock className="h-3.5 w-3.5 md:h-5 md:w-5" />
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="text-[9px] md:text-[11px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
+                    Próxima sessão
+                  </div>
+                  <div className="mt-0.5 md:mt-1 text-sm md:text-lg font-semibold leading-tight truncate">
+                    {proxima ? proximaPaciente : 'Nenhuma sessão à vista'}
+                  </div>
+                </div>
+                {proxima && proximaQuando ? (
+                  <div className="text-[11px] md:text-base font-semibold opacity-95 whitespace-nowrap shrink-0">
+                    {proximaQuando}
+                  </div>
+                ) : null}
+                <ArrowRight className="h-3.5 w-3.5 md:h-5 md:w-5 opacity-80 shrink-0" />
+              </button>
+
+              {/* Stats inline */}
+              <section className="grid grid-cols-3 gap-2 md:gap-3">
+                <StatChip label="Hoje" value={stats?.hoje ?? 0} accent />
+                <StatChip label="Pacientes" value={stats?.pacientes ?? 0} />
+                <StatChip label="Avaliações" value={stats?.avaliacoes ?? 0} />
+              </section>
             </div>
-            <div className="min-w-0 flex-1">
-              <div className="text-[9px] md:text-[11px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
-                Próxima sessão
-              </div>
-              <div className="mt-0.5 md:mt-1 text-sm md:text-lg font-semibold leading-tight truncate">
-                {proxima ? proximaPaciente : 'Nenhuma sessão à vista'}
-              </div>
-            </div>
-            {proxima && proximaQuando ? (
-              <div className="text-[11px] md:text-base font-semibold opacity-95 whitespace-nowrap shrink-0">
-                {proximaQuando}
-              </div>
-            ) : null}
-            <ArrowRight className="h-3.5 w-3.5 md:h-5 md:w-5 opacity-80 shrink-0" />
-          </button>
 
-          {/* Stats inline */}
-          <section className="grid grid-cols-3 gap-2 md:gap-3">
-            <StatChip label="Hoje" value={stats?.hoje ?? 0} accent />
-            <StatChip label="Pacientes" value={stats?.pacientes ?? 0} />
-            <StatChip label="Avaliações" value={stats?.avaliacoes ?? 0} />
-          </section>
+            {/* RIGHT column on lg — Tiles principais */}
+            <section className="lg:col-span-7 grid grid-cols-2 gap-3 md:gap-5">
+              <button
+                onClick={() => navigate('/agenda')}
+                className="h-28 md:h-44 lg:h-full lg:min-h-[200px] rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between
+                           bg-gradient-to-br from-primary to-primary-dark text-primary-foreground shadow-md
+                           hover:shadow-lg transition active:scale-[0.98]"
+              >
+                <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                  <CalendarDays className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+                <div>
+                  <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
+                  <div className="text-lg md:text-2xl lg:text-3xl font-bold leading-tight">Agenda</div>
+                </div>
+              </button>
 
-          {/* Tile duplo principal */}
-          <section className="grid grid-cols-2 gap-3 md:gap-5">
-            <button
-              onClick={() => navigate('/agenda')}
-              className="h-28 md:h-44 rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between
-                         bg-gradient-to-br from-primary to-primary-dark text-primary-foreground shadow-md
-                         hover:shadow-lg transition active:scale-[0.98]"
-            >
-              <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-                <CalendarDays className="h-4 w-4 md:h-6 md:w-6" />
-              </div>
-              <div>
-                <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
-                <div className="text-lg md:text-2xl font-bold leading-tight">Agenda</div>
-              </div>
-            </button>
+              <button
+                onClick={() => navigate('/crm?tab=inbox')}
+                className={cn(
+                  "h-28 md:h-44 lg:h-full lg:min-h-[200px] rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between relative",
+                  "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
+                  pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
+                )}
+              >
+                {alerts?.whatsapp ? (
+                  <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                    {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
+                  </span>
+                ) : null}
+                <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                  <MessageCircle className="h-4 w-4 md:h-6 md:w-6" />
+                </div>
+                <div>
+                  <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
+                  <div className="text-lg md:text-2xl lg:text-3xl font-bold leading-tight">WhatsApp CRM</div>
+                </div>
+              </button>
+            </section>
+          </div>
 
-            <button
-              onClick={() => navigate('/crm?tab=inbox')}
-              className={cn(
-                "h-28 md:h-44 rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between relative",
-                "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
-                pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
-              )}
-            >
-              {alerts?.whatsapp ? (
-                <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
-                  {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
-                </span>
-              ) : null}
-              <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                <MessageCircle className="h-4 w-4 md:h-6 md:w-6" />
-              </div>
-              <div>
-                <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
-                <div className="text-lg md:text-2xl font-bold leading-tight">WhatsApp CRM</div>
-              </div>
-            </button>
-          </section>
-
-          {/* Atalhos */}
-          <section className="space-y-2 md:space-y-3">
+          {/* Atalhos + Sistema — mobile: separados */}
+          <section className="space-y-2 md:hidden">
             <SectionLabel>Atalhos</SectionLabel>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn
                 icon={LayoutDashboard}
@@ -245,11 +252,34 @@ export default function Hoje() {
             </div>
           </section>
 
-          {/* Sistema */}
-          <section className="space-y-2 md:space-y-3">
+          <section className="space-y-2 md:hidden">
             <SectionLabel>Sistema</SectionLabel>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5 md:gap-3">
+            <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={BookOpen} label="Bases de Dados" onClick={() => navigate('/base-cientifica')} />
+              <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
+            </div>
+          </section>
+
+          {/* md+ : grid unificado em 1 linha */}
+          <section className="hidden md:block space-y-3">
+            <SectionLabel>Ferramentas</SectionLabel>
+            <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+              <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
+              <PillBtn
+                icon={LayoutDashboard}
+                label="Dashboard"
+                urgency={urgency((alerts?.whatsapp ?? 0) + (alerts?.eventosHoje ?? 0) + (proxima ? 1 : 0), 5)}
+                onClick={() => navigate('/inicio-app')}
+              />
+              <PillBtn
+                icon={CalendarHeart}
+                label="Eventos"
+                badge={alerts?.eventosHoje}
+                urgency={urgency(alerts?.eventosHoje ?? 0, 3)}
+                onClick={() => navigate('/eventos')}
+              />
+              <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
+              <PillBtn icon={BookOpen} label="Bases" onClick={() => navigate('/base-cientifica')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
             </div>
           </section>
