@@ -541,18 +541,18 @@ export default function Index() {
         </div>
 
         {/* Vertente toggle */}
-        <div className="inline-flex p-1 rounded-xl border border-border/40 bg-card mb-5">
+        <div className="inline-flex w-full sm:w-auto p-1 rounded-xl border border-border/40 bg-card mb-4 sm:mb-5">
           <button
             onClick={() => setVertente('clinica')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'clinica' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'clinica' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
             <Stethoscope className="icon-xs" /> Visão Clínica
           </button>
           <button
             onClick={() => setVertente('pesquisa')}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'pesquisa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            className={`flex-1 sm:flex-initial flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${vertente === 'pesquisa' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
           >
-            <FlaskConical className="icon-xs" /> Pesquisa Científica
+            <FlaskConical className="icon-xs" /> Pesquisa
           </button>
         </div>
 
