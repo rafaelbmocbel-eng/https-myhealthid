@@ -298,13 +298,10 @@ export default function PacienteLogin() {
         />
 
         <div className="relative flex items-center gap-3">
-          <LogoIcon size={44} />
-          <div>
-            <div className="text-sm font-black text-white tracking-wide">
-              My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span>
-            </div>
-            <div className="text-xs text-white/50">Portal do Paciente</div>
+          <div className="bg-white/95 rounded-xl px-3 py-2 shadow-lg">
+            <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
           </div>
+          <div className="text-xs text-white/50">Portal do Paciente</div>
         </div>
 
         <div className="relative">
