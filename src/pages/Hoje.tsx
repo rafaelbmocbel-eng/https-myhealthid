@@ -12,6 +12,12 @@ import {
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+
+function pulseRing(level?: 'high' | 'low') {
+  if (!level) return '';
+  return level === 'high' ? 'ring-2 ring-destructive/60 animate-pulse-urgent' : 'ring-2 ring-warning/50 animate-pulse-soft';
+}
 
 export default function Hoje() {
   const { user, profile, loading, authReady } = useAuth();
@@ -74,6 +80,40 @@ export default function Hoje() {
     enabled: authReady && !!user,
     staleTime: 30_000,
   });
+
+  // Pulse indicators — necessidades por módulo
+  const { data: alerts } = useQuery({
+    queryKey: ['hoje-alerts', user?.id],
+    queryFn: async () => {
+      const [wa, evHoje] = await Promise.all([
+        supabase
+          .from('whatsapp_conversas')
+          .select('nao_lidas')
+          .eq('terapeuta_id', user!.id)
+          .gt('nao_lidas', 0),
+        supabase
+          .from('eventos')
+          .select('id', { count: 'exact', head: true })
+          .eq('terapeuta_id', user!.id)
+          .gte('data_inicio', startOfDay(today).toISOString())
+          .lte('data_inicio', endOfDay(today).toISOString()),
+      ]);
+      const whatsappUnread = (wa.data || []).reduce((s, r: any) => s + (r.nao_lidas || 0), 0);
+      return {
+        whatsapp: whatsappUnread,
+        eventosHoje: evHoje.count || 0,
+        agendaHoje: stats?.hoje ?? 0,
+      };
+    },
+    enabled: authReady && !!user,
+    staleTime: 30_000,
+  });
+
+  // Urgência: 'high' = vermelho pulsando rápido | 'low' = âmbar pulsando suave | undefined = normal
+  const urgency = (n: number, highAt = 5): 'high' | 'low' | undefined => {
+    if (!n) return undefined;
+    return n >= highAt ? 'high' : 'low';
+  };
 
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
@@ -173,9 +213,17 @@ export default function Hoje() {
 
             <button
               onClick={() => navigate('/crm?tab=inbox')}
-              className="h-28 rounded-3xl p-4 text-left flex flex-col justify-between
-                         bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]"
+              className={cn(
+                "h-28 rounded-3xl p-4 text-left flex flex-col justify-between relative",
+                "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
+                pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
+              )}
             >
+              {alerts?.whatsapp ? (
+                <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                  {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
+                </span>
+              ) : null}
               <div className="h-9 w-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
                 <MessageCircle className="h-4 w-4" />
               </div>
@@ -192,7 +240,13 @@ export default function Hoje() {
             <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
-              <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+              <PillBtn
+                icon={CalendarHeart}
+                label="Eventos"
+                badge={alerts?.eventosHoje}
+                urgency={urgency(alerts?.eventosHoje ?? 0, 3)}
+                onClick={() => navigate('/eventos')}
+              />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
             </div>
           </section>
@@ -221,15 +275,28 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PillBtn({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
+function PillBtn({
+  icon: Icon, label, onClick, badge, urgency,
+}: {
+  icon: any; label: string; onClick: () => void;
+  badge?: number; urgency?: 'high' | 'low';
+}) {
   return (
     <button
       onClick={onClick}
-      className="h-14 rounded-2xl bg-card border border-border/40 px-3.5 flex items-center gap-3
-                 shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]"
+      className={cn(
+        "h-14 rounded-2xl bg-card border border-border/40 px-3.5 flex items-center gap-3 relative",
+        "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
+        pulseRing(urgency),
+      )}
     >
-      <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0">
+      <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
         <Icon className="h-4 w-4" />
+        {badge ? (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        ) : null}
       </div>
       <span className="text-sm font-semibold truncate">{label}</span>
     </button>
