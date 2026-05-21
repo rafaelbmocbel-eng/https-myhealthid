@@ -57,6 +57,7 @@ import ResumoRapido30s from '@/components/paciente/ResumoRapido30s';
 import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
+import { useConvenios } from '@/hooks/useConvenios';
 
 const maskPhone = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -129,10 +130,12 @@ export default function PacientePerfil() {
     data_nascimento: '', genero: '', cpf: '', endereco: '',
     queixa_principal: '', observacoes: '',
     responsavel_id: '', tipo_pagamento: 'particular' as TipoPagamento,
-    plano_saude: '' as PlanoSaude | '',
+    plano_saude: '' as string,
+    convenio_id: '' as string,
   });
   const [submittingEdit, setSubmittingEdit] = useState(false);
   const { membros: membrosEquipe } = useEquipe();
+  const { convenios } = useConvenios();
 
   // Link MyID ativo (pendente)
   const { data: linksMyID = [], refetch: refetchLinksMyID } = useQuery({
@@ -469,7 +472,8 @@ export default function PacientePerfil() {
       observacoes: paciente.observacoes || '',
       responsavel_id: (paciente as any).responsavel_id || '',
       tipo_pagamento: ((paciente as any).tipo_pagamento as TipoPagamento) || 'particular',
-      plano_saude: ((paciente as any).plano_saude as PlanoSaude) || '',
+      plano_saude: (paciente as any).plano_saude || '',
+      convenio_id: (paciente as any).convenio_id || '',
     });
     setEditModalOpen(true);
   };
@@ -496,7 +500,12 @@ export default function PacientePerfil() {
         observacoes: validated.observacoes ?? null,
         responsavel_id: editForm.responsavel_id || null,
         tipo_pagamento: editForm.tipo_pagamento,
-        plano_saude: editForm.tipo_pagamento === 'plano' ? (editForm.plano_saude || null) : null,
+        convenio_id: editForm.tipo_pagamento === 'plano'
+          ? (convenios.find((c: any) => c.id === editForm.convenio_id)?.id || null)
+          : null,
+        plano_saude: editForm.tipo_pagamento === 'plano'
+          ? (convenios.find((c: any) => c.id === editForm.convenio_id)?.nome || null)
+          : null,
       };
       const { error } = await supabase.from('pacientes').update(payload).eq('id', paciente.id);
       if (error) throw error;
@@ -1280,7 +1289,7 @@ export default function PacientePerfil() {
                   <div className="grid grid-cols-2 gap-2">
                     <button
                       type="button"
-                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                      onClick={() => setEditForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '', convenio_id: '' }))}
                       className={cn(
                         'p-3 rounded-lg border text-sm font-medium transition-colors',
                         editForm.tipo_pagamento === 'particular'
@@ -1300,23 +1309,34 @@ export default function PacientePerfil() {
                           : 'border-border hover:bg-accent/30 text-foreground'
                       )}
                     >
-                      Plano
+                      Plano de Saúde
                     </button>
                   </div>
                   {editForm.tipo_pagamento === 'plano' && (
-                    <div className="pt-2">
-                      <Label className="text-xs">Plano</Label>
-                      <Select
-                        value={editForm.plano_saude || ''}
-                        onValueChange={v => setEditForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
-                      >
-                        <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
-                        <SelectContent>
-                          {PLANOS_SAUDE.map(p => (
-                            <SelectItem key={p} value={p}>{p}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                    <div className="pt-2 space-y-1">
+                      <Label className="text-xs">Convênio</Label>
+                      {convenios.length === 0 ? (
+                        <div className="text-xs text-muted-foreground p-2 rounded-md border border-dashed">
+                          Nenhum convênio cadastrado. Vá em <strong>Financeiro → Convênios</strong> para adicionar.
+                        </div>
+                      ) : (
+                        <Select
+                          value={editForm.convenio_id || ''}
+                          onValueChange={v => setEditForm(f => ({ ...f, convenio_id: v }))}
+                        >
+                          <SelectTrigger><SelectValue placeholder="Selecionar convênio" /></SelectTrigger>
+                          <SelectContent>
+                            {convenios.map((c: any) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.nome}{c.valor_padrao ? ` — R$ ${Number(c.valor_padrao).toFixed(2).replace('.', ',')}` : ''}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      )}
+                      <p className="text-[10px] text-muted-foreground">
+                        O valor e o repasse serão preenchidos automaticamente em cada sessão.
+                      </p>
                     </div>
                   )}
                 </div>
