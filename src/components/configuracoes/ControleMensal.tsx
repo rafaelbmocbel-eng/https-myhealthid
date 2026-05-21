@@ -169,16 +169,16 @@ export default function ControleMensal() {
     const rows = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
       const valor = Number(s.valor_cobrado) || 0;
       return {
         data: format(new Date(s.data_sessao), 'dd/MM/yyyy HH:mm'),
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim(),
         profissional: membro?.nome || 'Sem profissional',
         tipo: tipo === 'plano' ? 'Plano' : 'Particular',
-        plano: s.pacientes?.plano_saude || '-',
+        plano: nomeConvenio(s) || '-',
         valor_total: valor.toFixed(2),
-        repasse: (valor * REPASSE_PCT).toFixed(2),
+        repasse: repasseDaSessao(s).toFixed(2),
       };
     });
     exportToCsv(`controle_mensal_${format(new Date(), 'yyyy-MM')}.csv`, rows, [
@@ -186,9 +186,9 @@ export default function ControleMensal() {
       { key: 'paciente', label: 'Paciente' },
       { key: 'profissional', label: 'Profissional' },
       { key: 'tipo', label: 'Tipo' },
-      { key: 'plano', label: 'Plano' },
+      { key: 'plano', label: 'Convênio' },
       { key: 'valor_total', label: 'Valor Total (R$)' },
-      { key: 'repasse', label: `Repasse ${repasseLabel} (R$)` },
+      { key: 'repasse', label: 'Repasse (R$)' },
     ]);
   };
 
@@ -196,13 +196,13 @@ export default function ControleMensal() {
     const linhas = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-      const tipo = (s.pacientes?.tipo_pagamento || 'particular') as 'particular' | 'plano';
+      const tipo = tipoDaSessao(s);
       return {
         data: format(new Date(s.data_sessao), 'dd/MM HH:mm'),
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || '—',
         profissional: membro?.nome || 'Sem profissional',
         tipo,
-        plano: s.pacientes?.plano_saude || '',
+        plano: nomeConvenio(s),
         valor: Number(s.valor_cobrado) || 0,
       };
     });
