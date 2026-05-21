@@ -207,9 +207,17 @@ export default function Hoje() {
 
             <button
               onClick={() => navigate('/crm?tab=inbox')}
-              className="h-28 rounded-3xl p-4 text-left flex flex-col justify-between
-                         bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]"
+              className={cn(
+                "h-28 rounded-3xl p-4 text-left flex flex-col justify-between relative",
+                "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
+                pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
+              )}
             >
+              {alerts?.whatsapp ? (
+                <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                  {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
+                </span>
+              ) : null}
               <div className="h-9 w-9 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
                 <MessageCircle className="h-4 w-4" />
               </div>
