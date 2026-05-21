@@ -389,16 +389,16 @@ export default function Index() {
   return (
     <AppLayout>
       <PageTransition>
-      <div className="container py-4 sm:py-8 max-w-6xl px-2 sm:px-6">
+      <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6">
 
         {/* ============ COMMAND CENTER HEADER ============ */}
         <FadeIn>
-        <header className="mb-5 sm:mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div>
-            <div className="text-[10px] font-semibold tracking-[0.18em] text-muted-foreground/70 uppercase mb-1 capitalize">
+        <header className="mb-4 sm:mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+          <div className="min-w-0">
+            <div className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase mb-1 capitalize">
               {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
             </div>
-            <h1 className="h-page">
+            <h1 className="h-page leading-tight">
               {saudacao}, <span className="text-muted-foreground font-normal">{profile?.nome || 'Terapeuta'}</span>
             </h1>
           </div>
