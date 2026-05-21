@@ -12,8 +12,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Link2, Copy, Trash2, Plus, Search, Clock, CheckCircle2,
   Activity, CalendarDays, Loader2, ExternalLink, MessageCircle, Mail,
-  ChevronDown, ChevronUp, Star, ClipboardCheck,
+  ChevronDown, ChevronUp, Star, ClipboardCheck, DollarSign,
 } from 'lucide-react';
+import ControleMensal from '@/components/configuracoes/ControleMensal';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { useToast } from '@/hooks/use-toast';
@@ -739,6 +740,10 @@ export default function Relatorios() {
               <ClipboardCheck className="h-4 w-4" />
               Atendimentos
             </TabsTrigger>
+            <TabsTrigger value="financeiro" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
+              <DollarSign className="h-4 w-4" />
+              Financeiro
+            </TabsTrigger>
             <TabsTrigger value="nps" className="gap-2 rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-sm flex-1">
               <Star className="h-4 w-4" />
               NPS
@@ -764,6 +769,13 @@ export default function Relatorios() {
               Histórico completo de atendimentos registrados — status, duração, valores e forma de pagamento.
             </div>
             <ControleAtendimentos />
+          </TabsContent>
+
+          <TabsContent value="financeiro">
+            <div className="mb-4 p-4 rounded-xl bg-muted/40 border text-sm text-muted-foreground">
+              Controle mensal de atendimentos, repasse por profissional e exportação em CSV/PDF.
+            </div>
+            <ControleMensal />
           </TabsContent>
 
           <TabsContent value="nps">
