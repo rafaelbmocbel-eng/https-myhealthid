@@ -30,6 +30,7 @@ const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
 const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
 const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
 const Configuracoes = lazy(() => import("./pages/Configuracoes"));
+const Financeiro = lazy(() => import("./pages/Financeiro"));
 const CrmHub = lazy(() => import("./pages/CrmHub"));
 const CrmInbox = lazy(() => import("./pages/CrmInbox"));
 const WhatsappAutomacoes = lazy(() => import("./pages/WhatsappAutomacoes"));
@@ -162,6 +163,7 @@ const App = () => (
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
+                <Route path="/financeiro" element={<PatientGuard><Financeiro /></PatientGuard>} />
                 <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
 
                 {/* Patient Portal */}
