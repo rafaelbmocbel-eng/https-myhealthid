@@ -2593,6 +2593,7 @@ export type Database = {
         Row: {
           ativo: boolean
           clinica_id: string | null
+          convenio_id: string | null
           cpf: string | null
           created_at: string
           data_nascimento: string | null
@@ -2618,6 +2619,7 @@ export type Database = {
         Insert: {
           ativo?: boolean
           clinica_id?: string | null
+          convenio_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
@@ -2643,6 +2645,7 @@ export type Database = {
         Update: {
           ativo?: boolean
           clinica_id?: string | null
+          convenio_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
@@ -2666,6 +2669,13 @@ export type Database = {
           user_id?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pacientes_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pacientes_responsavel_id_fkey"
             columns: ["responsavel_id"]
