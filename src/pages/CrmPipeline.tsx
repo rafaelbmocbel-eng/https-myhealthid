@@ -241,6 +241,7 @@ export default function CrmPipeline({ embedded = false }: { embedded?: boolean }
       <div className={embedded ? '' : 'p-4 sm:p-6'}>
         {!embedded && (
           <PageHeader
+            back
             icon={<Kanban className="icon-lg" />}
             title="Pipeline CRM"
             subtitle="Acompanhe leads do primeiro contato ao fechamento"
