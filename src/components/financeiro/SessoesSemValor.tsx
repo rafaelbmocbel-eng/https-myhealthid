@@ -43,7 +43,7 @@ export default function SessoesSemValor({ mesOffset }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('controle_sessoes')
-        .select('id, data_sessao, valor_cobrado, convenio_id, pacientes(nome, sobrenome, tipo_pagamento)')
+        .select('id, data_sessao, valor_cobrado, convenio_id, pacientes(nome, sobrenome, tipo_pagamento, convenio_id)')
         .eq('terapeuta_id', user!.id)
         .eq('status', 'realizada')
         .gte('data_sessao', inicio)
@@ -123,7 +123,7 @@ export default function SessoesSemValor({ mesOffset }: Props) {
           const nome = `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || 'Sem nome';
           const tipo = s.pacientes?.tipo_pagamento || 'particular';
           const edit = edits[s.id] || {};
-          const convSel = edit.convenio_id ?? s.convenio_id ?? '';
+          const convSel = edit.convenio_id ?? s.convenio_id ?? (s.pacientes as any)?.convenio_id ?? '';
           return (
             <div key={s.id} className="rounded-lg border border-border/40 bg-card p-2.5 space-y-2">
               <div className="flex items-center gap-2">

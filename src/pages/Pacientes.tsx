@@ -29,6 +29,7 @@ import { useLinksAvaliacao } from '@/hooks/useLinksAvaliacao';
 import { exportToCsv } from '@/utils/exportCsv';
 import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/whatsapp';
 import { useEquipe } from '@/hooks/useEquipe';
+import { useConvenios } from '@/hooks/useConvenios';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
 const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
@@ -99,7 +100,8 @@ interface FormData {
   queixa_principal: string; observacoes: string;
   responsavel_id: string;
   tipo_pagamento: TipoPagamento;
-  plano_saude: PlanoSaude | '';
+  plano_saude: string;
+  convenio_id: string;
 }
 
 const emptyForm: FormData = {
@@ -109,6 +111,7 @@ const emptyForm: FormData = {
   responsavel_id: '',
   tipo_pagamento: 'particular',
   plano_saude: '',
+  convenio_id: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
@@ -190,6 +193,7 @@ export default function Pacientes() {
   const navigate = useNavigate();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { membros: membrosEquipe } = useEquipe();
+  const { convenios } = useConvenios();
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
@@ -409,7 +413,8 @@ export default function Pacientes() {
       queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
       responsavel_id: (p as any).responsavel_id || '',
       tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
-      plano_saude: ((p as any).plano_saude as PlanoSaude) || '',
+      plano_saude: (p as any).plano_saude || '',
+      convenio_id: (p as any).convenio_id || '',
     });
     setModal({ open: true, paciente: p });
   };
@@ -424,6 +429,7 @@ export default function Pacientes() {
     try {
       let pacienteId = modal.paciente?.id;
       const validated = parsed.data;
+      const convenioSel = form.tipo_pagamento === 'plano' ? convenios.find((c: any) => c.id === form.convenio_id) : null;
       const payload: any = {
         nome: validated.nome!,
         sobrenome: validated.sobrenome!,
@@ -437,7 +443,8 @@ export default function Pacientes() {
         terapeuta_id: user!.id,
         responsavel_id: form.responsavel_id || null,
         tipo_pagamento: form.tipo_pagamento,
-        plano_saude: form.tipo_pagamento === 'plano' ? (form.plano_saude || null) : null,
+        convenio_id: convenioSel?.id || null,
+        plano_saude: convenioSel?.nome || null,
       };
       if (pacienteId) {
         await supabase.from('pacientes').update(payload).eq('id', pacienteId);
@@ -913,7 +920,7 @@ export default function Pacientes() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '' }))}
+                  onClick={() => setForm(f => ({ ...f, tipo_pagamento: 'particular', plano_saude: '', convenio_id: '' }))}
                   className={cn(
                     'p-3 rounded-lg border text-sm font-medium transition-colors',
                     form.tipo_pagamento === 'particular'
@@ -933,23 +940,34 @@ export default function Pacientes() {
                       : 'border-border hover:bg-accent/30 text-foreground'
                   )}
                 >
-                  Plano
+                  Plano de Saúde
                 </button>
               </div>
               {form.tipo_pagamento === 'plano' && (
-                <div className="pt-2">
-                  <Label className="text-xs">Plano</Label>
-                  <Select
-                    value={form.plano_saude || ''}
-                    onValueChange={v => setForm(f => ({ ...f, plano_saude: v as PlanoSaude }))}
-                  >
-                    <SelectTrigger><SelectValue placeholder="Selecionar plano" /></SelectTrigger>
-                    <SelectContent>
-                      {PLANOS_SAUDE.map(p => (
-                        <SelectItem key={p} value={p}>{p}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div className="pt-2 space-y-1">
+                  <Label className="text-xs">Convênio</Label>
+                  {convenios.length === 0 ? (
+                    <div className="text-xs text-muted-foreground p-2 rounded-md border border-dashed">
+                      Nenhum convênio cadastrado. Vá em <strong>Financeiro → Convênios</strong> para adicionar (ex: Unimed, Bradesco).
+                    </div>
+                  ) : (
+                    <Select
+                      value={form.convenio_id || ''}
+                      onValueChange={v => setForm(f => ({ ...f, convenio_id: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecionar convênio" /></SelectTrigger>
+                      <SelectContent>
+                        {convenios.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>
+                            {c.nome}{c.valor_padrao ? ` — R$ ${Number(c.valor_padrao).toFixed(2).replace('.', ',')}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  <p className="text-[10px] text-muted-foreground">
+                    O valor e o repasse desse paciente serão preenchidos automaticamente em cada sessão.
+                  </p>
                 </div>
               )}
             </div>
