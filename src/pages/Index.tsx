@@ -517,20 +517,20 @@ export default function Index() {
             <Link
               key={k.label}
               to={k.href}
-              className={`rounded-xl border p-3 sm:p-4 transition-colors ${
+              className={`rounded-xl border p-2.5 sm:p-4 transition-colors ${
                 k.highlight
                   ? 'border-primary/30 bg-card hover:border-primary/50 hover:bg-muted/20'
                   : 'border-border/40 bg-card hover:border-primary/40 hover:bg-muted/30'
               }`}
             >
-              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 truncate text-muted-foreground/70">
+              <div className="text-[11px] font-semibold uppercase tracking-wider mb-1.5 truncate text-muted-foreground/70">
                 {k.label}
               </div>
               <div
                 className={`tabular-nums leading-none ${
                   k.highlight
-                    ? 'text-2xl sm:text-3xl italic font-semibold text-primary'
-                    : 'text-2xl font-semibold text-foreground tracking-tight'
+                    ? 'text-xl sm:text-3xl italic font-semibold text-primary'
+                    : 'text-xl sm:text-2xl font-semibold text-foreground tracking-tight'
                 }`}
                 style={k.highlight ? { fontFamily: "'Playfair Display', Georgia, serif" } : undefined}
               >
