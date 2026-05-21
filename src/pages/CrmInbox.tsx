@@ -253,7 +253,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                         </div>
                       </div>
                       {/* footer card: dot + tag + menu */}
-                      <div className="mt-2 pt-2 border-t border-black/5 flex items-center gap-2">
+                      <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2">
                         <span className={cn("h-2.5 w-2.5 rounded-full", dot)} title={stage} />
                         {c.intencao_atual && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[120px]">
