@@ -132,7 +132,7 @@ export default function Hoje() {
   return (
     <AppLayout>
       <div className="min-h-[100dvh]">
-        <div className="max-w-md md:max-w-3xl lg:max-w-5xl mx-auto px-4 md:px-6 pt-2 pb-10 space-y-5 md:space-y-6">
+        <div className="max-w-md md:max-w-none lg:max-w-6xl mx-auto px-4 md:px-8 pt-2 md:pt-4 pb-10 space-y-5 md:space-y-7">
 
           {/* Greeting */}
           <header className="flex items-center gap-3 pt-1">
