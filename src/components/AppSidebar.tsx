@@ -61,15 +61,18 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
       }}
     >
       {/* Logo */}
-      <div className="flex items-center justify-center h-24 shrink-0 px-4">
-        <Link to="/" className="flex items-center gap-4 min-w-0 group">
-          <LogoIcon size={collapsed ? 44 : 52} glow />
+      <div className={cn(
+        "flex items-center shrink-0 px-4",
+        collapsed ? "justify-center h-[72px]" : "justify-start h-20"
+      )}>
+        <Link to="/" className="flex items-center gap-3 min-w-1 group">
+          <LogoIcon size={collapsed ? 36 : 40} glow={!collapsed} className={collapsed ? "" : "shrink-1"} />
           {!collapsed && (
-            <div className="min-w-0 transition-all duration-300 group-hover:pl-1">
-              <div className="text-sm font-black leading-tight text-white tracking-widest uppercase">
+            <div className="min-w-0 flex flex-col justify-center">
+              <div className="text-[13px] font-bold leading-[1.1] text-white tracking-[0.15em] uppercase">
                 My Health
               </div>
-              <div className="text-xs font-black leading-none tracking-wide" style={{ color: 'hsl(190 85% 50%)' }}>
+              <div className="text-[11px] font-bold leading-[1.1] tracking-[0.25em]" style={{ color: 'hsl(190 85% 50%)' }}>
                 ID
               </div>
             </div>
