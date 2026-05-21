@@ -152,28 +152,28 @@ export default function Hoje() {
           {/* Próxima sessão — compact strip, leva ao Dashboard */}
           <button
             onClick={() => navigate('/inicio-app')}
-            className="w-full text-left rounded-2xl px-3.5 md:px-5 py-2.5 md:py-3.5 relative overflow-hidden
+            className="w-full text-left rounded-2xl px-3.5 md:px-6 py-2.5 md:py-4 relative overflow-hidden
                        bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
                        text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
-                       flex items-center gap-3"
+                       flex items-center gap-3 md:gap-4"
           >
-            <div className="h-8 w-8 md:h-10 md:w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-              <Clock className="h-3.5 w-3.5 md:h-4 md:w-4" />
+            <div className="h-8 w-8 md:h-12 md:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+              <Clock className="h-3.5 w-3.5 md:h-5 md:w-5" />
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[9px] md:text-[10px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
+              <div className="text-[9px] md:text-[11px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
                 Próxima sessão
               </div>
-              <div className="mt-0.5 text-sm md:text-base font-semibold leading-tight truncate">
+              <div className="mt-0.5 md:mt-1 text-sm md:text-lg font-semibold leading-tight truncate">
                 {proxima ? proximaPaciente : 'Nenhuma sessão à vista'}
               </div>
             </div>
             {proxima && proximaQuando ? (
-              <div className="text-[11px] md:text-sm font-semibold opacity-95 whitespace-nowrap shrink-0">
+              <div className="text-[11px] md:text-base font-semibold opacity-95 whitespace-nowrap shrink-0">
                 {proximaQuando}
               </div>
             ) : null}
-            <ArrowRight className="h-3.5 w-3.5 md:h-4 md:w-4 opacity-80 shrink-0" />
+            <ArrowRight className="h-3.5 w-3.5 md:h-5 md:w-5 opacity-80 shrink-0" />
           </button>
 
           {/* Stats inline */}
