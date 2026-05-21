@@ -176,41 +176,40 @@ export default function OnboardingGuide() {
   return (
     <>
       {/* Banner inline para o dashboard */}
-      <button
-        type="button"
-        onClick={() => setOpen(true)}
-        className="w-full rounded-xl border border-primary/30 bg-primary/5 p-3 text-left transition-colors hover:bg-primary/10"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
-            <Rocket className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2">
-              <h3 className="text-sm font-semibold">Primeiros passos</h3>
-              <Badge variant="outline" className="text-[10px]">
-                {completedCount}/{STEPS.length}
-              </Badge>
+      <div className="relative w-full rounded-xl border border-primary/30 bg-primary/5 transition-colors hover:bg-primary/10">
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          className="w-full rounded-xl p-3 pr-12 text-left"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-primary/15 text-primary">
+              <Rocket className="h-5 w-5" />
             </div>
-            <Progress value={pct} className="mt-1.5 h-1.5" />
-            <p className="mt-1.5 text-xs text-muted-foreground line-clamp-1">
-              Próximo: {STEPS[proximoIdx]?.title}
-            </p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold">Primeiros passos</h3>
+                <Badge variant="outline" className="text-[10px]">
+                  {completedCount}/{STEPS.length}
+                </Badge>
+              </div>
+              <Progress value={pct} className="mt-1.5 h-1.5" />
+              <p className="mt-1.5 text-xs text-muted-foreground line-clamp-1">
+                Próximo: {STEPS[proximoIdx]?.title}
+              </p>
+            </div>
           </div>
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-7 w-7 shrink-0"
-            onClick={(e) => {
-              e.stopPropagation();
-              handleDismiss();
-            }}
-            aria-label="Dispensar"
-          >
-            <X className="h-4 w-4" />
-          </Button>
-        </div>
-      </button>
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="absolute right-2 top-1/2 h-7 w-7 -translate-y-1/2 shrink-0"
+          onClick={handleDismiss}
+          aria-label="Dispensar"
+        >
+          <X className="h-4 w-4" />
+        </Button>
+      </div>
 
       {/* Modal wizard */}
       <Dialog open={open} onOpenChange={setOpen}>
