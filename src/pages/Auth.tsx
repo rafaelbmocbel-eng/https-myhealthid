@@ -58,11 +58,10 @@ export default function Auth() {
         style={{ background: 'linear-gradient(160deg, hsl(213 55% 16%) 0%, hsl(213 55% 8%) 100%)' }}
       >
         <div className="flex items-center gap-3">
-          <LogoIcon size={44} />
-          <div>
-            <div className="text-sm font-black text-white tracking-wide">My Health <span style={{ color: 'hsl(190 85% 50%)' }}>ID</span></div>
-            <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
+          <div className="bg-white/95 rounded-xl px-3 py-2 shadow-lg">
+            <img src={logoFull} alt="My Health ID" className="h-10 w-auto object-contain" />
           </div>
+          <div className="text-xs text-white/50">Plataforma Clínica Inteligente</div>
         </div>
         <div>
           <h2 className="text-4xl font-black text-white leading-tight mb-4">
