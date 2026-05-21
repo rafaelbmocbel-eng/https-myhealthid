@@ -26,6 +26,7 @@ const HIDDEN_PREFIXES = [
   '/funil/',
   '/evento/',
   '/cadastro/',
+  '/pacientes/', // perfil já tem botão voltar no header do card
 ];
 
 /**
