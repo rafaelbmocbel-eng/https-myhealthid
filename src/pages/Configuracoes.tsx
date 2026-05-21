@@ -3,7 +3,7 @@ import NotificationPreferences from '@/components/NotificationPreferences';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, ConfigAgenda } from '@/hooks/useAgenda';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -11,6 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
+  Database, PartyPopper, ArrowRight,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -26,18 +27,25 @@ import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissiona
 
 type TabId = 'clinica' | 'agenda' | 'equipe' | 'links' | 'notif' | 'ia';
 
-const TABS: { id: TabId; label: string; icon: React.ComponentType<any> }[] = [
-  { id: 'clinica', label: 'Clínica', icon: Building2 },
-  { id: 'agenda', label: 'Agenda', icon: CalendarDays },
-  { id: 'equipe', label: 'Equipe', icon: Users },
-  { id: 'links', label: 'Links', icon: Link2 },
-  { id: 'notif', label: 'Avisos', icon: Bell },
-  { id: 'ia', label: 'IA', icon: Sparkles },
+type TabItem =
+  | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
+  | { id: string; label: string; icon: React.ComponentType<any>; kind: 'link'; to: string };
+
+const TABS: TabItem[] = [
+  { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
+  { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
+  { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
+  { id: 'pacientes', label: 'Pacientes', icon: Database, kind: 'link', to: '/pacientes' },
+  { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
+  { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
+  { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
+  { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
 ];
 
 export default function Configuracoes() {
   const { user, loading: authLoading } = useAuth();
   const { config, saveConfig, loading } = useAgenda();
+  const navigate = useNavigate();
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -85,6 +93,20 @@ export default function Configuracoes() {
             <TabsList className="h-10 bg-secondary/60 p-1 rounded-xl w-max">
               {TABS.map(t => {
                 const Icon = t.icon;
+                if (t.kind === 'link') {
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(t.to)}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+                    >
+                      <Icon className="icon-xs" />
+                      <span className="text-xs sm:text-sm">{t.label}</span>
+                      <ArrowRight className="icon-xs opacity-50" />
+                    </button>
+                  );
+                }
                 return (
                   <TabsTrigger
                     key={t.id}
