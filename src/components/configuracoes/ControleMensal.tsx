@@ -259,7 +259,7 @@ export default function ControleMensal() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Atendimentos realizados por profissional, com cálculo de repasse de <strong>{repasseLabel}</strong> sobre o valor total.
+        Repasse calculado por sessão usando a configuração de cada profissional × convênio. O <strong>{repasseLabel}</strong> ao lado vale apenas como fallback para sessões sem configuração específica.
       </p>
 
       {/* Filtros */}
