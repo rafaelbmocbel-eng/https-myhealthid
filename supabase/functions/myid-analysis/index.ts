@@ -81,8 +81,72 @@ Gere um JSON com:
     "orientacao_geral": "diretiva"
   },
   "alert_level": "verde|amarelo|vermelho",
-  "summary": "resumo em 2 frases"
+  "summary": "resumo em 2 frases",
+  "insights_baseados_evidencia": ["citações no formato Autor et al. (ano), Journal — achado relevante"]
 }`;
+
+    // ───────────────────────────────────────────────────────────────
+    // EVIDÊNCIA CIENTÍFICA — busca top 5 estudos relacionados ao perfil
+    // ───────────────────────────────────────────────────────────────
+    let evidenciaContext = "";
+    try {
+      const SUPABASE_URL_E = Deno.env.get("SUPABASE_URL");
+      const SERVICE_KEY_E = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+      if (SUPABASE_URL_E && SERVICE_KEY_E) {
+        const driverName = (perdas && typeof perdas === "object")
+          ? Object.entries(perdas as Record<string, number>)
+              .sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))
+              .slice(0, 3)
+              .map(([k]) => k)
+              .join(", ")
+          : "";
+        const blocosResumo = typeof blocos === "object" ? JSON.stringify(blocos).slice(0, 2000) : "";
+        const query = `Perfil MyID-100: dimensões mais comprometidas: ${driverName}. Red flags: ${JSON.stringify(redFlags)}. Contexto clínico: ${blocosResumo}`;
+
+        const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
+          method: "POST",
+          headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
+          body: JSON.stringify({
+            model: "google/gemini-embedding-001",
+            input: query.slice(0, 6000),
+            dimensions: 1536,
+          }),
+        });
+        if (embRes.ok) {
+          const embJson = await embRes.json();
+          const queryEmb = embJson.data?.[0]?.embedding;
+          const rpcRes = await fetch(`${SUPABASE_URL_E}/rest/v1/rpc/match_evidence`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+            body: JSON.stringify({
+              query_embedding: queryEmb,
+              match_count: 5,
+              filter_areas: null,
+              min_year: new Date().getFullYear() - 15,
+            }),
+          });
+          if (rpcRes.ok) {
+            const evidencias = await rpcRes.json();
+            if (Array.isArray(evidencias) && evidencias.length > 0) {
+              evidenciaContext = `\n\nEVIDÊNCIA CIENTÍFICA RELEVANTE (use para sustentar fases, intervenções e preencher "insights_baseados_evidencia" com citações Autor/ano/journal):\n\n` +
+                evidencias.map((e: any, i: number) =>
+                  `[${i + 1}] ${e.title}\n  ${(e.authors ?? []).slice(0, 3).join(", ")}${(e.authors ?? []).length > 3 ? " et al." : ""}. ${e.journal ?? ""} (${e.year ?? "—"}). ${e.study_type ?? ""}, evidência ${e.evidence_level ?? "—"}.\n  ${e.abstract ? e.abstract.slice(0, 400) + "..." : ""}`
+                ).join("\n\n");
+              console.log(`[myid-analysis] Injetou ${evidencias.length} evidências no prompt`);
+              fetch(`${SUPABASE_URL_E}/rest/v1/rpc/increment_evidence_citation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
+                body: JSON.stringify({ p_ids: evidencias.map((e: any) => e.id) }),
+              }).catch(() => {});
+            }
+          } else {
+            console.warn(`[myid-analysis] match_evidence falhou: ${rpcRes.status}`);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[myid-analysis] evidence search non-blocking error:", e);
+    }
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -93,7 +157,7 @@ Gere um JSON com:
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + evidenciaContext },
           { role: "user", content: userPrompt },
         ],
       }),
