@@ -74,20 +74,11 @@ export default function Configuracoes() {
       <div className="container py-4 sm:py-6 max-w-2xl pb-32">
         {/* Header */}
         <div className="mb-4 sm:mb-5">
-          <div className="flex items-end justify-between gap-3">
-            <div className="min-w-0">
-              <div className="eyebrow-accent mb-1.5">Ajustes</div>
-              <h1 className="h-page">Configurações</h1>
-              <p className="text-caption mt-1">Clínica, agenda, equipe, links e avisos</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <ThemeToggle />
-              <Button asChild variant="outline" size="sm" className="gap-2 rounded-xl h-10">
-                <Link to="/agenda"><CalendarDays className="icon-sm" /> <span className="hidden sm:inline">Agenda</span></Link>
-              </Button>
-            </div>
-          </div>
+          <div className="eyebrow-accent mb-1.5">Ajustes</div>
+          <h1 className="h-page">Configurações</h1>
+          <p className="text-caption mt-1">Clínica, agenda, equipe, links e avisos</p>
         </div>
+
 
         {/* Tabs */}
         <Tabs value={tab} onValueChange={(v) => setTab(v as TabId)} className="w-full">
