@@ -58,10 +58,11 @@ export default function ControleMensal() {
       const { data, error } = await supabase
         .from('controle_sessoes')
         .select(`
-          id, data_sessao, status, valor_cobrado, tipo_atendimento,
+          id, data_sessao, status, valor_cobrado, tipo_atendimento, convenio_id,
           paciente_id,
           agendamento_id,
           pacientes(id, nome, sobrenome, tipo_pagamento, plano_saude),
+          convenios:convenio_id(id, nome),
           agendamentos!agendamento_id(membro_equipe_id)
         `)
         .eq('terapeuta_id', user!.id)
@@ -74,6 +75,18 @@ export default function ControleMensal() {
     },
     enabled: !!user,
   });
+
+  /** Repasse de UMA sessão: usa config (membro × convênio); senão usa o % global. */
+  const repasseDaSessao = (s: any) => {
+    const valor = Number(s.valor_cobrado) || 0;
+    const membroId = s.agendamentos?.membro_equipe_id || null;
+    const convenioId = s.convenio_id || null;
+    if (!membroId) return valor * REPASSE_PCT;
+    const cfg = getRepasse(membroId, convenioId);
+    if (!cfg) return valor * REPASSE_PCT;
+    if (cfg.valor_fixo != null) return Number(cfg.valor_fixo);
+    return valor * (Number(cfg.percentual) / 100);
+  };
 
   // Filtros aplicados
   const filtradas = useMemo(() => {
