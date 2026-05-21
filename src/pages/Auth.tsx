@@ -91,8 +91,8 @@ export default function Auth() {
       {/* Right panel – form */}
       <div className="flex-1 flex items-center justify-center p-8">
         <div className="w-full max-w-md">
-          <div className="mb-8 lg:hidden">
-            <img src={logoFull} alt="My Health ID" className="w-full h-auto max-h-40 object-contain" />
+          <div className="mb-8 lg:hidden flex justify-center">
+            <img src={logoFull} alt="My Health ID" className="w-auto h-20 sm:h-24 object-contain" />
           </div>
 
           <h1 className="text-2xl font-black text-foreground mb-1">
