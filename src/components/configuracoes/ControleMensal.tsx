@@ -336,9 +336,10 @@ export default function ControleMensal() {
             </div>
             <div className="rounded-xl border-2 border-primary bg-primary/5 p-3">
               <p className="text-[10px] uppercase font-bold text-primary flex items-center gap-1">
-                <Percent className="icon-xs" /> Repasse {repasseLabel}
+                <Percent className="icon-xs" /> Repasse total
               </p>
               <p className="text-xl font-black text-primary mt-0.5">{fmt(totais.repasse)}</p>
+              <p className="text-[10px] text-primary/60">Líquido: {fmt(totais.total - totais.repasse)}</p>
             </div>
           </div>
 
