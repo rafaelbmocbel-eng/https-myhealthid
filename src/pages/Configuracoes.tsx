@@ -3,7 +3,7 @@ import NotificationPreferences from '@/components/NotificationPreferences';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useAgenda, ConfigAgenda } from '@/hooks/useAgenda';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate, Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
