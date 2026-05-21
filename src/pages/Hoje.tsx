@@ -12,6 +12,12 @@ import {
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import { cn } from '@/lib/utils';
+
+function pulseRing(level?: 'high' | 'low') {
+  if (!level) return '';
+  return level === 'high' ? 'ring-2 ring-destructive/60 animate-pulse-urgent' : 'ring-2 ring-warning/50 animate-pulse-soft';
+}
 
 export default function Hoje() {
   const { user, profile, loading, authReady } = useAuth();
