@@ -149,42 +149,31 @@ export default function Hoje() {
             </div>
           </header>
 
-          {/* Próxima sessão — hero gold card */}
+          {/* Próxima sessão — compact strip, leva ao Dashboard */}
           <button
-            onClick={() => navigate('/agenda')}
-            className="w-full text-left rounded-3xl p-5 relative overflow-hidden
-                       bg-gradient-to-br from-[hsl(38_85%_55%)] via-[hsl(32_85%_52%)] to-[hsl(20_75%_48%)]
-                       text-white shadow-lg hover:shadow-xl transition active:scale-[0.99]"
+            onClick={() => navigate('/inicio-app')}
+            className="w-full text-left rounded-2xl px-3.5 py-2.5 relative overflow-hidden
+                       bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
+                       text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
+                       flex items-center gap-3"
           >
-            <div className="absolute -top-10 -right-10 w-40 h-40 rounded-full bg-white/10 blur-2xl pointer-events-none" />
-            <div className="relative flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <div className="text-[10px] font-semibold tracking-[0.22em] uppercase opacity-85">
-                  Próxima sessão
-                </div>
-                {proxima ? (
-                  <>
-                    <div className="mt-2 text-xl font-bold leading-tight truncate" style={{ fontFamily: "'Playfair Display', serif", fontStyle: 'italic' }}>
-                      {proximaPaciente}
-                    </div>
-                    <div className="mt-1.5 flex items-center gap-1.5 text-xs font-medium opacity-95">
-                      <Clock className="h-3.5 w-3.5" />
-                      <span>{proximaQuando}</span>
-                    </div>
-                  </>
-                ) : (
-                  <>
-                    <div className="mt-2 text-base font-semibold leading-tight">
-                      Nenhuma sessão à vista
-                    </div>
-                    <div className="mt-1 text-xs opacity-90">Toque para abrir a agenda</div>
-                  </>
-                )}
+            <div className="h-8 w-8 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+              <Clock className="h-3.5 w-3.5" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <div className="text-[9px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
+                Próxima sessão
               </div>
-              <div className="h-10 w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                <ArrowRight className="h-4 w-4" />
+              <div className="mt-0.5 text-sm font-semibold leading-tight truncate">
+                {proxima ? proximaPaciente : 'Nenhuma sessão à vista'}
               </div>
             </div>
+            {proxima && proximaQuando ? (
+              <div className="text-[11px] font-semibold opacity-95 whitespace-nowrap shrink-0">
+                {proximaQuando}
+              </div>
+            ) : null}
+            <ArrowRight className="h-3.5 w-3.5 opacity-80 shrink-0" />
           </button>
 
           {/* Stats inline */}
@@ -239,7 +228,12 @@ export default function Hoje() {
             <SectionLabel>Atalhos</SectionLabel>
             <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
-              <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
+              <PillBtn
+                icon={LayoutDashboard}
+                label="Dashboard"
+                urgency={urgency((alerts?.whatsapp ?? 0) + (alerts?.eventosHoje ?? 0) + (proxima ? 1 : 0), 5)}
+                onClick={() => navigate('/inicio-app')}
+              />
               <PillBtn
                 icon={CalendarHeart}
                 label="Eventos"
