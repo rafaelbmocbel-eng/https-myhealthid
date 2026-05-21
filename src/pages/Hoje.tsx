@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Users, LayoutDashboard,
+  Users, LayoutDashboard, Tag,
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
   BookOpen, Settings,
 } from 'lucide-react';
