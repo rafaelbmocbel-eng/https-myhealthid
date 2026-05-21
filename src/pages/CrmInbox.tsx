@@ -170,7 +170,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
 
             {/* Tabs colunas WeSeller */}
-            <div className="flex gap-1 px-2 pt-2 pb-1 bg-[#f7f5f0] overflow-x-auto scrollbar-none border-b border-black/5">
+            <div className="flex gap-1 px-2 pt-2 pb-1 bg-muted/40 overflow-x-auto scrollbar-none border-b border-border/40">
               {COLUNAS.map(col => {
                 const ativo = coluna === col.key;
                 const count = contagensColuna[col.key];
@@ -181,7 +181,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                     className={cn(
                       "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative",
                       ativo
-                        ? "bg-white text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
+                        ? "bg-card text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -197,7 +197,8 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
 
             {/* Cards */}
-            <ScrollArea className="flex-1 bg-[#f7f5f0]">
+            <ScrollArea className="flex-1 bg-muted/40">
+
               <div className="p-2 space-y-2">
                 {isLoading ? (
                   <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
