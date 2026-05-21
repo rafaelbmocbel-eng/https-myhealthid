@@ -3,7 +3,7 @@ import { Navigate, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay } from 'date-fns';
 import {
-  Users, LayoutDashboard,
+  Users, LayoutDashboard, Tag,
   CalendarDays, MessageCircle, GitBranch, CalendarHeart,
   BookOpen, Settings,
 } from 'lucide-react';
@@ -112,6 +112,7 @@ export default function Hoje() {
             <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
             <PillBtn icon={GitBranch} label="CRM" onClick={() => navigate('/crm?tab=pipeline')} />
             <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+            <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
             <PillBtn icon={BookOpen} label="Ciência" onClick={() => navigate('/base-cientifica')} />
             <PillBtn icon={Settings} label="Ajustes" onClick={() => navigate('/configuracoes')} />
           </section>
