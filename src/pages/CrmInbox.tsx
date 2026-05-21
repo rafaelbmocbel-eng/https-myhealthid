@@ -130,19 +130,20 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
 
           {/* Lista — estilo WeSeller */}
           <div className={cn(
-            "rounded-xl border border-border/40 shadow-xs flex flex-col overflow-hidden bg-[#f7f5f0]",
+            "rounded-xl border border-border/40 shadow-xs flex flex-col overflow-hidden bg-muted/40",
             selecionada && "hidden md:flex"
           )}>
             {/* Header: busca + fila */}
-            <div className="p-3 bg-white border-b border-black/5 space-y-2">
+            <div className="p-3 bg-card border-b border-border/40 space-y-2">
               <div className="relative">
                 <Search className="icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar nome, telefone ou texto…"
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
-                  className="pl-8 h-9 rounded-full bg-muted/40 border-transparent focus-visible:bg-white"
+                  className="pl-8 h-9 rounded-full bg-muted/40 border-transparent focus-visible:bg-card"
                 />
+
               </div>
               <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
                 {([
@@ -169,7 +170,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
 
             {/* Tabs colunas WeSeller */}
-            <div className="flex gap-1 px-2 pt-2 pb-1 bg-[#f7f5f0] overflow-x-auto scrollbar-none border-b border-black/5">
+            <div className="flex gap-1 px-2 pt-2 pb-1 bg-muted/40 overflow-x-auto scrollbar-none border-b border-border/40">
               {COLUNAS.map(col => {
                 const ativo = coluna === col.key;
                 const count = contagensColuna[col.key];
@@ -180,7 +181,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                     className={cn(
                       "shrink-0 flex items-center gap-1.5 px-3 py-1.5 rounded-t-lg text-xs font-medium transition-colors relative",
                       ativo
-                        ? "bg-white text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
+                        ? "bg-card text-foreground shadow-[0_-1px_2px_rgba(0,0,0,0.04)]"
                         : "text-muted-foreground hover:text-foreground"
                     )}
                   >
@@ -196,7 +197,8 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
             </div>
 
             {/* Cards */}
-            <ScrollArea className="flex-1 bg-[#f7f5f0]">
+            <ScrollArea className="flex-1 bg-muted/40">
+
               <div className="p-2 space-y-2">
                 {isLoading ? (
                   <div className="p-6 text-center text-sm text-muted-foreground flex items-center justify-center gap-2">
@@ -219,9 +221,10 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                       key={c.id}
                       onClick={() => setSelecionada(c)}
                       className={cn(
-                        "w-full text-left bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-black/5 px-3 py-2.5 hover:shadow-md transition-all",
+                        "w-full text-left bg-card rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-border/40 px-3 py-2.5 hover:shadow-md transition-all",
                         ativo && "ring-2 ring-[#00a884]/40"
                       )}
+
                     >
                       <div className="flex items-start gap-2.5">
                         <Avatar className="h-10 w-10 shrink-0">
@@ -250,7 +253,7 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                         </div>
                       </div>
                       {/* footer card: dot + tag + menu */}
-                      <div className="mt-2 pt-2 border-t border-black/5 flex items-center gap-2">
+                      <div className="mt-2 pt-2 border-t border-border/40 flex items-center gap-2">
                         <span className={cn("h-2.5 w-2.5 rounded-full", dot)} title={stage} />
                         {c.intencao_atual && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 truncate max-w-[120px]">
