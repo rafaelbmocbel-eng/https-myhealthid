@@ -388,15 +388,16 @@ export default function ControleMensal() {
               {filtradas.map((s: any) => {
                 const membroId = s.agendamentos?.membro_equipe_id;
                 const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-                const tipo = s.pacientes?.tipo_pagamento || 'particular';
+                const tipo = tipoDaSessao(s);
                 const valor = Number(s.valor_cobrado) || 0;
+                const conv = nomeConvenio(s);
                 return (
                   <div key={s.id} className="px-3 py-2 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{s.pacientes?.nome} {s.pacientes?.sobrenome}</p>
                       <p className="text-[10px] text-muted-foreground truncate">
                         {format(new Date(s.data_sessao), "dd/MM 'às' HH:mm", { locale: ptBR })} · {membro?.nome || 'Sem prof.'}
-                        {tipo === 'plano' && s.pacientes?.plano_saude ? ` · ${s.pacientes.plano_saude}` : ''}
+                        {tipo === 'plano' && conv ? ` · ${conv}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -409,7 +410,7 @@ export default function ControleMensal() {
                             : 'border-blue-300 bg-blue-50 dark:bg-blue-950/20 text-blue-800 dark:text-blue-300'
                         )}
                       >
-                        {tipo === 'plano' ? 'Plano' : 'Particular'}
+                        {tipo === 'plano' ? (conv || 'Plano') : 'Particular'}
                       </Badge>
                       <span className="font-bold tabular-nums">{fmt(valor)}</span>
                     </div>
