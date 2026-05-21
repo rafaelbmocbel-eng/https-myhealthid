@@ -413,47 +413,47 @@ export default function Index() {
             type="button"
             onClick={() => proximoAtendimento && (proximoAtendimento as any).pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
             disabled={!proximoAtendimento}
-            className="lg:col-span-2 text-left relative overflow-hidden rounded-2xl border border-border/40 bg-card p-5 sm:p-6 group transition-colors hover:border-primary/40 hover:bg-muted/20 disabled:cursor-default"
+            className="lg:col-span-2 text-left relative overflow-hidden rounded-2xl border border-border/40 bg-card p-4 sm:p-6 group transition-colors hover:border-primary/40 hover:bg-muted/20 disabled:cursor-default"
           >
             <div className="relative z-10">
               {proximoAtendimento ? (
                 <>
-                  <div className="flex items-center gap-2 mb-5 sm:mb-6">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">
+                  <div className="flex items-center gap-2 mb-3 sm:mb-6">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse shrink-0" />
+                    <span className="text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground truncate">
                       Próxima sessão · {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
                     </span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-light mb-1 truncate text-foreground">
+                  <div className="text-xl sm:text-3xl font-light mb-1 truncate text-foreground leading-tight">
                     {(proximoAtendimento as any).pacientes
                       ? `${(proximoAtendimento as any).pacientes.nome} ${(proximoAtendimento as any).pacientes.sobrenome || ''}`
                       : (proximoAtendimento as any).titulo || 'Atendimento'}
                   </div>
-                  <div className="text-sm text-muted-foreground mb-5">
+                  <div className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-5">
                     {(proximoAtendimento as any).tipo_atendimento || 'Retorno'} ·{' '}
                     {formatDistanceToNow(parseISO(proximoAtendimento.data_inicio), { addSuffix: true, locale: ptBR })}
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors">
+                  <span className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors">
                     Abrir prontuário
                     <ArrowRight className="icon-xs group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </>
               ) : (
                 <>
-                  <div className="flex items-center gap-2 mb-5 sm:mb-6">
-                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">Hoje</span>
+                  <div className="flex items-center gap-2 mb-3 sm:mb-6">
+                    <span className="text-[11px] font-bold tracking-[0.16em] uppercase text-muted-foreground">Hoje</span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-light mb-1 text-foreground">
+                  <div className="text-xl sm:text-3xl font-light mb-1 text-foreground leading-tight">
                     {agendamentosHoje.length === 0 ? 'Agenda livre' : 'Sem mais agendamentos'}
                   </div>
-                  <div className="text-sm text-muted-foreground mb-5">
+                  <div className="text-xs sm:text-sm text-muted-foreground mb-4 sm:mb-5">
                     {agendamentosHoje.length > 0
                       ? `${agendamentosHoje.length} ${agendamentosHoje.length === 1 ? 'atendimento concluído' : 'atendimentos concluídos'} hoje`
                       : 'Aproveite para revisar protocolos ou contatar pacientes'}
                   </div>
                   <Link
                     to="/agenda"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors"
+                    className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors"
                   >
                     Ver agenda <ArrowRight className="icon-xs" />
                   </Link>
