@@ -135,15 +135,15 @@ export default function Hoje() {
         <div className="max-w-md md:max-w-none lg:max-w-6xl mx-auto px-4 md:px-8 pt-2 md:pt-4 pb-10 space-y-5 md:space-y-7">
 
           {/* Greeting */}
-          <header className="flex items-center gap-3 pt-1">
-            <div className="h-11 w-11 md:h-14 md:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm md:text-base font-bold shadow-sm ring-2 ring-background">
+          <header className="flex items-center gap-3 md:gap-4 pt-1">
+            <div className="h-11 w-11 md:h-16 md:w-16 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm md:text-lg font-bold shadow-sm ring-2 ring-background">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+              <div className="text-[11px] md:text-xs uppercase tracking-[0.18em] text-muted-foreground font-semibold">
                 {todayLabel}
               </div>
-              <div className="text-lg md:text-2xl font-bold leading-tight truncate">
+              <div className="text-lg md:text-3xl font-bold leading-tight truncate">
                 {greeting}, {firstName}
               </div>
             </div>
