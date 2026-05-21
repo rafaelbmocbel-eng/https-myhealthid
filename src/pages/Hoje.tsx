@@ -112,6 +112,7 @@ export default function Hoje() {
             <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
             <PillBtn icon={GitBranch} label="CRM" onClick={() => navigate('/crm?tab=pipeline')} />
             <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+            <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
             <PillBtn icon={BookOpen} label="Ciência" onClick={() => navigate('/base-cientifica')} />
             <PillBtn icon={Settings} label="Ajustes" onClick={() => navigate('/configuracoes')} />
           </section>
