@@ -653,7 +653,7 @@ export default function Pacientes() {
 
         {activeMainTab === 'financeiro' && (
           <Suspense fallback={<div className="flex items-center justify-center h-96"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
-            <FinanceiroGeral />
+            <FinanceiroPage embedded />
           </Suspense>
         )}
 
