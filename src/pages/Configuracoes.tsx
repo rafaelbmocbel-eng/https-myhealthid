@@ -27,13 +27,19 @@ import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissiona
 
 type TabId = 'clinica' | 'agenda' | 'equipe' | 'links' | 'notif' | 'ia';
 
-const TABS: { id: TabId; label: string; icon: React.ComponentType<any> }[] = [
-  { id: 'clinica', label: 'Clínica', icon: Building2 },
-  { id: 'agenda', label: 'Agenda', icon: CalendarDays },
-  { id: 'equipe', label: 'Equipe', icon: Users },
-  { id: 'links', label: 'Links', icon: Link2 },
-  { id: 'notif', label: 'Avisos', icon: Bell },
-  { id: 'ia', label: 'IA', icon: Sparkles },
+type TabItem =
+  | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
+  | { id: string; label: string; icon: React.ComponentType<any>; kind: 'link'; to: string };
+
+const TABS: TabItem[] = [
+  { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
+  { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
+  { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
+  { id: 'pacientes', label: 'Pacientes', icon: Database, kind: 'link', to: '/pacientes' },
+  { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
+  { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
+  { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
+  { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
 ];
 
 export default function Configuracoes() {
