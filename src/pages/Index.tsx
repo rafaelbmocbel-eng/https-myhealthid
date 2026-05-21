@@ -408,32 +408,32 @@ export default function Index() {
 
         {/* ============ HERO ROW: Próxima Sessão (2/3) + Red Flags (1/3) ============ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5">
-          {/* Próxima Sessão — premium navy card */}
+          {/* Próxima Sessão — clean card */}
           <button
             type="button"
             onClick={() => proximoAtendimento && (proximoAtendimento as any).pacientes && navigate(`/pacientes/${(proximoAtendimento as any).pacientes.id}`)}
             disabled={!proximoAtendimento}
-            className="lg:col-span-2 text-left relative overflow-hidden rounded-2xl bg-[hsl(var(--primary))] text-primary-foreground p-5 sm:p-6 group transition-all hover:shadow-lg disabled:cursor-default"
+            className="lg:col-span-2 text-left relative overflow-hidden rounded-2xl border border-border/40 bg-card p-5 sm:p-6 group transition-colors hover:border-primary/40 hover:bg-muted/20 disabled:cursor-default"
           >
             <div className="relative z-10">
               {proximoAtendimento ? (
                 <>
                   <div className="flex items-center gap-2 mb-5 sm:mb-6">
-                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase opacity-70">
+                    <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">
                       Próxima sessão · {format(parseISO(proximoAtendimento.data_inicio), 'HH:mm')}
                     </span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-light mb-1 truncate">
+                  <div className="text-2xl sm:text-3xl font-light mb-1 truncate text-foreground">
                     {(proximoAtendimento as any).pacientes
                       ? `${(proximoAtendimento as any).pacientes.nome} ${(proximoAtendimento as any).pacientes.sobrenome || ''}`
                       : (proximoAtendimento as any).titulo || 'Atendimento'}
                   </div>
-                  <div className="text-sm opacity-70 mb-5">
+                  <div className="text-sm text-muted-foreground mb-5">
                     {(proximoAtendimento as any).tipo_atendimento || 'Retorno'} ·{' '}
                     {formatDistanceToNow(parseISO(proximoAtendimento.data_inicio), { addSuffix: true, locale: ptBR })}
                   </div>
-                  <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground rounded-xl text-xs font-semibold border border-primary-foreground/10 transition-colors">
+                  <span className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors">
                     Abrir prontuário
                     <ArrowRight className="icon-xs group-hover:translate-x-0.5 transition-transform" />
                   </span>
@@ -441,26 +441,25 @@ export default function Index() {
               ) : (
                 <>
                   <div className="flex items-center gap-2 mb-5 sm:mb-6">
-                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase opacity-70">Hoje</span>
+                    <span className="text-[10px] font-bold tracking-[0.18em] uppercase text-muted-foreground">Hoje</span>
                   </div>
-                  <div className="text-2xl sm:text-3xl font-light mb-1">
+                  <div className="text-2xl sm:text-3xl font-light mb-1 text-foreground">
                     {agendamentosHoje.length === 0 ? 'Agenda livre' : 'Sem mais agendamentos'}
                   </div>
-                  <div className="text-sm opacity-70 mb-5">
+                  <div className="text-sm text-muted-foreground mb-5">
                     {agendamentosHoje.length > 0
                       ? `${agendamentosHoje.length} ${agendamentosHoje.length === 1 ? 'atendimento concluído' : 'atendimentos concluídos'} hoje`
                       : 'Aproveite para revisar protocolos ou contatar pacientes'}
                   </div>
                   <Link
                     to="/agenda"
-                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 text-primary-foreground rounded-xl text-xs font-semibold border border-primary-foreground/10 transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-2 bg-primary text-primary-foreground hover:bg-primary/90 rounded-xl text-xs font-semibold transition-colors"
                   >
                     Ver agenda <ArrowRight className="icon-xs" />
                   </Link>
                 </>
               )}
             </div>
-            <div className="absolute -right-16 -bottom-16 w-64 h-64 bg-accent/20 rounded-full blur-3xl pointer-events-none" />
           </button>
 
           {/* Red Flags card */}
@@ -520,17 +519,17 @@ export default function Index() {
               to={k.href}
               className={`rounded-xl border p-3 sm:p-4 transition-colors ${
                 k.highlight
-                  ? 'border-accent/30 bg-accent/5 hover:border-accent/50'
+                  ? 'border-primary/30 bg-card hover:border-primary/50 hover:bg-muted/20'
                   : 'border-border/40 bg-card hover:border-primary/40 hover:bg-muted/30'
               }`}
             >
-              <div className={`text-[10px] font-semibold uppercase tracking-wider mb-1.5 truncate ${k.highlight ? 'text-accent-foreground/70' : 'text-muted-foreground/70'}`}>
+              <div className="text-[10px] font-semibold uppercase tracking-wider mb-1.5 truncate text-muted-foreground/70">
                 {k.label}
               </div>
               <div
                 className={`tabular-nums leading-none ${
                   k.highlight
-                    ? 'text-2xl sm:text-3xl italic font-semibold text-accent-foreground'
+                    ? 'text-2xl sm:text-3xl italic font-semibold text-primary'
                     : 'text-2xl font-semibold text-foreground tracking-tight'
                 }`}
                 style={k.highlight ? { fontFamily: "'Playfair Display', Georgia, serif" } : undefined}
