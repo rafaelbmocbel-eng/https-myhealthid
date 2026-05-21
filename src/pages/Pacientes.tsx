@@ -34,6 +34,7 @@ import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
 
 const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
 const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
+const FinanceiroPage = lazy(() => import('@/pages/Financeiro'));
 const CrmHub = lazy(() => import('@/pages/CrmHub'));
 
 type MainTab = 'clientes' | 'crm' | 'financeiro';
