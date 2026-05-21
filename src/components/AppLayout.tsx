@@ -1,6 +1,6 @@
 import { useState, useLayoutEffect, useCallback, useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { Kanban } from 'lucide-react';
+
 import {
   DropdownMenu,
   DropdownMenuContent,
