@@ -988,6 +988,7 @@ export type Database = {
       controle_sessoes: {
         Row: {
           agendamento_id: string | null
+          convenio_id: string | null
           created_at: string
           data_sessao: string
           duracao_minutos: number | null
@@ -1008,6 +1009,7 @@ export type Database = {
         }
         Insert: {
           agendamento_id?: string | null
+          convenio_id?: string | null
           created_at?: string
           data_sessao?: string
           duracao_minutos?: number | null
@@ -1028,6 +1030,7 @@ export type Database = {
         }
         Update: {
           agendamento_id?: string | null
+          convenio_id?: string | null
           created_at?: string
           data_sessao?: string
           duracao_minutos?: number | null
@@ -1055,6 +1058,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "controle_sessoes_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "controle_sessoes_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
@@ -1062,6 +1072,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      convenios: {
+        Row: {
+          ativo: boolean
+          codigo_tuss: string | null
+          created_at: string
+          id: string
+          nome: string
+          observacoes: string | null
+          prazo_repasse_dias: number | null
+          terapeuta_id: string
+          updated_at: string
+          valor_padrao: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          codigo_tuss?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          observacoes?: string | null
+          prazo_repasse_dias?: number | null
+          terapeuta_id: string
+          updated_at?: string
+          valor_padrao?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          codigo_tuss?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          observacoes?: string | null
+          prazo_repasse_dias?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+          valor_padrao?: number | null
+        }
+        Relationships: []
       }
       crm_cadencia_execucoes: {
         Row: {
@@ -3399,6 +3448,57 @@ export type Database = {
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      repasse_config: {
+        Row: {
+          ativo: boolean
+          convenio_id: string | null
+          created_at: string
+          id: string
+          membro_equipe_id: string
+          percentual: number
+          terapeuta_id: string
+          updated_at: string
+          valor_fixo: number | null
+        }
+        Insert: {
+          ativo?: boolean
+          convenio_id?: string | null
+          created_at?: string
+          id?: string
+          membro_equipe_id: string
+          percentual?: number
+          terapeuta_id: string
+          updated_at?: string
+          valor_fixo?: number | null
+        }
+        Update: {
+          ativo?: boolean
+          convenio_id?: string | null
+          created_at?: string
+          id?: string
+          membro_equipe_id?: string
+          percentual?: number
+          terapeuta_id?: string
+          updated_at?: string
+          valor_fixo?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "repasse_config_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repasse_config_membro_fk"
+            columns: ["membro_equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipe_membros"
             referencedColumns: ["id"]
           },
         ]
