@@ -5,10 +5,14 @@ import { useIsMobile } from '@/hooks/use-mobile';
 // Top-level routes onde o botão "voltar" não deve aparecer
 const TOP_LEVEL = new Set<string>([
   '/',
+  '/inicio-app',
+  '/hoje',
   '/agenda',
   '/pacientes',
   '/eventos',
   '/configuracoes',
+  '/crm/inbox',
+  '/base-cientifica',
   '/auth',
   '/paciente/dashboard',
   '/paciente/login',
