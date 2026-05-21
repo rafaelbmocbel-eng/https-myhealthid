@@ -15,7 +15,7 @@ import {
   Calendar, User, Activity, ChevronRight, Loader2, ClipboardList,
   Zap, AlertTriangle, Target, CheckCircle2, ChevronDown, ChevronUp,
   Dumbbell, Clock, RotateCcw, Lightbulb, TrendingUp, Brain,
-  Info, X, Check
+  Info, X, Check, ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -284,6 +284,14 @@ export default function Protocolos() {
         {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+              aria-label="Voltar"
+              className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/50 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
             <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
               <ClipboardList className="h-6 w-6 text-white" />
             </div>

@@ -256,7 +256,7 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
 
   return (
     <div className={embedded ? 'p-3 sm:p-5 space-y-4' : 'container max-w-3xl py-6 space-y-4'}>
-      {!embedded && <PageHeader title="Automações & Bot IA" subtitle="Atendimento automático, mensagens proativas e broadcasts personalizados." />}
+      {!embedded && <PageHeader back title="Automações & Bot IA" subtitle="Atendimento automático, mensagens proativas e broadcasts personalizados." />}
 
       <Card className="p-4">
         <div className="flex items-center gap-2 mb-3">
