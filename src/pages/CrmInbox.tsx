@@ -221,9 +221,10 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
                       key={c.id}
                       onClick={() => setSelecionada(c)}
                       className={cn(
-                        "w-full text-left bg-white rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-black/5 px-3 py-2.5 hover:shadow-md transition-all",
+                        "w-full text-left bg-card rounded-xl shadow-[0_1px_2px_rgba(0,0,0,0.06)] border border-border/40 px-3 py-2.5 hover:shadow-md transition-all",
                         ativo && "ring-2 ring-[#00a884]/40"
                       )}
+
                     >
                       <div className="flex items-start gap-2.5">
                         <Avatar className="h-10 w-10 shrink-0">
