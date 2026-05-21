@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
-import { Dialog, DialogContent } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
@@ -219,12 +219,12 @@ export default function OnboardingGuide() {
               <Sparkles className="h-3 w-3 text-primary" />
               Bem-vindo ao MY HEALTH ID
             </div>
-            <h2 className="text-lg font-bold leading-tight">
+            <DialogTitle className="text-lg font-bold leading-tight">
               4 passos para configurar sua clínica
-            </h2>
-            <p className="mt-1 text-xs text-muted-foreground">
+            </DialogTitle>
+            <DialogDescription className="mt-1 text-xs text-muted-foreground">
               Leva menos de 5 minutos. Acompanhe seu progresso abaixo.
-            </p>
+            </DialogDescription>
             <div className="mt-3 flex items-center gap-2">
               <Progress value={pct} className="h-2 flex-1" />
               <span className="text-xs font-semibold text-primary">{pct}%</span>
