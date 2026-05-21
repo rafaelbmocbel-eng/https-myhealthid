@@ -3458,8 +3458,8 @@ export type Database = {
           convenio_id: string | null
           created_at: string
           id: string
+          membro_equipe_id: string
           percentual: number
-          profissional_user_id: string
           terapeuta_id: string
           updated_at: string
           valor_fixo: number | null
@@ -3469,8 +3469,8 @@ export type Database = {
           convenio_id?: string | null
           created_at?: string
           id?: string
+          membro_equipe_id: string
           percentual?: number
-          profissional_user_id: string
           terapeuta_id: string
           updated_at?: string
           valor_fixo?: number | null
@@ -3480,8 +3480,8 @@ export type Database = {
           convenio_id?: string | null
           created_at?: string
           id?: string
+          membro_equipe_id?: string
           percentual?: number
-          profissional_user_id?: string
           terapeuta_id?: string
           updated_at?: string
           valor_fixo?: number | null
@@ -3492,6 +3492,13 @@ export type Database = {
             columns: ["convenio_id"]
             isOneToOne: false
             referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "repasse_config_membro_fk"
+            columns: ["membro_equipe_id"]
+            isOneToOne: false
+            referencedRelation: "equipe_membros"
             referencedColumns: ["id"]
           },
         ]
