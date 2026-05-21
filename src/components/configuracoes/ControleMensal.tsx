@@ -88,10 +88,17 @@ export default function ControleMensal() {
     return valor * (Number(cfg.percentual) / 100);
   };
 
+  /** Tipo derivado: tem convenio_id → plano; senão usa tipo_pagamento do paciente. */
+  const tipoDaSessao = (s: any): 'particular' | 'plano' =>
+    s.convenio_id ? 'plano' : (s.pacientes?.tipo_pagamento === 'plano' ? 'plano' : 'particular');
+
+  const nomeConvenio = (s: any): string =>
+    s.convenios?.nome || s.pacientes?.plano_saude || '';
+
   // Filtros aplicados
   const filtradas = useMemo(() => {
     return sessoes.filter((s: any) => {
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
       const membroId = s.agendamentos?.membro_equipe_id || null;
       if (tipoFiltro !== 'todos' && tipo !== tipoFiltro) return false;
       if (profissionalId !== 'todos') {
@@ -102,7 +109,7 @@ export default function ControleMensal() {
     });
   }, [sessoes, tipoFiltro, profissionalId]);
 
-  // Agregação por profissional
+  // Agregação por profissional (repasse calculado por sessão)
   const porProfissional = useMemo(() => {
     const map = new Map<string, {
       id: string | null;
@@ -112,6 +119,7 @@ export default function ControleMensal() {
       totalParticular: number;
       totalPlano: number;
       total: number;
+      repasse: number;
       detalhe: any[];
     }>();
 
@@ -122,36 +130,38 @@ export default function ControleMensal() {
       const nome = membro?.nome || 'Sem profissional atribuído';
       const cor = membro?.cor || '#94a3b8';
       const valor = Number(s.valor_cobrado) || 0;
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
 
       if (!map.has(key)) {
-        map.set(key, { id: membroId, nome, cor, sessoes: 0, totalParticular: 0, totalPlano: 0, total: 0, detalhe: [] });
+        map.set(key, { id: membroId, nome, cor, sessoes: 0, totalParticular: 0, totalPlano: 0, total: 0, repasse: 0, detalhe: [] });
       }
       const item = map.get(key)!;
       item.sessoes += 1;
       item.total += valor;
+      item.repasse += repasseDaSessao(s);
       if (tipo === 'plano') item.totalPlano += valor;
       else item.totalParticular += valor;
       item.detalhe.push(s);
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtradas, equipe]);
+  }, [filtradas, equipe, getRepasse, REPASSE_PCT]);
 
   const totais = useMemo(() => {
     const total = filtradas.reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
     const totalPlano = filtradas
-      .filter((s: any) => (s.pacientes?.tipo_pagamento || 'particular') === 'plano')
+      .filter((s: any) => tipoDaSessao(s) === 'plano')
       .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
     const totalParticular = total - totalPlano;
+    const repasse = filtradas.reduce((acc: number, s: any) => acc + repasseDaSessao(s), 0);
     return {
       sessoes: filtradas.length,
       total,
       totalPlano,
       totalParticular,
-      repasse: total * REPASSE_PCT,
+      repasse,
     };
-  }, [filtradas]);
+  }, [filtradas, getRepasse, REPASSE_PCT]);
 
   const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
