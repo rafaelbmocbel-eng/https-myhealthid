@@ -184,26 +184,26 @@ export default function Hoje() {
           </section>
 
           {/* Tile duplo principal */}
-          <section className="grid grid-cols-2 gap-3 md:gap-4">
+          <section className="grid grid-cols-2 gap-3 md:gap-5">
             <button
               onClick={() => navigate('/agenda')}
-              className="h-28 md:h-36 rounded-3xl p-4 md:p-5 text-left flex flex-col justify-between
+              className="h-28 md:h-44 rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between
                          bg-gradient-to-br from-primary to-primary-dark text-primary-foreground shadow-md
                          hover:shadow-lg transition active:scale-[0.98]"
             >
-              <div className="h-9 w-9 md:h-11 md:w-11 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-                <CalendarDays className="h-4 w-4 md:h-5 md:w-5" />
+              <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                <CalendarDays className="h-4 w-4 md:h-6 md:w-6" />
               </div>
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
-                <div className="text-lg md:text-xl font-bold leading-tight">Agenda</div>
+                <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
+                <div className="text-lg md:text-2xl font-bold leading-tight">Agenda</div>
               </div>
             </button>
 
             <button
               onClick={() => navigate('/crm?tab=inbox')}
               className={cn(
-                "h-28 md:h-36 rounded-3xl p-4 md:p-5 text-left flex flex-col justify-between relative",
+                "h-28 md:h-44 rounded-3xl p-4 md:p-6 text-left flex flex-col justify-between relative",
                 "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
                 pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
               )}
@@ -213,12 +213,12 @@ export default function Hoje() {
                   {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
                 </span>
               ) : null}
-              <div className="h-9 w-9 md:h-11 md:w-11 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                <MessageCircle className="h-4 w-4 md:h-5 md:w-5" />
+              <div className="h-9 w-9 md:h-14 md:w-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                <MessageCircle className="h-4 w-4 md:h-6 md:w-6" />
               </div>
               <div>
-                <div className="text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
-                <div className="text-lg md:text-xl font-bold leading-tight">WhatsApp CRM</div>
+                <div className="text-[10px] md:text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
+                <div className="text-lg md:text-2xl font-bold leading-tight">WhatsApp CRM</div>
               </div>
             </button>
           </section>
