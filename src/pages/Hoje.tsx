@@ -228,7 +228,12 @@ export default function Hoje() {
             <SectionLabel>Atalhos</SectionLabel>
             <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
-              <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
+              <PillBtn
+                icon={LayoutDashboard}
+                label="Dashboard"
+                urgency={urgency((alerts?.whatsapp ?? 0) + (alerts?.eventosHoje ?? 0) + (proxima ? 1 : 0), 5)}
+                onClick={() => navigate('/inicio-app')}
+              />
               <PillBtn
                 icon={CalendarHeart}
                 label="Eventos"
