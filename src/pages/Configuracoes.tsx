@@ -45,6 +45,7 @@ const TABS: TabItem[] = [
 export default function Configuracoes() {
   const { user, loading: authLoading } = useAuth();
   const { config, saveConfig, loading } = useAgenda();
+  const navigate = useNavigate();
   const [form, setForm] = useState<ConfigAgenda>(config);
   const [saving, setSaving] = useState(false);
   const [saved, setSaved] = useState(false);
@@ -92,6 +93,20 @@ export default function Configuracoes() {
             <TabsList className="h-10 bg-secondary/60 p-1 rounded-xl w-max">
               {TABS.map(t => {
                 const Icon = t.icon;
+                if (t.kind === 'link') {
+                  return (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => navigate(t.to)}
+                      className="inline-flex items-center gap-1.5 rounded-lg px-3 h-8 text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
+                    >
+                      <Icon className="icon-xs" />
+                      <span className="text-xs sm:text-sm">{t.label}</span>
+                      <ArrowRight className="icon-xs opacity-50" />
+                    </button>
+                  );
+                }
                 return (
                   <TabsTrigger
                     key={t.id}
