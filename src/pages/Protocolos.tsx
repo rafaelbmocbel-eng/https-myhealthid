@@ -15,7 +15,7 @@ import {
   Calendar, User, Activity, ChevronRight, Loader2, ClipboardList,
   Zap, AlertTriangle, Target, CheckCircle2, ChevronDown, ChevronUp,
   Dumbbell, Clock, RotateCcw, Lightbulb, TrendingUp, Brain,
-  Info, X, Check
+  Info, X, Check, ArrowLeft,
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
