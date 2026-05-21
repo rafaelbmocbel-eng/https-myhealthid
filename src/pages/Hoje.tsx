@@ -75,6 +75,40 @@ export default function Hoje() {
     staleTime: 30_000,
   });
 
+  // Pulse indicators — necessidades por módulo
+  const { data: alerts } = useQuery({
+    queryKey: ['hoje-alerts', user?.id],
+    queryFn: async () => {
+      const [wa, evHoje] = await Promise.all([
+        supabase
+          .from('whatsapp_conversas')
+          .select('nao_lidas')
+          .eq('terapeuta_id', user!.id)
+          .gt('nao_lidas', 0),
+        supabase
+          .from('eventos')
+          .select('id', { count: 'exact', head: true })
+          .eq('terapeuta_id', user!.id)
+          .gte('data_inicio', startOfDay(today).toISOString())
+          .lte('data_inicio', endOfDay(today).toISOString()),
+      ]);
+      const whatsappUnread = (wa.data || []).reduce((s, r: any) => s + (r.nao_lidas || 0), 0);
+      return {
+        whatsapp: whatsappUnread,
+        eventosHoje: evHoje.count || 0,
+        agendaHoje: stats?.hoje ?? 0,
+      };
+    },
+    enabled: authReady && !!user,
+    staleTime: 30_000,
+  });
+
+  // Urgência: 'high' = vermelho pulsando rápido | 'low' = âmbar pulsando suave | undefined = normal
+  const urgency = (n: number, highAt = 5): 'high' | 'low' | undefined => {
+    if (!n) return undefined;
+    return n >= highAt ? 'high' : 'low';
+  };
+
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
   const proximaDate = proxima?.data_inicio ? new Date(proxima.data_inicio) : null;
