@@ -463,9 +463,9 @@ export default function Index() {
           </button>
 
           {/* Red Flags card */}
-          <div className="rounded-2xl border border-destructive/20 bg-card p-5 flex flex-col">
+          <div className="rounded-2xl border border-destructive/20 bg-card p-4 sm:p-5 flex flex-col">
             <div className="flex items-center justify-between mb-3">
-              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive text-[10px] font-bold rounded-lg uppercase tracking-wider">
+              <span className="inline-flex items-center gap-1.5 px-2 py-1 bg-destructive/10 text-destructive text-[11px] font-bold rounded-lg uppercase tracking-wider">
                 <AlertTriangle className="icon-xs" /> Red Flags
               </span>
               <span className="text-destructive font-semibold text-xl tabular-nums">{recentAlerts.length}</span>
@@ -484,7 +484,7 @@ export default function Index() {
                       <p className="text-xs font-semibold text-foreground truncate">
                         {(alert.pacientes as any)?.nome} {(alert.pacientes as any)?.sobrenome}
                       </p>
-                      <p className="text-[10px] text-muted-foreground truncate">
+                      <p className="text-[11px] text-muted-foreground truncate">
                         Perímetro MyID · {formatDistanceToNow(new Date(alert.created_at), { addSuffix: true, locale: ptBR })}
                       </p>
                     </div>
@@ -497,7 +497,7 @@ export default function Index() {
               </div>
             )}
             {recentAlerts.length > 0 && (
-              <Link to="/pacientes" className="mt-3 text-[10px] font-bold text-destructive hover:underline text-center">
+              <Link to="/pacientes" className="mt-3 text-[11px] font-bold text-destructive hover:underline text-center">
                 Revisar todos os riscos
               </Link>
             )}
