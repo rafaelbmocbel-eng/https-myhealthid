@@ -3,6 +3,7 @@ import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useEquipe } from '@/hooks/useEquipe';
+import { useRepasseConfig } from '@/hooks/useRepasseConfig';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -21,6 +22,7 @@ type Filtro = 'todos' | 'particular' | 'plano';
 export default function ControleMensal() {
   const { user } = useAuth();
   const { membros: equipe } = useEquipe();
+  const { getRepasse } = useRepasseConfig();
   const [mesOffset, setMesOffset] = useState(0); // 0 = mês atual, 1 = mês passado...
   const [profissionalId, setProfissionalId] = useState<string>('todos');
   const [tipoFiltro, setTipoFiltro] = useState<Filtro>('todos');
@@ -56,10 +58,11 @@ export default function ControleMensal() {
       const { data, error } = await supabase
         .from('controle_sessoes')
         .select(`
-          id, data_sessao, status, valor_cobrado, tipo_atendimento,
+          id, data_sessao, status, valor_cobrado, tipo_atendimento, convenio_id,
           paciente_id,
           agendamento_id,
           pacientes(id, nome, sobrenome, tipo_pagamento, plano_saude),
+          convenios:convenio_id(id, nome),
           agendamentos!agendamento_id(membro_equipe_id)
         `)
         .eq('terapeuta_id', user!.id)
@@ -73,10 +76,29 @@ export default function ControleMensal() {
     enabled: !!user,
   });
 
+  /** Repasse de UMA sessão: usa config (membro × convênio); senão usa o % global. */
+  const repasseDaSessao = (s: any) => {
+    const valor = Number(s.valor_cobrado) || 0;
+    const membroId = s.agendamentos?.membro_equipe_id || null;
+    const convenioId = s.convenio_id || null;
+    if (!membroId) return valor * REPASSE_PCT;
+    const cfg = getRepasse(membroId, convenioId);
+    if (!cfg) return valor * REPASSE_PCT;
+    if (cfg.valor_fixo != null) return Number(cfg.valor_fixo);
+    return valor * (Number(cfg.percentual) / 100);
+  };
+
+  /** Tipo derivado: tem convenio_id → plano; senão usa tipo_pagamento do paciente. */
+  const tipoDaSessao = (s: any): 'particular' | 'plano' =>
+    s.convenio_id ? 'plano' : (s.pacientes?.tipo_pagamento === 'plano' ? 'plano' : 'particular');
+
+  const nomeConvenio = (s: any): string =>
+    s.convenios?.nome || s.pacientes?.plano_saude || '';
+
   // Filtros aplicados
   const filtradas = useMemo(() => {
     return sessoes.filter((s: any) => {
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
       const membroId = s.agendamentos?.membro_equipe_id || null;
       if (tipoFiltro !== 'todos' && tipo !== tipoFiltro) return false;
       if (profissionalId !== 'todos') {
@@ -87,7 +109,7 @@ export default function ControleMensal() {
     });
   }, [sessoes, tipoFiltro, profissionalId]);
 
-  // Agregação por profissional
+  // Agregação por profissional (repasse calculado por sessão)
   const porProfissional = useMemo(() => {
     const map = new Map<string, {
       id: string | null;
@@ -97,6 +119,7 @@ export default function ControleMensal() {
       totalParticular: number;
       totalPlano: number;
       total: number;
+      repasse: number;
       detalhe: any[];
     }>();
 
@@ -107,36 +130,38 @@ export default function ControleMensal() {
       const nome = membro?.nome || 'Sem profissional atribuído';
       const cor = membro?.cor || '#94a3b8';
       const valor = Number(s.valor_cobrado) || 0;
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
 
       if (!map.has(key)) {
-        map.set(key, { id: membroId, nome, cor, sessoes: 0, totalParticular: 0, totalPlano: 0, total: 0, detalhe: [] });
+        map.set(key, { id: membroId, nome, cor, sessoes: 0, totalParticular: 0, totalPlano: 0, total: 0, repasse: 0, detalhe: [] });
       }
       const item = map.get(key)!;
       item.sessoes += 1;
       item.total += valor;
+      item.repasse += repasseDaSessao(s);
       if (tipo === 'plano') item.totalPlano += valor;
       else item.totalParticular += valor;
       item.detalhe.push(s);
     });
 
     return Array.from(map.values()).sort((a, b) => b.total - a.total);
-  }, [filtradas, equipe]);
+  }, [filtradas, equipe, getRepasse, REPASSE_PCT]);
 
   const totais = useMemo(() => {
     const total = filtradas.reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
     const totalPlano = filtradas
-      .filter((s: any) => (s.pacientes?.tipo_pagamento || 'particular') === 'plano')
+      .filter((s: any) => tipoDaSessao(s) === 'plano')
       .reduce((acc: number, s: any) => acc + (Number(s.valor_cobrado) || 0), 0);
     const totalParticular = total - totalPlano;
+    const repasse = filtradas.reduce((acc: number, s: any) => acc + repasseDaSessao(s), 0);
     return {
       sessoes: filtradas.length,
       total,
       totalPlano,
       totalParticular,
-      repasse: total * REPASSE_PCT,
+      repasse,
     };
-  }, [filtradas]);
+  }, [filtradas, getRepasse, REPASSE_PCT]);
 
   const fmt = (v: number) => `R$ ${v.toFixed(2).replace('.', ',')}`;
 
@@ -144,16 +169,16 @@ export default function ControleMensal() {
     const rows = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-      const tipo = s.pacientes?.tipo_pagamento || 'particular';
+      const tipo = tipoDaSessao(s);
       const valor = Number(s.valor_cobrado) || 0;
       return {
         data: format(new Date(s.data_sessao), 'dd/MM/yyyy HH:mm'),
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim(),
         profissional: membro?.nome || 'Sem profissional',
         tipo: tipo === 'plano' ? 'Plano' : 'Particular',
-        plano: s.pacientes?.plano_saude || '-',
+        plano: nomeConvenio(s) || '-',
         valor_total: valor.toFixed(2),
-        repasse: (valor * REPASSE_PCT).toFixed(2),
+        repasse: repasseDaSessao(s).toFixed(2),
       };
     });
     exportToCsv(`controle_mensal_${format(new Date(), 'yyyy-MM')}.csv`, rows, [
@@ -161,9 +186,9 @@ export default function ControleMensal() {
       { key: 'paciente', label: 'Paciente' },
       { key: 'profissional', label: 'Profissional' },
       { key: 'tipo', label: 'Tipo' },
-      { key: 'plano', label: 'Plano' },
+      { key: 'plano', label: 'Convênio' },
       { key: 'valor_total', label: 'Valor Total (R$)' },
-      { key: 'repasse', label: `Repasse ${repasseLabel} (R$)` },
+      { key: 'repasse', label: 'Repasse (R$)' },
     ]);
   };
 
@@ -171,13 +196,13 @@ export default function ControleMensal() {
     const linhas = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-      const tipo = (s.pacientes?.tipo_pagamento || 'particular') as 'particular' | 'plano';
+      const tipo = tipoDaSessao(s);
       return {
         data: format(new Date(s.data_sessao), 'dd/MM HH:mm'),
         paciente: `${s.pacientes?.nome || ''} ${s.pacientes?.sobrenome || ''}`.trim() || '—',
         profissional: membro?.nome || 'Sem profissional',
         tipo,
-        plano: s.pacientes?.plano_saude || '',
+        plano: nomeConvenio(s),
         valor: Number(s.valor_cobrado) || 0,
       };
     });
@@ -234,7 +259,7 @@ export default function ControleMensal() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground mb-4">
-        Atendimentos realizados por profissional, com cálculo de repasse de <strong>{repasseLabel}</strong> sobre o valor total.
+        Repasse calculado por sessão usando a configuração de cada profissional × convênio. O <strong>{repasseLabel}</strong> ao lado vale apenas como fallback para sessões sem configuração específica.
       </p>
 
       {/* Filtros */}
@@ -311,9 +336,10 @@ export default function ControleMensal() {
             </div>
             <div className="rounded-xl border-2 border-primary bg-primary/5 p-3">
               <p className="text-[10px] uppercase font-bold text-primary flex items-center gap-1">
-                <Percent className="icon-xs" /> Repasse {repasseLabel}
+                <Percent className="icon-xs" /> Repasse total
               </p>
               <p className="text-xl font-black text-primary mt-0.5">{fmt(totais.repasse)}</p>
+              <p className="text-[10px] text-primary/60">Líquido: {fmt(totais.total - totais.repasse)}</p>
             </div>
           </div>
 
@@ -336,7 +362,7 @@ export default function ControleMensal() {
                   </div>
                   <div className="text-right shrink-0">
                     <p className="text-sm font-black">{fmt(prof.total)}</p>
-                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.total * REPASSE_PCT)} ({repasseLabel})</p>
+                    <p className="text-[10px] text-primary font-bold">↳ {fmt(prof.repasse)} ({prof.total > 0 ? ((prof.repasse / prof.total) * 100).toFixed(0) : 0}%)</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-wrap">
@@ -362,15 +388,16 @@ export default function ControleMensal() {
               {filtradas.map((s: any) => {
                 const membroId = s.agendamentos?.membro_equipe_id;
                 const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
-                const tipo = s.pacientes?.tipo_pagamento || 'particular';
+                const tipo = tipoDaSessao(s);
                 const valor = Number(s.valor_cobrado) || 0;
+                const conv = nomeConvenio(s);
                 return (
                   <div key={s.id} className="px-3 py-2 flex items-center justify-between gap-2 text-xs">
                     <div className="min-w-0">
                       <p className="font-semibold truncate">{s.pacientes?.nome} {s.pacientes?.sobrenome}</p>
                       <p className="text-[10px] text-muted-foreground truncate">
                         {format(new Date(s.data_sessao), "dd/MM 'às' HH:mm", { locale: ptBR })} · {membro?.nome || 'Sem prof.'}
-                        {tipo === 'plano' && s.pacientes?.plano_saude ? ` · ${s.pacientes.plano_saude}` : ''}
+                        {tipo === 'plano' && conv ? ` · ${conv}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
@@ -383,7 +410,7 @@ export default function ControleMensal() {
                             : 'border-blue-300 bg-blue-50 dark:bg-blue-950/20 text-blue-800 dark:text-blue-300'
                         )}
                       >
-                        {tipo === 'plano' ? 'Plano' : 'Particular'}
+                        {tipo === 'plano' ? (conv || 'Plano') : 'Particular'}
                       </Badge>
                       <span className="font-bold tabular-nums">{fmt(valor)}</span>
                     </div>
