@@ -275,15 +275,28 @@ function SectionLabel({ children }: { children: React.ReactNode }) {
   );
 }
 
-function PillBtn({ icon: Icon, label, onClick }: { icon: any; label: string; onClick: () => void }) {
+function PillBtn({
+  icon: Icon, label, onClick, badge, urgency,
+}: {
+  icon: any; label: string; onClick: () => void;
+  badge?: number; urgency?: 'high' | 'low';
+}) {
   return (
     <button
       onClick={onClick}
-      className="h-14 rounded-2xl bg-card border border-border/40 px-3.5 flex items-center gap-3
-                 shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]"
+      className={cn(
+        "h-14 rounded-2xl bg-card border border-border/40 px-3.5 flex items-center gap-3 relative",
+        "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
+        pulseRing(urgency),
+      )}
     >
-      <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0">
+      <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
         <Icon className="h-4 w-4" />
+        {badge ? (
+          <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
+            {badge > 9 ? '9+' : badge}
+          </span>
+        ) : null}
       </div>
       <span className="text-sm font-semibold truncate">{label}</span>
     </button>
