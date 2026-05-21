@@ -707,6 +707,7 @@ function ControleAtendimentos() {
 // ── Página Principal ──────────────────────────────────────────────────────────
 export default function Relatorios() {
   const { user, loading } = useAuth();
+  const navigate = useNavigate();
 
   if (!loading && !user) return <Navigate to="/auth" replace />;
 
@@ -715,6 +716,14 @@ export default function Relatorios() {
       <div className="container py-8 max-w-4xl">
         {/* Header */}
         <div className="flex items-center gap-3 mb-8">
+          <button
+            type="button"
+            onClick={() => (window.history.length > 1 ? navigate(-1) : navigate('/'))}
+            aria-label="Voltar"
+            className="shrink-0 inline-flex h-10 w-10 items-center justify-center rounded-full border border-border/50 bg-background text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
+          >
+            <ArrowLeft className="h-4 w-4" />
+          </button>
           <div className="h-10 w-10 rounded-xl bg-primary flex items-center justify-center">
             <FileText className="h-6 w-6 text-white" />
           </div>
