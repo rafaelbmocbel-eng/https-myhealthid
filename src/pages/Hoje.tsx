@@ -240,7 +240,13 @@ export default function Hoje() {
             <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn icon={LayoutDashboard} label="Dashboard" onClick={() => navigate('/inicio-app')} />
-              <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+              <PillBtn
+                icon={CalendarHeart}
+                label="Eventos"
+                badge={alerts?.eventosHoje}
+                urgency={urgency(alerts?.eventosHoje ?? 0, 3)}
+                onClick={() => navigate('/eventos')}
+              />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
             </div>
           </section>
