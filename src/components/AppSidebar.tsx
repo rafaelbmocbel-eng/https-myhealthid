@@ -66,7 +66,7 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
         collapsed ? "justify-center h-[72px]" : "justify-start h-20"
       )}>
         <Link to="/" className="flex items-center gap-3 min-w-1 group">
-          <LogoIcon size={collapsed ? 36 : 40} glow={!collapsed} className={collapsed ? "" : "shrink-1"} />
+          <LogoIcon size={collapsed ? 36 : 40} glow={!collapsed} className="shrink-0" />
           {!collapsed && (
             <div className="min-w-0 flex flex-col justify-center">
               <div className="text-[13px] font-bold leading-[1.1] text-white tracking-[0.15em] uppercase">
