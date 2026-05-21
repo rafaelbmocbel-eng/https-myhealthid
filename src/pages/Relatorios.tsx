@@ -12,7 +12,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
   FileText, Link2, Copy, Trash2, Plus, Search, Clock, CheckCircle2,
   Activity, CalendarDays, Loader2, ExternalLink, MessageCircle, Mail,
-  ChevronDown, ChevronUp, Star, ClipboardCheck, DollarSign,
+  ChevronDown, ChevronUp, Star, ClipboardCheck, DollarSign, ArrowLeft,
 } from 'lucide-react';
 import ControleMensal from '@/components/configuracoes/ControleMensal';
 import { format, parseISO, differenceInDays } from 'date-fns';
