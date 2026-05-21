@@ -279,33 +279,33 @@ function PillBtn({
     <button
       onClick={onClick}
       className={cn(
-        "h-14 rounded-2xl bg-card border border-border/40 px-3.5 flex items-center gap-3 relative",
+        "h-14 md:h-20 rounded-2xl bg-card border border-border/40 px-3.5 md:px-5 flex items-center gap-3 md:gap-4 relative",
         "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
         pulseRing(urgency),
       )}
     >
-      <div className="h-9 w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
-        <Icon className="h-4 w-4" />
+      <div className="h-9 w-9 md:h-12 md:w-12 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
+        <Icon className="h-4 w-4 md:h-5 md:w-5" />
         {badge ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
             {badge > 9 ? '9+' : badge}
           </span>
         ) : null}
       </div>
-      <span className="text-sm font-semibold truncate">{label}</span>
+      <span className="text-sm md:text-base font-semibold truncate">{label}</span>
     </button>
   );
 }
 
 function StatChip({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className={`rounded-2xl px-3 py-3 text-center border ${
+    <div className={`rounded-2xl px-3 py-3 md:py-5 text-center border ${
       accent
         ? 'bg-primary/5 border-primary/15'
         : 'bg-card border-border/40'
     } shadow-xs`}>
-      <div className={`text-xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
-      <div className="text-[9px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1.5">
+      <div className={`text-xl md:text-3xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
+      <div className="text-[9px] md:text-[11px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1.5 md:mt-2">
         {label}
       </div>
     </div>
