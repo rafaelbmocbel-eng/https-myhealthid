@@ -130,19 +130,20 @@ export default function CrmInbox({ embedded = false }: { embedded?: boolean } = 
 
           {/* Lista — estilo WeSeller */}
           <div className={cn(
-            "rounded-xl border border-border/40 shadow-xs flex flex-col overflow-hidden bg-[#f7f5f0]",
+            "rounded-xl border border-border/40 shadow-xs flex flex-col overflow-hidden bg-muted/40",
             selecionada && "hidden md:flex"
           )}>
             {/* Header: busca + fila */}
-            <div className="p-3 bg-white border-b border-black/5 space-y-2">
+            <div className="p-3 bg-card border-b border-border/40 space-y-2">
               <div className="relative">
                 <Search className="icon-sm absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Buscar nome, telefone ou texto…"
                   value={busca}
                   onChange={e => setBusca(e.target.value)}
-                  className="pl-8 h-9 rounded-full bg-muted/40 border-transparent focus-visible:bg-white"
+                  className="pl-8 h-9 rounded-full bg-muted/40 border-transparent focus-visible:bg-card"
                 />
+
               </div>
               <div className="flex gap-1 overflow-x-auto -mx-1 px-1 scrollbar-none">
                 {([
