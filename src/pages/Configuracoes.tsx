@@ -18,7 +18,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import EquipeManager from '@/components/equipe/EquipeManager';
-import ThemeToggle from '@/components/ThemeToggle';
 import AiCreditsBanner from '@/components/AiCreditsBanner';
 import ConfigClinica from '@/components/configuracoes/ConfigClinica';
 import TurnosEditor from '@/components/configuracoes/TurnosEditor';
