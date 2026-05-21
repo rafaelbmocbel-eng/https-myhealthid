@@ -193,6 +193,7 @@ export default function Pacientes() {
   const navigate = useNavigate();
   const { links, gerarLink, copiarLink, cancelarLink, getLinkUrl, gerando } = useLinksAvaliacao();
   const { membros: membrosEquipe } = useEquipe();
+  const { convenios } = useConvenios();
 
   const [search, setSearch] = useState('');
   const [filterServico, setFilterServico] = useState('todos');
