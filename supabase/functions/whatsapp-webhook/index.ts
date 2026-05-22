@@ -14,9 +14,26 @@ function cleanPhone(p: string) {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
+  // Validação opcional de segredo (modo gradual):
+  // Se WHATSAPP_WEBHOOK_SECRET estiver definido, exige ?secret=... ou header x-webhook-secret correspondente.
+  // Se não estiver definido, o webhook segue aberto (compatibilidade) — defina o env var após atualizar a URL na Z-API.
+  const expectedSecret = Deno.env.get("WHATSAPP_WEBHOOK_SECRET");
+  if (expectedSecret) {
+    const url = new URL(req.url);
+    const provided = url.searchParams.get("secret") || req.headers.get("x-webhook-secret");
+    if (provided !== expectedSecret) {
+      console.warn("[whatsapp-webhook] unauthorized: secret mismatch");
+      return new Response(JSON.stringify({ error: "unauthorized" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+  }
+
   try {
     const body = await req.json();
     console.log("[whatsapp-webhook] payload:", JSON.stringify(body).slice(0, 500));
+
 
     // Z-API envia eventos diversos; aceitamos os de mensagem (text, image, audio, etc.)
     // Estrutura típica: { phone, fromMe, messageId, text:{message}, image:{caption,imageUrl}, audio:{audioUrl}, ... }
