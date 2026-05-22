@@ -271,13 +271,13 @@ function PillBtn({
     <button
       onClick={onClick}
       className={cn(
-        "h-14 sm:h-20 rounded-2xl bg-card border border-border/40 px-3.5 sm:px-5 flex items-center gap-3 sm:gap-4 relative",
+        "h-12 sm:h-14 rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
         "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
         pulseRing(urgency),
       )}
     >
-      <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+      <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
+        <Icon className="h-4 w-4 sm:h-4 sm:w-4" />
         {badge ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
             {badge > 9 ? '9+' : badge}
