@@ -25,7 +25,7 @@ const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?
 const STORAGE_KEY = 'crm.lastTab';
 
 function isTabKey(value: string | null): value is TabKey {
-  return value === 'inbox' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes';
+  return value === 'inbox' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes' || value === 'trafego';
 }
 
 interface Props {
