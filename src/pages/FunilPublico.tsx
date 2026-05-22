@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { gerarPixQrCodeDataUrl, gerarPixPayload } from '@/utils/pixQrCode';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
 import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
+import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 
 type Etapa = 'boas_vindas' | 'coleta_dados' | 'diferenciais' | 'servicos' | 'agendamento' | 'pagamento' | 'confirmacao';
 
