@@ -1,8 +1,7 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { SignInSchema, SignUpSchema } from '@/lib/validations';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -13,44 +12,15 @@ import LogoIcon from '@/components/LogoIcon';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
 
 export default function Auth() {
-  const { user, signIn, signUp, signOut, loading, authReady } = useAuth();
+  const { user, signIn, signUp, loading } = useAuth();
   const { toast } = useToast();
   const [tab, setTab] = useState<'login' | 'register'>('login');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [form, setForm] = useState({ nome: '', email: '', password: '' });
-  const [checkingSession, setCheckingSession] = useState(true);
-  const cleanupAttempted = useRef(false);
 
-  // ISOLATION GUARD: if a patient session is active here, force sign out
-  // so the professional login form is shown clean.
-  useEffect(() => {
-    if (!authReady || loading) return;
-    if (!user) { setCheckingSession(false); return; }
-    if (cleanupAttempted.current) return;
-    cleanupAttempted.current = true;
+  if (!loading && user) return <Navigate to="/hoje" replace />;
 
-    (async () => {
-      const { data: paciente } = await supabase
-        .from('pacientes')
-        .select('id')
-        .eq('user_id', user.id)
-        .maybeSingle();
-      if (paciente) {
-        await signOut();
-      }
-      setCheckingSession(false);
-    })();
-  }, [user, authReady, loading, signOut]);
-
-  if (checkingSession || loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
-      </div>
-    );
-  }
-  if (user) return <Navigate to="/hoje" replace />;
 
 
   const handleSubmit = async (e: React.FormEvent) => {
