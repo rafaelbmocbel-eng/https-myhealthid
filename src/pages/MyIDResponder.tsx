@@ -4,6 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { MyIDPhasedFlow } from '@/components/myid/MyIDPhasedFlow';
 import { useToast } from '@/components/ui/use-toast';
 import { Loader2 } from 'lucide-react';
+import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 
 export default function MyIDResponder() {
   const { token } = useParams<{ token: string }>();
@@ -148,6 +149,7 @@ export default function MyIDResponder() {
 
   return (
     <div className="min-h-[100dvh] bg-background overflow-x-hidden">
+      <PublicTrackingPixels terapeutaId={evalData?.terapeuta_id} />
       <header className="bg-card/80 backdrop-blur border-b border-border/40 sticky top-0 z-10 px-4 py-3 flex items-center justify-center">
         <div className="font-bold text-lg text-primary flex items-center gap-2">
           <span className="bg-primary text-primary-foreground w-8 h-8 rounded-full flex items-center justify-center text-sm">

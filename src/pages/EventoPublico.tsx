@@ -14,6 +14,7 @@ import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { useUtmCapture } from '@/hooks/useUtmCapture';
+import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 
 interface Evento {
   id: string; titulo: string; descricao: string | null; descricao_formulario: string | null;
@@ -266,6 +267,7 @@ export default function EventoPublico() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-background to-muted py-8 px-4">
+      <PublicTrackingPixels terapeutaId={(evento as any)?.terapeuta_id} />
       <div className="max-w-lg mx-auto space-y-6">
         {/* Event info */}
         <Card>

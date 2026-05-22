@@ -581,6 +581,7 @@ export default function FunilPublico() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
+      <PublicTrackingPixels terapeutaId={config?.terapeuta_id} />
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 shadow-lg">
         <div className="max-w-lg mx-auto flex items-center gap-3">
