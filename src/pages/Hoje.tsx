@@ -7,6 +7,7 @@ import {
   Users, LayoutDashboard, Tag,
   CalendarDays, MessageCircle, PartyPopper,
   BookOpen, Settings, ArrowRight, Clock,
+  DollarSign,
 } from 'lucide-react';
 
 import AppLayout from '@/components/AppLayout';
@@ -243,6 +244,7 @@ export default function Hoje() {
               />
               <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
               <PillBtn icon={BookOpen} label="Base Científica" onClick={() => navigate('/base-cientifica')} />
+              <PillBtn icon={DollarSign} label="Financeiro" onClick={() => navigate('/financeiro')} />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
             </div>
@@ -261,6 +263,7 @@ export default function Hoje() {
               />
               <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
               <PillBtn icon={BookOpen} label="Base Científica" onClick={() => navigate('/base-cientifica')} />
+              <PillBtn icon={DollarSign} label="Financeiro" onClick={() => navigate('/financeiro')} />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
             </div>
