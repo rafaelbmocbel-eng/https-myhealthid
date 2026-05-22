@@ -131,58 +131,58 @@ export default function Hoje() {
 
   return (
     <AppLayout>
-      <div className="min-h-[100dvh]">
-        <div className="max-w-md sm:max-w-3xl lg:max-w-6xl mx-auto px-4 sm:px-8 lg:px-10 pt-2 sm:pt-6 lg:pt-8 pb-10 space-y-5 sm:space-y-7">
+      <div className="h-[100dvh] overflow-hidden flex flex-col">
+        <div className="flex-1 min-h-0 max-w-md sm:max-w-3xl lg:max-w-6xl w-full mx-auto px-3 sm:px-6 lg:px-10 pt-2 sm:pt-3 pb-2 sm:pb-3 flex flex-col gap-2 sm:gap-3">
 
           {/* Greeting */}
-          <header className="flex items-center gap-3 sm:gap-5 pt-1">
-            <div className="h-11 w-11 sm:h-16 sm:w-16 lg:h-20 lg:w-20 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-lg lg:text-2xl font-bold shadow-sm ring-2 ring-background">
+          <header className="flex items-center gap-3 sm:gap-4 shrink-0">
+            <div className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold shadow-sm ring-2 ring-background">
               {initials}
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[11px] sm:text-xs uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
                 {todayLabel}
               </div>
-              <div className="text-lg sm:text-3xl lg:text-4xl font-bold leading-tight truncate">
+              <div className="text-base sm:text-xl lg:text-2xl font-bold leading-tight truncate">
                 {greeting}, {firstName}
               </div>
             </div>
           </header>
 
           {/* Desktop/Tablet: 2-column main area | Mobile: stacked */}
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 sm:gap-6 lg:gap-7">
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-2 sm:gap-3 shrink-0">
 
             {/* LEFT column on lg — Próxima sessão + Stats */}
-            <div className="lg:col-span-5 space-y-5 sm:space-y-6">
+            <div className="lg:col-span-5 space-y-2 sm:space-y-3">
               {/* Próxima sessão */}
               <button
                 onClick={() => navigate('/inicio-app')}
-                className="w-full text-left rounded-2xl px-3.5 sm:px-6 py-2.5 sm:py-4 lg:py-5 relative overflow-hidden
+                className="w-full text-left rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 relative overflow-hidden
                            bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
                            text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
-                           flex items-center gap-3 sm:gap-4"
+                           flex items-center gap-2.5 sm:gap-3"
               >
-                <div className="h-8 w-8 sm:h-12 sm:w-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
-                  <Clock className="h-3.5 w-3.5 sm:h-5 sm:w-5" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
+                  <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                 </div>
                 <div className="min-w-0 flex-1">
-                  <div className="text-[9px] sm:text-[11px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
+                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.2em] uppercase opacity-85 leading-none">
                     Próxima sessão
                   </div>
-                  <div className="mt-0.5 sm:mt-1 text-sm sm:text-lg font-semibold leading-tight truncate">
+                  <div className="mt-0.5 text-sm sm:text-base font-semibold leading-tight truncate">
                     {proxima ? proximaPaciente : 'Nenhuma sessão à vista'}
                   </div>
                 </div>
                 {proxima && proximaQuando ? (
-                  <div className="text-[11px] sm:text-base font-semibold opacity-95 whitespace-nowrap shrink-0">
+                  <div className="text-[11px] sm:text-sm font-semibold opacity-95 whitespace-nowrap shrink-0">
                     {proximaQuando}
                   </div>
                 ) : null}
-                <ArrowRight className="h-3.5 w-3.5 sm:h-5 sm:w-5 opacity-80 shrink-0" />
+                <ArrowRight className="h-3.5 w-3.5 sm:h-4 sm:w-4 opacity-80 shrink-0" />
               </button>
 
               {/* Stats inline */}
-              <section className="grid grid-cols-3 gap-2 sm:gap-3">
+              <section className="grid grid-cols-3 gap-2">
                 <StatChip label="Hoje" value={stats?.hoje ?? 0} accent />
                 <StatChip label="Pacientes" value={stats?.pacientes ?? 0} />
                 <StatChip label="Avaliações" value={stats?.avaliacoes ?? 0} />
@@ -190,41 +190,41 @@ export default function Hoje() {
             </div>
 
             {/* RIGHT column on lg — Tiles principais */}
-            <section className="lg:col-span-7 grid grid-cols-2 gap-3 sm:gap-5">
+            <section className="lg:col-span-7 grid grid-cols-2 gap-2 sm:gap-3">
               <button
                 onClick={() => navigate('/agenda')}
-                className="h-28 sm:h-44 lg:h-full lg:min-h-[200px] rounded-3xl p-4 sm:p-6 text-left flex flex-col justify-between
+                className="h-20 sm:h-24 lg:h-full lg:min-h-[140px] rounded-2xl p-3 sm:p-4 text-left flex flex-col justify-between
                            bg-gradient-to-br from-primary to-primary-dark text-primary-foreground shadow-md
                            hover:shadow-lg transition active:scale-[0.98]"
               >
-                <div className="h-9 w-9 sm:h-14 sm:w-14 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
-                  <CalendarDays className="h-4 w-4 sm:h-6 sm:w-6" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-white/15 backdrop-blur flex items-center justify-center">
+                  <CalendarDays className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] sm:text-xs font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
-                  <div className="text-lg sm:text-2xl lg:text-3xl font-bold leading-tight">Agenda</div>
+                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase opacity-80">Hoje</div>
+                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">Agenda</div>
                 </div>
               </button>
 
               <button
                 onClick={() => navigate('/crm?tab=inbox')}
                 className={cn(
-                  "h-28 sm:h-44 lg:h-full lg:min-h-[200px] rounded-3xl p-4 sm:p-6 text-left flex flex-col justify-between relative",
+                  "h-20 sm:h-24 lg:h-full lg:min-h-[140px] rounded-2xl p-3 sm:p-4 text-left flex flex-col justify-between relative",
                   "bg-card border border-border/40 shadow-sm hover:shadow-md transition active:scale-[0.98]",
                   pulseRing(urgency(alerts?.whatsapp ?? 0, 5)),
                 )}
               >
                 {alerts?.whatsapp ? (
-                  <span className="absolute top-2.5 right-2.5 min-w-[20px] h-5 px-1.5 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
+                  <span className="absolute top-2 right-2 min-w-[18px] h-[18px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center shadow-sm">
                     {alerts.whatsapp > 99 ? '99+' : alerts.whatsapp}
                   </span>
                 ) : null}
-                <div className="h-9 w-9 sm:h-14 sm:w-14 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
-                  <MessageCircle className="h-4 w-4 sm:h-6 sm:w-6" />
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-accent/10 flex items-center justify-center text-accent">
+                  <MessageCircle className="h-4 w-4 sm:h-5 sm:w-5" />
                 </div>
                 <div>
-                  <div className="text-[10px] sm:text-xs font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
-                  <div className="text-lg sm:text-2xl lg:text-3xl font-bold leading-tight">WhatsApp CRM</div>
+                  <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
+                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">WhatsApp CRM</div>
                 </div>
               </button>
             </section>
@@ -232,40 +232,21 @@ export default function Hoje() {
 
           {/* Atalhos — configuráveis em Configurações > Home */}
           {atalhos.length > 0 && (
-            <>
-              <section className="space-y-2 sm:hidden">
-                <SectionLabel>Atalhos</SectionLabel>
-                <div className="grid grid-cols-2 gap-2.5">
-                  {atalhos.map(a => (
-                    <PillBtn
-                      key={a.id}
-                      icon={a.icon}
-                      label={a.label}
-                      urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
-                      onClick={() => navigate(a.to)}
-                    />
-                  ))}
-                </div>
-              </section>
-
-              <section className="hidden sm:block space-y-3">
-                <SectionLabel>Ferramentas</SectionLabel>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  {atalhos.map(a => (
-                    <PillBtn
-                      key={a.id}
-                      icon={a.icon}
-                      label={a.label}
-                      urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
-                      onClick={() => navigate(a.to)}
-                    />
-                  ))}
-                </div>
-              </section>
-            </>
+            <section className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2">
+              <SectionLabel>Atalhos</SectionLabel>
+              <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 content-start">
+                {atalhos.map(a => (
+                  <PillBtn
+                    key={a.id}
+                    icon={a.icon}
+                    label={a.label}
+                    urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
+                    onClick={() => navigate(a.to)}
+                  />
+                ))}
+              </div>
+            </section>
           )}
-
-          <div className="h-2" />
         </div>
       </div>
     </AppLayout>
@@ -290,33 +271,33 @@ function PillBtn({
     <button
       onClick={onClick}
       className={cn(
-        "h-14 sm:h-20 rounded-2xl bg-card border border-border/40 px-3.5 sm:px-5 flex items-center gap-3 sm:gap-4 relative",
+        "h-12 sm:h-14 rounded-2xl bg-card border border-border/40 px-3 sm:px-4 flex items-center gap-2.5 sm:gap-3 relative",
         "shadow-xs hover:shadow-sm hover:border-border transition active:scale-[0.98]",
         pulseRing(urgency),
       )}
     >
-      <div className="h-9 w-9 sm:h-12 sm:w-12 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
-        <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
+      <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-full bg-muted/60 flex items-center justify-center text-primary shrink-0 relative">
+        <Icon className="h-4 w-4 sm:h-4 sm:w-4" />
         {badge ? (
           <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-destructive text-destructive-foreground text-[9px] font-bold flex items-center justify-center shadow-sm">
             {badge > 9 ? '9+' : badge}
           </span>
         ) : null}
       </div>
-      <span className="text-sm sm:text-base font-semibold truncate">{label}</span>
+      <span className="text-xs sm:text-sm font-semibold truncate">{label}</span>
     </button>
   );
 }
 
 function StatChip({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className={`rounded-2xl px-3 py-3 sm:py-5 text-center border ${
+    <div className={`rounded-xl px-2 py-2 sm:py-2.5 text-center border ${
       accent
         ? 'bg-primary/5 border-primary/15'
         : 'bg-card border-border/40'
     } shadow-xs`}>
-      <div className={`text-xl sm:text-3xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
-      <div className="text-[9px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1.5 sm:mt-2">
+      <div className={`text-lg sm:text-xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
+      <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1">
         {label}
       </div>
     </div>
