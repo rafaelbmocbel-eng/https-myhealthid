@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "temp_download_audios_presenciais_20260522" ON storage.objects;
