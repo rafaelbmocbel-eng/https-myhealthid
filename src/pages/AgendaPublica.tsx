@@ -41,6 +41,7 @@ interface SelectedSlot {
 }
 
 export default function AgendaPublica() {
+  useUtmCapture();
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
