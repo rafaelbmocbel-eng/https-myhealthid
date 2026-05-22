@@ -21,6 +21,7 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: Wallet },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
+  { label: 'Pendências', href: '/pendencias', icon: ListChecks },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
