@@ -97,7 +97,7 @@ export default function CrmTrafegoLinks() {
     if (profile?.cadastro_slug && !cadastroSlug) setCadastroSlug(profile.cadastro_slug);
   }, [profile?.cadastro_slug]);
   useEffect(() => {
-    if (eventos[0]?.slug && !eventoSlug) setEventoSlug(eventos[0].slug);
+    if (eventos[0]?.id && !eventoSlug) setEventoSlug(eventos[0].id);
   }, [eventos]);
 
   const destino: Destino | null = useMemo(() => {
@@ -218,7 +218,7 @@ export default function CrmTrafegoLinks() {
                   <SelectTrigger><SelectValue placeholder="Selecione um evento" /></SelectTrigger>
                   <SelectContent>
                     {eventos.map((ev) => (
-                      <SelectItem key={ev.id} value={ev.slug}>{ev.titulo}</SelectItem>
+                      <SelectItem key={ev.id} value={ev.id}>{ev.titulo}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
