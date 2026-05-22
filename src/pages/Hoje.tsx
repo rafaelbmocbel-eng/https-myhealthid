@@ -5,7 +5,7 @@ import { startOfDay, endOfDay, format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Users, LayoutDashboard, Tag,
-  CalendarDays, MessageCircle, CalendarHeart,
+  CalendarDays, MessageCircle, PartyPopper,
   BookOpen, Settings, ArrowRight, Clock,
 } from 'lucide-react';
 
@@ -241,7 +241,7 @@ export default function Hoje() {
                 urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
-              <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+              <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
               <PillBtn icon={BookOpen} label="Banco de Dados" onClick={() => navigate('/dados-cientificos')} />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
@@ -259,7 +259,7 @@ export default function Hoje() {
                 urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
-              <PillBtn icon={CalendarHeart} label="Eventos" onClick={() => navigate('/eventos')} />
+              <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
               <PillBtn icon={BookOpen} label="Banco de Dados" onClick={() => navigate('/dados-cientificos')} />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
