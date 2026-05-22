@@ -2216,6 +2216,45 @@ export type Database = {
           },
         ]
       }
+      links_rastreaveis: {
+        Row: {
+          ativo: boolean
+          cliques: number
+          created_at: string
+          id: string
+          label: string
+          terapeuta_id: string
+          updated_at: string
+          url_destino: string
+          url_final: string
+          utms: Json
+        }
+        Insert: {
+          ativo?: boolean
+          cliques?: number
+          created_at?: string
+          id?: string
+          label: string
+          terapeuta_id: string
+          updated_at?: string
+          url_destino: string
+          url_final: string
+          utms?: Json
+        }
+        Update: {
+          ativo?: boolean
+          cliques?: number
+          created_at?: string
+          id?: string
+          label?: string
+          terapeuta_id?: string
+          updated_at?: string
+          url_destino?: string
+          url_final?: string
+          utms?: Json
+        }
+        Relationships: []
+      }
       meal_logs: {
         Row: {
           calories: number | null
@@ -5042,6 +5081,10 @@ export type Database = {
       }
       increment_evidence_citation: {
         Args: { p_ids: string[] }
+        Returns: undefined
+      }
+      incrementar_clique_link: {
+        Args: { p_link_id: string }
         Returns: undefined
       }
       incrementar_uso_ia: {
