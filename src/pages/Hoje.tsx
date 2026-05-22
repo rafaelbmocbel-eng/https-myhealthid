@@ -284,7 +284,7 @@ function PillBtn({
           </span>
         ) : null}
       </div>
-      <span className="text-sm sm:text-base font-semibold truncate">{label}</span>
+      <span className="text-xs sm:text-sm font-semibold truncate">{label}</span>
     </button>
   );
 }
