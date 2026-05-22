@@ -27,6 +27,7 @@ import OnboardingGuide from '@/components/onboarding/OnboardingGuide';
 import NpsSurveyCard from '@/components/nps/NpsSurveyCard';
 const ResearchDashboard = lazy(() => import('@/components/dashboard/ResearchDashboard'));
 const ClinicalInsights = lazy(() => import('@/components/dashboard/ClinicalInsights'));
+const AtividadeHojeCard = lazy(() => import('@/components/dashboard/AtividadeHojeCard'));
 import { FlaskConical } from 'lucide-react';
 
 export default function Index() {
@@ -562,6 +563,11 @@ export default function Index() {
           </Suspense>
         ) : (
         <>
+
+        {/* Atividade do dia — pacientes criados ou avaliados hoje */}
+        <Suspense fallback={null}>
+          <AtividadeHojeCard />
+        </Suspense>
 
         {/* Painel estratégico — usa todos os dados gerados */}
         <Suspense fallback={null}>

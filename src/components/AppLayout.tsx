@@ -18,6 +18,7 @@ import QuickActions from './QuickActions';
 import ThemeToggle from './ThemeToggle';
 import NotificationCenter from './NotificationCenter';
 import TrialBanner from './TrialBanner';
+import AppFooter from './AppFooter';
 
 import { ChevronLeft, ChevronRight, Menu } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -149,6 +150,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
           isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
         )}>
           {children}
+          <AppFooter />
         </main>
       </div>
 
