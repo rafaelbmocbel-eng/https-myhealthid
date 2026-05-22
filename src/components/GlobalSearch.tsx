@@ -119,8 +119,11 @@ export default function GlobalSearch() {
 
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (q.length < 2) {
+      return { Páginas: [], CRM: [], Configurações: [], Ações: [] };
+    }
     const match = (i: NavItem) =>
-      !q || i.label.toLowerCase().includes(q) || i.keywords.includes(q);
+      i.label.toLowerCase().includes(q) || i.keywords.includes(q);
     return {
       Páginas: ITEMS.filter(i => i.group === 'Páginas' && match(i)),
       CRM: ITEMS.filter(i => i.group === 'CRM' && match(i)),
