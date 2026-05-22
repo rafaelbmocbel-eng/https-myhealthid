@@ -11,6 +11,7 @@ import { ptBR } from 'date-fns/locale';
 import { gerarPixQrCodeDataUrl, gerarPixPayload } from '@/utils/pixQrCode';
 import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
 import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
+import { PublicTrackingPixels } from '@/components/tracking/PublicTrackingPixels';
 
 type Etapa = 'boas_vindas' | 'coleta_dados' | 'diferenciais' | 'servicos' | 'agendamento' | 'pagamento' | 'confirmacao';
 
@@ -580,6 +581,7 @@ export default function FunilPublico() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-primary/5 to-background flex flex-col">
+      <PublicTrackingPixels terapeutaId={config?.terapeuta_id} />
       {/* Header */}
       <div className="bg-primary text-primary-foreground p-4 shadow-lg">
         <div className="max-w-lg mx-auto flex items-center gap-3">
