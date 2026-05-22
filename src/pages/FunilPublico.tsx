@@ -28,6 +28,7 @@ interface ChatMessage {
 const DAY_MAP: Record<number, string> = { 0: 'dom', 1: 'seg', 2: 'ter', 3: 'qua', 4: 'qui', 5: 'sex', 6: 'sab' };
 
 export default function FunilPublico() {
+  useUtmCapture();
   const { slug } = useParams<{ slug: string }>();
   const { data: config, isLoading, isError } = useFunilPublico(slug);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
