@@ -1358,6 +1358,7 @@ export type Database = {
           id: string
           ja_era_paciente: boolean
           nome: string
+          origem_utm: Json | null
           paciente_id: string | null
           pago: boolean
           status: string
@@ -1371,6 +1372,7 @@ export type Database = {
           id?: string
           ja_era_paciente?: boolean
           nome: string
+          origem_utm?: Json | null
           paciente_id?: string | null
           pago?: boolean
           status?: string
@@ -1384,6 +1386,7 @@ export type Database = {
           id?: string
           ja_era_paciente?: boolean
           nome?: string
+          origem_utm?: Json | null
           paciente_id?: string | null
           pago?: boolean
           status?: string
@@ -1960,6 +1963,7 @@ export type Database = {
           funil_config_id: string | null
           id: string
           nome: string
+          origem_utm: Json | null
           servico_escolhido: string | null
           session_token: string
           status: string
@@ -1979,6 +1983,7 @@ export type Database = {
           funil_config_id?: string | null
           id?: string
           nome: string
+          origem_utm?: Json | null
           servico_escolhido?: string | null
           session_token?: string
           status?: string
@@ -1998,6 +2003,7 @@ export type Database = {
           funil_config_id?: string | null
           id?: string
           nome?: string
+          origem_utm?: Json | null
           servico_escolhido?: string | null
           session_token?: string
           status?: string
@@ -2604,6 +2610,7 @@ export type Database = {
           nome: string
           observacoes: string | null
           origem: string | null
+          origem_utm: Json | null
           plano_saude: string | null
           portal_token: string | null
           responsavel_id: string | null
@@ -2630,6 +2637,7 @@ export type Database = {
           nome: string
           observacoes?: string | null
           origem?: string | null
+          origem_utm?: Json | null
           plano_saude?: string | null
           portal_token?: string | null
           responsavel_id?: string | null
@@ -2656,6 +2664,7 @@ export type Database = {
           nome?: string
           observacoes?: string | null
           origem?: string | null
+          origem_utm?: Json | null
           plano_saude?: string | null
           portal_token?: string | null
           responsavel_id?: string | null
@@ -4434,6 +4443,7 @@ export type Database = {
           motivo_escalonamento: string | null
           nao_lidas: number
           nome_contato: string | null
+          origem_utm: Json | null
           paciente_id: string | null
           pipeline_motivo_perda: string | null
           pipeline_stage: Database["public"]["Enums"]["crm_pipeline_stage"]
@@ -4462,6 +4472,7 @@ export type Database = {
           motivo_escalonamento?: string | null
           nao_lidas?: number
           nome_contato?: string | null
+          origem_utm?: Json | null
           paciente_id?: string | null
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]
@@ -4490,6 +4501,7 @@ export type Database = {
           motivo_escalonamento?: string | null
           nao_lidas?: number
           nome_contato?: string | null
+          origem_utm?: Json | null
           paciente_id?: string | null
           pipeline_motivo_perda?: string | null
           pipeline_stage?: Database["public"]["Enums"]["crm_pipeline_stage"]

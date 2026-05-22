@@ -2,28 +2,30 @@ import { useEffect, useState, lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { cn } from '@/lib/utils';
-import { MessageCircle, Kanban, Zap, TrendingUp, Bot, Loader2 } from 'lucide-react';
+import { MessageCircle, Kanban, Zap, TrendingUp, Bot, Loader2, Radio } from 'lucide-react';
 
 const CrmInbox = lazy(() => import('./CrmInbox'));
 const CrmPipeline = lazy(() => import('./CrmPipeline'));
 const CrmCadencias = lazy(() => import('./CrmCadencias'));
 const CrmMetricas = lazy(() => import('./CrmMetricas'));
 const WhatsappAutomacoes = lazy(() => import('./WhatsappAutomacoes'));
+const CrmTrafego = lazy(() => import('./CrmTrafego'));
 
-type TabKey = 'inbox' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes';
+type TabKey = 'inbox' | 'pipeline' | 'cadencias' | 'metricas' | 'automacoes' | 'trafego';
 
 const TABS: { key: TabKey; label: string; icon: React.ComponentType<{ className?: string }>; desc: string }[] = [
   { key: 'inbox', label: 'WhatsApp', icon: MessageCircle, desc: 'Conversas' },
   { key: 'pipeline', label: 'Pipeline', icon: Kanban, desc: 'Kanban' },
   { key: 'cadencias', label: 'Cadências', icon: Zap, desc: 'Follow-ups' },
   { key: 'metricas', label: 'Métricas', icon: TrendingUp, desc: 'Conversão' },
+  { key: 'trafego', label: 'Tráfego', icon: Radio, desc: 'Origem & canais' },
   { key: 'automacoes', label: 'Automações', icon: Bot, desc: 'Bot & regras' },
 ];
 
 const STORAGE_KEY = 'crm.lastTab';
 
 function isTabKey(value: string | null): value is TabKey {
-  return value === 'inbox' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes';
+  return value === 'inbox' || value === 'pipeline' || value === 'cadencias' || value === 'metricas' || value === 'automacoes' || value === 'trafego';
 }
 
 interface Props {
@@ -128,6 +130,7 @@ export default function CrmHub({ embedded = false }: Props) {
             {tab === 'cadencias' && <CrmCadencias embedded />}
             {tab === 'metricas' && <CrmMetricas embedded />}
             {tab === 'automacoes' && <WhatsappAutomacoes embedded />}
+            {tab === 'trafego' && <CrmTrafego embedded />}
           </Suspense>
         </main>
       </div>

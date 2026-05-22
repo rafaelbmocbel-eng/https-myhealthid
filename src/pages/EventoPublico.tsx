@@ -13,6 +13,7 @@ import { Calendar, Clock, MapPin, Users, CheckCircle2, AlertCircle } from 'lucid
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { toast } from 'sonner';
+import { useUtmCapture } from '@/hooks/useUtmCapture';
 
 interface Evento {
   id: string; titulo: string; descricao: string | null; descricao_formulario: string | null;
@@ -32,6 +33,7 @@ interface Pergunta {
 }
 
 export default function EventoPublico() {
+  useUtmCapture();
   const { eventoId } = useParams<{ eventoId: string }>();
   const [evento, setEvento] = useState<Evento | null>(null);
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);

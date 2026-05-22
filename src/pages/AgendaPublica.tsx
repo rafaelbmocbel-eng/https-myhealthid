@@ -9,6 +9,7 @@ import logoMyHealthId from '@/assets/logo-my-health-id.jpg';
 import { format, addDays, startOfWeek, isSameDay, isAfter, parseISO, addMinutes, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Badge } from '@/components/ui/badge';
+import { useUtmCapture } from '@/hooks/useUtmCapture';
 
 interface LinkInfo {
   id: string;
@@ -40,6 +41,7 @@ interface SelectedSlot {
 }
 
 export default function AgendaPublica() {
+  useUtmCapture();
   const { token } = useParams<{ token: string }>();
   const [loading, setLoading] = useState(true);
   const [erro, setErro] = useState<string | null>(null);
