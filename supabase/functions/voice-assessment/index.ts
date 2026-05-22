@@ -553,7 +553,7 @@ serve(async (req) => {
       // - 413: payload too large (audio muito longo)
       // - 400: formato de áudio não suportado
       let userMsg = `Erro do servidor de IA (${response.status}).`;
-      if (response.status === 413) userMsg = "Áudio muito longo. Grave trechos de até ~5 minutos ou divida em partes.";
+      if (response.status === 413) userMsg = "Áudio muito longo. Grave trechos de até ~10 minutos ou divida em partes.";
       else if (response.status === 400) userMsg = "Formato de áudio não aceito pelo modelo. Tente novamente ou use a transcrição em texto.";
       else if (response.status >= 500) userMsg = "Servidor de IA temporariamente indisponível. Tente novamente em instantes.";
 
