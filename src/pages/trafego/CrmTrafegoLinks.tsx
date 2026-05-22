@@ -68,11 +68,11 @@ export default function CrmTrafegoLinks() {
     queryFn: async () => {
       const { data } = await supabase
         .from('eventos')
-        .select('id, titulo, slug, ativo')
+        .select('id, titulo, ativo')
         .eq('terapeuta_id', user!.id)
         .eq('ativo', true)
         .order('created_at', { ascending: false });
-      return (data || []) as { id: string; titulo: string; slug: string }[];
+      return (data || []) as { id: string; titulo: string }[];
     },
     enabled: !!user?.id,
   });
