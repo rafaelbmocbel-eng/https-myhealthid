@@ -458,23 +458,33 @@ serve(async (req) => {
               fisioterapeuta: "fisioterapia", medico: "medicina", psicologo: "psicologia",
               nutricionista: "nutricao", educador_fisico: "educacao_fisica", terapeuta_ocupacional: "terapia_ocupacional",
             };
-            const areaFilter = perfilProfissional && areaMap[perfilProfissional] ? [areaMap[perfilProfissional]] : null;
+            const lenteArea = perfilProfissional && areaMap[perfilProfissional] ? areaMap[perfilProfissional] : null;
+
+            // Busca AMPLA: varre todo o banco científico (sem filtro de área nem de ano)
+            // e re-ranqueia priorizando a lente profissional ativa.
             const rpcRes = await fetch(`${SUPABASE_URL_E}/rest/v1/rpc/match_evidence`, {
               method: "POST",
               headers: { "Content-Type": "application/json", apikey: SERVICE_KEY_E, Authorization: `Bearer ${SERVICE_KEY_E}` },
               body: JSON.stringify({
                 query_embedding: queryEmb,
-                match_count: 5,
-                filter_areas: areaFilter,
-                min_year: new Date().getFullYear() - 15,
+                match_count: 25,
+                filter_areas: null,
+                min_year: null,
               }),
             });
             if (rpcRes.ok) {
-              evidencias = await rpcRes.json();
-              if (Array.isArray(evidencias) && evidencias.length > 0) {
-                evidenciaContext = `\n\nEVIDÊNCIA CIENTÍFICA RELEVANTE (use estas referências para sustentar hipóteses, técnicas e citações no campo "insights_baseados_evidencia"; sempre cite autor/ano/journal):\n\n` +
+              const todas: any[] = await rpcRes.json();
+              if (Array.isArray(todas) && todas.length > 0) {
+                const ranked = [...todas].sort((a, b) => {
+                  const aLente = lenteArea && Array.isArray(a.health_areas) && a.health_areas.includes(lenteArea) ? 1 : 0;
+                  const bLente = lenteArea && Array.isArray(b.health_areas) && b.health_areas.includes(lenteArea) ? 1 : 0;
+                  if (aLente !== bLente) return bLente - aLente;
+                  return (b.similarity ?? 0) - (a.similarity ?? 0);
+                });
+                evidencias = ranked.slice(0, 12);
+                evidenciaContext = `\n\nEVIDÊNCIA CIENTÍFICA DO BANCO INTERNO (${evidencias.length} de ${todas.length} artigos relevantes${lenteArea ? `, priorizando lente "${lenteArea}"` : ""}). Use TODAS estas referências para sustentar hipóteses, técnicas, condutas e citações no campo "insights_baseados_evidencia". Sempre cite autor/ano/journal e o número entre colchetes:\n\n` +
                   evidencias.map((e: any, i: number) =>
-                    `[${i + 1}] ${e.title}\n  ${(e.authors ?? []).slice(0, 3).join(", ")}${(e.authors ?? []).length > 3 ? " et al." : ""}. ${e.journal ?? ""} (${e.year ?? "—"}). ${e.study_type ?? ""}, evidência ${e.evidence_level ?? "—"}.\n  ${e.abstract ? e.abstract.slice(0, 400) + "..." : ""}\n  ${e.url ?? ""}`
+                    `[${i + 1}] ${e.title}\n  ${(e.authors ?? []).slice(0, 3).join(", ")}${(e.authors ?? []).length > 3 ? " et al." : ""}. ${e.journal ?? ""} (${e.year ?? "—"}). ${e.study_type ?? ""}, evidência ${e.evidence_level ?? "—"}.\n  Áreas: ${(e.health_areas ?? []).join(", ")}\n  ${e.abstract ? e.abstract.slice(0, 500) + "..." : ""}\n  ${e.url ?? ""}`
                   ).join("\n\n");
                 console.log(`[voice-assessment] Injetou ${evidencias.length} evidências no prompt`);
                 fetch(`${SUPABASE_URL_E}/rest/v1/rpc/increment_evidence_citation`, {
