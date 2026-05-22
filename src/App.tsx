@@ -46,6 +46,7 @@ const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
 const NovaSenha = lazy(() => import("./pages/NovaSenha"));
 const BaseCientifica = lazy(() => import("./pages/BaseCientifica"));
 const Hoje = lazy(() => import("./pages/Hoje"));
+const Pendencias = lazy(() => import("./pages/Pendencias"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
