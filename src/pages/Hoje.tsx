@@ -224,7 +224,7 @@ export default function Hoje() {
                 </div>
                 <div>
                   <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground">Inbox</div>
-                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">WhatsApp CRM</div>
+                  <div className="text-base sm:text-lg lg:text-xl font-bold leading-tight">Zap.CRM.Tráfe</div>
                 </div>
               </button>
             </section>
