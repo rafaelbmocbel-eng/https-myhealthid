@@ -2,8 +2,8 @@ import { forwardRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
-  Settings, LogOut, User, PartyPopper, MessageCircle,
-  BookOpen, Sun, Wallet, type LucideIcon,
+  Settings, LogOut, User, MessageCircle,
+  Sun, Wallet, type LucideIcon,
 } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import { useAuth } from '@/contexts/AuthContext';
