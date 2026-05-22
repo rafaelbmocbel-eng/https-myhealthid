@@ -436,6 +436,7 @@ export default function FunilPublico() {
           valor_servico: servicoEscolhido?.valor || null,
           etapa_atual: 'agendamento',
           status: 'em_andamento',
+          origem_utm: getCapturedUtm() as never,
         } as any).select('id, session_token').single();
 
         if (error) throw error;
