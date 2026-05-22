@@ -130,6 +130,7 @@ export default function CrmHub({ embedded = false }: Props) {
             {tab === 'cadencias' && <CrmCadencias embedded />}
             {tab === 'metricas' && <CrmMetricas embedded />}
             {tab === 'automacoes' && <WhatsappAutomacoes embedded />}
+            {tab === 'trafego' && <CrmTrafego embedded />}
           </Suspense>
         </main>
       </div>
