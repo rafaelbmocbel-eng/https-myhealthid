@@ -170,6 +170,22 @@ export default function CrmMetricas({ embedded = false }: { embedded?: boolean }
               </div>
             )}
           </Card>
+
+          {/* Origem dos leads */}
+          {origem && origem.buckets.length > 0 && (
+            <Card className="p-4 sm:p-6">
+              <h2 className="h-section mb-4 flex items-center gap-2"><Radio className="icon-sm text-primary" /> Origem dos leads</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {origem.buckets.slice(0, 6).map((b) => (
+                  <div key={b.source} className="flex items-center justify-between border border-border/40 rounded-lg p-2.5">
+                    <span className="text-sm capitalize truncate">{b.source}</span>
+                    <span className="text-sm font-medium">{b.leads}</span>
+                  </div>
+                ))}
+              </div>
+              <Link to="/crm?tab=trafego" className="text-caption text-primary hover:underline mt-3 inline-block">Ver detalhes →</Link>
+            </Card>
+          )}
         </div>
       )}
     </div>
