@@ -159,6 +159,7 @@ const App = () => (
                 <Route path="/crm/pipeline" element={<Navigate to="/crm?tab=pipeline" replace />} />
                 <Route path="/crm/cadencias" element={<Navigate to="/crm?tab=cadencias" replace />} />
                 <Route path="/crm/metricas" element={<Navigate to="/crm?tab=metricas" replace />} />
+                <Route path="/crm/trafego" element={<Navigate to="/crm?tab=trafego" replace />} />
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
