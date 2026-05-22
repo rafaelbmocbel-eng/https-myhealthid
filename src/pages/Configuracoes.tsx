@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight,
+  Database, PartyPopper, ArrowRight, BookOpen,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -35,7 +35,7 @@ const TABS: TabItem[] = [
   { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
   { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
-  { id: 'pacientes', label: 'Pacientes', icon: Database, kind: 'link', to: '/pacientes' },
+  { id: 'base-cientifica', label: 'Base Científica', icon: BookOpen, kind: 'link', to: '/base-cientifica' },
   { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
   { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
   { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
