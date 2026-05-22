@@ -35,7 +35,7 @@ const TABS: TabItem[] = [
   { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
   { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
-  { id: 'pacientes', label: 'Pacientes', icon: Database, kind: 'link', to: '/pacientes' },
+  { id: 'base-cientifica', label: 'Base Científica', icon: BookOpen, kind: 'link', to: '/base-cientifica' },
   { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
   { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
   { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
