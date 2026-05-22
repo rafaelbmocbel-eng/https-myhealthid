@@ -4,7 +4,8 @@ import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Link } from "react-router-dom";
-import { ArrowLeft, TrendingUp, TrendingDown, Clock, Target, DollarSign } from "lucide-react";
+import { ArrowLeft, TrendingUp, TrendingDown, Clock, Target, DollarSign, Radio } from "lucide-react";
+import { useOrigemMetrics } from "@/hooks/useOrigemMetrics";
 
 type Stage = "novo" | "qualificado" | "agendado" | "fechado" | "perdido";
 const STAGE_LABELS: Record<Stage, string> = {
