@@ -33,6 +33,7 @@ interface Pergunta {
 }
 
 export default function EventoPublico() {
+  useUtmCapture();
   const { eventoId } = useParams<{ eventoId: string }>();
   const [evento, setEvento] = useState<Evento | null>(null);
   const [perguntas, setPerguntas] = useState<Pergunta[]>([]);
