@@ -4,11 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { startOfDay, endOfDay, format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
-  Users, LayoutDashboard, Tag,
-  CalendarDays, MessageCircle, PartyPopper,
-  BookOpen, Settings, ArrowRight, Clock,
-  DollarSign,
+  CalendarDays, MessageCircle, ArrowRight, Clock,
 } from 'lucide-react';
+import { useHomeAtalhos } from '@/hooks/useHomeAtalhos';
 
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
@@ -231,43 +229,40 @@ export default function Hoje() {
             </section>
           </div>
 
-          {/* Atalhos — mobile */}
-          <section className="space-y-2 sm:hidden">
-            <SectionLabel>Atalhos</SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
-              <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
-              <PillBtn
-                icon={LayoutDashboard}
-                label="Dashboard"
-                urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
-                onClick={() => navigate('/inicio-app')}
-              />
-              <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
-              <PillBtn icon={BookOpen} label="Base Científica" onClick={() => navigate('/base-cientifica')} />
-              <PillBtn icon={DollarSign} label="Financeiro" onClick={() => navigate('/financeiro')} />
-              <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
-              <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
-            </div>
-          </section>
+          {/* Atalhos — configuráveis em Configurações > Home */}
+          {atalhos.length > 0 && (
+            <>
+              <section className="space-y-2 sm:hidden">
+                <SectionLabel>Atalhos</SectionLabel>
+                <div className="grid grid-cols-2 gap-2.5">
+                  {atalhos.map(a => (
+                    <PillBtn
+                      key={a.id}
+                      icon={a.icon}
+                      label={a.label}
+                      urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
+                      onClick={() => navigate(a.to)}
+                    />
+                  ))}
+                </div>
+              </section>
 
-          {/* md+ : grid unificado */}
-          <section className="hidden sm:block space-y-3">
-            <SectionLabel>Ferramentas</SectionLabel>
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-              <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
-              <PillBtn
-                icon={LayoutDashboard}
-                label="Dashboard"
-                urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
-                onClick={() => navigate('/inicio-app')}
-              />
-              <PillBtn icon={PartyPopper} label="Eventos" onClick={() => navigate('/eventos')} />
-              <PillBtn icon={BookOpen} label="Base Científica" onClick={() => navigate('/base-cientifica')} />
-              <PillBtn icon={DollarSign} label="Financeiro" onClick={() => navigate('/financeiro')} />
-              <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
-              <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
-            </div>
-          </section>
+              <section className="hidden sm:block space-y-3">
+                <SectionLabel>Ferramentas</SectionLabel>
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  {atalhos.map(a => (
+                    <PillBtn
+                      key={a.id}
+                      icon={a.icon}
+                      label={a.label}
+                      urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
+                      onClick={() => navigate(a.to)}
+                    />
+                  ))}
+                </div>
+              </section>
+            </>
+          )}
 
           <div className="h-2" />
         </div>
