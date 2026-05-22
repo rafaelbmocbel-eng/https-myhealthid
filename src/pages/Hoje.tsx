@@ -5,7 +5,7 @@ import { startOfDay, endOfDay, format, isToday, isTomorrow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import {
   Users, LayoutDashboard, Tag,
-  CalendarDays, MessageCircle, CalendarHeart,
+  CalendarDays, MessageCircle, PartyPopper,
   BookOpen, Settings, ArrowRight, Clock,
 } from 'lucide-react';
 
