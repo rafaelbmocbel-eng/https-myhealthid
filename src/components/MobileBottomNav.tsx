@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, CalendarDays, Users, Settings, PartyPopper, BookOpen, type LucideIcon } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, type LucideIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
@@ -10,8 +10,8 @@ const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boo
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
   { label: 'Início', href: '/', icon: LayoutDashboard },
-  { label: 'Eventos', href: '/eventos', icon: PartyPopper, serviceKey: 'eventos' },
-  { label: 'Base', href: '/base-cientifica', icon: BookOpen },
+  { label: 'Zap', href: '/crm/inbox', icon: Zap },
+  { label: 'Financeiro', href: '/financeiro', icon: Wallet },
   { label: 'Config', href: '/configuracoes', icon: Settings },
 ];
 
