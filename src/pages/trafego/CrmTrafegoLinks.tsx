@@ -78,14 +78,14 @@ export default function CrmTrafegoLinks() {
   });
 
   const { data: profile } = useQuery({
-    queryKey: ['profile-cadastro-slug', user?.id],
+    queryKey: ['config-agenda-slug', user?.id],
     queryFn: async () => {
       const { data } = await supabase
-        .from('profiles')
-        .select('cadastro_slug')
-        .eq('user_id', user!.id)
+        .from('config_agenda')
+        .select('slug')
+        .eq('terapeuta_id', user!.id)
         .maybeSingle();
-      return data as { cadastro_slug?: string } | null;
+      return data as { slug?: string } | null;
     },
     enabled: !!user?.id,
   });
@@ -94,8 +94,8 @@ export default function CrmTrafegoLinks() {
     if (funil?.slug && !funilSlug) setFunilSlug(funil.slug);
   }, [funil?.slug]);
   useEffect(() => {
-    if (profile?.cadastro_slug && !cadastroSlug) setCadastroSlug(profile.cadastro_slug);
-  }, [profile?.cadastro_slug]);
+    if (profile?.slug && !cadastroSlug) setCadastroSlug(profile.slug);
+  }, [profile?.slug]);
   useEffect(() => {
     if (eventos[0]?.id && !eventoSlug) setEventoSlug(eventos[0].id);
   }, [eventos]);
@@ -207,7 +207,7 @@ export default function CrmTrafegoLinks() {
             )}
             {destinoTipo === 'cadastro' && (
               <Input
-                placeholder={profile?.cadastro_slug || 'slug do cadastro público'}
+                placeholder={profile?.slug || 'slug do cadastro público'}
                 value={cadastroSlug}
                 onChange={(e) => setCadastroSlug(e.target.value)}
               />
