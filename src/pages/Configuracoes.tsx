@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight, BookOpen,
+  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -24,8 +24,9 @@ import ConfigClinica from '@/components/configuracoes/ConfigClinica';
 import TurnosEditor from '@/components/configuracoes/TurnosEditor';
 import AusenciasManager from '@/components/configuracoes/AusenciasManager';
 import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissionalCard';
+import AtalhosHomeEditor from '@/components/configuracoes/AtalhosHomeEditor';
 
-type TabId = 'clinica' | 'agenda' | 'equipe' | 'links' | 'notif' | 'ia';
+type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'ia';
 
 type TabItem =
   | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
@@ -33,6 +34,7 @@ type TabItem =
 
 const TABS: TabItem[] = [
   { id: 'clinica', label: 'Clínica', icon: Building2, kind: 'panel' },
+  { id: 'home', label: 'Home', icon: LayoutGrid, kind: 'panel' },
   { id: 'agenda', label: 'Agenda', icon: CalendarDays, kind: 'panel' },
   { id: 'equipe', label: 'Equipe', icon: Users, kind: 'panel' },
   { id: 'base-cientifica', label: 'Base Científica', icon: BookOpen, kind: 'link', to: '/base-cientifica' },

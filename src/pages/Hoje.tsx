@@ -21,6 +21,7 @@ function pulseRing(level?: 'high' | 'low') {
 export default function Hoje() {
   const { user, profile, loading, authReady } = useAuth();
   const navigate = useNavigate();
+  const { itens: atalhos } = useHomeAtalhos();
 
   const firstName = useMemo(() => (profile?.nome || '').split(' ')[0] || 'Olá', [profile]);
   const initials = useMemo(() => {
