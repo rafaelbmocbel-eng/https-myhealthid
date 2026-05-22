@@ -4174,6 +4174,33 @@ export type Database = {
           },
         ]
       }
+      tracking_config: {
+        Row: {
+          ativos: boolean
+          created_at: string
+          ga4_id: string | null
+          meta_pixel_id: string | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativos?: boolean
+          created_at?: string
+          ga4_id?: string | null
+          meta_pixel_id?: string | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativos?: boolean
+          created_at?: string
+          ga4_id?: string | null
+          meta_pixel_id?: string | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       uso_ia_mensal: {
         Row: {
           ano_mes: string
