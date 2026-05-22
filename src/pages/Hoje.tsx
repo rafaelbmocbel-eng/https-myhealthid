@@ -230,56 +230,34 @@ export default function Hoje() {
             </section>
           </div>
 
-          {/* Atalhos + Sistema — mobile: separados */}
+          {/* Atalhos — mobile */}
           <section className="space-y-2 sm:hidden">
             <SectionLabel>Atalhos</SectionLabel>
             <div className="grid grid-cols-2 gap-2.5">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn
                 icon={LayoutDashboard}
-                label="Dashboard"
-                urgency={urgency((alerts?.whatsapp ?? 0) + (alerts?.eventosHoje ?? 0) + (proxima ? 1 : 0), 5)}
+                label="Home"
+                urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
-              <PillBtn
-                icon={CalendarHeart}
-                label="Eventos"
-                badge={alerts?.eventosHoje}
-                urgency={urgency(alerts?.eventosHoje ?? 0, 3)}
-                onClick={() => navigate('/eventos')}
-              />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
-            </div>
-          </section>
-
-          <section className="space-y-2 sm:hidden">
-            <SectionLabel>Sistema</SectionLabel>
-            <div className="grid grid-cols-2 gap-2.5">
-              <PillBtn icon={BookOpen} label="Bases de Dados" onClick={() => navigate('/base-cientifica')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
             </div>
           </section>
 
-          {/* md+ : grid unificado em 1 linha */}
+          {/* md+ : grid unificado */}
           <section className="hidden sm:block space-y-3">
             <SectionLabel>Ferramentas</SectionLabel>
-            <div className="grid grid-cols-3 lg:grid-cols-6 gap-3">
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn
                 icon={LayoutDashboard}
-                label="Dashboard"
-                urgency={urgency((alerts?.whatsapp ?? 0) + (alerts?.eventosHoje ?? 0) + (proxima ? 1 : 0), 5)}
+                label="Home"
+                urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
-              <PillBtn
-                icon={CalendarHeart}
-                label="Eventos"
-                badge={alerts?.eventosHoje}
-                urgency={urgency(alerts?.eventosHoje ?? 0, 3)}
-                onClick={() => navigate('/eventos')}
-              />
               <PillBtn icon={Tag} label="Planos" onClick={() => navigate('/precos')} />
-              <PillBtn icon={BookOpen} label="Bases" onClick={() => navigate('/base-cientifica')} />
               <PillBtn icon={Settings} label="Config" onClick={() => navigate('/configuracoes')} />
             </div>
           </section>
