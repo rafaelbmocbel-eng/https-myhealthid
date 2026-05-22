@@ -130,6 +130,13 @@ export default function Configuracoes() {
             <ConfigClinica />
           </TabsContent>
 
+          {/* HOME — atalhos */}
+          <TabsContent value="home" className="mt-0 space-y-4">
+            <AtalhosHomeEditor />
+          </TabsContent>
+
+
+
           {/* AGENDA */}
           <TabsContent value="agenda" className="mt-0 space-y-4">
             <TurnosEditor form={form} onChange={setForm} />
