@@ -237,7 +237,7 @@ export default function Hoje() {
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn
                 icon={LayoutDashboard}
-                label="Home"
+                label="Dashboard"
                 urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
@@ -255,7 +255,7 @@ export default function Hoje() {
               <PillBtn icon={Users} label="Pacientes" onClick={() => navigate('/pacientes')} />
               <PillBtn
                 icon={LayoutDashboard}
-                label="Home"
+                label="Dashboard"
                 urgency={urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5)}
                 onClick={() => navigate('/inicio-app')}
               />
