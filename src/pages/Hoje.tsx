@@ -291,13 +291,13 @@ function PillBtn({
 
 function StatChip({ label, value, accent }: { label: string; value: number; accent?: boolean }) {
   return (
-    <div className={`rounded-2xl px-3 py-3 sm:py-5 text-center border ${
+    <div className={`rounded-xl px-2 py-2 sm:py-2.5 text-center border ${
       accent
         ? 'bg-primary/5 border-primary/15'
         : 'bg-card border-border/40'
     } shadow-xs`}>
-      <div className={`text-xl sm:text-3xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
-      <div className="text-[9px] sm:text-[11px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1.5 sm:mt-2">
+      <div className={`text-lg sm:text-xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
+      <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1">
         {label}
       </div>
     </div>
