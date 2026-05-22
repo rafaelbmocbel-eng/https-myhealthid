@@ -1,118 +1,106 @@
 ## Objetivo
 
-Permitir que **médicos, psicólogos, nutricionistas, educadores físicos, terapeutas ocupacionais** e **fisioterapeutas** usem a mesma avaliação presencial — cada um com **a sua lente** (ferramentas, IA e template adequados à profissão), sem fragmentar o app e sem mexer em MyID, Portal do Paciente ou agenda.
+Adicionar uma nova aba **"Tráfego"** dentro do CRM (`/crm?tab=trafego`) que centraliza: rastreamento de origem (UTM), conexão com Instagram (publicação/agendamento/insights/DMs), gerador de links rastreáveis e configuração de pixels (Meta + GA4). Sem novo item na sidebar.
 
-Princípio: **"mesma espinha, lentes diferentes"**. Uma única tela de avaliação que troca blocos opcionais conforme o profissional logado. Em contas com vários profissionais (clínica), cada membro tem a sua lente — abre a avaliação e já vê a versão certa, sem configurar nada por sessão.
+## Entregas por fase
 
----
+### Fase 1 — Estrutura + Rastreamento de Origem (UTM) — **base obrigatória**
 
-## 1. Lentes Profissionais (6)
+1. **Nova aba no CrmHub**
+   - Adicionar entrada `trafego` em `TABS` (ícone `Radio` ou `Megaphone`).
+   - Criar `src/pages/CrmTrafego.tsx` com sub-abas internas: **Origem · Instagram · Links UTM · Pixels**.
+   - Lazy load no `CrmHub`.
 
-| Lente | Blocos ativos | Foco da IA | Template |
-|---|---|---|---|
-| Fisioterapeuta (default) | Avatar 3D + dor + estruturas | Dor, ADM, força, biomecânica | SOAP fisio |
-| Médico | Vitais, CID-10, prescrição | HMA, antecedentes, exame físico | SOAP médico |
-| Psicólogo | Escalas (PHQ-9, GAD-7), genograma simples | Queixa, humor, cognição, vínculo | Evolução psi |
-| Nutricionista | Antropometria, recordatório 24h, hábitos | Hábitos alimentares, sintomas GI, metas | Plano nutricional |
-| Educador Físico | Avatar leve, testes funcionais, periodização | Capacidade, performance, metas | Plano de treino |
-| Terapeuta Ocupacional | Avatar + AVDs + ambiente + função | Independência, ocupação, adaptações | Plano ocupacional |
+2. **Captura de UTMs nos links públicos** (zero UI nova)
+   - Hook `useUtmCapture()` em `FunilPublico`, `CadastroCliente`, `AgendaPublica`, `EventoPublico`, `MyIDResponder`.
+   - Lê `utm_source / utm_medium / utm_campaign / utm_content / utm_term` + `referrer` e persiste em `sessionStorage`.
+   - Ao criar lead/paciente/inscrição, grava em coluna nova `origem_utm jsonb`.
 
----
+3. **Migração de banco**
+   ```sql
+   ALTER TABLE pacientes        ADD COLUMN origem_utm jsonb;
+   ALTER TABLE funil_leads      ADD COLUMN origem_utm jsonb;
+   ALTER TABLE evento_inscricoes ADD COLUMN origem_utm jsonb;
+   ALTER TABLE whatsapp_conversas ADD COLUMN origem_utm jsonb;
+   ```
+   Mais um índice GIN em `origem_utm` para agregação.
 
-## 2. Mudanças de banco (1 migração)
+4. **Sub-aba "Origem"** (`CrmTrafegoOrigem.tsx`)
+   - Cards KPI: leads por canal (Instagram, WhatsApp, Google, Direto, Outros).
+   - Gráfico de barras (Recharts) últimos 30/60/90 dias.
+   - Tabela: campanha → leads → pacientes convertidos → taxa.
+   - Hook `useOrigemMetrics()` agregando `funil_leads + pacientes + evento_inscricoes` por `origem_utm->>'utm_source'`.
 
-```text
-1. ENUM perfil_profissional:
-   ('fisioterapeuta','medico','psicologo','nutricionista','educador_fisico','terapeuta_ocupacional')
-2. profiles            + perfil_profissional (default 'fisioterapeuta')
-3. clinica_membros     + perfil_profissional (nullable; herda do profile)
-4. avaliacoes_voz      + perfil_profissional (registra com qual lente foi feita)
-5. perfis_profissionais (catálogo, read-only):
-   id (enum) | nome_exibicao | blocos_ativos jsonb |
-   prompt_sistema text | schema_saida jsonb | template_evolucao text
-   → seed dos 6 perfis
-```
+5. **Bloco "Origem dos leads" em Métricas (CrmMetricas)**
+   - Resumo compacto reutilizando o mesmo hook.
 
-Backwards-compat: default `fisioterapeuta` — nenhuma conta atual quebra.
+### Fase 2 — Sub-aba "Links UTM"
 
----
+1. **Gerador de links rastreáveis** (`CrmTrafegoLinks.tsx`)
+   - Form: destino (select: Funil, Cadastro, Evento, MyID), origem (preset: instagram, whatsapp, google_ads, email), mídia, campanha.
+   - Monta URL via `getBaseUrl() + path + ?utm_*`.
+   - Botão copiar + QR code (já temos `pixQrCode.ts` para basear).
+   - Histórico de links salvos em nova tabela `links_rastreaveis` (terapeuta_id, label, url_final, utms jsonb, cliques int, created_at). RLS por terapeuta_id.
 
-## 3. Refator de `AvaliacaoPresencial.tsx` — vira shell
+2. **Botão "Link rastreável"** em `LinkActionsBar` (perfil paciente, eventos, funis) — abre o gerador pré-preenchido.
 
-Hoje é fisio-cêntrico. Vira orquestrador:
+### Fase 3 — Sub-aba "Pixels"
 
-```text
-<AvaliacaoShell>
-  <LenteSelector />            ← chip discreto, só se houver >1 lente
-  <MyIDLink />                 ← sempre
-  <VoiceAssessment prompt={lente.prompt} schema={lente.schema} />
-  {lente.blocos.includes('avatar')        && <AvatarBlock/>}
-  {lente.blocos.includes('escalas_psi')   && <EscalasPsiBlock/>}
-  {lente.blocos.includes('vitais')        && <VitaisBlock/>}
-  {lente.blocos.includes('antropometria') && <AntropometriaBlock/>}
-  {lente.blocos.includes('avds')          && <AVDsBlock/>}
-  {lente.blocos.includes('testes_func')   && <TestesFuncionaisBlock/>}
-</AvaliacaoShell>
-```
+1. **Configuração de pixels** (`CrmTrafegoPixels.tsx`)
+   - Nova tabela `tracking_config (terapeuta_id pk, meta_pixel_id text, ga4_id text, ativos boolean)`.
+   - Form simples: 2 inputs (Meta Pixel ID + GA4 Measurement ID) + toggle.
+   - Hook `useTrackingConfig()`.
 
-Cada bloco é **lazy-loaded**. Lente padrão = fisio → comportamento atual preservado.
+2. **Injeção condicional nos links públicos**
+   - Componente `<PublicTrackingPixels terapeutaId>` em `FunilPublico`, `EventoPublico`, `CadastroCliente`, `MyIDResponder`.
+   - Carrega scripts Meta Pixel + GA4 via `useEffect` se `tracking_config` ativo.
+   - Dispara eventos: `PageView` (sempre), `Lead` (ao criar lead/inscrição), `Schedule` (ao agendar).
 
----
+### Fase 4 — Sub-aba "Instagram" (mais complexa, isolada)
 
-## 4. Edge function `voice-assessment` adaptativa
+1. **Conexão via Lovable Connector**
+   - Não existe connector oficial pronto para Instagram Graph API; vamos usar fluxo OAuth próprio Meta (Instagram Business + Página FB).
+   - **Pré-requisito do usuário:** App no Meta for Developers + Instagram Profissional ligado a Página FB.
+   - Secrets: `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`.
+   - Tabela `instagram_contas (terapeuta_id pk, ig_user_id text, page_id text, access_token text encrypted, expires_at, username, profile_pic)`.
 
-Recebe `perfil_profissional` no body, carrega prompt/schema do catálogo, monta o system prompt da profissão e devolve dados já no schema certo. Grava `perfil_profissional` no registro.
+2. **Edge Functions**
+   - `instagram-oauth-callback`: troca code por long-lived token, salva conta.
+   - `instagram-publish`: publica feed/reel via Graph API (`/media` + `/media_publish`).
+   - `instagram-insights`: alcance, impressões, salvamentos do perfil + posts.
+   - `instagram-dm-webhook`: recebe DM (webhook Meta) → grava em `whatsapp_conversas` com `canal='instagram_dm'`.
 
----
+3. **UI `CrmTrafegoInstagram.tsx`**
+   - Estado desconectado: card "Conectar Instagram" → abre OAuth.
+   - Estado conectado:
+     - Header: avatar + @username + botão desconectar.
+     - Tab interna: **Publicar** (form: imagem/vídeo + legenda + agendar pra data) · **Calendário** (posts agendados) · **Insights** (KPIs últimos 30d).
+   - Posts agendados ficam em tabela `instagram_posts_agendados` + cron job `instagram-scheduler` (pg_cron a cada 5min).
 
-## 5. Frontend — telas afetadas
+4. **Inbox unificada**
+   - Adicionar filtro de canal em `CrmInbox` (tabs: Todos · WhatsApp · Instagram DM).
+   - Badge `📷 IG` nos cards.
 
-- **AvaliacaoPresencial** → shell + blocos.
-- **Configurações → Perfil** → seletor "Minha profissão / lente padrão".
-- **Configurações → Equipe** → coluna "Lente" editável por membro.
-- **PacientePerfil → histórico de avaliações** → badge da lente usada.
-- **Onboarding novo profissional** → primeira escolha após signup.
+5. **Pipeline**
+   - Badge de canal de origem (WA/IG/Funil) no card do `CrmPipeline`.
 
----
+## Considerações técnicas
 
-## 6. O que NÃO muda
+- **Gating de plano:** envolver `CrmTrafego` em `<PlanoGate modulo="crm">`. Instagram exige plano Profissional+.
+- **Espelhamento:** não aplicável (feature pro-only, sem contraparte paciente).
+- **Segurança:** access_token IG em coluna criptografada via `pgsodium` ou armazenar em secret; RLS estrita em `instagram_contas`/`tracking_config`/`links_rastreaveis` (terapeuta_id = auth.uid()).
+- **Mobile:** sub-abas com mesma faixa horizontal scroll do `CrmHub` atual; respeitar 100dvh.
+- **Design:** seguir `<PageHeader>`, `<SectionTitle>`, `<EmptyState>`, cards `rounded-xl border-border/40 shadow-xs`, sem gradientes.
+- **Ícones:** classes `.icon-*` oficiais.
+- **Links públicos:** sempre via `getBaseUrl()` (já é regra).
 
-MyID v2.0, Portal do Paciente, COB° ZERO/dados legados, Agenda, CRM, financeiro. Tela de fisio segue idêntica.
+## Ordem de implementação sugerida
 
----
+Vou executar **Fase 1 completa** nesta primeira leva (estrutura + UTMs + dashboard Origem + bloco em Métricas). Em seguida pergunto se você quer ir para Fase 2 (Links), Fase 3 (Pixels) ou pular direto para Fase 4 (Instagram) — esta última precisa dos secrets do Meta App antes de começar.
 
-## Ordem de entrega
+## O que NÃO está no escopo
 
-```text
-LEVA 1 — Fundação (entrego primeiro):
-  1. Migração + seed dos 6 perfis (prompts/schemas)
-  2. Hook useLenteAtiva() + ajuste no voice-assessment
-  3. Refator AvaliacaoPresencial em shell + AvatarBlock extraído
-  4. Seletor de lente em Configurações > Perfil
-  → Resultado: fisio funciona igual, base pronta para as lentes
-
-LEVA 2 — Primeira lente nova (valida o conceito):
-  5. Lente Médico (mais próxima do fisio) com VitaisBlock + prescrição
-
-LEVA 3 — Lentes distantes (valida isolamento):
-  6. Nutricionista (AntropometriaBlock + recordatório)
-  7. Psicólogo (EscalasPsiBlock)
-
-LEVA 4 — Encerramento:
-  8. Educador Físico (TestesFuncionaisBlock)
-  9. Terapeuta Ocupacional (AVDsBlock)
- 10. Coluna "Lente" em Equipe + badge no histórico
-```
-
----
-
-## Detalhes técnicos
-
-- **RLS:** `perfis_profissionais` read-only para autenticados.
-- **Custo IA:** mesmo (1 chamada/avaliação), só o prompt muda.
-- **Plano comercial:** todas as lentes liberadas em qualquer plano (não é gating).
-- **Mobile:** blocos seguem sistema de ícones e tipografia já padronizados.
-
----
-
-Posso começar pela **LEVA 1** agora?
+- Editor visual de criativos (use Canva externo).
+- Comparativo entre múltiplas contas IG (1 conta por terapeuta nesta v1).
+- TikTok/LinkedIn (avaliar depois).
+- Atribuição multi-touch sofisticada (apenas last-click via UTM).
