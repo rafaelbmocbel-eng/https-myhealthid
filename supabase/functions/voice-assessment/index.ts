@@ -70,7 +70,7 @@ const TOOL_SCHEMA = {
           properties: {
             subjetivo: { type: "string", description: "Relato do paciente: queixa, história, evolução, fatores moduladores." },
             objetivo: { type: "string", description: "Achados objetivos mencionados (postura, palpação, testes, ADM, força). Se nada foi avaliado objetivamente, indicar." },
-            avaliacao: { type: "string", description: "Síntese clínica integrada com hipóteses e classificação." },
+            avaliacao: { type: "string", description: "Síntese clínica integrada com hipóteses e classificação — CONCISO: 5 a 8 linhas no total, em bullets curtos ou frases enxutas. Sem repetir subjetivo/objetivo. Foco em hipótese principal, hipóteses diferenciais, severidade/red flags, e prognóstico." },
             plano: { type: "string", description: "Conduta proposta resumida em 2-4 linhas." },
           },
           required: ["subjetivo", "objetivo", "avaliacao", "plano"],
