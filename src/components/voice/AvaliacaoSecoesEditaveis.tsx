@@ -338,6 +338,74 @@ function DiretrizFases({ texto }: { texto: string }) {
   );
 }
 
+// ---------- Renderizador estruturado do SOAP ----------
+const SOAP_PARTS: Array<{ key: 'S' | 'O' | 'A' | 'P'; label: string; tone: { ring: string; chip: string; surface: string } }> = [
+  { key: 'S', label: 'Subjetivo',  tone: { ring: 'bg-sky-500',     chip: 'bg-sky-500/10 text-sky-700 border-sky-500/20',         surface: 'bg-sky-500/[0.04]' } },
+  { key: 'O', label: 'Objetivo',   tone: { ring: 'bg-teal-500',    chip: 'bg-teal-500/10 text-teal-700 border-teal-500/20',      surface: 'bg-teal-500/[0.04]' } },
+  { key: 'A', label: 'Avaliação',  tone: { ring: 'bg-violet-500',  chip: 'bg-violet-500/10 text-violet-700 border-violet-500/20', surface: 'bg-violet-500/[0.04]' } },
+  { key: 'P', label: 'Plano',      tone: { ring: 'bg-emerald-500', chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', surface: 'bg-emerald-500/[0.04]' } },
+];
+
+function SoapPretty({ texto }: { texto: string }) {
+  if (!texto?.trim()) {
+    return <div className="text-xs text-muted-foreground italic px-1">Sem conteúdo SOAP gerado.</div>;
+  }
+  // Split por marcadores "S —", "O —", "A —", "P —" (com — ou - ou :)
+  const re = /(?:^|\n)\s*([SOAP])\s*[—\-:]\s*[A-ZÁÉÍÓÚÂÊÔÃÕÇ]+\s*\n?/g;
+  const matches: Array<{ key: 'S'|'O'|'A'|'P'; start: number; end: number }> = [];
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(texto)) !== null) {
+    matches.push({ key: m[1] as any, start: m.index + m[0].length, end: -1 });
+    if (matches.length > 1) matches[matches.length - 2].end = m.index;
+  }
+  if (matches.length) matches[matches.length - 1].end = texto.length;
+
+  const conteudo = new Map<string, string>();
+  matches.forEach((mm) => {
+    conteudo.set(mm.key, texto.slice(mm.start, mm.end).trim());
+  });
+
+  // Fallback se parser falhou
+  if (conteudo.size === 0) {
+    return (
+      <div className="rounded-lg px-3 py-2.5 text-[12.5px] leading-snug whitespace-pre-wrap text-foreground/85 border border-border/30 bg-slate-500/[0.04]">
+        {texto}
+      </div>
+    );
+  }
+
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      {SOAP_PARTS.map(({ key, label, tone }) => {
+        const txt = conteudo.get(key) || '—';
+        const vazio = txt === '—' || !txt;
+        return (
+          <div
+            key={key}
+            className={cn(
+              'relative rounded-lg border border-border/40 pl-3 pr-2.5 py-2 overflow-hidden',
+              tone.surface
+            )}
+          >
+            <div className={cn('absolute left-0 top-2 bottom-2 w-[3px] rounded-r-full', tone.ring)} />
+            <div className="flex items-center gap-1.5 mb-1">
+              <span className={cn('inline-flex items-center justify-center w-5 h-5 rounded-md text-[10px] font-bold border', tone.chip)}>
+                {key}
+              </span>
+              <span className="text-[11px] font-semibold uppercase tracking-wide text-foreground/70">{label}</span>
+            </div>
+            <p className={cn(
+              'text-[12px] leading-snug whitespace-pre-wrap',
+              vazio ? 'text-muted-foreground/60 italic' : 'text-foreground/85'
+            )}>
+              {txt}
+            </p>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
 
 
 export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
@@ -597,9 +665,11 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   </div>
                 ) : s.key === 'diretriz' ? (
                   <DiretrizFases texto={textos[s.key]} />
+                ) : s.key === 'soap' ? (
+                  <SoapPretty texto={textos[s.key]} />
                 ) : (
                   <div className={cn(
-                    'rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30',
+                    'rounded-lg px-3 py-2.5 text-[12.5px] leading-snug whitespace-pre-wrap text-foreground/85 border border-border/30',
                     accent.surface
                   )}>
                     {textos[s.key]}
