@@ -36,6 +36,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
 import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
+import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
@@ -1059,7 +1060,7 @@ export default function PacientePerfil() {
 
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
           <TabsContent value="presencial" className="mt-4 space-y-4">
-            <AvaliacoesVozHistorico
+            <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
@@ -1071,12 +1072,18 @@ export default function PacientePerfil() {
               onAssessmentComplete={() => {
                 qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
                 qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+                qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest'] });
               }}
             />
           </TabsContent>
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
-          <TabsContent value="historico" className="mt-4">
+          <TabsContent value="historico" className="mt-4 space-y-6">
+            <AvaliacoesVozHistorico
+              pacienteId={id!}
+              patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              serviceType="identidade"
+            />
             <Suspense fallback={LazyFallback}>
               <PacienteDashboardIdentidade
                 paciente={paciente as any}
