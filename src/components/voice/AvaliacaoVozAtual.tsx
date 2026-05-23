@@ -46,7 +46,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
   const mode = (latest as any).resultado?._meta?.mode === 'written' ? 'written' : 'voice';
 
   return (
-    <section className="space-y-2">
+    <section className="space-y-4">
       <div className="flex items-center gap-2 text-caption text-muted-foreground">
         <FileText className="icon-xs" />
         <span>
@@ -61,6 +61,14 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
         mode={mode as any}
         initialRecord={{ id: latest.id, resultado: (latest as any).resultado, transcricao: latest.transcricao }}
       />
+      {(latest as any).resultado && (
+        <AvaliacaoSecoesEditaveis
+          pacienteId={pacienteId}
+          avaliacaoId={latest.id}
+          resultado={(latest as any).resultado}
+          transcricao={(latest as any).transcricao}
+        />
+      )}
     </section>
   );
 }
