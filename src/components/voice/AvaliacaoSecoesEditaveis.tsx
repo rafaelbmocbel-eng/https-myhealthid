@@ -920,7 +920,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               </div>
 
               {/* Content */}
-              <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+              <div className="px-3 sm:px-3.5 pb-3 sm:pb-3.5">
 
                 {editandoEsta ? (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
@@ -941,33 +941,35 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                       </Button>
                     </div>
                   </div>
-                ) : s.key === 'diretriz' ? (
-                  <DiretrizFases texto={textos[s.key]} />
-                ) : s.key === 'soap' ? (
-                  <SoapPretty texto={textos[s.key]} />
                 ) : (
                   <SectionCollapse alwaysOpen={s.key === 'red_flags' || s.key === 'hipoteses'}>
-                    <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
-                      {s.key === 'dor' ? (
-                        <DorPretty data={resultado?.dor} />
-                      ) : s.key === 'funcionalidade' ? (
-                        <ObjPretty data={resultado?.funcionalidade} />
-                      ) : s.key === 'psicossocial' ? (
-                        <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
-                      ) : s.key === 'red_flags' ? (
-                        <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
-                      ) : s.key === 'hipoteses' ? (
-                        <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
-                      ) : s.key === 'cif' ? (
-                        <CifPretty data={resultado?.cif_codes} />
-                      ) : s.key === 'insights' ? (
-                        <InsightsPretty data={resultado?.insights_baseados_evidencia} />
-                      ) : s.key === 'resumo_clinico' ? (
-                        <ResumoPretty texto={textos[s.key]} />
-                      ) : (
-                        <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
-                      )}
-                    </div>
+                    {s.key === 'diretriz' ? (
+                      <DiretrizFases texto={textos[s.key]} />
+                    ) : s.key === 'soap' ? (
+                      <SoapPretty texto={textos[s.key]} />
+                    ) : (
+                      <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
+                        {s.key === 'dor' ? (
+                          <DorPretty data={resultado?.dor} />
+                        ) : s.key === 'funcionalidade' ? (
+                          <ObjPretty data={resultado?.funcionalidade} />
+                        ) : s.key === 'psicossocial' ? (
+                          <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                        ) : s.key === 'red_flags' ? (
+                          <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                        ) : s.key === 'hipoteses' ? (
+                          <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                        ) : s.key === 'cif' ? (
+                          <CifPretty data={resultado?.cif_codes} />
+                        ) : s.key === 'insights' ? (
+                          <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                        ) : s.key === 'resumo_clinico' ? (
+                          <ResumoPretty texto={textos[s.key]} />
+                        ) : (
+                          <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                        )}
+                      </div>
+                    )}
                   </SectionCollapse>
                 )}
               </div>
