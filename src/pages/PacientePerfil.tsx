@@ -1057,12 +1057,20 @@ export default function PacientePerfil() {
           )}
 
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
-          <TabsContent value="presencial" className="mt-4">
+          <TabsContent value="presencial" className="mt-4 space-y-4">
+            <AvaliacoesVozHistorico
+              pacienteId={id!}
+              patientName={`${paciente.nome} ${paciente.sobrenome}`}
+              serviceType="identidade"
+            />
             <AvaliacaoPresencial
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
               serviceType="identidade"
-              onAssessmentComplete={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })}
+              onAssessmentComplete={() => {
+                qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+                qc.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
+              }}
             />
           </TabsContent>
 
