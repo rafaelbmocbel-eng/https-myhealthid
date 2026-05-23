@@ -928,7 +928,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn('rounded-xl border border-border/30 p-4 sm:p-5', accent.surface)}>
+                  <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                     {s.key === 'dor' ? (
                       <DorPretty data={resultado?.dor} />
                     ) : s.key === 'funcionalidade' ? (
