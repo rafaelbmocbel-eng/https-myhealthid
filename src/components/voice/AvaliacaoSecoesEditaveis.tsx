@@ -292,10 +292,22 @@ function DiretrizFases({ texto }: { texto: string }) {
   // Separa rodapé global (não começa com ▸) das fases
   const idxPrimeiroRodape = texto.search(/\n(?:📅|🔮|🏁|📚)/);
   const corpoFases = idxPrimeiroRodape >= 0 ? texto.slice(0, idxPrimeiroRodape) : texto;
-  const rodape = idxPrimeiroRodape >= 0 ? texto.slice(idxPrimeiroRodape).trim() : '';
+  const rodapeFull = idxPrimeiroRodape >= 0 ? texto.slice(idxPrimeiroRodape).trim() : '';
+
+  // Extrai bloco de referências para renderizar separadamente, bem compacto, no final
+  let rodape = rodapeFull;
+  let referencias: string[] = [];
+  const refMatch = rodapeFull.match(/📚\s*Referências[^:]*:\s*\n?([\s\S]*?)(?=\n(?:📅|🔮|🏁|📚)|$)/);
+  if (refMatch) {
+    referencias = refMatch[1]
+      .split('\n')
+      .map((l) => l.replace(/^\s*[•\-·]\s*/, '').trim())
+      .filter(Boolean);
+    rodape = rodapeFull.replace(refMatch[0], '').trim();
+  }
 
   const partes = corpoFases.split(/\n?▸\s/).filter((p) => p.trim().length > 0);
-  if (partes.length === 0 && !rodape) {
+  if (partes.length === 0 && !rodape && referencias.length === 0) {
     return (
       <div className="rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30 bg-emerald-500/[0.04]">
         {texto}
@@ -333,6 +345,21 @@ function DiretrizFases({ texto }: { texto: string }) {
         <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
           {rodape}
         </div>
+      )}
+      {referencias.length > 0 && (
+        <details className="group rounded-lg border border-border/30 bg-muted/20 px-3 py-2 text-[11px] open:bg-muted/30">
+          <summary className="flex items-center gap-1.5 cursor-pointer list-none text-muted-foreground hover:text-foreground transition-colors">
+            <span className="text-[10px]">📚</span>
+            <span className="font-medium uppercase tracking-wider">Referências</span>
+            <span className="text-muted-foreground/60">({referencias.length})</span>
+            <span className="ml-auto text-[10px] text-muted-foreground/50 group-open:rotate-90 transition-transform">›</span>
+          </summary>
+          <ol className="mt-2 pl-4 space-y-0.5 list-decimal text-muted-foreground/90 leading-snug">
+            {referencias.map((r, i) => (
+              <li key={i} className="text-[11px]">{r}</li>
+            ))}
+          </ol>
+        </details>
       )}
     </div>
   );
