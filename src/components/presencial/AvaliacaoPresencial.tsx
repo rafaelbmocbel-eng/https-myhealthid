@@ -106,8 +106,7 @@ export default function AvaliacaoPresencial({
           <Sparkles className="h-3 w-3" />
           A IA estrutura a avaliação{mostraAvatar ? ' e marca o avatar' : ''} a partir da sua fala.
         </p>
-        <VoiceAssessment
-          mode="voice"
+        <AvaliacaoVozHub
           serviceType={serviceType}
           pacienteId={pacienteId}
           patientName={patientName}
