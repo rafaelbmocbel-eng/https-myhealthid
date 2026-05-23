@@ -31,7 +31,11 @@ type SecaoKey =
   | 'red_flags'
   | 'hipoteses'
   | 'cif'
-  | 'diretriz';
+  | 'diretriz'
+  | 'insights';
+
+// Seções que NÃO podem ser confirmadas no prontuário (apoio à decisão, referência)
+const SECOES_SEM_PRONTUARIO: SecaoKey[] = ['insights'];
 
 // Accent palette (Tailwind classes) per section — keeps a calm, identifiable color identity
 type Accent = {
@@ -53,6 +57,7 @@ const ACCENTS: Record<SecaoKey, Accent> = {
   hipoteses:      { ring: 'from-amber-400/40 to-amber-500/10',   iconBg: 'bg-amber-500/10',   iconText: 'text-amber-600',   badgeBg: 'bg-amber-500/10',   badgeText: 'text-amber-700',   surface: 'bg-amber-500/[0.04]' },
   cif:            { ring: 'from-indigo-400/40 to-indigo-500/10', iconBg: 'bg-indigo-500/10',  iconText: 'text-indigo-600',  badgeBg: 'bg-indigo-500/10',  badgeText: 'text-indigo-700',  surface: 'bg-indigo-500/[0.04]' },
   diretriz:       { ring: 'from-emerald-400/40 to-emerald-500/10', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-600', badgeBg: 'bg-emerald-500/10', badgeText: 'text-emerald-700', surface: 'bg-emerald-500/[0.04]' },
+  insights:       { ring: 'from-fuchsia-400/40 to-fuchsia-500/10', iconBg: 'bg-fuchsia-500/10', iconText: 'text-fuchsia-600', badgeBg: 'bg-fuchsia-500/10', badgeText: 'text-fuchsia-700', surface: 'bg-fuchsia-500/[0.04]' },
 };
 
 interface SecaoDef {
@@ -194,6 +199,18 @@ const SECOES: SecaoDef[] = [
       }
 
       return [blocosFase.join('\n\n'), finais.join('\n\n')].filter(Boolean).join('\n\n');
+    },
+  },
+  {
+    key: 'insights', titulo: 'Insights baseados em evidências', emoji: '💡', Icon: Sparkles,
+    builder: (r) => {
+      const ins = r?.insights_baseados_evidencia;
+      if (!Array.isArray(ins) || ins.length === 0) return '';
+      return ins.map((i: any, idx: number) => {
+        const texto = typeof i === 'string' ? i : (i.insight || i.texto || '');
+        const ref = typeof i === 'object' ? (i.referencia || i.fonte) : null;
+        return `${idx + 1}. ${texto}${ref ? `\n   📖 ${ref}` : ''}`;
+      }).join('\n\n');
     },
   },
 ];
@@ -606,6 +623,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           const savingEsta = saving === s.key;
           const Icon = s.Icon;
           const isDiretriz = s.key === 'diretriz';
+          const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
 
           return (
             <Card
@@ -628,14 +646,18 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-[15px] text-foreground leading-tight">{s.titulo}</span>
-                      {confirmada && (
+                      {semProntuario ? (
+                        <Badge variant="outline" className="text-[10px] gap-1 font-medium border-border/60 text-muted-foreground">
+                          Apoio à decisão
+                        </Badge>
+                      ) : confirmada && (
                         <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[10px] gap-1 hover:bg-emerald-500/10 font-medium">
                           <CheckCircle2 className="icon-xs" /> no Prontuário
                         </Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {confirmada ? 'Sincronizado' : 'Pendente de confirmação'}
+                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente de confirmação')}
                     </p>
                   </div>
                 </div>
@@ -652,19 +674,21 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                     >
                       <Pencil className="icon-xs" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={confirmada ? 'outline' : 'default'}
-                      className={cn(
-                        'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
-                        confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
-                      )}
-                      onClick={() => toggleConfirmacao(s.key)}
-                      disabled={savingEsta}
-                    >
-                      {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                      {confirmada ? 'Remover' : 'Confirmar'}
-                    </Button>
+                    {!semProntuario && (
+                      <Button
+                        size="sm"
+                        variant={confirmada ? 'outline' : 'default'}
+                        className={cn(
+                          'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
+                          confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
+                        )}
+                        onClick={() => toggleConfirmacao(s.key)}
+                        disabled={savingEsta}
+                      >
+                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                        {confirmada ? 'Remover' : 'Confirmar'}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
