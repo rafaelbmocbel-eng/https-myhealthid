@@ -451,6 +451,214 @@ function SoapPretty({ texto }: { texto: string }) {
   );
 }
 
+// ---------- Renderizadores estruturados por seção ----------
+function Field({ label, value, accent }: { label: string; value: React.ReactNode; accent?: Accent }) {
+  return (
+    <div className="flex items-start gap-2.5 py-1.5">
+      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground min-w-[88px] pt-0.5 shrink-0">
+        {label}
+      </span>
+      <span className="text-[13px] text-foreground/85 leading-relaxed flex-1">{value}</span>
+    </div>
+  );
+}
+
+function humanLabel(k: string) {
+  return k.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
+}
+
+function EvaBadge({ valor }: { valor: number }) {
+  const tone =
+    valor >= 7 ? 'bg-red-500/10 text-red-700 border-red-500/20'
+    : valor >= 4 ? 'bg-amber-500/10 text-amber-700 border-amber-500/20'
+    : 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20';
+  const label = valor >= 7 ? 'Intensa' : valor >= 4 ? 'Moderada' : 'Leve';
+  return (
+    <span className={cn('inline-flex items-center gap-1.5 rounded-md border px-2 py-0.5 text-[11px] font-semibold', tone)}>
+      <span className="tabular-nums">{valor}/10</span>
+      <span className="opacity-70 font-normal">· {label}</span>
+    </span>
+  );
+}
+
+function DorPretty({ data }: { data: any }) {
+  if (!data) return null;
+  const ag = data.fatores_agravantes;
+  const al = data.fatores_aliviantes || data.fatores_atenuantes;
+  return (
+    <div className="divide-y divide-border/30">
+      {data.localizacao && <Field label="Localização" value={data.localizacao} />}
+      {data.intensidade_eva != null && <Field label="EVA" value={<EvaBadge valor={Number(data.intensidade_eva)} />} />}
+      {data.tipo && <Field label="Tipo" value={data.tipo} />}
+      {data.inicio && <Field label="Início" value={data.inicio} />}
+      {data.duracao && <Field label="Duração" value={data.duracao} />}
+      {ag && (
+        <Field label="Agrava" value={
+          <div className="flex flex-wrap gap-1">
+            {(Array.isArray(ag) ? ag : [ag]).map((f: any, i: number) => (
+              <span key={i} className="inline-flex rounded-md bg-rose-500/10 text-rose-700 px-2 py-0.5 text-[11px]">{String(f)}</span>
+            ))}
+          </div>
+        } />
+      )}
+      {al && (
+        <Field label="Alivia" value={
+          <div className="flex flex-wrap gap-1">
+            {(Array.isArray(al) ? al : [al]).map((f: any, i: number) => (
+              <span key={i} className="inline-flex rounded-md bg-emerald-500/10 text-emerald-700 px-2 py-0.5 text-[11px]">{String(f)}</span>
+            ))}
+          </div>
+        } />
+      )}
+    </div>
+  );
+}
+
+function ObjPretty({ data }: { data: any }) {
+  if (!data) return null;
+  if (typeof data === 'string') return <p className="text-[13px] leading-relaxed text-foreground/85">{data}</p>;
+  if (Array.isArray(data)) {
+    return (
+      <ul className="space-y-1.5 text-[13px] text-foreground/85">
+        {data.map((x: any, i: number) => (
+          <li key={i} className="flex gap-2"><span className="text-muted-foreground">•</span><span>{typeof x === 'string' ? x : JSON.stringify(x)}</span></li>
+        ))}
+      </ul>
+    );
+  }
+  const entries = Object.entries(data).filter(([, v]) => v != null && v !== '');
+  if (entries.length === 0) return null;
+  return (
+    <div className="divide-y divide-border/30">
+      {entries.map(([k, v]) => (
+        <Field
+          key={k}
+          label={humanLabel(k)}
+          value={
+            Array.isArray(v)
+              ? <div className="flex flex-wrap gap-1">{v.map((x: any, i: number) => (
+                  <span key={i} className="inline-flex rounded-md bg-muted text-foreground/80 px-2 py-0.5 text-[11px]">{typeof x === 'string' ? x : JSON.stringify(x)}</span>
+                ))}</div>
+              : typeof v === 'object'
+                ? <span className="text-foreground/80">{Object.entries(v as any).map(([kk, vv]) => `${humanLabel(kk)}: ${vv}`).join(' · ')}</span>
+                : String(v)
+          }
+        />
+      ))}
+    </div>
+  );
+}
+
+function RedFlagsPretty({ data }: { data: any }) {
+  const lista = Array.isArray(data) ? data : (data ? [data] : []);
+  if (lista.length === 0) return null;
+  return (
+    <ul className="space-y-2">
+      {lista.map((f: any, i: number) => {
+        const txt = typeof f === 'string' ? f : (f.descricao || f.flag || JSON.stringify(f));
+        return (
+          <li key={i} className="flex items-start gap-2.5 rounded-lg bg-red-500/5 border border-red-500/15 px-3 py-2">
+            <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-red-500/15 text-red-700 text-[10px] font-bold shrink-0">{i + 1}</span>
+            <span className="text-[13px] text-foreground/85 leading-relaxed">{txt}</span>
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function HipotesesPretty({ data }: { data: any }) {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const tone = (p?: string) => {
+    const s = (p || '').toLowerCase();
+    if (s.includes('alt')) return 'bg-amber-500/10 text-amber-700 border-amber-500/20';
+    if (s.includes('méd') || s.includes('med') || s.includes('mod')) return 'bg-sky-500/10 text-sky-700 border-sky-500/20';
+    if (s.includes('baix')) return 'bg-muted text-muted-foreground border-border';
+    return 'bg-amber-500/10 text-amber-700 border-amber-500/20';
+  };
+  return (
+    <div className="space-y-2">
+      {data.map((x: any, i: number) => (
+        <div key={i} className="rounded-lg border border-border/40 bg-card/60 px-3 py-2.5">
+          <div className="flex items-start justify-between gap-2 mb-1">
+            <div className="flex items-center gap-2 min-w-0">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-amber-500/10 text-amber-700 text-[10px] font-bold shrink-0">{i + 1}</span>
+              <span className="font-semibold text-[13px] text-foreground truncate">{x.diagnostico || x.hipotese || '—'}</span>
+            </div>
+            {x.probabilidade && (
+              <span className={cn('shrink-0 inline-flex rounded-md border px-1.5 py-0.5 text-[10px] font-medium', tone(x.probabilidade))}>
+                {x.probabilidade}
+              </span>
+            )}
+          </div>
+          {x.evidencia && (
+            <p className="text-[12px] text-muted-foreground leading-relaxed pl-7">
+              <span className="font-medium text-foreground/60">Evidência: </span>{x.evidencia}
+            </p>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function CifPretty({ data }: { data: any }) {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  const sevTone = (n?: number) => {
+    if (n == null) return 'bg-muted text-muted-foreground';
+    if (n >= 3) return 'bg-red-500/10 text-red-700';
+    if (n >= 2) return 'bg-amber-500/10 text-amber-700';
+    if (n >= 1) return 'bg-sky-500/10 text-sky-700';
+    return 'bg-emerald-500/10 text-emerald-700';
+  };
+  return (
+    <ul className="space-y-1.5">
+      {data.map((x: any, i: number) => {
+        const codigo = x.codigo || x.code || '';
+        const desc = x.descricao || x.label || x.titulo || '';
+        const sev = x.severidade;
+        return (
+          <li key={i} className="flex items-start gap-2 rounded-lg border border-border/30 bg-indigo-500/[0.03] px-3 py-2">
+            <span className="inline-flex items-center rounded-md bg-indigo-500/10 text-indigo-700 px-1.5 py-0.5 text-[11px] font-mono font-bold shrink-0">{codigo}</span>
+            <span className="text-[13px] text-foreground/85 leading-snug flex-1">{desc}</span>
+            {sev != null && (
+              <span className={cn('shrink-0 inline-flex rounded-md px-1.5 py-0.5 text-[10px] font-semibold', sevTone(Number(sev)))}>
+                sev {sev}
+              </span>
+            )}
+          </li>
+        );
+      })}
+    </ul>
+  );
+}
+
+function InsightsPretty({ data }: { data: any }) {
+  if (!Array.isArray(data) || data.length === 0) return null;
+  return (
+    <div className="space-y-2">
+      {data.map((i: any, idx: number) => {
+        const texto = typeof i === 'string' ? i : (i.insight || i.texto || '');
+        const ref = typeof i === 'object' ? (i.referencia || i.fonte) : null;
+        return (
+          <div key={idx} className="rounded-lg border border-fuchsia-500/15 bg-fuchsia-500/[0.04] px-3 py-2.5">
+            <div className="flex items-start gap-2">
+              <span className="inline-flex items-center justify-center w-5 h-5 rounded-md bg-fuchsia-500/15 text-fuchsia-700 text-[10px] font-bold shrink-0">{idx + 1}</span>
+              <p className="text-[13px] text-foreground/85 leading-relaxed flex-1">{texto}</p>
+            </div>
+            {ref && <p className="text-[11px] text-muted-foreground mt-1.5 pl-7">📖 {ref}</p>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function ResumoPretty({ texto }: { texto: string }) {
+  if (!texto?.trim()) return null;
+  return <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{texto}</p>;
+}
+
 
 export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
   const { user } = useAuth();
@@ -694,7 +902,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               </div>
 
               {/* Content */}
-              <div className="px-4 sm:px-5 pb-5">
+              <div className="px-5 sm:px-6 pb-5 sm:pb-6">
                 {editandoEsta ? (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                     <Textarea
@@ -719,11 +927,26 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn(
-                    'rounded-lg px-3 py-2.5 text-[12.5px] leading-snug whitespace-pre-wrap text-foreground/85 border border-border/30',
-                    accent.surface
-                  )}>
-                    {textos[s.key]}
+                  <div className={cn('rounded-xl border border-border/30 p-4 sm:p-5', accent.surface)}>
+                    {s.key === 'dor' ? (
+                      <DorPretty data={resultado?.dor} />
+                    ) : s.key === 'funcionalidade' ? (
+                      <ObjPretty data={resultado?.funcionalidade} />
+                    ) : s.key === 'psicossocial' ? (
+                      <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                    ) : s.key === 'red_flags' ? (
+                      <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                    ) : s.key === 'hipoteses' ? (
+                      <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                    ) : s.key === 'cif' ? (
+                      <CifPretty data={resultado?.cif_codes} />
+                    ) : s.key === 'insights' ? (
+                      <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                    ) : s.key === 'resumo_clinico' ? (
+                      <ResumoPretty texto={textos[s.key]} />
+                    ) : (
+                      <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                    )}
                   </div>
                 )}
               </div>
