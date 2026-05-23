@@ -846,7 +846,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               <div className={cn('h-1 w-full bg-gradient-to-r', accent.ring)} />
 
               {/* Header */}
-              <div className="px-4 sm:px-5 pt-4 pb-3 flex items-start justify-between gap-3">
+              <div className="px-3.5 sm:px-4 pt-3 pb-2.5 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
                     <Icon className="icon-md" />
