@@ -652,6 +652,39 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
   };
 
+  // Remove individual item from a nested array path (e.g. ['hipoteses_diagnosticas'] or ['diretriz_tratamento','fase_1_alivio','tecnicas'])
+  const removeItem = (path: string[], index: number) => {
+    if (!assessment) return;
+    const updated = JSON.parse(JSON.stringify(assessment));
+    let target: any = updated;
+    for (let i = 0; i < path.length - 1; i++) {
+      target = target?.[path[i]];
+      if (!target) return;
+    }
+    const lastKey = path[path.length - 1];
+    const arr = target[lastKey];
+    if (!Array.isArray(arr)) return;
+    arr.splice(index, 1);
+    setAssessment(updated);
+    setIsSaved(false);
+  };
+
+  // Remove a key from a nested object (for raciocinio_multidisciplinar entries)
+  const removeObjectKey = (path: string[], key: string) => {
+    if (!assessment) return;
+    const updated = JSON.parse(JSON.stringify(assessment));
+    let target: any = updated;
+    for (let i = 0; i < path.length; i++) {
+      target = target?.[path[i]];
+      if (!target) return;
+    }
+    delete target[key];
+    setAssessment(updated);
+    setIsSaved(false);
+  };
+
+
+
 
   const copyAssessment = () => {
     if (!assessment) return;
