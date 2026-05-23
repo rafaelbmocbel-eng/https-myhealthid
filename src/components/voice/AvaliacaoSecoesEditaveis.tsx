@@ -623,6 +623,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           const savingEsta = saving === s.key;
           const Icon = s.Icon;
           const isDiretriz = s.key === 'diretriz';
+          const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
 
           return (
             <Card
@@ -645,14 +646,18 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-semibold text-[15px] text-foreground leading-tight">{s.titulo}</span>
-                      {confirmada && (
+                      {semProntuario ? (
+                        <Badge variant="outline" className="text-[10px] gap-1 font-medium border-border/60 text-muted-foreground">
+                          Apoio à decisão
+                        </Badge>
+                      ) : confirmada && (
                         <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[10px] gap-1 hover:bg-emerald-500/10 font-medium">
                           <CheckCircle2 className="icon-xs" /> no Prontuário
                         </Badge>
                       )}
                     </div>
                     <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {confirmada ? 'Sincronizado' : 'Pendente de confirmação'}
+                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente de confirmação')}
                     </p>
                   </div>
                 </div>
@@ -669,19 +674,21 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                     >
                       <Pencil className="icon-xs" />
                     </Button>
-                    <Button
-                      size="sm"
-                      variant={confirmada ? 'outline' : 'default'}
-                      className={cn(
-                        'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
-                        confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
-                      )}
-                      onClick={() => toggleConfirmacao(s.key)}
-                      disabled={savingEsta}
-                    >
-                      {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                      {confirmada ? 'Remover' : 'Confirmar'}
-                    </Button>
+                    {!semProntuario && (
+                      <Button
+                        size="sm"
+                        variant={confirmada ? 'outline' : 'default'}
+                        className={cn(
+                          'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
+                          confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
+                        )}
+                        onClick={() => toggleConfirmacao(s.key)}
+                        disabled={savingEsta}
+                      >
+                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                        {confirmada ? 'Remover' : 'Confirmar'}
+                      </Button>
+                    )}
                   </div>
                 )}
               </div>
