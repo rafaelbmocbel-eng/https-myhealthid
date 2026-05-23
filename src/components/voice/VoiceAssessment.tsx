@@ -1438,15 +1438,25 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       <div className="mb-2">
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Objetivos</p>
                         <ul className="text-xs text-muted-foreground space-y-0.5">
-                          {fase.objetivos.map((o: string, i: number) => <li key={i}>• {o}</li>)}
+                          {fase.objetivos.map((o: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 group">
+                              <span className="flex-1">• {o}</span>
+                              <button onClick={() => removeItem(['diretriz_tratamento', key, 'objetivos'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir objetivo">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     )}
                     {fase.tecnicas?.length > 0 && (
                       <div className="space-y-1.5">
                         {fase.tecnicas.map((t: any, i: number) => (
-                          <div key={i} className="bg-muted/40 rounded-md p-2">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div key={i} className="bg-muted/40 rounded-md p-2 relative group">
+                            <button onClick={() => removeItem(['diretriz_tratamento', key, 'tecnicas'], i)} className="absolute top-1.5 right-1.5 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir técnica">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                            <div className="flex items-center justify-between gap-2 flex-wrap pr-5">
                               <span className="font-medium text-xs">{t.tecnica}</span>
                               <div className="flex items-center gap-1">
                                 {t.lente_clinica && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">{t.lente_clinica}</Badge>}
@@ -1461,6 +1471,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                   </div>
                 );
               })}
+
               {assessment.diretriz_tratamento.frequencia_sugerida && (
                 <p className="text-xs"><strong>Frequência:</strong> {assessment.diretriz_tratamento.frequencia_sugerida}</p>
               )}
