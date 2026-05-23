@@ -192,6 +192,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       recordingTime: number;
       assessment: any;
       expandedSections: Record<string, boolean>;
+      hiddenSections: Record<string, boolean>;
       isSaved: boolean;
     }>(draftKey, VOICE_DRAFT_VERSION).then((draft) => {
       if (!draft) return;
@@ -208,6 +209,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
         plano: true, insights: true,
       });
+      setHiddenSections(draft.hiddenSections ?? {});
       setIsSaved(Boolean(draft.isSaved));
 
       toast({
@@ -215,6 +217,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         description: 'Recuperamos sua avaliação em andamento após o descanso do aparelho.',
       });
     });
+
   }, [appendMode, draftKey, toast, user]);
 
   useEffect(() => {
@@ -244,11 +247,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         recordingTime,
         assessment,
         expandedSections,
+        hiddenSections,
         isSaved,
       },
       VOICE_DRAFT_VERSION,
     );
-  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
+  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, hiddenSections, isSaved, recordingTime, step, transcript, user]);
+
 
   // Auto-save em edições — após o primeiro save, qualquer alteração é gravada (debounced)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -613,11 +618,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   };
 
   const removeSection = (key: string) => {
-    if (!confirm('Excluir esta seção da avaliação? Você pode reprocessar com a IA depois para regenerá-la.')) return;
+    if (!confirm('Excluir esta seção da avaliação? Ela não irá para o prontuário. Você pode reprocessar com a IA depois para regenerá-la.')) return;
     setHiddenSections(prev => ({ ...prev, [key]: true }));
     if (assessment) {
       const updated = { ...assessment };
-      const fieldMap: Record<string, string | string[]> = {
+      const fieldMap: Record<string, string> = {
         soap: 'soap',
         resumo: 'resumo_clinico',
         dor: 'dor',
@@ -632,13 +637,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         insights: 'insights_baseados_evidencia',
       };
       const f = fieldMap[key];
-      if (f && typeof f === 'string') {
+      if (f) {
         delete updated[f];
         setAssessment(updated);
         setIsSaved(false);
       }
     }
   };
+
 
   const copyAssessment = () => {
     if (!assessment) return;
@@ -968,6 +974,49 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <Button variant="outline" size="sm" onClick={resetAll}><RotateCcw className="h-4 w-4 mr-1" />Nova</Button>
           </div>
         </div>
+
+        {/* ── Banner: como funciona ── */}
+        {pacienteId && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-start gap-2 text-xs">
+                <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <p className="font-semibold text-foreground">Como editar e enviar ao prontuário</p>
+                  <ul className="text-muted-foreground space-y-0.5">
+                    <li>✏️ <strong>Editar</strong>: clique em qualquer texto destacado, ou use <em>“Editor Completo”</em> para alterar todos os campos.</li>
+                    <li>🗑️ <strong>Excluir seção</strong>: ícone da lixeira no canto direito de cada seção — ela não vai para o prontuário.</li>
+                    <li>📤 <strong>Enviar ao prontuário</strong>: use o botão abaixo para revisar exatamente o que vai (resumo, dor, funcionalidade, hipóteses, CIF, diretriz, mapa de dor…) antes de confirmar.</li>
+                  </ul>
+                </div>
+              </div>
+              {Object.keys(hiddenSections).filter(k => hiddenSections[k]).length > 0 && (
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-primary/20">
+                  <span className="text-[11px] text-muted-foreground">
+                    {Object.keys(hiddenSections).filter(k => hiddenSections[k]).length} seção(ões) excluída(s) — não irão ao prontuário.
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px]"
+                    onClick={() => { setHiddenSections({}); toast({ title: 'Seções restauradas' }); }}
+                  >
+                    Restaurar todas
+                  </Button>
+                </div>
+              )}
+              <Button
+                size="sm"
+                onClick={() => setShowProntuarioReview(true)}
+                className="w-full bg-primary text-primary-foreground gap-1.5"
+              >
+                <FileText className="h-4 w-4" />
+                {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Revisar e enviar ao prontuário'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
 
         {/* ── Editor Completo (JSON estruturado de toda a avaliação) ── */}
         {showFullEditor && (
@@ -1444,9 +1493,25 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             ))}
           </div>
         </SectionCard>
+
+        {pacienteId && (
+          <ProntuarioReviewDialog
+            open={showProntuarioReview}
+            onOpenChange={setShowProntuarioReview}
+            assessment={assessment}
+            pacienteId={pacienteId}
+            servico={serviceType}
+            avaliacaoId={savedAssessmentIdRef.current}
+            noteId={savedNoteIdRef.current}
+            myidContext={myidContext}
+            painMap={painMap}
+            onSaved={(id) => { savedNoteIdRef.current = id; }}
+          />
+        )}
       </div>
     );
   }
+
 
   // ── Step 2: Review & Edit Transcript ──
   if (step === 'review') {
