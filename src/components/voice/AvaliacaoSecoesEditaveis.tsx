@@ -863,37 +863,37 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               {/* Ribbon de cor no topo */}
               <div className={cn('h-1 w-full bg-gradient-to-r', accent.ring)} />
 
-              {/* Header */}
-              <div className="px-3.5 sm:px-4 pt-3 pb-2.5 flex items-start justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0 flex-1">
-                  <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
-                    <Icon className="icon-md" />
+              {/* Header compacto */}
+              <div className="px-3 sm:px-3.5 pt-2.5 pb-2 flex items-center justify-between gap-2">
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <div className={cn('w-7 h-7 rounded-lg flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
+                    <Icon className="icon-sm" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2 flex-wrap">
-                      <span className="font-semibold text-[15px] text-foreground leading-tight">{s.titulo}</span>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <span className="font-medium text-[13px] text-foreground leading-tight">{s.titulo}</span>
                       {semProntuario ? (
-                        <Badge variant="outline" className="text-[10px] gap-1 font-medium border-border/60 text-muted-foreground">
-                          Apoio à decisão
+                        <Badge variant="outline" className="text-[9px] gap-0.5 font-normal border-border/60 text-muted-foreground py- 0 px-1.5">
+                          Apoio
                         </Badge>
                       ) : confirmada && (
-                        <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[10px] gap-1 hover:bg-emerald-500/10 font-medium">
-                          <CheckCircle2 className="icon-xs" /> no Prontuário
+                        <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[9px] gap-0.5 hover:bg-emerald-500/10 font-normal py-0 px-1.5">
+                          <CheckCircle2 className="icon-xs" /> Prontuário
                         </Badge>
                       )}
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5">
-                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente de confirmação')}
+                    <p className="text-[10px] text-muted-foreground leading-tight">
+                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente')}
                     </p>
                   </div>
                 </div>
 
                 {!editandoEsta && (
-                  <div className="flex gap-1.5 shrink-0">
+                  <div className="flex gap-1 shrink--0">
                     <Button
                       size="sm"
                       variant="ghost"
-                      className="h-8 w-8 p-0 rounded-lg text-muted-foreground hover:text-foreground"
+                      className="h-7 w-7 p-0 rounded-md text-muted-foreground hover:text-foreground"
                       onClick={() => iniciarEdicao(s.key)}
                       disabled={savingEsta}
                       title="Editar"
@@ -905,7 +905,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         size="sm"
                         variant={confirmada ? 'outline' : 'default'}
                         className={cn(
-                          'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
+                          'h-7 px-2.5 gap-1 rounded-md text-[11px] font-medium',
                           confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
                         )}
                         onClick={() => toggleConfirmacao(s.key)}
