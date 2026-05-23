@@ -153,6 +153,19 @@ const SECOES: SecaoDef[] = [
       if (!d || typeof d !== 'object') return '';
       const fases = Object.entries(d);
       if (fases.length === 0) return '';
+      const fmtItem = (it: any): string => {
+        if (typeof it === 'string') return it;
+        if (!it || typeof it !== 'object') return String(it ?? '');
+        const nome = it.nome || it.tecnica || it.exercicio || it.titulo || it.name;
+        const evid = it.nivel_evidencia ? ` [${it.nivel_evidencia}]` : '';
+        const lente = it.lente_clinica ? ` — ${it.lente_clinica}` : '';
+        const just = it.justificativa ? `\n        ↳ ${it.justificativa}` : '';
+        if (nome) return `${nome}${evid}${lente}${just}`;
+        // fallback readable
+        return Object.entries(it)
+          .map(([kk, vv]) => `${kk}: ${typeof vv === 'string' ? vv : JSON.stringify(vv)}`)
+          .join(' | ');
+      };
       return fases.map(([k, v]: [string, any]) => {
         const titulo = k.replace(/_/g, ' ').replace(/\bfase\b/i, 'Fase').replace(/^\w/, (c) => c.toUpperCase());
         const exs = v?.exercicios || v?.exercises;
@@ -160,8 +173,8 @@ const SECOES: SecaoDef[] = [
         const parts: string[] = [`▸ ${titulo}`];
         if (v?.objetivo) parts.push(`   Objetivo: ${v.objetivo}`);
         if (v?.frequencia || v?.frequencia_sugerida) parts.push(`   Frequência: ${v.frequencia || v.frequencia_sugerida}`);
-        if (Array.isArray(exs) && exs.length) parts.push(`   Exercícios:\n${exs.map((e: any) => `     • ${typeof e === 'string' ? e : e.nome || JSON.stringify(e)}`).join('\n')}`);
-        if (Array.isArray(tecs) && tecs.length) parts.push(`   Técnicas:\n${tecs.map((t: any) => `     • ${typeof t === 'string' ? t : t.nome || JSON.stringify(t)}`).join('\n')}`);
+        if (Array.isArray(exs) && exs.length) parts.push(`   Exercícios:\n${exs.map((e: any) => `     • ${fmtItem(e)}`).join('\n')}`);
+        if (Array.isArray(tecs) && tecs.length) parts.push(`   Técnicas:\n${tecs.map((t: any) => `     • ${fmtItem(t)}`).join('\n')}`);
         if (v?.criterios_progressao || v?.criterios) parts.push(`   Critérios: ${v.criterios_progressao || v.criterios}`);
         return parts.join('\n');
       }).join('\n\n');
