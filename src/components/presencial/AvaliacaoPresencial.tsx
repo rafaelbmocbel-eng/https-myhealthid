@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Sparkles, Stethoscope } from 'lucide-react';
-import VoiceAssessment from '@/components/voice/VoiceAssessment';
+import AvaliacaoVozHub from '@/components/voice/AvaliacaoVozHub';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
