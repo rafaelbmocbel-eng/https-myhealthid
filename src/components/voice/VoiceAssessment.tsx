@@ -43,6 +43,8 @@ interface VoiceAssessmentProps {
   myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
   /** Lente profissional ativa — define prompt da IA e fica registrada no avaliacoes_voz. */
   perfilProfissional?: string;
+  /** Se fornecido, o salvamento ATUALIZA esse registro existente em avaliacoes_voz em vez de criar um novo. */
+  updateExistingId?: string;
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -112,7 +114,7 @@ const EditableInline = ({
   );
 };
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional, updateExistingId }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -153,9 +155,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const hasRestoredDraftRef = useRef(false);
-  const savedAssessmentIdRef = useRef<string | null>(null);
+  const savedAssessmentIdRef = useRef<string | null>(updateExistingId ?? null);
   const savedNoteIdRef = useRef<string | null>(null);
   const uploadedAudioPathRef = useRef<string | null>(null);
+
+  // Mantém o ID em sincronia caso o pai troque qual avaliação está sendo atualizada
+  useEffect(() => {
+    savedAssessmentIdRef.current = updateExistingId ?? savedAssessmentIdRef.current;
+  }, [updateExistingId]);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
