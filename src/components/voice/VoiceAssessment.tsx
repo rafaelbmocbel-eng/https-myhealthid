@@ -66,6 +66,52 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
+interface EditableInlineProps {
+  field: string;
+  value: string;
+  multiline?: boolean;
+  editingField: string | null;
+  editFieldValue: string;
+  setEditFieldValue: (v: string) => void;
+  onStart: (field: string, value: string) => void;
+  onSave: (field: string) => void;
+  onCancel: () => void;
+}
+
+const EditableInline = ({
+  field, value, multiline,
+  editingField, editFieldValue, setEditFieldValue,
+  onStart, onSave, onCancel,
+}: EditableInlineProps) => {
+  if (editingField === field) {
+    return (
+      <div className="space-y-1">
+        {multiline ? (
+          <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus />
+        ) : (
+          <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
+            className="w-full text-sm border rounded px-2 py-1 bg-background" autoFocus
+            onKeyDown={e => { if (e.key === 'Enter' && !multiline) onSave(field); }}
+          />
+        )}
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => onSave(field)}>
+            <CheckCircle2 className="h-3 w-3 mr-1" />OK
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={onCancel}>Cancelar</Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <span className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group inline-flex items-center gap-1"
+      onClick={() => onStart(field, value)}>
+      {value}
+      <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    </span>
+  );
+};
+
 export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
