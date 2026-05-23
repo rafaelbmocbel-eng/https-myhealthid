@@ -155,9 +155,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const wakeLockRef = useRef<WakeLockSentinel | null>(null);
   const hasRestoredDraftRef = useRef(false);
-  const savedAssessmentIdRef = useRef<string | null>(null);
+  const savedAssessmentIdRef = useRef<string | null>(updateExistingId ?? null);
   const savedNoteIdRef = useRef<string | null>(null);
   const uploadedAudioPathRef = useRef<string | null>(null);
+
+  // Mantém o ID em sincronia caso o pai troque qual avaliação está sendo atualizada
+  useEffect(() => {
+    savedAssessmentIdRef.current = updateExistingId ?? savedAssessmentIdRef.current;
+  }, [updateExistingId]);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
