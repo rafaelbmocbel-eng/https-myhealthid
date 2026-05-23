@@ -35,6 +35,7 @@ import { useEvolucaoPaciente } from '@/hooks/useEvolucaoPaciente';
 import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
+import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
