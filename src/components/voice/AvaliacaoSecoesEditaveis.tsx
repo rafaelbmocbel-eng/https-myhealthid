@@ -138,33 +138,66 @@ const SECOES: SecaoDef[] = [
     builder: (r) => {
       const d = r?.diretriz_tratamento;
       if (!d || typeof d !== 'object') return '';
-      const fases = Object.entries(d);
-      if (fases.length === 0) return '';
-      const fmtItem = (it: any): string => {
+
+      // Ordem fixa das fases para garantir Fase 1 → 2 → 3
+      const FASE_ORDER: Array<{ key: string; label: string }> = [
+        { key: 'fase_1_alivio',  label: 'Fase 1 — Alívio & Proteção' },
+        { key: 'fase_2_carga',   label: 'Fase 2 — Carga Progressiva' },
+        { key: 'fase_3_retorno', label: 'Fase 3 — Retorno Funcional' },
+      ];
+
+      const fmtTecnica = (it: any): string => {
         if (typeof it === 'string') return it;
         if (!it || typeof it !== 'object') return String(it ?? '');
-        const nome = it.nome || it.tecnica || it.exercicio || it.titulo || it.name;
+        const nome = it.tecnica || it.nome || it.exercicio || it.titulo || it.name || '';
         const evid = it.nivel_evidencia ? ` [${it.nivel_evidencia}]` : '';
-        const lente = it.lente_clinica ? ` — ${it.lente_clinica}` : '';
+        const lente = it.lente_clinica ? ` · ${it.lente_clinica}` : '';
+        const dose = it.dosagem ? `\n        💊 ${it.dosagem}` : '';
         const just = it.justificativa ? `\n        ↳ ${it.justificativa}` : '';
-        if (nome) return `${nome}${evid}${lente}${just}`;
+        if (nome) return `${nome}${evid}${lente}${dose}${just}`;
         return Object.entries(it).map(([kk, vv]) => `${kk}: ${typeof vv === 'string' ? vv : JSON.stringify(vv)}`).join(' | ');
       };
-      return fases.map(([k, v]: [string, any]) => {
-        const titulo = k.replace(/_/g, ' ').replace(/\bfase\b/i, 'Fase').replace(/^\w/, (c) => c.toUpperCase());
-        const exs = v?.exercicios || v?.exercises;
-        const tecs = v?.tecnicas || v?.techniques;
-        const parts: string[] = [`▸ ${titulo}`];
-        if (v?.objetivo) parts.push(`   Objetivo: ${v.objetivo}`);
-        if (v?.frequencia || v?.frequencia_sugerida) parts.push(`   Frequência: ${v.frequencia || v.frequencia_sugerida}`);
-        if (Array.isArray(exs) && exs.length) parts.push(`   Exercícios:\n${exs.map((e: any) => `     • ${fmtItem(e)}`).join('\n')}`);
-        if (Array.isArray(tecs) && tecs.length) parts.push(`   Técnicas:\n${tecs.map((t: any) => `     • ${fmtItem(t)}`).join('\n')}`);
-        if (v?.criterios_progressao || v?.criterios) parts.push(`   Critérios: ${v.criterios_progressao || v.criterios}`);
-        return parts.join('\n');
-      }).join('\n\n');
+
+      const blocosFase: string[] = [];
+      FASE_ORDER.forEach(({ key, label }) => {
+        const v = (d as any)[key];
+        if (!v || typeof v !== 'object') return;
+        const parts: string[] = [`▸ ${label}`];
+        if (v.duracao_semanas) parts.push(`   ⏱ Duração: ${v.duracao_semanas}`);
+        if (Array.isArray(v.objetivos) && v.objetivos.length) {
+          parts.push(`   🎯 Objetivos:\n${v.objetivos.map((o: string) => `     • ${o}`).join('\n')}`);
+        } else if (v.objetivo) {
+          parts.push(`   🎯 Objetivo: ${v.objetivo}`);
+        }
+        const tecs = v.tecnicas || v.techniques;
+        if (Array.isArray(tecs) && tecs.length) {
+          parts.push(`   🛠 Técnicas:\n${tecs.map((t: any) => `     • ${fmtTecnica(t)}`).join('\n')}`);
+        }
+        const crit = v.criterios_progressao || v.criterios;
+        if (Array.isArray(crit) && crit.length) {
+          parts.push(`   ✅ Critérios de progressão:\n${crit.map((c: string) => `     • ${c}`).join('\n')}`);
+        } else if (typeof crit === 'string') {
+          parts.push(`   ✅ Critérios de progressão: ${crit}`);
+        }
+        blocosFase.push(parts.join('\n'));
+      });
+
+      // Bloco global no final
+      const finais: string[] = [];
+      if (d.frequencia_sugerida) finais.push(`📅 Frequência sugerida: ${d.frequencia_sugerida}`);
+      if (d.prognostico) finais.push(`🔮 Prognóstico: ${d.prognostico}`);
+      if (Array.isArray(d.criterios_alta) && d.criterios_alta.length) {
+        finais.push(`🏁 Critérios de alta:\n${d.criterios_alta.map((c: string) => `   • ${c}`).join('\n')}`);
+      }
+      if (Array.isArray(d.referencias_chave) && d.referencias_chave.length) {
+        finais.push(`📚 Referências-chave:\n${d.referencias_chave.map((c: string) => `   • ${c}`).join('\n')}`);
+      }
+
+      return [blocosFase.join('\n\n'), finais.join('\n\n')].filter(Boolean).join('\n\n');
     },
   },
 ];
+
 
 // ---------- Renderizador estruturado da Diretriz ----------
 function DiretrizPretty({ diretriz, accent }: { diretriz: any; accent: Accent }) {
