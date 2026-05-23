@@ -31,7 +31,11 @@ type SecaoKey =
   | 'red_flags'
   | 'hipoteses'
   | 'cif'
-  | 'diretriz';
+  | 'diretriz'
+  | 'insights';
+
+// Seções que NÃO podem ser confirmadas no prontuário (apoio à decisão, referência)
+const SECOES_SEM_PRONTUARIO: SecaoKey[] = ['insights'];
 
 // Accent palette (Tailwind classes) per section — keeps a calm, identifiable color identity
 type Accent = {
