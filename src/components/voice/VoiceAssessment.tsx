@@ -43,6 +43,8 @@ interface VoiceAssessmentProps {
   myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
   /** Lente profissional ativa — define prompt da IA e fica registrada no avaliacoes_voz. */
   perfilProfissional?: string;
+  /** Pré-carrega uma avaliação salva (modo edição). Edits subsequentes atualizam o mesmo registro. */
+  initialRecord?: { id: string; resultado: any; transcricao?: string | null };
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
