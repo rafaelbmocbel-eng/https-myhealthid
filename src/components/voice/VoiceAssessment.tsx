@@ -1301,14 +1301,19 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           ) : assessment.red_flags?.length > 0 ? (
             <ul className="space-y-1">
               {assessment.red_flags.map((rf: any, i: number) => (
-                <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
+                <li key={i} className="text-sm text-destructive flex items-start gap-2 group">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span className="flex-1">{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}</span>
+                  <button onClick={() => removeItem(['red_flags'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground italic">Nenhuma red flag identificada</p>
           )}
+
         </SectionCard>
 
         <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
