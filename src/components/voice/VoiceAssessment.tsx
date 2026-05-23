@@ -66,6 +66,52 @@ type Step = 'record' | 'review' | 'result';
 
 const VOICE_DRAFT_VERSION = 1;
 
+interface EditableInlineProps {
+  field: string;
+  value: string;
+  multiline?: boolean;
+  editingField: string | null;
+  editFieldValue: string;
+  setEditFieldValue: (v: string) => void;
+  onStart: (field: string, value: string) => void;
+  onSave: (field: string) => void;
+  onCancel: () => void;
+}
+
+const EditableInline = ({
+  field, value, multiline,
+  editingField, editFieldValue, setEditFieldValue,
+  onStart, onSave, onCancel,
+}: EditableInlineProps) => {
+  if (editingField === field) {
+    return (
+      <div className="space-y-1">
+        {multiline ? (
+          <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus />
+        ) : (
+          <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
+            className="w-full text-sm border rounded px-2 py-1 bg-background" autoFocus
+            onKeyDown={e => { if (e.key === 'Enter' && !multiline) onSave(field); }}
+          />
+        )}
+        <div className="flex gap-1">
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => onSave(field)}>
+            <CheckCircle2 className="h-3 w-3 mr-1" />OK
+          </Button>
+          <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={onCancel}>Cancelar</Button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <span className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group inline-flex items-center gap-1"
+      onClick={() => onStart(field, value)}>
+      {value}
+      <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+    </span>
+  );
+};
+
 export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -862,35 +908,19 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setEditingField(null);
   };
 
-  const EditableInline = ({ field, value, multiline }: { field: string; value: string; multiline?: boolean }) => {
-    if (editingField === field) {
-      return (
-        <div className="space-y-1">
-          {multiline ? (
-            <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus />
-          ) : (
-            <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
-              className="w-full text-sm border rounded px-2 py-1 bg-background" autoFocus
-              onKeyDown={e => { if (e.key === 'Enter' && !multiline) saveFieldEdit(field); }}
-            />
-          )}
-          <div className="flex gap-1">
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit(field)}>
-              <CheckCircle2 className="h-3 w-3 mr-1" />OK
-            </Button>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <span className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group inline-flex items-center gap-1"
-        onClick={() => startEditField(field, value)}>
-        {value}
-        <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-      </span>
-    );
-  };
+  const renderEditable = (field: string, value: string, multiline?: boolean) => (
+    <EditableInline
+      field={field}
+      value={value}
+      multiline={multiline}
+      editingField={editingField}
+      editFieldValue={editFieldValue}
+      setEditFieldValue={setEditFieldValue}
+      onStart={startEditField}
+      onSave={saveFieldEdit}
+      onCancel={() => setEditingField(null)}
+    />
+  );
 
   // ‚îÄ‚îÄ Step 3: Assessment Results ‚îÄ‚îÄ
   if (step === 'result' && assessment) {
@@ -1069,7 +1099,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
 
         <SectionCard icon={FileText} title="Resumo Clínico" sectionKey="resumo" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="text-sm text-muted-foreground leading-relaxed">
-            <EditableInline field="resumo_clinico" value={assessment.resumo_clinico || 'N/I'} multiline />
+            {renderEditable("resumo_clinico", assessment.resumo_clinico || 'N/I', true)}
           </div>
           <div className="flex flex-wrap gap-2 mt-2">
             {assessment.queixa_principal && (
@@ -1087,15 +1117,15 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
           <div className="mt-2">
             <span className="text-xs text-muted-foreground">Classificação: </span>
-            <EditableInline field="classificacao" value={assessment.classificacao_severidade || 'N/I'} />
+            {renderEditable("classificacao", assessment.classificacao_severidade || 'N/I')}
           </div>
         </SectionCard>
 
         <SectionCard icon={Activity} title="Análise da Dor" sectionKey="dor" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="grid grid-cols-2 gap-3 text-sm">
-            <div><span className="text-muted-foreground">Local:</span> <strong><EditableInline field="dor_localizacao" value={assessment.dor?.localizacao || 'N/I'} /></strong></div>
-            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg"><EditableInline field="dor_eva" value={String(assessment.dor?.intensidade_eva ?? 'N/I')} />/10</strong></div>
-            <div><span className="text-muted-foreground">Tipo:</span> <strong><EditableInline field="dor_tipo" value={assessment.dor?.tipo || 'N/I'} /></strong></div>
+            <div><span className="text-muted-foreground">Local:</span> <strong>{renderEditable("dor_localizacao", assessment.dor?.localizacao || 'N/I')}</strong></div>
+            <div><span className="text-muted-foreground">EVA:</span> <strong className="text-lg">{renderEditable("dor_eva", String(assessment.dor?.intensidade_eva ?? 'N/I'))}/10</strong></div>
+            <div><span className="text-muted-foreground">Tipo:</span> <strong>{renderEditable("dor_tipo", assessment.dor?.tipo || 'N/I')}</strong></div>
             <div><span className="text-muted-foreground">Padrão:</span> <strong>{assessment.dor?.padrao_temporal || 'N/I'}</strong></div>
           </div>
           {assessment.dor?.fatores_agravantes?.length > 0 && (
@@ -1123,7 +1153,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         <SectionCard icon={Activity} title="Funcionalidade" sectionKey="funcionalidade" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="mb-2">
             <span className="text-xs text-muted-foreground">Impacto: </span>
-            <EditableInline field="funcionalidade_impacto" value={assessment.funcionalidade?.nivel_impacto || 'N/I'} />
+            {renderEditable("funcionalidade_impacto", assessment.funcionalidade?.nivel_impacto || 'N/I')}
           </div>
           {assessment.funcionalidade?.limitacoes_avds?.length > 0 && (
             <div className="mt-2">
