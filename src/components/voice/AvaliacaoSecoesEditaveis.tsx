@@ -452,13 +452,13 @@ function SoapPretty({ texto }: { texto: string }) {
 }
 
 // ---------- Renderizadores estruturados por seção ----------
-function Field({ label, value, accent }: { label: string; value: React.ReactNode; accent?: Accent }) {
+function Field({ label, value }: { label: string; value: React.ReactNode; accent?: Accent }) {
   return (
-    <div className="flex items-start gap-2.5 py-1.5">
-      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground min-w-[88px] pt-0.5 shrink-0">
+    <div className="flex items-start gap-2.5 py-1">
+      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground min-w-[80px] pt-0.5 shrink-0">
         {label}
       </span>
-      <span className="text-[13px] text-foreground/85 leading-relaxed flex-1">{value}</span>
+      <span className="text-[13px] text-foreground/85 leading-snug flex-1">{value}</span>
     </div>
   );
 }
