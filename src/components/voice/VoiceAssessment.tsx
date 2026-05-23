@@ -180,6 +180,17 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     wakeLockRef.current = null;
   }, []);
 
+  // Bootstrap mode edição: carrega avaliação existente direto em 'result'
+  useEffect(() => {
+    if (!initialRecord || hasRestoredDraftRef.current) return;
+    hasRestoredDraftRef.current = true;
+    savedAssessmentIdRef.current = initialRecord.id;
+    setAssessment(initialRecord.resultado || null);
+    setEditedTranscript(initialRecord.transcricao || '');
+    setIsSaved(true);
+    setStep('result');
+  }, [initialRecord]);
+
   useEffect(() => {
     if (!user || appendMode || hasRestoredDraftRef.current) return;
 
