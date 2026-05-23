@@ -57,6 +57,7 @@ const ACCENTS: Record<SecaoKey, Accent> = {
   hipoteses:      { ring: 'from-amber-400/40 to-amber-500/10',   iconBg: 'bg-amber-500/10',   iconText: 'text-amber-600',   badgeBg: 'bg-amber-500/10',   badgeText: 'text-amber-700',   surface: 'bg-amber-500/[0.04]' },
   cif:            { ring: 'from-indigo-400/40 to-indigo-500/10', iconBg: 'bg-indigo-500/10',  iconText: 'text-indigo-600',  badgeBg: 'bg-indigo-500/10',  badgeText: 'text-indigo-700',  surface: 'bg-indigo-500/[0.04]' },
   diretriz:       { ring: 'from-emerald-400/40 to-emerald-500/10', iconBg: 'bg-emerald-500/10', iconText: 'text-emerald-600', badgeBg: 'bg-emerald-500/10', badgeText: 'text-emerald-700', surface: 'bg-emerald-500/[0.04]' },
+  insights:       { ring: 'from-fuchsia-400/40 to-fuchsia-500/10', iconBg: 'bg-fuchsia-500/10', iconText: 'text-fuchsia-600', badgeBg: 'bg-fuchsia-500/10', badgeText: 'text-fuchsia-700', surface: 'bg-fuchsia-500/[0.04]' },
 };
 
 interface SecaoDef {
