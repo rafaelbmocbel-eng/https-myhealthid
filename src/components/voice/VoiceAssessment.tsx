@@ -862,35 +862,19 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     setEditingField(null);
   };
 
-  const EditableInline = ({ field, value, multiline }: { field: string; value: string; multiline?: boolean }) => {
-    if (editingField === field) {
-      return (
-        <div className="space-y-1">
-          {multiline ? (
-            <Textarea value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)} className="text-sm min-h-[80px]" autoFocus />
-          ) : (
-            <input value={editFieldValue} onChange={e => setEditFieldValue(e.target.value)}
-              className="w-full text-sm border rounded px-2 py-1 bg-background" autoFocus
-              onKeyDown={e => { if (e.key === 'Enter' && !multiline) saveFieldEdit(field); }}
-            />
-          )}
-          <div className="flex gap-1">
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => saveFieldEdit(field)}>
-              <CheckCircle2 className="h-3 w-3 mr-1" />OK
-            </Button>
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setEditingField(null)}>Cancelar</Button>
-          </div>
-        </div>
-      );
-    }
-    return (
-      <span className="cursor-pointer hover:bg-muted/50 rounded px-1 -mx-1 transition-colors group inline-flex items-center gap-1"
-        onClick={() => startEditField(field, value)}>
-        {value}
-        <Edit3 className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
-      </span>
-    );
-  };
+  const renderEditable = (field: string, value: string, multiline?: boolean) => (
+    <EditableInline
+      field={field}
+      value={value}
+      multiline={multiline}
+      editingField={editingField}
+      editFieldValue={editFieldValue}
+      setEditFieldValue={setEditFieldValue}
+      onStart={startEditField}
+      onSave={saveFieldEdit}
+      onCancel={() => setEditingField(null)}
+    />
+  );
 
   // ‚îÄ‚îÄ Step 3: Assessment Results ‚îÄ‚îÄ
   if (step === 'result' && assessment) {
