@@ -1493,9 +1493,25 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             ))}
           </div>
         </SectionCard>
+
+        {pacienteId && (
+          <ProntuarioReviewDialog
+            open={showProntuarioReview}
+            onOpenChange={setShowProntuarioReview}
+            assessment={assessment}
+            pacienteId={pacienteId}
+            servico={serviceType}
+            avaliacaoId={savedAssessmentIdRef.current}
+            noteId={savedNoteIdRef.current}
+            myidContext={myidContext}
+            painMap={painMap}
+            onSaved={(id) => { savedNoteIdRef.current = id; }}
+          />
+        )}
       </div>
     );
   }
+
 
   // ── Step 2: Review & Edit Transcript ──
   if (step === 'review') {
