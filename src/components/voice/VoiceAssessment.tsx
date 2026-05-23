@@ -43,6 +43,8 @@ interface VoiceAssessmentProps {
   myidContext?: { score?: number; delta?: number; criticas?: string[]; data?: string } | null;
   /** Lente profissional ativa — define prompt da IA e fica registrada no avaliacoes_voz. */
   perfilProfissional?: string;
+  /** Pré-carrega uma avaliação salva (modo edição). Edits subsequentes atualizam o mesmo registro. */
+  initialRecord?: { id: string; resultado: any; transcricao?: string | null };
 }
 
 const SERVICE_LABELS: Record<ServiceType, string> = {
@@ -112,7 +114,7 @@ const EditableInline = ({
   );
 };
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional, initialRecord }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
@@ -177,6 +179,17 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     wakeLockRef.current?.release();
     wakeLockRef.current = null;
   }, []);
+
+  // Bootstrap mode edição: carrega avaliação existente direto em 'result'
+  useEffect(() => {
+    if (!initialRecord || hasRestoredDraftRef.current) return;
+    hasRestoredDraftRef.current = true;
+    savedAssessmentIdRef.current = initialRecord.id;
+    setAssessment(initialRecord.resultado || null);
+    setEditedTranscript(initialRecord.transcricao || '');
+    setIsSaved(true);
+    setStep('result');
+  }, [initialRecord]);
 
   useEffect(() => {
     if (!user || appendMode || hasRestoredDraftRef.current) return;
