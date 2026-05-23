@@ -902,7 +902,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               </div>
 
               {/* Content */}
-              <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+              <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+
                 {editandoEsta ? (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                     <Textarea
