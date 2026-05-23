@@ -889,7 +889,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 </div>
 
                 {!editandoEsta && (
-                  <div className="flex gap-1 shrink--0">
+                  <div className="flex gap-1 shrink-0">
                     <Button
                       size="sm"
                       variant="ghost"
