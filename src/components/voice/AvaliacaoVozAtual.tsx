@@ -45,6 +45,8 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
 
   const mode = (latest as any).resultado?._meta?.mode === 'written' ? 'written' : 'voice';
 
+  const hasResult = !!(latest as any).resultado;
+
   return (
     <section className="space-y-4">
       <div className="flex items-center gap-2 text-caption text-muted-foreground">
@@ -53,20 +55,21 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
           Última avaliação — {format(new Date(latest.created_at), "dd/MM/yy 'às' HH:mm", { locale: ptBR })}
         </span>
       </div>
-      <VoiceAssessment
-        key={latest.id}
-        serviceType={serviceType}
-        pacienteId={pacienteId}
-        patientName={patientName}
-        mode={mode as any}
-        initialRecord={{ id: latest.id, resultado: (latest as any).resultado, transcricao: latest.transcricao }}
-      />
-      {(latest as any).resultado && (
+      {hasResult ? (
         <AvaliacaoSecoesEditaveis
           pacienteId={pacienteId}
           avaliacaoId={latest.id}
           resultado={(latest as any).resultado}
           transcricao={(latest as any).transcricao}
+        />
+      ) : (
+        <VoiceAssessment
+          key={latest.id}
+          serviceType={serviceType}
+          pacienteId={pacienteId}
+          patientName={patientName}
+          mode={mode as any}
+          initialRecord={{ id: latest.id, resultado: (latest as any).resultado, transcricao: latest.transcricao }}
         />
       )}
     </section>
