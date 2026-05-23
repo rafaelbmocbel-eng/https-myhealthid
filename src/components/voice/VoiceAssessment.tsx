@@ -192,6 +192,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       recordingTime: number;
       assessment: any;
       expandedSections: Record<string, boolean>;
+      hiddenSections: Record<string, boolean>;
       isSaved: boolean;
     }>(draftKey, VOICE_DRAFT_VERSION).then((draft) => {
       if (!draft) return;
@@ -208,6 +209,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
         plano: true, insights: true,
       });
+      setHiddenSections(draft.hiddenSections ?? {});
       setIsSaved(Boolean(draft.isSaved));
 
       toast({
@@ -215,6 +217,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         description: 'Recuperamos sua avaliação em andamento após o descanso do aparelho.',
       });
     });
+
   }, [appendMode, draftKey, toast, user]);
 
   useEffect(() => {
