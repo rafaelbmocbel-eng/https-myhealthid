@@ -986,3 +986,49 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     </div>
   );
 }
+
+// ---------- Collapse: encurta a janela do card e mostra "Ver mais" ----------
+function SectionCollapse({ children, alwaysOpen = false, collapsedHeight = 132 }: { children: React.ReactNode; alwaysOpen?: boolean; collapsedHeight?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(alwaysOpen);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    if (alwaysOpen) return;
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight > collapsedHeight + 8);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [alwaysOpen, collapsedHeight, children]);
+
+  if (alwaysOpen) return <>{children}</>;
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        style={{ maxHeight: expanded ? undefined : collapsedHeight }}
+        className={cn('overflow-hidden transition-[max-height] duration-300', !expanded && overflowing && 'mask-fade-bottom')}
+      >
+        {children}
+      </div>
+      {!expanded && overflowing && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent rounded-b-lg" />
+      )}
+      {overflowing && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary/80 hover:text-primary"
+        >
+          <ChevronDown className={cn('icon-xs transition-transform', expanded && 'rotate-180')} />
+          {expanded ? 'Ver menos' : 'Ver mais'}
+        </button>
+      )}
+    </div>
+  );
+}
+
