@@ -902,7 +902,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               </div>
 
               {/* Content */}
-              <div className="px-4 sm:px-5 pb-5">
+              <div className="px-5 sm:px-6 pb-5 sm:pb-6">
                 {editandoEsta ? (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                     <Textarea
@@ -927,11 +927,26 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn(
-                    'rounded-lg px-3 py-2.5 text-[12.5px] leading-snug whitespace-pre-wrap text-foreground/85 border border-border/30',
-                    accent.surface
-                  )}>
-                    {textos[s.key]}
+                  <div className={cn('rounded-xl border border-border/30 p-4 sm:p-5', accent.surface)}>
+                    {s.key === 'dor' ? (
+                      <DorPretty data={resultado?.dor} />
+                    ) : s.key === 'funcionalidade' ? (
+                      <ObjPretty data={resultado?.funcionalidade} />
+                    ) : s.key === 'psicossocial' ? (
+                      <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                    ) : s.key === 'red_flags' ? (
+                      <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                    ) : s.key === 'hipoteses' ? (
+                      <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                    ) : s.key === 'cif' ? (
+                      <CifPretty data={resultado?.cif_codes} />
+                    ) : s.key === 'insights' ? (
+                      <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                    ) : s.key === 'resumo_clinico' ? (
+                      <ResumoPretty texto={textos[s.key]} />
+                    ) : (
+                      <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                    )}
                   </div>
                 )}
               </div>
