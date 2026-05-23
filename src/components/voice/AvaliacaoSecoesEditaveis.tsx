@@ -452,13 +452,13 @@ function SoapPretty({ texto }: { texto: string }) {
 }
 
 // ---------- Renderizadores estruturados por seção ----------
-function Field({ label, value, accent }: { label: string; value: React.ReactNode; accent?: Accent }) {
+function Field({ label, value }: { label: string; value: React.ReactNode; accent?: Accent }) {
   return (
-    <div className="flex items-start gap-2.5 py-1.5">
-      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground min-w-[88px] pt-0.5 shrink-0">
+    <div className="flex items-start gap-2.5 py-1">
+      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground min-w-[80px] pt-0.5 shrink-0">
         {label}
       </span>
-      <span className="text-[13px] text-foreground/85 leading-relaxed flex-1">{value}</span>
+      <span className="text-[13px] text-foreground/85 leading-snug flex-1">{value}</span>
     </div>
   );
 }
@@ -846,7 +846,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               <div className={cn('h-1 w-full bg-gradient-to-r', accent.ring)} />
 
               {/* Header */}
-              <div className="px-4 sm:px-5 pt-4 pb-3 flex items-start justify-between gap-3">
+              <div className="px-3.5 sm:px-4 pt-3 pb-2.5 flex items-start justify-between gap-3">
                 <div className="flex items-center gap-3 min-w-0 flex-1">
                   <div className={cn('w-10 h-10 rounded-xl flex items-center justify-center shrink-0', accent.iconBg, accent.iconText)}>
                     <Icon className="icon-md" />
@@ -902,7 +902,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
               </div>
 
               {/* Content */}
-              <div className="px-5 sm:px-6 pb-5 sm:pb-6">
+              <div className="px-3.5 sm:px-4 pb-3.5 sm:pb-4">
+
                 {editandoEsta ? (
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
                     <Textarea
@@ -927,7 +928,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn('rounded-xl border border-border/30 p-4 sm:p-5', accent.surface)}>
+                  <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
                     {s.key === 'dor' ? (
                       <DorPretty data={resultado?.dor} />
                     ) : s.key === 'funcionalidade' ? (
