@@ -247,11 +247,13 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         recordingTime,
         assessment,
         expandedSections,
+        hiddenSections,
         isSaved,
       },
       VOICE_DRAFT_VERSION,
     );
-  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, isSaved, recordingTime, step, transcript, user]);
+  }, [appendMode, assessment, audioBase64, audioMimeType, draftKey, editedTranscript, expandedSections, hiddenSections, isSaved, recordingTime, step, transcript, user]);
+
 
   // Auto-save em edições — após o primeiro save, qualquer alteração é gravada (debounced)
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved'>('idle');
