@@ -840,7 +840,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       </div>
 
       {/* Grid de cards */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-2.5">
         {secoesDisponiveis.map((s) => {
           const accent = ACCENTS[s.key];
           const confirmada = confirmadas.has(s.key);
