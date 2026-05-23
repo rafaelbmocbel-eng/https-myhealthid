@@ -114,7 +114,7 @@ const EditableInline = ({
   );
 };
 
-export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional }: VoiceAssessmentProps) {
+export default function VoiceAssessment({ serviceType, pacienteId, patientName, patientAge, patientSex, onAssessmentComplete, appendMode, onAppendCapture, mode = 'voice', contextPrefix, onPainExtracted, painRegionsCatalog, painMap, myidContext, perfilProfissional, initialRecord }: VoiceAssessmentProps) {
   const { toast } = useToast();
   const { user } = useAuth();
   const queryClient = useQueryClient();
