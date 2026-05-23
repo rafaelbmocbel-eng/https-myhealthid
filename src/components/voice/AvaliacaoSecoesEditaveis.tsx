@@ -201,6 +201,18 @@ const SECOES: SecaoDef[] = [
       return [blocosFase.join('\n\n'), finais.join('\n\n')].filter(Boolean).join('\n\n');
     },
   },
+  {
+    key: 'insights', titulo: 'Insights baseados em evidências', emoji: '💡', Icon: Sparkles,
+    builder: (r) => {
+      const ins = r?.insights_baseados_evidencia;
+      if (!Array.isArray(ins) || ins.length === 0) return '';
+      return ins.map((i: any, idx: number) => {
+        const texto = typeof i === 'string' ? i : (i.insight || i.texto || '');
+        const ref = typeof i === 'object' ? (i.referencia || i.fonte) : null;
+        return `${idx + 1}. ${texto}${ref ? `\n   📖 ${ref}` : ''}`;
+      }).join('\n\n');
+    },
+  },
 ];
 
 
