@@ -975,6 +975,49 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           </div>
         </div>
 
+        {/* ── Banner: como funciona ── */}
+        {pacienteId && (
+          <Card className="border-primary/30 bg-primary/5">
+            <CardContent className="p-3 space-y-2">
+              <div className="flex items-start gap-2 text-xs">
+                <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                <div className="space-y-1 flex-1">
+                  <p className="font-semibold text-foreground">Como editar e enviar ao prontuário</p>
+                  <ul className="text-muted-foreground space-y-0.5">
+                    <li>✏️ <strong>Editar</strong>: clique em qualquer texto destacado, ou use <em>“Editor Completo”</em> para alterar todos os campos.</li>
+                    <li>🗑️ <strong>Excluir seção</strong>: ícone da lixeira no canto direito de cada seção — ela não vai para o prontuário.</li>
+                    <li>📤 <strong>Enviar ao prontuário</strong>: use o botão abaixo para revisar exatamente o que vai (resumo, dor, funcionalidade, hipóteses, CIF, diretriz, mapa de dor…) antes de confirmar.</li>
+                  </ul>
+                </div>
+              </div>
+              {Object.keys(hiddenSections).filter(k => hiddenSections[k]).length > 0 && (
+                <div className="flex items-center justify-between gap-2 pt-2 border-t border-primary/20">
+                  <span className="text-[11px] text-muted-foreground">
+                    {Object.keys(hiddenSections).filter(k => hiddenSections[k]).length} seção(ões) excluída(s) — não irão ao prontuário.
+                  </span>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-[11px]"
+                    onClick={() => { setHiddenSections({}); toast({ title: 'Seções restauradas' }); }}
+                  >
+                    Restaurar todas
+                  </Button>
+                </div>
+              )}
+              <Button
+                size="sm"
+                onClick={() => setShowProntuarioReview(true)}
+                className="w-full bg-primary text-primary-foreground gap-1.5"
+              >
+                <FileText className="h-4 w-4" />
+                {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Revisar e enviar ao prontuário'}
+              </Button>
+            </CardContent>
+          </Card>
+        )}
+
+
         {/* ── Editor Completo (JSON estruturado de toda a avaliação) ── */}
         {showFullEditor && (
           <Card className="border-primary/40 ring-2 ring-primary/20">
