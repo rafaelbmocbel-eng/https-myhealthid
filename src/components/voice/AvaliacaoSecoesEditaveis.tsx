@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -945,27 +946,29 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
-                    {s.key === 'dor' ? (
-                      <DorPretty data={resultado?.dor} />
-                    ) : s.key === 'funcionalidade' ? (
-                      <ObjPretty data={resultado?.funcionalidade} />
-                    ) : s.key === 'psicossocial' ? (
-                      <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
-                    ) : s.key === 'red_flags' ? (
-                      <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
-                    ) : s.key === 'hipoteses' ? (
-                      <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
-                    ) : s.key === 'cif' ? (
-                      <CifPretty data={resultado?.cif_codes} />
-                    ) : s.key === 'insights' ? (
-                      <InsightsPretty data={resultado?.insights_baseados_evidencia} />
-                    ) : s.key === 'resumo_clinico' ? (
-                      <ResumoPretty texto={textos[s.key]} />
-                    ) : (
-                      <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
-                    )}
-                  </div>
+                  <SectionCollapse alwaysOpen={s.key === 'red_flags' || s.key === 'hipoteses'}>
+                    <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
+                      {s.key === 'dor' ? (
+                        <DorPretty data={resultado?.dor} />
+                      ) : s.key === 'funcionalidade' ? (
+                        <ObjPretty data={resultado?.funcionalidade} />
+                      ) : s.key === 'psicossocial' ? (
+                        <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                      ) : s.key === 'red_flags' ? (
+                        <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                      ) : s.key === 'hipoteses' ? (
+                        <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                      ) : s.key === 'cif' ? (
+                        <CifPretty data={resultado?.cif_codes} />
+                      ) : s.key === 'insights' ? (
+                        <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                      ) : s.key === 'resumo_clinico' ? (
+                        <ResumoPretty texto={textos[s.key]} />
+                      ) : (
+                        <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                      )}
+                    </div>
+                  </SectionCollapse>
                 )}
               </div>
             </Card>
@@ -983,3 +986,49 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     </div>
   );
 }
+
+// ---------- Collapse: encurta a janela do card e mostra "Ver mais" ----------
+function SectionCollapse({ children, alwaysOpen = false, collapsedHeight = 132 }: { children: React.ReactNode; alwaysOpen?: boolean; collapsedHeight?: number }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [expanded, setExpanded] = useState(alwaysOpen);
+  const [overflowing, setOverflowing] = useState(false);
+
+  useLayoutEffect(() => {
+    if (alwaysOpen) return;
+    const el = ref.current;
+    if (!el) return;
+    const check = () => setOverflowing(el.scrollHeight > collapsedHeight + 8);
+    check();
+    const ro = new ResizeObserver(check);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [alwaysOpen, collapsedHeight, children]);
+
+  if (alwaysOpen) return <>{children}</>;
+
+  return (
+    <div className="relative">
+      <div
+        ref={ref}
+        style={{ maxHeight: expanded ? undefined : collapsedHeight }}
+        className={cn('overflow-hidden transition-[max-height] duration-300', !expanded && overflowing && 'mask-fade-bottom')}
+      >
+        {children}
+      </div>
+      {!expanded && overflowing && (
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-card to-transparent rounded-b-lg" />
+      )}
+      {overflowing && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1.5 inline-flex items-center gap-1 text-[11px] font-medium text-primary/80 hover:text-primary"
+        >
+          <ChevronDown className={cn('icon-xs transition-transform', expanded && 'rotate-180')} />
+          {expanded ? 'Ver menos' : 'Ver mais'}
+        </button>
+      )}
+    </div>
+  );
+}
+
