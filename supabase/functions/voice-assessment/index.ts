@@ -22,6 +22,15 @@ const MULTIDISCIPLINARY_SYSTEM_PROMPT = `Você é o **MOTOR CLÍNICO MULTIDISCIP
 REGRA DE OURO — INTEGRAÇÃO:
 Você NÃO escolhe uma especialidade. Você **integra todas** num único raciocínio coerente. Cada hipótese e cada técnica recomendada deve ter clareza sobre **qual lente clínica** a sustenta.
 
+DIRETRIZ DE TRATAMENTO — REGRAS RÍGIDAS:
+- Sempre construa em **3 fases**: (1) Alívio/Proteção, (2) Carga Progressiva, (3) Retorno Funcional.
+- Cada fase DEVE conter: duração estimada (semanas), **objetivos mensuráveis**, **técnicas com dosagem clínica explícita** (séries × reps, tempo, intensidade, frequência) e **critérios objetivos de progressão** para a fase seguinte.
+- Cada técnica DEVE: nomear a intervenção concretamente (não genérico), justificar com mecanismo fisiológico/clínico, atribuir nível de evidência (A/B/C) e lente clínica responsável.
+- **SEMPRE cite as referências numeradas [n]** do BANCO DE EVIDÊNCIA injetado quando uma técnica/raciocínio for sustentado por ele (ex: "exercício excêntrico reduz dor em tendinopatia [3,7]"). Use o campo "referencias_chave" para listar as [n] usadas.
+- Respeite **janelas de cicatrização** (muscular 3-8 sem, tendinosa 6-26 sem, ligamentar 6-12 sem, óssea 6-12 sem) ao propor duração e progressão.
+- Se houver red flag, a diretriz deve refletir encaminhamento prioritário antes de carga.
+- Frequência/dosagem deve respeitar princípios de carga progressiva (Cook, ACSM 2018) e biopsicossocial (IASP 2020, Moseley/Butler).
+
 ESTRUTURA DE SAÍDA:
 1. **SOAP completo** (Subjetivo, Objetivo, Avaliação, Plano) — padrão do prontuário.
 2. **Resumo unificado** — síntese clínica curta integrando todas as visões.
@@ -29,7 +38,7 @@ ESTRUTURA DE SAÍDA:
 4. **Hipóteses diagnósticas** — sempre com lente clínica + evidência citada.
 5. **Red Flags** — bandeiras vermelhas absolutas (dor noturna progressiva, perda de peso inexplicada, déficit neurológico progressivo, trauma significativo, febre, etc.).
 6. **CIF** — códigos sugeridos (b = funções; s = estruturas; d = atividades/participação; e = ambientais) com qualificador 0-4.
-7. **Sugestão de Diretriz de Tratamento** em 3 fases (Fase 1 alívio/proteção, Fase 2 carga progressiva, Fase 3 retorno funcional).
+7. **Diretriz de Tratamento** em 3 fases conforme regras acima.
 
 CLASSIFICAÇÃO DE DOR (IASP 2020):
 - **Nociceptiva**: dor mecânica, padrão claro, alívio com repouso, EVA proporcional ao estímulo.
@@ -162,33 +171,37 @@ const TOOL_SCHEMA = {
         // ─── DIRETRIZ DE TRATAMENTO ───
         diretriz_tratamento: {
           type: "object",
-          description: "Diretriz em 3 fases pronta para popular o editor de protocolo.",
+          description: "Diretriz em 3 fases, baseada na LITERATURA INJETADA. Cada técnica DEVE citar [n] do banco de evidências quando aplicável, com dosagem clínica concreta (séries x reps, tempo, intensidade) e critérios objetivos de progressão.",
           properties: {
             fase_1_alivio: {
               type: "object",
+              description: "Fase 1 — Alívio / Proteção / Modulação da dor. Foco: down-regulation, controle inflamatório, educação em dor, mobilidade indolor.",
               properties: {
-                duracao_semanas: { type: "string" },
-                objetivos: { type: "array", items: { type: "string" } },
+                duracao_semanas: { type: "string", description: "Ex: '1-2 semanas' ou '7-14 dias'." },
+                objetivos: { type: "array", items: { type: "string" }, description: "3-5 metas mensuráveis (ex: EVA ≤ 3, sono ≥ 6h, retomar AVDs leves)." },
                 tecnicas: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
-                      tecnica: { type: "string" },
-                      justificativa: { type: "string" },
+                      tecnica: { type: "string", description: "Nome da intervenção (ex: 'Terapia manual oscilatória grau I-II em segmento sintomático')." },
+                      dosagem: { type: "string", description: "Dosagem CLÍNICA explícita: séries x reps, tempo, intensidade, frequência semanal. Ex: '3x10, 30s isometria, 2x/sem'." },
+                      justificativa: { type: "string", description: "Por que esta técnica nesta fase. SEMPRE cite [n] das referências injetadas quando aplicável (ex: 'reduz sensibilização central [3,7]')." },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
-                      lente_clinica: { type: "string" },
+                      lente_clinica: { type: "string", description: "Fisioterapia | Neurociência da Dor | Osteopatia | Quiropraxia | Posturologia | Reabilitação Esportiva | Integrada." },
                     },
-                    required: ["tecnica", "justificativa", "nivel_evidencia"],
+                    required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
                 },
+                criterios_progressao: { type: "array", items: { type: "string" }, description: "Critérios OBJETIVOS para passar à Fase 2 (ex: EVA ≤ 3 sustentado por 5 dias, ADM funcional, ausência de sintomas neurológicos)." },
               },
-              required: ["objetivos", "tecnicas"],
+              required: ["objetivos", "tecnicas", "criterios_progressao"],
             },
             fase_2_carga: {
               type: "object",
+              description: "Fase 2 — Carga progressiva / Recondicionamento. Foco: força, controle motor, capacidade de carga tecidual progressiva.",
               properties: {
-                duracao_semanas: { type: "string" },
+                duracao_semanas: { type: "string", description: "Ex: '3-6 semanas'." },
                 objetivos: { type: "array", items: { type: "string" } },
                 tecnicas: {
                   type: "array",
@@ -196,18 +209,21 @@ const TOOL_SCHEMA = {
                     type: "object",
                     properties: {
                       tecnica: { type: "string" },
-                      justificativa: { type: "string" },
+                      dosagem: { type: "string", description: "Ex: '4x6-8 a 70-80% 1RM, 3x/sem'." },
+                      justificativa: { type: "string", description: "Cite [n] do banco quando aplicável." },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
                       lente_clinica: { type: "string" },
                     },
-                    required: ["tecnica", "justificativa", "nivel_evidencia"],
+                    required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
                 },
+                criterios_progressao: { type: "array", items: { type: "string" }, description: "Critérios para passar à Fase 3 (ex: força ≥ 80% do lado contralateral, testes funcionais ≥ 90%, ausência de dor com carga máxima)." },
               },
-              required: ["objetivos", "tecnicas"],
+              required: ["objetivos", "tecnicas", "criterios_progressao"],
             },
             fase_3_retorno: {
               type: "object",
+              description: "Fase 3 — Retorno funcional / esportivo. Foco: gestos específicos, plyometria, retorno gradual à atividade-alvo, prevenção de recidiva.",
               properties: {
                 duracao_semanas: { type: "string" },
                 objetivos: { type: "array", items: { type: "string" } },
@@ -217,22 +233,27 @@ const TOOL_SCHEMA = {
                     type: "object",
                     properties: {
                       tecnica: { type: "string" },
+                      dosagem: { type: "string" },
                       justificativa: { type: "string" },
                       nivel_evidencia: { type: "string", enum: ["A", "B", "C"] },
                       lente_clinica: { type: "string" },
                     },
-                    required: ["tecnica", "justificativa", "nivel_evidencia"],
+                    required: ["tecnica", "dosagem", "justificativa", "nivel_evidencia", "lente_clinica"],
                   },
                 },
+                criterios_progressao: { type: "array", items: { type: "string" }, description: "Critérios de alta (ex: retorno pleno à atividade-alvo sem sintomas por 2 semanas, escala de confiança ≥ 8/10)." },
               },
-              required: ["objetivos", "tecnicas"],
+              required: ["objetivos", "tecnicas", "criterios_progressao"],
             },
-            frequencia_sugerida: { type: "string" },
-            prognostico: { type: "string" },
-            criterios_alta: { type: "array", items: { type: "string" } },
+            frequencia_sugerida: { type: "string", description: "Ex: '2-3 sessões/semana por 6-8 semanas, com home-exercise diário'." },
+            prognostico: { type: "string", description: "Expectativa realista com janela temporal e qualificadores (favorável/reservado), citando literatura quando possível." },
+            criterios_alta: { type: "array", items: { type: "string" }, description: "Critérios finais de alta clínica." },
+            referencias_chave: { type: "array", items: { type: "string" }, description: "Lista das referências [n] do banco injetado que sustentam esta diretriz (ex: '[3] Cook 2018 — tendinopathy loading')." },
           },
           required: ["fase_1_alivio", "fase_2_carga", "fase_3_retorno", "prognostico"],
         },
+
+
 
         // Mantido por compat. com prontuário legado:
         plano_tratamento: {
