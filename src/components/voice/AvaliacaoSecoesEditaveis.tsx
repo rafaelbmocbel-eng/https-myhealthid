@@ -945,27 +945,29 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                 ) : s.key === 'soap' ? (
                   <SoapPretty texto={textos[s.key]} />
                 ) : (
-                  <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
-                    {s.key === 'dor' ? (
-                      <DorPretty data={resultado?.dor} />
-                    ) : s.key === 'funcionalidade' ? (
-                      <ObjPretty data={resultado?.funcionalidade} />
-                    ) : s.key === 'psicossocial' ? (
-                      <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
-                    ) : s.key === 'red_flags' ? (
-                      <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
-                    ) : s.key === 'hipoteses' ? (
-                      <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
-                    ) : s.key === 'cif' ? (
-                      <CifPretty data={resultado?.cif_codes} />
-                    ) : s.key === 'insights' ? (
-                      <InsightsPretty data={resultado?.insights_baseados_evidencia} />
-                    ) : s.key === 'resumo_clinico' ? (
-                      <ResumoPretty texto={textos[s.key]} />
-                    ) : (
-                      <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
-                    )}
-                  </div>
+                  <SectionCollapse alwaysOpen={s.key === 'red_flags' || s.key === 'hipoteses'}>
+                    <div className={cn('rounded-lg border border-border/30 px-3 py-2.5 sm:px-3.5 sm:py-3', accent.surface)}>
+                      {s.key === 'dor' ? (
+                        <DorPretty data={resultado?.dor} />
+                      ) : s.key === 'funcionalidade' ? (
+                        <ObjPretty data={resultado?.funcionalidade} />
+                      ) : s.key === 'psicossocial' ? (
+                        <ObjPretty data={resultado?.fatores_psicossociais || resultado?.psicossocial} />
+                      ) : s.key === 'red_flags' ? (
+                        <RedFlagsPretty data={resultado?.red_flags || resultado?.redflags} />
+                      ) : s.key === 'hipoteses' ? (
+                        <HipotesesPretty data={resultado?.hipoteses_diagnosticas} />
+                      ) : s.key === 'cif' ? (
+                        <CifPretty data={resultado?.cif_codes} />
+                      ) : s.key === 'insights' ? (
+                        <InsightsPretty data={resultado?.insights_baseados_evidencia} />
+                      ) : s.key === 'resumo_clinico' ? (
+                        <ResumoPretty texto={textos[s.key]} />
+                      ) : (
+                        <p className="text-[13px] leading-relaxed text-foreground/85 whitespace-pre-wrap">{textos[s.key]}</p>
+                      )}
+                    </div>
+                  </SectionCollapse>
                 )}
               </div>
             </Card>
