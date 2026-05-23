@@ -247,6 +247,55 @@ function DiretrizPretty({ diretriz, accent }: { diretriz: any; accent: Accent })
     </div>
   );
 }
+// ---------- Diretriz: cada fase com cor própria (1 vermelha, 2 amarela, 3 verde) ----------
+const FASE_THEMES = [
+  { ring: 'from-red-400/60 to-red-500/10',       chip: 'bg-red-500/10 text-red-700 border-red-500/20',         num: 'bg-red-500/10 text-red-600',         label: 'Fase 1' },
+  { ring: 'from-amber-400/60 to-amber-500/10',   chip: 'bg-amber-500/10 text-amber-700 border-amber-500/20',   num: 'bg-amber-500/10 text-amber-600',     label: 'Fase 2' },
+  { ring: 'from-emerald-400/60 to-emerald-500/10', chip: 'bg-emerald-500/10 text-emerald-700 border-emerald-500/20', num: 'bg-emerald-500/10 text-emerald-600', label: 'Fase 3' },
+];
+
+function DiretrizFases({ texto }: { texto: string }) {
+  if (!texto?.trim()) return null;
+  // Divide por marcador "▸ " que separa as fases
+  const partes = texto.split(/\n?▸\s/).filter((p) => p.trim().length > 0);
+  if (partes.length === 0) {
+    return (
+      <div className="rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30 bg-emerald-500/[0.04]">
+        {texto}
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-3">
+      {partes.map((bloco, idx) => {
+        const linhas = bloco.split('\n');
+        const titulo = linhas[0]?.trim() || `Fase ${idx + 1}`;
+        const corpo = linhas.slice(1).join('\n').trim();
+        const tema = FASE_THEMES[idx] || FASE_THEMES[FASE_THEMES.length - 1];
+        return (
+          <div key={idx} className="relative rounded-xl border border-border/40 bg-card/60 p-3.5 pl-4 overflow-hidden">
+            <div className={cn('absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b', tema.ring)} />
+            <div className="flex items-center gap-2 mb-2">
+              <span className={cn('inline-flex items-center justify-center w-6 h-6 rounded-md text-[11px] font-bold shrink-0', tema.num)}>
+                {idx + 1}
+              </span>
+              <span className="font-semibold text-sm text-foreground truncate">{titulo}</span>
+              <span className={cn('ml-auto inline-flex items-center rounded-md border px-1.5 py-0.5 text-[10px] font-medium', tema.chip)}>
+                {tema.label}
+              </span>
+            </div>
+            {corpo && (
+              <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80 pl-1">
+                {corpo}
+              </div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 
 export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
   const { user } = useAuth();
@@ -503,6 +552,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                       </Button>
                     </div>
                   </div>
+                ) : s.key === 'diretriz' ? (
+                  <DiretrizFases texto={textos[s.key]} />
                 ) : (
                   <div className={cn(
                     'rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30',
