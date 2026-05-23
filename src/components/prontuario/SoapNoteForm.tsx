@@ -58,7 +58,6 @@ export function buildSoapFromVoice(voice: any, transcricao?: string): { subjecti
     plano.exercicios && `Exercícios: ${Array.isArray(plano.exercicios) ? plano.exercicios.join(', ') : plano.exercicios}`,
     plano.frequencia && `Frequência: ${plano.frequencia}`,
     plano.orientacoes && `Orientações: ${Array.isArray(plano.orientacoes) ? plano.orientacoes.join(', ') : plano.orientacoes}`,
-    insights.length > 0 && `\nInsights baseados em evidências:\n${insights.slice(0, 3).map((i: any) => `  • ${i.insight || i} ${i.referencia ? `(${i.referencia})` : ''}`).join('\n')}`,
   ].filter(Boolean).join('\n') || 'Conduta a definir conforme reavaliação.';
 
   return { subjectivo, objetivo, avaliacao, plano: planoTexto };
