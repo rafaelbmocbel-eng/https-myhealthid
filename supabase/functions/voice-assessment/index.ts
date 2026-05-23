@@ -535,13 +535,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: activeSystemPrompt },
           { role: "user", content: userContent },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
+        max_completion_tokens: 16384,
       }),
     });
 
