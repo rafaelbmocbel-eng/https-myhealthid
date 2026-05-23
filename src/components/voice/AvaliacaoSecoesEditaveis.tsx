@@ -289,9 +289,13 @@ const FASE_THEMES = [
 
 function DiretrizFases({ texto }: { texto: string }) {
   if (!texto?.trim()) return null;
-  // Divide por marcador "▸ " que separa as fases
-  const partes = texto.split(/\n?▸\s/).filter((p) => p.trim().length > 0);
-  if (partes.length === 0) {
+  // Separa rodapé global (não começa com ▸) das fases
+  const idxPrimeiroRodape = texto.search(/\n(?:📅|🔮|🏁|📚)/);
+  const corpoFases = idxPrimeiroRodape >= 0 ? texto.slice(0, idxPrimeiroRodape) : texto;
+  const rodape = idxPrimeiroRodape >= 0 ? texto.slice(idxPrimeiroRodape).trim() : '';
+
+  const partes = corpoFases.split(/\n?▸\s/).filter((p) => p.trim().length > 0);
+  if (partes.length === 0 && !rodape) {
     return (
       <div className="rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30 bg-emerald-500/[0.04]">
         {texto}
@@ -325,9 +329,15 @@ function DiretrizFases({ texto }: { texto: string }) {
           </div>
         );
       })}
+      {rodape && (
+        <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
+          {rodape}
+        </div>
+      )}
     </div>
   );
 }
+
 
 
 export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resultado, transcricao }: Props) {
