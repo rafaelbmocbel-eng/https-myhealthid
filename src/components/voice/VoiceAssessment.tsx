@@ -618,11 +618,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   };
 
   const removeSection = (key: string) => {
-    if (!confirm('Excluir esta seção da avaliação? Você pode reprocessar com a IA depois para regenerá-la.')) return;
+    if (!confirm('Excluir esta seção da avaliação? Ela não irá para o prontuário. Você pode reprocessar com a IA depois para regenerá-la.')) return;
     setHiddenSections(prev => ({ ...prev, [key]: true }));
     if (assessment) {
       const updated = { ...assessment };
-      const fieldMap: Record<string, string | string[]> = {
+      const fieldMap: Record<string, string> = {
         soap: 'soap',
         resumo: 'resumo_clinico',
         dor: 'dor',
@@ -637,13 +637,14 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         insights: 'insights_baseados_evidencia',
       };
       const f = fieldMap[key];
-      if (f && typeof f === 'string') {
+      if (f) {
         delete updated[f];
         setAssessment(updated);
         setIsSaved(false);
       }
     }
   };
+
 
   const copyAssessment = () => {
     if (!assessment) return;
