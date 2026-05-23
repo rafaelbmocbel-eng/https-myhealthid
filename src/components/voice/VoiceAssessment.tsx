@@ -1336,13 +1336,17 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           ) : (
             <div className="space-y-3">
               {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
-                <div key={i} className="border border-border/50 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
+                <div key={i} className="border border-border/50 rounded-lg p-3 relative group">
+                  <button onClick={() => removeItem(['hipoteses_diagnosticas'], i)} className="absolute top-2 right-2 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir hipótese">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="flex items-center justify-between pr-6">
                     <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
                     <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
                       {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
                     </Badge>
                   </div>
+
                   {h.lente_clinica && (
                     <Badge variant="outline" className="text-[10px] mt-1 border-primary/30 text-primary">
                       <Sparkles className="h-2.5 w-2.5 mr-1" />{h.lente_clinica}
