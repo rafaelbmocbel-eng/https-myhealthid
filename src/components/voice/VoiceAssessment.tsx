@@ -1532,7 +1532,14 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
               <ul className="text-sm space-y-1 mt-1">
-                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => <li key={i}>• {typeof o === 'string' ? o : JSON.stringify(o)}</li>)}
+                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => (
+                  <li key={i} className="flex items-start gap-1.5 group">
+                    <span className="flex-1">• {typeof o === 'string' ? o : JSON.stringify(o)}</span>
+                    <button onClick={() => removeItem(['plano_tratamento', 'objetivos_curto_prazo'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir objetivo">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -1541,8 +1548,11 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <span className="text-xs font-semibold text-muted-foreground uppercase">Técnicas Recomendadas</span>
               <div className="space-y-2 mt-1">
                 {assessment.plano_tratamento.tecnicas_recomendadas.map((t: any, i: number) => (
-                  <div key={i} className="bg-secondary/50 rounded-lg p-2">
-                    <div className="flex items-center justify-between">
+                  <div key={i} className="bg-secondary/50 rounded-lg p-2 relative group">
+                    <button onClick={() => removeItem(['plano_tratamento', 'tecnicas_recomendadas'], i)} className="absolute top-1.5 right-1.5 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir técnica">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                    <div className="flex items-center justify-between pr-5">
                       <span className="font-medium text-sm">{t.tecnica}</span>
                       <Badge variant="outline" className="text-xs">Nível {t.nivel_evidencia}</Badge>
                     </div>
@@ -1558,17 +1568,40 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="space-y-3">
             {assessment.insights_baseados_evidencia?.map((ins: any, i: number) => (
-              <div key={i} className="border-l-2 border-primary/40 pl-3">
-                <p className="text-sm font-medium">{ins.insight}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <BookOpen className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground italic">{ins.referencia}</span>
-                  <Badge variant="outline" className="text-xs ml-auto">{ins.relevancia_clinica}</Badge>
+              <div key={i} className="border-l-2 border-primary/40 pl-3 flex items-start gap-2 group">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{ins.insight}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <BookOpen className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground italic">{ins.referencia}</span>
+                    <Badge variant="outline" className="text-xs ml-auto">{ins.relevancia_clinica}</Badge>
+                  </div>
                 </div>
+                <button onClick={() => removeItem(['insights_baseados_evidencia'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-1" title="Excluir insight">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
         </SectionCard>
+
+        {/* ── CTA FINAL — Confirmar avaliação e enviar ao prontuário ── */}
+        {pacienteId && (
+          <div className="sticky bottom-2 z-10 rounded-xl border border-primary/40 bg-card/95 backdrop-blur shadow-lg p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>Revise os itens acima. Use a lixeira para remover o que não deve ir ao prontuário.</span>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => setShowProntuarioReview(true)}
+              className="w-full bg-primary text-primary-foreground gap-2 h-12 text-sm font-semibold"
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Confirmar avaliação e enviar ao prontuário'}
+            </Button>
+          </div>
+        )}
 
         {pacienteId && (
           <ProntuarioReviewDialog
@@ -1576,6 +1609,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             onOpenChange={setShowProntuarioReview}
             assessment={assessment}
             pacienteId={pacienteId}
+
             servico={serviceType}
             avaliacaoId={savedAssessmentIdRef.current}
             noteId={savedNoteIdRef.current}
