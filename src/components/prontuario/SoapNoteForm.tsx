@@ -44,12 +44,13 @@ export function buildSoapFromVoice(voice: any, transcricao?: string): { subjecti
     red?.length > 0 && `⚠️ Red Flags: ${(Array.isArray(red) ? red : [red]).map((r: any) => r.descricao || r).join('; ')}`,
   ].filter(Boolean).join('\n') || 'Achados objetivos a complementar no exame físico.';
 
-  const avaliacao = [
-    a.resumo_clinico && `Resumo clínico: ${a.resumo_clinico}`,
-    hipoteses.length > 0 && `Hipóteses diagnósticas:\n${hipoteses.slice(0, 3).map((h: any, i: number) => `  ${i + 1}. ${h.diagnostico} (${h.probabilidade || 'N/I'}) — ${h.evidencia || ''}`).join('\n')}`,
-    a.mecanismo_dor && `Mecanismo de dor: ${a.mecanismo_dor}`,
-    a.prognostico && `Prognóstico: ${a.prognostico}`,
-  ].filter(Boolean).join('\n');
+  // Prefer the short AI-generated SOAP avaliação (3-4 linhas). Hipóteses ficam em card próprio.
+  const avaliacao = (a.soap?.avaliacao && String(a.soap.avaliacao).trim())
+    ? String(a.soap.avaliacao).trim()
+    : [
+        a.resumo_clinico && `Resumo: ${a.resumo_clinico}`,
+        a.prognostico && `Prognóstico: ${a.prognostico}`,
+      ].filter(Boolean).join('\n');
 
   const planoTexto = [
     diretriz.objetivo && `Objetivo terapêutico: ${diretriz.objetivo}`,
