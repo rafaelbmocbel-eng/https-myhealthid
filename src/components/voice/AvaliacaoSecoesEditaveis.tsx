@@ -597,9 +597,11 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                   </div>
                 ) : s.key === 'diretriz' ? (
                   <DiretrizFases texto={textos[s.key]} />
+                ) : s.key === 'soap' ? (
+                  <SoapPretty texto={textos[s.key]} />
                 ) : (
                   <div className={cn(
-                    'rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30',
+                    'rounded-lg px-3 py-2.5 text-[12.5px] leading-snug whitespace-pre-wrap text-foreground/85 border border-border/30',
                     accent.surface
                   )}>
                     {textos[s.key]}
