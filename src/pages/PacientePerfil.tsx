@@ -36,6 +36,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
 import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
+import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
 import ProntuarioTimeline from '@/components/paciente/ProntuarioTimeline';
