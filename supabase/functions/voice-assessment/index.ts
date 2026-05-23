@@ -535,13 +535,14 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
+        model: "google/gemini-2.5-pro",
         messages: [
           { role: "system", content: activeSystemPrompt },
           { role: "user", content: userContent },
         ],
         tools: [TOOL_SCHEMA],
         tool_choice: { type: "function", function: { name: "generate_clinical_assessment" } },
+        max_completion_tokens: 16384,
       }),
     });
 
@@ -574,10 +575,26 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const toolCall = data.choices?.[0]?.message?.tool_calls?.[0];
-    if (!toolCall) throw new Error("Resposta da IA sem dados estruturados");
+    const choice = data.choices?.[0];
+    const finishReason = choice?.finish_reason;
+    const toolCall = choice?.message?.tool_calls?.[0];
+    if (!toolCall) {
+      console.error("[voice-assessment] sem tool_calls. finish_reason:", finishReason, "raw:", JSON.stringify(data).slice(0, 800));
+      throw new Error(finishReason === "length"
+        ? "A IA atingiu o limite de tokens antes de concluir a avaliação. Tente novamente."
+        : "Resposta da IA sem dados estruturados");
+    }
 
-    const assessment = JSON.parse(toolCall.function.arguments);
+    let assessment: any;
+    try {
+      assessment = JSON.parse(toolCall.function.arguments);
+    } catch (parseErr) {
+      console.error("[voice-assessment] JSON inválido (provável truncamento). finish_reason:", finishReason);
+      throw new Error("A IA gerou uma resposta incompleta (provavelmente cortada por limite de tokens). Tente novamente — o limite foi aumentado.");
+    }
+    if (finishReason === "length") {
+      console.warn("[voice-assessment] resposta possivelmente truncada (finish_reason=length)");
+    }
 
     // Prefer the faithful transcript (Pass 1 / user-provided) so that the
     // shown text doesn't shrink after structuring. Fallback to whatever the
