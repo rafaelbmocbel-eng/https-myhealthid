@@ -5,6 +5,7 @@ import { Loader2, FileText } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import VoiceAssessment from './VoiceAssessment';
+import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
 
 interface Props {
   pacienteId: string;
