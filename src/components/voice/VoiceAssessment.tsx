@@ -652,6 +652,39 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
     }
   };
 
+  // Remove individual item from a nested array path (e.g. ['hipoteses_diagnosticas'] or ['diretriz_tratamento','fase_1_alivio','tecnicas'])
+  const removeItem = (path: string[], index: number) => {
+    if (!assessment) return;
+    const updated = JSON.parse(JSON.stringify(assessment));
+    let target: any = updated;
+    for (let i = 0; i < path.length - 1; i++) {
+      target = target?.[path[i]];
+      if (!target) return;
+    }
+    const lastKey = path[path.length - 1];
+    const arr = target[lastKey];
+    if (!Array.isArray(arr)) return;
+    arr.splice(index, 1);
+    setAssessment(updated);
+    setIsSaved(false);
+  };
+
+  // Remove a key from a nested object (for raciocinio_multidisciplinar entries)
+  const removeObjectKey = (path: string[], key: string) => {
+    if (!assessment) return;
+    const updated = JSON.parse(JSON.stringify(assessment));
+    let target: any = updated;
+    for (let i = 0; i < path.length; i++) {
+      target = target?.[path[i]];
+      if (!target) return;
+    }
+    delete target[key];
+    setAssessment(updated);
+    setIsSaved(false);
+  };
+
+
+
 
   const copyAssessment = () => {
     if (!assessment) return;
@@ -1268,14 +1301,19 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           ) : assessment.red_flags?.length > 0 ? (
             <ul className="space-y-1">
               {assessment.red_flags.map((rf: any, i: number) => (
-                <li key={i} className="text-sm text-destructive flex items-start gap-2">
-                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}
+                <li key={i} className="text-sm text-destructive flex items-start gap-2 group">
+                  <AlertTriangle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span className="flex-1">{typeof rf === 'string' ? rf : (rf?.diagnostico || rf?.descricao || JSON.stringify(rf))}</span>
+                  <button onClick={() => removeItem(['red_flags'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </li>
               ))}
             </ul>
           ) : (
             <p className="text-xs text-muted-foreground italic">Nenhuma red flag identificada</p>
           )}
+
         </SectionCard>
 
         <SectionCard icon={Stethoscope} title="Hipóteses Diagnósticas" sectionKey="hipoteses" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
@@ -1298,13 +1336,17 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
           ) : (
             <div className="space-y-3">
               {assessment.hipoteses_diagnosticas?.map((h: any, i: number) => (
-                <div key={i} className="border border-border/50 rounded-lg p-3">
-                  <div className="flex items-center justify-between">
+                <div key={i} className="border border-border/50 rounded-lg p-3 relative group">
+                  <button onClick={() => removeItem(['hipoteses_diagnosticas'], i)} className="absolute top-2 right-2 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir hipótese">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="flex items-center justify-between pr-6">
                     <span className="font-medium text-sm">{typeof h.diagnostico === 'string' ? h.diagnostico : JSON.stringify(h.diagnostico)}</span>
                     <Badge variant={h.probabilidade === 'Alta' ? 'default' : 'outline'} className="text-xs">
                       {typeof h.probabilidade === 'string' ? h.probabilidade : JSON.stringify(h.probabilidade)}
                     </Badge>
                   </div>
+
                   {h.lente_clinica && (
                     <Badge variant="outline" className="text-[10px] mt-1 border-primary/30 text-primary">
                       <Sparkles className="h-2.5 w-2.5 mr-1" />{h.lente_clinica}
@@ -1334,12 +1376,16 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 const value = assessment.raciocinio_multidisciplinar?.[key];
                 if (!value) return null;
                 return (
-                  <div key={key} className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                    <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
+                  <div key={key} className="rounded-lg border border-border/50 bg-muted/30 p-3 relative group">
+                    <button onClick={() => removeObjectKey(['raciocinio_multidisciplinar'], key)} className="absolute top-2 right-2 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <p className="text-xs font-semibold text-foreground mb-1 pr-5">{label}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{value}</p>
                   </div>
                 );
               })}
+
             </div>
           </SectionCard>
         )}
@@ -1350,7 +1396,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <p className="text-xs text-muted-foreground mb-2 italic">Classificação Internacional de Funcionalidade — qualificador 0 (sem problema) a 4 (completo).</p>
             <div className="space-y-1.5">
               {assessment.cif_codes.map((c: any, i: number) => (
-                <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
+                <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/30 transition-colors group">
                   <Badge variant="outline" className="text-[10px] font-mono shrink-0 mt-0.5">{c.codigo}</Badge>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">{c.descricao}</p>
@@ -1361,11 +1407,15 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       <span className="text-[10px] font-medium text-foreground">Q{c.qualificador}</span>
                     </div>
                   </div>
+                  <button onClick={() => removeItem(['cif_codes'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0" title="Excluir código CIF">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
           </SectionCard>
         )}
+
 
         {/* ── DIRETRIZ DE TRATAMENTO EM 3 FASES ── */}
         {assessment.diretriz_tratamento && (
@@ -1388,15 +1438,25 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       <div className="mb-2">
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Objetivos</p>
                         <ul className="text-xs text-muted-foreground space-y-0.5">
-                          {fase.objetivos.map((o: string, i: number) => <li key={i}>• {o}</li>)}
+                          {fase.objetivos.map((o: string, i: number) => (
+                            <li key={i} className="flex items-start gap-1.5 group">
+                              <span className="flex-1">• {o}</span>
+                              <button onClick={() => removeItem(['diretriz_tratamento', key, 'objetivos'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir objetivo">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </li>
+                          ))}
                         </ul>
                       </div>
                     )}
                     {fase.tecnicas?.length > 0 && (
                       <div className="space-y-1.5">
                         {fase.tecnicas.map((t: any, i: number) => (
-                          <div key={i} className="bg-muted/40 rounded-md p-2">
-                            <div className="flex items-center justify-between gap-2 flex-wrap">
+                          <div key={i} className="bg-muted/40 rounded-md p-2 relative group">
+                            <button onClick={() => removeItem(['diretriz_tratamento', key, 'tecnicas'], i)} className="absolute top-1.5 right-1.5 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir técnica">
+                              <Trash2 className="h-3 w-3" />
+                            </button>
+                            <div className="flex items-center justify-between gap-2 flex-wrap pr-5">
                               <span className="font-medium text-xs">{t.tecnica}</span>
                               <div className="flex items-center gap-1">
                                 {t.lente_clinica && <Badge variant="outline" className="text-[9px] border-primary/30 text-primary">{t.lente_clinica}</Badge>}
@@ -1411,6 +1471,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                   </div>
                 );
               })}
+
               {assessment.diretriz_tratamento.frequencia_sugerida && (
                 <p className="text-xs"><strong>Frequência:</strong> {assessment.diretriz_tratamento.frequencia_sugerida}</p>
               )}
@@ -1421,10 +1482,18 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Critérios de Alta</p>
                   <ul className="text-xs text-muted-foreground space-y-0.5">
-                    {assessment.diretriz_tratamento.criterios_alta.map((c: string, i: number) => <li key={i}>✓ {c}</li>)}
+                    {assessment.diretriz_tratamento.criterios_alta.map((c: string, i: number) => (
+                      <li key={i} className="flex items-start gap-1.5 group">
+                        <span className="flex-1">✓ {c}</span>
+                        <button onClick={() => removeItem(['diretriz_tratamento', 'criterios_alta'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir critério">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
+
 
               {/* CTA — transformar em Diretriz Oficial */}
               {pacienteId && (
@@ -1463,7 +1532,14 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <div className="mb-3">
               <span className="text-xs font-semibold text-muted-foreground uppercase">Curto Prazo</span>
               <ul className="text-sm space-y-1 mt-1">
-                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => <li key={i}>• {typeof o === 'string' ? o : JSON.stringify(o)}</li>)}
+                {assessment.plano_tratamento.objetivos_curto_prazo.map((o: any, i: number) => (
+                  <li key={i} className="flex items-start gap-1.5 group">
+                    <span className="flex-1">• {typeof o === 'string' ? o : JSON.stringify(o)}</span>
+                    <button onClick={() => removeItem(['plano_tratamento', 'objetivos_curto_prazo'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir objetivo">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                  </li>
+                ))}
               </ul>
             </div>
           )}
@@ -1472,8 +1548,11 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <span className="text-xs font-semibold text-muted-foreground uppercase">Técnicas Recomendadas</span>
               <div className="space-y-2 mt-1">
                 {assessment.plano_tratamento.tecnicas_recomendadas.map((t: any, i: number) => (
-                  <div key={i} className="bg-secondary/50 rounded-lg p-2">
-                    <div className="flex items-center justify-between">
+                  <div key={i} className="bg-secondary/50 rounded-lg p-2 relative group">
+                    <button onClick={() => removeItem(['plano_tratamento', 'tecnicas_recomendadas'], i)} className="absolute top-1.5 right-1.5 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir técnica">
+                      <Trash2 className="h-3 w-3" />
+                    </button>
+                    <div className="flex items-center justify-between pr-5">
                       <span className="font-medium text-sm">{t.tecnica}</span>
                       <Badge variant="outline" className="text-xs">Nível {t.nivel_evidencia}</Badge>
                     </div>
@@ -1489,17 +1568,40 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
         <SectionCard icon={Lightbulb} title="Insights Baseados em Evidências" sectionKey="insights" expanded={expandedSections} toggle={toggleSection} onRemove={removeSection} hidden={hiddenSections}>
           <div className="space-y-3">
             {assessment.insights_baseados_evidencia?.map((ins: any, i: number) => (
-              <div key={i} className="border-l-2 border-primary/40 pl-3">
-                <p className="text-sm font-medium">{ins.insight}</p>
-                <div className="flex items-center gap-2 mt-1">
-                  <BookOpen className="h-3 w-3 text-muted-foreground" />
-                  <span className="text-xs text-muted-foreground italic">{ins.referencia}</span>
-                  <Badge variant="outline" className="text-xs ml-auto">{ins.relevancia_clinica}</Badge>
+              <div key={i} className="border-l-2 border-primary/40 pl-3 flex items-start gap-2 group">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-medium">{ins.insight}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <BookOpen className="h-3 w-3 text-muted-foreground" />
+                    <span className="text-xs text-muted-foreground italic">{ins.referencia}</span>
+                    <Badge variant="outline" className="text-xs ml-auto">{ins.relevancia_clinica}</Badge>
+                  </div>
                 </div>
+                <button onClick={() => removeItem(['insights_baseados_evidencia'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0 mt-1" title="Excluir insight">
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
               </div>
             ))}
           </div>
         </SectionCard>
+
+        {/* ── CTA FINAL — Confirmar avaliação e enviar ao prontuário ── */}
+        {pacienteId && (
+          <div className="sticky bottom-2 z-10 rounded-xl border border-primary/40 bg-card/95 backdrop-blur shadow-lg p-3 space-y-2">
+            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+              <Sparkles className="h-3.5 w-3.5 text-primary" />
+              <span>Revise os itens acima. Use a lixeira para remover o que não deve ir ao prontuário.</span>
+            </div>
+            <Button
+              size="lg"
+              onClick={() => setShowProntuarioReview(true)}
+              className="w-full bg-primary text-primary-foreground gap-2 h-12 text-sm font-semibold"
+            >
+              <CheckCircle2 className="h-5 w-5" />
+              {savedNoteIdRef.current ? 'Revisar envio ao prontuário' : 'Confirmar avaliação e enviar ao prontuário'}
+            </Button>
+          </div>
+        )}
 
         {pacienteId && (
           <ProntuarioReviewDialog
@@ -1507,6 +1609,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             onOpenChange={setShowProntuarioReview}
             assessment={assessment}
             pacienteId={pacienteId}
+
             servico={serviceType}
             avaliacaoId={savedAssessmentIdRef.current}
             noteId={savedNoteIdRef.current}
