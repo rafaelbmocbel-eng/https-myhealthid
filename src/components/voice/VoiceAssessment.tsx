@@ -1376,12 +1376,16 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 const value = assessment.raciocinio_multidisciplinar?.[key];
                 if (!value) return null;
                 return (
-                  <div key={key} className="rounded-lg border border-border/50 bg-muted/30 p-3">
-                    <p className="text-xs font-semibold text-foreground mb-1">{label}</p>
+                  <div key={key} className="rounded-lg border border-border/50 bg-muted/30 p-3 relative group">
+                    <button onClick={() => removeObjectKey(['raciocinio_multidisciplinar'], key)} className="absolute top-2 right-2 opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
+                    <p className="text-xs font-semibold text-foreground mb-1 pr-5">{label}</p>
                     <p className="text-xs text-muted-foreground leading-relaxed">{value}</p>
                   </div>
                 );
               })}
+
             </div>
           </SectionCard>
         )}
