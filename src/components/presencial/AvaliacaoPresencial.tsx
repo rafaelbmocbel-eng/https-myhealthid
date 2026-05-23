@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ClipboardList, Sparkles, Stethoscope } from 'lucide-react';
-import AvaliacaoVozHub from '@/components/voice/AvaliacaoVozHub';
+import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
@@ -106,7 +106,8 @@ export default function AvaliacaoPresencial({
           <Sparkles className="h-3 w-3" />
           A IA estrutura a avaliação{mostraAvatar ? ' e marca o avatar' : ''} a partir da sua fala.
         </p>
-        <AvaliacaoVozHub
+        <VoiceAssessment
+          mode="voice"
           serviceType={serviceType}
           pacienteId={pacienteId}
           patientName={patientName}
