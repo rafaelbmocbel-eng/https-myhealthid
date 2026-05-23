@@ -423,33 +423,50 @@ function SoapPretty({ texto }: { texto: string }) {
       {SOAP_PARTS.map(({ key, label, tone }) => {
         const txt = conteudo.get(key) || '—';
         const vazio = txt === '—' || !txt;
-        return (
-          <div
-            key={key}
-            className={cn(
-              'relative rounded-md border border-border/30 pl-2.5 pr-2 py-1.5 overflow-hidden',
-              tone.surface
-            )}
-          >
-            <div className={cn('absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full', tone.ring)} />
-            <div className="flex items-center gap-1 mb-0.5">
-              <span className={cn('inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold border', tone.chip)}>
-                {key}
-              </span>
-              <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground/60">{label}</span>
-            </div>
-            <p className={cn(
-              'text-[11.5px] leading-snug whitespace-pre-wrap',
-              vazio ? 'text-muted-foreground/50 italic' : 'text-foreground/80'
-            )}>
-              {txt}
-            </p>
-          </div>
-        );
+        return <SoapCell key={key} k={key} label={label} tone={tone} txt={txt} vazio={vazio} />;
       })}
     </div>
   );
 }
+
+function SoapCell({ k, label, tone, txt, vazio }: { k: string; label: string; tone: any; txt: string; vazio: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const LIMIT = 180;
+  const tooLong = txt.length > LIMIT;
+  const shown = !expanded && tooLong ? txt.slice(0, LIMIT).trimEnd() + '…' : txt;
+  return (
+    <div
+      className={cn(
+        'relative rounded-md border border-border/30 pl-2.5 pr-2 py-1.5 overflow-hidden',
+        tone.surface
+      )}
+    >
+      <div className={cn('absolute left-0 top-1.5 bottom-1.5 w-[2px] rounded-r-full', tone.ring)} />
+      <div className="flex items-center gap-1 mb-0.5">
+        <span className={cn('inline-flex items-center justify-center w-4 h-4 rounded text-[9px] font-bold border', tone.chip)}>
+          {k}
+        </span>
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-foreground/60">{label}</span>
+      </div>
+      <p className={cn(
+        'text-[11.5px] leading-snug whitespace-pre-wrap',
+        vazio ? 'text-muted-foreground/50 italic' : 'text-foreground/80'
+      )}>
+        {shown}
+      </p>
+      {tooLong && (
+        <button
+          type="button"
+          onClick={() => setExpanded((v) => !v)}
+          className="mt-1 text-[10px] font-medium text-primary/80 hover:text-primary"
+        >
+          {expanded ? 'ver menos' : 'ver mais'}
+        </button>
+      )}
+    </div>
+  );
+}
+
 
 // ---------- Renderizadores estruturados por seção ----------
 function Field({ label, value }: { label: string; value: React.ReactNode; accent?: Accent }) {
