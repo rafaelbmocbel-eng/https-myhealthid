@@ -1396,7 +1396,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <p className="text-xs text-muted-foreground mb-2 italic">Classificação Internacional de Funcionalidade — qualificador 0 (sem problema) a 4 (completo).</p>
             <div className="space-y-1.5">
               {assessment.cif_codes.map((c: any, i: number) => (
-                <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/30 transition-colors">
+                <div key={i} className="flex items-start gap-2 p-2 rounded-md border border-border/50 hover:bg-muted/30 transition-colors group">
                   <Badge variant="outline" className="text-[10px] font-mono shrink-0 mt-0.5">{c.codigo}</Badge>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm">{c.descricao}</p>
@@ -1407,11 +1407,15 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                       <span className="text-[10px] font-medium text-foreground">Q{c.qualificador}</span>
                     </div>
                   </div>
+                  <button onClick={() => removeItem(['cif_codes'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity shrink-0" title="Excluir código CIF">
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </button>
                 </div>
               ))}
             </div>
           </SectionCard>
         )}
+
 
         {/* ── DIRETRIZ DE TRATAMENTO EM 3 FASES ── */}
         {assessment.diretriz_tratamento && (
