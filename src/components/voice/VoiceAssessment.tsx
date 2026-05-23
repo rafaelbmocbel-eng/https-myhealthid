@@ -1482,10 +1482,18 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 <div>
                   <p className="text-[10px] font-semibold text-muted-foreground uppercase mb-0.5">Critérios de Alta</p>
                   <ul className="text-xs text-muted-foreground space-y-0.5">
-                    {assessment.diretriz_tratamento.criterios_alta.map((c: string, i: number) => <li key={i}>✓ {c}</li>)}
+                    {assessment.diretriz_tratamento.criterios_alta.map((c: string, i: number) => (
+                      <li key={i} className="flex items-start gap-1.5 group">
+                        <span className="flex-1">✓ {c}</span>
+                        <button onClick={() => removeItem(['diretriz_tratamento', 'criterios_alta'], i)} className="opacity-40 hover:opacity-100 text-muted-foreground hover:text-destructive transition-opacity" title="Excluir critério">
+                          <Trash2 className="h-3 w-3" />
+                        </button>
+                      </li>
+                    ))}
                   </ul>
                 </div>
               )}
+
 
               {/* CTA — transformar em Diretriz Oficial */}
               {pacienteId && (
