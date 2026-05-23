@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
@@ -13,6 +13,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
+import { cn } from '@/lib/utils';
 
 interface Props {
   pacienteId: string;
@@ -161,7 +162,6 @@ const SECOES: SecaoDef[] = [
         const lente = it.lente_clinica ? ` — ${it.lente_clinica}` : '';
         const just = it.justificativa ? `\n        ↳ ${it.justificativa}` : '';
         if (nome) return `${nome}${evid}${lente}${just}`;
-        // fallback readable
         return Object.entries(it)
           .map(([kk, vv]) => `${kk}: ${typeof vv === 'string' ? vv : JSON.stringify(vv)}`)
           .join(' | ');
@@ -187,7 +187,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const { toast } = useToast();
   const qc = useQueryClient();
 
-  // Initial texts from assessment + persisted edits
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
   const confirmadasIniciais: SecaoKey[] = Array.isArray(meta.confirmadas) ? meta.confirmadas : [];
@@ -204,7 +203,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const [rascunho, setRascunho] = useState<string>('');
   const [saving, setSaving] = useState<SecaoKey | null>(null);
 
-  // Look up existing note for this avaliacao
   const { data: notaExistente } = useQuery({
     queryKey: ['nota-avaliacao-presencial', avaliacaoId],
     queryFn: async () => {
@@ -241,7 +239,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       const novosTextos = { ...textos, [key]: rascunho };
       setTextos(novosTextos);
 
-      // Persist edit in avaliacoes_voz.resultado._secoes.editadas
       const novoResultado = {
         ...resultado,
         _secoes: {
@@ -252,7 +249,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       };
       await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
 
-      // If section is already confirmed, sync the prontuario note
       if (confirmadas.has(key)) {
         await sincronizarProntuario(confirmadas, novosTextos);
       }
@@ -277,7 +273,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     try {
       setConfirmadas(nova);
 
-      // Persist confirmadas in avaliacoes_voz
       const novoResultado = {
         ...resultado,
         _secoes: {
@@ -291,13 +286,12 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       await sincronizarProntuario(nova, textos);
 
       toast({
-        title: estavaConfirmada ? 'Removida do prontuário' : '✅ Enviada ao prontuário',
+        title: estavaConfirmada ? 'Removida do prontuário' : 'Enviada ao prontuário',
       });
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
       qc.invalidateQueries({ queryKey: ['prontuario'] });
       qc.invalidateQueries({ queryKey: ['nota-avaliacao-presencial', avaliacaoId] });
     } catch (e: any) {
-      // rollback UI
       setConfirmadas(new Set(estavaConfirmada ? [...confirmadas] : [...confirmadas].filter((k) => k !== key)));
       toast({ title: 'Erro', description: e?.message, variant: 'destructive' });
     } finally {
@@ -313,7 +307,6 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     const dataAtual = new Date().toLocaleDateString('pt-BR');
     const incluidas = SECOES.filter((s) => setConf.has(s.key) && textosAtuais[s.key]?.trim());
 
-    // If nothing confirmed, delete the note
     if (incluidas.length === 0) {
       if (notaExistente?.id) {
         await (supabase as any).from('notas_prontuario').delete().eq('id', notaExistente.id);
@@ -347,113 +340,188 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       await (supabase as any).from('notas_prontuario').update(payload).eq('id', notaExistente.id);
     } else {
       const { data } = await (supabase as any).from('notas_prontuario').insert(payload).select('id').single();
-      // Update cache so subsequent toggles see the id
       qc.setQueryData(['nota-avaliacao-presencial', avaliacaoId], data);
     }
   };
 
+  const progresso = secoesDisponiveis.length > 1
+    ? Math.round((confirmadas.size / secoesDisponiveis.length) * 100)
+    : 0;
+
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between flex-wrap gap-2">
+    <div className="space-y-5">
+      {/* Header com progresso */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h3 className="h-section">Seções da Avaliação</h3>
-          <p className="text-caption text-muted-foreground">
+          <h3 className="h-section flex items-center gap-2">
+            <span className="inline-flex items-center justify-center w-8 h-8 rounded-lg bg-primary/10 text-primary">
+              <ListChecks className="icon-sm" />
+            </span>
+            Seções da Avaliação
+          </h3>
+          <p className="text-caption text-muted-foreground mt-1">
             Edite cada parte e confirme as que devem ir para o prontuário.
           </p>
         </div>
-        <Badge variant="outline" className="text-xs">
-          {confirmadas.size}/{secoesDisponiveis.length} no prontuário
-        </Badge>
+        <div className="flex items-center gap-3">
+          {progresso > 1 && (
+            <div className="flex items-center gap-2 bg-muted/60 rounded-full px-3 py-1.5">
+              <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                  style={{ width: `${progresso}%` }}
+                />
+              </div>
+              <span className="text-[11px] font-medium text-muted-foreground">{progresso}%</span>
+            </div>
+          )}
+          <Badge variant="outline" className="text-xs gap-1">
+            <CheckCircle2 className="icon-xs text-emerald-500" />
+            {confirmadas.size}/{secoesDisponiveis.length}
+          </Badge>
+        </div>
       </div>
 
-      {secoesDisponiveis.map((s) => {
-        const confirmada = confirmadas.has(s.key);
-        const editandoEsta = editando === s.key;
-        const savingEsta = saving === s.key;
-        const Icon = s.Icon;
+      {/* Grid de cards */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {secoesDisponiveis.map((s) => {
+          const confirmada = confirmadas.has(s.key);
+          const editandoEsta = editando === s.key;
+          const savingEsta = saving === s.key;
+          const Icon = s.Icon;
 
-        return (
-          <Card
-            key={s.key}
-            className={`rounded-xl border-border/40 shadow-xs transition ${
-              confirmada ? 'border-emerald-500/40 bg-emerald-500/5' : ''
-            }`}
-          >
-            <CardHeader className="pb-2 flex flex-row items-start justify-between gap-2 space-y-0">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Icon className="icon-sm text-primary shrink-0" />
-                <span>{s.emoji} {s.titulo}</span>
-                {confirmada && (
-                  <Badge className="bg-emerald-500/15 text-emerald-700 border-emerald-500/30 text-[10px] gap-1">
-                    <CheckCircle2 className="icon-xs" /> No prontuário
-                  </Badge>
-                )}
-              </CardTitle>
-              {!editandoEsta && (
-                <div className="flex gap-1 shrink-0">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-7 px-2 gap-1"
-                    onClick={() => iniciarEdicao(s.key)}
-                    disabled={savingEsta}
-                  >
-                    <Pencil className="icon-xs" />
-                    <span className="text-xs">Editar</span>
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant={confirmada ? 'outline' : 'default'}
-                    className="h-7 px-2 gap-1"
-                    onClick={() => toggleConfirmacao(s.key)}
-                    disabled={savingEsta}
-                  >
-                    {savingEsta ? (
-                      <Loader2 className="icon-xs animate-spin" />
-                    ) : confirmada ? (
-                      <Circle className="icon-xs" />
-                    ) : (
-                      <Check className="icon-xs" />
-                    )}
-                    <span className="text-xs">
-                      {confirmada ? 'Remover' : 'Confirmar'}
-                    </span>
-                  </Button>
-                </div>
+          return (
+            <Card
+              key={s.key}
+              className={cn(
+                'rounded-2xl border shadow-sm transition-all duration-300 group overflow-hidden',
+                confirmada
+                  ? 'border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.03] to-transparent shadow-emerald-500/10'
+                  : 'border-border/50 bg-card hover:border-primary/20 hover:shadow-md hover:-translate-y-0.5'
               )}
-            </CardHeader>
-            <CardContent className="pt-0">
-              {editandoEsta ? (
-                <div className="space-y-2">
-                  <Textarea
-                    value={rascunho}
-                    onChange={(e) => setRascunho(e.target.value)}
-                    rows={Math.min(20, Math.max(4, rascunho.split('\n').length + 1))}
-                    className="text-sm font-mono"
-                    autoFocus
-                  />
-                  <div className="flex justify-end gap-2">
-                    <Button size="sm" variant="ghost" onClick={cancelarEdicao} disabled={savingEsta}>
-                      <X className="icon-xs mr-1" /> Cancelar
-                    </Button>
-                    <Button size="sm" onClick={() => salvarEdicao(s.key)} disabled={savingEsta}>
-                      {savingEsta ? <Loader2 className="icon-xs animate-spin mr-1" /> : <Check className="icon-xs mr-1" />}
-                      Salvar edição
-                    </Button>
+            >
+              {/* Card header com ícone colorido */}
+              <div className={cn(
+                'px-4 pt-4 pb-3 flex items-start justify-between gap-3',
+                editandoEsta && 'pb-2'
+              )}>
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                  <div className={cn(
+                    'w-10 h-10 rounded-xl flex items-center justify-center shrink-0 transition-colors',
+                    confirmada
+                      ? 'bg-emerald-500/10 text-emerald-600'
+                      : 'bg-primary/10 text-primary'
+                  )}>
+                    <Icon className="icon-md" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="font-semibold text-sm text-foreground truncate">
+                        {s.emoji} {s.titulo}
+                      </span>
+                      {confirmada && (
+                        <Badge className="bg-emerald-500/10 text-emerald-700 border-emerald-500/20 text-[10px] gap-1 hover:bg-emerald-500/15">
+                          <CheckCircle2 className="icon-xs" /> Prontuário
+                        </Badge>
+                      )}
+                    </div>
+                    {!editandoEsta && (
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        {confirmada ? 'Confirmado e sincronizado' : 'Clique em editar para modificar'}
+                      </p>
+                    )}
                   </div>
                 </div>
-              ) : (
-                <pre className="text-xs whitespace-pre-wrap font-sans text-foreground/90 leading-relaxed">
-                  {textos[s.key]}
-                </pre>
-              )}
-            </CardContent>
-          </Card>
-        );
-      })}
+
+                {!editandoEsta && (
+                  <div className="flex gap-1.5 shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-8 w-8 p-0 rounded-lg"
+                      onClick={() => iniciarEdicao(s.key)}
+                      disabled={savingEsta}
+                      title="Editar"
+                    >
+                      <Pencil className="icon-xs" />
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant={confirmada ? 'outline' : 'default'}
+                      className={cn(
+                        'h-8 px-3 gap-1.5 rounded-lg text-xs font-medium',
+                        confirmada && 'border-emerald-500/30 text-emerald-700 hover:bg-emerald-500/10 hover:text-emerald-800'
+                      )}
+                      onClick={() => toggleConfirmacao(s.key)}
+                      disabled={savingEsta}
+                    >
+                      {savingEsta ? (
+                        <Loader2 className="icon-xs animate-spin" />
+                      ) : confirmada ? (
+                        <X className="icon-xs" />
+                      ) : (
+                        <Check className="icon-xs" />
+                      )}
+                      {confirmada ? 'Remover' : 'Confirmar'}
+                    </Button>
+                  </div>
+                )}
+              </div>
+
+              {/* Card content */}
+              <div className="px-4 pb-4">
+                {editandoEsta ? (
+                  <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <Textarea
+                      value={rascunho}
+                      onChange={(e) => setRascunho(e.target.value)}
+                      rows={Math.min(20, Math.max(5, rascunho.split('\n').length + 2))}
+                      className="text-sm leading-relaxed resize-y min-h-[120px] rounded-xl border-border/60 focus:border-primary/50 focus:ring-2 focus:ring-primary/10"
+                      autoFocus
+                    />
+                    <div className="flex justify-end gap-2">
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={cancelarEdicao}
+                        disabled={savingEsta}
+                        className="rounded-lg h-8"
+                      >
+                        <X className="icon-xs mr-1.5" /> Cancelar
+                      </Button>
+                      <Button
+                        size="sm"
+                        onClick={() => salvarEdicao(s.key)}
+                        disabled={savingEsta}
+                        className="rounded-lg h-8"
+                      >
+                        {savingEsta ? (
+                          <Loader2 className="icon-xs animate-spin mr-1.5" />
+                        ) : (
+                          <Check className="icon-xs mr-1.5" />
+                        )}
+                        Salvar edição
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className={cn(
+                    'relative rounded-xl p-3.5 text-sm leading-relaxed whitespace-pre-wrap transition-colors',
+                    confirmada
+                      ? 'bg-emerald-500/[0.04] text-foreground/90'
+                      : 'bg-muted/40 text-foreground/80 group-hover:bg-muted/60'
+                  )}>
+                    {textos[s.key]}
+                  </div>
+                )}
+              </div>
+            </Card>
+          );
+        })}
+      </div>
 
       {secoesDisponiveis.length === 0 && (
-        <Card className="rounded-xl border-dashed">
+        <Card className="rounded-2xl border-dashed border-border/50">
           <CardContent className="p-6 text-center text-caption text-muted-foreground">
             Nenhuma seção disponível nesta avaliação.
           </CardContent>
