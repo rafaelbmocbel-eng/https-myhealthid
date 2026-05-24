@@ -61,6 +61,9 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
         <TabsContent value="convenios" className="mt-4">
           <ConveniosManager />
+          <div className="mt-4">
+            <ConvenioReconciliacao />
+          </div>
         </TabsContent>
 
         <TabsContent value="repasses" className="mt-4">
