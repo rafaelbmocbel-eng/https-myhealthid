@@ -141,7 +141,10 @@ export default function ConfigClinica() {
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
         body: { test: true, ...creds, clientToken: form.zapi_client_token.trim() },
       });
-      if (error || !data?.connected) throw new Error(data?.error || error?.message || 'Falha');
+      if (error || !data?.connected) {
+        const message = data?.status?.error || data?.error || error?.message || 'Falha';
+        throw new Error(message === 'You are not connected.' ? 'Instância Z-API sem WhatsApp conectado. Abra o painel da Z-API e reconecte pelo QR Code.' : message);
+      }
       setTestResult('ok');
       toast({ title: 'Conexão Z-API funcionando! ✅' });
     } catch (e: any) {
