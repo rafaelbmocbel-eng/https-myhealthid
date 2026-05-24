@@ -175,6 +175,17 @@ export default function CadastroCliente() {
               />
             </div>
             <div className="space-y-1">
+              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone</Label>
+              <Input
+                id="telefone"
+                type="tel"
+                placeholder="(11) 98765-4321"
+                value={form.telefone}
+                onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
+                className="h-11 rounded-xl text-[16px] sm:text-sm"
+              />
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="password" className="text-xs">Senha</Label>
               <div className="relative">
                 <Input
@@ -196,7 +207,20 @@ export default function CadastroCliente() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full h-11 rounded-xl font-bold text-sm" disabled={submitting}>
+
+            <label className="flex items-start gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-[11px] text-muted-foreground leading-snug">
+                Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a LGPD.
+              </span>
+            </label>
+
+            <Button type="submit" className="w-full h-11 rounded-xl font-bold text-sm" disabled={submitting || !aceitouTermos}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Cadastrar e acessar portal'}
             </Button>
           </form>
