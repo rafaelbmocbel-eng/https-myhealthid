@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
 import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
