@@ -14,7 +14,7 @@ import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
-import { getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
+import { createDiretrizSnapshotFromVoz, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
 interface Props {
   protocoloId: string;
@@ -91,6 +91,21 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
     },
   });
 
+  const { data: avaliacaoDiretriz } = useQuery({
+    queryKey: ['avaliacao-voz-diretriz-protocolo', protocoloId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('avaliacoes_voz')
+        .select('resultado, created_at')
+        .contains('resultado', { _secoes: { diretriz_protocolo_id: protocoloId } })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
   if (loadingProt || loadingFases || loadingPres) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -104,8 +119,16 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   const scores = protocolo.scores_avaliacao || {};
   const faseAtual = progressao?.fase_atual || 1;
   const semanaAtual = progressao?.semana_atual || 1;
-  const diretrizSnapshot = getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
-  const isDiretrizConfirmadaAvaliacao = protocolo.origem === 'ia_voz' || diretrizSnapshot?.origem === 'ia_voz';
+  const resultadoAvaliacao = typeof avaliacaoDiretriz?.resultado === 'string'
+    ? JSON.parse(avaliacaoDiretriz.resultado)
+    : avaliacaoDiretriz?.resultado;
+  const diretrizSnapshotAvaliacao = createDiretrizSnapshotFromVoz(resultadoAvaliacao?.diretriz_tratamento, {
+    origem: 'ia_voz',
+    createdAt: avaliacaoDiretriz?.created_at,
+    textoConfirmado: resultadoAvaliacao?._secoes?.editadas?.diretriz,
+  });
+  const diretrizSnapshot = diretrizSnapshotAvaliacao ?? getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
+  const isDiretrizConfirmadaAvaliacao = protocolo.origem === 'ia_voz' || scores.origem === 'ia_voz' || diretrizSnapshot?.origem === 'ia_voz';
 
   const FASE_LABELS = ['Inflamatória', 'Proliferação', 'Remodelação', 'Funcional'];
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
