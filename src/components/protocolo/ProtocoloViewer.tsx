@@ -258,8 +258,16 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
       </div>
 
       {/* Tab content */}
-      {tabAtiva === 'fases' && (
-        <ProtocoloDiretrizResumo fases={diretrizSnapshot?.fases || []} faseAtual={faseAtual} />
+      {tabAtiva === 'fases' && diretrizSnapshot && (
+        <ProtocoloDiretrizEditor
+          protocoloId={protocoloId}
+          snapshot={diretrizSnapshot}
+          faseAtual={faseAtual}
+          queixa={protocolo.titulo}
+        />
+      )}
+      {tabAtiva === 'fases' && !diretrizSnapshot && (
+        <div className="clinical-card text-sm text-muted-foreground">Esta diretriz ainda não possui um resumo clínico salvo.</div>
       )}
 
 
