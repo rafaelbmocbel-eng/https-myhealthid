@@ -152,6 +152,18 @@ export function createDiretrizSnapshotFromVoz(
         frequenciaSemanal: 0,
         duracaoSessao: typeof fase.duracao_sessao === 'string' ? fase.duracao_sessao : '',
         exercicios: exercicios.map((item) => {
+          if (typeof item === 'string') {
+            return {
+              nome: item,
+              categoria: 'Exercício terapêutico',
+              series: '',
+              repeticoes: '',
+              duracao: '',
+              motivo: '',
+              descricao: '',
+              instrucoes: [],
+            };
+          }
           const ex = getRecord(item);
           return {
             nome: String(ex.nome || ex.exercicio || ex.titulo || ex.name || 'Exercício'),
@@ -165,6 +177,16 @@ export function createDiretrizSnapshotFromVoz(
           };
         }),
         tecnicas: tecnicas.map((item) => {
+          if (typeof item === 'string') {
+            return {
+              nome: item,
+              descricao: '',
+              duracao: '',
+              frequencia: String(d.frequencia_sugerida || ''),
+              motivo: '',
+              categoria: 'referência',
+            };
+          }
           const tec = getRecord(item);
           return {
             nome: String(tec.nome || tec.tecnica || tec.titulo || tec.name || 'Técnica'),
