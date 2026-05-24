@@ -40,6 +40,17 @@ const EMPTY: ConfigClinica = {
 
 const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'];
 
+const extractZapiCredentials = (instanceId: string, token: string) => {
+  const instance = instanceId.trim();
+  const instanceMatch = instance.match(/instances\/([^/\s]+)\/token\/([^/\s]+)/i);
+
+  if (instanceMatch) {
+    return { instanceId: instanceMatch[1], token: instanceMatch[2] };
+  }
+
+  return { instanceId: instance, token: token.trim() };
+};
+
 export default function ConfigClinica() {
   const { user } = useAuth();
   const { toast } = useToast();
@@ -89,7 +100,8 @@ export default function ConfigClinica() {
   const handleSave = async () => {
     if (!user) return;
     setSaving(true);
-    const payload = { ...form, terapeuta_id: user.id };
+    const creds = extractZapiCredentials(form.zapi_instance_id, form.zapi_token);
+    const payload = { ...form, ...creds, zapi_client_token: form.zapi_client_token.trim(), terapeuta_id: user.id };
     const { error } = await supabase.from('config_clinica').upsert(payload, { onConflict: 'terapeuta_id' });
     setSaving(false);
     if (error) {
@@ -109,8 +121,9 @@ export default function ConfigClinica() {
     setTesting(true);
     setTestResult(null);
     try {
+      const creds = extractZapiCredentials(form.zapi_instance_id, form.zapi_token);
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
-        body: { test: true, instanceId: form.zapi_instance_id, token: form.zapi_token, clientToken: form.zapi_client_token },
+        body: { test: true, ...creds, clientToken: form.zapi_client_token.trim() },
       });
       if (error || !data?.connected) throw new Error(data?.error || error?.message || 'Falha');
       setTestResult('ok');
