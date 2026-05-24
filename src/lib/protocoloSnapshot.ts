@@ -116,6 +116,40 @@ const getRecord = (value: unknown): JsonRecord => (
   value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
 );
 
+const normalizeExercise = (item: unknown): DiretrizSnapshotExercise => {
+  if (typeof item === 'string') {
+    return { nome: item, categoria: 'Exercício terapêutico', series: '', repeticoes: '', duracao: '', motivo: '', descricao: '', instrucoes: [] };
+  }
+  const ex = getRecord(item);
+  return {
+    nome: String(ex.nome || ex.exercicio || ex.titulo || ex.name || 'Exercício'),
+    categoria: String(ex.categoria || 'Exercício terapêutico'),
+    series: String(ex.series || ex.serie || ''),
+    repeticoes: String(ex.repeticoes || ex.reps || ''),
+    duracao: String(ex.duracao || ex.dosagem || ex.frequencia || ''),
+    motivo: String(ex.motivo || ex.justificativa || ex.racional || ''),
+    descricao: String(ex.descricao || ex.instrucoes || ''),
+    instrucoes: asStringArray(ex.instrucoes),
+    ...(typeof ex.nivel_evidencia === 'string' ? { nivel_evidencia: ex.nivel_evidencia } : {}),
+  };
+};
+
+const normalizeTechnique = (item: unknown): DiretrizSnapshotTechnique => {
+  if (typeof item === 'string') {
+    return { nome: item, descricao: '', duracao: '', frequencia: '', motivo: '', categoria: 'referência' };
+  }
+  const tec = getRecord(item);
+  return {
+    nome: String(tec.nome || tec.tecnica || tec.titulo || tec.name || 'Técnica'),
+    descricao: String(tec.descricao || tec.justificativa || ''),
+    duracao: String(tec.duracao || tec.dosagem || ''),
+    frequencia: String(tec.frequencia || ''),
+    motivo: String(tec.motivo || tec.justificativa || ''),
+    categoria: String(tec.categoria || tec.lente_clinica || 'referência'),
+    ...(typeof tec.nivel_evidencia === 'string' ? { nivel_evidencia: tec.nivel_evidencia } : {}),
+  };
+};
+
 export function createDiretrizSnapshotFromVoz(
   diretriz: unknown,
   options: { origem?: string; createdAt?: string; textoConfirmado?: string } = {},
