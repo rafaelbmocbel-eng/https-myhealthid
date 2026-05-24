@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2 } from 'lucide-react';
+import { useWhatsappBloqueados } from '@/hooks/useWhatsappBloqueados';
+
 
 type ConfigClinica = {
   razao_social: string;
