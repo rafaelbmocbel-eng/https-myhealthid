@@ -49,12 +49,13 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [picker, setPicker] = useState<PickerState>(null);
   const [dirty, setDirty] = useState(false);
+  const snapshotKey = `${snapshot.createdAt}-${snapshot.origem || ''}-${snapshot.fases.length}`;
 
   useEffect(() => {
     if (dirty) return;
     setFases(snapshot.fases);
     setAbertas(new Set([Math.min(Math.max(faseAtual - 1, 0), Math.max(snapshot.fases.length - 1, 0))]));
-  }, [dirty, faseAtual, snapshot]);
+  }, [dirty, faseAtual, snapshot, snapshotKey]);
 
   const toggle = (i: number) => {
     setAbertas(p => {
