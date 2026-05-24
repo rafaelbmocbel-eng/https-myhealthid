@@ -256,8 +256,14 @@ export default function FechamentoProfissional() {
                         Particular
                       </Badge>
                     )}
-                    {!l.custom && (
-                      <span className="text-[9px] text-muted-foreground" title="Usando fallback 40%">·fb</span>
+                    {l.custom ? (
+                      <Badge variant="outline" className="text-[9px] h-4 px-1 border-emerald-300 bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-300" title="Usando repasse configurado">
+                        config
+                      </Badge>
+                    ) : (
+                      <Badge variant="outline" className="text-[9px] h-4 px-1 border-amber-300 bg-amber-50 text-amber-800 dark:bg-amber-950/30 dark:text-amber-300" title="Sem configuração específica — usando fallback 40%">
+                        fallback
+                      </Badge>
                     )}
                   </div>
                   <div className="col-span-1 text-right text-muted-foreground">{l.percentual.toFixed(0)}%</div>

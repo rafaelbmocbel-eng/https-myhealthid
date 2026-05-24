@@ -7,6 +7,7 @@ import ConveniosManager from '@/components/financeiro/ConveniosManager';
 import RepasseConfigManager from '@/components/financeiro/RepasseConfigManager';
 import FechamentoProfissional from '@/components/financeiro/FechamentoProfissional';
 import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
+import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
@@ -20,7 +21,10 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
         />
       )}
 
+      <FinanceiroHeaderKPIs />
+
       <Tabs defaultValue="mensal" className="w-full">
+
         <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="mensal">Mensal</TabsTrigger>
           <TabsTrigger value="analise">Análise</TabsTrigger>
