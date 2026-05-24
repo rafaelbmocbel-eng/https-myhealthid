@@ -4,7 +4,7 @@ import {
   Globe, MessageCircle, Instagram, Mail, CreditCard, Shield,
   Smartphone, Bell, Users, Image as ImageIcon, FileText, Search,
   Lock, Phone, Calendar, Palette, Share2, DollarSign, BookOpen,
-  ChevronRight, CheckCircle2, Circle, Sparkles,
+  ChevronRight, CheckCircle2, Circle, Sparkles, Receipt,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
@@ -272,6 +272,17 @@ const PENDENCIAS: Pendencia[] = [
     prioridade: 'baixa',
     icon: Shield,
   },
+
+  // ===== Fiscal =====
+  {
+    id: 'nfse-nfeio',
+    titulo: 'Integrar NFS-e via NFE.io',
+    descricao: 'Emissão automática de nota fiscal de serviço a cada recebimento. Requer conta NFE.io, API key e certificado digital A1. Custo ~R$0,49/nota. Começar em homologação.',
+    categoria: 'Fiscal',
+    prioridade: 'media',
+    icon: Receipt,
+    acao: { label: 'Financeiro', to: '/financeiro' },
+  },
 ];
 
 const STORAGE_KEY = 'pendencias-app-feito-v1';
@@ -284,6 +295,7 @@ const CATEGORIA_ORDEM = [
   'Conteúdo Clínico',
   'Pacientes',
   'Compliance',
+  'Fiscal',
 ];
 
 const PRIORIDADE_LABEL: Record<Prioridade, string> = {
