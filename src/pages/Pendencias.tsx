@@ -4,7 +4,7 @@ import {
   Globe, MessageCircle, Instagram, Mail, CreditCard, Shield,
   Smartphone, Bell, Users, Image as ImageIcon, FileText, Search,
   Lock, Phone, Calendar, Palette, Share2, DollarSign, BookOpen,
-  ChevronRight, CheckCircle2, Circle, Sparkles,
+  ChevronRight, CheckCircle2, Circle, Sparkles, Receipt,
 } from 'lucide-react';
 import PageHeader from '@/components/ui/page-header';
 import { Card } from '@/components/ui/card';
