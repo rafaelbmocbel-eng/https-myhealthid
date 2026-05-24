@@ -104,7 +104,7 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
         const match = (dbFases as any[] | null)?.find(d => d.numero_fase === f.numero);
         if (match) {
           await (supabase as any).from('protocolo_fases').update({
-            objetivos: [f.objetivo, ...(f.demandasAlvo || [])].filter(Boolean),
+            objetivos: [f.objetivo, ...(f.demandasAlvo || []), ...(f.criteriosProgressao || [])].filter(Boolean),
             sessoes_por_semana: f.frequenciaSemanal || 2,
             titulo: f.titulo,
           }).eq('id', match.id);
@@ -220,7 +220,7 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
                         </label>
                       </div>
                       <div>
-                        <div className="text-xs text-muted-foreground mb-1">Demandas alvo / critérios</div>
+                        <div className="text-xs text-muted-foreground mb-1">Demandas alvo</div>
                         <div className="flex flex-wrap gap-1.5">
                           {(fase.demandasAlvo ?? []).map((d, i) => (
                             <Badge key={i} variant="secondary" className="gap-1 text-xs">
@@ -233,6 +233,20 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
                           <AddChip onAdd={(v) => updateFase(idx, { demandasAlvo: [...(fase.demandasAlvo ?? []), v] })} />
                         </div>
                       </div>
+                      <div>
+                        <div className="text-xs text-muted-foreground mb-1">Critérios de progressão / alta da fase</div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {(fase.criteriosProgressao ?? []).map((d, i) => (
+                            <Badge key={i} variant="secondary" className="gap-1 text-xs">
+                              {d}
+                              <button onClick={() => updateFase(idx, { criteriosProgressao: (fase.criteriosProgressao ?? []).filter((_, k) => k !== i) })}>
+                                <X className="h-3 w-3" />
+                              </button>
+                            </Badge>
+                          ))}
+                          <AddChip onAdd={(v) => updateFase(idx, { criteriosProgressao: [...(fase.criteriosProgressao ?? []), v] })} />
+                        </div>
+                      </div>
                     </>
                   ) : (
                     <>
@@ -240,6 +254,14 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
                       {(fase.demandasAlvo?.length ?? 0) > 0 && (
                         <div className="flex flex-wrap gap-2">
                           {(fase.demandasAlvo ?? []).map((d, i) => <Badge key={i} variant="secondary" className="text-xs">{d}</Badge>)}
+                        </div>
+                      )}
+                      {(fase.criteriosProgressao?.length ?? 0) > 0 && (
+                        <div className="pt-2">
+                          <div className="text-xs text-muted-foreground mb-1">Critérios</div>
+                          <div className="flex flex-wrap gap-2">
+                            {(fase.criteriosProgressao ?? []).map((d, i) => <Badge key={i} variant="outline" className="text-xs">{d}</Badge>)}
+                          </div>
                         </div>
                       )}
                     </>
