@@ -13,7 +13,7 @@ import { ptBR } from 'date-fns/locale';
 import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
-import ProtocoloDiretrizResumo from './ProtocoloDiretrizResumo';
+import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
 import { createLegacyDiretrizSnapshot, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
 interface Props {
