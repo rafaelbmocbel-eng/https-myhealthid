@@ -445,6 +445,9 @@ export default function Pacientes() {
       const firstError = parsed.error.errors[0]?.message || 'Dados inválidos';
       return toast({ title: firstError, variant: 'destructive' });
     }
+    if (!modal.paciente && !form.lgpd_aceite) {
+      return toast({ title: 'É obrigatório confirmar o aceite LGPD do paciente', variant: 'destructive' });
+    }
     setSubmitting(true);
     try {
       let pacienteId = modal.paciente?.id;
@@ -458,7 +461,13 @@ export default function Pacientes() {
         data_nascimento: validated.data_nascimento ?? null,
         genero: validated.genero ?? null,
         cpf: validated.cpf ?? null,
+        cep: validated.cep ?? null,
         endereco: validated.endereco ?? null,
+        endereco_numero: validated.endereco_numero ?? null,
+        endereco_complemento: validated.endereco_complemento ?? null,
+        bairro: validated.bairro ?? null,
+        cidade: validated.cidade ?? null,
+        uf: validated.uf ?? null,
         observacoes: validated.observacoes ?? null,
         terapeuta_id: user!.id,
         responsavel_id: form.responsavel_id || null,
@@ -466,19 +475,41 @@ export default function Pacientes() {
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
       };
+      if (!modal.paciente && form.lgpd_aceite) {
+        payload.lgpd_aceite_em = new Date().toISOString();
+        payload.lgpd_versao = '1.0';
+      }
       if (pacienteId) {
-        await supabase.from('pacientes').update(payload).eq('id', pacienteId);
+        const { error } = await supabase.from('pacientes').update(payload).eq('id', pacienteId);
+        if (error) throw error;
       } else {
         const { data, error } = await supabase.from('pacientes').insert(payload).select().single();
         if (error) throw error;
         pacienteId = data.id;
         pinRecent(data.id);
+        // Registra termo de consentimento LGPD
+        try {
+          await supabase.from('termos_consentimento').insert({
+            paciente_id: pacienteId,
+            terapeuta_id: user!.id,
+            tipo: 'lgpd',
+            versao: '1.0',
+            texto_termo: 'Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a Lei Geral de Proteção de Dados (LGPD).',
+            aceito: true,
+            data_aceite: new Date().toISOString(),
+          });
+        } catch { /* não bloqueia */ }
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
       setModal({ open: false });
     } catch (e: any) {
-      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+      const msg = e?.message || '';
+      let friendly = msg;
+      if (msg.includes('uniq_pacientes_terapeuta_cpf')) friendly = 'Já existe um paciente ativo com este CPF.';
+      else if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
+      else if (msg.toLowerCase().includes('cpf inválido')) friendly = 'CPF inválido. Verifique os dígitos.';
+      toast({ title: 'Erro ao salvar', description: friendly, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
