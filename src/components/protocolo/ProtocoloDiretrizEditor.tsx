@@ -16,6 +16,29 @@ import {
 import type {
   DiretrizSnapshot, DiretrizSnapshotPhase, DiretrizSnapshotExercise, DiretrizSnapshotTechnique,
 } from '@/lib/protocoloSnapshot';
+import { gerarEvolucaoDiretrizAlterada } from '@/utils/evolucaoAutoNotes';
+
+/** Render snapshot as plain-text summary used in prontuário note. */
+function snapshotToTexto(snap: DiretrizSnapshot, titulo?: string): string {
+  const linhas: string[] = [];
+  if (titulo) linhas.push(`📋 DIRETRIZ DE TRATAMENTO — ${titulo}`);
+  if (snap.frequenciaSugerida) linhas.push(`📆 Frequência: ${snap.frequenciaSugerida}`);
+  if (snap.prognostico) linhas.push(`🎯 Prognóstico: ${snap.prognostico}`);
+  linhas.push('');
+  snap.fases.forEach((f) => {
+    linhas.push(`▸ Fase ${f.numero} — ${f.titulo} (sem. ${f.semanas})`);
+    if (f.objetivo) linhas.push(`  Objetivo: ${f.objetivo}`);
+    if (f.frequenciaSemanal) linhas.push(`  Frequência: ${f.frequenciaSemanal}x/sem`);
+    if (f.tecnicas?.length) linhas.push(`  Técnicas: ${f.tecnicas.map(t => t.nome).join(', ')}`);
+    if (f.exercicios?.length) linhas.push(`  Exercícios: ${f.exercicios.map(e => e.nome).join(', ')}`);
+    if (f.criteriosProgressao?.length) linhas.push(`  Critérios: ${f.criteriosProgressao.join(' • ')}`);
+    linhas.push('');
+  });
+  if (snap.criteriosAlta?.length) {
+    linhas.push(`🏁 Critérios de alta: ${snap.criteriosAlta.join(' • ')}`);
+  }
+  return linhas.join('\n').trim();
+}
 
 interface Props {
   protocoloId: string;
