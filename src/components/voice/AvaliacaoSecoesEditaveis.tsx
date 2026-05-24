@@ -195,6 +195,22 @@ const SECOES: SecaoDef[] = [
       if (Array.isArray(d.criterios_alta) && d.criterios_alta.length) {
         finais.push(`🏁 Critérios de alta:\n${d.criterios_alta.map((c: string) => `   • ${c}`).join('\n')}`);
       }
+      if (d.manutencao && typeof d.manutencao === 'object') {
+        const m = d.manutencao;
+        const partsM: string[] = ['🌱 Plano de Manutenção (pós-alta)'];
+        if (m.mensagem_paciente) partsM.push(`   💬 ${m.mensagem_paciente}`);
+        if (Array.isArray(m.rotina_minima) && m.rotina_minima.length) {
+          partsM.push(`   🔁 Rotina mínima:\n${m.rotina_minima.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        if (m.frequencia_reavaliacao) partsM.push(`   📆 Reavaliação: ${m.frequencia_reavaliacao}`);
+        if (Array.isArray(m.sinais_para_retornar) && m.sinais_para_retornar.length) {
+          partsM.push(`   ⚠️ Voltar ao profissional se:\n${m.sinais_para_retornar.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        if (Array.isArray(m.habitos_chave) && m.habitos_chave.length) {
+          partsM.push(`   ✨ Hábitos-chave:\n${m.habitos_chave.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        finais.push(partsM.join('\n'));
+      }
       if (Array.isArray(d.referencias_chave) && d.referencias_chave.length) {
         finais.push(`📚 Referências-chave:\n${d.referencias_chave.map((c: string) => `   • ${c}`).join('\n')}`);
       }
@@ -307,25 +323,33 @@ const FASE_THEMES = [
 
 function DiretrizFases({ texto }: { texto: string }) {
   if (!texto?.trim()) return null;
-  // Separa rodapé global (não começa com ▸) das fases
-  const idxPrimeiroRodape = texto.search(/\n(?:📅|🔮|🏁|📚)/);
+  // Separa rodapé global (não começa com ▸) das fases — inclui 🌱 (manutenção)
+  const idxPrimeiroRodape = texto.search(/\n(?:📅|🔮|🏁|🌱|📚)/);
   const corpoFases = idxPrimeiroRodape >= 0 ? texto.slice(0, idxPrimeiroRodape) : texto;
   const rodapeFull = idxPrimeiroRodape >= 0 ? texto.slice(idxPrimeiroRodape).trim() : '';
 
-  // Extrai bloco de referências para renderizar separadamente, bem compacto, no final
+  // Extrai bloco de manutenção (🌱) para renderizar em destaque
   let rodape = rodapeFull;
+  let manutencao = '';
+  const manutMatch = rodapeFull.match(/🌱[\s\S]*?(?=\n(?:📅|🔮|🏁|📚)|$)/);
+  if (manutMatch) {
+    manutencao = manutMatch[0].trim();
+    rodape = rodapeFull.replace(manutMatch[0], '').trim();
+  }
+
+  // Extrai bloco de referências para renderizar separadamente, bem compacto, no final
   let referencias: string[] = [];
-  const refMatch = rodapeFull.match(/📚\s*Referências[^:]*:\s*\n?([\s\S]*?)(?=\n(?:📅|🔮|🏁|📚)|$)/);
+  const refMatch = rodape.match(/📚\s*Referências[^:]*:\s*\n?([\s\S]*?)(?=\n(?:📅|🔮|🏁|🌱|📚)|$)/);
   if (refMatch) {
     referencias = refMatch[1]
       .split('\n')
       .map((l) => l.replace(/^\s*[•\-·]\s*/, '').trim())
       .filter(Boolean);
-    rodape = rodapeFull.replace(refMatch[0], '').trim();
+    rodape = rodape.replace(refMatch[0], '').trim();
   }
 
   const partes = corpoFases.split(/\n?▸\s/).filter((p) => p.trim().length > 0);
-  if (partes.length === 0 && !rodape && referencias.length === 0) {
+  if (partes.length === 0 && !rodape && !manutencao && referencias.length === 0) {
     return (
       <div className="rounded-xl p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 border border-border/30 bg-emerald-500/[0.04]">
         {texto}
@@ -359,6 +383,21 @@ function DiretrizFases({ texto }: { texto: string }) {
           </div>
         );
       })}
+      {manutencao && (
+        <div className="relative rounded-xl border-2 border-emerald-500/30 bg-gradient-to-br from-emerald-500/[0.06] to-teal-500/[0.04] p-3.5 pl-4 overflow-hidden">
+          <div className="absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-gradient-to-b from-emerald-400/70 to-teal-500/30" />
+          <div className="flex items-center gap-2 mb-2">
+            <span className="inline-flex items-center justify-center w-6 h-6 rounded-md text-[13px] bg-emerald-500/15 shrink-0">🌱</span>
+            <span className="font-semibold text-sm text-emerald-800 dark:text-emerald-300">Plano de Manutenção</span>
+            <span className="ml-auto inline-flex items-center rounded-md border border-emerald-500/30 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 text-[10px] font-medium">
+              Pós-alta
+            </span>
+          </div>
+          <div className="text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/85 pl-1">
+            {manutencao.replace(/^🌱[^\n]*\n?/, '').trim()}
+          </div>
+        </div>
+      )}
       {rodape && (
         <div className="rounded-xl border border-border/40 bg-muted/30 p-3.5 text-[13px] leading-relaxed whitespace-pre-wrap text-foreground/80">
           {rodape}
