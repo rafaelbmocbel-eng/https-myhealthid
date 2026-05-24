@@ -4496,6 +4496,36 @@ export type Database = {
         }
         Relationships: []
       }
+      whatsapp_contatos_bloqueados: {
+        Row: {
+          created_at: string
+          id: string
+          motivo: string | null
+          nome: string | null
+          telefone: string
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          nome?: string | null
+          telefone: string
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          motivo?: string | null
+          nome?: string | null
+          telefone?: string
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       whatsapp_conversas: {
         Row: {
           arquivada: boolean

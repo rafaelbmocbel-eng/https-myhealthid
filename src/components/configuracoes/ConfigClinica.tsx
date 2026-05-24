@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X } from 'lucide-react';
+import { Building2, MapPin, MessageCircle, Save, Loader2, CheckCircle2, AlertCircle, ShieldCheck, Image as ImageIcon, Upload, X, UserMinus, Plus, Trash2 } from 'lucide-react';
+import { useWhatsappBloqueados } from '@/hooks/useWhatsappBloqueados';
+
 
 type ConfigClinica = {
   razao_social: string;
@@ -289,6 +291,10 @@ export default function ConfigClinica() {
         </div>
       </div>
 
+      <ContatosBloqueadosCard />
+
+
+
       {/* Save */}
       <div className="flex justify-end mb-4 sm:mb-5">
         <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground gap-2 min-w-[200px]">
@@ -299,3 +305,68 @@ export default function ConfigClinica() {
     </>
   );
 }
+
+function ContatosBloqueadosCard() {
+  const { data: bloqueados = [], adicionar, remover } = useWhatsappBloqueados();
+  const [telefone, setTelefone] = useState('');
+  const [nome, setNome] = useState('');
+  const [motivo, setMotivo] = useState('');
+  const { toast } = useToast();
+
+  const handleAdd = async () => {
+    const tel = telefone.replace(/\D/g, '');
+    if (tel.length < 10) {
+      toast({ title: 'Telefone inválido', description: 'Inclua DDD + número.', variant: 'destructive' });
+      return;
+    }
+    try {
+      await adicionar.mutateAsync({ telefone: tel, nome: nome.trim() || undefined, motivo: motivo.trim() || undefined });
+      setTelefone(''); setNome(''); setMotivo('');
+      toast({ title: 'Contato bloqueado', description: 'O bot não vai mais responder esse número.' });
+    } catch (e: any) {
+      toast({ title: 'Erro', description: e.message, variant: 'destructive' });
+    }
+  };
+
+  return (
+    <div className="clinical-card mb-4 sm:mb-5 border-2 border-amber-500/20">
+      <div className="flex items-center gap-2 mb-2">
+        <UserMinus className="h-4 w-4 text-amber-600" />
+        <h2 className="font-semibold text-sm text-muted-foreground uppercase tracking-wider">Contatos Pessoais (sem bot)</h2>
+      </div>
+      <p className="text-xs text-muted-foreground mb-3">
+        Números cadastrados aqui <strong>nunca</strong> recebem resposta automática da IA. Use para família, amigos e qualquer pessoa que deva falar diretamente com você.
+      </p>
+
+      <div className="grid sm:grid-cols-[1fr_1fr_1fr_auto] gap-2 mb-3">
+        <Input value={telefone} onChange={e => setTelefone(e.target.value)} placeholder="Telefone com DDD (ex: 11999998888)" />
+        <Input value={nome} onChange={e => setNome(e.target.value)} placeholder="Nome (opcional)" />
+        <Input value={motivo} onChange={e => setMotivo(e.target.value)} placeholder="Motivo (ex: esposa)" />
+        <Button onClick={handleAdd} disabled={adicionar.isPending} className="gap-2">
+          <Plus className="h-4 w-4" /> Bloquear
+        </Button>
+      </div>
+
+      {bloqueados.length === 0 ? (
+        <p className="text-xs text-muted-foreground italic">Nenhum contato bloqueado.</p>
+      ) : (
+        <div className="space-y-1.5">
+          {bloqueados.map(b => (
+            <div key={b.id} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/40 text-sm">
+              <div className="min-w-0">
+                <div className="font-medium truncate">{b.nome || b.telefone}</div>
+                <div className="text-xs text-muted-foreground truncate">
+                  {b.telefone}{b.motivo ? ` · ${b.motivo}` : ''}
+                </div>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => remover.mutate(b.id)} className="text-destructive shrink-0">
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+

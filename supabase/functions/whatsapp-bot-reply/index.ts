@@ -300,12 +300,32 @@ Deno.serve(async (req) => {
     }
     const texto = msg.conteudo || "[mídia recebida]";
 
+    // Contato bloqueado (família/amigos): bot nunca responde
+    const telTail = String(conv.telefone || "").replace(/\D/g, "").slice(-10);
+    if (telTail) {
+      const { data: bloqueado } = await admin
+        .from("whatsapp_contatos_bloqueados")
+        .select("id")
+        .eq("terapeuta_id", conv.terapeuta_id)
+        .ilike("telefone", `%${telTail}`)
+        .limit(1).maybeSingle();
+      if (bloqueado) {
+        await admin.from("whatsapp_conversas").update({
+          bot_ativo: false,
+          requer_atencao: false,
+          motivo_escalonamento: "Contato pessoal (bot desativado)",
+        }).eq("id", conversa_id);
+        return new Response(JSON.stringify({ ok: true, skip: "contato_bloqueado" }), { headers: corsHeaders });
+      }
+    }
+
     const { data: cfg } = await admin
       .from("whatsapp_automacoes").select("*")
       .eq("terapeuta_id", conv.terapeuta_id).maybeSingle();
     if (!cfg || !cfg.bot_ativo) {
       return new Response(JSON.stringify({ ok: true, skip: "bot desativado" }), { headers: corsHeaders });
     }
+
 
     // Já escalada? Não responde.
     if (conv.requer_atencao || !conv.bot_ativo) {
