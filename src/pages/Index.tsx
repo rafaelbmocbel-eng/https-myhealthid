@@ -530,13 +530,13 @@ export default function Index() {
               <div
                 className={`tabular-nums leading-none ${
                   k.highlight
-                    ? 'text-xl sm:text-3xl italic font-semibold text-primary'
+                    ? 'text-xl sm:text-3xl font-semibold text-primary tracking-tight'
                     : 'text-xl sm:text-2xl font-semibold text-foreground tracking-tight'
                 }`}
-                style={k.highlight ? { fontFamily: "'Playfair Display', Georgia, serif" } : undefined}
               >
                 {k.value}
               </div>
+
             </Link>
           ))}
         </div>
