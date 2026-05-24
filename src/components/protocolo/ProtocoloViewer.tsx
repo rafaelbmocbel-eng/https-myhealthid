@@ -14,7 +14,7 @@ import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
-import { createLegacyDiretrizSnapshot, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
+import { getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
 interface Props {
   protocoloId: string;
@@ -104,9 +104,8 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   const scores = protocolo.scores_avaliacao || {};
   const faseAtual = progressao?.fase_atual || 1;
   const semanaAtual = progressao?.semana_atual || 1;
-  const diretrizSnapshot =
-    getDiretrizSnapshotFromScores(protocolo.scores_avaliacao) ??
-    createLegacyDiretrizSnapshot({ fases, prescricoes, tratamentos });
+  const diretrizSnapshot = getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
+  const isDiretrizConfirmadaAvaliacao = protocolo.origem === 'ia_voz' || diretrizSnapshot?.origem === 'ia_voz';
 
   const FASE_LABELS = ['Inflamatória', 'Proliferação', 'Remodelação', 'Funcional'];
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
@@ -215,6 +214,40 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
         </div>
       )}
 
+      {isDiretrizConfirmadaAvaliacao && diretrizSnapshot && (
+        <ProtocoloDiretrizEditor
+          protocoloId={protocoloId}
+          snapshot={diretrizSnapshot}
+          faseAtual={faseAtual}
+          queixa={protocolo.titulo}
+        />
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && !diretrizSnapshot && (
+        <div className="clinical-card text-sm text-muted-foreground">Esta diretriz ainda não possui o conteúdo confirmado salvo.</div>
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && (
+        <div className="clinical-card border-l-4 border-destructive mt-6">
+          <h3 className="font-semibold mb-3 flex items-center gap-2 text-destructive">
+            ⚠️ Instruções de Segurança
+          </h3>
+          <p className="text-sm font-medium text-foreground mb-2">Interrompa o exercício imediatamente se sentir:</p>
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {['Dor aguda ou súbita', 'Tontura ou falta de ar', 'Formigamento ou dormência nos membros', 'Qualquer sensação anormal ou preocupante'].map(a => (
+              <li key={a} className="flex items-center gap-2">
+                <span className="text-destructive">•</span> {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && null}
+
+      {!isDiretrizConfirmadaAvaliacao && (
+        <>
+
       {/* Scores */}
       <ProtocoloScores scores={scores} />
 
@@ -299,6 +332,8 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           ))}
         </ul>
       </div>
+        </>
+      )}
     </div>
   );
 }
