@@ -172,7 +172,7 @@ export default function AReceber() {
             <SectionTitle
               icon={<Icon className="icon-sm" />}
               title={b.label}
-              count={lista.length}
+              description={`${lista.length} ${lista.length === 1 ? 'sessão' : 'sessões'}`}
             />
             <div className="space-y-2">
               {lista.map((s) => {
