@@ -10,6 +10,7 @@ import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 import AReceber from '@/components/financeiro/AReceber';
 import DespesasManager from '@/components/financeiro/DespesasManager';
+import ConvenioReconciliacao from '@/components/financeiro/ConvenioReconciliacao';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
