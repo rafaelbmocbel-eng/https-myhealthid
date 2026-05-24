@@ -167,8 +167,8 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                       Técnicas selecionadas
                     </div>
 
-                    {fase.tecnicas.length > 0 ? (
-                      fase.tecnicas.map((tecnica) => (
+                    {(fase.tecnicas?.length ?? 0) > 0 ? (
+                      (fase.tecnicas ?? []).map((tecnica) => (
                         <div key={`${fase.numero}-${tecnica.nome}`} className="rounded-xl border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
