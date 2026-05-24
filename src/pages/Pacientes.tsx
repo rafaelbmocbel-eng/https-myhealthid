@@ -1088,6 +1088,25 @@ export default function Pacientes() {
                 </div>
               )}
             </div>
+
+            {!modal.paciente && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <Checkbox
+                  id="lgpd-aceite"
+                  checked={form.lgpd_aceite}
+                  onCheckedChange={c => setForm(f => ({ ...f, lgpd_aceite: !!c }))}
+                />
+                <Label htmlFor="lgpd-aceite" className="text-[11px] leading-snug cursor-pointer text-foreground">
+                  <strong>Aceite LGPD (obrigatório):</strong> O paciente autorizou o tratamento dos seus dados pessoais e de saúde para fins clínicos e administrativos, conforme a Lei Geral de Proteção de Dados.
+                </Label>
+              </div>
+            )}
+            {modal.paciente && (form.lgpd_aceite ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400">✓ Termo LGPD já aceito</p>
+            ) : (
+              <p className="text-[11px] text-amber-600">⚠ Termo LGPD ainda não registrado para este paciente</p>
+            ))}
+
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
               <Button className="flex-1 rounded-xl" onClick={handleSave} disabled={submitting}>
