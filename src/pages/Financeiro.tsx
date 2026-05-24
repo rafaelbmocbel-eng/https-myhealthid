@@ -9,6 +9,7 @@ import FechamentoProfissional from '@/components/financeiro/FechamentoProfission
 import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 import AReceber from '@/components/financeiro/AReceber';
+import DespesasManager from '@/components/financeiro/DespesasManager';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
@@ -26,9 +27,10 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
       <Tabs defaultValue="mensal" className="w-full">
 
-        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
           <TabsTrigger value="mensal">Mensal</TabsTrigger>
           <TabsTrigger value="receber">A Receber</TabsTrigger>
+          <TabsTrigger value="despesas">Despesas</TabsTrigger>
           <TabsTrigger value="analise">Análise</TabsTrigger>
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
           <TabsTrigger value="convenios">Convênios</TabsTrigger>
@@ -42,6 +44,10 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
         <TabsContent value="receber" className="mt-4">
           <AReceber />
+        </TabsContent>
+
+        <TabsContent value="despesas" className="mt-4">
+          <DespesasManager />
         </TabsContent>
 
         <TabsContent value="analise" className="mt-4">

@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRepasseConfig } from '@/hooks/useRepasseConfig';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { DollarSign, AlertCircle, Percent, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { DollarSign, Receipt, Percent, TrendingUp, TrendingDown, Minus, Wallet } from 'lucide-react';
 
 const FALLBACK_PCT = 0.4;
 
@@ -12,7 +12,9 @@ interface AggregatedMonth {
   faturado: number;
   aFaturar: number; // sessões realizadas sem valor
   repasse: number;
+  despesas: number;
   liquido: number;
+  lucro: number;
   sessoes: number;
 }
 
@@ -40,15 +42,24 @@ export default function FinanceiroHeaderKPIs() {
     queryKey: ['financeiro-kpis-topo', user?.id, periodos.atualIni],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('controle_sessoes')
-        .select('id, data_sessao, valor_cobrado, convenio_id, agendamentos!agendamento_id(membro_equipe_id)')
-        .eq('terapeuta_id', user!.id)
-        .eq('status', 'realizada')
-        .gte('data_sessao', periodos.prevIni)
-        .lte('data_sessao', periodos.atualFim);
-      if (error) throw error;
-      return data || [];
+      const [sessoesRes, despesasRes] = await Promise.all([
+        supabase
+          .from('controle_sessoes')
+          .select('id, data_sessao, valor_cobrado, convenio_id, agendamentos!agendamento_id(membro_equipe_id)')
+          .eq('terapeuta_id', user!.id)
+          .eq('status', 'realizada')
+          .gte('data_sessao', periodos.prevIni)
+          .lte('data_sessao', periodos.atualFim),
+        supabase
+          .from('despesas')
+          .select('valor, data_despesa')
+          .eq('terapeuta_id', user!.id)
+          .gte('data_despesa', periodos.prevIni.slice(0, 10))
+          .lte('data_despesa', periodos.atualFim.slice(0, 10)),
+      ]);
+      if (sessoesRes.error) throw sessoesRes.error;
+      if (despesasRes.error) throw despesasRes.error;
+      return { sessoes: sessoesRes.data || [], despesas: despesasRes.data || [] };
     },
   });
 
@@ -63,11 +74,13 @@ export default function FinanceiroHeaderKPIs() {
       return valor * (Number(cfg.percentual) / 100);
     };
 
-    const empty = (): AggregatedMonth => ({ faturado: 0, aFaturar: 0, repasse: 0, liquido: 0, sessoes: 0 });
+    const empty = (): AggregatedMonth => ({
+      faturado: 0, aFaturar: 0, repasse: 0, despesas: 0, liquido: 0, lucro: 0, sessoes: 0,
+    });
     const atual = empty();
     const anterior = empty();
 
-    (data || []).forEach((s: any) => {
+    (data?.sessoes || []).forEach((s: any) => {
       const d = new Date(s.data_sessao).toISOString();
       const bucket = d >= periodos.atualIni ? atual : anterior;
       const valor = Number(s.valor_cobrado) || 0;
@@ -78,8 +91,17 @@ export default function FinanceiroHeaderKPIs() {
         bucket.repasse += repasseOf(s);
       }
     });
+
+    (data?.despesas || []).forEach((d: any) => {
+      const inAtual = d.data_despesa >= periodos.atualIni.slice(0, 10);
+      const bucket = inAtual ? atual : anterior;
+      bucket.despesas += Number(d.valor) || 0;
+    });
+
     atual.liquido = atual.faturado - atual.repasse;
     anterior.liquido = anterior.faturado - anterior.repasse;
+    atual.lucro = atual.liquido - atual.despesas;
+    anterior.lucro = anterior.liquido - anterior.despesas;
     return { atual, anterior };
   }, [data, getRepasse, periodos]);
 
@@ -103,30 +125,30 @@ export default function FinanceiroHeaderKPIs() {
       positiveUp: true,
     },
     {
-      label: 'A faturar',
-      value: String(atual.aFaturar),
-      sub: atual.aFaturar === 1 ? 'sem valor' : 'sessões sem valor',
-      delta: null,
-      icon: AlertCircle,
-      tone: atual.aFaturar > 0 ? 'amber' : 'muted',
-      positiveUp: false,
-    },
-    {
       label: 'Repasse',
       value: fmt(atual.repasse),
       sub: 'a pagar à equipe',
       delta: delta(atual.repasse, anterior.repasse),
       icon: Percent,
       tone: 'blue',
-      positiveUp: false, // crescimento de repasse não é necessariamente bom
+      positiveUp: false,
     },
     {
-      label: 'Líquido',
-      value: fmt(atual.liquido),
-      sub: 'faturado − repasse',
-      delta: delta(atual.liquido, anterior.liquido),
-      icon: DollarSign,
-      tone: 'primary',
+      label: 'Despesas',
+      value: fmt(atual.despesas),
+      sub: 'custos do mês',
+      delta: delta(atual.despesas, anterior.despesas),
+      icon: Receipt,
+      tone: 'amber',
+      positiveUp: false,
+    },
+    {
+      label: 'Lucro Real',
+      value: fmt(atual.lucro),
+      sub: 'líquido − despesas',
+      delta: delta(atual.lucro, anterior.lucro),
+      icon: Wallet,
+      tone: atual.lucro >= 0 ? 'primary' : 'red',
       positiveUp: true,
     },
   ];
@@ -137,6 +159,7 @@ export default function FinanceiroHeaderKPIs() {
     blue: 'border-blue-500/30 bg-blue-50/60 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
     primary: 'border-primary/40 bg-primary/5 text-primary',
     muted: 'border-border/40 bg-muted/30 text-muted-foreground',
+    red: 'border-red-500/40 bg-red-50/60 dark:bg-red-950/20 text-red-700 dark:text-red-300',
   };
 
   return (
