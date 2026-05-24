@@ -1114,7 +1114,7 @@ export default function PacientePerfil() {
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
             <ResumoNarrativo pacienteId={id!} notas={notasProntuario} />
             <TimelineUnificada pacienteId={id!} />
-            <SoapNoteForm pacienteId={id!} onSuccess={() => qc.invalidateQueries({ queryKey: ['notas-prontuario'] })} />
+            
             <ProntuarioTimeline notas={notasProntuario} isLoading={loadingNotas} />
 
             {evolucoesId.length >= 2 ? (
