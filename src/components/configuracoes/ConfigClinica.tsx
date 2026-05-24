@@ -291,6 +291,10 @@ export default function ConfigClinica() {
         </div>
       </div>
 
+      <ContatosBloqueadosCard />
+
+
+
       {/* Save */}
       <div className="flex justify-end mb-4 sm:mb-5">
         <Button onClick={handleSave} disabled={saving} className="bg-primary text-primary-foreground gap-2 min-w-[200px]">
