@@ -1380,6 +1380,7 @@ export default function PacientePerfil() {
           </Dialog>
         </>
       )}
+      </div>
     </AppLayout >
   );
 }
