@@ -82,9 +82,9 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
 
                   <div className="text-xs text-muted-foreground flex flex-wrap items-center gap-2 mt-1">
                     <span>Semanas {fase.semanas}</span>
-                    {fase.frequenciaSemanal > 0 && <span>{fase.frequenciaSemanal}x/semana</span>}
-                    <span>{fase.exercicios.length} exercício{fase.exercicios.length !== 1 ? 's' : ''}</span>
-                    <span>{fase.tecnicas.length} técnica{fase.tecnicas.length !== 1 ? 's' : ''}</span>
+                    {(fase.frequenciaSemanal ?? 0) > 0 && <span>{fase.frequenciaSemanal}x/semana</span>}
+                    <span>{fase.exercicios?.length ?? 0} exercício{(fase.exercicios?.length ?? 0) !== 1 ? 's' : ''}</span>
+                    <span>{fase.tecnicas?.length ?? 0} técnica{(fase.tecnicas?.length ?? 0) !== 1 ? 's' : ''}</span>
                   </div>
                 </div>
               </div>
