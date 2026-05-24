@@ -105,9 +105,9 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                   </div>
                   <p className="text-sm text-muted-foreground">{fase.objetivo}</p>
 
-                  {fase.demandasAlvo.length > 0 && (
+                  {(fase.demandasAlvo?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {fase.demandasAlvo.map((demanda) => (
+                      {(fase.demandasAlvo ?? []).map((demanda) => (
                         <Badge key={demanda} variant="secondary" className="text-xs">
                           {demanda}
                         </Badge>
