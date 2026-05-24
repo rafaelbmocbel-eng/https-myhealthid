@@ -95,8 +95,9 @@ const LazyFallback = (
 export default function PacientePerfil() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { data: acessoClinico } = useAcessoClinicoPaciente(id);
-  const [searchParams] = useMemo(() => [new URLSearchParams(window.location.search)], []);
+  const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
   const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal'];
@@ -111,6 +112,10 @@ export default function PacientePerfil() {
           : rawTab;
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  // Sincroniza a aba ativa quando a URL muda (ex.: navigate após confirmar diretriz)
+  useEffect(() => {
+    setActiveTab(initialTab);
+  }, [initialTab]);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
