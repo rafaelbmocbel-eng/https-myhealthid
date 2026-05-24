@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -365,6 +365,22 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       toast({ title: 'Erro ao criar diretriz', description: err?.message, variant: 'destructive' });
     }
   };
+
+  // Auto-envia diretrizes confirmadas na avaliação para a aba Diretrizes,
+  // sem exigir clique manual em "Enviar".
+  const autoSentRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (tipo !== 'identidade') return;
+    avaliacoesVozComDiretriz.forEach((av: any) => {
+      if (!autoSentRef.current.has(av.id)) {
+        autoSentRef.current.add(av.id);
+        handleCriarProtocoloDaVoz(av);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avaliacoesVozComDiretriz, tipo]);
+
+
 
 
   const handlePublicarExercicios = async (protocolo: any) => {
