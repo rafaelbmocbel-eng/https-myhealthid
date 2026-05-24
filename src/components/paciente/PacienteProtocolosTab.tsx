@@ -501,7 +501,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     );
   }
 
-  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0) {
+  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0 && avaliacoesVozComDiretriz.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
@@ -548,6 +548,28 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       </div>
 
       {/* Avaliações prontas para protocolo (identidade) */}
+      {tipo === 'identidade' && avaliacoesVozComDiretriz.length > 0 && (
+        <div className="space-y-2" id="secao-diretrizes-voz">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Diretrizes da avaliação</span>
+            <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{avaliacoesVozComDiretriz.length}</Badge>
+          </div>
+          {avaliacoesVozComDiretriz.map((av: any) => (
+            <div key={av.id} className="border-l-4 border-primary rounded-lg p-3 bg-primary/5 flex items-center gap-3 shadow-sm">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{av.queixa_principal || 'Avaliação por voz'}</p>
+                <p className="text-xs text-muted-foreground">Confirmada em {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
+              </div>
+              <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-7 text-xs shadow-sm" onClick={() => handleCriarProtocoloDaVoz(av)}>
+                <Plus className="h-3 w-3" /> Enviar
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {(tipo === 'identidade' || tipo === 'studio') && avaliacoesSemProtocolo.length > 0 && (
         <div className="space-y-2" id="secao-pendencias">
           <div className="flex items-center gap-2 mb-2">
