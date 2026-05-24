@@ -723,6 +723,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
 
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
