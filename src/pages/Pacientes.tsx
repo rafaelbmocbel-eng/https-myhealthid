@@ -940,6 +940,72 @@ export default function Pacientes() {
                   maxLength={14} />
               </div>
             </div>
+
+            {/* Endereço (necessário para emissão fiscal/NFS-e) */}
+            <div className="space-y-2 rounded-lg border border-border/40 p-3 bg-muted/20">
+              <p className="text-xs font-semibold text-muted-foreground">Endereço</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1 col-span-1">
+                  <Label className="text-xs">CEP</Label>
+                  <Input placeholder="00000-000" value={form.cep}
+                    onChange={async e => {
+                      const masked = maskCEP(e.target.value);
+                      setForm(f => ({ ...f, cep: masked }));
+                      const digits = masked.replace(/\D/g, '');
+                      if (digits.length === 8) {
+                        try {
+                          const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+                          const d = await r.json();
+                          if (!d.erro) {
+                            setForm(f => ({
+                              ...f,
+                              endereco: d.logradouro || f.endereco,
+                              bairro: d.bairro || f.bairro,
+                              cidade: d.localidade || f.cidade,
+                              uf: d.uf || f.uf,
+                            }));
+                          }
+                        } catch { /* offline ok */ }
+                      }
+                    }}
+                    maxLength={9} />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Logradouro</Label>
+                  <Input placeholder="Rua, avenida..." value={form.endereco}
+                    onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Número</Label>
+                  <Input placeholder="123" value={form.endereco_numero}
+                    onChange={e => setForm(f => ({ ...f, endereco_numero: e.target.value }))} />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Complemento</Label>
+                  <Input placeholder="Apto, sala..." value={form.endereco_complemento}
+                    onChange={e => setForm(f => ({ ...f, endereco_complemento: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Bairro</Label>
+                  <Input value={form.bairro}
+                    onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Cidade</Label>
+                  <Input value={form.cidade}
+                    onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">UF</Label>
+                  <Input value={form.uf} maxLength={2}
+                    onChange={e => setForm(f => ({ ...f, uf: e.target.value.toUpperCase() }))} />
+                </div>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Queixa Principal</Label>
               <Input placeholder="Ex: Dor lombar crônica, escoliose..." value={form.queixa_principal}
