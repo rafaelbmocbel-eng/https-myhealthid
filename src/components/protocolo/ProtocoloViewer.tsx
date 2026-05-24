@@ -130,7 +130,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   });
   const diretrizSnapshot = diretrizSnapshotAvaliacao ?? getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
   const origemDiretriz = String(protocolo.origem || scores.origem || diretrizSnapshot?.origem || '');
-  const isDiretrizConfirmadaAvaliacao = !!diretrizSnapshot && ['ia_voz', 'ia_escrita'].includes(origemDiretriz);
+  const isDiretrizConfirmadaAvaliacao = !!diretrizSnapshot && ['ia_voz', 'ia_escrita', 'avaliacao_voz'].includes(origemDiretriz);
 
   if (embedded && isDiretrizConfirmadaAvaliacao) {
     return (
