@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -49,6 +49,12 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
   const [editingIdx, setEditingIdx] = useState<number | null>(null);
   const [picker, setPicker] = useState<PickerState>(null);
   const [dirty, setDirty] = useState(false);
+
+  useEffect(() => {
+    if (dirty) return;
+    setFases(snapshot.fases);
+    setAbertas(new Set([Math.min(Math.max(faseAtual - 1, 0), Math.max(snapshot.fases.length - 1, 0))]));
+  }, [dirty, faseAtual, snapshot]);
 
   const toggle = (i: number) => {
     setAbertas(p => {
