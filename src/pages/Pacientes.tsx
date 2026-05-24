@@ -102,22 +102,28 @@ const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
 
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
-  data_nascimento: string; genero: string; cpf: string; endereco: string;
+  data_nascimento: string; genero: string; cpf: string;
+  cep: string; endereco: string; endereco_numero: string; endereco_complemento: string;
+  bairro: string; cidade: string; uf: string;
   queixa_principal: string; observacoes: string;
   responsavel_id: string;
   tipo_pagamento: TipoPagamento;
   plano_saude: string;
   convenio_id: string;
+  lgpd_aceite: boolean;
 }
 
 const emptyForm: FormData = {
   nome: '', sobrenome: '', email: '', telefone: '',
-  data_nascimento: '', genero: '', cpf: '', endereco: '',
+  data_nascimento: '', genero: '', cpf: '',
+  cep: '', endereco: '', endereco_numero: '', endereco_complemento: '',
+  bairro: '', cidade: '', uf: '',
   queixa_principal: '', observacoes: '',
   responsavel_id: '',
   tipo_pagamento: 'particular',
   plano_saude: '',
   convenio_id: '',
+  lgpd_aceite: false,
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
