@@ -105,9 +105,9 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                   </div>
                   <p className="text-sm text-muted-foreground">{fase.objetivo}</p>
 
-                  {fase.demandasAlvo.length > 0 && (
+                  {(fase.demandasAlvo?.length ?? 0) > 0 && (
                     <div className="flex flex-wrap gap-2 mt-3">
-                      {fase.demandasAlvo.map((demanda) => (
+                      {(fase.demandasAlvo ?? []).map((demanda) => (
                         <Badge key={demanda} variant="secondary" className="text-xs">
                           {demanda}
                         </Badge>
@@ -123,8 +123,8 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                       Exercícios selecionados
                     </div>
 
-                    {fase.exercicios.length > 0 ? (
-                      fase.exercicios.map((exercicio) => (
+                    {(fase.exercicios?.length ?? 0) > 0 ? (
+                      (fase.exercicios ?? []).map((exercicio) => (
                         <div key={`${fase.numero}-${exercicio.nome}`} className="rounded-xl border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
@@ -167,8 +167,8 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                       Técnicas selecionadas
                     </div>
 
-                    {fase.tecnicas.length > 0 ? (
-                      fase.tecnicas.map((tecnica) => (
+                    {(fase.tecnicas?.length ?? 0) > 0 ? (
+                      (fase.tecnicas ?? []).map((tecnica) => (
                         <div key={`${fase.numero}-${tecnica.nome}`} className="rounded-xl border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
