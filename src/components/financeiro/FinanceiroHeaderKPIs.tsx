@@ -12,7 +12,9 @@ interface AggregatedMonth {
   faturado: number;
   aFaturar: number; // sessões realizadas sem valor
   repasse: number;
+  despesas: number;
   liquido: number;
+  lucro: number;
   sessoes: number;
 }
 
@@ -40,15 +42,24 @@ export default function FinanceiroHeaderKPIs() {
     queryKey: ['financeiro-kpis-topo', user?.id, periodos.atualIni],
     enabled: !!user,
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('controle_sessoes')
-        .select('id, data_sessao, valor_cobrado, convenio_id, agendamentos!agendamento_id(membro_equipe_id)')
-        .eq('terapeuta_id', user!.id)
-        .eq('status', 'realizada')
-        .gte('data_sessao', periodos.prevIni)
-        .lte('data_sessao', periodos.atualFim);
-      if (error) throw error;
-      return data || [];
+      const [sessoesRes, despesasRes] = await Promise.all([
+        supabase
+          .from('controle_sessoes')
+          .select('id, data_sessao, valor_cobrado, convenio_id, agendamentos!agendamento_id(membro_equipe_id)')
+          .eq('terapeuta_id', user!.id)
+          .eq('status', 'realizada')
+          .gte('data_sessao', periodos.prevIni)
+          .lte('data_sessao', periodos.atualFim),
+        supabase
+          .from('despesas')
+          .select('valor, data_despesa')
+          .eq('terapeuta_id', user!.id)
+          .gte('data_despesa', periodos.prevIni.slice(0, 10))
+          .lte('data_despesa', periodos.atualFim.slice(0, 10)),
+      ]);
+      if (sessoesRes.error) throw sessoesRes.error;
+      if (despesasRes.error) throw despesasRes.error;
+      return { sessoes: sessoesRes.data || [], despesas: despesasRes.data || [] };
     },
   });
 
