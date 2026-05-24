@@ -3,6 +3,7 @@ import type { ProtocoloAnalise } from '@/utils/demandasAnalyzer';
 export interface DiretrizSnapshotExercise {
   nome: string;
   categoria: string;
+  nivel_evidencia?: string;
   series: number | string;
   repeticoes: number | string;
   duracao: string;
@@ -13,6 +14,7 @@ export interface DiretrizSnapshotExercise {
 
 export interface DiretrizSnapshotTechnique {
   nome: string;
+  nivel_evidencia?: string;
   descricao: string;
   duracao: string;
   frequencia: string;
