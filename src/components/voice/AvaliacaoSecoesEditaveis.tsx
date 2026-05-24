@@ -1018,6 +1018,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           const Icon = s.Icon;
           const isDiretriz = s.key === 'diretriz';
           const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
+          const diretrizPendenteEnvio = isDiretriz && confirmada && !resultado?._secoes?.diretriz_protocolo_id;
 
           return (
             <Card
@@ -1051,7 +1052,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                       )}
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-tight">
-                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente')}
+                      {semProntuario ? 'Não vai para o prontuário' : (diretrizPendenteEnvio ? 'Pendente na aba Diretrizes' : (confirmada ? 'Sincronizado' : 'Pendente'))}
                     </p>
                   </div>
                 </div>
@@ -1079,8 +1080,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         onClick={() => toggleConfirmacao(s.key)}
                         disabled={savingEsta}
                       >
-                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                        {confirmada ? 'Remover' : 'Confirmar'}
+                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : diretrizPendenteEnvio ? <Check className="icon-xs" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                        {diretrizPendenteEnvio ? 'Enviar' : confirmada ? 'Remover' : 'Confirmar'}
                       </Button>
                     )}
                   </div>
