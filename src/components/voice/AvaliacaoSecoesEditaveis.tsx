@@ -804,11 +804,22 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     const classif = resultado?.classificacao_severidade || 'N/I';
     const origemDiretriz = 'ia_voz';
 
+    const tituloProtocolo = `Diretriz — ${queixa}`;
     const fasesConfig = [
       { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
       { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
       { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
     ];
+
+    const { data: existentePorTitulo } = await (supabase as any)
+      .from('protocolos')
+      .select('id')
+      .eq('paciente_id', pacienteId)
+      .eq('terapeuta_id', user.id)
+      .eq('origem', origemDiretriz)
+      .eq('titulo', tituloProtocolo)
+      .maybeSingle();
+    if (existentePorTitulo?.id) return existentePorTitulo.id;
 
     const diretrizSnapshot = {
       versao: 1,
@@ -845,7 +856,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       .insert({
         terapeuta_id: user.id,
         paciente_id: pacienteId,
-        titulo: `Diretriz — ${queixa}`,
+        titulo: tituloProtocolo,
         descricao: resultado?.resumo_clinico || null,
         objetivo_geral: `Plano clínico em 3 fases para "${queixa}" — gerado a partir da avaliação (${classif}).`,
         duracao_total: '12 semanas',
@@ -884,14 +895,15 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const toggleConfirmacao = async (key: SecaoKey) => {
     const nova = new Set(confirmadas);
     const estavaConfirmada = nova.has(key);
-    if (estavaConfirmada) nova.delete(key); else nova.add(key);
+    const diretrizConfirmadaSemProtocolo = key === 'diretriz' && estavaConfirmada && !resultado?._secoes?.diretriz_protocolo_id;
+    if (estavaConfirmada && !diretrizConfirmadaSemProtocolo) nova.delete(key); else nova.add(key);
     setSaving(key);
     try {
       setConfirmadas(nova);
 
       // Caso especial: confirmar a Diretriz → cria protocolo e navega para a aba Diretrizes
       let protocoloIdCriado: string | null = resultado?._secoes?.diretriz_protocolo_id || null;
-      if (key === 'diretriz' && !estavaConfirmada) {
+      if (key === 'diretriz' && (!estavaConfirmada || diretrizConfirmadaSemProtocolo)) {
         protocoloIdCriado = await criarOuRecuperarProtocoloDaDiretriz();
       }
 
@@ -912,7 +924,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       qc.invalidateQueries({ queryKey: ['nota-avaliacao-presencial', avaliacaoId] });
       qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
 
-      if (key === 'diretriz' && !estavaConfirmada && protocoloIdCriado) {
+      if (key === 'diretriz' && (!estavaConfirmada || diretrizConfirmadaSemProtocolo) && protocoloIdCriado) {
         toast({
           title: '✅ Diretriz enviada para a aba Diretrizes',
           description: 'Agora você pode refinar a diretriz com opções baseadas em evidências.',
@@ -1006,6 +1018,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
           const Icon = s.Icon;
           const isDiretriz = s.key === 'diretriz';
           const semProntuario = SECOES_SEM_PRONTUARIO.includes(s.key);
+          const diretrizPendenteEnvio = isDiretriz && confirmada && !resultado?._secoes?.diretriz_protocolo_id;
 
           return (
             <Card
@@ -1039,7 +1052,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                       )}
                     </div>
                     <p className="text-[10px] text-muted-foreground leading-tight">
-                      {semProntuario ? 'Não vai para o prontuário' : (confirmada ? 'Sincronizado' : 'Pendente')}
+                      {semProntuario ? 'Não vai para o prontuário' : (diretrizPendenteEnvio ? 'Pendente na aba Diretrizes' : (confirmada ? 'Sincronizado' : 'Pendente'))}
                     </p>
                   </div>
                 </div>
@@ -1067,8 +1080,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                         onClick={() => toggleConfirmacao(s.key)}
                         disabled={savingEsta}
                       >
-                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
-                        {confirmada ? 'Remover' : 'Confirmar'}
+                        {savingEsta ? <Loader2 className="icon-xs animate-spin" /> : diretrizPendenteEnvio ? <Check className="icon-xs" /> : confirmada ? <X className="icon-xs" /> : <Check className="icon-xs" />}
+                        {diretrizPendenteEnvio ? 'Enviar' : confirmada ? 'Remover' : 'Confirmar'}
                       </Button>
                     )}
                   </div>

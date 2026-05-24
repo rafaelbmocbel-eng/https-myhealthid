@@ -88,6 +88,27 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     enabled: !!user && (tipo === 'identidade' || tipo === 'studio'),
   });
 
+  const { data: avaliacoesVozComDiretriz = [] } = useQuery({
+    queryKey: ['avaliacoes-voz-diretriz-pendente', pacienteId, protocolos.length],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('id, resultado, created_at, queixa_principal, classificacao_severidade')
+        .eq('paciente_id', pacienteId)
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return (data || []).filter((av: any) => {
+        const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
+        return resultado?.diretriz_tratamento
+          && resultado?._secoes?.confirmadas?.includes('diretriz')
+          && !resultado?._secoes?.diretriz_protocolo_id;
+      });
+    },
+    enabled: !!user && tipo === 'identidade',
+  });
+
   // Avaliações CobZero sem protocolo
   const { data: avaliacoesCobZeroSemProtocolo = [] } = useQuery({
     queryKey: ['avaliacoes-cob-zero-sem-protocolo-paciente', pacienteId],
@@ -309,6 +330,42 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     }
   };
 
+  const handleCriarProtocoloDaVoz = async (av: any) => {
+    try {
+      const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
+      const diretriz = resultado?.diretriz_tratamento;
+      if (!diretriz) throw new Error('Diretriz indisponível nesta avaliação.');
+      const queixa = resultado?.queixa_principal || av.queixa_principal || 'Avaliação por voz';
+      const fasesConfig = [
+        { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
+        { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
+        { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
+      ];
+
+      const { data: prot, error } = await (supabase as any).from('protocolos').insert({
+        terapeuta_id: user!.id,
+        paciente_id: pacienteId,
+        titulo: `Diretriz — ${queixa}`,
+        descricao: resultado?.resumo_clinico || null,
+        objetivo_geral: `Plano clínico em 3 fases para "${queixa}" — gerado a partir da avaliação por voz.`,
+        duracao_total: '12 semanas',
+        frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
+        status: 'ativo',
+        origem: 'ia_voz',
+        scores_avaliacao: { diretriz_snapshot: { origem: 'ia_voz', fases: fasesConfig.map((cfg) => ({ ...cfg, objetivo: diretriz?.[cfg.key]?.objetivos?.[0] || 'Conduta terapêutica planejada.', tecnicas: diretriz?.[cfg.key]?.tecnicas || [] })) } },
+      }).select('id').single();
+      if (error) throw error;
+      await (supabase as any).from('protocolo_fases').insert(fasesConfig.map((cfg) => ({ protocolo_id: prot.id, numero_fase: cfg.numero, titulo: cfg.titulo, semanas_inicio: cfg.semanas_inicio, semanas_fim: cfg.semanas_fim, objetivos: diretriz?.[cfg.key]?.objetivos || [], sessoes_por_semana: 2 })));
+      await supabase.from('avaliacoes_voz').update({ resultado: { ...resultado, _secoes: { ...(resultado._secoes || {}), diretriz_protocolo_id: prot.id } } }).eq('id', av.id);
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+      qc.invalidateQueries({ queryKey: ['avaliacoes-voz-diretriz-pendente'] });
+      setViewingId(prot.id);
+      toast({ title: 'Diretriz enviada para a aba Diretrizes' });
+    } catch (err: any) {
+      toast({ title: 'Erro ao criar diretriz', description: err?.message, variant: 'destructive' });
+    }
+  };
+
 
   const handlePublicarExercicios = async (protocolo: any) => {
     setPublishingId(protocolo.id);
@@ -444,7 +501,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     );
   }
 
-  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0) {
+  if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0 && avaliacoesVozComDiretriz.length === 0) {
     return (
       <div className="space-y-4">
         <div className="flex justify-between items-center bg-muted/30 p-4 rounded-xl border border-dashed border-primary/20 shadow-sm">
@@ -491,6 +548,28 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       </div>
 
       {/* Avaliações prontas para protocolo (identidade) */}
+      {tipo === 'identidade' && avaliacoesVozComDiretriz.length > 0 && (
+        <div className="space-y-2" id="secao-diretrizes-voz">
+          <div className="flex items-center gap-2 mb-2">
+            <FileText className="h-4 w-4 text-primary" />
+            <span className="text-xs font-semibold text-muted-foreground uppercase">Diretrizes da avaliação</span>
+            <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{avaliacoesVozComDiretriz.length}</Badge>
+          </div>
+          {avaliacoesVozComDiretriz.map((av: any) => (
+            <div key={av.id} className="border-l-4 border-primary rounded-lg p-3 bg-primary/5 flex items-center gap-3 shadow-sm">
+              <FileText className="h-4 w-4 text-primary shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-medium truncate">{av.queixa_principal || 'Avaliação por voz'}</p>
+                <p className="text-xs text-muted-foreground">Confirmada em {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
+              </div>
+              <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-7 text-xs shadow-sm" onClick={() => handleCriarProtocoloDaVoz(av)}>
+                <Plus className="h-3 w-3" /> Enviar
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
       {(tipo === 'identidade' || tipo === 'studio') && avaliacoesSemProtocolo.length > 0 && (
         <div className="space-y-2" id="secao-pendencias">
           <div className="flex items-center gap-2 mb-2">

@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback, useEffect, lazy, Suspense } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef, lazy, Suspense } from 'react';
 import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
 import { Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -112,10 +112,17 @@ export default function PacientePerfil() {
           : rawTab;
   const initialTab = VALID_TABS.includes(normalizedTab) ? normalizedTab : '';
   const [activeTab, setActiveTab] = useState<string>(initialTab);
+  const tabsSectionRef = useRef<HTMLDivElement | null>(null);
   // Sincroniza a aba ativa quando a URL muda (ex.: navigate após confirmar diretriz)
   useEffect(() => {
     setActiveTab(initialTab);
   }, [initialTab]);
+  useEffect(() => {
+    if (!initialTab) return;
+    window.requestAnimationFrame(() => {
+      tabsSectionRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  }, [initialTab, location.search]);
   const { user, loading: authLoading } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
@@ -1007,6 +1014,7 @@ export default function PacientePerfil() {
         })()}
 
         {/* ==== ABAS COMPLEMENTARES ==== */}
+        <div ref={tabsSectionRef} className="scroll-mt-4">
         <Tabs
           value={activeTab}
           onValueChange={(v) => {
@@ -1372,6 +1380,7 @@ export default function PacientePerfil() {
           </Dialog>
         </>
       )}
+      </div>
     </AppLayout >
   );
 }
