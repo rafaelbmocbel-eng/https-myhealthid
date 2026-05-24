@@ -212,7 +212,37 @@ export function getDiretrizSnapshotFromScores(scores: unknown): DiretrizSnapshot
     return null;
   }
 
-  return snapshot as DiretrizSnapshot;
+  return {
+    ...(snapshot as DiretrizSnapshot),
+    fases: fases.map((faseRaw, index) => {
+      const fase = getRecord(faseRaw);
+      const cfg = FASES_VOZ[index] || {
+        numero: index + 1,
+        titulo: `Fase ${index + 1}`,
+        semanas_inicio: index === 0 ? 1 : index * 4,
+        semanas_fim: (index + 1) * 4,
+      };
+      const objetivos = asStringArray(fase.objetivos || fase.objetivo);
+      const criterios = asStringArray(fase.criteriosProgressao || fase.criterios_progressao || fase.criterios);
+      const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas as unknown[] : [];
+      const exercicios = Array.isArray(fase.exercicios) ? fase.exercicios as unknown[] : [];
+
+      return {
+        numero: Number(fase.numero || cfg.numero),
+        titulo: String(fase.titulo || cfg.titulo),
+        semanas: String(fase.semanas || fase.duracao_semanas || `${fase.semanas_inicio || cfg.semanas_inicio}-${fase.semanas_fim || cfg.semanas_fim}`),
+        semanas_inicio: Number(fase.semanas_inicio || cfg.semanas_inicio),
+        semanas_fim: Number(fase.semanas_fim || cfg.semanas_fim),
+        objetivo: String(fase.objetivo || objetivos[0] || 'Conduta terapêutica planejada.'),
+        demandasAlvo: Array.isArray(fase.demandasAlvo) ? fase.demandasAlvo.filter((item) => typeof item === 'string') : objetivos.slice(1),
+        criteriosProgressao: criterios,
+        frequenciaSemanal: Number(fase.frequenciaSemanal || String(fase.frequencia || '').match(/\d+/)?.[0] || 0),
+        duracaoSessao: String(fase.duracaoSessao || fase.duracao_sessao || fase.duracao || ''),
+        exercicios: exercicios.map((item) => normalizeExercise(item)),
+        tecnicas: tecnicas.map((item) => normalizeTechnique(item)),
+      } satisfies DiretrizSnapshotPhase;
+    }),
+  } as DiretrizSnapshot;
 }
 
 export function createLegacyDiretrizSnapshot(params: {
