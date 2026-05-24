@@ -1,6 +1,6 @@
 import { useState, useMemo, useCallback, lazy, Suspense } from 'react';
 import { getAgendaUrl, getBaseUrl, getPortalUrl } from '@/utils/linkUrls';
-import { Navigate, useParams, useNavigate } from 'react-router-dom';
+import { Navigate, useParams, useNavigate, useLocation } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
