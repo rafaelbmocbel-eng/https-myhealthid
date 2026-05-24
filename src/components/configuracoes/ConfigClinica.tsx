@@ -42,13 +42,14 @@ const UFS = ['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','P
 
 const extractZapiCredentials = (instanceId: string, token: string) => {
   const instance = instanceId.trim();
-  const instanceMatch = instance.match(/instances\/([^/\s]+)\/token\/([^/\s]+)/i);
+  const rawToken = token.trim();
+  const instanceMatch = `${instance} ${rawToken}`.match(/instances\/([^/\s]+)\/token\/([^/\s]+)/i);
 
   if (instanceMatch) {
     return { instanceId: instanceMatch[1], token: instanceMatch[2] };
   }
 
-  return { instanceId: instance, token: token.trim() };
+  return { instanceId: instance, token: rawToken };
 };
 
 export default function ConfigClinica() {
@@ -90,7 +91,16 @@ export default function ConfigClinica() {
     if (!user) return;
     (async () => {
       const { data } = await supabase.from('config_clinica').select('*').eq('terapeuta_id', user.id).maybeSingle();
-      if (data) setForm({ ...EMPTY, ...data });
+      if (data) {
+        const creds = extractZapiCredentials(data.zapi_instance_id || '', data.zapi_token || '');
+        setForm({
+          ...EMPTY,
+          ...data,
+          zapi_instance_id: creds.instanceId,
+          zapi_token: creds.token,
+          zapi_client_token: data.zapi_client_token?.trim() || '',
+        });
+      }
       setLoading(false);
     })();
   }, [user]);
@@ -101,7 +111,13 @@ export default function ConfigClinica() {
     if (!user) return;
     setSaving(true);
     const creds = extractZapiCredentials(form.zapi_instance_id, form.zapi_token);
-    const payload = { ...form, ...creds, zapi_client_token: form.zapi_client_token.trim(), terapeuta_id: user.id };
+    const payload = {
+      ...form,
+      zapi_instance_id: creds.instanceId,
+      zapi_token: creds.token,
+      zapi_client_token: form.zapi_client_token.trim(),
+      terapeuta_id: user.id,
+    };
     const { error } = await supabase.from('config_clinica').upsert(payload, { onConflict: 'terapeuta_id' });
     setSaving(false);
     if (error) {
