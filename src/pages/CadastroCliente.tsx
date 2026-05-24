@@ -25,11 +25,22 @@ export default function CadastroCliente() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug) return;
+    if (!aceitouTermos) {
+      toast({ title: 'Aceite os termos LGPD para continuar', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
     try {
       const res = await supabase.functions.invoke('register-patient', {
-        body: { slug, nome: form.nome, email: form.email, password: form.password },
+        body: {
+          slug,
+          nome: form.nome,
+          email: form.email,
+          telefone: form.telefone || null,
+          password: form.password,
+          lgpd_aceite: true,
+        },
       });
 
       if (res.error || res.data?.error) {
