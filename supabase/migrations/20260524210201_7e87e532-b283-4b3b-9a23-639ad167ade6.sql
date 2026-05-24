@@ -1,0 +1,1 @@
+UPDATE public.config_clinica SET zapi_instance_id='3F39DD9FA1D4717355A0C609B9308FED', zapi_token='931FEFD28C30DF79F924F171' WHERE terapeuta_id='808647e5-1d3b-4e3a-8886-d835b1117e2c';
