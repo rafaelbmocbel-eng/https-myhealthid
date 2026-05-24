@@ -19,7 +19,8 @@ export default function CadastroCliente() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ nome: '', email: '', password: '' });
+  const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [form, setForm] = useState({ nome: '', email: '', telefone: '', password: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
