@@ -88,6 +88,27 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
     enabled: !!user && (tipo === 'identidade' || tipo === 'studio'),
   });
 
+  const { data: avaliacoesVozComDiretriz = [] } = useQuery({
+    queryKey: ['avaliacoes-voz-diretriz-pendente', pacienteId, protocolos.length],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_voz')
+        .select('id, resultado, created_at, queixa_principal, classificacao_severidade')
+        .eq('paciente_id', pacienteId)
+        .eq('terapeuta_id', user!.id)
+        .order('created_at', { ascending: false })
+        .limit(12);
+      if (error) throw error;
+      return (data || []).filter((av: any) => {
+        const resultado = typeof av.resultado === 'string' ? JSON.parse(av.resultado) : av.resultado;
+        return resultado?.diretriz_tratamento
+          && resultado?._secoes?.confirmadas?.includes('diretriz')
+          && !resultado?._secoes?.diretriz_protocolo_id;
+      });
+    },
+    enabled: !!user && tipo === 'identidade',
+  });
+
   // Avaliações CobZero sem protocolo
   const { data: avaliacoesCobZeroSemProtocolo = [] } = useQuery({
     queryKey: ['avaliacoes-cob-zero-sem-protocolo-paciente', pacienteId],
