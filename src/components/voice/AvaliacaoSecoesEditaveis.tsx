@@ -1,6 +1,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from 'react-router-dom';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -15,6 +16,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import { cn } from '@/lib/utils';
+
 
 interface Props {
   pacienteId: string;
@@ -721,6 +723,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
+  const navigate = useNavigate();
+
 
   const meta = resultado?._secoes || {};
   const editadasIniciais: Record<string, string> = meta.editadas || {};
@@ -784,6 +788,99 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     } finally { setSaving(null); }
   };
 
+  const criarOuRecuperarProtocoloDaDiretriz = async (): Promise<string | null> => {
+    if (!user) return null;
+    const existenteId = resultado?._secoes?.diretriz_protocolo_id;
+    if (existenteId) {
+      const { data: jaExiste } = await (supabase as any)
+        .from('protocolos').select('id').eq('id', existenteId).maybeSingle();
+      if (jaExiste?.id) return jaExiste.id;
+    }
+
+    const diretriz = resultado?.diretriz_tratamento;
+    if (!diretriz) return null;
+
+    const queixa = resultado?.queixa_principal || 'Avaliação presencial';
+    const classif = resultado?.classificacao_severidade || 'N/I';
+    const origemDiretriz = 'ia_voz';
+
+    const fasesConfig = [
+      { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
+      { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
+      { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
+    ];
+
+    const diretrizSnapshot = {
+      versao: 1,
+      createdAt: new Date().toISOString(),
+      origem: origemDiretriz,
+      fases: fasesConfig.map((cfg) => {
+        const fase = diretriz?.[cfg.key] || {};
+        const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
+        return {
+          numero: cfg.numero,
+          titulo: cfg.titulo,
+          semanas: `${cfg.semanas_inicio}-${cfg.semanas_fim}`,
+          semanas_inicio: cfg.semanas_inicio,
+          semanas_fim: cfg.semanas_fim,
+          objetivo: (fase.objetivos || [])[0] || 'Conduta terapêutica planejada.',
+          demandasAlvo: (fase.objetivos || []).slice(1),
+          frequenciaSemanal: 0,
+          duracaoSessao: fase.duracao_semanas || '',
+          exercicios: [],
+          tecnicas: tecnicas.map((t: any) => ({
+            nome: t.tecnica || 'Técnica',
+            descricao: t.justificativa || '',
+            duracao: '',
+            frequencia: diretriz.frequencia_sugerida || '',
+            motivo: t.justificativa || '',
+            categoria: t.lente_clinica || 'referencia',
+          })),
+        };
+      }),
+    };
+
+    const { data: prot, error: protErr } = await (supabase as any)
+      .from('protocolos')
+      .insert({
+        terapeuta_id: user.id,
+        paciente_id: pacienteId,
+        titulo: `Diretriz — ${queixa}`,
+        descricao: resultado?.resumo_clinico || null,
+        objetivo_geral: `Plano clínico em 3 fases para "${queixa}" — gerado a partir da avaliação (${classif}).`,
+        duracao_total: '12 semanas',
+        frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
+        status: 'ativo',
+        origem: origemDiretriz,
+        scores_avaliacao: {
+          origem: origemDiretriz,
+          classificacao: classif,
+          queixa_principal: queixa,
+          prognostico: diretriz.prognostico || null,
+          criterios_alta: diretriz.criterios_alta || [],
+          diretriz_snapshot: diretrizSnapshot,
+        },
+      })
+      .select('id').single();
+    if (protErr) throw protErr;
+
+    const fasesPayload = fasesConfig.map((cfg) => {
+      const fase = diretriz?.[cfg.key] || {};
+      return {
+        protocolo_id: prot.id,
+        numero_fase: cfg.numero,
+        titulo: cfg.titulo,
+        semanas_inicio: cfg.semanas_inicio,
+        semanas_fim: cfg.semanas_fim,
+        objetivos: Array.isArray(fase.objetivos) ? fase.objetivos : [],
+        sessoes_por_semana: 2,
+      };
+    });
+    await (supabase as any).from('protocolo_fases').insert(fasesPayload);
+
+    return prot.id as string;
+  };
+
   const toggleConfirmacao = async (key: SecaoKey) => {
     const nova = new Set(confirmadas);
     const estavaConfirmada = nova.has(key);
@@ -791,20 +888,40 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
     setSaving(key);
     try {
       setConfirmadas(nova);
+
+      // Caso especial: confirmar a Diretriz → cria protocolo e navega para a aba Diretrizes
+      let protocoloIdCriado: string | null = resultado?._secoes?.diretriz_protocolo_id || null;
+      if (key === 'diretriz' && !estavaConfirmada) {
+        protocoloIdCriado = await criarOuRecuperarProtocoloDaDiretriz();
+      }
+
       const novoResultado = {
         ...resultado,
         _secoes: {
           ...(resultado?._secoes || {}),
           editadas: editadasIniciais,
           confirmadas: Array.from(nova),
+          ...(protocoloIdCriado ? { diretriz_protocolo_id: protocoloIdCriado } : {}),
         },
       };
       await supabase.from('avaliacoes_voz').update({ resultado: novoResultado }).eq('id', avaliacaoId);
       await sincronizarProntuario(nova, textos);
-      toast({ title: estavaConfirmada ? 'Removida do prontuário' : 'Enviada ao prontuário' });
+
       qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
       qc.invalidateQueries({ queryKey: ['prontuario'] });
       qc.invalidateQueries({ queryKey: ['nota-avaliacao-presencial', avaliacaoId] });
+      qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
+
+      if (key === 'diretriz' && !estavaConfirmada && protocoloIdCriado) {
+        toast({
+          title: '✅ Diretriz enviada para a aba Diretrizes',
+          description: 'Agora você pode refinar a diretriz com opções baseadas em evidências.',
+        });
+        navigate(`/pacientes/${pacienteId}?tab=diretrizes&protocolo=${protocoloIdCriado}`);
+      } else {
+        toast({ title: estavaConfirmada ? 'Removida do prontuário' : 'Enviada ao prontuário' });
+      }
+
     } catch (e: any) {
       setConfirmadas(new Set(estavaConfirmada ? [...confirmadas] : [...confirmadas].filter((k) => k !== key)));
       toast({ title: 'Erro', description: e?.message, variant: 'destructive' });
