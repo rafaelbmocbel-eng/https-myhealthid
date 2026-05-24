@@ -6,6 +6,20 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
 
+function normalizeZapiCreds(instanceId: string, token: string, clientToken?: string) {
+  const rawInstance = String(instanceId || '').trim()
+  const rawToken = String(token || '').trim()
+  const rawClientToken = String(clientToken || '').trim()
+  const combined = `${rawInstance} ${rawToken}`
+  const match = combined.match(/instances\/([^/\s]+)\/token\/([^/\s]+)/i)
+
+  return {
+    instanceId: match?.[1] || rawInstance,
+    token: match?.[2] || rawToken,
+    clientToken: rawClientToken,
+  }
+}
+
 async function getZapiCreds(req: Request, body: any) {
   // Always require an authenticated therapist
   const authHeader = req.headers.get('Authorization')
@@ -21,7 +35,7 @@ async function getZapiCreds(req: Request, body: any) {
   // Allow the "test connection" panel to send explicit credentials, but only
   // if the caller is an authenticated therapist.
   if (body.instanceId && body.token) {
-    return { instanceId: body.instanceId, token: body.token, clientToken: body.clientToken || '' }
+    return normalizeZapiCreds(body.instanceId, body.token, body.clientToken)
   }
 
   const { data } = await supabase
@@ -30,11 +44,7 @@ async function getZapiCreds(req: Request, body: any) {
     .eq('terapeuta_id', user.id)
     .maybeSingle()
   if (data?.zapi_ativo && data.zapi_instance_id && data.zapi_token) {
-    return {
-      instanceId: data.zapi_instance_id,
-      token: data.zapi_token,
-      clientToken: data.zapi_client_token || '',
-    }
+    return normalizeZapiCreds(data.zapi_instance_id, data.zapi_token, data.zapi_client_token || '')
   }
   throw new Error('Credenciais Z-API do terapeuta não configuradas')
 }
