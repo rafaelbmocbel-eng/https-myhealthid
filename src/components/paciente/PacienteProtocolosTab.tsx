@@ -366,6 +366,22 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     }
   };
 
+  // Auto-envia diretrizes confirmadas na avaliação para a aba Diretrizes,
+  // sem exigir clique manual em "Enviar".
+  const autoSentRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (tipo !== 'identidade') return;
+    avaliacoesVozComDiretriz.forEach((av: any) => {
+      if (!autoSentRef.current.has(av.id)) {
+        autoSentRef.current.add(av.id);
+        handleCriarProtocoloDaVoz(av);
+      }
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [avaliacoesVozComDiretriz, tipo]);
+
+
+
 
   const handlePublicarExercicios = async (protocolo: any) => {
     setPublishingId(protocolo.id);
