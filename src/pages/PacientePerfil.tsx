@@ -1122,8 +1122,6 @@ export default function PacientePerfil() {
               />
             </Suspense>
           </TabsContent>
-        </Tabs>
-        </div>
 
           {/* TAB: EVOLUÇÃO E PRONTUÁRIOS */}
           <TabsContent value="evolucao-prontuario" className="mt-4 space-y-6">
