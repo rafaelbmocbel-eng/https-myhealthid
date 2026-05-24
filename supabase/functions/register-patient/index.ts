@@ -138,6 +138,8 @@ Deno.serve(async (req) => {
     const firstName = nameParts[0];
     const lastName = nameParts.slice(1).join(" ");
 
+    const nowIso = new Date().toISOString();
+
     const { data: newPaciente, error: insertErr } = await supabaseAdmin
       .from("pacientes")
       .insert({
@@ -145,19 +147,40 @@ Deno.serve(async (req) => {
         nome: firstName,
         sobrenome: lastName,
         email: email.toLowerCase().trim(),
+        telefone: telefone || null,
         user_id: userId,
         ativo: true,
         origem: "link_cadastro",
+        lgpd_aceite_em: nowIso,
+        lgpd_versao: "1.0",
       })
       .select("id")
       .single();
 
     if (insertErr) {
+      const msg = insertErr.message || "";
+      let friendly = "Erro ao criar ficha: " + msg;
+      if (msg.includes("uniq_pacientes_terapeuta_email")) {
+        friendly = "Já existe um cadastro com este e-mail. Faça login no portal.";
+      }
       return new Response(
-        JSON.stringify({ error: "Erro ao criar ficha: " + insertErr.message }),
+        JSON.stringify({ error: friendly }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
+
+    // Registra termo LGPD
+    try {
+      await supabaseAdmin.from("termos_consentimento").insert({
+        paciente_id: newPaciente.id,
+        terapeuta_id: terapeutaId,
+        tipo: "lgpd",
+        versao: "1.0",
+        texto_termo: "Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a LGPD.",
+        aceito: true,
+        data_aceite: nowIso,
+      });
+    } catch { /* não bloqueia cadastro */ }
 
     return new Response(
       JSON.stringify({ success: true, paciente_id: newPaciente.id }),
