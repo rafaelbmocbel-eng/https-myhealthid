@@ -64,6 +64,11 @@ const maskCPF = (v: string) => {
   if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`;
   return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`;
 };
+const maskCEP = (v: string) => {
+  const d = v.replace(/\D/g, '').slice(0, 8);
+  if (d.length <= 5) return d;
+  return `${d.slice(0, 5)}-${d.slice(5)}`;
+};
 
 type SortKey = 'nome' | 'created_at' | 'ultimo_agendamento';
 
@@ -97,22 +102,28 @@ const PLANOS_SAUDE: PlanoSaude[] = ['FUSEX', 'CASSI', 'TRT'];
 
 interface FormData {
   nome: string; sobrenome: string; email: string; telefone: string;
-  data_nascimento: string; genero: string; cpf: string; endereco: string;
+  data_nascimento: string; genero: string; cpf: string;
+  cep: string; endereco: string; endereco_numero: string; endereco_complemento: string;
+  bairro: string; cidade: string; uf: string;
   queixa_principal: string; observacoes: string;
   responsavel_id: string;
   tipo_pagamento: TipoPagamento;
   plano_saude: string;
   convenio_id: string;
+  lgpd_aceite: boolean;
 }
 
 const emptyForm: FormData = {
   nome: '', sobrenome: '', email: '', telefone: '',
-  data_nascimento: '', genero: '', cpf: '', endereco: '',
+  data_nascimento: '', genero: '', cpf: '',
+  cep: '', endereco: '', endereco_numero: '', endereco_complemento: '',
+  bairro: '', cidade: '', uf: '',
   queixa_principal: '', observacoes: '',
   responsavel_id: '',
   tipo_pagamento: 'particular',
   plano_saude: '',
   convenio_id: '',
+  lgpd_aceite: false,
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
@@ -410,12 +421,20 @@ export default function Pacientes() {
     setForm({
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
-      genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
+      genero: p.genero || '', cpf: p.cpf ? maskCPF(p.cpf) : '',
+      cep: (p as any).cep ? maskCEP((p as any).cep) : '',
+      endereco: p.endereco || '',
+      endereco_numero: (p as any).endereco_numero || '',
+      endereco_complemento: (p as any).endereco_complemento || '',
+      bairro: (p as any).bairro || '',
+      cidade: (p as any).cidade || '',
+      uf: (p as any).uf || '',
       queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
       responsavel_id: (p as any).responsavel_id || '',
       tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
       plano_saude: (p as any).plano_saude || '',
       convenio_id: (p as any).convenio_id || '',
+      lgpd_aceite: !!(p as any).lgpd_aceite_em,
     });
     setModal({ open: true, paciente: p });
   };
@@ -425,6 +444,9 @@ export default function Pacientes() {
     if (!parsed.success) {
       const firstError = parsed.error.errors[0]?.message || 'Dados inválidos';
       return toast({ title: firstError, variant: 'destructive' });
+    }
+    if (!modal.paciente && !form.lgpd_aceite) {
+      return toast({ title: 'É obrigatório confirmar o aceite LGPD do paciente', variant: 'destructive' });
     }
     setSubmitting(true);
     try {
@@ -439,7 +461,13 @@ export default function Pacientes() {
         data_nascimento: validated.data_nascimento ?? null,
         genero: validated.genero ?? null,
         cpf: validated.cpf ?? null,
+        cep: validated.cep ?? null,
         endereco: validated.endereco ?? null,
+        endereco_numero: validated.endereco_numero ?? null,
+        endereco_complemento: validated.endereco_complemento ?? null,
+        bairro: validated.bairro ?? null,
+        cidade: validated.cidade ?? null,
+        uf: validated.uf ?? null,
         observacoes: validated.observacoes ?? null,
         terapeuta_id: user!.id,
         responsavel_id: form.responsavel_id || null,
@@ -447,19 +475,41 @@ export default function Pacientes() {
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
       };
+      if (!modal.paciente && form.lgpd_aceite) {
+        payload.lgpd_aceite_em = new Date().toISOString();
+        payload.lgpd_versao = '1.0';
+      }
       if (pacienteId) {
-        await supabase.from('pacientes').update(payload).eq('id', pacienteId);
+        const { error } = await supabase.from('pacientes').update(payload).eq('id', pacienteId);
+        if (error) throw error;
       } else {
         const { data, error } = await supabase.from('pacientes').insert(payload).select().single();
         if (error) throw error;
         pacienteId = data.id;
         pinRecent(data.id);
+        // Registra termo de consentimento LGPD
+        try {
+          await supabase.from('termos_consentimento').insert({
+            paciente_id: pacienteId,
+            terapeuta_id: user!.id,
+            tipo: 'lgpd',
+            versao: '1.0',
+            texto_termo: 'Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a Lei Geral de Proteção de Dados (LGPD).',
+            aceito: true,
+            data_aceite: new Date().toISOString(),
+          });
+        } catch { /* não bloqueia */ }
       }
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: modal.paciente ? 'Paciente atualizado!' : 'Paciente cadastrado!' });
       setModal({ open: false });
     } catch (e: any) {
-      toast({ title: 'Erro ao salvar', description: e.message, variant: 'destructive' });
+      const msg = e?.message || '';
+      let friendly = msg;
+      if (msg.includes('uniq_pacientes_terapeuta_cpf')) friendly = 'Já existe um paciente ativo com este CPF.';
+      else if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
+      else if (msg.toLowerCase().includes('cpf inválido')) friendly = 'CPF inválido. Verifique os dígitos.';
+      toast({ title: 'Erro ao salvar', description: friendly, variant: 'destructive' });
     } finally {
       setSubmitting(false);
     }
@@ -890,6 +940,72 @@ export default function Pacientes() {
                   maxLength={14} />
               </div>
             </div>
+
+            {/* Endereço (necessário para emissão fiscal/NFS-e) */}
+            <div className="space-y-2 rounded-lg border border-border/40 p-3 bg-muted/20">
+              <p className="text-xs font-semibold text-muted-foreground">Endereço</p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1 col-span-1">
+                  <Label className="text-xs">CEP</Label>
+                  <Input placeholder="00000-000" value={form.cep}
+                    onChange={async e => {
+                      const masked = maskCEP(e.target.value);
+                      setForm(f => ({ ...f, cep: masked }));
+                      const digits = masked.replace(/\D/g, '');
+                      if (digits.length === 8) {
+                        try {
+                          const r = await fetch(`https://viacep.com.br/ws/${digits}/json/`);
+                          const d = await r.json();
+                          if (!d.erro) {
+                            setForm(f => ({
+                              ...f,
+                              endereco: d.logradouro || f.endereco,
+                              bairro: d.bairro || f.bairro,
+                              cidade: d.localidade || f.cidade,
+                              uf: d.uf || f.uf,
+                            }));
+                          }
+                        } catch { /* offline ok */ }
+                      }
+                    }}
+                    maxLength={9} />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Logradouro</Label>
+                  <Input placeholder="Rua, avenida..." value={form.endereco}
+                    onChange={e => setForm(f => ({ ...f, endereco: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Número</Label>
+                  <Input placeholder="123" value={form.endereco_numero}
+                    onChange={e => setForm(f => ({ ...f, endereco_numero: e.target.value }))} />
+                </div>
+                <div className="space-y-1 col-span-2">
+                  <Label className="text-xs">Complemento</Label>
+                  <Input placeholder="Apto, sala..." value={form.endereco_complemento}
+                    onChange={e => setForm(f => ({ ...f, endereco_complemento: e.target.value }))} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Bairro</Label>
+                  <Input value={form.bairro}
+                    onChange={e => setForm(f => ({ ...f, bairro: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Cidade</Label>
+                  <Input value={form.cidade}
+                    onChange={e => setForm(f => ({ ...f, cidade: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">UF</Label>
+                  <Input value={form.uf} maxLength={2}
+                    onChange={e => setForm(f => ({ ...f, uf: e.target.value.toUpperCase() }))} />
+                </div>
+              </div>
+            </div>
             <div className="space-y-1">
               <Label>Queixa Principal</Label>
               <Input placeholder="Ex: Dor lombar crônica, escoliose..." value={form.queixa_principal}
@@ -972,6 +1088,25 @@ export default function Pacientes() {
                 </div>
               )}
             </div>
+
+            {!modal.paciente && (
+              <div className="flex items-start gap-2 rounded-lg border border-amber-200 dark:border-amber-900/40 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <Checkbox
+                  id="lgpd-aceite"
+                  checked={form.lgpd_aceite}
+                  onCheckedChange={c => setForm(f => ({ ...f, lgpd_aceite: !!c }))}
+                />
+                <Label htmlFor="lgpd-aceite" className="text-[11px] leading-snug cursor-pointer text-foreground">
+                  <strong>Aceite LGPD (obrigatório):</strong> O paciente autorizou o tratamento dos seus dados pessoais e de saúde para fins clínicos e administrativos, conforme a Lei Geral de Proteção de Dados.
+                </Label>
+              </div>
+            )}
+            {modal.paciente && (form.lgpd_aceite ? (
+              <p className="text-[11px] text-emerald-600 dark:text-emerald-400">✓ Termo LGPD já aceito</p>
+            ) : (
+              <p className="text-[11px] text-amber-600">⚠ Termo LGPD ainda não registrado para este paciente</p>
+            ))}
+
             <div className="flex gap-3 pt-2">
               <Button variant="outline" className="flex-1" onClick={() => setModal({ open: false })}>Cancelar</Button>
               <Button className="flex-1 rounded-xl" onClick={handleSave} disabled={submitting}>

@@ -19,16 +19,28 @@ export default function CadastroCliente() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
-  const [form, setForm] = useState({ nome: '', email: '', password: '' });
+  const [aceitouTermos, setAceitouTermos] = useState(false);
+  const [form, setForm] = useState({ nome: '', email: '', telefone: '', password: '' });
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!slug) return;
+    if (!aceitouTermos) {
+      toast({ title: 'Aceite os termos LGPD para continuar', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
     try {
       const res = await supabase.functions.invoke('register-patient', {
-        body: { slug, nome: form.nome, email: form.email, password: form.password },
+        body: {
+          slug,
+          nome: form.nome,
+          email: form.email,
+          telefone: form.telefone || null,
+          password: form.password,
+          lgpd_aceite: true,
+        },
       });
 
       if (res.error || res.data?.error) {
@@ -163,6 +175,17 @@ export default function CadastroCliente() {
               />
             </div>
             <div className="space-y-1">
+              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone</Label>
+              <Input
+                id="telefone"
+                type="tel"
+                placeholder="(11) 98765-4321"
+                value={form.telefone}
+                onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
+                className="h-11 rounded-xl text-[16px] sm:text-sm"
+              />
+            </div>
+            <div className="space-y-1">
               <Label htmlFor="password" className="text-xs">Senha</Label>
               <div className="relative">
                 <Input
@@ -184,7 +207,20 @@ export default function CadastroCliente() {
                 </button>
               </div>
             </div>
-            <Button type="submit" className="w-full h-11 rounded-xl font-bold text-sm" disabled={submitting}>
+
+            <label className="flex items-start gap-2 cursor-pointer pt-1">
+              <input
+                type="checkbox"
+                checked={aceitouTermos}
+                onChange={(e) => setAceitouTermos(e.target.checked)}
+                className="mt-0.5 h-4 w-4 rounded border-border accent-primary"
+              />
+              <span className="text-[11px] text-muted-foreground leading-snug">
+                Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a LGPD.
+              </span>
+            </label>
+
+            <Button type="submit" className="w-full h-11 rounded-xl font-bold text-sm" disabled={submitting || !aceitouTermos}>
               {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Cadastrar e acessar portal'}
             </Button>
           </form>
