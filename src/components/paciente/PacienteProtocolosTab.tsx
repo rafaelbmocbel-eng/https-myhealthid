@@ -15,7 +15,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import type { PDFProtocolo } from '@/utils/pdfGenerator';
 import { useToast } from '@/hooks/use-toast';
 import ProtocoloViewer from '@/components/protocolo/ProtocoloViewer';
@@ -43,6 +43,7 @@ const STATUS_LABELS: Record<string, { label: string; color: string }> = {
 export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }: Props) {
   const { user, profile } = useAuth();
   const location = useLocation();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const qc = useQueryClient();
   const [viewingId, setViewingId] = useState<string | null>(null);
@@ -489,7 +490,12 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       <div>
         <ProtocoloViewer
           protocoloId={viewingId}
-          onBack={() => setViewingId(null)}
+          onBack={() => {
+            setViewingId(null);
+            const params = new URLSearchParams(location.search);
+            params.delete('protocolo');
+            navigate(`${location.pathname}${params.toString() ? `?${params.toString()}` : ''}`, { replace: true });
+          }}
           onExportPDF={() => {
             const p = protocolos.find((x: any) => x.id === viewingId);
             if (p) handleExportPDF(p);
