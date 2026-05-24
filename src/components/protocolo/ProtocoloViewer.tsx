@@ -16,6 +16,15 @@ import ProtocoloProgressao from './ProtocoloProgressao';
 import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
 import { createDiretrizSnapshotFromVoz, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
+const parseResultado = (value: unknown) => {
+  if (typeof value !== 'string') return value as any;
+  try {
+    return JSON.parse(value);
+  } catch {
+    return null;
+  }
+};
+
 interface Props {
   protocoloId: string;
   onBack: () => void;
@@ -93,18 +102,23 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   });
 
   const { data: avaliacaoDiretriz } = useQuery({
-    queryKey: ['avaliacao-voz-diretriz-protocolo', protocoloId],
+    queryKey: ['avaliacao-voz-diretriz-protocolo', protocoloId, protocolo?.paciente_id, protocolo?.terapeuta_id],
     queryFn: async () => {
+      if (!protocolo?.paciente_id || !protocolo?.terapeuta_id) return null;
       const { data, error } = await (supabase as any)
         .from('avaliacoes_voz')
         .select('resultado, created_at')
-        .contains('resultado', { _secoes: { diretriz_protocolo_id: protocoloId } })
+        .eq('paciente_id', protocolo.paciente_id)
+        .eq('terapeuta_id', protocolo.terapeuta_id)
         .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+        .limit(20);
       if (error) throw error;
-      return data as any;
+      return ((data || []) as any[]).find((avaliacao) => {
+        const resultado = parseResultado(avaliacao.resultado);
+        return resultado?._secoes?.diretriz_protocolo_id === protocoloId;
+      }) || null;
     },
+    enabled: !!protocolo?.paciente_id && !!protocolo?.terapeuta_id,
   });
 
   if (loadingProt || loadingFases || loadingPres) {
@@ -120,9 +134,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   const scores = protocolo.scores_avaliacao || {};
   const faseAtual = progressao?.fase_atual || 1;
   const semanaAtual = progressao?.semana_atual || 1;
-  const resultadoAvaliacao = typeof avaliacaoDiretriz?.resultado === 'string'
-    ? JSON.parse(avaliacaoDiretriz.resultado)
-    : avaliacaoDiretriz?.resultado;
+  const resultadoAvaliacao = parseResultado(avaliacaoDiretriz?.resultado);
   const diretrizSnapshotAvaliacao = createDiretrizSnapshotFromVoz(resultadoAvaliacao?.diretriz_tratamento, {
     origem: 'ia_voz',
     createdAt: avaliacaoDiretriz?.created_at,
