@@ -990,16 +990,20 @@ export type Database = {
           agendamento_id: string | null
           convenio_id: string | null
           created_at: string
+          data_recebimento: string | null
           data_sessao: string
           duracao_minutos: number | null
           forma_pagamento: string | null
+          forma_recebimento: string | null
           id: string
           numero_sessao: number
+          observacao_pagamento: string | null
           observacoes: string | null
           paciente_id: string
           plano_nome: string | null
           profissional_user_id: string | null
           status: string
+          status_pagamento: string
           terapeuta_id: string
           tipo_atendimento: string | null
           tipo_cliente: string | null
@@ -1011,16 +1015,20 @@ export type Database = {
           agendamento_id?: string | null
           convenio_id?: string | null
           created_at?: string
+          data_recebimento?: string | null
           data_sessao?: string
           duracao_minutos?: number | null
           forma_pagamento?: string | null
+          forma_recebimento?: string | null
           id?: string
           numero_sessao?: number
+          observacao_pagamento?: string | null
           observacoes?: string | null
           paciente_id: string
           plano_nome?: string | null
           profissional_user_id?: string | null
           status?: string
+          status_pagamento?: string
           terapeuta_id: string
           tipo_atendimento?: string | null
           tipo_cliente?: string | null
@@ -1032,16 +1040,20 @@ export type Database = {
           agendamento_id?: string | null
           convenio_id?: string | null
           created_at?: string
+          data_recebimento?: string | null
           data_sessao?: string
           duracao_minutos?: number | null
           forma_pagamento?: string | null
+          forma_recebimento?: string | null
           id?: string
           numero_sessao?: number
+          observacao_pagamento?: string | null
           observacoes?: string | null
           paciente_id?: string
           plano_nome?: string | null
           profissional_user_id?: string | null
           status?: string
+          status_pagamento?: string
           terapeuta_id?: string
           tipo_atendimento?: string | null
           tipo_cliente?: string | null
