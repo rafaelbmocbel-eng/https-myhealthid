@@ -4,7 +4,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRepasseConfig } from '@/hooks/useRepasseConfig';
 import { startOfMonth, endOfMonth, subMonths } from 'date-fns';
-import { DollarSign, AlertCircle, Percent, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { DollarSign, Receipt, Percent, TrendingUp, TrendingDown, Minus, Wallet } from 'lucide-react';
 
 const FALLBACK_PCT = 0.4;
 
@@ -125,30 +125,30 @@ export default function FinanceiroHeaderKPIs() {
       positiveUp: true,
     },
     {
-      label: 'A faturar',
-      value: String(atual.aFaturar),
-      sub: atual.aFaturar === 1 ? 'sem valor' : 'sessões sem valor',
-      delta: null,
-      icon: AlertCircle,
-      tone: atual.aFaturar > 0 ? 'amber' : 'muted',
-      positiveUp: false,
-    },
-    {
       label: 'Repasse',
       value: fmt(atual.repasse),
       sub: 'a pagar à equipe',
       delta: delta(atual.repasse, anterior.repasse),
       icon: Percent,
       tone: 'blue',
-      positiveUp: false, // crescimento de repasse não é necessariamente bom
+      positiveUp: false,
     },
     {
-      label: 'Líquido',
-      value: fmt(atual.liquido),
-      sub: 'faturado − repasse',
-      delta: delta(atual.liquido, anterior.liquido),
-      icon: DollarSign,
-      tone: 'primary',
+      label: 'Despesas',
+      value: fmt(atual.despesas),
+      sub: 'custos do mês',
+      delta: delta(atual.despesas, anterior.despesas),
+      icon: Receipt,
+      tone: 'amber',
+      positiveUp: false,
+    },
+    {
+      label: 'Lucro Real',
+      value: fmt(atual.lucro),
+      sub: 'líquido − despesas',
+      delta: delta(atual.lucro, anterior.lucro),
+      icon: Wallet,
+      tone: atual.lucro >= 0 ? 'primary' : 'red',
       positiveUp: true,
     },
   ];
