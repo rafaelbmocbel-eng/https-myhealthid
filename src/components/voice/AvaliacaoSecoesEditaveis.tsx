@@ -195,6 +195,22 @@ const SECOES: SecaoDef[] = [
       if (Array.isArray(d.criterios_alta) && d.criterios_alta.length) {
         finais.push(`🏁 Critérios de alta:\n${d.criterios_alta.map((c: string) => `   • ${c}`).join('\n')}`);
       }
+      if (d.manutencao && typeof d.manutencao === 'object') {
+        const m = d.manutencao;
+        const partsM: string[] = ['🌱 Plano de Manutenção (pós-alta)'];
+        if (m.mensagem_paciente) partsM.push(`   💬 ${m.mensagem_paciente}`);
+        if (Array.isArray(m.rotina_minima) && m.rotina_minima.length) {
+          partsM.push(`   🔁 Rotina mínima:\n${m.rotina_minima.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        if (m.frequencia_reavaliacao) partsM.push(`   📆 Reavaliação: ${m.frequencia_reavaliacao}`);
+        if (Array.isArray(m.sinais_para_retornar) && m.sinais_para_retornar.length) {
+          partsM.push(`   ⚠️ Voltar ao profissional se:\n${m.sinais_para_retornar.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        if (Array.isArray(m.habitos_chave) && m.habitos_chave.length) {
+          partsM.push(`   ✨ Hábitos-chave:\n${m.habitos_chave.map((c: string) => `     • ${c}`).join('\n')}`);
+        }
+        finais.push(partsM.join('\n'));
+      }
       if (Array.isArray(d.referencias_chave) && d.referencias_chave.length) {
         finais.push(`📚 Referências-chave:\n${d.referencias_chave.map((c: string) => `   • ${c}`).join('\n')}`);
       }
