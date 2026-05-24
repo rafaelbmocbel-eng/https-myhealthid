@@ -490,6 +490,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       <div>
         <ProtocoloViewer
           protocoloId={viewingId}
+          embedded
           onBack={() => {
             setViewingId(null);
             const params = new URLSearchParams(location.search);
@@ -499,10 +500,6 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           onExportPDF={() => {
             const p = protocolos.find((x: any) => x.id === viewingId);
             if (p) handleExportPDF(p);
-          }}
-          onNewDiretriz={() => {
-            setViewingId(null);
-            handleNovaDiretrizManual();
           }}
         />
       </div>
@@ -533,6 +530,32 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     return (
       <div className="flex justify-center py-8">
         <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (tipo === 'identidade') {
+    const diretrizConfirmada = protocolos.find((protocolo: any) => {
+      const scores = protocolo.scores_avaliacao || {};
+      const snapshot = scores.diretriz_snapshot;
+      const origem = String(protocolo.origem || scores.origem || snapshot?.origem || '');
+      return !!snapshot?.fases?.length && ['ia_voz', 'ia_escrita'].includes(origem);
+    });
+
+    if (diretrizConfirmada?.id) {
+      return (
+        <ProtocoloViewer
+          protocoloId={diretrizConfirmada.id}
+          embedded
+          onBack={() => undefined}
+          onExportPDF={() => handleExportPDF(diretrizConfirmada)}
+        />
+      );
+    }
+
+    return (
+      <div className="rounded-xl border border-dashed border-border/60 bg-card p-6 text-center text-sm text-muted-foreground">
+        A diretriz confirmada na avaliação aparecerá aqui assim que for enviada.
       </div>
     );
   }
