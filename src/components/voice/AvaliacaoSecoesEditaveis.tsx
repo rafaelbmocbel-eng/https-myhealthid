@@ -942,7 +942,7 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
                     </div>
                   </div>
                 ) : (
-                  <SectionCollapse alwaysOpen={s.key === 'red_flags' || s.key === 'hipoteses'}>
+                  <SectionCollapse>
                     {s.key === 'diretriz' ? (
                       <DiretrizFases texto={textos[s.key]} />
                     ) : s.key === 'soap' ? (
