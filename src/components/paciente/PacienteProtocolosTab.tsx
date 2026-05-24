@@ -539,7 +539,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       const scores = protocolo.scores_avaliacao || {};
       const snapshot = scores.diretriz_snapshot;
       const origem = String(protocolo.origem || scores.origem || snapshot?.origem || '');
-      return !!snapshot?.fases?.length && ['ia_voz', 'ia_escrita'].includes(origem);
+      return !!snapshot?.fases?.length && ['ia_voz', 'ia_escrita', 'avaliacao_voz'].includes(origem);
     });
 
     if (diretrizConfirmada?.id) {
