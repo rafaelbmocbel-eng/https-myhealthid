@@ -74,11 +74,13 @@ export default function FinanceiroHeaderKPIs() {
       return valor * (Number(cfg.percentual) / 100);
     };
 
-    const empty = (): AggregatedMonth => ({ faturado: 0, aFaturar: 0, repasse: 0, liquido: 0, sessoes: 0 });
+    const empty = (): AggregatedMonth => ({
+      faturado: 0, aFaturar: 0, repasse: 0, despesas: 0, liquido: 0, lucro: 0, sessoes: 0,
+    });
     const atual = empty();
     const anterior = empty();
 
-    (data || []).forEach((s: any) => {
+    (data?.sessoes || []).forEach((s: any) => {
       const d = new Date(s.data_sessao).toISOString();
       const bucket = d >= periodos.atualIni ? atual : anterior;
       const valor = Number(s.valor_cobrado) || 0;
@@ -89,8 +91,17 @@ export default function FinanceiroHeaderKPIs() {
         bucket.repasse += repasseOf(s);
       }
     });
+
+    (data?.despesas || []).forEach((d: any) => {
+      const inAtual = d.data_despesa >= periodos.atualIni.slice(0, 10);
+      const bucket = inAtual ? atual : anterior;
+      bucket.despesas += Number(d.valor) || 0;
+    });
+
     atual.liquido = atual.faturado - atual.repasse;
     anterior.liquido = anterior.faturado - anterior.repasse;
+    atual.lucro = atual.liquido - atual.despesas;
+    anterior.lucro = anterior.liquido - anterior.despesas;
     return { atual, anterior };
   }, [data, getRepasse, periodos]);
 
