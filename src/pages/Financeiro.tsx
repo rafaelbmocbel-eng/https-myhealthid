@@ -10,6 +10,7 @@ import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 import AReceber from '@/components/financeiro/AReceber';
 import DespesasManager from '@/components/financeiro/DespesasManager';
+import ConvenioReconciliacao from '@/components/financeiro/ConvenioReconciliacao';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
@@ -60,6 +61,9 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
         <TabsContent value="convenios" className="mt-4">
           <ConveniosManager />
+          <div className="mt-4">
+            <ConvenioReconciliacao />
+          </div>
         </TabsContent>
 
         <TabsContent value="repasses" className="mt-4">
