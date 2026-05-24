@@ -123,8 +123,8 @@ export default function ProtocoloDiretrizResumo({ fases, faseAtual }: Props) {
                       Exercícios selecionados
                     </div>
 
-                    {fase.exercicios.length > 0 ? (
-                      fase.exercicios.map((exercicio) => (
+                    {(fase.exercicios?.length ?? 0) > 0 ? (
+                      (fase.exercicios ?? []).map((exercicio) => (
                         <div key={`${fase.numero}-${exercicio.nome}`} className="rounded-xl border border-border bg-background p-3">
                           <div className="flex items-start justify-between gap-3">
                             <div className="min-w-0">
