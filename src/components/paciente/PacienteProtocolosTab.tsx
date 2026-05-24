@@ -24,6 +24,7 @@ import {
   ProtocoloAnalise
 } from '@/utils/demandasAnalyzer';
 import ProtocoloEditor from '@/components/protocolo/ProtocoloEditor';
+import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 
 interface Props {
   pacienteId: string;
@@ -336,11 +337,11 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       const diretriz = resultado?.diretriz_tratamento;
       if (!diretriz) throw new Error('Diretriz indisponível nesta avaliação.');
       const queixa = resultado?.queixa_principal || av.queixa_principal || 'Avaliação por voz';
-      const fasesConfig = [
-        { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
-        { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
-        { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
-      ];
+      const diretrizSnapshot = createDiretrizSnapshotFromVoz(diretriz, {
+        origem: 'ia_voz',
+        textoConfirmado: resultado?._secoes?.editadas?.diretriz,
+      });
+      if (!diretrizSnapshot) throw new Error('Diretriz indisponível nesta avaliação.');
 
       const { data: prot, error } = await (supabase as any).from('protocolos').insert({
         terapeuta_id: user!.id,
@@ -352,10 +353,16 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         frequencia: diretriz.frequencia_sugerida || '2-3x por semana',
         status: 'ativo',
         origem: 'ia_voz',
-        scores_avaliacao: { diretriz_snapshot: { origem: 'ia_voz', fases: fasesConfig.map((cfg) => ({ ...cfg, objetivo: diretriz?.[cfg.key]?.objetivos?.[0] || 'Conduta terapêutica planejada.', tecnicas: diretriz?.[cfg.key]?.tecnicas || [] })) } },
+        scores_avaliacao: {
+          origem: 'ia_voz',
+          queixa_principal: queixa,
+          prognostico: diretriz.prognostico || null,
+          criterios_alta: diretriz.criterios_alta || [],
+          diretriz_snapshot: diretrizSnapshot,
+        },
       }).select('id').single();
       if (error) throw error;
-      await (supabase as any).from('protocolo_fases').insert(fasesConfig.map((cfg) => ({ protocolo_id: prot.id, numero_fase: cfg.numero, titulo: cfg.titulo, semanas_inicio: cfg.semanas_inicio, semanas_fim: cfg.semanas_fim, objetivos: diretriz?.[cfg.key]?.objetivos || [], sessoes_por_semana: 2 })));
+      await (supabase as any).from('protocolo_fases').insert(diretrizSnapshot.fases.map((fase) => ({ protocolo_id: prot.id, numero_fase: fase.numero, titulo: fase.titulo, semanas_inicio: fase.semanas_inicio, semanas_fim: fase.semanas_fim, objetivos: [fase.objetivo, ...fase.demandasAlvo, ...(fase.criteriosProgressao || [])].filter(Boolean), sessoes_por_semana: 2 })));
       await supabase.from('avaliacoes_voz').update({ resultado: { ...resultado, _secoes: { ...(resultado._secoes || {}), diretriz_protocolo_id: prot.id } } }).eq('id', av.id);
       qc.invalidateQueries({ queryKey: ['protocolos-paciente'] });
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz-diretriz-pendente'] });
