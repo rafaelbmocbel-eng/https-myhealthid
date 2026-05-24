@@ -421,12 +421,20 @@ export default function Pacientes() {
     setForm({
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
       telefone: p.telefone || '', data_nascimento: p.data_nascimento || '',
-      genero: p.genero || '', cpf: p.cpf || '', endereco: p.endereco || '',
+      genero: p.genero || '', cpf: p.cpf ? maskCPF(p.cpf) : '',
+      cep: (p as any).cep ? maskCEP((p as any).cep) : '',
+      endereco: p.endereco || '',
+      endereco_numero: (p as any).endereco_numero || '',
+      endereco_complemento: (p as any).endereco_complemento || '',
+      bairro: (p as any).bairro || '',
+      cidade: (p as any).cidade || '',
+      uf: (p as any).uf || '',
       queixa_principal: (p as any).queixa_principal || '', observacoes: p.observacoes || '',
       responsavel_id: (p as any).responsavel_id || '',
       tipo_pagamento: ((p as any).tipo_pagamento as TipoPagamento) || 'particular',
       plano_saude: (p as any).plano_saude || '',
       convenio_id: (p as any).convenio_id || '',
+      lgpd_aceite: !!(p as any).lgpd_aceite_em,
     });
     setModal({ open: true, paciente: p });
   };
