@@ -248,9 +248,21 @@ const TOOL_SCHEMA = {
             frequencia_sugerida: { type: "string", description: "Ex: '2-3 sessões/semana por 6-8 semanas, com home-exercise diário'." },
             prognostico: { type: "string", description: "Expectativa realista com janela temporal e qualificadores (favorável/reservado), citando literatura quando possível." },
             criterios_alta: { type: "array", items: { type: "string" }, description: "Critérios finais de alta clínica." },
+            manutencao: {
+              type: "object",
+              description: "Plano de MANUTENÇÃO pós-alta. Enfatiza para o paciente que o ganho clínico exige continuidade: rotina mínima de exercícios, controle de carga, reavaliações periódicas e hábitos para prevenir recidiva.",
+              properties: {
+                mensagem_paciente: { type: "string", description: "Mensagem curta e empática reforçando que o trabalho não termina na alta — explica por que manter a rotina protege o resultado e previne recidiva (1-3 frases)." },
+                rotina_minima: { type: "array", items: { type: "string" }, description: "3-6 itens da rotina mínima de manutenção (ex: 'mobilidade torácica 5min/dia', 'agachamento 3x10 2x/sem', 'caminhada 30min 4x/sem')." },
+                frequencia_reavaliacao: { type: "string", description: "Quando retornar para reavaliação clínica (ex: 'reavaliar a cada 8-12 semanas no 1º ano; depois trimestral')." },
+                sinais_para_retornar: { type: "array", items: { type: "string" }, description: "Sinais/sintomas que indicam retorno imediato ao profissional (ex: 'dor > 3 dias após carga habitual', 'perda de força', 'rigidez matinal > 30min')." },
+                habitos_chave: { type: "array", items: { type: "string" }, description: "2-4 hábitos de vida que sustentam o resultado (sono, hidratação, gestão de carga, regulação de estresse, controle de peso)." },
+              },
+              required: ["mensagem_paciente", "rotina_minima", "frequencia_reavaliacao"],
+            },
             referencias_chave: { type: "array", items: { type: "string" }, description: "Lista das referências [n] do banco injetado que sustentam esta diretriz (ex: '[3] Cook 2018 — tendinopathy loading')." },
           },
-          required: ["fase_1_alivio", "fase_2_carga", "fase_3_retorno", "prognostico"],
+          required: ["fase_1_alivio", "fase_2_carga", "fase_3_retorno", "prognostico", "manutencao"],
         },
 
 
