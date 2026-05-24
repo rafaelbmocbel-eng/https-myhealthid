@@ -9,6 +9,7 @@ import FechamentoProfissional from '@/components/financeiro/FechamentoProfission
 import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 import AReceber from '@/components/financeiro/AReceber';
+import DespesasManager from '@/components/financeiro/DespesasManager';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (

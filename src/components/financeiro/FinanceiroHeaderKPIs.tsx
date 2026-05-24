@@ -159,6 +159,7 @@ export default function FinanceiroHeaderKPIs() {
     blue: 'border-blue-500/30 bg-blue-50/60 dark:bg-blue-950/20 text-blue-700 dark:text-blue-300',
     primary: 'border-primary/40 bg-primary/5 text-primary',
     muted: 'border-border/40 bg-muted/30 text-muted-foreground',
+    red: 'border-red-500/40 bg-red-50/60 dark:bg-red-950/20 text-red-700 dark:text-red-300',
   };
 
   return (
