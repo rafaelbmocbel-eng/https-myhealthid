@@ -1296,6 +1296,51 @@ export type Database = {
           },
         ]
       }
+      despesas: {
+        Row: {
+          categoria: string
+          comprovante_url: string | null
+          created_at: string
+          data_despesa: string
+          descricao: string
+          forma_pagamento: string | null
+          id: string
+          observacao: string | null
+          recorrente: boolean
+          terapeuta_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          categoria?: string
+          comprovante_url?: string | null
+          created_at?: string
+          data_despesa?: string
+          descricao: string
+          forma_pagamento?: string | null
+          id?: string
+          observacao?: string | null
+          recorrente?: boolean
+          terapeuta_id: string
+          updated_at?: string
+          valor: number
+        }
+        Update: {
+          categoria?: string
+          comprovante_url?: string | null
+          created_at?: string
+          data_despesa?: string
+          descricao?: string
+          forma_pagamento?: string | null
+          id?: string
+          observacao?: string | null
+          recorrente?: boolean
+          terapeuta_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: []
+      }
       documentos_emitidos: {
         Row: {
           conteudo: Json
