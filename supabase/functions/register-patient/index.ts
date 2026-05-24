@@ -12,7 +12,7 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { slug, nome, email, password } = await req.json();
+    const { slug, nome, email, password, telefone, lgpd_aceite } = await req.json();
 
     if (!slug || !nome || !email || !password) {
       return new Response(
@@ -21,9 +21,16 @@ Deno.serve(async (req) => {
       );
     }
 
-    if (password.length < 6) {
+    if (password.length < 8) {
       return new Response(
-        JSON.stringify({ error: "Senha deve ter no mínimo 6 caracteres" }),
+        JSON.stringify({ error: "Senha deve ter no mínimo 8 caracteres" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (!lgpd_aceite) {
+      return new Response(
+        JSON.stringify({ error: "É necessário aceitar os termos LGPD para se cadastrar" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
