@@ -208,7 +208,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
       </div>
 
       {/* Objetivo e Prognose */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {!isDiretrizConfirmadaAvaliacao && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="clinical-card">
           <div className="flex items-center gap-2 mb-2">
             <Target className="h-4 w-4 text-primary" />
@@ -223,9 +223,9 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           </div>
           <p className="text-sm text-muted-foreground">{scores.prognose || 'Moderado – com aderência ao tratamento.'}</p>
         </div>
-      </div>
+      </div>}
 
-      {protocolo.descricao && (
+      {!isDiretrizConfirmadaAvaliacao && protocolo.descricao && (
         <div className="clinical-card border-l-4 border-primary/40 bg-primary/5 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-primary" />
