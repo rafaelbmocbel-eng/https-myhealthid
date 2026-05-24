@@ -14,7 +14,7 @@ import ProtocoloScores from './ProtocoloScores';
 import ProtocoloTratamento from './ProtocoloTratamento';
 import ProtocoloProgressao from './ProtocoloProgressao';
 import ProtocoloDiretrizEditor from './ProtocoloDiretrizEditor';
-import { createLegacyDiretrizSnapshot, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
+import { createDiretrizSnapshotFromVoz, getDiretrizSnapshotFromScores } from '@/lib/protocoloSnapshot';
 
 interface Props {
   protocoloId: string;
@@ -91,6 +91,21 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
     },
   });
 
+  const { data: avaliacaoDiretriz } = useQuery({
+    queryKey: ['avaliacao-voz-diretriz-protocolo', protocoloId],
+    queryFn: async () => {
+      const { data, error } = await (supabase as any)
+        .from('avaliacoes_voz')
+        .select('resultado, created_at')
+        .contains('resultado', { _secoes: { diretriz_protocolo_id: protocoloId } })
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      return data as any;
+    },
+  });
+
   if (loadingProt || loadingFases || loadingPres) {
     return (
       <div className="flex items-center justify-center py-32">
@@ -104,9 +119,16 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   const scores = protocolo.scores_avaliacao || {};
   const faseAtual = progressao?.fase_atual || 1;
   const semanaAtual = progressao?.semana_atual || 1;
-  const diretrizSnapshot =
-    getDiretrizSnapshotFromScores(protocolo.scores_avaliacao) ??
-    createLegacyDiretrizSnapshot({ fases, prescricoes, tratamentos });
+  const resultadoAvaliacao = typeof avaliacaoDiretriz?.resultado === 'string'
+    ? JSON.parse(avaliacaoDiretriz.resultado)
+    : avaliacaoDiretriz?.resultado;
+  const diretrizSnapshotAvaliacao = createDiretrizSnapshotFromVoz(resultadoAvaliacao?.diretriz_tratamento, {
+    origem: 'ia_voz',
+    createdAt: avaliacaoDiretriz?.created_at,
+    textoConfirmado: resultadoAvaliacao?._secoes?.editadas?.diretriz,
+  });
+  const diretrizSnapshot = diretrizSnapshotAvaliacao ?? getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
+  const isDiretrizConfirmadaAvaliacao = protocolo.origem === 'ia_voz' || scores.origem === 'ia_voz' || diretrizSnapshot?.origem === 'ia_voz';
 
   const FASE_LABELS = ['Inflamatória', 'Proliferação', 'Remodelação', 'Funcional'];
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
@@ -186,7 +208,7 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
       </div>
 
       {/* Objetivo e Prognose */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+      {!isDiretrizConfirmadaAvaliacao && <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
         <div className="clinical-card">
           <div className="flex items-center gap-2 mb-2">
             <Target className="h-4 w-4 text-primary" />
@@ -201,9 +223,9 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           </div>
           <p className="text-sm text-muted-foreground">{scores.prognose || 'Moderado – com aderência ao tratamento.'}</p>
         </div>
-      </div>
+      </div>}
 
-      {protocolo.descricao && (
+      {!isDiretrizConfirmadaAvaliacao && protocolo.descricao && (
         <div className="clinical-card border-l-4 border-primary/40 bg-primary/5 mb-6">
           <div className="flex items-center gap-2 mb-2">
             <FileText className="h-4 w-4 text-primary" />
@@ -214,6 +236,40 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           </pre>
         </div>
       )}
+
+      {isDiretrizConfirmadaAvaliacao && diretrizSnapshot && (
+        <ProtocoloDiretrizEditor
+          protocoloId={protocoloId}
+          snapshot={diretrizSnapshot}
+          faseAtual={faseAtual}
+          queixa={protocolo.titulo}
+        />
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && !diretrizSnapshot && (
+        <div className="clinical-card text-sm text-muted-foreground">Esta diretriz ainda não possui o conteúdo confirmado salvo.</div>
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && (
+        <div className="clinical-card border-l-4 border-destructive mt-6">
+          <h3 className="font-semibold mb-3 flex items-center gap-2 text-destructive">
+            ⚠️ Instruções de Segurança
+          </h3>
+          <p className="text-sm font-medium text-foreground mb-2">Interrompa o exercício imediatamente se sentir:</p>
+          <ul className="space-y-1 text-sm text-muted-foreground">
+            {['Dor aguda ou súbita', 'Tontura ou falta de ar', 'Formigamento ou dormência nos membros', 'Qualquer sensação anormal ou preocupante'].map(a => (
+              <li key={a} className="flex items-center gap-2">
+                <span className="text-destructive">•</span> {a}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {isDiretrizConfirmadaAvaliacao && null}
+
+      {!isDiretrizConfirmadaAvaliacao && (
+        <>
 
       {/* Scores */}
       <ProtocoloScores scores={scores} />
@@ -299,6 +355,8 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
           ))}
         </ul>
       </div>
+        </>
+      )}
     </div>
   );
 }

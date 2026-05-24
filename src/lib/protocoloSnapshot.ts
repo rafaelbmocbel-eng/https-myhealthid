@@ -3,6 +3,7 @@ import type { ProtocoloAnalise } from '@/utils/demandasAnalyzer';
 export interface DiretrizSnapshotExercise {
   nome: string;
   categoria: string;
+  nivel_evidencia?: string;
   series: number | string;
   repeticoes: number | string;
   duracao: string;
@@ -13,6 +14,7 @@ export interface DiretrizSnapshotExercise {
 
 export interface DiretrizSnapshotTechnique {
   nome: string;
+  nivel_evidencia?: string;
   descricao: string;
   duracao: string;
   frequencia: string;
@@ -28,6 +30,7 @@ export interface DiretrizSnapshotPhase {
   semanas_fim: number;
   objetivo: string;
   demandasAlvo: string[];
+  criteriosProgressao?: string[];
   frequenciaSemanal: number;
   duracaoSessao: string;
   exercicios: DiretrizSnapshotExercise[];
@@ -38,6 +41,13 @@ export interface DiretrizSnapshot {
   versao: number;
   createdAt: string;
   fases: DiretrizSnapshotPhase[];
+  origem?: string;
+  frequenciaSugerida?: string;
+  prognostico?: string;
+  criteriosAlta?: string[];
+  manutencao?: Record<string, unknown>;
+  referenciasChave?: string[];
+  textoConfirmado?: string;
 }
 
 type JsonRecord = Record<string, unknown>;
@@ -87,6 +97,109 @@ export function createDiretrizSnapshot(analise: ProtocoloAnalise): DiretrizSnaps
         motivo: tecnica.motivo,
       })),
     })),
+  };
+}
+
+const FASES_VOZ = [
+  { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
+  { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
+  { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
+];
+
+const asStringArray = (value: unknown): string[] => {
+  if (Array.isArray(value)) return value.map((item) => typeof item === 'string' ? item : JSON.stringify(item)).filter(Boolean);
+  if (typeof value === 'string' && value.trim()) return [value.trim()];
+  return [];
+};
+
+const getRecord = (value: unknown): JsonRecord => (
+  value && typeof value === 'object' && !Array.isArray(value) ? value as JsonRecord : {}
+);
+
+export function createDiretrizSnapshotFromVoz(
+  diretriz: unknown,
+  options: { origem?: string; createdAt?: string; textoConfirmado?: string } = {},
+): DiretrizSnapshot | null {
+  const d = getRecord(diretriz);
+  if (Object.keys(d).length === 0) return null;
+
+  return {
+    versao: 1,
+    createdAt: options.createdAt || new Date().toISOString(),
+    origem: options.origem || 'ia_voz',
+    frequenciaSugerida: typeof d.frequencia_sugerida === 'string' ? d.frequencia_sugerida : undefined,
+    prognostico: typeof d.prognostico === 'string' ? d.prognostico : undefined,
+    criteriosAlta: asStringArray(d.criterios_alta),
+    manutencao: getRecord(d.manutencao),
+    referenciasChave: asStringArray(d.referencias_chave),
+    textoConfirmado: options.textoConfirmado,
+    fases: FASES_VOZ.map((cfg) => {
+      const fase = getRecord(d[cfg.key]);
+      const objetivos = asStringArray(fase.objetivos || fase.objetivo);
+      const criterios = asStringArray(fase.criterios_progressao || fase.criterios);
+      const tecnicas = Array.isArray(fase.tecnicas || fase.techniques) ? (fase.tecnicas || fase.techniques) as unknown[] : [];
+      const exercicios = Array.isArray(fase.exercicios || fase.exercises) ? (fase.exercicios || fase.exercises) as unknown[] : [];
+
+      return {
+        numero: cfg.numero,
+        titulo: cfg.titulo,
+        semanas: typeof fase.duracao_semanas === 'string' ? fase.duracao_semanas : `${cfg.semanas_inicio}-${cfg.semanas_fim}`,
+        semanas_inicio: cfg.semanas_inicio,
+        semanas_fim: cfg.semanas_fim,
+        objetivo: objetivos[0] || 'Conduta terapêutica planejada.',
+        demandasAlvo: objetivos.slice(1),
+        criteriosProgressao: criterios,
+        frequenciaSemanal: 0,
+        duracaoSessao: typeof fase.duracao_sessao === 'string' ? fase.duracao_sessao : '',
+        exercicios: exercicios.map((item) => {
+          if (typeof item === 'string') {
+            return {
+              nome: item,
+              categoria: 'Exercício terapêutico',
+              series: '',
+              repeticoes: '',
+              duracao: '',
+              motivo: '',
+              descricao: '',
+              instrucoes: [],
+            };
+          }
+          const ex = getRecord(item);
+          return {
+            nome: String(ex.nome || ex.exercicio || ex.titulo || ex.name || 'Exercício'),
+            categoria: String(ex.categoria || 'Exercício terapêutico'),
+            series: String(ex.series || ex.serie || ''),
+            repeticoes: String(ex.repeticoes || ex.reps || ''),
+            duracao: String(ex.duracao || ex.dosagem || ''),
+            motivo: String(ex.motivo || ex.justificativa || ''),
+            descricao: String(ex.descricao || ''),
+            instrucoes: asStringArray(ex.instrucoes),
+          };
+        }),
+        tecnicas: tecnicas.map((item) => {
+          if (typeof item === 'string') {
+            return {
+              nome: item,
+              descricao: '',
+              duracao: '',
+              frequencia: String(d.frequencia_sugerida || ''),
+              motivo: '',
+              categoria: 'referência',
+            };
+          }
+          const tec = getRecord(item);
+          return {
+            nome: String(tec.nome || tec.tecnica || tec.titulo || tec.name || 'Técnica'),
+            descricao: String(tec.descricao || tec.justificativa || ''),
+            duracao: String(tec.duracao || tec.dosagem || ''),
+            frequencia: String(tec.frequencia || d.frequencia_sugerida || ''),
+            motivo: String(tec.motivo || tec.justificativa || ''),
+            categoria: String(tec.categoria || tec.lente_clinica || 'referência'),
+            ...(typeof tec.nivel_evidencia === 'string' ? { nivel_evidencia: tec.nivel_evidencia } : {}),
+          };
+        }),
+      } satisfies DiretrizSnapshotPhase;
+    }),
   };
 }
 

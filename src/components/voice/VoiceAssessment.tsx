@@ -16,6 +16,7 @@ import { useNotasProntuario } from '@/hooks/useNotasProntuario';
 import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 import ProntuarioReviewDialog from './ProntuarioReviewDialog';
+import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
@@ -735,42 +736,8 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const classif = assessment.classificacao_severidade || 'N/I';
       const origemDiretriz = mode === 'written' ? 'ia_escrita' : 'ia_voz';
 
-      const fasesConfig = [
-        { numero: 1, key: 'fase_1_alivio', titulo: 'Fase 1 — Alívio & Proteção', semanas_inicio: 1, semanas_fim: 2 },
-        { numero: 2, key: 'fase_2_carga', titulo: 'Fase 2 — Carga Progressiva', semanas_inicio: 3, semanas_fim: 6 },
-        { numero: 3, key: 'fase_3_retorno', titulo: 'Fase 3 — Retorno Funcional', semanas_inicio: 7, semanas_fim: 12 },
-      ];
-
-      // Snapshot compatível com o sistema de diretrizes (ProtocoloViewer / getDiretrizSnapshotFromScores)
-      const diretrizSnapshot = {
-        versao: 1,
-        createdAt: new Date().toISOString(),
-        origem: origemDiretriz,
-        fases: fasesConfig.map((cfg) => {
-          const fase = diretriz?.[cfg.key] || {};
-          const tecnicas = Array.isArray(fase.tecnicas) ? fase.tecnicas : [];
-          return {
-            numero: cfg.numero,
-            titulo: cfg.titulo,
-            semanas: `${cfg.semanas_inicio}-${cfg.semanas_fim}`,
-            semanas_inicio: cfg.semanas_inicio,
-            semanas_fim: cfg.semanas_fim,
-            objetivo: (fase.objetivos || [])[0] || 'Conduta terapêutica planejada.',
-            demandasAlvo: (fase.objetivos || []).slice(1),
-            frequenciaSemanal: 0,
-            duracaoSessao: fase.duracao_semanas || '',
-            exercicios: [],
-            tecnicas: tecnicas.map((t: any) => ({
-              nome: t.tecnica || 'Técnica',
-              descricao: t.justificativa || '',
-              duracao: '',
-              frequencia: diretriz.frequencia_sugerida || '',
-              motivo: t.justificativa || '',
-              categoria: t.lente_clinica || 'referencia',
-            })),
-          };
-        }),
-      };
+      const diretrizSnapshot = createDiretrizSnapshotFromVoz(diretriz, { origem: origemDiretriz });
+      if (!diretrizSnapshot) throw new Error('Diretriz indisponível nesta avaliação.');
 
       const objetivoGeral = `Plano clínico em 3 fases para "${queixa}" — gerado a partir de avaliação por ${mode === 'written' ? 'texto' : 'voz'} (${classif}).`;
 
@@ -803,18 +770,15 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
       const protocoloId = prot.id;
 
       // 2) Cria as 3 fases
-      const fasesPayload = fasesConfig.map((cfg) => {
-        const fase = diretriz?.[cfg.key] || {};
-        return {
-          protocolo_id: protocoloId,
-          numero_fase: cfg.numero,
-          titulo: cfg.titulo,
-          semanas_inicio: cfg.semanas_inicio,
-          semanas_fim: cfg.semanas_fim,
-          objetivos: Array.isArray(fase.objetivos) ? fase.objetivos : [],
-          sessoes_por_semana: 2,
-        };
-      });
+      const fasesPayload = diretrizSnapshot.fases.map((fase) => ({
+        protocolo_id: protocoloId,
+        numero_fase: fase.numero,
+        titulo: fase.titulo,
+        semanas_inicio: fase.semanas_inicio,
+        semanas_fim: fase.semanas_fim,
+        objetivos: [fase.objetivo, ...fase.demandasAlvo, ...(fase.criteriosProgressao || [])].filter(Boolean),
+        sessoes_por_semana: 2,
+      }));
 
       const { error: fasesErr } = await (supabase as any)
         .from('protocolo_fases')
