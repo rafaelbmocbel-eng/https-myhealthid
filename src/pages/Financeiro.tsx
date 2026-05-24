@@ -8,6 +8,7 @@ import RepasseConfigManager from '@/components/financeiro/RepasseConfigManager';
 import FechamentoProfissional from '@/components/financeiro/FechamentoProfissional';
 import BreakdownVisual from '@/components/financeiro/BreakdownVisual';
 import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
+import AReceber from '@/components/financeiro/AReceber';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
@@ -25,8 +26,9 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
       <Tabs defaultValue="mensal" className="w-full">
 
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-3 sm:grid-cols-6">
           <TabsTrigger value="mensal">Mensal</TabsTrigger>
+          <TabsTrigger value="receber">A Receber</TabsTrigger>
           <TabsTrigger value="analise">Análise</TabsTrigger>
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
           <TabsTrigger value="convenios">Convênios</TabsTrigger>
@@ -36,6 +38,10 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
         <TabsContent value="mensal" className="space-y-4 sm:space-y-5 mt-4">
           <SessoesSemValor mesOffset={0} />
           <ControleMensal />
+        </TabsContent>
+
+        <TabsContent value="receber" className="mt-4">
+          <AReceber />
         </TabsContent>
 
         <TabsContent value="analise" className="mt-4">
