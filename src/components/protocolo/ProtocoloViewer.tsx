@@ -21,9 +21,10 @@ interface Props {
   onBack: () => void;
   onExportPDF: () => void;
   onNewDiretriz?: () => void;
+  embedded?: boolean;
 }
 
-export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNewDiretriz }: Props) {
+export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNewDiretriz, embedded = false }: Props) {
   const [tabAtiva, setTabAtiva] = useState<'fases' | 'tecnicas' | 'tratamento' | 'progressao'>('fases');
 
   const { data: protocolo, isLoading: loadingProt } = useQuery({
@@ -129,6 +130,25 @@ export default function ProtocoloViewer({ protocoloId, onBack, onExportPDF, onNe
   });
   const diretrizSnapshot = diretrizSnapshotAvaliacao ?? getDiretrizSnapshotFromScores(protocolo.scores_avaliacao);
   const isDiretrizConfirmadaAvaliacao = protocolo.origem === 'ia_voz' || scores.origem === 'ia_voz' || diretrizSnapshot?.origem === 'ia_voz';
+
+  if (embedded && isDiretrizConfirmadaAvaliacao) {
+    return (
+      <div className="space-y-4">
+        {diretrizSnapshot ? (
+          <ProtocoloDiretrizEditor
+            protocoloId={protocoloId}
+            snapshot={diretrizSnapshot}
+            faseAtual={faseAtual}
+            queixa={protocolo.titulo}
+          />
+        ) : (
+          <div className="rounded-xl border border-border/40 bg-card p-4 text-sm text-muted-foreground">
+            Esta diretriz ainda não possui o conteúdo confirmado salvo.
+          </div>
+        )}
+      </div>
+    );
+  }
 
   const FASE_LABELS = ['Inflamatória', 'Proliferação', 'Remodelação', 'Funcional'];
   const FASE_ICONS = [Shield, Beaker, Layers, TrendingUp];
