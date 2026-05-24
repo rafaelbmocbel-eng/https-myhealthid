@@ -490,6 +490,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       <div>
         <ProtocoloViewer
           protocoloId={viewingId}
+          embedded
           onBack={() => {
             setViewingId(null);
             const params = new URLSearchParams(location.search);
@@ -499,10 +500,6 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           onExportPDF={() => {
             const p = protocolos.find((x: any) => x.id === viewingId);
             if (p) handleExportPDF(p);
-          }}
-          onNewDiretriz={() => {
-            setViewingId(null);
-            handleNovaDiretrizManual();
           }}
         />
       </div>
@@ -537,6 +534,32 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     );
   }
 
+  if (tipo === 'identidade') {
+    const diretrizConfirmada = protocolos.find((protocolo: any) => {
+      const scores = protocolo.scores_avaliacao || {};
+      const snapshot = scores.diretriz_snapshot;
+      const origem = String(protocolo.origem || scores.origem || snapshot?.origem || '');
+      return !!snapshot?.fases?.length && ['ia_voz', 'ia_escrita', 'avaliacao_voz'].includes(origem);
+    });
+
+    if (diretrizConfirmada?.id) {
+      return (
+        <ProtocoloViewer
+          protocoloId={diretrizConfirmada.id}
+          embedded
+          onBack={() => undefined}
+          onExportPDF={() => handleExportPDF(diretrizConfirmada)}
+        />
+      );
+    }
+
+    return (
+      <div className="rounded-xl border border-dashed border-border/60 bg-card p-6 text-center text-sm text-muted-foreground">
+        A diretriz confirmada na avaliação aparecerá aqui assim que for enviada.
+      </div>
+    );
+  }
+
   if (protocolos.length === 0 && avaliacoesSemProtocolo.length === 0 && avaliacoesCobZeroSemProtocolo.length === 0 && avaliacoesVozComDiretriz.length === 0) {
     return (
       <div className="space-y-4">
@@ -557,8 +580,8 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           <FileText className="h-10 w-10 mx-auto mb-3 opacity-30" />
           <p className="font-medium">Nenhuma diretriz criada</p>
           <p className="text-sm mt-1">
-            {tipo === 'identidade'
-              ? 'Conclua uma avaliação presencial ou por voz e clique em "Nova Diretriz".'
+            {tipo === 'studio'
+              ? 'Conclua uma avaliação para gerar uma diretriz.'
               : 'Conclua uma avaliação COB° ZERO para gerar uma diretriz.'}
           </p>
         </div>
@@ -583,30 +606,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
         </Button>
       </div>
 
-      {/* Avaliações prontas para protocolo (identidade) */}
-      {tipo === 'identidade' && avaliacoesVozComDiretriz.length > 0 && (
-        <div className="space-y-2" id="secao-diretrizes-voz">
-          <div className="flex items-center gap-2 mb-2">
-            <FileText className="h-4 w-4 text-primary" />
-            <span className="text-xs font-semibold text-muted-foreground uppercase">Diretrizes da avaliação</span>
-            <Badge className="bg-primary/10 text-primary border-0 text-[10px]">{avaliacoesVozComDiretriz.length}</Badge>
-          </div>
-          {avaliacoesVozComDiretriz.map((av: any) => (
-            <div key={av.id} className="border-l-4 border-primary rounded-lg p-3 bg-primary/5 flex items-center gap-3 shadow-sm">
-              <FileText className="h-4 w-4 text-primary shrink-0" />
-              <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium truncate">{av.queixa_principal || 'Avaliação por voz'}</p>
-                <p className="text-xs text-muted-foreground">Confirmada em {format(new Date(av.created_at), "dd/MM/yyyy", { locale: ptBR })}</p>
-              </div>
-              <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-7 text-xs shadow-sm" onClick={() => handleCriarProtocoloDaVoz(av)}>
-                <Plus className="h-3 w-3" /> Enviar
-              </Button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {(tipo === 'identidade' || tipo === 'studio') && avaliacoesSemProtocolo.length > 0 && (
+      {tipo === 'studio' && avaliacoesSemProtocolo.length > 0 && (
         <div className="space-y-2" id="secao-pendencias">
           <div className="flex items-center gap-2 mb-2">
             <Zap className="h-4 w-4 text-amber-500" />

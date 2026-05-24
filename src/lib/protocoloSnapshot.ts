@@ -139,6 +139,7 @@ export function createDiretrizSnapshotFromVoz(
       const criterios = asStringArray(fase.criterios_progressao || fase.criterios);
       const tecnicas = Array.isArray(fase.tecnicas || fase.techniques) ? (fase.tecnicas || fase.techniques) as unknown[] : [];
       const exercicios = Array.isArray(fase.exercicios || fase.exercises) ? (fase.exercicios || fase.exercises) as unknown[] : [];
+      const frequencia = typeof fase.frequencia === 'string' ? fase.frequencia : String(d.frequencia_sugerida || '');
 
       return {
         numero: cfg.numero,
@@ -149,8 +150,8 @@ export function createDiretrizSnapshotFromVoz(
         objetivo: objetivos[0] || 'Conduta terapêutica planejada.',
         demandasAlvo: objetivos.slice(1),
         criteriosProgressao: criterios,
-        frequenciaSemanal: 0,
-        duracaoSessao: typeof fase.duracao_sessao === 'string' ? fase.duracao_sessao : '',
+        frequenciaSemanal: Number(frequencia.match(/\d+/)?.[0] || 0),
+        duracaoSessao: typeof fase.duracao_sessao === 'string' ? fase.duracao_sessao : String(fase.duracao || fase.dosagem || ''),
         exercicios: exercicios.map((item) => {
           if (typeof item === 'string') {
             return {
@@ -170,9 +171,9 @@ export function createDiretrizSnapshotFromVoz(
             categoria: String(ex.categoria || 'Exercício terapêutico'),
             series: String(ex.series || ex.serie || ''),
             repeticoes: String(ex.repeticoes || ex.reps || ''),
-            duracao: String(ex.duracao || ex.dosagem || ''),
-            motivo: String(ex.motivo || ex.justificativa || ''),
-            descricao: String(ex.descricao || ''),
+            duracao: String(ex.duracao || ex.dosagem || ex.frequencia || ''),
+            motivo: String(ex.motivo || ex.justificativa || ex.racional || ''),
+            descricao: String(ex.descricao || ex.instrucoes || ''),
             instrucoes: asStringArray(ex.instrucoes),
           };
         }),
