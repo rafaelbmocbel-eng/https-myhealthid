@@ -115,9 +115,11 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      // 1. fetch protocol scores
+      // 1. fetch protocol scores + meta
       const { data: prot, error: e1 } = await supabase
-        .from('protocolos' as any).select('scores_avaliacao').eq('id', protocoloId).single();
+        .from('protocolos' as any)
+        .select('scores_avaliacao, titulo, paciente_id, terapeuta_id')
+        .eq('id', protocoloId).single();
       if (e1) throw e1;
       const scores: any = (prot as any)?.scores_avaliacao || {};
       const novoSnapshot: DiretrizSnapshot = { ...snapshot, fases };
@@ -140,13 +142,76 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
           }).eq('id', match.id);
         }
       }
+
+      // 3. Sincronizar nota original no prontuário (avaliacao_voz cross-ref OU conduta_diretriz)
+      const protAny = prot as any;
+      const pacienteId = protAny?.paciente_id;
+      const terapeutaId = protAny?.terapeuta_id;
+      const tituloDir = protAny?.titulo || 'Diretriz';
+      const textoSnapshot = snapshotToTexto(novoSnapshot, tituloDir);
+
+      if (pacienteId && terapeutaId) {
+        try {
+          // 3a. nota avaliacao_voz com cross-ref
+          const { data: notas } = await (supabase as any)
+            .from('notas_prontuario')
+            .select('id, tipo, descricao, dados_extras')
+            .eq('paciente_id', pacienteId)
+            .eq('terapeuta_id', terapeutaId)
+            .in('tipo', ['avaliacao_voz', 'conduta_diretriz'])
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+          const notaOriginal = (notas || []).find((n: any) =>
+            (n.tipo === 'avaliacao_voz' && n.dados_extras?.diretriz_protocolo_id === protocoloId) ||
+            (n.tipo === 'conduta_diretriz' && (n.dados_extras?.protocolo_id === protocoloId || n.dados_extras?.diretriz === tituloDir)),
+          );
+
+          if (notaOriginal?.id) {
+            const baseDesc = notaOriginal.tipo === 'avaliacao_voz'
+              ? (notaOriginal.descricao || '').split('\n\n📋 DIRETRIZ DE TRATAMENTO')[0].trimEnd()
+              : '';
+            const novaDesc = (baseDesc ? baseDesc + '\n\n' : '') + textoSnapshot
+              + `\n\n✏️ Atualizada em ${new Date().toLocaleDateString('pt-BR')}.`;
+
+            await (supabase as any)
+              .from('notas_prontuario')
+              .update({
+                descricao: novaDesc,
+                dados_extras: {
+                  ...(notaOriginal.dados_extras || {}),
+                  diretriz_protocolo_id: protocoloId,
+                  diretriz_snapshot_versao: novoSnapshot.versao,
+                  ultima_atualizacao_diretriz: new Date().toISOString(),
+                },
+              })
+              .eq('id', notaOriginal.id);
+          }
+
+          // 3b. Criar nota de evolução com resumo das alterações
+          const tecnicasTotal = fases.reduce((acc, f) => acc + (f.tecnicas?.length || 0), 0);
+          const exerciciosTotal = fases.reduce((acc, f) => acc + (f.exercicios?.length || 0), 0);
+          const resumo = `${fases.length} fase(s) revisada(s) • ${tecnicasTotal} técnica(s) • ${exerciciosTotal} exercício(s).`;
+          await gerarEvolucaoDiretrizAlterada({
+            pacienteId,
+            terapeutaId,
+            protocoloId,
+            diretrizTitulo: tituloDir,
+            resumoAlteracoes: resumo,
+          });
+        } catch (syncErr) {
+          console.warn('Sync diretriz↔prontuário falhou (não bloqueante):', syncErr);
+        }
+      }
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['protocolo', protocoloId] });
       qc.invalidateQueries({ queryKey: ['protocolo-fases', protocoloId] });
+      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
+      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
       setDirty(false);
       setEditingIdx(null);
-      toast({ title: 'Diretriz atualizada' });
+      toast({ title: 'Diretriz atualizada', description: 'Prontuário sincronizado e evolução registrada.' });
     },
     onError: (err: any) => toast({ title: 'Erro ao salvar', description: err?.message, variant: 'destructive' }),
   });
