@@ -203,6 +203,12 @@ export default function Configuracoes() {
             <NotificationPreferences />
           </TabsContent>
 
+          {/* MyID AUTO — Notificações Inteligentes */}
+          <TabsContent value="myid" className="mt-0 space-y-4">
+            <NotificacoesInteligentes />
+          </TabsContent>
+
+
           {/* IA */}
           <TabsContent value="ia" className="mt-0 space-y-4">
             <AiCreditsBanner />
