@@ -863,6 +863,19 @@ export default function Pacientes() {
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
                           </Badge>
                         )}
+                        {(p as any).cadastro_status === 'pendente_paciente' && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${getBaseUrl()}/portal/completar/${(p as any).portal_token}`;
+                              setShareModal({ open: true, nome: p.nome, telefone: p.telefone || undefined, url });
+                            }}
+                          >
+                            <Clock className="h-2.5 w-2.5" /> Aguardando dados
+                          </Badge>
+                        )}
                         {tag === 'inadimplente' && (
                           <Badge variant="outline" className={cn('text-[10px] h-5 border', tagCfg.bgColor, tagCfg.color)}>
                             {tagCfg.emoji} {tagCfg.label}
