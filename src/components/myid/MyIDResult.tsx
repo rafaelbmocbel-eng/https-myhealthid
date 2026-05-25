@@ -136,9 +136,20 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
         return { emoji: '🔴', titulo: 'Situação crítica — busque ajuda', cor: 'text-destructive', bg: 'bg-destructive/10', borda: 'border-destructive/40', frase: 'Seu corpo está pedindo socorro. Procure acompanhamento profissional o quanto antes.' };
     })();
 
+    // Celebração ao concluir (apenas para scores ≥ 70 — momento positivo)
+    const [celebrate, setCelebrate] = useState(false);
+    useEffect(() => {
+        if (myidScoreValue >= 70) {
+            const t = setTimeout(() => setCelebrate(true), 400);
+            return () => clearTimeout(t);
+        }
+    }, [myidScoreValue]);
+
     return (
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
+            <ConfettiBurst trigger={celebrate} />
             <div className="text-center pt-6">
+
                 <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight">Seu resultado MyID</h1>
                 <p className="text-sm text-muted-foreground mt-1">Em linguagem simples — o que está bem, o que precisa melhorar.</p>
             </div>
