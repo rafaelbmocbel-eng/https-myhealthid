@@ -14,6 +14,8 @@ import {
 import { subDays } from 'date-fns';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
+import { ConfettiBurst } from '@/components/ui/confetti-burst';
+import { useHaptics } from '@/hooks/useHaptics';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Meta {
@@ -198,6 +200,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [completedMissions, setCompletedMissions] = useState<Set<string>>(new Set());
+  const [celebrate, setCelebrate] = useState(false);
+  const { vibrate } = useHaptics();
   const [showDicas, setShowDicas] = useState(true);
   const [showFases, setShowFases] = useState(false);
 
@@ -280,9 +284,18 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const toggleMission = (id: string) => {
     setCompletedMissions(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const wasDone = next.has(id);
+      if (wasDone) next.delete(id); else next.add(id);
       const today = new Date().toISOString().split('T')[0];
       localStorage.setItem(`missoes_${pacienteId}_${today}`, JSON.stringify([...next]));
+
+      // Microceleração ao concluir (não ao desfazer)
+      if (!wasDone) {
+        vibrate('success');
+        setCelebrate(false);
+        // pequeno tick pra re-disparar o useEffect do ConfettiBurst
+        setTimeout(() => setCelebrate(true), 10);
+      }
       return next;
     });
   };
@@ -372,6 +385,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
   return (
     <div className="space-y-4">
+      <ConfettiBurst trigger={celebrate} duration={2200} pieces={24} />
       {/* Header com streak */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
