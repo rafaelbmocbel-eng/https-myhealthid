@@ -8,7 +8,7 @@ import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
-import { useUtmCapture } from '@/hooks/useUtmCapture';
+import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
 
 export default function CadastroCliente() {
   useUtmCapture();
