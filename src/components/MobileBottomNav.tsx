@@ -42,8 +42,9 @@ export default function MobileBottomNav() {
             <li key={item.href} className="flex-1">
               <Link
                 to={item.href}
+                onClick={() => { if (!active) vibrate('tick'); }}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all active:scale-95',
+                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl tap-pop',
                   active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
