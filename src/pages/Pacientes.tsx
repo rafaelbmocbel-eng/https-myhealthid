@@ -31,6 +31,7 @@ import { shareBoasVindas, shareLembreteRetorno, sharePosAlta } from '@/utils/wha
 import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import PainelAcompanhamento from '@/components/paciente/PainelAcompanhamento';
+import { getBaseUrl } from '@/utils/linkUrls';
 
 const GestaoVendas = lazy(() => import('@/pages/GestaoVendas'));
 const FinanceiroGeral = lazy(() => import('@/components/paciente/FinanceiroGeral'));
@@ -227,6 +228,9 @@ export default function Pacientes() {
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
+  const [quickModal, setQuickModal] = useState(false);
+  const [quickForm, setQuickForm] = useState({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+  const [shareModal, setShareModal] = useState<{ open: boolean; nome?: string; telefone?: string; url?: string }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
@@ -431,6 +435,57 @@ export default function Pacientes() {
   };
 
   const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
+  const openQuick = () => {
+    setQuickForm({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+    setQuickModal(true);
+  };
+
+  const handleQuickSave = async () => {
+    if (!quickForm.nome.trim()) return toast({ title: 'Nome é obrigatório', variant: 'destructive' });
+    const telDigits = quickForm.telefone.replace(/\D/g, '');
+    if (telDigits.length < 10) return toast({ title: 'WhatsApp/Telefone obrigatório', variant: 'destructive' });
+    if (!quickForm.lgpd_aceite) return toast({ title: 'Confirme o aceite LGPD do paciente', variant: 'destructive' });
+    setSubmitting(true);
+    try {
+      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const payload: any = {
+        nome: quickForm.nome.trim(),
+        sobrenome: quickForm.sobrenome.trim(),
+        email: quickForm.email.trim().toLowerCase() || null,
+        telefone: quickForm.telefone,
+        terapeuta_id: user!.id,
+        ativo: true,
+        cadastro_status: 'pendente_paciente',
+        portal_token: token,
+        origem: 'cadastro_rapido',
+        lgpd_aceite_em: new Date().toISOString(),
+        lgpd_versao: '1.0',
+        tipo_pagamento: 'particular',
+      };
+      const { data, error } = await supabase.from('pacientes').insert(payload).select('id, portal_token, nome, telefone').single();
+      if (error) throw error;
+      pinRecent(data.id);
+      try {
+        await supabase.from('termos_consentimento').insert({
+          paciente_id: data.id, terapeuta_id: user!.id, tipo: 'lgpd', versao: '1.0',
+          texto_termo: 'Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a LGPD.',
+          aceito: true, data_aceite: new Date().toISOString(),
+        });
+      } catch {/* nb */}
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      const url = `${getBaseUrl()}/portal/completar/${data.portal_token}`;
+      setQuickModal(false);
+      setShareModal({ open: true, nome: data.nome, telefone: data.telefone || undefined, url });
+    } catch (e: any) {
+      const msg = e?.message || '';
+      let friendly = 'Erro ao criar cadastro.';
+      if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
+      toast({ title: 'Erro', description: friendly, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const openEdit = (p: Paciente) => {
     setForm({
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
@@ -680,6 +735,9 @@ export default function Pacientes() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button onClick={openQuick} variant="outline" className="rounded-xl gap-2 h-10" size="sm" title="Cadastro rápido: só nome, e-mail e celular. O paciente completa pelo portal.">
+                <Zap className="icon-sm" /> <span className="hidden sm:inline">Cadastro rápido</span><span className="sm:hidden">Rápido</span>
+              </Button>
               <Button onClick={openNew} className="rounded-xl gap-2 rounded-xl h-10" size="sm">
                 <Plus className="icon-sm" /> <span className="hidden sm:inline">Novo paciente</span><span className="sm:hidden">Novo</span>
               </Button>
@@ -803,6 +861,19 @@ export default function Pacientes() {
                         {linkAtivo && (
                           <Badge variant="outline" className="text-[10px] h-5 bg-emerald-50 text-emerald-700 border-emerald-200 gap-1">
                             <Link2 className="h-2.5 w-2.5" /> {diasRestantes}d
+                          </Badge>
+                        )}
+                        {(p as any).cadastro_status === 'pendente_paciente' && (
+                          <Badge
+                            variant="outline"
+                            className="text-[10px] h-5 bg-amber-50 text-amber-800 border-amber-300 gap-1 cursor-pointer"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const url = `${getBaseUrl()}/portal/completar/${(p as any).portal_token}`;
+                              setShareModal({ open: true, nome: p.nome, telefone: p.telefone || undefined, url });
+                            }}
+                          >
+                            <Clock className="h-2.5 w-2.5" /> Aguardando dados
                           </Badge>
                         )}
                         {tag === 'inadimplente' && (
@@ -1222,6 +1293,100 @@ export default function Pacientes() {
                 cancelarLink={cancelarLink}
                 getLinkUrl={getLinkUrl}
               />
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Cadastro Rápido */}
+      <Dialog open={quickModal} onOpenChange={setQuickModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" /> Cadastro rápido
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Cadastre o essencial agora e envie um link para o paciente completar o restante (CPF, endereço, saúde) com calma em casa.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome *</Label>
+                <Input value={quickForm.nome} onChange={e => setQuickForm(f => ({ ...f, nome: e.target.value }))} className="text-[16px] sm:text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sobrenome</Label>
+                <Input value={quickForm.sobrenome} onChange={e => setQuickForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">E-mail</Label>
+              <Input type="email" value={quickForm.email} onChange={e => setQuickForm(f => ({ ...f, email: e.target.value }))} className="text-[16px] sm:text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">WhatsApp / Telefone *</Label>
+              <Input value={quickForm.telefone} onChange={e => setQuickForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))} maxLength={15} className="text-[16px] sm:text-sm" placeholder="(11) 98765-4321" />
+            </div>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-2">
+              <Checkbox id="lgpd-quick" checked={quickForm.lgpd_aceite} onCheckedChange={c => setQuickForm(f => ({ ...f, lgpd_aceite: !!c }))} />
+              <Label htmlFor="lgpd-quick" className="text-[11px] leading-snug cursor-pointer">
+                <strong>Aceite LGPD:</strong> o paciente autorizou (verbalmente / em consulta) o tratamento dos dados pessoais e de saúde.
+              </Label>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setQuickModal(false)}>Cancelar</Button>
+              <Button className="flex-1" onClick={handleQuickSave} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar e gerar link'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Compartilhar Link de Cadastro Completo */}
+      <Dialog open={shareModal.open} onOpenChange={o => setShareModal({ open: o })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" /> Enviar link de cadastro
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Envie este link para <strong>{shareModal.nome}</strong> completar o cadastro (CPF, endereço, saúde, contato de emergência). Quando concluir, você recebe uma notificação.
+            </p>
+            <div className="p-3 rounded-lg bg-muted/40 border border-border break-all text-[11px] font-mono">
+              {shareModal.url}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  if (shareModal.url) {
+                    navigator.clipboard.writeText(shareModal.url);
+                    toast({ title: 'Link copiado!' });
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" /> Copiar
+              </Button>
+              <Button
+                className="gap-2"
+                disabled={!shareModal.telefone}
+                onClick={() => {
+                  if (!shareModal.url || !shareModal.telefone) return;
+                  const msg = `Olá ${shareModal.nome}! Para agilizar seu atendimento, complete seu cadastro neste link seguro:\n\n${shareModal.url}\n\nLeva menos de 3 minutos. 🙏`;
+                  const tel = shareModal.telefone.replace(/\D/g, '');
+                  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+              >
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </Button>
+            </div>
+            {!shareModal.telefone && (
+              <p className="text-[10px] text-amber-600">Cadastre um telefone para enviar pelo WhatsApp.</p>
             )}
           </div>
         </DialogContent>
