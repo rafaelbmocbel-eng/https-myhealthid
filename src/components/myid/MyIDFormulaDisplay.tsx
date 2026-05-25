@@ -83,7 +83,7 @@ export default function MyIDFormulaDisplay({
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Score Principal — Gauge MyID-100 */}
+      {!hideGauge && (
       <Card className="border-0 shadow-lg bg-card overflow-hidden rounded-3xl">
         <CardContent className="p-8 space-y-6">
           <div className="flex flex-col items-center">
@@ -116,6 +116,7 @@ export default function MyIDFormulaDisplay({
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Gráfico de Perdas */}
       <Card className="shadow-lg border-0 bg-card overflow-hidden rounded-2xl">
