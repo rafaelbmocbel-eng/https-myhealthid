@@ -34,6 +34,11 @@ if (!isSafeForSW && "serviceWorker" in navigator) {
 const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
 const DYNAMIC_IMPORT_ERROR_PATTERN =
   /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
+// React.lazy() resolves `module.default` — when a stale chunk is loaded after a
+// deploy, the module object can be undefined and React throws this exact message
+// from inside vendor-react. Treat it as a chunk-mismatch and reload (throttled).
+const LAZY_DEFAULT_ERROR_PATTERN =
+  /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object \(evaluating '.*\.default'\)/i;
 
 const reloadOnDynamicImportFailure = () => {
   if (import.meta.env.DEV) return;
