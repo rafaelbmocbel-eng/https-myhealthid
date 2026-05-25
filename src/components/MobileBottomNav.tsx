@@ -3,6 +3,7 @@ import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, type Lucid
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import { useHaptics } from '@/hooks/useHaptics';
 
 type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
 
@@ -19,6 +20,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const { pendingCount } = useAgendamentoNotifications();
   const { servicos } = useServicosAtivos();
+  const { vibrate } = useHaptics();
 
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
@@ -40,13 +42,17 @@ export default function MobileBottomNav() {
             <li key={item.href} className="flex-1">
               <Link
                 to={item.href}
+                onClick={() => { if (!active) vibrate('tick'); }}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl transition-all active:scale-95',
+                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl tap-pop',
                   active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
                 {active && (
-                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary" />
+                  <span
+                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full"
+                    style={{ background: 'var(--gradient-gold)' }}
+                  />
                 )}
                 <div className={cn(
                   'relative flex items-center justify-center transition-all',

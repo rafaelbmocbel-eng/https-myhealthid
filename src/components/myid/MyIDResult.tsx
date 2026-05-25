@@ -172,15 +172,45 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
             )}
 
             {/* ───── BIG SCORE + STATUS EM LINGUAGEM SIMPLES ───── */}
-            <Card className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm`}>
-                <CardContent className="p-6 sm:p-8 text-center space-y-3">
-                    <div className="text-5xl">{statusInfo.emoji}</div>
-                    <div>
-                        <div className={`text-6xl sm:text-7xl font-black ${statusInfo.cor} leading-none`}>
-                            {Math.round(myidScoreValue)}
-                            <span className="text-2xl text-muted-foreground font-bold">/100</span>
+            <Card className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm overflow-hidden relative`}>
+                <CardContent className="p-6 sm:p-8 text-center space-y-3 relative">
+                    {/* Selo de conquista — só aparece a partir de 70 */}
+                    {myidScoreValue >= 70 && (
+                        <div className="flex justify-center -mb-1 animate-in zoom-in-50 duration-700">
+                            <div
+                                className="relative h-14 w-14 rounded-full flex items-center justify-center shadow-md"
+                                style={{ background: 'var(--gradient-gold)' }}
+                            >
+                                <span
+                                    className="absolute inset-0 rounded-full animate-pulse-ring"
+                                    style={{ background: 'hsl(42 60% 55% / 0.35)' }}
+                                    aria-hidden
+                                />
+                                <span className="relative text-2xl" aria-hidden>
+                                    {myidScoreValue >= 85 ? '🏆' : '⭐'}
+                                </span>
+                            </div>
                         </div>
-                        <div className={`text-base sm:text-lg font-bold mt-2 ${statusInfo.cor}`}>{statusInfo.titulo}</div>
+                    )}
+                    <div className="text-5xl">{statusInfo.emoji}</div>
+                    <div className="relative">
+                        {/* glow dourado por trás do número quando score alto */}
+                        {myidScoreValue >= 70 && (
+                            <div
+                                className="absolute inset-0 pointer-events-none -z-0"
+                                style={{
+                                    background:
+                                        'radial-gradient(circle at 50% 55%, hsl(42 60% 55% / 0.28) 0%, transparent 60%)',
+                                    filter: 'blur(10px)',
+                                }}
+                                aria-hidden
+                            />
+                        )}
+                        <div className={`kpi-hero text-6xl sm:text-7xl ${statusInfo.cor} leading-none relative`}>
+                            {Math.round(myidScoreValue)}
+                            <span className="text-2xl text-muted-foreground font-semibold not-italic ml-1">/100</span>
+                        </div>
+                        <div className={`text-base sm:text-lg font-bold mt-3 ${statusInfo.cor} relative`}>{statusInfo.titulo}</div>
                     </div>
                     <p className="text-sm text-foreground/80 max-w-md mx-auto">{statusInfo.frase}</p>
                 </CardContent>
