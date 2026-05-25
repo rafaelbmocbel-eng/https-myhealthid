@@ -132,6 +132,9 @@ export default function MyIDFormulaDisplay({
               perda.perda_pontos > 0 && <LossBar key={dim} dim={dim} perda={perda} />
             ))}
           </div>
+          <p className="text-[10px] text-muted-foreground/70 mt-3 leading-relaxed border-t border-border/40 pt-2">
+            <strong>Triagem clínica:</strong> dimensões compostas usam agregação por pior item (peso 60%) + média (40%), evitando que um fator crítico isolado seja diluído. Não substitui instrumentos validados (TSK, PCS, PSQI) — apoia a decisão do profissional.
+          </p>
         </CardContent>
       </Card>
 
