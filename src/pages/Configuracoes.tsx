@@ -26,8 +26,9 @@ import AusenciasManager from '@/components/configuracoes/AusenciasManager';
 import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissionalCard';
 import AtalhosHomeEditor from '@/components/configuracoes/AtalhosHomeEditor';
 import NotificacoesInteligentes from '@/components/configuracoes/NotificacoesInteligentes';
+import RecompensasManager from '@/components/configuracoes/RecompensasManager';
 
-type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'ia';
+type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'recompensas' | 'ia';
 
 type TabItem =
   | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
