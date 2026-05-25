@@ -18,6 +18,7 @@ import { ptBR } from 'date-fns/locale';
 import { CheckCircle2, Clock, AlertTriangle, Flame, MessageCircle, DollarSign } from 'lucide-react';
 import { SectionTitle } from '@/components/ui/section-title';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonList } from '@/components/ui/skeleton-list';
 
 type Sessao = {
   id: string;
@@ -127,7 +128,7 @@ export default function AReceber() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8 text-sm text-muted-foreground">Carregando...</div>;
+    return <SkeletonList rows={4} avatar={false} />;
   }
 
   if (sessoes.length === 0) {
