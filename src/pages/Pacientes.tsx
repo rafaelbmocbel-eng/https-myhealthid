@@ -675,8 +675,12 @@ export default function Pacientes() {
   if (isLoading) {
     return (
       <AppLayout>
-        <div className="flex items-center justify-center h-96">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <div className="container py-4 sm:py-6 max-w-6xl">
+          <div className="mb-5 sm:mb-7 space-y-2">
+            <div className="h-3 w-20 bg-muted/60 rounded animate-pulse" />
+            <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
+          </div>
+          <SkeletonList rows={6} />
         </div>
       </AppLayout>
     );
