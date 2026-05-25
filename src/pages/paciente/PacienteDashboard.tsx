@@ -16,6 +16,7 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
+import PacienteDicaInteligente from '@/components/paciente/PacienteDicaInteligente';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
