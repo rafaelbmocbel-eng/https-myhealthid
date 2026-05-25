@@ -41,6 +41,7 @@ const FunilPublico = lazy(() => import("./pages/FunilPublico"));
 const Eventos = lazy(() => import("./pages/Eventos"));
 const EventoPublico = lazy(() => import("./pages/EventoPublico"));
 const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
+const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
 const Precos = lazy(() => import("./pages/Precos"));
 const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
 const NovaSenha = lazy(() => import("./pages/NovaSenha"));
