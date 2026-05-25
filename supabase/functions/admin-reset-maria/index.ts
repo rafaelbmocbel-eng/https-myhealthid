@@ -9,7 +9,7 @@ Deno.serve(async () => {
 
   const userId = "2f1915e7-4ff9-4908-a194-fddfdb5e24ab";
   const { data, error } = await supabase.auth.admin.updateUserById(userId, {
-    password: "demo1234",
+    password: "MyID@Demo2026!",
     email_confirm: true,
   });
 
