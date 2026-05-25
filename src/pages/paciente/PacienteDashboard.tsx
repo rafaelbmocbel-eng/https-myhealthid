@@ -423,6 +423,9 @@ export default function PacienteDashboard() {
           {/* Missões agora aparecem dentro do PatientIntegratedDashboard, logo abaixo do gráfico MyID */}
 
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+            <PacienteDicaInteligente />
+          </motion.div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
