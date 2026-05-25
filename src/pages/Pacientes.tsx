@@ -117,6 +117,7 @@ interface FormData {
   alergias: string;
   medicamentos_uso: string;
   condicoes_preexistentes: string;
+  origem_lead: string;
 }
 
 const emptyForm: FormData = {
@@ -136,6 +137,7 @@ const emptyForm: FormData = {
   alergias: '',
   medicamentos_uso: '',
   condicoes_preexistentes: '',
+  origem_lead: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
@@ -453,6 +455,7 @@ export default function Pacientes() {
       alergias: (p as any).alergias || '',
       medicamentos_uso: (p as any).medicamentos_uso || '',
       condicoes_preexistentes: (p as any).condicoes_preexistentes || '',
+      origem_lead: (p as any).origem || '',
     });
     setModal({ open: true, paciente: p });
   };
@@ -500,6 +503,11 @@ export default function Pacientes() {
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
       };
+      if (!modal.paciente) {
+        payload.origem = form.origem_lead || 'cadastro_manual';
+      } else if (form.origem_lead) {
+        payload.origem = form.origem_lead;
+      }
       if (!modal.paciente && form.lgpd_aceite) {
         payload.lgpd_aceite_em = new Date().toISOString();
         payload.lgpd_versao = '1.0';
@@ -1081,6 +1089,30 @@ export default function Pacientes() {
               </Select>
               <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
             </div>
+
+            <div className="space-y-1">
+              <Label>Origem do paciente</Label>
+              <Select
+                value={form.origem_lead || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, origem_lead: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Como chegou até você?" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="google">Google / Busca</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="evento">Evento / Palestra</SelectItem>
+                  <SelectItem value="convenio">Convênio</SelectItem>
+                  <SelectItem value="cadastro_manual">Cadastro manual</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Ajuda a medir canais de aquisição no CRM.</p>
+            </div>
+
 
             <div className="space-y-2">
               <Label>Tipo de Atendimento</Label>

@@ -8,7 +8,7 @@ import { Eye, EyeOff, Loader2, UserPlus, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import LogoIcon from '@/components/LogoIcon';
 import logoFull from '@/assets/logo-myhealthid-full.webp';
-import { useUtmCapture } from '@/hooks/useUtmCapture';
+import { useUtmCapture, getCapturedUtm } from '@/hooks/useUtmCapture';
 
 export default function CadastroCliente() {
   useUtmCapture();
@@ -29,17 +29,24 @@ export default function CadastroCliente() {
       toast({ title: 'Aceite os termos LGPD para continuar', variant: 'destructive' });
       return;
     }
+    const telDigits = form.telefone.replace(/\D/g, '');
+    if (telDigits.length < 10) {
+      toast({ title: 'WhatsApp / telefone obrigatório', description: 'Usaremos para lembretes e comunicações.', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
     try {
+      const utm = getCapturedUtm();
       const res = await supabase.functions.invoke('register-patient', {
         body: {
           slug,
           nome: form.nome,
           email: form.email,
-          telefone: form.telefone || null,
+          telefone: form.telefone,
           password: form.password,
           lgpd_aceite: true,
+          origem_utm: utm || null,
         },
       });
 
@@ -175,13 +182,14 @@ export default function CadastroCliente() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone</Label>
+              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone *</Label>
               <Input
                 id="telefone"
                 type="tel"
                 placeholder="(11) 98765-4321"
                 value={form.telefone}
                 onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
+                required
                 className="h-11 rounded-xl text-[16px] sm:text-sm"
               />
             </div>
