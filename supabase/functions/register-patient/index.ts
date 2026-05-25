@@ -12,11 +12,19 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { slug, nome, email, password, telefone, lgpd_aceite } = await req.json();
+    const { slug, nome, email, password, telefone, lgpd_aceite, origem_utm } = await req.json();
 
     if (!slug || !nome || !email || !password) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios: slug, nome, email, password" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const telDigits = (telefone || "").replace(/\D/g, "");
+    if (telDigits.length < 10) {
+      return new Response(
+        JSON.stringify({ error: "Telefone / WhatsApp obrigatório (DDD + número)" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
