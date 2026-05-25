@@ -200,6 +200,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [loading, setLoading] = useState(true);
   const [streak, setStreak] = useState(0);
   const [completedMissions, setCompletedMissions] = useState<Set<string>>(new Set());
+  const [celebrate, setCelebrate] = useState(false);
+  const { vibrate } = useHaptics();
   const [showDicas, setShowDicas] = useState(true);
   const [showFases, setShowFases] = useState(false);
 
