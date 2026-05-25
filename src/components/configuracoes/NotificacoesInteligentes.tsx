@@ -113,7 +113,8 @@ export default function NotificacoesInteligentes() {
 
   const updateRegra = useMutation({
     mutationFn: async (r: Partial<Regra> & { id: string }) => {
-      const { error } = await supabase.from('notificacao_regras').update(r).eq('id', r.id);
+      const { id, ...patch } = r;
+      const { error } = await supabase.from('notificacao_regras').update(patch as any).eq('id', id);
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['notif-regras'] }),
