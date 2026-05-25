@@ -14,6 +14,8 @@ import {
 import { subDays } from 'date-fns';
 import { calcularPerdaDimensao, DIMENSION_LABELS, DIMENSION_COLORS } from '@/utils/myid/lossTable';
 import { gerarInsightsClinicosMyID, type ClinicalInsightResult } from '@/utils/myid/clinicalInsights';
+import { ConfettiBurst } from '@/components/ui/confetti-burst';
+import { useHaptics } from '@/hooks/useHaptics';
 
 // ── Interfaces ─────────────────────────────────────────────────────
 interface Meta {
