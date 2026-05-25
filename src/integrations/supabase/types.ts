@@ -2696,6 +2696,7 @@ export type Database = {
           alergias: string | null
           ativo: boolean
           bairro: string | null
+          cadastro_status: string
           cep: string | null
           cidade: string | null
           clinica_id: string | null
@@ -2738,6 +2739,7 @@ export type Database = {
           alergias?: string | null
           ativo?: boolean
           bairro?: string | null
+          cadastro_status?: string
           cep?: string | null
           cidade?: string | null
           clinica_id?: string | null
@@ -2780,6 +2782,7 @@ export type Database = {
           alergias?: string | null
           ativo?: boolean
           bairro?: string | null
+          cadastro_status?: string
           cep?: string | null
           cidade?: string | null
           clinica_id?: string | null
@@ -5182,6 +5185,18 @@ export type Database = {
           terapeuta_id: string
         }[]
       }
+      get_paciente_completar_publico: {
+        Args: { p_token: string }
+        Returns: {
+          cadastro_status: string
+          email: string
+          id: string
+          nome: string
+          sobrenome: string
+          telefone: string
+          terapeuta_nome: string
+        }[]
+      }
       get_patient_by_portal_token: {
         Args: { p_token: string }
         Returns: {
@@ -5304,6 +5319,10 @@ export type Database = {
           status: string
           uso_ia_atual: number
         }[]
+      }
+      salvar_cadastro_paciente_publico: {
+        Args: { p_data: Json; p_token: string }
+        Returns: string
       }
       salvar_fase_myid: {
         Args: {
