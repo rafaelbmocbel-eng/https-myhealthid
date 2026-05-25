@@ -137,6 +137,7 @@ const emptyForm: FormData = {
   alergias: '',
   medicamentos_uso: '',
   condicoes_preexistentes: '',
+  origem_lead: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
