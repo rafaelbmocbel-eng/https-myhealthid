@@ -545,12 +545,13 @@ export default function Index() {
               <div
                 className={`tabular-nums leading-none ${
                   k.highlight
-                    ? 'text-xl sm:text-3xl font-semibold text-primary tracking-tight'
-                    : 'text-xl sm:text-2xl font-semibold text-foreground tracking-tight'
+                    ? 'kpi-hero text-3xl sm:text-4xl text-gradient-gold'
+                    : 'kpi-hero text-2xl sm:text-3xl text-foreground'
                 }`}
               >
                 {k.value}
               </div>
+
 
             </Link>
           ))}
