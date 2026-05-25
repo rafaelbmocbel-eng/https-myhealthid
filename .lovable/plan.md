@@ -1,106 +1,99 @@
-## Objetivo
+# Plano: 4 Features MyID Completas
 
-Adicionar uma nova aba **"Tráfego"** dentro do CRM (`/crm?tab=trafego`) que centraliza: rastreamento de origem (UTM), conexão com Instagram (publicação/agendamento/insights/DMs), gerador de links rastreáveis e configuração de pixels (Meta + GA4). Sem novo item na sidebar.
+Escopo grande. Vou entregar em **4 sprints sequenciais**, validando cada um antes do próximo. Total estimado: ~6-8 etapas de implementação.
 
-## Entregas por fase
+---
 
-### Fase 1 — Estrutura + Rastreamento de Origem (UTM) — **base obrigatória**
+## Sprint 1 — Notificações Inteligentes Contextuais
 
-1. **Nova aba no CrmHub**
-   - Adicionar entrada `trafego` em `TABS` (ícone `Radio` ou `Megaphone`).
-   - Criar `src/pages/CrmTrafego.tsx` com sub-abas internas: **Origem · Instagram · Links UTM · Pixels**.
-   - Lazy load no `CrmHub`.
+**Objetivo:** Disparar notificações automáticas no canal certo (push/WhatsApp/in-app) baseadas no **Driver Primário** do MyID do paciente.
 
-2. **Captura de UTMs nos links públicos** (zero UI nova)
-   - Hook `useUtmCapture()` em `FunilPublico`, `CadastroCliente`, `AgendaPublica`, `EventoPublico`, `MyIDResponder`.
-   - Lê `utm_source / utm_medium / utm_campaign / utm_content / utm_term` + `referrer` e persiste em `sessionStorage`.
-   - Ao criar lead/paciente/inscrição, grava em coluna nova `origem_utm jsonb`.
+**Banco:**
+- Tabela `notificacao_regras` (driver, horario_envio, canal, template, ativo)
+- Tabela `notificacao_envios` (log: paciente_id, regra_id, enviada_em, status, lida_em)
+- Seed de regras default (Sono→22h, Hidratação→3/3h, Estresse→manhã, Dor→tarde, etc.)
 
-3. **Migração de banco**
-   ```sql
-   ALTER TABLE pacientes        ADD COLUMN origem_utm jsonb;
-   ALTER TABLE funil_leads      ADD COLUMN origem_utm jsonb;
-   ALTER TABLE evento_inscricoes ADD COLUMN origem_utm jsonb;
-   ALTER TABLE whatsapp_conversas ADD COLUMN origem_utm jsonb;
-   ```
-   Mais um índice GIN em `origem_utm` para agregação.
+**Edge function:** `notificacoes-inteligentes` (cron 30/30min)
+- Lê pacientes ativos, busca último MyID, identifica driver, checa janela horária, envia via push/WhatsApp/in-app, registra envio.
 
-4. **Sub-aba "Origem"** (`CrmTrafegoOrigem.tsx`)
-   - Cards KPI: leads por canal (Instagram, WhatsApp, Google, Direto, Outros).
-   - Gráfico de barras (Recharts) últimos 30/60/90 dias.
-   - Tabela: campanha → leads → pacientes convertidos → taxa.
-   - Hook `useOrigemMetrics()` agregando `funil_leads + pacientes + evento_inscricoes` por `origem_utm->>'utm_source'`.
+**UI:**
+- Pro: `/configuracoes/notificacoes-inteligentes` — tabela editável de regras + log de envios.
+- Paciente: badge no portal mostra próxima dica contextual.
 
-5. **Bloco "Origem dos leads" em Métricas (CrmMetricas)**
-   - Resumo compacto reutilizando o mesmo hook.
+---
 
-### Fase 2 — Sub-aba "Links UTM"
+## Sprint 2 — Relatório PDF MyID para o Paciente
 
-1. **Gerador de links rastreáveis** (`CrmTrafegoLinks.tsx`)
-   - Form: destino (select: Funil, Cadastro, Evento, MyID), origem (preset: instagram, whatsapp, google_ads, email), mídia, campanha.
-   - Monta URL via `getBaseUrl() + path + ?utm_*`.
-   - Botão copiar + QR code (já temos `pixQrCode.ts` para basear).
-   - Histórico de links salvos em nova tabela `links_rastreaveis` (terapeuta_id, label, url_final, utms jsonb, cliques int, created_at). RLS por terapeuta_id.
+**Objetivo:** PDF Serene-style compartilhável.
 
-2. **Botão "Link rastreável"** em `LinkActionsBar` (perfil paciente, eventos, funis) — abre o gerador pré-preenchido.
+**Componentes:**
+- `utils/pdfMyIDPaciente.ts` (lazy-loaded como os outros PDFs)
+- Página 1: capa com Global Score + Gauge SVG
+- Página 2: Fingerprint radar das 11 dimensões
+- Página 3: Driver Primário em linguagem leiga + recomendação
+- Página 4: Plano de 3 fases com metas
+- Página 5: Missões ativas (XP por categoria)
+- Página 6: Próximos passos + assinatura do profissional
 
-### Fase 3 — Sub-aba "Pixels"
+**UI:** Botão "Baixar meu relatório" no `PacienteDashboard` + "Compartilhar via WhatsApp" (Web Share API).
 
-1. **Configuração de pixels** (`CrmTrafegoPixels.tsx`)
-   - Nova tabela `tracking_config (terapeuta_id pk, meta_pixel_id text, ga4_id text, ativos boolean)`.
-   - Form simples: 2 inputs (Meta Pixel ID + GA4 Measurement ID) + toggle.
-   - Hook `useTrackingConfig()`.
+**Mirror Pro:** Mesmo PDF disponível no perfil do paciente para o profissional baixar.
 
-2. **Injeção condicional nos links públicos**
-   - Componente `<PublicTrackingPixels terapeutaId>` em `FunilPublico`, `EventoPublico`, `CadastroCliente`, `MyIDResponder`.
-   - Carrega scripts Meta Pixel + GA4 via `useEffect` se `tracking_config` ativo.
-   - Dispara eventos: `PageView` (sempre), `Lead` (ao criar lead/inscrição), `Schedule` (ao agendar).
+---
 
-### Fase 4 — Sub-aba "Instagram" (mais complexa, isolada)
+## Sprint 3 — Programa de Recompensas (XP → Prêmios)
 
-1. **Conexão via Lovable Connector**
-   - Não existe connector oficial pronto para Instagram Graph API; vamos usar fluxo OAuth próprio Meta (Instagram Business + Página FB).
-   - **Pré-requisito do usuário:** App no Meta for Developers + Instagram Profissional ligado a Página FB.
-   - Secrets: `META_APP_ID`, `META_APP_SECRET`, `META_REDIRECT_URI`.
-   - Tabela `instagram_contas (terapeuta_id pk, ig_user_id text, page_id text, access_token text encrypted, expires_at, username, profile_pic)`.
+**Objetivo:** Sistema de níveis + catálogo de recompensas configurável.
 
-2. **Edge Functions**
-   - `instagram-oauth-callback`: troca code por long-lived token, salva conta.
-   - `instagram-publish`: publica feed/reel via Graph API (`/media` + `/media_publish`).
-   - `instagram-insights`: alcance, impressões, salvamentos do perfil + posts.
-   - `instagram-dm-webhook`: recebe DM (webhook Meta) → grava em `whatsapp_conversas` com `canal='instagram_dm'`.
+**Banco:**
+- Coluna `nivel_atual` em `pacientes` (Bronze/Prata/Ouro/Platina/Diamante)
+- Tabela `recompensas_catalogo` (terapeuta_id, titulo, descricao, xp_custo, ativa, estoque)
+- Tabela `recompensas_resgates` (paciente_id, recompensa_id, xp_gasto, status, resgatado_em, entregue_em)
+- Trigger: recalcula `nivel_atual` quando XP muda
 
-3. **UI `CrmTrafegoInstagram.tsx`**
-   - Estado desconectado: card "Conectar Instagram" → abre OAuth.
-   - Estado conectado:
-     - Header: avatar + @username + botão desconectar.
-     - Tab interna: **Publicar** (form: imagem/vídeo + legenda + agendar pra data) · **Calendário** (posts agendados) · **Insights** (KPIs últimos 30d).
-   - Posts agendados ficam em tabela `instagram_posts_agendados` + cron job `instagram-scheduler` (pg_cron a cada 5min).
+**UI Paciente:**
+- `/portal/recompensas` — catálogo, "Resgatar" debita XP, status do resgate
+- Header do portal: nível atual + barra de progresso para próximo nível
 
-4. **Inbox unificada**
-   - Adicionar filtro de canal em `CrmInbox` (tabs: Todos · WhatsApp · Instagram DM).
-   - Badge `📷 IG` nos cards.
+**UI Pro:**
+- `/configuracoes/recompensas` — CRUD do catálogo
+- Notificação quando paciente resgata (precisa marcar como entregue)
+- KPI em `/dashboard`: resgates do mês
 
-5. **Pipeline**
-   - Badge de canal de origem (WA/IG/Funil) no card do `CrmPipeline`.
+---
 
-## Considerações técnicas
+## Sprint 4 — Integração Wearables (Apple Health / Google Fit)
 
-- **Gating de plano:** envolver `CrmTrafego` em `<PlanoGate modulo="crm">`. Instagram exige plano Profissional+.
-- **Espelhamento:** não aplicável (feature pro-only, sem contraparte paciente).
-- **Segurança:** access_token IG em coluna criptografada via `pgsodium` ou armazenar em secret; RLS estrita em `instagram_contas`/`tracking_config`/`links_rastreaveis` (terapeuta_id = auth.uid()).
-- **Mobile:** sub-abas com mesma faixa horizontal scroll do `CrmHub` atual; respeitar 100dvh.
-- **Design:** seguir `<PageHeader>`, `<SectionTitle>`, `<EmptyState>`, cards `rounded-xl border-border/40 shadow-xs`, sem gradientes.
-- **Ícones:** classes `.icon-*` oficiais.
-- **Links públicos:** sempre via `getBaseUrl()` (já é regra).
+**Objetivo:** Sincronizar passos, sono, HRV e alimentar o MyID automaticamente.
 
-## Ordem de implementação sugerida
+**Base:** Já existe `useHealthData` + `useHealthSync` com Capacitor Health. Vou estender:
 
-Vou executar **Fase 1 completa** nesta primeira leva (estrutura + UTMs + dashboard Origem + bloco em Métricas). Em seguida pergunto se você quer ir para Fase 2 (Links), Fase 3 (Pixels) ou pular direto para Fase 4 (Instagram) — esta última precisa dos secrets do Meta App antes de começar.
+**Banco:**
+- Tabela `wearable_sync_log` (paciente_id, fonte, dados_jsonb, sincronizado_em)
+- View `wearable_metricas_semanais` (média passos/sono/HRV últimos 7d)
 
-## O que NÃO está no escopo
+**Lógica:**
+- Função `recalcular_af_hid_r1_from_wearable(paciente_id)` — atualiza scores AF (atividade física), R1 (sono) automaticamente entre MyIDs manuais
+- Edge function `wearable-alert-monitor` (cron diário): detecta piora (ex: passos ↓50% em 7d) e notifica profissional
+- Banner no portal: "Última sincronização: X horas atrás"
 
-- Editor visual de criativos (use Canva externo).
-- Comparativo entre múltiplas contas IG (1 conta por terapeuta nesta v1).
-- TikTok/LinkedIn (avaliar depois).
-- Atribuição multi-touch sofisticada (apenas last-click via UTM).
+**UI Pro:**
+- Aba "Wearable" no perfil do paciente: gráficos passos/sono/HRV + alertas
+- Indicador no card do paciente quando wearable mostra piora
+
+---
+
+## Ordem e validação
+
+Implemento Sprint 1 completo (banco + edge + UI Pro + UI Paciente), você testa, valido com você, e só então parto pro Sprint 2. Isso evita rework caso algo precise ajustar de rota no meio.
+
+## Risco e compatibilidade
+
+- Nenhuma mudança quebra fluxo existente. Tudo é aditivo.
+- Wearables só ativam se o paciente autorizar Capacitor Health (já é o comportamento atual).
+- PDF é lazy-loaded — não afeta performance inicial.
+- Notificações inteligentes começam **desativadas por default** — profissional liga regra por regra.
+
+---
+
+**Posso começar pelo Sprint 1 agora?** Se quiser ajustar algo (ex: pular alguma sprint, mudar canais, etc.), me avisa antes.
