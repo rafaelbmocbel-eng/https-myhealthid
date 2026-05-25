@@ -159,6 +159,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         ativo: true,
         origem: "link_cadastro",
+        origem_utm: origem_utm || null,
         lgpd_aceite_em: nowIso,
         lgpd_versao: "1.0",
       })
