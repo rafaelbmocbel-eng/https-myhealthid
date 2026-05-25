@@ -455,6 +455,7 @@ export default function Pacientes() {
       alergias: (p as any).alergias || '',
       medicamentos_uso: (p as any).medicamentos_uso || '',
       condicoes_preexistentes: (p as any).condicoes_preexistentes || '',
+      origem_lead: (p as any).origem || '',
     });
     setModal({ open: true, paciente: p });
   };
