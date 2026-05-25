@@ -136,14 +136,21 @@ export default function Hoje() {
 
           {/* Greeting */}
           <header className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold shadow-sm ring-2 ring-background">
-              {initials}
+            <div className="relative shrink-0">
+              <div
+                className="absolute inset-0 rounded-full -m-[2px]"
+                style={{ background: 'var(--gradient-gold)' }}
+                aria-hidden
+              />
+              <div className="relative h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold ring-2 ring-background">
+                {initials}
+              </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+              <div className="eyebrow-gold text-[10px] sm:text-[11px]">
                 {todayLabel}
               </div>
-              <div className="text-base sm:text-xl lg:text-2xl font-bold leading-tight truncate">
+              <div className="font-display italic text-lg sm:text-2xl lg:text-3xl font-semibold leading-tight truncate text-foreground">
                 {greeting}, {firstName}
               </div>
             </div>
