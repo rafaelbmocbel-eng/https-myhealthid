@@ -2842,6 +2842,7 @@ export type Database = {
           lgpd_aceite_em: string | null
           lgpd_versao: string | null
           medicamentos_uso: string | null
+          nivel_atual: Database["public"]["Enums"]["nivel_paciente"]
           nome: string
           observacoes: string | null
           origem: string | null
@@ -2859,6 +2860,7 @@ export type Database = {
           uf: string | null
           updated_at: string
           user_id: string | null
+          xp_total: number
         }
         Insert: {
           alergias?: string | null
@@ -2885,6 +2887,7 @@ export type Database = {
           lgpd_aceite_em?: string | null
           lgpd_versao?: string | null
           medicamentos_uso?: string | null
+          nivel_atual?: Database["public"]["Enums"]["nivel_paciente"]
           nome: string
           observacoes?: string | null
           origem?: string | null
@@ -2902,6 +2905,7 @@ export type Database = {
           uf?: string | null
           updated_at?: string
           user_id?: string | null
+          xp_total?: number
         }
         Update: {
           alergias?: string | null
@@ -2928,6 +2932,7 @@ export type Database = {
           lgpd_aceite_em?: string | null
           lgpd_versao?: string | null
           medicamentos_uso?: string | null
+          nivel_atual?: Database["public"]["Enums"]["nivel_paciente"]
           nome?: string
           observacoes?: string | null
           origem?: string | null
@@ -2945,6 +2950,7 @@ export type Database = {
           uf?: string | null
           updated_at?: string
           user_id?: string | null
+          xp_total?: number
         }
         Relationships: [
           {
@@ -3736,6 +3742,105 @@ export type Database = {
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recompensas_catalogo: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          descricao: string | null
+          estoque: number | null
+          id: string
+          nivel_minimo: Database["public"]["Enums"]["nivel_paciente"]
+          ordem: number
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+          xp_custo: number
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          descricao?: string | null
+          estoque?: number | null
+          id?: string
+          nivel_minimo?: Database["public"]["Enums"]["nivel_paciente"]
+          ordem?: number
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+          xp_custo: number
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          descricao?: string | null
+          estoque?: number | null
+          id?: string
+          nivel_minimo?: Database["public"]["Enums"]["nivel_paciente"]
+          ordem?: number
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+          xp_custo?: number
+        }
+        Relationships: []
+      }
+      recompensas_resgates: {
+        Row: {
+          created_at: string
+          entregue_em: string | null
+          id: string
+          observacao: string | null
+          paciente_id: string
+          recompensa_id: string
+          resgatado_em: string
+          status: Database["public"]["Enums"]["recompensa_status"]
+          terapeuta_id: string
+          updated_at: string
+          xp_gasto: number
+        }
+        Insert: {
+          created_at?: string
+          entregue_em?: string | null
+          id?: string
+          observacao?: string | null
+          paciente_id: string
+          recompensa_id: string
+          resgatado_em?: string
+          status?: Database["public"]["Enums"]["recompensa_status"]
+          terapeuta_id: string
+          updated_at?: string
+          xp_gasto: number
+        }
+        Update: {
+          created_at?: string
+          entregue_em?: string | null
+          id?: string
+          observacao?: string | null
+          paciente_id?: string
+          recompensa_id?: string
+          resgatado_em?: string
+          status?: Database["public"]["Enums"]["recompensa_status"]
+          terapeuta_id?: string
+          updated_at?: string
+          xp_gasto?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recompensas_resgates_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "recompensas_resgates_recompensa_id_fkey"
+            columns: ["recompensa_id"]
+            isOneToOne: false
+            referencedRelation: "recompensas_catalogo"
             referencedColumns: ["id"]
           },
         ]
@@ -5162,6 +5267,10 @@ export type Database = {
       }
     }
     Functions: {
+      calcular_nivel_paciente: {
+        Args: { p_xp: number }
+        Returns: Database["public"]["Enums"]["nivel_paciente"]
+      }
       count_evento_inscricoes: {
         Args: { p_evento_id: string }
         Returns: number
@@ -5496,6 +5605,7 @@ export type Database = {
         | "N"
         | "MED"
         | "ANY"
+      nivel_paciente: "bronze" | "prata" | "ouro" | "platina" | "diamante"
       notif_canal: "in_app" | "whatsapp" | "push"
       perfil_profissional:
         | "fisioterapeuta"
@@ -5504,6 +5614,7 @@ export type Database = {
         | "nutricionista"
         | "educador_fisico"
         | "terapeuta_ocupacional"
+      recompensa_status: "solicitado" | "aprovado" | "entregue" | "cancelado"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -5655,6 +5766,7 @@ export const Constants = {
         "MED",
         "ANY",
       ],
+      nivel_paciente: ["bronze", "prata", "ouro", "platina", "diamante"],
       notif_canal: ["in_app", "whatsapp", "push"],
       perfil_profissional: [
         "fisioterapeuta",
@@ -5664,6 +5776,7 @@ export const Constants = {
         "educador_fisico",
         "terapeuta_ocupacional",
       ],
+      recompensa_status: ["solicitado", "aprovado", "entregue", "cancelado"],
     },
   },
 } as const

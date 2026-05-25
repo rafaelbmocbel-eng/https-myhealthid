@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain,
+  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain, Gift,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
@@ -26,8 +26,9 @@ import AusenciasManager from '@/components/configuracoes/AusenciasManager';
 import PerfilProfissionalCard from '@/components/configuracoes/PerfilProfissionalCard';
 import AtalhosHomeEditor from '@/components/configuracoes/AtalhosHomeEditor';
 import NotificacoesInteligentes from '@/components/configuracoes/NotificacoesInteligentes';
+import RecompensasManager from '@/components/configuracoes/RecompensasManager';
 
-type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'ia';
+type TabId = 'clinica' | 'home' | 'agenda' | 'equipe' | 'links' | 'notif' | 'myid' | 'recompensas' | 'ia';
 
 type TabItem =
   | { id: TabId; label: string; icon: React.ComponentType<any>; kind: 'panel' }
@@ -43,6 +44,7 @@ const TABS: TabItem[] = [
   { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
   { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
   { id: 'myid', label: 'MyID Auto', icon: Brain, kind: 'panel' },
+  { id: 'recompensas', label: 'Recompensas', icon: Gift, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
 ];
 
@@ -207,6 +209,12 @@ export default function Configuracoes() {
           <TabsContent value="myid" className="mt-0 space-y-4">
             <NotificacoesInteligentes />
           </TabsContent>
+
+          {/* RECOMPENSAS */}
+          <TabsContent value="recompensas" className="mt-0 space-y-4">
+            <RecompensasManager />
+          </TabsContent>
+
 
 
           {/* IA */}
