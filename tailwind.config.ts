@@ -178,6 +178,13 @@ export default {
   					opacity: '1'
   				}
   			},
+  			'shimmer': {
+  				'100%': { transform: 'translateX(100%)' }
+  			},
+  			'confetti-fall': {
+  				'0%': { transform: 'translateY(-10vh) rotate(0deg)', opacity: '1' },
+  				'100%': { transform: 'translateY(110vh) rotate(720deg)', opacity: '0' }
+  			},
   			'pulse-urgent': {
   				'0%, 100%': { boxShadow: '0 0 0 0 hsl(var(--destructive) / 0.55)' },
   				'50%': { boxShadow: '0 0 0 8px hsl(var(--destructive) / 0)' }
