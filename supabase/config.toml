@@ -1,34 +1,4 @@
-project_id = "rbzmojurvypksubeigbt"
+project_id = "mgdzlzpzjpnswpqdtylz"
 
-[functions.enviar-link-email]
-verify_jwt = true
-
-[functions.generate-exercise-image]
-verify_jwt = true
-
-[functions.voice-assessment]
-verify_jwt = false
-
-[functions.validar-myid-token]
-verify_jwt = false
-
-[functions.auto-messages]
-verify_jwt = false
-
-[functions.whatsapp-webhook]
-verify_jwt = false
-
-[functions.whatsapp-transcribe]
-verify_jwt = false
-
-[functions.whatsapp-bot-reply]
-verify_jwt = false
-
-[functions.whatsapp-auto-confirm]
-verify_jwt = false
-
-[functions.agente-proativo]
-verify_jwt = false
-
-[functions.agente-broadcast]
+[functions.admin-reset-maria]
 verify_jwt = false
