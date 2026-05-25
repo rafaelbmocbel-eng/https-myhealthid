@@ -210,13 +210,11 @@ export default function PacienteDashboard() {
                   <h1 className="font-display text-2xl sm:text-3xl text-foreground truncate leading-tight">
                     {paciente?.nome || '...'}
                   </h1>
-                  {(notifications.streak > 0 || xp > 0) && (
+                  {notifications.streak > 1 && (
                     <div className="flex items-center gap-1.5 mt-0.5">
                       <span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(var(--gold))] shrink-0" />
                       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
-                        {notifications.streak > 1
-                          ? `${notifications.streak} dias de foco`
-                          : `${level.label} · ${xp} XP`}
+                        {notifications.streak} dias de foco
                       </span>
                     </div>
                   )}
@@ -224,7 +222,7 @@ export default function PacienteDashboard() {
               </div>
               <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/60 shrink-0">
                 <LevelIcon className={cn('h-4 w-4', level.color)} />
-                <span className="text-[11px] font-medium text-foreground">{level.label}</span>
+                <span className="text-[11px] font-medium text-foreground">{level.label} · {xp} XP</span>
               </div>
             </div>
           </motion.div>
