@@ -2,6 +2,23 @@
 <html lang="pt-BR" translate="no">
   <head>
     <meta charset="UTF-8" />
+    <script>
+      // ── Domínio canônico failsafe ──
+      // Se o paciente abrir o app em um domínio antigo/com typo, redireciona
+      // INSTANTANEAMENTE para o canônico preservando path + query + hash.
+      // Mantenha esta lista sincronizada com src/utils/linkUrls.ts (KNOWN_PRODUCTION_DOMAINS).
+      (function () {
+        try {
+          var CANONICAL = 'myhealthid.lovable.app';
+          var ALIASES = ['https-myhealthid.lovable.app'];
+          var host = window.location.hostname;
+          if (ALIASES.indexOf(host) !== -1 && host !== CANONICAL) {
+            var target = 'https://' + CANONICAL + window.location.pathname + window.location.search + window.location.hash;
+            window.location.replace(target);
+          }
+        } catch (_) { /* never block boot */ }
+      })();
+    </script>
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
