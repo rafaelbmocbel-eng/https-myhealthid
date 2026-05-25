@@ -61,7 +61,7 @@ export default function CrmTrafegoOrigem() {
 
       {!hasData ? (
         <EmptyState
-          icon={<TrendingUp className="icon-xl" />}
+          illustration="chart"
           title="Ainda sem dados de origem"
           description="Compartilhe seus links públicos (funil, cadastro, eventos) com parâmetros UTM e veja aqui de onde vêm seus leads. Use a aba 'Links UTM' para gerar links rastreáveis."
         />
