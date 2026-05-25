@@ -2,6 +2,7 @@
 // Input: { query: string, areas?: string[], limit?: number, minYear?: number }
 // Output: { matches: [{ id, title, authors, journal, year, doi, url, evidence_level, similarity }] }
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { requireUser } from "../_shared/auth.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
