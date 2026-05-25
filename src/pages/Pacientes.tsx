@@ -503,6 +503,11 @@ export default function Pacientes() {
         convenio_id: convenioSel?.id || null,
         plano_saude: convenioSel?.nome || null,
       };
+      if (!modal.paciente) {
+        payload.origem = form.origem_lead || 'cadastro_manual';
+      } else if (form.origem_lead) {
+        payload.origem = form.origem_lead;
+      }
       if (!modal.paciente && form.lgpd_aceite) {
         payload.lgpd_aceite_em = new Date().toISOString();
         payload.lgpd_versao = '1.0';
