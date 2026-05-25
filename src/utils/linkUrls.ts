@@ -1,5 +1,5 @@
 // URL oficial do projeto publicado (acessível publicamente sem login Lovable)
-const PRODUCTION_URL = 'https://https-myhealthid.lovable.app';
+const PRODUCTION_URL = 'https://myhealthid.lovable.app';
 
 export function getBaseUrl() {
   if (typeof window !== 'undefined') {
