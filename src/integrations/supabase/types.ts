@@ -5320,6 +5320,10 @@ export type Database = {
           uso_ia_atual: number
         }[]
       }
+      salvar_cadastro_paciente_autenticado: {
+        Args: { p_data: Json }
+        Returns: Json
+      }
       salvar_cadastro_paciente_publico: {
         Args: { p_data: Json; p_token: string }
         Returns: string

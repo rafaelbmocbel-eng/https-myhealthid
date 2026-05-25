@@ -79,11 +79,18 @@ export default function PacienteDashboard() {
     const fetchData = async () => {
       const { data: pac } = await supabase
         .from('pacientes')
-        .select('id, nome, sobrenome, terapeuta_id')
+        .select('id, nome, sobrenome, terapeuta_id, cadastro_status')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (!pac) { setLoading(false); return; }
+
+      // Se o cadastro ainda está pendente, manda para completar antes de tudo
+      if ((pac as any).cadastro_status === 'pendente_paciente') {
+        navigate('/paciente/completar-cadastro', { replace: true });
+        return;
+      }
+
       setPaciente(pac);
 
       // Profissional vinculado (para CTA de retomar tratamento)
