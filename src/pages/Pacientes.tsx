@@ -1090,6 +1090,30 @@ export default function Pacientes() {
               <p className="text-[11px] text-muted-foreground">Pode ser alterado a qualquer momento.</p>
             </div>
 
+            <div className="space-y-1">
+              <Label>Origem do paciente</Label>
+              <Select
+                value={form.origem_lead || 'none'}
+                onValueChange={v => setForm(f => ({ ...f, origem_lead: v === 'none' ? '' : v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Como chegou até você?" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="google">Google / Busca</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="evento">Evento / Palestra</SelectItem>
+                  <SelectItem value="convenio">Convênio</SelectItem>
+                  <SelectItem value="cadastro_manual">Cadastro manual</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground">Ajuda a medir canais de aquisição no CRM.</p>
+            </div>
+
+
             <div className="space-y-2">
               <Label>Tipo de Atendimento</Label>
               <div className="grid grid-cols-2 gap-2">
