@@ -190,6 +190,7 @@ const App = () => (
                 <Route path="/paciente/perfil" element={<ProtectedPatientRoute><PacientePerfilPage /></ProtectedPatientRoute>} />
                 <Route path="/paciente/plano" element={<ProtectedPatientRoute><PacientePlano /></ProtectedPatientRoute>} />
                 <Route path="/paciente/historia" element={<ProtectedPatientRoute><PacienteHistoria /></ProtectedPatientRoute>} />
+                <Route path="/paciente/recompensas" element={<ProtectedPatientRoute><PacienteRecompensas /></ProtectedPatientRoute>} />
 
                 {/* Wellness public signup (freemium) */}
                 <Route path="/wellness/cadastro" element={<WellnessCadastro />} />
