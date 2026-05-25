@@ -159,25 +159,8 @@ export default function PatientIntegratedDashboard({
     },
   });
 
-  // ── Structural assessment data (legado)
-  const { data: structuralAvaliacoes = [] } = useQuery({
-    queryKey: ['integrated-structural', pacienteId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('avaliacoes_identidade')
-        .select('*')
-        .eq('paciente_id', pacienteId)
-        .not('score_e', 'is', null)
-        .is('myid_score', null)
-        .order('created_at', { ascending: false })
-        .limit(1);
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: serviceType === 'identidade',
-  });
-
-  const structuralData = structuralAvaliacoes[0]?.dados_avaliacao as any as StructuralAssessmentData | null;
+  // Avaliação estrutural (Unidades ID) descontinuada no portal — mantida no perfil do profissional como histórico.
+  const structuralData = null as any;
 
   const lastServiceEntry = serviceData[0] as any;
 
@@ -612,105 +595,7 @@ export default function PatientIntegratedDashboard({
         </>
       )}
 
-      {/* ─── SEÇÃO 1.5: AVALIAÇÃO ESTRUTURAL (legado) ─── */}
-      {serviceType === 'identidade' && structuralData && (
-        <Card className="shadow-sm overflow-hidden">
-          <CardContent className="p-5">
-            <div className="flex items-center gap-3 mb-4">
-              <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-orange-100 dark:bg-orange-900/30 shrink-0">
-                <Activity className="h-5 w-5 text-orange-600" />
-              </div>
-              <div>
-                <h3 className="font-black text-lg text-foreground">Avaliação Estrutural</h3>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">8 Unidades Funcionais</p>
-              </div>
-              <div className="ml-auto text-right">
-                <div className={cn('text-2xl font-black', classifyScoreColor(structuralData.scoreStructuralGeneral ?? 0))}>
-                  {(structuralData.scoreStructuralGeneral ?? 0).toFixed(1)}
-                </div>
-                <div className="text-[9px] font-bold text-muted-foreground">{classifyScore(structuralData.scoreStructuralGeneral ?? 0)}</div>
-              </div>
-            </div>
-
-            {/* Unit scores grid */}
-            <div className="grid grid-cols-4 sm:grid-cols-8 gap-1.5 mb-4">
-              {UNIT_CONFIGS.map(cfg => {
-                const unit = structuralData.units?.[cfg.id];
-                const score = unit?.score ?? 0;
-                return (
-                  <div key={cfg.id} className="text-center p-1.5 rounded-lg bg-muted/40">
-                    <div className="text-xs">{cfg.emoji}</div>
-                    <div className={cn('text-sm font-black', classifyScoreColor(score))}>{score.toFixed(1)}</div>
-                    <div className="text-[8px] text-muted-foreground font-bold">{cfg.id}</div>
-                  </div>
-                );
-              })}
-            </div>
-
-            {/* Connection Map */}
-            <StructuralConnectionMap data={structuralData} />
-
-            {/* ── Rehab Timeline Widget ── */}
-            {(() => {
-              const insights = structuralData.units ? generateRehabInsights(structuralData.units) : [];
-              if (insights.length === 0) return null;
-              const longestRecovery = insights[0];
-              const hasSlowTissue = insights.some(i => i.category === 'Articular' || i.category === 'Ligamentar');
-              return (
-                <div className="mt-4 rounded-xl border-2 border-primary/20 bg-gradient-to-br from-card to-primary/5 p-4 space-y-3">
-                  <div className="flex items-center gap-2 mb-1">
-                    <Clock className="h-4 w-4 text-primary" />
-                    <h4 className="font-bold text-sm text-foreground">Tempo de Reabilitação</h4>
-                    <Badge variant="outline" className="text-[9px] ml-auto">Baseado em Evidência</Badge>
-                  </div>
-
-                  {hasSlowTissue && (
-                    <div className="p-2.5 rounded-lg bg-destructive/5 border border-destructive/20">
-                      <p className="text-[10px] text-destructive font-medium">
-                        ⚠️ Estruturas de cicatrização lenta identificadas. O alívio dos sintomas NÃO significa cura completa do tecido.
-                      </p>
-                    </div>
-                  )}
-
-                  <div className="space-y-1.5">
-                    {insights.slice(0, 4).map((insight, idx) => {
-                      const colorMap: Record<string, string> = {
-                        emerald: 'bg-emerald-500', amber: 'bg-amber-500', orange: 'bg-orange-500',
-                        red: 'bg-red-500', purple: 'bg-purple-500', blue: 'bg-blue-500',
-                      };
-                      const maxAll = insights[0]?.maxWeeks || 1;
-                      const barWidth = (insight.maxWeeks / maxAll) * 100;
-                      return (
-                        <div key={idx} className="flex items-center gap-2">
-                          <span className="text-sm w-5 shrink-0">{insight.icon}</span>
-                          <span className="text-[9px] font-medium w-14 truncate shrink-0">{insight.tissue}</span>
-                          <div className="flex-1 h-2.5 bg-muted rounded-full overflow-hidden">
-                            <div className={cn('h-full rounded-full', colorMap[insight.color] || 'bg-primary')} style={{ width: `${barWidth}%` }} />
-                          </div>
-                          <span className="text-[9px] font-bold w-16 text-right shrink-0">{insight.minWeeks}–{insight.maxWeeks} sem</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-
-                  <div className="p-2.5 rounded-lg bg-primary/5 border border-primary/10">
-                    <div className="flex items-start gap-2">
-                      <Heart className="icon-sm text-primary shrink-0 mt-0.5" />
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        Cada tecido tem seu relógio biológico. <strong>Respeitar esse tempo é a diferença entre recuperação completa e recidiva.</strong>
-                        {hasSlowTissue && ' O fortalecimento muscular ao redor é seu principal mecanismo de proteção.'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
-
-            {/* Gerar Diretriz de Tratamento */}
-            <StructuralDiretrizButton data={structuralData} pacienteId={pacienteId} />
-          </CardContent>
-        </Card>
-      )}
+      {/* Avaliação Estrutural (Unidades ID) removida do portal do paciente. */}
 
       {/* ─── SEÇÃO 2: AVALIAÇÃO ESPECÍFICA DO SERVIÇO ─── */}
       {lastServiceEntry && serviceType !== 'identidade' && (
