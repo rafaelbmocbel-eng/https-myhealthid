@@ -1,25 +1,65 @@
-// URL oficial do projeto publicado (acessível publicamente sem login Lovable)
-const PRODUCTION_URL = 'https://myhealthid.lovable.app';
+// ============================================================================
+// LINKS PÚBLICOS — DOMÍNIO CANÔNICO
+// ----------------------------------------------------------------------------
+// Esta é a ÚNICA fonte de verdade do domínio público da aplicação.
+// Qualquer mudança aqui afeta TODOS os links compartilháveis (portal, MyID,
+// avaliação, agenda, cadastro, funil, eventos).
+//
+// REGRAS DE PROTEÇÃO (para nunca quebrar links de pacientes em uso):
+//
+// 1. CANONICAL_DOMAIN é a URL oficial. Sempre validada por testes.
+// 2. KNOWN_ALIASES lista domínios antigos/com typo que devem ser tratados como
+//    válidos para LEITURA (paciente já tem o link salvo) mas o app vai
+//    redirecionar para o canônico via <script> em index.html.
+// 3. Se algum dia o domínio canônico mudar, ADICIONAR o antigo em
+//    KNOWN_ALIASES antes de trocar — assim links antigos continuam abrindo.
+// ============================================================================
 
-export function getBaseUrl() {
-  if (typeof window !== 'undefined') {
-    const origin = window.location.origin;
+export const CANONICAL_DOMAIN = 'myhealthid.lovable.app';
+export const CANONICAL_URL = `https://${CANONICAL_DOMAIN}`;
 
-    // Ambientes de desenvolvimento/preview do Lovable são PRIVADOS e exigem login.
-    // Sempre force o uso do domínio público publicado para links compartilháveis.
-    const isDev =
-      origin.includes('github') ||
-      origin.includes('id-preview') ||
-      origin.includes('preview--') ||
-      origin.includes('lovableproject.com');
+/**
+ * Domínios reconhecidos como "nosso app em produção".
+ * Inclui o canônico + qualquer alias histórico que pacientes possam ter salvo.
+ * Aliases serão redirecionados via index.html script.
+ */
+export const KNOWN_PRODUCTION_DOMAINS: readonly string[] = [
+  CANONICAL_DOMAIN,
+  // Aliases / typos históricos — manter aqui para que o redirect funcione:
+  'https-myhealthid.lovable.app',
+  // Domínios customizados do cliente devem ser adicionados aqui quando
+  // forem conectados (ex.: 'app.myhealthid.com.br')
+];
 
-    if (isDev && PRODUCTION_URL) {
-      return PRODUCTION_URL;
-    }
+/** Detecta se um origin é ambiente de dev/preview do Lovable (precisa de login). */
+function isDevOrigin(origin: string): boolean {
+  return (
+    origin.includes('github') ||
+    origin.includes('id-preview') ||
+    origin.includes('preview--') ||
+    origin.includes('lovableproject.com')
+  );
+}
 
-    return origin;
-  }
-  return PRODUCTION_URL || '';
+/**
+ * Retorna a URL base canônica para gerar links compartilháveis.
+ * - Em dev/preview → força o domínio canônico (preview é privado).
+ * - Em produção (canônico ou alias conhecido) → usa o canônico.
+ * - Em domínio customizado desconhecido → usa o origin atual.
+ */
+export function getBaseUrl(): string {
+  if (typeof window === 'undefined') return CANONICAL_URL;
+
+  const origin = window.location.origin;
+  const host = window.location.hostname;
+
+  if (isDevOrigin(origin)) return CANONICAL_URL;
+
+  // Se estamos em um alias conhecido ou no canônico → sempre emitir links canônicos
+  if (KNOWN_PRODUCTION_DOMAINS.includes(host)) return CANONICAL_URL;
+
+  // Domínio customizado ainda não catalogado: confia no origin
+  return origin;
 }
 
 export function getPortalUrl(token: string) {
