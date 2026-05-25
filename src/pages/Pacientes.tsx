@@ -447,6 +447,12 @@ export default function Pacientes() {
       plano_saude: (p as any).plano_saude || '',
       convenio_id: (p as any).convenio_id || '',
       lgpd_aceite: !!(p as any).lgpd_aceite_em,
+      contato_emergencia_nome: (p as any).contato_emergencia_nome || '',
+      contato_emergencia_telefone: (p as any).contato_emergencia_telefone || '',
+      contato_emergencia_parentesco: (p as any).contato_emergencia_parentesco || '',
+      alergias: (p as any).alergias || '',
+      medicamentos_uso: (p as any).medicamentos_uso || '',
+      condicoes_preexistentes: (p as any).condicoes_preexistentes || '',
     });
     setModal({ open: true, paciente: p });
   };
