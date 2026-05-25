@@ -58,6 +58,7 @@ const PortalGate = lazy(() => import("./pages/paciente/PortalGate"));
 const PacienteDashboard = lazy(() => import("./pages/paciente/PacienteDashboard"));
 const PacienteAgenda = lazy(() => import("./pages/paciente/PacienteAgenda"));
 const PacienteQuestionarios = lazy(() => import("./pages/paciente/PacienteQuestionarios"));
+const CompletarCadastroPortal = lazy(() => import("./pages/paciente/CompletarCadastroPortal"));
 const PacientePerfilPage = lazy(() => import("./pages/paciente/PacientePerfil"));
 const PacienteDiario = lazy(() => import("./pages/paciente/PacienteDiario"));
 const PacienteEvolucao = lazy(() => import("./pages/paciente/PacienteEvolucao"));
@@ -174,6 +175,7 @@ const App = () => (
                 {/* Patient Portal */}
                 <Route path="/paciente/login" element={<PacienteLogin />} />
                 <Route path="/portal/:token" element={<PortalGate />} />
+                <Route path="/paciente/completar-cadastro" element={<CompletarCadastroPortal />} />
                 <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />
                 <Route path="/paciente/evolucao" element={<ProtectedPatientRoute><PacienteEvolucao /></ProtectedPatientRoute>} />
