@@ -485,6 +485,57 @@
     background: var(--gradient-warning);
   }
 
+  /* ═══ PREMIUM EDITORIAL UTILITIES ═══ */
+  .bg-premium-hero {
+    background: var(--gradient-premium-hero);
+  }
+  .bg-gradient-gold {
+    background: var(--gradient-gold);
+  }
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  .border-gold {
+    border-color: hsl(var(--gold) / 0.4);
+  }
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  /* Radial glow behind hero scores (MyID number, big KPIs) */
+  .score-glow {
+    position: relative;
+  }
+  .score-glow::before {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    background: var(--gradient-radial-glow);
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(8px);
+  }
+  .score-glow > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Premium hero KPI value — Playfair italic, monumental */
+  .kpi-hero {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+  /* Gold uppercase eyebrow for premium headers */
+  .eyebrow-gold {
+    @apply inline-flex items-center gap-1.5 text-[10px] font-bold uppercase;
+    color: hsl(var(--gold));
+    letter-spacing: 0.18em;
+  }
+
   .bg-gradient-identidade {
     background: var(--gradient-identidade);
   }
