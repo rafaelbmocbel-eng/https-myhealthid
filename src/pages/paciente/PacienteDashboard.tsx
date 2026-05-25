@@ -172,6 +172,12 @@ export default function PacienteDashboard() {
   const level = getLevel(xp);
   const LevelIcon = level.icon;
 
+  // Sincroniza XP calculado com o banco (fonte para o sistema de recompensas)
+  useEffect(() => {
+    if (!paciente?.id || loading) return;
+    supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(() => {});
+  }, [paciente?.id, xp, loading]);
+
   const getGreeting = () => {
     const hour = new Date().getHours();
     if (hour < 12) return 'Bom dia';
