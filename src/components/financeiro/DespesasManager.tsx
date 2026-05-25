@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { SectionTitle } from '@/components/ui/section-title';
 import { EmptyState } from '@/components/ui/empty-state';
+import { SkeletonList } from '@/components/ui/skeleton-list';
 
 type Despesa = {
   id: string;
