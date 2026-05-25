@@ -8,7 +8,7 @@ import {
   BarChart, Bar, Cell,
 } from 'recharts';
 import type { EvolucaoRecord } from '@/hooks/useEvolucaoPaciente';
-import { gerarPDFEvolucao } from '@/utils/pdfEvolucaoGenerator';
+
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 
 // ── Dimension configuration: demand (higher raw = worse) vs capacity (higher raw = better) ──
@@ -81,6 +81,7 @@ export default function EvolucaoDashboard({ evolucoes, pacienteNome, terapeutaNo
   const handleExportPDF = async () => {
     setExportando(true);
     try {
+      const { gerarPDFEvolucao } = await import('@/utils/pdfEvolucaoGenerator');
       await gerarPDFEvolucao({
         pacienteNome: pacienteNome || 'Paciente',
         terapeutaNome: terapeutaNome || 'Terapeuta',

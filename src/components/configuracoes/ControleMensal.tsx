@@ -11,7 +11,7 @@ import { Calendar, Users, DollarSign, Percent, Download, Loader2, FileText } fro
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { exportToCsv } from '@/utils/exportCsv';
-import { gerarPdfControleMensal } from '@/utils/pdfControleMensal';
+
 import { cn } from '@/lib/utils';
 import { Input } from '@/components/ui/input';
 
@@ -192,7 +192,7 @@ export default function ControleMensal() {
     ]);
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const linhas = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
@@ -215,6 +215,7 @@ export default function ControleMensal() {
     const filtroTipoLabel =
       tipoFiltro === 'todos' ? 'Particular + Plano' : tipoFiltro === 'plano' ? 'Apenas Plano' : 'Apenas Particular';
 
+    const { gerarPdfControleMensal } = await import('@/utils/pdfControleMensal');
     gerarPdfControleMensal({
       periodo: label,
       filtroProfissional: filtroProfLabel,

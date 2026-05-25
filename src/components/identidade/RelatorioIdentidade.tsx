@@ -8,7 +8,7 @@ import { useAvaliacoesIdentidade } from '@/hooks/useAvaliacoesSalvas';
 import { toast } from '@/hooks/use-toast';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
 import { useAuth } from '@/contexts/AuthContext';
-import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
+
 
 interface Props {
   avaliacao: AvaliacaoMyID;
@@ -62,6 +62,7 @@ export default function RelatorioIdentidade({ avaliacao, pacienteId, onBack }: P
         .eq('user_id', user.id)
         .maybeSingle();
       const terapeutaNome = profile ? `${profile.nome} ${profile.sobrenome}` : (user.email?.split('@')[0] || 'Terapeuta');
+      const { gerarPDFRespostaCompleta } = await import('@/utils/pdfRespostaCompleta');
       await gerarPDFRespostaCompleta({
         avaliacao,
         pacienteId,
