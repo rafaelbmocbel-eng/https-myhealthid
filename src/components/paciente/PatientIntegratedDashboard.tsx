@@ -538,6 +538,12 @@ export default function PatientIntegratedDashboard({
             </CardContent>
           </Card>
 
+          {/* Missões de Saúde — imediatamente após o gráfico MyID para explicar o que melhorar */}
+          <div className="mb-10">
+            <PacienteMetasDesafios pacienteId={pacienteId} />
+          </div>
+
+
           {/* ─── ZONAS DE PODER (Agrupamento Didático) ─── */}
           <div className="mb-10 lg:px-2">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
