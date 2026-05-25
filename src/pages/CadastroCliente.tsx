@@ -29,17 +29,24 @@ export default function CadastroCliente() {
       toast({ title: 'Aceite os termos LGPD para continuar', variant: 'destructive' });
       return;
     }
+    const telDigits = form.telefone.replace(/\D/g, '');
+    if (telDigits.length < 10) {
+      toast({ title: 'WhatsApp / telefone obrigatório', description: 'Usaremos para lembretes e comunicações.', variant: 'destructive' });
+      return;
+    }
     setSubmitting(true);
 
     try {
+      const utm = getCapturedUtm();
       const res = await supabase.functions.invoke('register-patient', {
         body: {
           slug,
           nome: form.nome,
           email: form.email,
-          telefone: form.telefone || null,
+          telefone: form.telefone,
           password: form.password,
           lgpd_aceite: true,
+          origem_utm: utm || null,
         },
       });
 
