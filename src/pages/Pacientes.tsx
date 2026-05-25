@@ -228,6 +228,9 @@ export default function Pacientes() {
   const [sortBy, setSortBy] = useState<SortKey>('nome');
   const [modal, setModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
   const [linkModal, setLinkModal] = useState<{ open: boolean; paciente?: Paciente }>({ open: false });
+  const [quickModal, setQuickModal] = useState(false);
+  const [quickForm, setQuickForm] = useState({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+  const [shareModal, setShareModal] = useState<{ open: boolean; nome?: string; telefone?: string; url?: string }>({ open: false });
   const [form, setForm] = useState<FormData>(emptyForm);
   const [submitting, setSubmitting] = useState(false);
   const [fabOpen, setFabOpen] = useState(false);
