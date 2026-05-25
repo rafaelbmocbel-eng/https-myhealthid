@@ -430,6 +430,21 @@ export default function PacienteDashboard() {
             <MyIDPDFButton />
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+            <button
+              onClick={() => navigate('/paciente/recompensas')}
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-shadow text-left"
+            >
+              <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                <Trophy className="w-5 h-5 text-amber-700" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <div className="font-semibold text-sm">Suas recompensas</div>
+                <div className="text-[11px] text-muted-foreground">Troque XP por benefícios reais</div>
+              </div>
+              <ChevronRight className="w-4 h-4 text-muted-foreground" />
+            </button>
+          </motion.div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
