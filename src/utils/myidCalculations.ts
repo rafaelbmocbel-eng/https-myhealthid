@@ -43,20 +43,35 @@ export function checkRedFlags(flags: RedFlags): { detected: boolean; alerts: str
   return { detected: alerts.length > 0, alerts };
 }
 
-// ── Score EFI ──
+// ── Helpers de agregação max-weighted ──
+// Evita que um item crítico isolado (ex.: finanças 10/10) seja diluído pela média.
+// Regra: score = pior_item * 0.6 + média * 0.4
+// Para PERDA (maior = pior): pior = max. Para BEM-ESTAR (maior = melhor): pior = min.
+const aggLoss = (items: number[]): number => {
+  if (items.length === 0) return 0;
+  const avg = items.reduce((a, b) => a + b, 0) / items.length;
+  return Math.max(...items) * 0.6 + avg * 0.4;
+};
+const aggWellness = (items: number[]): number => {
+  if (items.length === 0) return 0;
+  const avg = items.reduce((a, b) => a + b, 0) / items.length;
+  return Math.min(...items) * 0.6 + avg * 0.4;
+};
+
+// ── Score EFI (bem-estar) ──
 export function calcularScoreEFI_MyID(bloco3: MyIDBloco3Data): number {
-  const raw = (bloco3.trabalho + bloco3.domesticas + bloco3.exercicio + bloco3.independencia + bloco3.vidaSocial) / 5;
+  const raw = aggWellness([bloco3.trabalho, bloco3.domesticas, bloco3.exercicio, bloco3.independencia, bloco3.vidaSocial]);
   return Math.round(raw * 10) / 10;
 }
 
-// ── Score P ──
+// ── Score P (perda) ──
 export function calcularScoreP_MyID(bloco4: MyIDBloco4Data): number {
   const normalize14 = (v: number) => ((v - 1) / 3) * 10;
   const medo = normalize14(bloco4.medoMovimento);
   const catast = normalize14(bloco4.catastrofizacao);
   const evit = normalize14(bloco4.evitacao);
   const autoEfInv = 10 - bloco4.autoeficacia;
-  const raw = (medo + catast + evit + autoEfInv) / 4;
+  const raw = aggLoss([medo, catast, evit, autoEfInv]);
   return Math.min(10, Math.max(0, Math.round(raw * 10) / 10));
 }
 
@@ -73,10 +88,15 @@ export function calcularScoreR_MyID(bloco5: MyIDBloco5Data): { r: number; r1: nu
 
   const controleMap: Record<string, number> = { muito: 9, very: 9, moderado: 6, moderate: 6, pouco: 3, little: 3, sem: 0, none: 0 };
   const controleVal = controleMap[bloco5.controleSaude] ?? 5;
-  const r3 = ((10 - bloco5.estresse) + (10 - bloco5.ansiedade) + controleVal) / 3;
+  // R3 (psicológico) — bem-estar: o pior item domina (ex.: ansiedade 10 não fica escondida por estresse 3)
+  const r3 = aggWellness([10 - bloco5.estresse, 10 - bloco5.ansiedade, controleVal]);
 
-  const r = Math.min(10, Math.max(0, Math.round(((r1 + r2 + r3) / 3) * 10) / 10));
-  const c = Math.round(((10 - bloco5.trabalhoEstressante) + (10 - bloco5.conflitosFamiliares) + (10 - bloco5.preocupacaoFinanceira)) / 3 * 10) / 10;
+  // R global — agrega sub-blocos por max-weighted (pior sub-bloco puxa o score)
+  const r = Math.min(10, Math.max(0, Math.round(aggWellness([r1, r2, r3]) * 10) / 10));
+  // Contexto — bem-estar: pior estressor isolado (ex.: finanças) domina
+  const c = Math.round(
+    aggWellness([10 - bloco5.trabalhoEstressante, 10 - bloco5.conflitosFamiliares, 10 - bloco5.preocupacaoFinanceira]) * 10
+  ) / 10;
 
   return {
     r: Math.min(10, Math.max(0, r)),
