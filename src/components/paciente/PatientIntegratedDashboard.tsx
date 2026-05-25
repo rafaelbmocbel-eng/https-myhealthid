@@ -442,12 +442,9 @@ export default function PatientIntegratedDashboard({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-4 bg-white/50 dark:bg-black/20 p-2 pr-4 rounded-2xl border border-white dark:border-white/10">
-                  <GlobalGauge score={myidScore} color={interpretation.color} />
-                  <div className="flex flex-col">
-                    <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0 border-current mb-1", severityClass)}>{classificacao}</Badge>
-                    <span className="text-[10px] text-muted-foreground font-bold leading-tight max-w-[100px] uppercase">Estado de Saúde Atual</span>
-                  </div>
+                <div className="flex flex-col items-start md:items-end gap-1">
+                  <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0.5 border-current", severityClass)}>{classificacao}</Badge>
+                  <span className="text-[10px] text-muted-foreground font-bold leading-tight uppercase tracking-wide">Estado de Saúde Atual</span>
                 </div>
               </div>
 
