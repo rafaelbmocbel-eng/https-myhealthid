@@ -133,7 +133,7 @@ export default function AReceber() {
   if (sessoes.length === 0) {
     return (
       <EmptyState
-        icon={<CheckCircle2 className="icon-lg text-emerald-600" />}
+        illustration="spark"
         title="Nada a receber"
         description="Todas as sessões com valor estão marcadas como pagas. Quando registrar novas sessões particulares, elas aparecerão aqui automaticamente."
       />
