@@ -359,7 +359,7 @@ export default function CrmTrafegoLinks() {
           <div className="p-8 flex justify-center"><Loader2 className="icon-md animate-spin text-muted-foreground" /></div>
         ) : links.length === 0 ? (
           <EmptyState
-            icon={<Link2 className="icon-xl" />}
+            illustration="search"
             title="Nenhum link ainda"
             description="Crie seu primeiro link rastreável usando o formulário acima."
           />
