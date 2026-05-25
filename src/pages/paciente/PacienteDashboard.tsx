@@ -197,8 +197,8 @@ export default function PacienteDashboard() {
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
             <div className="flex items-center justify-between px-1 pt-1">
               <div className="flex items-center gap-3 min-w-0">
-                {/* Avatar with gradient ring */}
-                <div className="w-12 h-12 rounded-full bg-gradient-to-tr from-primary to-primary/60 p-0.5 shrink-0">
+                {/* Avatar with gold→primary gradient ring */}
+                <div className="w-12 h-12 rounded-full p-0.5 shrink-0 bg-gradient-to-tr from-[hsl(42,60%,55%)] via-primary to-primary/60">
                   <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
                     <div className="w-full h-full bg-muted flex items-center justify-center text-sm font-semibold text-foreground">
                       {(paciente?.nome?.[0] || '?').toUpperCase()}{(paciente?.sobrenome?.[0] || '').toUpperCase()}
@@ -207,10 +207,12 @@ export default function PacienteDashboard() {
                 </div>
                 <div className="min-w-0">
                   <p className="text-[11px] text-muted-foreground font-medium">{getGreeting()}</p>
-                  <h1 className="h-page truncate">{paciente?.nome || '...'}</h1>
+                  <h1 className="font-display text-2xl sm:text-3xl text-foreground truncate leading-tight">
+                    {paciente?.nome || '...'}
+                  </h1>
                   {(notifications.streak > 0 || xp > 0) && (
                     <div className="flex items-center gap-1.5 mt-0.5">
-                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-accent shrink-0" />
+                      <span className="inline-block w-1.5 h-1.5 rounded-full bg-[hsl(var(--gold))] shrink-0" />
                       <span className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
                         {notifications.streak > 1
                           ? `${notifications.streak} dias de foco`
@@ -227,19 +229,19 @@ export default function PacienteDashboard() {
             </div>
           </motion.div>
 
-          {/* Próxima Sessão — warm gold alert (premium feel) */}
+          {/* Próxima Sessão — warm gold premium card */}
           {proximasConsultas.length > 0 && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.5}>
               <button
                 onClick={() => navigate('/paciente/agenda')}
-                className="w-full rounded-2xl border border-accent/25 bg-accent/5 p-4 flex items-center justify-between gap-3 hover:bg-accent/10 transition-colors text-left"
+                className="w-full rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold)/0.06)] p-4 flex items-center justify-between gap-3 hover:bg-[hsl(var(--gold)/0.12)] transition-colors text-left"
               >
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className="w-10 h-10 rounded-xl bg-card flex items-center justify-center shadow-xs shrink-0">
-                    <CalendarDays className="h-5 w-5 text-accent" />
+                  <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-xs shrink-0">
+                    <CalendarDays className="h-5 w-5 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="text-[10px] uppercase tracking-widest font-bold text-accent/90 mb-0.5">
+                    <p className="eyebrow-gold mb-0.5">
                       Próxima Sessão
                     </p>
                     <p className="text-sm font-semibold text-foreground truncate">
@@ -251,6 +253,7 @@ export default function PacienteDashboard() {
               </button>
             </motion.div>
           )}
+
 
           {/* Bloqueio total — pacote terminou há mais de 60 dias */}
           {bloqueadoClinico && (
