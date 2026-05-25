@@ -210,6 +210,12 @@ export default function Configuracoes() {
             <NotificacoesInteligentes />
           </TabsContent>
 
+          {/* RECOMPENSAS */}
+          <TabsContent value="recompensas" className="mt-0 space-y-4">
+            <RecompensasManager />
+          </TabsContent>
+
+
 
           {/* IA */}
           <TabsContent value="ia" className="mt-0 space-y-4">
