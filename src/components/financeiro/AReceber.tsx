@@ -128,7 +128,7 @@ export default function AReceber() {
   };
 
   if (isLoading) {
-    return <div className="text-center py-8 text-sm text-muted-foreground">Carregando...</div>;
+    return <SkeletonList rows={4} avatar={false} />;
   }
 
   if (sessoes.length === 0) {
