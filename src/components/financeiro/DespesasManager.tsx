@@ -312,7 +312,7 @@ export default function DespesasManager() {
         <div className="text-center py-6 text-sm text-muted-foreground">Carregando...</div>
       ) : despesas.length === 0 ? (
         <EmptyState
-          icon={<Receipt className="icon-lg text-muted-foreground" />}
+          illustration="inbox"
           title="Nenhuma despesa neste mês"
           description="Registre aluguel, marketing, software e outros custos para acompanhar o lucro real do consultório."
         />
