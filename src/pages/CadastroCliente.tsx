@@ -182,13 +182,14 @@ export default function CadastroCliente() {
               />
             </div>
             <div className="space-y-1">
-              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone</Label>
+              <Label htmlFor="telefone" className="text-xs">WhatsApp / Telefone *</Label>
               <Input
                 id="telefone"
                 type="tel"
                 placeholder="(11) 98765-4321"
                 value={form.telefone}
                 onChange={(e) => setForm(f => ({ ...f, telefone: e.target.value }))}
+                required
                 className="h-11 rounded-xl text-[16px] sm:text-sm"
               />
             </div>
