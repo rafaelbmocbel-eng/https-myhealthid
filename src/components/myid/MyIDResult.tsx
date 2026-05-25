@@ -13,7 +13,6 @@ import { DIMENSION_LABELS, PerdaCalculada } from '@/utils/myid/lossTable';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { ConfettiBurst } from '@/components/ui/confetti-burst';
-import { useState, useEffect as useEffectCelebrate } from 'react';
 
 // Linguagem simples: o que está ruim em cada dimensão
 const PROBLEMA_SIMPLES: Record<string, (score: number) => string> = {
