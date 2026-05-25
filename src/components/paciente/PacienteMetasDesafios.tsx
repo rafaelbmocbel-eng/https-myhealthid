@@ -385,6 +385,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
   return (
     <div className="space-y-4">
+      <ConfettiBurst trigger={celebrate} duration={2200} pieces={24} />
       {/* Header com streak */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
