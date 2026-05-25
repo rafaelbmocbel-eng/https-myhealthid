@@ -1,5 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
@@ -10,7 +10,9 @@ interface Props {
 
 export default function ProtectedPatientRoute({ children }: Props) {
   const { user, loading: authLoading, authReady } = useAuth();
+  const location = useLocation();
   const [role, setRole] = useState<'patient' | 'professional' | 'unknown' | null>(null);
+  const [cadastroStatus, setCadastroStatus] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
   const [retryCount, setRetryCount] = useState(0);
 
@@ -23,36 +25,33 @@ export default function ProtectedPatientRoute({ children }: Props) {
 
     const detectRole = async () => {
       try {
-        // Check if user has a profile (professional)
         const { data: profile } = await supabase
           .from('profiles')
           .select('id')
           .eq('user_id', user.id)
           .maybeSingle();
 
-        // Check if user is linked as a patient
         const { data: paciente } = await supabase
           .from('pacientes')
-          .select('id')
+          .select('id, cadastro_status')
           .eq('user_id', user.id)
           .maybeSingle();
 
         if (paciente) {
           setRole('patient');
+          setCadastroStatus((paciente as any).cadastro_status || null);
         } else if (profile) {
           setRole('professional');
         } else {
-          // FIX: User exists but has no role yet (e.g., just registered, linking in progress).
-          // Retry a few times with delay before giving up — the linking RPC may still be running.
+          // Usuário sem role ainda (vinculação em andamento) — tenta de novo
           if (retryCount < 3) {
             setTimeout(() => setRetryCount(c => c + 1), 1500);
-            return; // don't set checking=false yet
+            return;
           }
           setRole('unknown');
         }
       } catch (err) {
         console.error('[ProtectedPatientRoute] Erro ao detectar role:', err);
-        // On error, retry once
         if (retryCount < 2) {
           setTimeout(() => setRetryCount(c => c + 1), 2000);
           return;
@@ -83,6 +82,11 @@ export default function ProtectedPatientRoute({ children }: Props) {
 
   if (role !== 'patient') {
     return <Navigate to="/paciente/login" replace />;
+  }
+
+  // Gate: força o paciente a concluir o cadastro antes de acessar o portal
+  if (cadastroStatus !== 'completo' && location.pathname !== '/paciente/completar-cadastro') {
+    return <Navigate to="/paciente/completar-cadastro" replace />;
   }
 
   return <>{children}</>;
