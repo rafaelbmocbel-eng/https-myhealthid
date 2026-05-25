@@ -34,6 +34,11 @@ if (!isSafeForSW && "serviceWorker" in navigator) {
 const DYNAMIC_IMPORT_RELOAD_KEY = "myhealthid.dynamic-import-reload";
 const DYNAMIC_IMPORT_ERROR_PATTERN =
   /Failed to fetch dynamically imported module|Importing a module script failed|Failed to load module script/i;
+// React.lazy() resolves `module.default` — when a stale chunk is loaded after a
+// deploy, the module object can be undefined and React throws this exact message
+// from inside vendor-react. Treat it as a chunk-mismatch and reload (throttled).
+const LAZY_DEFAULT_ERROR_PATTERN =
+  /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object \(evaluating '.*\.default'\)/i;
 
 const reloadOnDynamicImportFailure = () => {
   if (import.meta.env.DEV) return;
@@ -57,11 +62,19 @@ window.addEventListener("unhandledrejection", (event) => {
       : typeof event.reason === "string"
         ? event.reason
         : "";
-  // Only reload on actual dynamic import / chunk fetch failures — NOT on generic
-  // "Cannot read properties of undefined" errors, which can be normal runtime bugs
-  // and would cause refresh loops that interrupt the user's flow.
   if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message)) return;
   event.preventDefault();
+  reloadOnDynamicImportFailure();
+});
+
+// React.lazy() reading `.default` from an undefined module = stale chunk after deploy.
+window.addEventListener("error", (event) => {
+  const message = event.error instanceof Error ? event.error.message : event.message || "";
+  const stack = event.error instanceof Error ? event.error.stack || "" : "";
+  if (!LAZY_DEFAULT_ERROR_PATTERN.test(message)) return;
+  // Only reload when the failure comes from a vendor/react lazy resolution,
+  // not from arbitrary user code that happens to read `.default`.
+  if (!/vendor-react|react-dom|react\.production/i.test(stack)) return;
   reloadOnDynamicImportFailure();
 });
 
