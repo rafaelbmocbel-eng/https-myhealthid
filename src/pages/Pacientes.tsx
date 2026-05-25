@@ -1298,6 +1298,100 @@ export default function Pacientes() {
         </DialogContent>
       </Dialog>
 
+      {/* Modal Cadastro Rápido */}
+      <Dialog open={quickModal} onOpenChange={setQuickModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Zap className="h-4 w-4 text-primary" /> Cadastro rápido
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Cadastre o essencial agora e envie um link para o paciente completar o restante (CPF, endereço, saúde) com calma em casa.
+            </p>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs">Nome *</Label>
+                <Input value={quickForm.nome} onChange={e => setQuickForm(f => ({ ...f, nome: e.target.value }))} className="text-[16px] sm:text-sm" />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Sobrenome</Label>
+                <Input value={quickForm.sobrenome} onChange={e => setQuickForm(f => ({ ...f, sobrenome: e.target.value }))} className="text-[16px] sm:text-sm" />
+              </div>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">E-mail</Label>
+              <Input type="email" value={quickForm.email} onChange={e => setQuickForm(f => ({ ...f, email: e.target.value }))} className="text-[16px] sm:text-sm" />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">WhatsApp / Telefone *</Label>
+              <Input value={quickForm.telefone} onChange={e => setQuickForm(f => ({ ...f, telefone: maskPhone(e.target.value) }))} maxLength={15} className="text-[16px] sm:text-sm" placeholder="(11) 98765-4321" />
+            </div>
+            <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-900/40 p-2">
+              <Checkbox id="lgpd-quick" checked={quickForm.lgpd_aceite} onCheckedChange={c => setQuickForm(f => ({ ...f, lgpd_aceite: !!c }))} />
+              <Label htmlFor="lgpd-quick" className="text-[11px] leading-snug cursor-pointer">
+                <strong>Aceite LGPD:</strong> o paciente autorizou (verbalmente / em consulta) o tratamento dos dados pessoais e de saúde.
+              </Label>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => setQuickModal(false)}>Cancelar</Button>
+              <Button className="flex-1" onClick={handleQuickSave} disabled={submitting}>
+                {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Criar e gerar link'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal Compartilhar Link de Cadastro Completo */}
+      <Dialog open={shareModal.open} onOpenChange={o => setShareModal({ open: o })}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Send className="h-4 w-4 text-primary" /> Enviar link de cadastro
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <p className="text-xs text-muted-foreground">
+              Envie este link para <strong>{shareModal.nome}</strong> completar o cadastro (CPF, endereço, saúde, contato de emergência). Quando concluir, você recebe uma notificação.
+            </p>
+            <div className="p-3 rounded-lg bg-muted/40 border border-border break-all text-[11px] font-mono">
+              {shareModal.url}
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                variant="outline"
+                className="gap-2"
+                onClick={() => {
+                  if (shareModal.url) {
+                    navigator.clipboard.writeText(shareModal.url);
+                    toast({ title: 'Link copiado!' });
+                  }
+                }}
+              >
+                <Copy className="h-4 w-4" /> Copiar
+              </Button>
+              <Button
+                className="gap-2"
+                disabled={!shareModal.telefone}
+                onClick={() => {
+                  if (!shareModal.url || !shareModal.telefone) return;
+                  const msg = `Olá ${shareModal.nome}! Para agilizar seu atendimento, complete seu cadastro neste link seguro:\n\n${shareModal.url}\n\nLeva menos de 3 minutos. 🙏`;
+                  const tel = shareModal.telefone.replace(/\D/g, '');
+                  window.open(`https://wa.me/${tel}?text=${encodeURIComponent(msg)}`, '_blank');
+                }}
+              >
+                <MessageCircle className="h-4 w-4" /> WhatsApp
+              </Button>
+            </div>
+            {!shareModal.telefone && (
+              <p className="text-[10px] text-amber-600">Cadastre um telefone para enviar pelo WhatsApp.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
     </AppLayout>
   );
 }
