@@ -11,7 +11,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   CalendarDays, Clock, Save, Loader2, CheckCircle2, Users, Link2, Copy,
   ExternalLink, RefreshCw, Plus, UserPlus, Building2, Bell, Sparkles,
-  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid,
+  Database, PartyPopper, ArrowRight, BookOpen, LayoutGrid, Brain,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getAgendaUrl, getBaseUrl } from '@/utils/linkUrls';
