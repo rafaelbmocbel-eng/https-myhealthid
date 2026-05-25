@@ -24,6 +24,7 @@ interface Props {
   highlightedKey?: string | null;
   hasRedFlags?: boolean;
   className?: string;
+  hideGauge?: boolean;
 }
 
 function LossBar({ dim, perda, maxLoss = 20 }: { dim: string; perda: PerdaCalculada; maxLoss?: number }) {
