@@ -735,6 +735,9 @@ export default function Pacientes() {
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
+              <Button onClick={openQuick} variant="outline" className="rounded-xl gap-2 h-10" size="sm" title="Cadastro rápido: só nome, e-mail e celular. O paciente completa pelo portal.">
+                <Zap className="icon-sm" /> <span className="hidden sm:inline">Cadastro rápido</span><span className="sm:hidden">Rápido</span>
+              </Button>
               <Button onClick={openNew} className="rounded-xl gap-2 rounded-xl h-10" size="sm">
                 <Plus className="icon-sm" /> <span className="hidden sm:inline">Novo paciente</span><span className="sm:hidden">Novo</span>
               </Button>
