@@ -542,34 +542,17 @@ export default function Pacientes() {
 
   const handleDelete = async (p: Paciente) => {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${p.nome} ${p.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
-
     try {
-      const pId = p.id;
-      await supabase.from('links_avaliacao').delete().eq('paciente_id', pId);
-      await supabase.from('links_agenda_paciente').delete().eq('paciente_id', pId);
-
-      const { data: protos } = await supabase.from('protocolos').select('id').eq('paciente_id', pId);
-      if (protos && protos.length > 0) {
-        const pIds = protos.map(x => x.id);
-        await supabase.from('protocolo_tratamentos').delete().in('protocolo_id', pIds);
-        await supabase.from('protocolos').delete().eq('paciente_id', pId);
-      }
-
-      await supabase.from('respostas_avaliacao_paciente').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_cob_zero').delete().eq('paciente_id', pId);
-      await supabase.from('studio_medidas').delete().eq('paciente_id', pId);
-      await supabase.from('myid_avaliacoes').delete().eq('paciente_id', pId);
-      await supabase.from('agendamentos').delete().eq('paciente_id', pId);
-      await supabase.from('paciente_servicos').delete().eq('paciente_id', pId);
-
-      const { error } = await supabase.from('pacientes').delete().eq('id', pId);
+      const { error } = await (supabase as any).rpc('excluir_paciente_completo', { p_paciente_id: p.id });
       if (error) throw error;
-
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: 'Paciente excluído definitivamente' });
     } catch (e: any) {
-      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+      const msg = e?.message || '';
+      let friendly = msg;
+      if (msg.includes('sem_permissao')) friendly = 'Você não tem permissão para excluir este paciente.';
+      else if (msg.includes('paciente_nao_encontrado')) friendly = 'Paciente não encontrado.';
+      toast({ title: 'Erro ao excluir', description: friendly, variant: 'destructive' });
     }
   };
 
