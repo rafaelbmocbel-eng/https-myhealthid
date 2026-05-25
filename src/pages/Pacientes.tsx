@@ -435,6 +435,57 @@ export default function Pacientes() {
   };
 
   const openNew = () => { setForm(emptyForm); setModal({ open: true }); };
+  const openQuick = () => {
+    setQuickForm({ nome: '', sobrenome: '', email: '', telefone: '', lgpd_aceite: false });
+    setQuickModal(true);
+  };
+
+  const handleQuickSave = async () => {
+    if (!quickForm.nome.trim()) return toast({ title: 'Nome é obrigatório', variant: 'destructive' });
+    const telDigits = quickForm.telefone.replace(/\D/g, '');
+    if (telDigits.length < 10) return toast({ title: 'WhatsApp/Telefone obrigatório', variant: 'destructive' });
+    if (!quickForm.lgpd_aceite) return toast({ title: 'Confirme o aceite LGPD do paciente', variant: 'destructive' });
+    setSubmitting(true);
+    try {
+      const token = crypto.randomUUID().replace(/-/g, '') + crypto.randomUUID().replace(/-/g, '').slice(0, 8);
+      const payload: any = {
+        nome: quickForm.nome.trim(),
+        sobrenome: quickForm.sobrenome.trim(),
+        email: quickForm.email.trim().toLowerCase() || null,
+        telefone: quickForm.telefone,
+        terapeuta_id: user!.id,
+        ativo: true,
+        cadastro_status: 'pendente_paciente',
+        portal_token: token,
+        origem: 'cadastro_rapido',
+        lgpd_aceite_em: new Date().toISOString(),
+        lgpd_versao: '1.0',
+        tipo_pagamento: 'particular',
+      };
+      const { data, error } = await supabase.from('pacientes').insert(payload).select('id, portal_token, nome, telefone').single();
+      if (error) throw error;
+      pinRecent(data.id);
+      try {
+        await supabase.from('termos_consentimento').insert({
+          paciente_id: data.id, terapeuta_id: user!.id, tipo: 'lgpd', versao: '1.0',
+          texto_termo: 'Autorizo o tratamento dos meus dados pessoais e de saúde para fins clínicos e administrativos, conforme a LGPD.',
+          aceito: true, data_aceite: new Date().toISOString(),
+        });
+      } catch {/* nb */}
+      qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
+      const url = `${getBaseUrl()}/portal/completar/${data.portal_token}`;
+      setQuickModal(false);
+      setShareModal({ open: true, nome: data.nome, telefone: data.telefone || undefined, url });
+    } catch (e: any) {
+      const msg = e?.message || '';
+      let friendly = 'Erro ao criar cadastro.';
+      if (msg.includes('uniq_pacientes_terapeuta_email')) friendly = 'Já existe um paciente ativo com este e-mail.';
+      toast({ title: 'Erro', description: friendly, variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const openEdit = (p: Paciente) => {
     setForm({
       nome: p.nome, sobrenome: p.sobrenome, email: p.email || '',
