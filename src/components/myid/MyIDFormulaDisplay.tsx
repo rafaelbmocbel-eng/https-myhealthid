@@ -51,7 +51,7 @@ function LossBar({ dim, perda, maxLoss = 20 }: { dim: string; perda: PerdaCalcul
 }
 
 export default function MyIDFormulaDisplay({
-  scores, myidScore, perdas: perdasProp, driverPrimario, gatilhosCriticos = [], highlightedKey, hasRedFlags = false, className = ''
+  scores, myidScore, perdas: perdasProp, driverPrimario, gatilhosCriticos = [], highlightedKey, hasRedFlags = false, className = '', hideGauge = false,
 }: Props) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
 
