@@ -42,6 +42,7 @@ const TABS: TabItem[] = [
   { id: 'eventos', label: 'Eventos', icon: PartyPopper, kind: 'link', to: '/eventos' },
   { id: 'links', label: 'Links', icon: Link2, kind: 'panel' },
   { id: 'notif', label: 'Avisos', icon: Bell, kind: 'panel' },
+  { id: 'myid', label: 'MyID Auto', icon: Brain, kind: 'panel' },
   { id: 'ia', label: 'IA', icon: Sparkles, kind: 'panel' },
 ];
 
