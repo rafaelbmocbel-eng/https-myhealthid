@@ -347,7 +347,7 @@ export default function PacienteDashboard() {
           )}
 
           {/* MyID Prompt — first time or monthly */}
-          {showMyIdPrompt && (
+          {showMyIdPrompt && stats.pendentes === 0 && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
               <Card className="border-0 shadow-md overflow-hidden"
                 style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
