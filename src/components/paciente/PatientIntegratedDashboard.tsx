@@ -24,6 +24,7 @@ import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid
 import { Progress } from '@/components/ui/progress';
 import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
 import MyIDDicasPessoais from '@/components/myid/MyIDDicasPessoais';
+import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import {
   ComposedChart, Line, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, Legend, ResponsiveContainer, Area
@@ -536,6 +537,12 @@ export default function PatientIntegratedDashboard({
               </div>
             </CardContent>
           </Card>
+
+          {/* Missões de Saúde — imediatamente após o gráfico MyID para explicar o que melhorar */}
+          <div className="mb-10">
+            <PacienteMetasDesafios pacienteId={pacienteId} />
+          </div>
+
 
           {/* ─── ZONAS DE PODER (Agrupamento Didático) ─── */}
           <div className="mb-10 lg:px-2">
