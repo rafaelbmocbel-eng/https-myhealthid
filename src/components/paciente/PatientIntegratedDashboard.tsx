@@ -531,6 +531,7 @@ export default function PatientIntegratedDashboard({
                   myidScore={myidScore}
                   highlightedKey={hoveredScoreKey}
                   hasRedFlags={redFlagsDetected}
+                  hideGauge
                 />
               </div>
             </CardContent>
