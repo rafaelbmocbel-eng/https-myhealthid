@@ -9,8 +9,8 @@
       // Mantenha esta lista sincronizada com src/utils/linkUrls.ts (KNOWN_PRODUCTION_DOMAINS).
       (function () {
         try {
-          var CANONICAL = 'myhealthid.lovable.app';
-          var ALIASES = ['https-myhealthid.lovable.app'];
+          var CANONICAL = 'https-myhealthid.lovable.app';
+          var ALIASES = ['myhealthid.lovable.app'];
           var host = window.location.hostname;
           if (ALIASES.indexOf(host) !== -1 && host !== CANONICAL) {
             var target = 'https://' + CANONICAL + window.location.pathname + window.location.search + window.location.hash;
