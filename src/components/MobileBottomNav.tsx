@@ -49,7 +49,10 @@ export default function MobileBottomNav() {
                 )}
               >
                 {active && (
-                  <span className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full bg-primary" />
+                  <span
+                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full"
+                    style={{ background: 'var(--gradient-gold)' }}
+                  />
                 )}
                 <div className={cn(
                   'relative flex items-center justify-center transition-all',
