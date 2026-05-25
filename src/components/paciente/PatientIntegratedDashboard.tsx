@@ -56,14 +56,22 @@ const GlobalGauge = ({ score, color }: { score: number; color: string }) => {
   const pct = Math.max(0, Math.min(100, score)) / 100;
   const dashoffset = circ - pct * circ;
   return (
-    <div className="relative flex flex-col items-center justify-center w-full max-w-[200px] h-[100px] mx-auto overflow-hidden">
-      <svg width="100%" height="100%" viewBox="0 0 100 55" className="overflow-visible mt-2">
+    <div className="relative flex flex-col items-center justify-center w-full max-w-[220px] h-[110px] mx-auto">
+      {/* Radial glow halo */}
+      <div
+        className="absolute inset-0 -z-0 pointer-events-none"
+        style={{
+          background: `radial-gradient(circle at 50% 70%, ${color}33 0%, transparent 60%)`,
+          filter: 'blur(6px)',
+        }}
+      />
+      <svg width="100%" height="100%" viewBox="0 0 100 55" className="relative overflow-visible mt-2 z-10">
         <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" opacity="0.12" strokeLinecap="round" style={{ color }} />
         <path d="M 12 50 A 38 38 0 0 1 88 50" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={circ} strokeDashoffset={dashoffset} strokeLinecap="round" style={{ color, transition: 'stroke-dashoffset 1s cubic-bezier(0.25, 1, 0.5, 1)' }} />
       </svg>
-      <div className="absolute bottom-1 flex flex-col items-center leading-none">
-        <span className="text-4xl font-black tracking-tighter" style={{ color }}>{Math.round(score)}</span>
-        <span className="text-[10px] font-bold uppercase tracking-widest opacity-60">MyID-100</span>
+      <div className="absolute bottom-1 flex flex-col items-center leading-none z-10">
+        <span className="kpi-hero text-5xl tracking-tight" style={{ color }}>{Math.round(score)}</span>
+        <span className="text-[10px] font-bold uppercase tracking-[0.18em] opacity-60 mt-1">MyID-100</span>
       </div>
     </div>
   );
