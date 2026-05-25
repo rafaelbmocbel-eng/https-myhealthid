@@ -41,7 +41,8 @@ const LAZY_DEFAULT_ERROR_PATTERN =
   /Cannot read properties of undefined \(reading 'default'\)|undefined is not an object \(evaluating '.*\.default'\)/i;
 
 const reloadOnDynamicImportFailure = () => {
-  if (import.meta.env.DEV) return;
+  // Note: allowed in DEV too — Vite HMR restarts can leave stale module URLs
+  // on the preview host. The 5-minute throttle below prevents reload loops.
   if (document.visibilityState !== "visible") return;
   const last = Number(window.sessionStorage.getItem(DYNAMIC_IMPORT_RELOAD_KEY) || 0);
   // Only allow one reload per 5 minutes — prevents reload loops on transient errors
