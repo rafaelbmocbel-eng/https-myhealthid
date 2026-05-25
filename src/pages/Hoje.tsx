@@ -165,9 +165,9 @@ export default function Hoje() {
               <button
                 onClick={() => navigate('/inicio-app')}
                 className="w-full text-left rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 relative overflow-hidden
-                           bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
                            text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
                            flex items-center gap-2.5 sm:gap-3"
+                style={{ background: 'var(--gradient-gold)' }}
               >
                 <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
                   <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
