@@ -10,7 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Calendar, Users, FileText, Loader2, Download, DollarSign, Percent } from 'lucide-react';
 import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { gerarReciboProfissional } from '@/utils/pdfReciboProfissional';
+
 
 const FALLBACK_PCT = 0.4;
 
@@ -112,7 +112,8 @@ export default function FechamentoProfissional() {
   const profissionalNome =
     equipe.find((m: any) => m.id === profSelecionado)?.nome || 'Profissional';
 
-  const handlePdf = () => {
+  const handlePdf = async () => {
+    const { gerarReciboProfissional } = await import('@/utils/pdfReciboProfissional');
     gerarReciboProfissional({
       profissional: profissionalNome,
       periodo: label,

@@ -10,7 +10,6 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import {
-  gerarDocumento,
   TIPO_DOCUMENTO_LABEL,
   type TipoDocumento,
   type ClinicaInfo,
@@ -277,6 +276,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     if (!tipo || !terapeuta) return;
     setPreviewLoading(true);
     try {
+      const { gerarDocumento } = await import('@/utils/pdfDocumentos');
       const doc = await gerarDocumento(tipo, { clinica, terapeuta, paciente }, buildDados());
       const blob = doc.output('blob');
       if (previewUrl) URL.revokeObjectURL(previewUrl);
@@ -310,6 +310,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     setGerando(true);
     try {
       const dados = buildDados();
+      const { gerarDocumento } = await import('@/utils/pdfDocumentos');
       const doc = await gerarDocumento(tipo, { clinica, terapeuta, paciente }, dados);
       const filename = `${TIPO_DOCUMENTO_LABEL[tipo].replace(/\s/g, '_')}_${paciente.nome}_${new Date().toISOString().split('T')[0]}.pdf`;
       doc.save(filename);

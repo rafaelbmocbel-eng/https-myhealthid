@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Download, FileText, Users, Activity, AlertTriangle, TrendingUp, FlaskConical, FileDown } from 'lucide-react';
 import { exportToCsv } from '@/utils/exportCsv';
-import { gerarPdfResearchReport } from '@/utils/pdfResearchReport';
+
 import { toast } from '@/hooks/use-toast';
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -423,6 +423,7 @@ export default function ResearchDashboard() {
 
   const exportPdfReport = async () => {
     try {
+      const { gerarPdfResearchReport } = await import('@/utils/pdfResearchReport');
       await gerarPdfResearchReport({
         filtros: stats.filtros,
         datasetHash: stats.datasetHash,

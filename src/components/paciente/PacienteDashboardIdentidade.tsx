@@ -33,7 +33,7 @@ import { StructuralAssessmentData, createDefaultAssessment, classifyScore, class
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import PacienteProtocolosTab from './PacienteProtocolosTab';
 
-import { gerarPDFRespostaCompleta } from '@/utils/pdfRespostaCompleta';
+
 import ProntuarioTimeline from './ProntuarioTimeline';
 import ResumoProntuario from './ResumoProntuario';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
@@ -626,6 +626,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
         },
       };
 
+      const { gerarPDFRespostaCompleta } = await import('@/utils/pdfRespostaCompleta');
       await gerarPDFRespostaCompleta({
         avaliacao: avaliacao as any,
         pacienteId: paciente.id,

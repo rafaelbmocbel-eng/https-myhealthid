@@ -19,7 +19,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { gerarPDFProtocolo, PDFProtocolo } from '@/utils/pdfGenerator';
+import type { PDFProtocolo } from '@/utils/pdfGenerator';
 import { toast } from '@/hooks/use-toast';
 import ProtocoloViewer from '@/components/protocolo/ProtocoloViewer';
 import {
@@ -210,6 +210,7 @@ export default function Protocolos() {
         })),
       };
 
+      const { gerarPDFProtocolo } = await import('@/utils/pdfGenerator');
       await gerarPDFProtocolo(pdfData);
       toast({ title: 'PDF gerado com sucesso!', description: 'O download foi iniciado.' });
     } catch (err) {
