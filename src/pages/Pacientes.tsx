@@ -111,6 +111,12 @@ interface FormData {
   plano_saude: string;
   convenio_id: string;
   lgpd_aceite: boolean;
+  contato_emergencia_nome: string;
+  contato_emergencia_telefone: string;
+  contato_emergencia_parentesco: string;
+  alergias: string;
+  medicamentos_uso: string;
+  condicoes_preexistentes: string;
 }
 
 const emptyForm: FormData = {
@@ -124,6 +130,12 @@ const emptyForm: FormData = {
   plano_saude: '',
   convenio_id: '',
   lgpd_aceite: false,
+  contato_emergencia_nome: '',
+  contato_emergencia_telefone: '',
+  contato_emergencia_parentesco: '',
+  alergias: '',
+  medicamentos_uso: '',
+  condicoes_preexistentes: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
@@ -435,6 +447,12 @@ export default function Pacientes() {
       plano_saude: (p as any).plano_saude || '',
       convenio_id: (p as any).convenio_id || '',
       lgpd_aceite: !!(p as any).lgpd_aceite_em,
+      contato_emergencia_nome: (p as any).contato_emergencia_nome || '',
+      contato_emergencia_telefone: (p as any).contato_emergencia_telefone || '',
+      contato_emergencia_parentesco: (p as any).contato_emergencia_parentesco || '',
+      alergias: (p as any).alergias || '',
+      medicamentos_uso: (p as any).medicamentos_uso || '',
+      condicoes_preexistentes: (p as any).condicoes_preexistentes || '',
     });
     setModal({ open: true, paciente: p });
   };
@@ -469,6 +487,13 @@ export default function Pacientes() {
         cidade: validated.cidade ?? null,
         uf: validated.uf ?? null,
         observacoes: validated.observacoes ?? null,
+        queixa_principal: validated.queixa_principal ?? null,
+        contato_emergencia_nome: validated.contato_emergencia_nome ?? null,
+        contato_emergencia_telefone: validated.contato_emergencia_telefone ?? null,
+        contato_emergencia_parentesco: validated.contato_emergencia_parentesco ?? null,
+        alergias: validated.alergias ?? null,
+        medicamentos_uso: validated.medicamentos_uso ?? null,
+        condicoes_preexistentes: validated.condicoes_preexistentes ?? null,
         terapeuta_id: user!.id,
         responsavel_id: form.responsavel_id || null,
         tipo_pagamento: form.tipo_pagamento,
@@ -517,34 +542,17 @@ export default function Pacientes() {
 
   const handleDelete = async (p: Paciente) => {
     if (!confirm(`EXCLUIR DEFINITIVAMENTE ${p.nome} ${p.sobrenome}?\n\nIsso apagará TODO o histórico, avaliações, agendamentos e links deste paciente. Esta ação é IRREVERSÍVEL.`)) return;
-
     try {
-      const pId = p.id;
-      await supabase.from('links_avaliacao').delete().eq('paciente_id', pId);
-      await supabase.from('links_agenda_paciente').delete().eq('paciente_id', pId);
-
-      const { data: protos } = await supabase.from('protocolos').select('id').eq('paciente_id', pId);
-      if (protos && protos.length > 0) {
-        const pIds = protos.map(x => x.id);
-        await supabase.from('protocolo_tratamentos').delete().in('protocolo_id', pIds);
-        await supabase.from('protocolos').delete().eq('paciente_id', pId);
-      }
-
-      await supabase.from('respostas_avaliacao_paciente').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_identidade').delete().eq('paciente_id', pId);
-      await supabase.from('avaliacoes_cob_zero').delete().eq('paciente_id', pId);
-      await supabase.from('studio_medidas').delete().eq('paciente_id', pId);
-      await supabase.from('myid_avaliacoes').delete().eq('paciente_id', pId);
-      await supabase.from('agendamentos').delete().eq('paciente_id', pId);
-      await supabase.from('paciente_servicos').delete().eq('paciente_id', pId);
-
-      const { error } = await supabase.from('pacientes').delete().eq('id', pId);
+      const { error } = await (supabase as any).rpc('excluir_paciente_completo', { p_paciente_id: p.id });
       if (error) throw error;
-
       qc.invalidateQueries({ queryKey: ['pacientes-com-servicos'] });
       toast({ title: 'Paciente excluído definitivamente' });
     } catch (e: any) {
-      toast({ title: 'Erro ao excluir', description: e.message, variant: 'destructive' });
+      const msg = e?.message || '';
+      let friendly = msg;
+      if (msg.includes('sem_permissao')) friendly = 'Você não tem permissão para excluir este paciente.';
+      else if (msg.includes('paciente_nao_encontrado')) friendly = 'Paciente não encontrado.';
+      toast({ title: 'Erro ao excluir', description: friendly, variant: 'destructive' });
     }
   };
 
@@ -1013,7 +1021,49 @@ export default function Pacientes() {
             </div>
             <div className="space-y-1">
               <Label>Observações</Label>
-              <Textarea placeholder="Histórico clínico, alergias..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
+              <Textarea placeholder="Outras notas relevantes..." rows={2} value={form.observacoes} onChange={e => setForm(f => ({ ...f, observacoes: e.target.value }))} />
+            </div>
+
+            {/* ── Saúde rápida ────────────────────────────────── */}
+            <div className="space-y-3 p-3 rounded-lg border border-dashed bg-muted/20">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Saúde rápida</div>
+              <div className="space-y-1">
+                <Label className="text-xs">Alergias</Label>
+                <Input placeholder="Ex: AAS, frutos do mar, látex..." value={form.alergias}
+                  onChange={e => setForm(f => ({ ...f, alergias: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Medicamentos em uso</Label>
+                <Input placeholder="Ex: Losartana 50mg, AAS 100mg..." value={form.medicamentos_uso}
+                  onChange={e => setForm(f => ({ ...f, medicamentos_uso: e.target.value }))} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Condições pré-existentes</Label>
+                <Input placeholder="Ex: HAS, DM2, escoliose..." value={form.condicoes_preexistentes}
+                  onChange={e => setForm(f => ({ ...f, condicoes_preexistentes: e.target.value }))} />
+              </div>
+            </div>
+
+            {/* ── Contato de emergência ───────────────────────── */}
+            <div className="space-y-3 p-3 rounded-lg border border-dashed bg-muted/20">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Contato de emergência</div>
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs">Nome</Label>
+                  <Input value={form.contato_emergencia_nome}
+                    onChange={e => setForm(f => ({ ...f, contato_emergencia_nome: e.target.value }))} />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs">Parentesco</Label>
+                  <Input placeholder="Cônjuge, mãe..." value={form.contato_emergencia_parentesco}
+                    onChange={e => setForm(f => ({ ...f, contato_emergencia_parentesco: e.target.value }))} />
+                </div>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Telefone</Label>
+                <Input inputMode="tel" placeholder="(11) 99999-9999" value={form.contato_emergencia_telefone}
+                  onChange={e => setForm(f => ({ ...f, contato_emergencia_telefone: maskPhone(e.target.value) }))} />
+              </div>
             </div>
             <div className="space-y-2">
               <Label>Profissional Responsável</Label>

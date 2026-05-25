@@ -2693,22 +2693,36 @@ export type Database = {
       }
       pacientes: {
         Row: {
+          alergias: string | null
           ativo: boolean
+          bairro: string | null
+          cep: string | null
+          cidade: string | null
           clinica_id: string | null
+          condicoes_preexistentes: string | null
+          contato_emergencia_nome: string | null
+          contato_emergencia_parentesco: string | null
+          contato_emergencia_telefone: string | null
           convenio_id: string | null
           cpf: string | null
           created_at: string
           data_nascimento: string | null
           email: string | null
           endereco: string | null
+          endereco_complemento: string | null
+          endereco_numero: string | null
           genero: string | null
           id: string
+          lgpd_aceite_em: string | null
+          lgpd_versao: string | null
+          medicamentos_uso: string | null
           nome: string
           observacoes: string | null
           origem: string | null
           origem_utm: Json | null
           plano_saude: string | null
           portal_token: string | null
+          queixa_principal: string | null
           responsavel_id: string | null
           sexo: string | null
           sobrenome: string
@@ -2716,26 +2730,41 @@ export type Database = {
           terapeuta_id: string
           tipo_conta: string
           tipo_pagamento: string
+          uf: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          alergias?: string | null
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           clinica_id?: string | null
+          condicoes_preexistentes?: string | null
+          contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
+          contato_emergencia_telefone?: string | null
           convenio_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
           genero?: string | null
           id?: string
+          lgpd_aceite_em?: string | null
+          lgpd_versao?: string | null
+          medicamentos_uso?: string | null
           nome: string
           observacoes?: string | null
           origem?: string | null
           origem_utm?: Json | null
           plano_saude?: string | null
           portal_token?: string | null
+          queixa_principal?: string | null
           responsavel_id?: string | null
           sexo?: string | null
           sobrenome?: string
@@ -2743,26 +2772,41 @@ export type Database = {
           terapeuta_id: string
           tipo_conta?: string
           tipo_pagamento?: string
+          uf?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          alergias?: string | null
           ativo?: boolean
+          bairro?: string | null
+          cep?: string | null
+          cidade?: string | null
           clinica_id?: string | null
+          condicoes_preexistentes?: string | null
+          contato_emergencia_nome?: string | null
+          contato_emergencia_parentesco?: string | null
+          contato_emergencia_telefone?: string | null
           convenio_id?: string | null
           cpf?: string | null
           created_at?: string
           data_nascimento?: string | null
           email?: string | null
           endereco?: string | null
+          endereco_complemento?: string | null
+          endereco_numero?: string | null
           genero?: string | null
           id?: string
+          lgpd_aceite_em?: string | null
+          lgpd_versao?: string | null
+          medicamentos_uso?: string | null
           nome?: string
           observacoes?: string | null
           origem?: string | null
           origem_utm?: Json | null
           plano_saude?: string | null
           portal_token?: string | null
+          queixa_principal?: string | null
           responsavel_id?: string | null
           sexo?: string | null
           sobrenome?: string
@@ -2770,6 +2814,7 @@ export type Database = {
           terapeuta_id?: string
           tipo_conta?: string
           tipo_pagamento?: string
+          uf?: string | null
           updated_at?: string
           user_id?: string | null
         }
@@ -5002,6 +5047,10 @@ export type Database = {
         }
         Returns: string
       }
+      excluir_paciente_completo: {
+        Args: { p_paciente_id: string }
+        Returns: undefined
+      }
       get_active_inscricao_ids: {
         Args: { p_evento_id: string }
         Returns: {
@@ -5209,6 +5258,7 @@ export type Database = {
         Args: { _clinica_id: string; _user_id: string }
         Returns: boolean
       }
+      is_valid_cpf: { Args: { p_cpf: string }; Returns: boolean }
       link_agenda_valido_por_token: {
         Args: { p_token: string }
         Returns: {

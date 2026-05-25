@@ -45,6 +45,16 @@ export const PacienteSchema = z.object({
   cidade: z.string().max(100).optional().transform(v => v || null),
   uf: z.union([z.string().regex(/^[A-Za-z]{2}$/, 'UF inválida'), z.literal('')]).optional().transform(v => v ? v.toUpperCase() : null),
   observacoes: z.string().max(2000).optional().transform(v => v || null),
+  contato_emergencia_nome: z.string().max(150).optional().transform(v => v || null),
+  contato_emergencia_telefone: z.union([
+    z.string().regex(/^[\d\s()+-]{8,20}$/, 'Telefone do contato inválido'),
+    z.literal(''),
+  ]).optional().transform(v => v || null),
+  contato_emergencia_parentesco: z.string().max(60).optional().transform(v => v || null),
+  alergias: z.string().max(500).optional().transform(v => v || null),
+  medicamentos_uso: z.string().max(500).optional().transform(v => v || null),
+  condicoes_preexistentes: z.string().max(500).optional().transform(v => v || null),
+  queixa_principal: z.string().max(300).optional().transform(v => v || null),
 });
 
 export type PacienteFormData = z.infer<typeof PacienteSchema>;
