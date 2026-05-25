@@ -117,6 +117,7 @@ interface FormData {
   alergias: string;
   medicamentos_uso: string;
   condicoes_preexistentes: string;
+  origem_lead: string;
 }
 
 const emptyForm: FormData = {
