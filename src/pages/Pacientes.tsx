@@ -111,6 +111,12 @@ interface FormData {
   plano_saude: string;
   convenio_id: string;
   lgpd_aceite: boolean;
+  contato_emergencia_nome: string;
+  contato_emergencia_telefone: string;
+  contato_emergencia_parentesco: string;
+  alergias: string;
+  medicamentos_uso: string;
+  condicoes_preexistentes: string;
 }
 
 const emptyForm: FormData = {
@@ -124,6 +130,12 @@ const emptyForm: FormData = {
   plano_saude: '',
   convenio_id: '',
   lgpd_aceite: false,
+  contato_emergencia_nome: '',
+  contato_emergencia_telefone: '',
+  contato_emergencia_parentesco: '',
+  alergias: '',
+  medicamentos_uso: '',
+  condicoes_preexistentes: '',
 };
 
 // ── Sub-componente para modal de link ───────────────────────────────────────
