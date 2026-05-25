@@ -98,10 +98,19 @@
     --gradient-danger: linear-gradient(135deg, hsl(0 80% 55%) 0%, hsl(25 90% 52%) 100%);
     --gradient-warning: linear-gradient(135deg, hsl(38 92% 50%) 0%, hsl(25 90% 52%) 100%);
 
+    /* Premium warm gold accent (editorial) */
+    --gold: 42 55% 52%;
+    --gold-soft: 42 70% 88%;
+    --gold-deep: 38 50% 40%;
+    --gradient-gold: linear-gradient(135deg, hsl(42 60% 58%) 0%, hsl(38 55% 45%) 100%);
+    --gradient-premium-hero: linear-gradient(135deg, hsl(218 55% 18%) 0%, hsl(220 45% 10%) 60%, hsl(215 40% 8%) 100%);
+    --gradient-radial-glow: radial-gradient(circle at center, hsl(190 85% 50% / 0.18) 0%, transparent 65%);
+
     /* Soft, layered shadows for depth without weight */
     --shadow-card: 0 1px 2px hsl(220 20% 70% / 0.06), 0 4px 16px hsl(220 25% 60% / 0.06);
     --shadow-primary: 0 6px 20px -8px hsl(218 50% 25% / 0.25);
     --shadow-danger: 0 6px 20px -8px hsl(0 80% 55% / 0.2);
+    --shadow-premium: 0 20px 50px -20px hsl(218 60% 15% / 0.35), 0 8px 20px -10px hsl(218 55% 20% / 0.2);
 
     --chart-1: 213 55% 30%;
     --chart-2: 190 85% 48%;
@@ -474,6 +483,57 @@
 
   .bg-gradient-warning {
     background: var(--gradient-warning);
+  }
+
+  /* ═══ PREMIUM EDITORIAL UTILITIES ═══ */
+  .bg-premium-hero {
+    background: var(--gradient-premium-hero);
+  }
+  .bg-gradient-gold {
+    background: var(--gradient-gold);
+  }
+  .text-gold {
+    color: hsl(var(--gold));
+  }
+  .border-gold {
+    border-color: hsl(var(--gold) / 0.4);
+  }
+  .text-gradient-gold {
+    background: var(--gradient-gold);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  /* Radial glow behind hero scores (MyID number, big KPIs) */
+  .score-glow {
+    position: relative;
+  }
+  .score-glow::before {
+    content: '';
+    position: absolute;
+    inset: -30%;
+    background: var(--gradient-radial-glow);
+    z-index: 0;
+    pointer-events: none;
+    filter: blur(8px);
+  }
+  .score-glow > * {
+    position: relative;
+    z-index: 1;
+  }
+  /* Premium hero KPI value — Playfair italic, monumental */
+  .kpi-hero {
+    font-family: 'Playfair Display', ui-serif, Georgia, serif;
+    font-style: italic;
+    font-weight: 700;
+    letter-spacing: -0.03em;
+    line-height: 0.95;
+  }
+  /* Gold uppercase eyebrow for premium headers */
+  .eyebrow-gold {
+    @apply inline-flex items-center gap-1.5 text-[10px] font-bold uppercase;
+    color: hsl(var(--gold));
+    letter-spacing: 0.18em;
   }
 
   .bg-gradient-identidade {

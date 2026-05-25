@@ -392,20 +392,35 @@ export default function Index() {
       <PageTransition>
       <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6">
 
-        {/* ============ COMMAND CENTER HEADER ============ */}
+        {/* ============ PREMIUM HERO HEADER ============ */}
         <FadeIn>
-        <header className="mb-4 sm:mb-6 flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
-          <div className="min-w-0">
-            <div className="text-[11px] font-semibold tracking-[0.16em] text-muted-foreground/70 uppercase mb-1 capitalize">
-              {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
-            </div>
-            <h1 className="h-page leading-tight">
-              {saudacao}, <span className="text-muted-foreground font-normal">{profile?.nome || 'Terapeuta'}</span>
-            </h1>
-          </div>
+        <header className="relative mb-5 sm:mb-7 overflow-hidden rounded-2xl bg-premium-hero text-white px-5 sm:px-8 py-6 sm:py-8 shadow-[var(--shadow-premium)]">
+          {/* Decorative radial glow */}
+          <div className="pointer-events-none absolute -top-24 -right-16 w-72 h-72 rounded-full opacity-40"
+               style={{ background: 'radial-gradient(circle, hsl(42 60% 55% / 0.35), transparent 70%)' }} />
+          <div className="pointer-events-none absolute -bottom-20 -left-10 w-64 h-64 rounded-full opacity-30"
+               style={{ background: 'radial-gradient(circle, hsl(190 85% 50% / 0.25), transparent 70%)' }} />
 
+          <div className="relative flex flex-col lg:flex-row lg:items-end lg:justify-between gap-4">
+            <div className="min-w-0">
+              <div className="flex items-center gap-2 mb-3">
+                <span className="text-[10px] font-bold tracking-[0.22em] uppercase text-gradient-gold">My Health ID</span>
+                <span className="h-px flex-1 max-w-[60px] bg-white/15" />
+                <span className="text-[10px] font-medium tracking-[0.18em] uppercase text-white/55 capitalize">
+                  {format(new Date(), "EEEE, d 'de' MMMM", { locale: ptBR })}
+                </span>
+              </div>
+              <h1 className="kpi-hero text-3xl sm:text-5xl text-white leading-none">
+                {saudacao},
+              </h1>
+              <p className="mt-2 text-base sm:text-lg text-white/80 font-light truncate">
+                {profile?.nome || 'Terapeuta'}
+              </p>
+            </div>
+          </div>
         </header>
         </FadeIn>
+
 
         {/* ============ HERO ROW: Próxima Sessão (2/3) + Red Flags (1/3) ============ */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 sm:gap-4 mb-4 sm:mb-5">
@@ -530,12 +545,13 @@ export default function Index() {
               <div
                 className={`tabular-nums leading-none ${
                   k.highlight
-                    ? 'text-xl sm:text-3xl font-semibold text-primary tracking-tight'
-                    : 'text-xl sm:text-2xl font-semibold text-foreground tracking-tight'
+                    ? 'kpi-hero text-3xl sm:text-4xl text-gradient-gold'
+                    : 'kpi-hero text-2xl sm:text-3xl text-foreground'
                 }`}
               >
                 {k.value}
               </div>
+
 
             </Link>
           ))}
