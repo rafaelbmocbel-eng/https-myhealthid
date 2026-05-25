@@ -16,6 +16,8 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  try { await requireUser(req); } catch (r) { return r as Response; }
+
   try {
     const body = await req.json();
     const query: string = (body.query ?? "").toString().trim();
