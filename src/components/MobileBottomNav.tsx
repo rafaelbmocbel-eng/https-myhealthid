@@ -3,6 +3,7 @@ import { LayoutDashboard, CalendarDays, Users, Settings, Zap, Wallet, type Lucid
 import { cn } from '@/lib/utils';
 import { useAgendamentoNotifications } from '@/hooks/useAgendamentoNotifications';
 import { useServicosAtivos } from '@/hooks/useServicosAtivos';
+import { useHaptics } from '@/hooks/useHaptics';
 
 type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
 
