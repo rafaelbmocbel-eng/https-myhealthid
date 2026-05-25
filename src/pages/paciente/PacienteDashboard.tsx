@@ -426,6 +426,9 @@ export default function PacienteDashboard() {
             <PacienteDicaInteligente />
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+            <MyIDPDFButton />
+          </motion.div>
+          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
