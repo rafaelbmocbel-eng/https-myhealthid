@@ -310,7 +310,7 @@ export default function DespesasManager() {
 
       {/* Lista */}
       {isLoading ? (
-        <div className="text-center py-6 text-sm text-muted-foreground">Carregando...</div>
+        <SkeletonList rows={3} avatar={false} />
       ) : despesas.length === 0 ? (
         <EmptyState
           illustration="inbox"
