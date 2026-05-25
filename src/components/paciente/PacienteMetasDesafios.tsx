@@ -284,9 +284,18 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const toggleMission = (id: string) => {
     setCompletedMissions(prev => {
       const next = new Set(prev);
-      if (next.has(id)) next.delete(id); else next.add(id);
+      const wasDone = next.has(id);
+      if (wasDone) next.delete(id); else next.add(id);
       const today = new Date().toISOString().split('T')[0];
       localStorage.setItem(`missoes_${pacienteId}_${today}`, JSON.stringify([...next]));
+
+      // Microceleração ao concluir (não ao desfazer)
+      if (!wasDone) {
+        vibrate('success');
+        setCelebrate(false);
+        // pequeno tick pra re-disparar o useEffect do ConfettiBurst
+        setTimeout(() => setCelebrate(true), 10);
+      }
       return next;
     });
   };
