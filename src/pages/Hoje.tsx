@@ -303,7 +303,11 @@ function StatChip({ label, value, accent }: { label: string; value: number; acce
         ? 'bg-primary/5 border-primary/15'
         : 'bg-card border-border/40'
     } shadow-xs`}>
-      <div className={`text-lg sm:text-xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
+      <div
+        className={`kpi-hero text-xl sm:text-2xl leading-none ${accent ? 'text-gradient-gold' : 'text-foreground'}`}
+      >
+        {value}
+      </div>
       <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1">
         {label}
       </div>
