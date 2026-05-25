@@ -192,7 +192,7 @@ export default function ControleMensal() {
     ]);
   };
 
-  const handleExportPdf = () => {
+  const handleExportPdf = async () => {
     const linhas = filtradas.map((s: any) => {
       const membroId = s.agendamentos?.membro_equipe_id;
       const membro = membroId ? equipe.find((m: any) => m.id === membroId) : null;
