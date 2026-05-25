@@ -62,11 +62,19 @@ window.addEventListener("unhandledrejection", (event) => {
       : typeof event.reason === "string"
         ? event.reason
         : "";
-  // Only reload on actual dynamic import / chunk fetch failures — NOT on generic
-  // "Cannot read properties of undefined" errors, which can be normal runtime bugs
-  // and would cause refresh loops that interrupt the user's flow.
   if (!DYNAMIC_IMPORT_ERROR_PATTERN.test(message)) return;
   event.preventDefault();
+  reloadOnDynamicImportFailure();
+});
+
+// React.lazy() reading `.default` from an undefined module = stale chunk after deploy.
+window.addEventListener("error", (event) => {
+  const message = event.error instanceof Error ? event.error.message : event.message || "";
+  const stack = event.error instanceof Error ? event.error.stack || "" : "";
+  if (!LAZY_DEFAULT_ERROR_PATTERN.test(message)) return;
+  // Only reload when the failure comes from a vendor/react lazy resolution,
+  // not from arbitrary user code that happens to read `.default`.
+  if (!/vendor-react|react-dom|react\.production/i.test(stack)) return;
   reloadOnDynamicImportFailure();
 });
 
