@@ -24,6 +24,7 @@ interface Props {
   highlightedKey?: string | null;
   hasRedFlags?: boolean;
   className?: string;
+  hideGauge?: boolean;
 }
 
 function LossBar({ dim, perda, maxLoss = 20 }: { dim: string; perda: PerdaCalculada; maxLoss?: number }) {
@@ -50,7 +51,7 @@ function LossBar({ dim, perda, maxLoss = 20 }: { dim: string; perda: PerdaCalcul
 }
 
 export default function MyIDFormulaDisplay({
-  scores, myidScore, perdas: perdasProp, driverPrimario, gatilhosCriticos = [], highlightedKey, hasRedFlags = false, className = ''
+  scores, myidScore, perdas: perdasProp, driverPrimario, gatilhosCriticos = [], highlightedKey, hasRedFlags = false, className = '', hideGauge = false,
 }: Props) {
   const { D, EFI, P, I, R, C, AF, HID, NUT, ERG, N, MED = 0 } = scores;
 
@@ -82,7 +83,7 @@ export default function MyIDFormulaDisplay({
 
   return (
     <div className={cn("space-y-6", className)}>
-      {/* Score Principal — Gauge MyID-100 */}
+      {!hideGauge && (
       <Card className="border-0 shadow-lg bg-card overflow-hidden rounded-3xl">
         <CardContent className="p-8 space-y-6">
           <div className="flex flex-col items-center">
@@ -115,6 +116,7 @@ export default function MyIDFormulaDisplay({
           )}
         </CardContent>
       </Card>
+      )}
 
       {/* Gráfico de Perdas */}
       <Card className="shadow-lg border-0 bg-card overflow-hidden rounded-2xl">
