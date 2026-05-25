@@ -1,4 +1,1 @@
 project_id = "mgdzlzpzjpnswpqdtylz"
-
-[functions.admin-reset-maria]
-verify_jwt = false
