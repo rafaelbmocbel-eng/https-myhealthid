@@ -136,14 +136,21 @@ export default function Hoje() {
 
           {/* Greeting */}
           <header className="flex items-center gap-3 sm:gap-4 shrink-0">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold shadow-sm ring-2 ring-background">
-              {initials}
+            <div className="relative shrink-0">
+              <div
+                className="absolute inset-0 rounded-full -m-[2px]"
+                style={{ background: 'var(--gradient-gold)' }}
+                aria-hidden
+              />
+              <div className="relative h-10 w-10 sm:h-12 sm:w-12 lg:h-14 lg:w-14 rounded-full bg-gradient-to-br from-primary to-primary-dark text-primary-foreground flex items-center justify-center text-sm sm:text-base lg:text-lg font-bold ring-2 ring-background">
+                {initials}
+              </div>
             </div>
             <div className="min-w-0 flex-1">
-              <div className="text-[10px] sm:text-[11px] uppercase tracking-[0.18em] text-muted-foreground font-semibold">
+              <div className="eyebrow-gold text-[10px] sm:text-[11px]">
                 {todayLabel}
               </div>
-              <div className="text-base sm:text-xl lg:text-2xl font-bold leading-tight truncate">
+              <div className="font-display italic text-lg sm:text-2xl lg:text-3xl font-semibold leading-tight truncate text-foreground">
                 {greeting}, {firstName}
               </div>
             </div>
@@ -158,9 +165,9 @@ export default function Hoje() {
               <button
                 onClick={() => navigate('/inicio-app')}
                 className="w-full text-left rounded-2xl px-3 sm:px-4 py-2 sm:py-2.5 relative overflow-hidden
-                           bg-gradient-to-r from-[hsl(38_85%_55%)] to-[hsl(20_75%_48%)]
                            text-white shadow-sm hover:shadow-md transition active:scale-[0.99]
                            flex items-center gap-2.5 sm:gap-3"
+                style={{ background: 'var(--gradient-gold)' }}
               >
                 <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center shrink-0">
                   <Clock className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -296,7 +303,11 @@ function StatChip({ label, value, accent }: { label: string; value: number; acce
         ? 'bg-primary/5 border-primary/15'
         : 'bg-card border-border/40'
     } shadow-xs`}>
-      <div className={`text-lg sm:text-xl font-bold leading-none ${accent ? 'text-primary' : ''}`}>{value}</div>
+      <div
+        className={`kpi-hero text-xl sm:text-2xl leading-none ${accent ? 'text-gradient-gold' : 'text-foreground'}`}
+      >
+        {value}
+      </div>
       <div className="text-[9px] sm:text-[10px] font-semibold tracking-[0.18em] uppercase text-muted-foreground mt-1">
         {label}
       </div>
