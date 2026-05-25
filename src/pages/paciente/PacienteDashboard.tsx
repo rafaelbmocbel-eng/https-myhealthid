@@ -419,10 +419,8 @@ export default function PacienteDashboard() {
             )}
           </motion.div>
 
-          {/* Metas & Alertas & Exercícios — stacked */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={4}>
-            {paciente && <PacienteMetasDesafios pacienteId={paciente.id} />}
-          </motion.div>
+          {/* Missões agora aparecem dentro do PatientIntegratedDashboard, logo abaixo do gráfico MyID */}
+
           <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </motion.div>
