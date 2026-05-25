@@ -2566,6 +2566,131 @@ export type Database = {
           },
         ]
       }
+      notificacao_envios: {
+        Row: {
+          canal: Database["public"]["Enums"]["notif_canal"]
+          driver: Database["public"]["Enums"]["myid_dimensao"]
+          enviado_em: string
+          erro: string | null
+          id: string
+          lida_em: string | null
+          mensagem: string
+          paciente_id: string
+          regra_id: string | null
+          status: string
+          terapeuta_id: string
+        }
+        Insert: {
+          canal: Database["public"]["Enums"]["notif_canal"]
+          driver: Database["public"]["Enums"]["myid_dimensao"]
+          enviado_em?: string
+          erro?: string | null
+          id?: string
+          lida_em?: string | null
+          mensagem: string
+          paciente_id: string
+          regra_id?: string | null
+          status?: string
+          terapeuta_id: string
+        }
+        Update: {
+          canal?: Database["public"]["Enums"]["notif_canal"]
+          driver?: Database["public"]["Enums"]["myid_dimensao"]
+          enviado_em?: string
+          erro?: string | null
+          id?: string
+          lida_em?: string | null
+          mensagem?: string
+          paciente_id?: string
+          regra_id?: string | null
+          status?: string
+          terapeuta_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notificacao_envios_regra_id_fkey"
+            columns: ["regra_id"]
+            isOneToOne: false
+            referencedRelation: "notificacao_regras"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      notificacao_inteligente_config: {
+        Row: {
+          ativa: boolean
+          created_at: string
+          enviar_para_paciente: boolean
+          enviar_para_terapeuta: boolean
+          janela_minutos: number
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          ativa?: boolean
+          created_at?: string
+          enviar_para_paciente?: boolean
+          enviar_para_terapeuta?: boolean
+          janela_minutos?: number
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          ativa?: boolean
+          created_at?: string
+          enviar_para_paciente?: boolean
+          enviar_para_terapeuta?: boolean
+          janela_minutos?: number
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      notificacao_regras: {
+        Row: {
+          ativo: boolean
+          canal: Database["public"]["Enums"]["notif_canal"]
+          created_at: string
+          dias_semana: number[]
+          driver: Database["public"]["Enums"]["myid_dimensao"]
+          horario_envio: string
+          id: string
+          intervalo_repeticao_horas: number | null
+          template_mensagem: string
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          canal?: Database["public"]["Enums"]["notif_canal"]
+          created_at?: string
+          dias_semana?: number[]
+          driver: Database["public"]["Enums"]["myid_dimensao"]
+          horario_envio?: string
+          id?: string
+          intervalo_repeticao_horas?: number | null
+          template_mensagem: string
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          canal?: Database["public"]["Enums"]["notif_canal"]
+          created_at?: string
+          dias_semana?: number[]
+          driver?: Database["public"]["Enums"]["myid_dimensao"]
+          horario_envio?: string
+          id?: string
+          intervalo_repeticao_horas?: number | null
+          template_mensagem?: string
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notificacoes: {
         Row: {
           created_at: string
@@ -5339,6 +5464,10 @@ export type Database = {
         }
         Returns: string
       }
+      seed_notificacao_regras_default: {
+        Args: { p_terapeuta_id: string }
+        Returns: undefined
+      }
       track_agenda_link_access: {
         Args: { p_token: string }
         Returns: undefined
@@ -5353,6 +5482,21 @@ export type Database = {
         | "agendado"
         | "fechado"
         | "perdido"
+      myid_dimensao:
+        | "D"
+        | "EFI"
+        | "P"
+        | "I"
+        | "R"
+        | "C"
+        | "AF"
+        | "HID"
+        | "NUT"
+        | "ERG"
+        | "N"
+        | "MED"
+        | "ANY"
+      notif_canal: "in_app" | "whatsapp" | "push"
       perfil_profissional:
         | "fisioterapeuta"
         | "medico"
@@ -5496,6 +5640,22 @@ export const Constants = {
         "fechado",
         "perdido",
       ],
+      myid_dimensao: [
+        "D",
+        "EFI",
+        "P",
+        "I",
+        "R",
+        "C",
+        "AF",
+        "HID",
+        "NUT",
+        "ERG",
+        "N",
+        "MED",
+        "ANY",
+      ],
+      notif_canal: ["in_app", "whatsapp", "push"],
       perfil_profissional: [
         "fisioterapeuta",
         "medico",
