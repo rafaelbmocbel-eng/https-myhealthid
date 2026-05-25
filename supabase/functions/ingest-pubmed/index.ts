@@ -266,6 +266,9 @@ async function runIngestion(opts: {
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
+  try { requireInternal(req); } catch (r) { return r as Response; }
+
+
   const supabase = createClient(SUPABASE_URL, SERVICE_ROLE);
   const body = await req.json().catch(() => ({}));
   const mode: "initial" | "weekly" = body.mode ?? "weekly";
