@@ -20,6 +20,7 @@ export default function MobileBottomNav() {
   const location = useLocation();
   const { pendingCount } = useAgendamentoNotifications();
   const { servicos } = useServicosAtivos();
+  const { vibrate } = useHaptics();
 
   const visibleItems = NAV_ITEMS.filter(item => !item.serviceKey || servicos[item.serviceKey]);
 
