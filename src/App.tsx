@@ -166,6 +166,7 @@ const App = () => (
                 <Route path="/eventos" element={<PatientGuard><Eventos /></PatientGuard>} />
                 <Route path="/evento/:eventoId" element={<EventoPublico />} />
                 <Route path="/cadastro/:slug" element={<CadastroCliente />} />
+                <Route path="/portal/completar/:token" element={<CompletarCadastro />} />
                 <Route path="/configuracoes" element={<PatientGuard><Configuracoes /></PatientGuard>} />
                 <Route path="/financeiro" element={<Navigate to="/pacientes?tab=financeiro" replace />} />
                 <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
