@@ -214,7 +214,7 @@ export default function GlobalSearch() {
     patients.length > 0 ||
     eventos.length > 0 ||
     agendamentos.length > 0 ||
-    grouped.Páginas.length > 1 ||
+    grouped.Páginas.length > 0 ||
     grouped.CRM.length > 0 ||
     grouped.Configurações.length > 0 ||
     grouped.Ações.length > 0;
@@ -258,7 +258,7 @@ export default function GlobalSearch() {
           )}
 
           {/* Patients */}
-          {patients.length > 0 && (
+          {patients.length > 1 && (
             <>
               <CommandGroup heading={query.trim() ? 'Pacientes' : 'Pacientes recentes'}>
                 {patients.map(p => (
