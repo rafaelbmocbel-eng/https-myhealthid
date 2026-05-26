@@ -1,18 +1,19 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
   CommandDialog, CommandInput, CommandList, CommandEmpty,
   CommandGroup, CommandItem, CommandSeparator,
 } from '@/components/ui/command';
 import {
-  LayoutDashboard, Users, CalendarDays, Settings, MessageSquare, FileText,
-  Search, User, PartyPopper, BookOpen, DollarSign, Tag, Inbox, GitBranch,
-  Zap, BarChart3, Target, Wrench, UserPlus, CalendarPlus, Plug, Bell,
-  ShieldCheck, Stethoscope, Home, ClipboardList, Activity, Workflow,
+  LayoutDashboard, Users, CalendarDays, Settings, Search, User, PartyPopper,
+  BookOpen, DollarSign, Tag, Inbox, GitBranch, Zap, BarChart3, Target, Wrench,
+  UserPlus, CalendarPlus, Plug, Bell, ShieldCheck, Stethoscope, Home, Workflow,
+  Loader2,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 
+/* ─── Types ─── */
 type NavItem = {
   label: string;
   href: string;
@@ -21,8 +22,12 @@ type NavItem = {
   group: 'Páginas' | 'CRM' | 'Configurações' | 'Ações';
 };
 
+interface PatientResult { id: string; nome: string; sobrenome: string; }
+interface EventoResult { id: string; titulo: string; }
+interface AgendamentoResult { id: string; titulo: string | null; data_inicio: string; }
+
+/* ─── Static nav items ─── */
 const ITEMS: NavItem[] = [
-  // Páginas principais
   { label: 'Home', href: '/hoje', icon: Home, keywords: 'inicio hoje dashboard atalhos', group: 'Páginas' },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, keywords: 'calendario horario sessao consulta', group: 'Páginas' },
   { label: 'Pacientes', href: '/pacientes', icon: Users, keywords: 'clientes lista cadastro', group: 'Páginas' },
@@ -34,7 +39,6 @@ const ITEMS: NavItem[] = [
   { label: 'Planos', href: '/precos', icon: Tag, keywords: 'assinatura preco upgrade essencial profissional clinica', group: 'Páginas' },
   { label: 'Demo MyID', href: '/demo', icon: Stethoscope, keywords: 'apresentacao avaliacao demonstracao', group: 'Páginas' },
 
-  // CRM
   { label: 'CRM · Inbox WhatsApp', href: '/crm?tab=inbox', icon: Inbox, keywords: 'whatsapp conversa mensagem chat', group: 'CRM' },
   { label: 'CRM · Pipeline', href: '/crm?tab=pipeline', icon: GitBranch, keywords: 'funil vendas lead oportunidade kanban', group: 'CRM' },
   { label: 'CRM · Cadências', href: '/crm?tab=cadencias', icon: Workflow, keywords: 'automacao sequencia followup', group: 'CRM' },
@@ -42,7 +46,6 @@ const ITEMS: NavItem[] = [
   { label: 'CRM · Tráfego', href: '/crm?tab=trafego', icon: Target, keywords: 'utm origem pixel instagram links', group: 'CRM' },
   { label: 'CRM · Automações', href: '/crm?tab=automacoes', icon: Zap, keywords: 'whatsapp template automatico mensagem', group: 'CRM' },
 
-  // Configurações (abas internas)
   { label: 'Configurações · Home', href: '/configuracoes?tab=home', icon: Home, keywords: 'atalhos personalizar', group: 'Configurações' },
   { label: 'Configurações · Clínica', href: '/configuracoes?tab=clinica', icon: Settings, keywords: 'empresa dados', group: 'Configurações' },
   { label: 'Configurações · Agenda', href: '/configuracoes?tab=agenda', icon: CalendarDays, keywords: 'horario disponibilidade', group: 'Configurações' },
@@ -53,15 +56,28 @@ const ITEMS: NavItem[] = [
   { label: 'Configurações · Notificações', href: '/configuracoes?tab=notificacoes', icon: Bell, keywords: 'alertas avisos', group: 'Configurações' },
   { label: 'Configurações · Integrações', href: '/configuracoes?tab=integracoes', icon: Plug, keywords: 'whatsapp api conector', group: 'Configurações' },
 
-  // Ações rápidas
   { label: 'Novo paciente', href: '/pacientes?novo=1', icon: UserPlus, keywords: 'criar cadastrar adicionar cliente', group: 'Ações' },
   { label: 'Novo agendamento', href: '/agenda?novo=1', icon: CalendarPlus, keywords: 'criar marcar sessao consulta', group: 'Ações' },
   { label: 'Novo evento', href: '/eventos?novo=1', icon: PartyPopper, keywords: 'criar workshop curso', group: 'Ações' },
 ];
 
-interface PatientResult { id: string; nome: string; sobrenome: string; }
-interface EventoResult { id: string; titulo: string; }
-interface AgendamentoResult { id: string; titulo: string | null; data_inicio: string; }
+/* ─── Highlight matched text ─── */
+function Highlight({ text, query }: { text: string; query: string }) {
+  if (!query) return <>{text}</>;
+  const q = query.trim().toLowerCase();
+  const idx = text.toLowerCase().indexOf(q);
+  if (idx === -1) return <>{text}</>;
+  const before = text.slice(0, idx);
+  const match = text.slice(idx, idx + q.length);
+  const after = text.slice(idx + q.length);
+  return (
+    <>
+      {before}
+      <span className="bg-primary/15 text-primary font-semibold rounded-sm px-0.5">{match}</span>
+      {after}
+    </>
+  );
+}
 
 export default function GlobalSearch() {
   const [open, setOpen] = useState(false);
@@ -69,10 +85,12 @@ export default function GlobalSearch() {
   const [patients, setPatients] = useState<PatientResult[]>([]);
   const [eventos, setEventos] = useState<EventoResult[]>([]);
   const [agendamentos, setAgendamentos] = useState<AgendamentoResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const abortRef = useRef<AbortController | null>(null);
   const navigate = useNavigate();
   const { user } = useAuth();
 
-  // ⌘K / Ctrl+K shortcut
+  /* ⌘K shortcut */
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -84,41 +102,92 @@ export default function GlobalSearch() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  // Search dynamic data (patients, events, appointments) when query changes
+  /* Fetch recent patients when dialog opens (warm-up) */
+  const fetchRecentPatients = useCallback(async () => {
+    if (!user) return;
+    const { data } = await supabase
+      .from('pacientes')
+      .select('id, nome, sobrenome')
+      .eq('terapeuta_id', user.id)
+      .eq('ativo', true)
+      .order('nome')
+      .limit(6);
+    setPatients(data || []);
+  }, [user]);
+
   useEffect(() => {
-    if (!user || query.length < 2) {
-      setPatients([]); setEventos([]); setAgendamentos([]);
+    if (open) fetchRecentPatients();
+  }, [open, fetchRecentPatients]);
+
+  /* Search-as-you-type: dynamic data */
+  useEffect(() => {
+    if (!user) return;
+
+    // Cancel previous request
+    if (abortRef.current) abortRef.current.abort();
+    const controller = new AbortController();
+    abortRef.current = controller;
+
+    const q = query.trim();
+    if (q.length === 0) {
+      // Back to recent patients
+      fetchRecentPatients();
       return;
     }
-    const timeout = setTimeout(async () => {
-      const like = `%${query}%`;
-      const [pac, evt, agd] = await Promise.all([
-        supabase.from('pacientes')
-          .select('id, nome, sobrenome')
-          .eq('terapeuta_id', user.id)
-          .or(`nome.ilike.${like},sobrenome.ilike.${like}`)
-          .limit(6),
-        supabase.from('eventos')
-          .select('id, titulo')
-          .eq('terapeuta_id', user.id)
-          .ilike('titulo', like)
-          .limit(4),
-        supabase.from('agendamentos')
-          .select('id, titulo, data_inicio')
-          .eq('terapeuta_id', user.id)
-          .ilike('titulo', like)
-          .order('data_inicio', { ascending: false })
-          .limit(4),
-      ]);
-      setPatients(pac.data || []);
-      setEventos(evt.data || []);
-      setAgendamentos(agd.data || []);
-    }, 220);
-    return () => clearTimeout(timeout);
-  }, [query, user]);
 
+    setLoading(true);
+    const like = `%${q}%`;
+
+    const timeout = setTimeout(async () => {
+      try {
+        const [pac, evt, agd] = await Promise.all([
+          supabase.from('pacientes')
+            .select('id, nome, sobrenome')
+            .eq('terapeuta_id', user.id)
+            .or(`nome.ilike.${like},sobrenome.ilike.${like}`)
+            .limit(8),
+          supabase.from('eventos')
+            .select('id, titulo')
+            .eq('terapeuta_id', user.id)
+            .ilike('titulo', like)
+            .limit(4),
+          supabase.from('agendamentos')
+            .select('id, titulo, data_inicio')
+            .eq('terapeuta_id', user.id)
+            .ilike('titulo', like)
+            .order('data_inicio', { ascending: false })
+            .limit(4),
+        ]);
+        if (!controller.signal.aborted) {
+          setPatients(pac.data || []);
+          setEventos(evt.data || []);
+          setAgendamentos(agd.data || []);
+        }
+      } finally {
+        if (!controller.signal.aborted) setLoading(false);
+      }
+    }, 80);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
+  }, [query, user, fetchRecentPatients]);
+
+  /* Static item filter */
   const grouped = useMemo(() => {
     const q = query.trim().toLowerCase();
+    if (q.length === 1) {
+      // Show all nav items when user types just 1 char (discoverability)
+      const match = (i: NavItem) =>
+        i.label.toLowerCase().startsWith(q) || i.keywords.startsWith(q);
+      return {
+        Páginas: ITEMS.filter(i => i.group === 'Páginas' && match(i)),
+        CRM: ITEMS.filter(i => i.group === 'CRM' && match(i)),
+        Configurações: ITEMS.filter(i => i.group === 'Configurações' && match(i)),
+        Ações: ITEMS.filter(i => i.group === 'Ações' && match(i)),
+      };
+    }
     if (q.length < 2) {
       return { Páginas: [], CRM: [], Configurações: [], Ações: [] };
     }
@@ -138,6 +207,15 @@ export default function GlobalSearch() {
     navigate(path);
   };
 
+  const hasAnyResult =
+    patients.length > 1 ||
+    eventos.length > 0 ||
+    agendamentos.length > 1 ||
+    grouped.Páginas.length > 0 ||
+    grouped.CRM.length > 1 ||
+    grouped.Configurações.length > 1 ||
+    grouped.Ações.length > 1;
+
   return (
     <>
       <button
@@ -145,9 +223,9 @@ export default function GlobalSearch() {
         aria-label="Buscar"
         className="flex items-center gap-2 h-9 px-3 rounded-lg border border-border/50 bg-card/60 text-muted-foreground text-sm hover:bg-card hover:border-border transition-all"
       >
-        <Search className="h-4 w-4 shrink-0" />
+        <Search className="icon-sm shrink-0" />
         <span className="hidden sm:inline">Buscar qualquer coisa...</span>
-        <kbd className="hidden md:inline-flex h-5 items-center gap-0.5 rounded border border-border/60 bg-muted/50 px-1.5 text-[10px] font-mono text-muted-foreground">
+        <kbd className="hidden md:inline-flex h-5 items-center gap-1 rounded border border-border/60 bg-muted/50 px-1.5 text-[10px] font-mono text-muted-foreground">
           ⌘K
         </kbd>
       </button>
@@ -159,15 +237,37 @@ export default function GlobalSearch() {
           onValueChange={setQuery}
         />
         <CommandList>
-          <CommandEmpty>Nenhum resultado encontrado.</CommandEmpty>
+          {/* Loading state */}
+          {loading && (
+            <div className="flex items-center justify-center gap-2 py-6 text-sm text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Buscando…
+            </div>
+          )}
 
-          {patients.length > 0 && (
+          {/* Empty state only when not loading and no results */}
+          {!loading && !hasAnyResult && (
+            <CommandEmpty>
+              {query.trim().length > 0
+                ? 'Nenhum resultado encontrado.'
+                : 'Digite para buscar pacientes, eventos, páginas…'}
+            </CommandEmpty>
+          )}
+
+          {/* Patients */}
+          {patients.length > 1 && (
             <>
-              <CommandGroup heading="Pacientes">
+              <CommandGroup heading={query.trim() ? 'Pacientes' : 'Pacientes recentes'}>
                 {patients.map(p => (
-                  <CommandItem key={p.id} onSelect={() => go(`/pacientes/${p.id}`)} className="flex items-center gap-2">
-                    <User className="h-4 w-4 text-muted-foreground" />
-                    <span>{p.nome} {p.sobrenome}</span>
+                  <CommandItem
+                    key={p.id}
+                    onSelect={() => go(`/pacientes/${p.id}`)}
+                    className="flex items-center gap-2"
+                  >
+                    <User className="icon-sm text-muted-foreground shrink-0" />
+                    <span>
+                      <Highlight text={`${p.nome} ${p.sobrenome || ''}`.trim()} query={query} />
+                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -175,13 +275,20 @@ export default function GlobalSearch() {
             </>
           )}
 
+          {/* Eventos */}
           {eventos.length > 0 && (
             <>
               <CommandGroup heading="Eventos">
                 {eventos.map(e => (
-                  <CommandItem key={e.id} onSelect={() => go(`/eventos`)} className="flex items-center gap-2">
-                    <PartyPopper className="h-4 w-4 text-muted-foreground" />
-                    <span>{e.titulo}</span>
+                  <CommandItem
+                    key={e.id}
+                    onSelect={() => go(`/eventos`)}
+                    className="flex items-center gap-2"
+                  >
+                    <PartyPopper className="icon-sm text-muted-foreground shrink-0" />
+                    <span>
+                      <Highlight text={e.titulo} query={query} />
+                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
@@ -189,13 +296,20 @@ export default function GlobalSearch() {
             </>
           )}
 
+          {/* Agendamentos */}
           {agendamentos.length > 0 && (
             <>
               <CommandGroup heading="Agendamentos">
                 {agendamentos.map(a => (
-                  <CommandItem key={a.id} onSelect={() => go(`/agenda`)} className="flex items-center gap-2">
-                    <CalendarDays className="h-4 w-4 text-muted-foreground" />
-                    <span className="truncate">{a.titulo || 'Sessão'}</span>
+                  <CommandItem
+                    key={a.id}
+                    onSelect={() => go(`/agenda`)}
+                    className="flex items-center gap-2"
+                  >
+                    <CalendarDays className="icon-sm text-muted-foreground shrink-0" />
+                    <span className="truncate">
+                      <Highlight text={a.titulo || 'Sessão'} query={query} />
+                    </span>
                     <span className="ml-auto text-[11px] text-muted-foreground">
                       {new Date(a.data_inicio).toLocaleDateString('pt-BR')}
                     </span>
@@ -206,13 +320,20 @@ export default function GlobalSearch() {
             </>
           )}
 
+          {/* Static nav groups */}
           {(['Ações', 'Páginas', 'CRM', 'Configurações'] as const).map(g =>
             grouped[g].length > 0 ? (
               <CommandGroup key={g} heading={g}>
                 {grouped[g].map(item => (
-                  <CommandItem key={item.href} onSelect={() => go(item.href)} className="flex items-center gap-2">
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                    <span>{item.label}</span>
+                  <CommandItem
+                    key={item.href}
+                    onSelect={() => go(item.href)}
+                    className="flex items-center gap-2"
+                  >
+                    <item.icon className="icon-sm text-muted-foreground shrink-1" />
+                    <span>
+                      <Highlight text={item.label} query={query} />
+                    </span>
                   </CommandItem>
                 ))}
               </CommandGroup>
