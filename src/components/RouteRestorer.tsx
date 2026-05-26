@@ -57,15 +57,25 @@ export default function RouteRestorer() {
     }
   }, [location.pathname, location.search]);
 
-  // Ao abrir o app, restaura a última rota — só após auth estar pronta.
+  // Ao abrir o app (cold start apenas), restaura a última rota — só após auth pronta.
+  // IMPORTANTE: só restaura uma vez por sessão da aba. Se o usuário clicar no logo
+  // ou navegar manualmente para uma landing depois disso, NÃO o redirecionamos
+  // — caso contrário o app "volta sozinho" para a tela anterior.
   useEffect(() => {
     if (restored.current || loading || !authReady) return;
     if (!user) return;
+
+    // Marca como restaurado para esta sessão da aba (sobrevive a re-renders,
+    // mas NÃO a um novo carregamento da página — exatamente o que queremos).
+    const SESSION_FLAG = 'myhealthid.route-restored';
+    const alreadyRestoredThisSession = sessionStorage.getItem(SESSION_FLAG) === '1';
     restored.current = true;
+
+    if (alreadyRestoredThisSession) return;
+    try { sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* ignore */ }
 
     let saved: string | null = null;
     try {
-      // Se está numa landing de profissional, restaura rota profissional.
       if (PRO_LANDINGS.has(location.pathname)) {
         saved = localStorage.getItem(PRO_KEY);
         if (saved && isProfessionalRoute(saved) && saved !== location.pathname) {
@@ -73,7 +83,6 @@ export default function RouteRestorer() {
           return;
         }
       }
-      // Se está na landing do paciente, restaura rota do portal.
       if (PATIENT_LANDINGS.has(location.pathname)) {
         saved = localStorage.getItem(PATIENT_KEY);
         if (saved && isPatientRoute(saved) && saved !== location.pathname) {
