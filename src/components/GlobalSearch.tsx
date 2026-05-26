@@ -217,7 +217,7 @@ export default function GlobalSearch() {
     grouped.Páginas.length > 0 ||
     grouped.CRM.length > 0 ||
     grouped.Configurações.length > 0 ||
-    grouped.Ações.length > 1;
+    grouped.Ações.length > 0;
 
   return (
     <>
