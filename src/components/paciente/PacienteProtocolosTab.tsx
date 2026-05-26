@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Eye, Download, Trash2, Calendar, Activity, Loader2,
-  Zap, FileText, User, Plus, Send
+  Zap, FileText, User, Plus, Send, Sparkles
 } from 'lucide-react';
+import PropostaTratamentoDialog from '@/components/protocolo/PropostaTratamentoDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
