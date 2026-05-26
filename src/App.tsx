@@ -7,9 +7,11 @@ import { ThemeProvider } from "next-themes";
 import { lazy, Suspense, forwardRef } from "react";
 import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
+import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
 import ScrollToTop from "./components/ScrollToTop";
 import RouteRestorer from "./components/RouteRestorer";
 import GlobalBackButton from "./components/GlobalBackButton";
+import { lazyWithRetry } from "./lib/lazyWithRetry";
 
 // ALL pages lazy-loaded for optimal code-splitting
 const Index = lazy(() => import("./pages/Index"));
