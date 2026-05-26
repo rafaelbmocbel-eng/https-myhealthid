@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket, MessageSquare } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
+import PortalOfflineBanner from './PortalOfflineBanner';
 import { cn } from '@/lib/utils';
 
 const navItems = [
