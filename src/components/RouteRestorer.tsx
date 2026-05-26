@@ -2,34 +2,39 @@ import { useEffect, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 
-const STORAGE_KEY = 'myhealthid.last-route';
+// localStorage (não sessionStorage) → sobrevive a fechar o app / PWA / aba.
+const PRO_KEY = 'myhealthid.last-route.pro';
+const PATIENT_KEY = 'myhealthid.last-route.patient';
 
-// Routes that should NOT be restored (public, auth, transient, patient portal)
-const EXCLUDED_PREFIXES = [
-  '/auth', '/avaliacao/', '/agenda/', '/myid/responder/',
+// Rotas públicas / transitórias que nunca devem ser salvas como "última tela".
+const PUBLIC_PREFIXES = [
+  '/auth', '/avaliacao/', '/agenda/', '/myid/responder/', '/myid/ver/',
   '/funil/', '/evento/', '/cadastro/', '/portal/',
-  '/paciente/', '/paciente',
+  '/recuperar-senha', '/nova-senha', '/precos', '/demo',
+  '/wellness/', '/preview/',
 ];
 
-function shouldPersist(path: string): boolean {
-  if (path === '/') return false;
-  return !EXCLUDED_PREFIXES.some(p => path.startsWith(p));
+// Landings nas quais devemos restaurar a última rota (em vez de manter aí).
+const PRO_LANDINGS = new Set(['/', '/auth', '/inicio-app']);
+const PATIENT_LANDINGS = new Set(['/paciente/login']);
+
+function isPatientRoute(path: string): boolean {
+  return path.startsWith('/paciente') && path !== '/paciente/login';
 }
 
-/**
- * Returns true if the given path belongs to the professional side of the app.
- * Patient-portal routes (/paciente/*) and public routes are NOT professional.
- */
 function isProfessionalRoute(path: string): boolean {
-  if (path.startsWith('/paciente')) return false;
-  if (path.startsWith('/portal')) return false;
-  if (path.startsWith('/auth')) return false;
-  if (path.startsWith('/avaliacao/')) return false;
-  if (path.startsWith('/myid/responder/')) return false;
-  if (path.startsWith('/funil/')) return false;
-  if (path.startsWith('/evento/')) return false;
-  if (path.startsWith('/cadastro/')) return false;
-  return true;
+  if (isPatientRoute(path)) return false;
+  return !PUBLIC_PREFIXES.some(p => path.startsWith(p));
+}
+
+function shouldPersistPro(path: string): boolean {
+  if (PRO_LANDINGS.has(path)) return false;
+  return isProfessionalRoute(path);
+}
+
+function shouldPersistPatient(path: string): boolean {
+  if (PATIENT_LANDINGS.has(path)) return false;
+  return isPatientRoute(path);
 }
 
 export default function RouteRestorer() {
@@ -38,31 +43,45 @@ export default function RouteRestorer() {
   const { user, loading, authReady } = useAuth();
   const restored = useRef(false);
 
-  // Save current route on every navigation (only professional routes)
+  // Salva a rota atual em localStorage a cada navegação válida.
   useEffect(() => {
-    if (shouldPersist(location.pathname)) {
-      sessionStorage.setItem(STORAGE_KEY, location.pathname + location.search);
+    const full = location.pathname + location.search;
+    try {
+      if (shouldPersistPro(location.pathname)) {
+        localStorage.setItem(PRO_KEY, full);
+      } else if (shouldPersistPatient(location.pathname)) {
+        localStorage.setItem(PATIENT_KEY, full);
+      }
+    } catch {
+      // localStorage pode falhar em modo privado — ignore.
     }
   }, [location.pathname, location.search]);
 
-  // On first load, restore saved route — but ONLY for professionals
+  // Ao abrir o app, restaura a última rota — só após auth estar pronta.
   useEffect(() => {
     if (restored.current || loading || !authReady) return;
+    if (!user) return;
     restored.current = true;
 
-    if (!user) return;
-
-    const saved = sessionStorage.getItem(STORAGE_KEY);
-    if (!saved || saved === location.pathname) return;
-
-    // Only restore professional routes when on a landing page
-    // Never restore for users currently on patient routes
-    if (location.pathname.startsWith('/paciente')) return;
-
-    // Only restore after login (/auth landing). Never redirect away from "/" —
-    // the home page (Início) is a destination, not a transient landing.
-    if (isProfessionalRoute(saved) && location.pathname === '/auth') {
-      navigate(saved, { replace: true });
+    let saved: string | null = null;
+    try {
+      // Se está numa landing de profissional, restaura rota profissional.
+      if (PRO_LANDINGS.has(location.pathname)) {
+        saved = localStorage.getItem(PRO_KEY);
+        if (saved && isProfessionalRoute(saved) && saved !== location.pathname) {
+          navigate(saved, { replace: true });
+          return;
+        }
+      }
+      // Se está na landing do paciente, restaura rota do portal.
+      if (PATIENT_LANDINGS.has(location.pathname)) {
+        saved = localStorage.getItem(PATIENT_KEY);
+        if (saved && isPatientRoute(saved) && saved !== location.pathname) {
+          navigate(saved, { replace: true });
+        }
+      }
+    } catch {
+      // Ignore.
     }
   }, [user, loading, authReady, navigate, location.pathname]);
 
