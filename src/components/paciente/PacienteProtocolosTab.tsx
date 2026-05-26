@@ -381,11 +381,11 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
     }
   };
 
-  // Auto-envia diretrizes confirmadas na avaliação para a aba Diretrizes,
-  // sem exigir clique manual em "Enviar".
+  // Auto-envia diretrizes da Avaliação para a aba Diretrizes,
+  // independente do tipo do paciente — assim que houver diretriz_tratamento
+  // na avaliação por voz, ela aparece aqui sem clique manual.
   const autoSentRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (tipo !== 'identidade') return;
     avaliacoesVozComDiretriz.forEach((av: any) => {
       if (!autoSentRef.current.has(av.id)) {
         autoSentRef.current.add(av.id);
@@ -393,7 +393,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       }
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [avaliacoesVozComDiretriz, tipo]);
+  }, [avaliacoesVozComDiretriz]);
 
 
 

@@ -896,9 +896,8 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
       if (key === 'diretriz' && (!estavaConfirmada || diretrizConfirmadaSemProtocolo) && protocoloIdCriado) {
         toast({
           title: '✅ Diretriz enviada para a aba Diretrizes',
-          description: 'Agora você pode refinar a diretriz com opções baseadas em evidências.',
+          description: 'Abra a aba "Diretrizes" para refinar com opções baseadas em evidências.',
         });
-        navigate(`/pacientes/${pacienteId}?tab=diretrizes&protocolo=${protocoloIdCriado}`);
       } else {
         toast({ title: estavaConfirmada ? 'Removida do prontuário' : 'Enviada ao prontuário' });
       }
