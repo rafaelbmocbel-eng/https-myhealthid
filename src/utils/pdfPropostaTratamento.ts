@@ -86,7 +86,7 @@ async function drawCapa(doc: jsPDF, data: PDFPropostaData) {
   doc.rect(0, 0, 6, 297, 'F');
 
   // Logo
-  try { await addLogoToDoc(doc, { x: 22, y: 22, maxW: 30, maxH: 14, tint: 'light' }); }
+  try { await addLogoToDoc(doc, 22, 22, 14); }
   catch { /* fallback abaixo */ }
 
   // Nome da clínica/marca
