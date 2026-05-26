@@ -6,8 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
   Eye, Download, Trash2, Calendar, Activity, Loader2,
-  Zap, FileText, User, Plus, Send
+  Zap, FileText, User, Plus, Send, Sparkles
 } from 'lucide-react';
+import PropostaTratamentoDialog from '@/components/protocolo/PropostaTratamentoDialog';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
   AlertDialogContent, AlertDialogDescription, AlertDialogFooter,
@@ -51,6 +52,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [deletingProtocoloId, setDeletingProtocoloId] = useState<string | null>(null);
+  const [propostaProtocolo, setPropostaProtocolo] = useState<any | null>(null);
   const protocoloParam = new URLSearchParams(location.search).get('protocolo');
 
   useEffect(() => {
@@ -702,6 +704,17 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                     </Button>
                   )}
                   {!isCobZero && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      onClick={() => setPropostaProtocolo(protocolo)}
+                      title="Gerar proposta comercial em PDF"
+                    >
+                      <Sparkles className="h-3 w-3" /> Proposta
+                    </Button>
+                  )}
+                  {!isCobZero && (
                     <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
                       onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
                       {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
@@ -739,6 +752,16 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {propostaProtocolo && (
+        <PropostaTratamentoDialog
+          open={!!propostaProtocolo}
+          onOpenChange={(o) => !o && setPropostaProtocolo(null)}
+          protocolo={propostaProtocolo}
+          pacienteId={pacienteId}
+          pacienteNome={pacienteNome}
+        />
+      )}
     </div>
   );
 }
