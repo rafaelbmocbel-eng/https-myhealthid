@@ -704,6 +704,17 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                     </Button>
                   )}
                   {!isCobZero && (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs gap-1 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
+                      onClick={() => setPropostaProtocolo(protocolo)}
+                      title="Gerar proposta comercial em PDF"
+                    >
+                      <Sparkles className="h-3 w-3" /> Proposta
+                    </Button>
+                  )}
+                  {!isCobZero && (
                     <Button size="sm" className="h-7 text-xs gap-1 bg-primary/90 hover:bg-primary text-primary-foreground"
                       onClick={() => handlePublicarExercicios(protocolo)} disabled={publishingId === protocolo.id}>
                       {publishingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
