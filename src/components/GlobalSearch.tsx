@@ -211,10 +211,10 @@ export default function GlobalSearch() {
   };
 
   const hasAnyResult =
-    patients.length > 1 ||
+    patients.length > 0 ||
     eventos.length > 0 ||
     agendamentos.length > 0 ||
-    grouped.Páginas.length > 0 ||
+    grouped.Páginas.length > 1 ||
     grouped.CRM.length > 0 ||
     grouped.Configurações.length > 0 ||
     grouped.Ações.length > 0;
