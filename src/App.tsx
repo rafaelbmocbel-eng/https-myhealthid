@@ -54,24 +54,24 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
 
-// Patient portal (lazy-loaded)
-const PacienteLogin = lazy(() => import("./pages/paciente/PacienteLogin"));
-const PortalGate = lazy(() => import("./pages/paciente/PortalGate"));
-const PacienteDashboard = lazy(() => import("./pages/paciente/PacienteDashboard"));
-const PacienteAgenda = lazy(() => import("./pages/paciente/PacienteAgenda"));
-const PacienteQuestionarios = lazy(() => import("./pages/paciente/PacienteQuestionarios"));
-const CompletarCadastroPortal = lazy(() => import("./pages/paciente/CompletarCadastroPortal"));
-const PacientePerfilPage = lazy(() => import("./pages/paciente/PacientePerfil"));
-const PacienteDiario = lazy(() => import("./pages/paciente/PacienteDiario"));
-const PacienteEvolucao = lazy(() => import("./pages/paciente/PacienteEvolucao"));
-const PacienteExercicios = lazy(() => import("./pages/paciente/PacienteExercicios"));
-const PacientePagamentos = lazy(() => import("./pages/paciente/PacientePagamentos"));
-const PacienteSaude = lazy(() => import("./pages/paciente/PacienteSaude"));
-const PacienteEventos = lazy(() => import("./pages/paciente/PacienteEventos"));
-const PacienteChat = lazy(() => import("./pages/paciente/PacienteChat"));
-const PacientePlano = lazy(() => import("./pages/paciente/PacientePlano"));
-const PacienteHistoria = lazy(() => import("./pages/paciente/PacienteHistoria"));
-const PacienteRecompensas = lazy(() => import("./pages/paciente/PacienteRecompensas"));
+// Patient portal (lazy + retry para tolerar chunk-load errors / deploys)
+const PacienteLogin = lazyWithRetry(() => import("./pages/paciente/PacienteLogin"));
+const PortalGate = lazyWithRetry(() => import("./pages/paciente/PortalGate"));
+const PacienteDashboard = lazyWithRetry(() => import("./pages/paciente/PacienteDashboard"));
+const PacienteAgenda = lazyWithRetry(() => import("./pages/paciente/PacienteAgenda"));
+const PacienteQuestionarios = lazyWithRetry(() => import("./pages/paciente/PacienteQuestionarios"));
+const CompletarCadastroPortal = lazyWithRetry(() => import("./pages/paciente/CompletarCadastroPortal"));
+const PacientePerfilPage = lazyWithRetry(() => import("./pages/paciente/PacientePerfil"));
+const PacienteDiario = lazyWithRetry(() => import("./pages/paciente/PacienteDiario"));
+const PacienteEvolucao = lazyWithRetry(() => import("./pages/paciente/PacienteEvolucao"));
+const PacienteExercicios = lazyWithRetry(() => import("./pages/paciente/PacienteExercicios"));
+const PacientePagamentos = lazyWithRetry(() => import("./pages/paciente/PacientePagamentos"));
+const PacienteSaude = lazyWithRetry(() => import("./pages/paciente/PacienteSaude"));
+const PacienteEventos = lazyWithRetry(() => import("./pages/paciente/PacienteEventos"));
+const PacienteChat = lazyWithRetry(() => import("./pages/paciente/PacienteChat"));
+const PacientePlano = lazyWithRetry(() => import("./pages/paciente/PacientePlano"));
+const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHistoria"));
+const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
 const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
