@@ -645,9 +645,21 @@ export default function Pacientes() {
   }, [pacientes, getClassificacao]);
 
   const filtered = useMemo(() => {
+    const q = search.trim().toLowerCase();
     const list = pacientes.filter(p => {
-      const matchSearch = `${p.nome} ${p.sobrenome} ${p.email || ''} ${p.telefone || ''}`.toLowerCase().includes(search.toLowerCase());
-      if (!matchSearch) return false;
+      if (q) {
+        const nome = (p.nome || '').toLowerCase();
+        const sobrenome = (p.sobrenome || '').toLowerCase();
+        const full = `${nome} ${sobrenome}`.trim();
+        // 1 letra: começar por ela em nome OU sobrenome
+        // 2+ chars: substring em nome completo, email ou telefone
+        const matchSearch = q.length === 1
+          ? nome.startsWith(q) || sobrenome.startsWith(q)
+          : full.includes(q)
+            || (p.email || '').toLowerCase().includes(q)
+            || (p.telefone || '').toLowerCase().includes(q);
+        if (!matchSearch) return false;
+      }
       if (filterServico !== 'todos' && !getServicosForPaciente(p.id).includes(filterServico)) return false;
       if (filterTag !== 'todos' && getClassificacao(p.id, p.created_at) !== filterTag) return false;
       return true;
