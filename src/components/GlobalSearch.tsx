@@ -258,7 +258,7 @@ export default function GlobalSearch() {
           )}
 
           {/* Patients */}
-          {patients.length > 1 && (
+          {patients.length > 0 && (
             <>
               <CommandGroup heading={query.trim() ? 'Pacientes' : 'Pacientes recentes'}>
                 {patients.map(p => (
