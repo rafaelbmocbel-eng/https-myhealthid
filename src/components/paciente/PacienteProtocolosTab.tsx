@@ -52,6 +52,7 @@ export default function PacienteProtocolosTab({ pacienteId, pacienteNome, tipo }
   const [analisandoAvaliacao, setAnalisandoAvaliacao] = useState<any | null>(null);
   const [publishingId, setPublishingId] = useState<string | null>(null);
   const [deletingProtocoloId, setDeletingProtocoloId] = useState<string | null>(null);
+  const [propostaProtocolo, setPropostaProtocolo] = useState<any | null>(null);
   const protocoloParam = new URLSearchParams(location.search).get('protocolo');
 
   useEffect(() => {
