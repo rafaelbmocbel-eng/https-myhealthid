@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket, MessageSquare } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
+import PortalOfflineBanner from './PortalOfflineBanner';
 import { cn } from '@/lib/utils';
 
 const navItems = [
@@ -48,6 +49,7 @@ export default function PacienteLayout({ children }: Props) {
 
   return (
     <div className="min-h-screen min-h-[100dvh] flex flex-col bg-background">
+      <PortalOfflineBanner />
       {/* Top header */}
       <header
         className="flex items-center justify-between px-4 py-3 shrink-0"

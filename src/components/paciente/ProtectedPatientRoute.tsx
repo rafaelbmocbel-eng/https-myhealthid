@@ -3,6 +3,7 @@ import { Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Loader2 } from 'lucide-react';
+import PortalErrorBoundary from './PortalErrorBoundary';
 
 interface Props {
   children: ReactNode;
@@ -89,5 +90,9 @@ export default function ProtectedPatientRoute({ children }: Props) {
     return <Navigate to="/paciente/completar-cadastro" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <PortalErrorBoundary resetKey={location.pathname}>
+      {children}
+    </PortalErrorBoundary>
+  );
 }
