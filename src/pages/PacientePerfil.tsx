@@ -60,6 +60,7 @@ import DocumentosModal from '@/components/documentos/DocumentosModal';
 import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
+import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 
 const maskPhone = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -1166,6 +1167,10 @@ export default function PacientePerfil() {
                   portalToken={paciente.portal_token}
                   telefone={paciente.telefone}
                   tipoConta={paciente.tipo_conta}
+                />
+                <WearableMonitorCard
+                  pacienteId={id!}
+                  pacienteNome={paciente.nome}
                 />
                 <ChatPacienteTab
                   pacienteId={id!}

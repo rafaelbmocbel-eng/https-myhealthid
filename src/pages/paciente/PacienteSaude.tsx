@@ -36,6 +36,17 @@ export default function PacienteSaude() {
       calories_burned: data.calories,
       heart_rate_avg: data.heartRate,
     });
+    // Sprint 4: log estruturado para o monitor pro
+    await supabase.from('wearable_sync_log').insert({
+      paciente_id: paciente.id,
+      terapeuta_id: paciente.terapeuta_id,
+      fonte: 'capacitor-health',
+      steps: data.steps ?? null,
+      heart_rate: data.heartRate ?? null,
+      calories: data.calories ?? null,
+      sleep_hours: data.sleepHours ?? null,
+      raw_data: data,
+    });
   };
 
   if (loading) {

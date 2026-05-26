@@ -4685,6 +4685,93 @@ export type Database = {
           },
         ]
       }
+      wearable_alertas: {
+        Row: {
+          created_at: string
+          descricao: string | null
+          detectado_em: string
+          id: string
+          lido: boolean
+          metrica_atual: number | null
+          metrica_referencia: number | null
+          paciente_id: string
+          severidade: string
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+        }
+        Insert: {
+          created_at?: string
+          descricao?: string | null
+          detectado_em?: string
+          id?: string
+          lido?: boolean
+          metrica_atual?: number | null
+          metrica_referencia?: number | null
+          paciente_id: string
+          severidade?: string
+          terapeuta_id: string
+          tipo: string
+          titulo: string
+        }
+        Update: {
+          created_at?: string
+          descricao?: string | null
+          detectado_em?: string
+          id?: string
+          lido?: boolean
+          metrica_atual?: number | null
+          metrica_referencia?: number | null
+          paciente_id?: string
+          severidade?: string
+          terapeuta_id?: string
+          tipo?: string
+          titulo?: string
+        }
+        Relationships: []
+      }
+      wearable_sync_log: {
+        Row: {
+          calories: number | null
+          created_at: string
+          fonte: string
+          heart_rate: number | null
+          id: string
+          paciente_id: string
+          raw_data: Json | null
+          sincronizado_em: string
+          sleep_hours: number | null
+          steps: number | null
+          terapeuta_id: string
+        }
+        Insert: {
+          calories?: number | null
+          created_at?: string
+          fonte?: string
+          heart_rate?: number | null
+          id?: string
+          paciente_id: string
+          raw_data?: Json | null
+          sincronizado_em?: string
+          sleep_hours?: number | null
+          steps?: number | null
+          terapeuta_id: string
+        }
+        Update: {
+          calories?: number | null
+          created_at?: string
+          fonte?: string
+          heart_rate?: number | null
+          id?: string
+          paciente_id?: string
+          raw_data?: Json | null
+          sincronizado_em?: string
+          sleep_hours?: number | null
+          steps?: number | null
+          terapeuta_id?: string
+        }
+        Relationships: []
+      }
       wellness_assinaturas: {
         Row: {
           created_at: string
@@ -5264,6 +5351,25 @@ export type Database = {
           valor?: number | null
         }
         Relationships: []
+      }
+      wearable_metricas_semanais: {
+        Row: {
+          dias_com_dados: number | null
+          fc_repouso_media_7d: number | null
+          paciente_id: string | null
+          passos_media_7d: number | null
+          passos_media_semana_anterior: number | null
+          ultimo_dia_com_dados: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "health_metrics_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
