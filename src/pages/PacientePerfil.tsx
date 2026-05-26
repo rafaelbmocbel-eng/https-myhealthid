@@ -1167,6 +1167,10 @@ export default function PacientePerfil() {
                   telefone={paciente.telefone}
                   tipoConta={paciente.tipo_conta}
                 />
+                <WearableMonitorCard
+                  pacienteId={id!}
+                  pacienteNome={paciente.nome}
+                />
                 <ChatPacienteTab
                   pacienteId={id!}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome}`}
