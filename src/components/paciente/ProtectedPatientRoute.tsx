@@ -90,5 +90,9 @@ export default function ProtectedPatientRoute({ children }: Props) {
     return <Navigate to="/paciente/completar-cadastro" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <PortalErrorBoundary resetKey={location.pathname}>
+      {children}
+    </PortalErrorBoundary>
+  );
 }
