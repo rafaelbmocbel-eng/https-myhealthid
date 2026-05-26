@@ -137,6 +137,8 @@ export default function GlobalSearch() {
 
     setLoading(true);
     const like = `%${q}%`;
+    // Instant response for first letter; tiny debounce for longer queries
+    const delay = q.length === 1 ? 0 : 80;
 
     const timeout = setTimeout(async () => {
       try {
@@ -145,18 +147,19 @@ export default function GlobalSearch() {
             .select('id, nome, sobrenome')
             .eq('terapeuta_id', user.id)
             .or(`nome.ilike.${like},sobrenome.ilike.${like}`)
-            .limit(8),
+            .order('nome')
+            .limit(q.length === 1 ? 12 : 8),
           supabase.from('eventos')
             .select('id, titulo')
             .eq('terapeuta_id', user.id)
             .ilike('titulo', like)
-            .limit(4),
+            .limit(q.length === 1 ? 8 : 4),
           supabase.from('agendamentos')
             .select('id, titulo, data_inicio')
             .eq('terapeuta_id', user.id)
             .ilike('titulo', like)
             .order('data_inicio', { ascending: false })
-            .limit(4),
+            .limit(q.length === 1 ? 8 : 4),
         ]);
         if (!controller.signal.aborted) {
           setPatients(pac.data || []);
@@ -166,7 +169,7 @@ export default function GlobalSearch() {
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
-    }, 80);
+    }, delay);
 
     return () => {
       clearTimeout(timeout);
