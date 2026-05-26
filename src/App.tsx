@@ -176,9 +176,9 @@ const App = () => (
                 <Route path="/base-cientifica" element={<PatientGuard><BaseCientifica /></PatientGuard>} />
 
                 {/* Patient Portal */}
-                <Route path="/paciente/login" element={<PacienteLogin />} />
-                <Route path="/portal/:token" element={<PortalGate />} />
-                <Route path="/paciente/completar-cadastro" element={<CompletarCadastroPortal />} />
+                <Route path="/paciente/login" element={<PortalErrorBoundary><PacienteLogin /></PortalErrorBoundary>} />
+                <Route path="/portal/:token" element={<PortalErrorBoundary><PortalGate /></PortalErrorBoundary>} />
+                <Route path="/paciente/completar-cadastro" element={<PortalErrorBoundary><CompletarCadastroPortal /></PortalErrorBoundary>} />
                 <Route path="/paciente/dashboard" element={<ProtectedPatientRoute><PacienteDashboard /></ProtectedPatientRoute>} />
                 <Route path="/paciente/diario" element={<ProtectedPatientRoute><PacienteDiario /></ProtectedPatientRoute>} />
                 <Route path="/paciente/evolucao" element={<ProtectedPatientRoute><PacienteEvolucao /></ProtectedPatientRoute>} />
