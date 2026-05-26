@@ -752,6 +752,16 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {propostaProtocolo && (
+        <PropostaTratamentoDialog
+          open={!!propostaProtocolo}
+          onOpenChange={(o) => !o && setPropostaProtocolo(null)}
+          protocolo={propostaProtocolo}
+          pacienteId={pacienteId}
+          pacienteNome={pacienteNome}
+        />
+      )}
     </div>
   );
 }
