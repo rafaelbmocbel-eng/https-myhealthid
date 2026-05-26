@@ -213,10 +213,10 @@ export default function GlobalSearch() {
   const hasAnyResult =
     patients.length > 1 ||
     eventos.length > 0 ||
-    agendamentos.length > 1 ||
+    agendamentos.length > 0 ||
     grouped.Páginas.length > 0 ||
-    grouped.CRM.length > 1 ||
-    grouped.Configurações.length > 1 ||
+    grouped.CRM.length > 0 ||
+    grouped.Configurações.length > 0 ||
     grouped.Ações.length > 1;
 
   return (
