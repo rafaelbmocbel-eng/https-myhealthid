@@ -548,13 +548,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                               {categoriaLabel[missao.categoria]}
                             </span>
                             <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5 ml-auto">
-                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} XP
+                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} pts
                             </Badge>
                           </div>
                           <p className="text-[10px] text-muted-foreground mb-0.5">{missao.descricao}</p>
                           <p className={cn("text-[10px] font-medium", isDone ? 'text-emerald-600' : 'text-foreground/70')}>
-                            {isDone ? '✅ Missão concluída!' : `👉 ${missao.acaoImediata}`}
+                            {isDone ? '✅ Feito hoje!' : `👉 ${missao.acaoImediata}`}
                           </p>
+
                         </div>
                       </div>
                     </CardContent>
