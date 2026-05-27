@@ -337,10 +337,10 @@ export default function MyIDFingerprint({
           <text x={110} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Ótimo</text>
           <text x={235} y={38} fontSize="13" fill="hsl(var(--muted-foreground))" fontWeight="600">Crítico</text>
 
-          <circle cx={310} cy={9} r={7} fill="hsl(0, 85%, 50%)" opacity={0.75} />
-          <text x={322} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Demanda</text>
-          <circle cx={430} cy={9} r={7} fill="hsl(210, 75%, 55%)" opacity={0.75} />
-          <text x={442} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Capacidade</text>
+          <circle cx={310} cy={9} r={7} fill="hsl(210, 75%, 55%)" opacity={0.75} />
+          <text x={322} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Dentro: Capacidade</text>
+          <circle cx={530} cy={9} r={7} fill="hsl(0, 85%, 50%)" opacity={0.75} />
+          <text x={542} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Fora: Demanda</text>
         </g>
       </svg>
 
