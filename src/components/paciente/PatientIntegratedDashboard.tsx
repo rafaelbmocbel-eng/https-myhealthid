@@ -6,11 +6,13 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award, Clock
+  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
@@ -412,188 +414,206 @@ export default function PatientIntegratedDashboard({
         </div>
       ) : (
         <>
-          {/* MyID Fingerprint + Score */}
-          <Card className="overflow-hidden border-0 shadow-xl bg-gradient-to-br from-card via-card to-violet-50/40 dark:to-violet-950/20 mb-6">
-            <CardContent className="p-6">
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-6 mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 flex items-center justify-center rounded-2xl bg-violet-600 shadow-lg shadow-violet-200 dark:shadow-none shrink-0">
-                    <Fingerprint className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h3 className="font-black text-xl text-foreground leading-tight">Painel de Impacto MyID</h3>
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">Sua Biologia em Tempo Real</p>
-                  </div>
-                </div>
+          {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
+          <Tabs defaultValue="diagnostico" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 h-11 p-1 rounded-xl bg-muted/60">
+              <TabsTrigger value="diagnostico" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Fingerprint className="icon-sm" />
+                Meu MyID
+              </TabsTrigger>
+              <TabsTrigger value="jornada" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Rocket className="icon-sm" />
+                Minha Jornada
+              </TabsTrigger>
+            </TabsList>
 
-                <div className="flex flex-col items-start md:items-end gap-1">
-                  <Badge variant="outline" className={cn("text-[10px] font-black px-2 py-0.5 border-current", severityClass)}>{classificacao}</Badge>
-                  <span className="text-[10px] text-muted-foreground font-bold leading-tight uppercase tracking-wide">Estado de Saúde Atual</span>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-8">
-                {/* Fingerprint — Mapa Principal */}
-                <div className="relative group p-4 bg-white/30 dark:bg-black/10 rounded-3xl border border-white/50 dark:border-white/5 backdrop-blur-sm">
-                  <div className="absolute top-4 left-4 p-2 bg-white/80 dark:bg-black/50 rounded-lg shadow-sm z-10">
-                    <Sparkles className="h-3 w-3 text-violet-600 animate-pulse" />
+            {/* ─────────── ABA 1: DIAGNÓSTICO (calmo, claro, único) ─────────── */}
+            <TabsContent value="diagnostico" className="mt-5 space-y-5 focus-visible:outline-none">
+              {/* Hero clean: Fingerprint + score */}
+              <Card className="rounded-xl border-border/40 shadow-xs overflow-hidden">
+                <CardContent className="p-5 sm:p-6">
+                  <div className="flex items-start justify-between gap-3 mb-5">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">Sua identidade de saúde</p>
+                      <h3 className="h-section text-foreground">MyID</h3>
+                    </div>
+                    <Badge variant="outline" className={cn("text-[11px] font-semibold px-2.5 py-1 border-current", severityClass)}>
+                      {classificacao}
+                    </Badge>
                   </div>
+
                   <MyIDFingerprint
                     rings={rings}
                     myidScore={myidScore}
                     highlightedKey={hoveredScoreKey}
                     onRingHover={setHoveredScoreKey}
                   />
-                  <div className="mt-4 text-center">
-                    <p className="text-[10px] text-muted-foreground font-medium italic">Passe o mouse nos anéis para detalhar cada índice</p>
+
+                  {/* Resumo humano de 2 linhas */}
+                  {insights && (
+                    <p className="mt-5 text-center text-sm text-foreground/80 leading-relaxed max-w-md mx-auto">
+                      Sua maior oportunidade agora é <span className="font-semibold text-emerald-700 dark:text-emerald-400">{insights.opportunity.label.toLowerCase()}</span>.
+                      O ponto que mais merece atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>.
+                    </p>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* 3 cards de leitura simples — semáforo */}
+              {insights && (
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                  <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">Oportunidade</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{insights.opportunity.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insights.opportunity.mission}</p>
+                  </div>
+
+                  <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className="h-2 w-2 rounded-full bg-amber-500" />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">Atenção</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{insights.limitation.label}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Vamos cuidar disso com calma, no seu ritmo.</p>
+                  </div>
+
+                  <div className={cn(
+                    "rounded-xl border p-4",
+                    redFlagsDetected ? "border-destructive/30 bg-destructive/5" : "border-border/40 bg-muted/30"
+                  )}>
+                    <div className="flex items-center gap-2 mb-2">
+                      <span className={cn("h-2 w-2 rounded-full", redFlagsDetected ? "bg-destructive" : "bg-muted-foreground/40")} />
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Classificação</span>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{label || classificacao}</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                      {redFlagsDetected ? 'Sinais de alerta — converse com seu profissional.' : 'Continue com seu plano de cuidado.'}
+                    </p>
                   </div>
                 </div>
+              )}
 
-                <div className="space-y-5">
-                  {insights && (
-                    <>
-                      <div className="bg-emerald-500/5 dark:bg-emerald-500/10 border border-emerald-500/20 p-3 rounded-2xl group transition-all hover:bg-emerald-500/10 duration-300">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-emerald-500/20 text-emerald-600 shrink-0">
-                            <TrendingUp className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] font-black text-emerald-700 dark:text-emerald-400 uppercase tracking-widest opacity-80">Maior Oportunidade</span>
-                            <h4 className="font-bold text-sm text-emerald-950 dark:text-emerald-100 truncate">{insights.opportunity.label}</h4>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="bg-amber-500/5 dark:bg-amber-500/10 border border-amber-500/20 p-3 rounded-2xl group transition-all hover:bg-amber-500/10 duration-300">
-                        <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 flex items-center justify-center rounded-xl bg-amber-500/20 text-amber-600 shrink-0">
-                            <AlertTriangle className="h-4 w-4" />
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <span className="text-[9px] font-black text-amber-700 dark:text-amber-400 uppercase tracking-widest opacity-80">Ponto de Atenção</span>
-                            <h4 className="font-bold text-sm text-amber-950 dark:text-amber-100 truncate">{insights.limitation.label}</h4>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="p-6 bg-muted/30 dark:bg-muted/10 rounded-[2rem] border border-border/50 backdrop-blur-sm relative overflow-hidden group">
-                        <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:rotate-12 transition-transform duration-500">
-                          <Award className="h-12 w-12" />
-                        </div>
-                        <div className="flex items-center gap-3 mb-4 relative z-10">
-                          <Award className="h-5 w-5 text-primary" />
-                          <h5 className="text-[11px] font-black uppercase tracking-[0.15em] text-foreground">Bio-ConquistasAtivas</h5>
-                        </div>
-                        <div className="flex flex-wrap gap-2.5 relative z-10">
-                          {scores && (
-                            <>
-                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.HID > 7 ? "bg-blue-100 text-blue-700 border-blue-200 shadow-sm shadow-blue-100" : "opacity-20 grayscale cursor-not-allowed")}>
-                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Hidratado
-                              </Badge>
-                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.R > 7 ? "bg-violet-100 text-violet-700 border-violet-200 shadow-sm shadow-violet-100" : "opacity-20 grayscale cursor-not-allowed")}>
-                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Sono VIP
-                              </Badge>
-                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.AF > 6 ? "bg-emerald-100 text-emerald-700 border-emerald-200 shadow-sm shadow-emerald-100" : "opacity-20 grayscale cursor-not-allowed")}>
-                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Ativo
-                              </Badge>
-                              <Badge variant="secondary" className={cn("rounded-full border-2 px-3 py-1 gap-2 transition-all duration-500 hover:scale-105", scores.P < 4 ? "bg-orange-100 text-orange-700 border-orange-200 shadow-sm shadow-orange-100" : "opacity-20 grayscale cursor-not-allowed")}>
-                                <div className="h-1.5 w-1.5 rounded-full bg-current animate-pulse" /> Equilíbrio
-                              </Badge>
-                            </>
-                          )}
-                        </div>
-                      </div>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              {/* Detalhamento da Fórmula MyID (Demand vs Capacity) */}
-              <div className="mt-10 pt-6 border-t border-violet-100 dark:border-violet-900/30">
-                <MyIDFormulaDisplay
-                  scores={scores!}
-                  myidScore={myidScore}
-                  highlightedKey={hoveredScoreKey}
-                  hasRedFlags={redFlagsDetected}
-                  hideGauge
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Missões de Saúde — imediatamente após o gráfico MyID para explicar o que melhorar */}
-          <div className="mb-10">
-            <PacienteMetasDesafios pacienteId={pacienteId} />
-          </div>
-
-
-          {/* ─── ZONAS DE PODER (Agrupamento Didático) ─── */}
-          <div className="mb-10 lg:px-2">
-            <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-6">
-              <div>
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="h-1.5 w-1.5 rounded-full bg-primary" />
-                  <h4 className="font-black text-sm uppercase tracking-widest text-foreground">Sua Zonas de Poder</h4>
-                </div>
-                <p className="text-xs text-muted-foreground">O potencial de saúde em cada área da sua vida</p>
-              </div>
-
-              <div className="flex items-center gap-4 bg-muted/40 p-2 px-3 rounded-lg border border-border/50">
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500" />
-                  <span className="text-[10px] font-bold uppercase tracking-tighter">Oportunidade</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-amber-500" />
-                  <span className="text-[10px] font-bold uppercase tracking-tighter">Atenção</span>
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <div className="h-2 w-2 rounded-full bg-red-500" />
-                  <span className="text-[10px] font-bold uppercase tracking-tighter">Alavanca</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {powerZones.map((zone) => (
-                <Card key={zone.id} className="overflow-hidden group hover:shadow-sm transition-all border-border/40">
-                  <CardContent className="p-2.5">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className={cn("p-1.5 rounded-lg transition-colors", zone.color.replace('text-', 'bg-').replace('600', '100'), `dark:${zone.color.replace('text-', 'bg-').replace('600', '900/30')}`)}>
-                        <zone.icon className={cn("h-3 w-3", zone.color)} />
-                      </div>
-                      <span className={cn("text-sm font-black", zone.color)}>{zone.level.toFixed(0)}%</span>
+              {/* Detalhes técnicos colapsados — não invadem a leitura */}
+              <Accordion type="single" collapsible className="border border-border/40 rounded-xl bg-card">
+                <AccordionItem value="formula" className="border-b-0">
+                  <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Brain className="icon-sm text-muted-foreground" />
+                      Como meu score é calculado?
                     </div>
-
-                    <h5 className="font-bold text-[11px] leading-tight mb-1">{zone.title}</h5>
-
-                    <Progress value={zone.level} className="h-1 mb-1.5" />
-
-                    <div className="flex flex-wrap gap-0.5">
-                      {zone.factors.map(f => (
-                        <span key={f} className="text-[7px] font-semibold px-1 py-px bg-muted rounded text-muted-foreground">
-                          {f}
-                        </span>
-                      ))}
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    {scores && (
+                      <MyIDFormulaDisplay
+                        scores={scores}
+                        myidScore={myidScore}
+                        highlightedKey={hoveredScoreKey}
+                        hasRedFlags={redFlagsDetected}
+                        hideGauge
+                      />
+                    )}
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="alertas" className="border-t border-border/40 border-b-0">
+                  <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
+                    <div className="flex items-center gap-2">
+                      <Activity className="icon-sm text-muted-foreground" />
+                      Perfil clínico detalhado
                     </div>
-                  </CardContent>
-                </Card>
-              ))}
-            </div>
-          </div>
+                  </AccordionTrigger>
+                  <AccordionContent className="px-4 pb-4">
+                    <ProtocoloScores scores={scores} />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+            </TabsContent>
 
-          {/* Dicas e Missões movidas para gamificação (PacienteMetasDesafios) */}
+            {/* ─────────── ABA 2: JORNADA (energia, leve, motivacional) ─────────── */}
+            <TabsContent value="jornada" className="mt-5 space-y-5 focus-visible:outline-none">
+              {/* Missões da semana */}
+              <PacienteMetasDesafios pacienteId={pacienteId} />
 
-          {/* Alertas Clínicos e Perfil (Substituindo Evolução) */}
-          <div className="mt-8 mb-10">
-            <div className="flex items-center gap-2 mb-4 px-2">
-              <div className="h-2 w-2 rounded-full bg-primary" />
-              <h4 className="font-black text-sm uppercase tracking-widest text-foreground">Alertas Clínicos e Perfil de Saúde</h4>
-            </div>
-            <ProtocoloScores scores={scores} />
-          </div>
+              {/* Bio-Conquistas */}
+              <Card className="rounded-xl border-border/40 shadow-xs">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Award className="icon-sm text-primary" />
+                    <h4 className="h-card">Bio-Conquistas</h4>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {scores && (
+                      <>
+                        <Badge variant="secondary" className={cn(
+                          "rounded-full px-3 py-1 gap-2 transition-opacity",
+                          scores.HID > 7 ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" : "opacity-30"
+                        )}>
+                          💧 Hidratado
+                        </Badge>
+                        <Badge variant="secondary" className={cn(
+                          "rounded-full px-3 py-1 gap-2 transition-opacity",
+                          scores.R > 7 ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "opacity-30"
+                        )}>
+                          🌙 Sono VIP
+                        </Badge>
+                        <Badge variant="secondary" className={cn(
+                          "rounded-full px-3 py-1 gap-2 transition-opacity",
+                          scores.AF > 6 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "opacity-30"
+                        )}>
+                          🏃 Ativo
+                        </Badge>
+                        <Badge variant="secondary" className={cn(
+                          "rounded-full px-3 py-1 gap-2 transition-opacity",
+                          scores.P < 4 ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" : "opacity-30"
+                        )}>
+                          🧘 Equilíbrio
+                        </Badge>
+                      </>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3">
+                    Desbloqueie novas conquistas mantendo bons hábitos.
+                  </p>
+                </CardContent>
+              </Card>
+
+              {/* Zonas de Poder */}
+              <Card className="rounded-xl border-border/40 shadow-xs">
+                <CardContent className="p-5">
+                  <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
+                    <div>
+                      <h4 className="h-card">Zonas de Poder</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">Seu potencial em cada área da vida</p>
+                    </div>
+                    <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Forte</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Médio</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Foco</span>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {powerZones.map((zone) => (
+                      <div key={zone.id} className="rounded-lg border border-border/40 p-3 bg-card">
+                        <div className="flex items-center gap-2 mb-2">
+                          <zone.icon className={cn("icon-sm", zone.color)} />
+                          <span className={cn("text-sm font-bold", zone.color)}>{zone.level.toFixed(0)}%</span>
+                        </div>
+                        <h5 className="font-semibold text-xs leading-tight mb-2 text-foreground">{zone.title}</h5>
+                        <Progress value={zone.level} className="h-1 mb-2" />
+                        <p className="text-[10px] text-muted-foreground leading-relaxed">{zone.description}</p>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          </Tabs>
         </>
       )}
+
 
       {/* Avaliação Estrutural (Unidades ID) removida do portal do paciente. */}
 
