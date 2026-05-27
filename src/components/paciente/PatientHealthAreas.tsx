@@ -49,22 +49,22 @@ export default function PatientHealthAreas({ scores }: Props) {
           <h4 className="text-sm font-semibold text-foreground mb-3">
             O que mais está pesando hoje
           </h4>
-          <div className="space-y-2">
+          <div className="space-y-1.5">
             {precisam.map(r => (
-              <div key={r.key} className="rounded-xl border border-border/40 bg-card p-3">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-base">{r.status.emoji}</span>
-                      <span className="text-sm font-semibold text-foreground">{r.label}</span>
+              <div key={r.key} className="rounded-lg border border-border/40 bg-card px-3 py-2">
+                <div className="flex items-center justify-between gap-2 mb-1.5">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-sm shrink-0">{r.status.emoji}</span>
+                    <div className="min-w-0">
+                      <span className="text-[13px] font-semibold text-foreground block truncate leading-tight">{r.label}</span>
+                      <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">{r.hint}</p>
                     </div>
-                    <p className="text-[11px] text-muted-foreground mt-0.5 ml-7">{r.hint}</p>
                   </div>
                   <span className={`text-[10px] font-bold whitespace-nowrap ${r.status.color}`}>
                     {r.status.label}
                   </span>
                 </div>
-                <div className="ml-7 h-1.5 bg-muted/60 rounded-full overflow-hidden">
+                <div className="h-1 bg-muted/60 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${r.status.bar} transition-all`}
                     style={{ width: `${Math.min(100, (r.loss / 15) * 100)}%` }}
