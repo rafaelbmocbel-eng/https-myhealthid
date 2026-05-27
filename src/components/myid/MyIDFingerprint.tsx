@@ -351,6 +351,42 @@ export default function MyIDFingerprint({
 
         </g>
       </svg>
+
+      {/* ── Painel explicativo do anel ativo ── */}
+      {!compact && (() => {
+        const idx = activeIdx;
+        const ridge = idx !== null && idx >= 0 && idx < ridgeData.length ? ridgeData[idx] : null;
+        const info = ridge ? RING_DESCRIPTIONS[ridge.scoreKey] : null;
+        return (
+          <div className="mt-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-4 sm:p-5 shadow-xs min-h-[140px] transition-all">
+            {ridge && info ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: ridge.computedColor }} />
+                  <h4 className="text-sm font-bold tracking-wide" style={{ color: ridge.computedColor }}>
+                    {info.title}
+                  </h4>
+                  <span className="ml-auto text-xs font-semibold text-muted-foreground">
+                    {ridge.value.toFixed(1)} / 10
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {info.components.map((c) => (
+                    <span key={c} className="text-[11px] px-2 py-1 rounded-md bg-muted/60 text-foreground/80 border border-border/30">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                Toque ou passe o mouse sobre um anel para ver o que ele representa e quais fatores o compõem.
+              </p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
