@@ -281,9 +281,10 @@ export default function MyIDFingerprint({
           const isRevealed = revealProgress > ridgeIdx;
           if (!isRevealed) return null;
 
-          const labelAngleDeg = ridge.startAngle + ridge.filledSweep + 8;
+          // Posiciona o rótulo no MEIO do arco preenchido (alinhado ao marcador)
+          const labelAngleDeg = ridge.startAngle + ridge.filledSweep / 2;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + 4;
+          const labelDist = ridge.rx + ridge.strokeWidth / 2 + 14;
           const lx = cx + labelDist * Math.cos(labelRad);
           const ly = cy + labelDist * Math.sin(labelRad);
 
