@@ -251,27 +251,16 @@ export default function MyIDFingerprint({
               })}
 
               {/* Filled arc */}
-              {segments.map((seg, si) => {
-                const segStart = seg.start - ridge.startAngle;
-                const fillEnd = ridge.filledSweep;
-                if (segStart >= fillEnd) return null;
-                const filledPortion = Math.min(seg.sweep, fillEnd - segStart);
-                if (filledPortion < 1) return null;
-                // Garantir comprimento mínimo do arco > espessura do traço para evitar
-                // que o linecap arredondado vire um "toco" vertical sem curvatura.
-                const arcLengthDeg = (ridge.strokeWidth / ridge.rx) * (180 / Math.PI) * 1.2;
-                const minSweep = Math.max(arcLengthDeg, 4);
-                const drawSweep = Math.max(filledPortion, minSweep);
-                const useRoundCap = filledPortion >= minSweep;
-                const path = arcPath(ridge.rx, ridge.ry, seg.start, drawSweep);
+              {(() => {
+                const path = arcPath(ridge.rx, ridge.ry, ridge.startAngle, Math.min(ridge.filledSweep, ridge.availableSweep));
                 if (!path) return null;
-                return <path key={`fill-${si}`} d={path} fill="none" stroke={ridge.computedColor}
+                return <path d={path} fill="none" stroke={ridge.computedColor}
                   strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth}
-                  strokeLinecap={useRoundCap ? 'round' : 'butt'}
+                  strokeLinecap="round"
                   opacity={isActive ? 1 : ridge.computedOpacity}
                   filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                   style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
-              })}
+              })()}
             </g>
           );
         })}
