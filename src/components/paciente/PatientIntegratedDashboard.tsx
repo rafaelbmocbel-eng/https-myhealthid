@@ -533,28 +533,9 @@ export default function PatientIntegratedDashboard({
                 </div>
               )}
 
-              {/* Detalhes técnicos colapsados — não invadem a leitura */}
+              {/* Detalhes da avaliação */}
               <Accordion type="single" collapsible className="border border-border/40 rounded-xl bg-card">
-                <AccordionItem value="formula" className="border-b-0">
-                  <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <Brain className="icon-sm text-muted-foreground" />
-                      Como minha nota é calculada?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    {scores && (
-                      <MyIDFormulaDisplay
-                        scores={scores}
-                        myidScore={myidScore}
-                        highlightedKey={hoveredScoreKey}
-                        hasRedFlags={redFlagsDetected}
-                        hideGauge
-                      />
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="alertas" className="border-t border-border/40 border-b-0">
+                <AccordionItem value="alertas" className="border-b-0">
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Activity className="icon-sm text-muted-foreground" />
