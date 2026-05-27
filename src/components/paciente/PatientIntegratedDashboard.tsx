@@ -567,7 +567,7 @@ export default function PatientIntegratedDashboard({
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Award className="icon-sm text-primary" />
-                    <h4 className="h-card">Bio-Conquistas</h4>
+                    <h4 className="h-card">Suas conquistas</h4>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {scores && (
@@ -582,7 +582,7 @@ export default function PatientIntegratedDashboard({
                           "rounded-full px-3 py-1 gap-2 transition-opacity",
                           scores.R > 7 ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "opacity-30"
                         )}>
-                          🌙 Sono VIP
+                          🌙 Sono em dia
                         </Badge>
                         <Badge variant="secondary" className={cn(
                           "rounded-full px-3 py-1 gap-2 transition-opacity",
@@ -600,23 +600,23 @@ export default function PatientIntegratedDashboard({
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">
-                    Desbloqueie novas conquistas mantendo bons hábitos.
+                    Cuide dos seus hábitos pra desbloquear mais.
                   </p>
                 </CardContent>
               </Card>
 
-              {/* Zonas de Poder */}
+              {/* Áreas da sua saúde */}
               <Card className="rounded-xl border-border/40 shadow-xs">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                     <div>
-                      <h4 className="h-card">Zonas de Poder</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">Seu potencial em cada área da vida</p>
+                      <h4 className="h-card">Áreas da sua saúde</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">Como cada parte da sua vida está hoje</p>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Forte</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Médio</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Foco</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />OK</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Atenção</span>
                     </div>
                   </div>
 
