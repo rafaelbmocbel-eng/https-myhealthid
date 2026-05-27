@@ -27,9 +27,18 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 const FULL_LABELS: Record<string, string> = {
-  D: 'Dor', EFI: 'Eficiência', P: 'Psicossocial', I: 'Incapacidade',
-  R: 'Regulação', C: 'Cinesiofobia', AF: 'Ativ. Física', HID: 'Hidratação',
-  NUT: 'Nutrição', ERG: 'Ergonomia', N: 'Neurológico', MED: 'Medicação',
+  D: 'Dor',
+  EFI: 'Suas atividades do dia',
+  P: 'Cabeça e emoções',
+  I: 'Mudanças recentes',
+  R: 'Sono e energia',
+  C: 'Vida pessoal',
+  AF: 'Movimento',
+  HID: 'Hidratação',
+  NUT: 'Alimentação',
+  ERG: 'Postura no dia',
+  N: 'Sinais do corpo',
+  MED: 'Medicação',
 };
 
 export default function MyIDFingerprint({
