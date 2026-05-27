@@ -41,6 +41,21 @@ const FULL_LABELS: Record<string, string> = {
   MED: 'Medicação',
 };
 
+const RING_DESCRIPTIONS: Record<string, { title: string; summary: string; components: string[] }> = {
+  D:   { title: 'Dor (D)', summary: 'Intensidade e características da dor relatada.', components: ['Intensidade atual', 'Pior intensidade', 'Melhor dia', 'Tipo de dor (pontada, queimação, peso…)', 'Regiões afetadas'] },
+  EFI: { title: 'Atividades do dia (EFI)', summary: 'Impacto funcional nas tarefas diárias.', components: ['Trabalho', 'Tarefas domésticas', 'Exercício', 'Independência', 'Vida social'] },
+  P:   { title: 'Cabeça e emoções (P)', summary: 'Crenças e respostas psicológicas frente à dor.', components: ['Medo de movimento', 'Catastrofização', 'Evitação', 'Autoeficácia', 'Expectativa de recuperação'] },
+  I:   { title: 'Mudanças recentes (I)', summary: 'Gatilhos e mudanças que antecederam o quadro.', components: ['Novos equipamentos', 'Aumento de carga', 'Mudança de postura', 'Sustos físicos', 'Data de início'] },
+  R:   { title: 'Sono e energia (R)', summary: 'Regulação neurovegetativa: descanso e recuperação.', components: ['Qualidade do sono', 'Horas de sono', 'Despertar por dor', 'Fadiga', 'Exaustão ao acordar', 'Estresse e ansiedade'] },
+  C:   { title: 'Vida pessoal (C)', summary: 'Contexto social, familiar e financeiro.', components: ['Trabalho estressante', 'Conflitos familiares', 'Preocupação financeira'] },
+  AF:  { title: 'Movimento (AF)', summary: 'Nível de atividade física no dia a dia.', components: ['Horas sentado', 'Estilo de vida', 'Tipos de exercício', 'Intensidade'] },
+  HID: { title: 'Hidratação (HID)', summary: 'Estado de hidratação corporal.', components: ['Litros de água/dia', 'Cor da urina', 'Frequência miccional', 'Sintomas de desidratação'] },
+  NUT: { title: 'Alimentação (NUT)', summary: 'Qualidade nutricional e padrão alimentar.', components: ['Qualidade da dieta', 'Frutas e vegetais', 'Proteína', 'Alimentos inflamatórios', 'Deficiências'] },
+  ERG: { title: 'Postura no dia (ERG)', summary: 'Ergonomia e hábitos posturais.', components: ['Workspace', 'Tempo sentado contínuo', 'Posição de dormir', 'Colchão', 'Hábitos posturais ruins'] },
+  N:   { title: 'Sinais do corpo (N)', summary: 'Ruído sistêmico: sinais viscerais e autonômicos.', components: ['Trauma axial', 'Cicatrizes abdominais', 'Sintomas viscerais', 'Sinais autonômicos', 'Saúde hormonal'] },
+  MED: { title: 'Medicação (MED)', summary: 'Uso de medicações relevantes para o quadro.', components: ['AINE diário', 'Antidepressivo', 'Relaxante muscular', 'Suplementação', 'Corticoide'] },
+};
+
 export default function MyIDFingerprint({
   rings, myidScore, className = '', onRingClick, onRingHover,
   highlightedKey, hasRedFlags = false, compact = false,
@@ -265,58 +280,48 @@ export default function MyIDFingerprint({
           );
         })}
 
-        {/* ── Labels layer (rendered ABOVE all arcs) ── */}
-        {!compact && ridgeData.map((ridge, ridgeIdx) => {
+        {/* ── Siglas INSIDE rings (rotated along tangent) ── */}
+        {ridgeData.map((ridge, ridgeIdx) => {
           const isActive = activeIdx === ridgeIdx;
           const isRevealed = revealProgress > ridgeIdx;
           if (!isRevealed) return null;
 
-          // Posiciona o rótulo no MEIO do arco preenchido (alinhado ao marcador)
+          const sigla = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          // Need enough arc length to fit the sigla
+          const arcLen = (Math.min(ridge.filledSweep, ridge.availableSweep) * Math.PI * ridge.rx) / 180;
+          const fontSize = Math.max(Math.min(ridge.strokeWidth * 0.55, 18), 10);
+          const needed = sigla.length * fontSize * 0.62;
+          if (arcLen < needed + 6) return null;
+
           const labelAngleDeg = ridge.startAngle + ridge.filledSweep / 2;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + ridge.strokeWidth / 2 + 14;
-          const lx = cx + labelDist * Math.cos(labelRad);
-          const ly = cy + labelDist * Math.sin(labelRad);
+          const lx = cx + ridge.rx * Math.cos(labelRad);
+          const ly = cy + ridge.rx * Math.sin(labelRad);
+          const rot = labelAngleDeg + 90;
 
           return (
             <text
-              key={`lbl-${ridge.scoreKey}`}
+              key={`sig-${ridge.scoreKey}`}
               x={lx} y={ly}
-              textAnchor="start"
-              fontSize="18"
-              fontWeight="800"
-              fill={ridge.computedColor}
-              opacity={isActive ? 1 : 0.7}
+              textAnchor="middle"
               dominantBaseline="central"
-              letterSpacing="0.8"
-              filter="url(#fp-label-shadow)"
-              style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
+              fontSize={fontSize}
+              fontWeight="900"
+              fill="white"
+              stroke={ridge.computedColor}
+              strokeWidth="0.8"
+              paintOrder="stroke"
+              letterSpacing="0.5"
+              opacity={isActive ? 1 : 0.95}
+              transform={`rotate(${rot}, ${lx}, ${ly})`}
+              style={{ pointerEvents: 'none', transition: 'opacity 0.3s ease' }}
             >
-              {SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey}
+              {sigla}
             </text>
           );
         })}
 
-        {/* ── Tooltips layer (rendered on top of everything) ── */}
-        {activeIdx !== null && activeIdx >= 0 && activeIdx < ridgeData.length && (() => {
-          const ridge = ridgeData[activeIdx];
-          const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
-          const tipRad = (tipAngleDeg * Math.PI) / 180;
-          const dist = ridge.rx + 72;
-          const tx = cx + dist * Math.cos(tipRad);
-          const ty = cy + dist * Math.sin(tipRad);
-          const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
-          const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
-          const textWidth = displayText.length * 12 + 40;
-          return (
-            <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx - textWidth / 2} y={ty - 26} width={textWidth} height={52} rx={14}
-                fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2.5" />
-              <text x={tx} y={ty + 1} textAnchor="middle" fontSize="21" fontWeight="800"
-                fill="white" letterSpacing="0.4" dominantBaseline="central">{displayText}</text>
-            </g>
-          );
-        })()}
+
 
         {/* Red flags pulse */}
         {hasRedFlags && (
@@ -346,6 +351,42 @@ export default function MyIDFingerprint({
 
         </g>
       </svg>
+
+      {/* ── Painel explicativo do anel ativo ── */}
+      {!compact && (() => {
+        const idx = activeIdx;
+        const ridge = idx !== null && idx >= 0 && idx < ridgeData.length ? ridgeData[idx] : null;
+        const info = ridge ? RING_DESCRIPTIONS[ridge.scoreKey] : null;
+        return (
+          <div className="mt-3 rounded-xl border border-border/40 bg-card/60 backdrop-blur-sm p-4 sm:p-5 shadow-xs min-h-[140px] transition-all">
+            {ridge && info ? (
+              <>
+                <div className="flex items-center gap-2 mb-2">
+                  <span className="inline-block w-3 h-3 rounded-full shrink-0" style={{ background: ridge.computedColor }} />
+                  <h4 className="text-sm font-bold tracking-wide" style={{ color: ridge.computedColor }}>
+                    {info.title}
+                  </h4>
+                  <span className="ml-auto text-xs font-semibold text-muted-foreground">
+                    {ridge.value.toFixed(1)} / 10
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {info.components.map((c) => (
+                    <span key={c} className="text-[11px] px-2 py-1 rounded-md bg-muted/60 text-foreground/80 border border-border/30">
+                      {c}
+                    </span>
+                  ))}
+                </div>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground text-center py-6">
+                Toque ou passe o mouse sobre um anel para ver o que ele representa e quais fatores o compõem.
+              </p>
+            )}
+          </div>
+        );
+      })()}
     </div>
   );
 }
