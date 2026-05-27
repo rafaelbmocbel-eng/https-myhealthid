@@ -256,10 +256,17 @@ export default function MyIDFingerprint({
                 if (segStart >= fillEnd) return null;
                 const filledPortion = Math.min(seg.sweep, fillEnd - segStart);
                 if (filledPortion < 1) return null;
-                const path = arcPath(ridge.rx, ridge.ry, seg.start, filledPortion);
+                // Garantir comprimento mínimo do arco > espessura do traço para evitar
+                // que o linecap arredondado vire um "toco" vertical sem curvatura.
+                const arcLengthDeg = (ridge.strokeWidth / ridge.rx) * (180 / Math.PI) * 1.2;
+                const minSweep = Math.max(arcLengthDeg, 4);
+                const drawSweep = Math.max(filledPortion, minSweep);
+                const useRoundCap = filledPortion >= minSweep;
+                const path = arcPath(ridge.rx, ridge.ry, seg.start, drawSweep);
                 if (!path) return null;
                 return <path key={`fill-${si}`} d={path} fill="none" stroke={ridge.computedColor}
-                  strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth} strokeLinecap="round"
+                  strokeWidth={isActive ? ridge.strokeWidth + 6 : ridge.strokeWidth}
+                  strokeLinecap={useRoundCap ? 'round' : 'butt'}
                   opacity={isActive ? 1 : ridge.computedOpacity}
                   filter={isActive ? 'url(#fp-highlight-glow)' : ridge.value >= 7 ? 'url(#fp-glow-hi)' : ridge.value >= 4 ? 'url(#fp-glow-med)' : undefined}
                   style={{ transition: 'all 0.3s cubic-bezier(0.16, 1, 0.3, 1)' }} />;
@@ -274,9 +281,10 @@ export default function MyIDFingerprint({
           const isRevealed = revealProgress > ridgeIdx;
           if (!isRevealed) return null;
 
-          const labelAngleDeg = ridge.startAngle + ridge.filledSweep + 8;
+          // Posiciona o rótulo no MEIO do arco preenchido (alinhado ao marcador)
+          const labelAngleDeg = ridge.startAngle + ridge.filledSweep / 2;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + 4;
+          const labelDist = ridge.rx + ridge.strokeWidth / 2 + 14;
           const lx = cx + labelDist * Math.cos(labelRad);
           const ly = cy + labelDist * Math.sin(labelRad);
 
