@@ -280,58 +280,48 @@ export default function MyIDFingerprint({
           );
         })}
 
-        {/* ── Labels layer (rendered ABOVE all arcs) ── */}
-        {!compact && ridgeData.map((ridge, ridgeIdx) => {
+        {/* ── Siglas INSIDE rings (rotated along tangent) ── */}
+        {ridgeData.map((ridge, ridgeIdx) => {
           const isActive = activeIdx === ridgeIdx;
           const isRevealed = revealProgress > ridgeIdx;
           if (!isRevealed) return null;
 
-          // Posiciona o rótulo no MEIO do arco preenchido (alinhado ao marcador)
+          const sigla = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          // Need enough arc length to fit the sigla
+          const arcLen = (Math.min(ridge.filledSweep, ridge.availableSweep) * Math.PI * ridge.rx) / 180;
+          const fontSize = Math.max(Math.min(ridge.strokeWidth * 0.55, 18), 10);
+          const needed = sigla.length * fontSize * 0.62;
+          if (arcLen < needed + 6) return null;
+
           const labelAngleDeg = ridge.startAngle + ridge.filledSweep / 2;
           const labelRad = (labelAngleDeg * Math.PI) / 180;
-          const labelDist = ridge.rx + ridge.strokeWidth / 2 + 14;
-          const lx = cx + labelDist * Math.cos(labelRad);
-          const ly = cy + labelDist * Math.sin(labelRad);
+          const lx = cx + ridge.rx * Math.cos(labelRad);
+          const ly = cy + ridge.rx * Math.sin(labelRad);
+          const rot = labelAngleDeg + 90;
 
           return (
             <text
-              key={`lbl-${ridge.scoreKey}`}
+              key={`sig-${ridge.scoreKey}`}
               x={lx} y={ly}
-              textAnchor="start"
-              fontSize="18"
-              fontWeight="800"
-              fill={ridge.computedColor}
-              opacity={isActive ? 1 : 0.7}
+              textAnchor="middle"
               dominantBaseline="central"
-              letterSpacing="0.8"
-              filter="url(#fp-label-shadow)"
-              style={{ transition: 'opacity 0.3s ease', pointerEvents: 'none' }}
+              fontSize={fontSize}
+              fontWeight="900"
+              fill="white"
+              stroke={ridge.computedColor}
+              strokeWidth="0.8"
+              paintOrder="stroke"
+              letterSpacing="0.5"
+              opacity={isActive ? 1 : 0.95}
+              transform={`rotate(${rot}, ${lx}, ${ly})`}
+              style={{ pointerEvents: 'none', transition: 'opacity 0.3s ease' }}
             >
-              {SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey}
+              {sigla}
             </text>
           );
         })}
 
-        {/* ── Tooltips layer (rendered on top of everything) ── */}
-        {activeIdx !== null && activeIdx >= 0 && activeIdx < ridgeData.length && (() => {
-          const ridge = ridgeData[activeIdx];
-          const tipAngleDeg = ridge.startAngle + ridge.availableSweep * 0.5;
-          const tipRad = (tipAngleDeg * Math.PI) / 180;
-          const dist = ridge.rx + 72;
-          const tx = cx + dist * Math.cos(tipRad);
-          const ty = cy + dist * Math.sin(tipRad);
-          const fullLabel = FULL_LABELS[ridge.scoreKey] || ridge.label;
-          const displayText = `${fullLabel}: ${ridge.value.toFixed(1)}`;
-          const textWidth = displayText.length * 12 + 40;
-          return (
-            <g style={{ pointerEvents: 'none' }}>
-              <rect x={tx - textWidth / 2} y={ty - 26} width={textWidth} height={52} rx={14}
-                fill={ridge.computedColor} opacity={0.94} stroke="white" strokeWidth="2.5" />
-              <text x={tx} y={ty + 1} textAnchor="middle" fontSize="21" fontWeight="800"
-                fill="white" letterSpacing="0.4" dominantBaseline="central">{displayText}</text>
-            </g>
-          );
-        })()}
+
 
         {/* Red flags pulse */}
         {hasRedFlags && (
