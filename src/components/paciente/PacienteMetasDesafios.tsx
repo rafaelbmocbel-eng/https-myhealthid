@@ -598,13 +598,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           >
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Seu Plano de Evolução</h2>
+              <h2 className="text-sm font-bold text-foreground">Seu caminho de recuperação</h2>
               {insights.driverInsight && (
                 <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold border-primary/20 text-primary">
-                  Foco: {insights.driverInsight.driverLabel}
+                  Foco principal
                 </Badge>
               )}
             </div>
+
             {showFases ? <ChevronUp className="icon-sm text-muted-foreground" /> : <ChevronDown className="icon-sm text-muted-foreground" />}
           </div>
 
