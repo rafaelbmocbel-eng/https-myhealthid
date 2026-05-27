@@ -94,6 +94,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
           { numero: 2, titulo: 'Carga Progressiva', objetivo: 'Reganhar força e mobilidade', semanas: '3-6', focos: ['Exercícios progressivos'] },
           { numero: 3, titulo: 'Retorno Funcional', objetivo: 'Voltar às atividades', semanas: '7-12', focos: ['Atividades específicas'] },
         ],
+        manutencao,
         pacote: { numeroSessoes, frequencia, duracao, valorSessao, desconto, formaPagamento },
         ctaTelefone: telefone || undefined,
         ctaMensagem: mensagem,
