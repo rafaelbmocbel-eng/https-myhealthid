@@ -341,8 +341,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
       const diasDiario = new Set(diarios.map(d => d.created_at.split('T')[0])).size;
       metasList.push({
-        id: 'diario-semanal', titulo: 'Diário Consistente',
-        descricao: 'Preencha o diário de saúde todos os dias esta semana',
+        id: 'diario-semanal', titulo: 'Anotar como me sinto',
+        descricao: 'Preencha o diário todos os dias desta semana',
         progresso: Math.min(100, (diasDiario / 7) * 100), meta: 7, atual: diasDiario,
         unidade: 'dias', icon: Heart, cor: 'text-rose-600', concluida: diasDiario >= 7, xpRecompensa: 50,
       });
@@ -350,21 +350,22 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const totalTreinosMeta = treinos.reduce((acc, t) => acc + parseInt(t.frequencia?.match(/\d+/)?.[0] || '3'), 0);
       const totalTreinosFeitos = execucoes.length;
       metasList.push({
-        id: 'treinos-semanal', titulo: 'Plano de Treino',
-        descricao: 'Complete todos os treinos prescritos esta semana',
+        id: 'treinos-semanal', titulo: 'Fazer meus exercícios',
+        descricao: 'Complete todos os exercícios da semana',
         progresso: totalTreinosMeta > 0 ? Math.min(100, (totalTreinosFeitos / totalTreinosMeta) * 100) : 0,
         meta: totalTreinosMeta || 3, atual: totalTreinosFeitos,
-        unidade: 'treinos', icon: Dumbbell, cor: 'text-blue-600',
+        unidade: 'exercícios', icon: Dumbbell, cor: 'text-blue-600',
         concluida: totalTreinosFeitos >= totalTreinosMeta && totalTreinosMeta > 0, xpRecompensa: 75,
       });
 
       metasList.push({
-        id: 'streak-5', titulo: 'Sequência de 5 Dias',
-        descricao: 'Mantenha 5 dias consecutivos de diário preenchido',
+        id: 'streak-5', titulo: '5 dias seguidos',
+        descricao: 'Preencha o diário por 5 dias sem parar',
         progresso: Math.min(100, (streakCount / 5) * 100), meta: 5, atual: streakCount,
-        unidade: 'dias seguidos', icon: Flame, cor: 'text-orange-600',
+        unidade: 'dias', icon: Flame, cor: 'text-orange-600',
         concluida: streakCount >= 5, xpRecompensa: 100,
       });
+
 
       setMetas(metasList);
       setLoading(false);
