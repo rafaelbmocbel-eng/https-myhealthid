@@ -468,11 +468,9 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           >
             <div className="flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Missões de Saúde</h2>
-              <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold border-primary/20 text-primary">
-                MyID
-              </Badge>
+              <h2 className="text-sm font-bold text-foreground">Seu plano de hoje</h2>
             </div>
+
             <div className="flex items-center gap-2">
               {missoesConcluidas > 0 && (
                 <span className="text-[10px] font-bold text-emerald-600">
