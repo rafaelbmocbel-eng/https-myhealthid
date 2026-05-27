@@ -91,7 +91,8 @@ export default function MyIDFingerprint({
       const color = ring.color || getThermalColor(ring.value);
       const opacity = 0.55 + (ring.value / 10) * 0.45;
       const openingAngle = Math.max(16 - i * 0.7, 3);
-      const startAngle = 90 + openingAngle;
+      const gapCenterAngle = 98 + ((i % 6) - 2.5) * 7;
+      const startAngle = gapCenterAngle + openingAngle;
       const availableSweep = 360 - openingAngle * 2;
       const filledSweep = availableSweep * Math.max(valuePct, 0.20);
 
@@ -245,7 +246,7 @@ export default function MyIDFingerprint({
                 const path = arcPath(ridge.rx, ridge.ry, seg.start, seg.sweep);
                 if (!path) return null;
                 return <path key={`bg-${si}`} d={path} fill="none" stroke={ridge.computedColor}
-                  strokeWidth={ridge.strokeWidth} strokeLinecap="round"
+                  strokeWidth={ridge.strokeWidth} strokeLinecap="butt"
                   opacity={0.09} style={{ transition: 'opacity 0.3s ease' }} />;
               })}
 
