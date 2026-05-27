@@ -691,7 +691,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                     </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 shrink-0">
+                <div className="flex items-center gap-1 shrink-0 flex-wrap justify-end">
                   {!isCobZero && (
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1" onClick={() => setViewingId(protocolo.id)}>
                       <Eye className="h-3 w-3" /> Ver
@@ -699,19 +699,9 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                   )}
                   {!isCobZero && (
                     <Button size="sm" variant="outline" className="h-7 text-xs gap-1"
-                      onClick={() => handleExportPDF(protocolo)} disabled={exportingId === protocolo.id}>
+                      onClick={() => handleExportPDF(protocolo)} disabled={exportingId === protocolo.id}
+                      title="PDF clínico">
                       {exportingId === protocolo.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                    </Button>
-                  )}
-                  {!isCobZero && (
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      className="h-7 text-xs gap-1 border-amber-300 bg-amber-50 text-amber-700 hover:bg-amber-100"
-                      onClick={() => setPropostaProtocolo(protocolo)}
-                      title="Gerar proposta comercial em PDF"
-                    >
-                      <Sparkles className="h-3 w-3" /> Proposta
                     </Button>
                   )}
                   {!isCobZero && (
@@ -727,6 +717,21 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
                   </Button>
                 </div>
               </div>
+
+              {!isCobZero && (
+                <div className="mt-3 pt-3 border-t border-amber-200/60">
+                  <Button
+                    onClick={() => setPropostaProtocolo(protocolo)}
+                    className="w-full h-11 gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-sm"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    Gerar Proposta Comercial (PDF)
+                  </Button>
+                  <p className="text-[10px] text-muted-foreground text-center mt-1.5">
+                    Envie esta diretriz ao paciente como proposta de tratamento
+                  </p>
+                </div>
+              )}
             </div>
           );
         })}
