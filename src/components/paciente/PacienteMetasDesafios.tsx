@@ -489,12 +489,13 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-bold text-white/90">
-                        {missoesConcluidas}/{missoesConcluiveis.length} missões do dia
+                        {missoesConcluidas} de {missoesConcluiveis.length} tarefas feitas hoje
                       </span>
                       <span className="text-[10px] font-bold text-white/60">
-                        +{missoesConcluiveis.filter(m => completedMissions.has(m.id)).reduce((a, m) => a + m.xpRecompensa, 0)} XP ganho
+                        +{missoesConcluiveis.filter(m => completedMissions.has(m.id)).reduce((a, m) => a + m.xpRecompensa, 0)} pontos
                       </span>
                     </div>
+
                     <Progress
                       value={missoesConcluiveis.length > 0 ? (missoesConcluidas / missoesConcluiveis.length) * 100 : 0}
                       className="h-2 bg-white/20 [&>div]:bg-white"
