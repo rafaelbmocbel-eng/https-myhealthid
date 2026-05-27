@@ -391,15 +391,16 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Metas & Missões</h2>
+          <h2 className="text-sm font-bold text-foreground">Suas metas da semana</h2>
         </div>
         {streak > 0 && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30">
             <Flame className="h-3 w-3 text-orange-600" />
-            <span className="text-[10px] font-black text-orange-600">{streak} dias</span>
+            <span className="text-[10px] font-black text-orange-600">{streak} dias seguidos</span>
           </div>
         )}
       </div>
+
 
       {/* Progresso geral metas semanais */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/15">
