@@ -590,6 +590,7 @@ export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise
   let y = 40;
   y = drawDiagnostico(doc, y, data);
   y = drawFases(doc, y, data.fases);
+  y = drawManutencao(doc, y, data.manutencao);
   y = drawInvestimento(doc, y, data);
   drawCTA(doc, y, data);
 
