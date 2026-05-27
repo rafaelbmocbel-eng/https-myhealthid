@@ -70,9 +70,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
   // Only generate missions for dimensions with actual loss
   if (perdaR.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-sono', icon: Moon, titulo: 'Melhorar o Sono',
-      descricao: `Seu sono subtrai ${perdaR.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Dormir 30min mais cedo hoje e desligar telas 1h antes.',
+      id: 'missao-sono', icon: Moon, titulo: 'Dormir melhor',
+      descricao: 'Seu sono está atrapalhando sua recuperação.',
+      acaoImediata: 'Hoje, vá para a cama 30 min mais cedo e desligue as telas 1h antes.',
       categoria: perdaR.gatilho_critico ? 'urgente' : 'importante',
       lossPoints: perdaR.perda_pontos, xpRecompensa: 20, completavel: true,
       colorClass: 'text-indigo-700 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-950/30', borderClass: 'border-indigo-200 dark:border-indigo-800/50',
@@ -81,9 +81,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaHID.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-agua', icon: Droplets, titulo: 'Beber mais Água',
-      descricao: `Hidratação subtrai ${perdaHID.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Beber ao menos 2 litros de água ao longo do dia.',
+      id: 'missao-agua', icon: Droplets, titulo: 'Beber mais água',
+      descricao: 'Seu corpo está pedindo mais hidratação.',
+      acaoImediata: 'Beba 2 litros de água ao longo do dia.',
       categoria: 'importante', lossPoints: perdaHID.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-sky-700 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-950/30', borderClass: 'border-sky-200 dark:border-sky-800/50',
     });
@@ -91,9 +91,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaAF.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-movimento', icon: Dumbbell, titulo: 'Mais Movimento',
-      descricao: `Atividade física subtrai ${perdaAF.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Fazer uma caminhada leve de 15 min hoje.',
+      id: 'missao-movimento', icon: Dumbbell, titulo: 'Se mexer um pouco',
+      descricao: 'Seu corpo está pedindo movimento.',
+      acaoImediata: 'Faça uma caminhada leve de 15 minutos hoje.',
       categoria: perdaAF.gatilho_critico ? 'urgente' : 'oportunidade',
       lossPoints: perdaAF.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
@@ -102,9 +102,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaNUT.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-nutricao', icon: Apple, titulo: 'Ajustar Nutrição',
-      descricao: `Nutrição subtrai ${perdaNUT.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Evitar ultraprocessados nas próximas 3 refeições.',
+      id: 'missao-nutricao', icon: Apple, titulo: 'Comer melhor',
+      descricao: 'Pequenas trocas na alimentação fazem diferença.',
+      acaoImediata: 'Evite ultraprocessados nas próximas 3 refeições.',
       categoria: 'oportunidade', lossPoints: perdaNUT.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-green-700 dark:text-green-400', bgClass: 'bg-green-50 dark:bg-green-950/30', borderClass: 'border-green-200 dark:border-green-800/50',
     });
@@ -112,9 +112,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaP.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-respiracao', icon: Brain, titulo: 'Reduzir Ansiedade',
-      descricao: `Fator psicológico subtrai ${perdaP.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Praticar 5 min de respiração diafragmática antes de dormir.',
+      id: 'missao-respiracao', icon: Brain, titulo: 'Acalmar a mente',
+      descricao: 'Sua cabeça está sob pressão — vale uma pausa.',
+      acaoImediata: 'Faça 5 minutos de respiração lenta antes de dormir.',
       categoria: 'urgente', lossPoints: perdaP.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-purple-700 dark:text-purple-400', bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-purple-200 dark:border-purple-800/50',
     });
@@ -122,9 +122,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaERG.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-ergonomia', icon: Monitor, titulo: 'Ajustar Ergonomia',
-      descricao: `Ergonomia subtrai ${perdaERG.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Micro-pausas a cada 50 min: levante e alongue por 2 min.',
+      id: 'missao-ergonomia', icon: Monitor, titulo: 'Cuidar da postura',
+      descricao: 'Muito tempo na mesma posição cansa o corpo.',
+      acaoImediata: 'A cada 50 min, levante e alongue por 2 minutos.',
       categoria: perdaERG.gatilho_critico ? 'urgente' : 'oportunidade',
       lossPoints: perdaERG.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-violet-700 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-950/30', borderClass: 'border-violet-200 dark:border-violet-800/50',
@@ -133,9 +133,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaI.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-inercia', icon: Zap, titulo: 'Vencer a Inércia',
-      descricao: `Inércia subtrai ${perdaI.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Resolver uma tarefa pendente que te gera estresse.',
+      id: 'missao-inercia', icon: Zap, titulo: 'Tirar algo da frente',
+      descricao: 'Tarefas pendentes pesam mais do que parecem.',
+      acaoImediata: 'Resolva uma tarefa que está te estressando hoje.',
       categoria: 'oportunidade', lossPoints: perdaI.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-orange-700 dark:text-orange-400', bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-orange-200 dark:border-orange-800/50',
     });
@@ -143,9 +143,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaD.perda_pontos >= 8) {
     missoes.push({
-      id: 'missao-dor', icon: AlertTriangle, titulo: 'Manejo da Dor',
-      descricao: `Dor subtrai ${perdaD.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Aplicar técnica de relaxamento ou crioterapia por 15 min.',
+      id: 'missao-dor', icon: AlertTriangle, titulo: 'Aliviar a dor',
+      descricao: 'Sua dor está alta hoje — vamos cuidar dela.',
+      acaoImediata: 'Aplique gelo ou faça relaxamento por 15 minutos.',
       categoria: 'urgente', lossPoints: perdaD.perda_pontos, xpRecompensa: 20, completavel: true,
       colorClass: 'text-red-700 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-950/30', borderClass: 'border-red-200 dark:border-red-800/50',
     });
@@ -153,9 +153,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaC.perda_pontos >= 4) {
     missoes.push({
-      id: 'missao-contexto', icon: Heart, titulo: 'Melhorar Contexto',
-      descricao: `Contexto social subtrai ${perdaC.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Dedique 10 min a uma atividade que lhe traz prazer.',
+      id: 'missao-contexto', icon: Heart, titulo: 'Fazer algo bom pra você',
+      descricao: 'Seu dia a dia está pesado — você merece uma pausa.',
+      acaoImediata: 'Reserve 10 minutos para algo que te dá prazer.',
       categoria: 'importante', lossPoints: perdaC.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-indigo-700 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-950/30', borderClass: 'border-indigo-200 dark:border-indigo-800/50',
     });
@@ -164,18 +164,18 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
   // Positive reinforcements (no loss = strength)
   if (perdaR.perda_pontos === 0) {
     missoes.push({
-      id: 'forca-sono', icon: Moon, titulo: '✅ Sono Excelente',
-      descricao: 'Seu sono não subtrai pontos! Continue assim.',
-      acaoImediata: 'Mantenha sua rotina de sono — ela acelera a recuperação.',
+      id: 'forca-sono', icon: Moon, titulo: '✅ Sono em dia',
+      descricao: 'Seu sono está ótimo — continue assim!',
+      acaoImediata: 'Manter essa rotina acelera sua recuperação.',
       categoria: 'positivo', lossPoints: 0, xpRecompensa: 5, completavel: false,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
     });
   }
   if (perdaAF.perda_pontos === 0) {
     missoes.push({
-      id: 'forca-atividade', icon: Dumbbell, titulo: '✅ Atividade Forte',
-      descricao: 'Sua atividade física não subtrai pontos!',
-      acaoImediata: 'Mantenha a consistência e progrida com orientação.',
+      id: 'forca-atividade', icon: Dumbbell, titulo: '✅ Bem ativo(a)',
+      descricao: 'Você está se movimentando bem!',
+      acaoImediata: 'Mantenha a constância — está fazendo diferença.',
       categoria: 'positivo', lossPoints: 0, xpRecompensa: 5, completavel: false,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
     });
@@ -189,11 +189,12 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 }
 
 const categoriaLabel: Record<string, string> = {
-  urgente: '⚠️ Urgente',
-  importante: '📌 Importante',
-  oportunidade: '💡 Oportunidade',
-  positivo: '💪 Ponto Forte',
+  urgente: 'Cuidar agora',
+  importante: 'Importante',
+  oportunidade: 'Boa ideia',
+  positivo: 'Ponto forte',
 };
+
 
 export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [metas, setMetas] = useState<Meta[]>([]);
