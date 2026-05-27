@@ -451,6 +451,18 @@ export default function PatientIntegratedDashboard({
                     onRingHover={setHoveredScoreKey}
                   />
 
+                  {/* Microlegenda: como ler os anéis */}
+                  <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-sky-500/80" />
+                      Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <span className="h-2 w-2 rounded-full bg-red-500/80" />
+                      Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
+                    </span>
+                  </div>
+
                   {/* Resumo humano de 2 linhas */}
                   {insights && (
                     <p className="mt-5 text-center text-sm text-foreground/80 leading-relaxed max-w-md mx-auto">
