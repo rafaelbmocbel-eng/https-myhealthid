@@ -260,17 +260,21 @@ export function getThermalColor(v: number): string {
 }
 
 export function getMyIDFingerprintData(scores: Record<string, number>): FingerprintRing[] {
+  // Layout: CAPACIDADE no centro (suas reservas, base interna) → DEMANDA por fora (o que está pressionando agora).
+  // Lê-se do centro pra fora: "o que me sustenta" → "o que está me desafiando".
   return [
-    { label: 'D (Dor)', value: scores.D || 0, type: 'inner', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
-    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'inner', color: getThermalColor(scores.EFI || 0), scoreKey: 'EFI' },
-    { label: 'P (Psicológico)', value: scores.P || 0, type: 'inner', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
-    { label: 'I (Inércia)', value: scores.I || 0, type: 'inner', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
-    { label: 'R (Regulação)', value: scores.R || 0, type: 'outer', color: getThermalColor(10 - (scores.R || 0)), scoreKey: 'R' },
-    { label: 'C (Contexto)', value: scores.C || 0, type: 'outer', color: getThermalColor(10 - (scores.C || 0)), scoreKey: 'C' },
-    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'outer', color: getThermalColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
-    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'outer', color: getThermalColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
-    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'outer', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
-    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'outer', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
+    // ── CAPACIDADE (anéis internos) ──
+    { label: 'R (Regulação)', value: scores.R || 0, type: 'inner', color: getThermalColor(10 - (scores.R || 0)), scoreKey: 'R' },
+    { label: 'C (Contexto)', value: scores.C || 0, type: 'inner', color: getThermalColor(10 - (scores.C || 0)), scoreKey: 'C' },
+    { label: 'AF (Atividade Física)', value: scores.AF || 5, type: 'inner', color: getThermalColor(10 - (scores.AF || 5)), scoreKey: 'AF' },
+    { label: 'HID (Hidratação)', value: scores.HID || 7, type: 'inner', color: getThermalColor(10 - (scores.HID || 7)), scoreKey: 'HID' },
+    { label: 'NUT (Nutrição)', value: scores.NUT || 7, type: 'inner', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
+    { label: 'ERG (Ergonomia)', value: scores.ERG || 7, type: 'inner', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
+    // ── DEMANDA (anéis externos) ──
+    { label: 'D (Dor)', value: scores.D || 0, type: 'outer', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
+    { label: 'EFI (Funcionalidade)', value: scores.EFI || 0, type: 'outer', color: getThermalColor(scores.EFI || 0), scoreKey: 'EFI' },
+    { label: 'P (Psicológico)', value: scores.P || 0, type: 'outer', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
+    { label: 'I (Inércia)', value: scores.I || 0, type: 'outer', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
     { label: 'N (Ruído)', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },
     { label: 'MED (Medicação)', value: scores.MED || 0, type: 'outer', color: getThermalColor(scores.MED || 0), scoreKey: 'MED' },
   ];
