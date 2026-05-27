@@ -827,16 +827,7 @@ function ActiveDiretrizSection({ pacienteId }: { pacienteId: string }) {
           <div className="px-4 pb-5 space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
             {!activeProtocolo ? (
               <div className="text-center py-4">
-                <p className="text-sm text-muted-foreground mb-2">Nenhuma diretriz ativa encontrada.</p>
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => navigate(`/protocolos?paciente=${pacienteId}`)}
-                  className="gap-1.5"
-                >
-                  <Sparkles className="icon-sm" />
-                  Criar Diretriz
-                </Button>
+                <p className="text-sm text-muted-foreground">Nenhuma diretriz ativa no momento.</p>
               </div>
             ) : (
               <>
