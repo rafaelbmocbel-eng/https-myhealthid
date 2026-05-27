@@ -663,7 +663,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 <CardContent className="p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Trophy className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-bold text-foreground">Marcos de Evolução</span>
+                    <span className="text-xs font-bold text-foreground">Conquistas no caminho</span>
                   </div>
                   <div className="space-y-1.5">
                     {insights.missoes.filter(m => m.tipo === 'marco').map(missao => (
@@ -671,9 +671,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                         <Trophy className="h-3 w-3 text-primary/60 shrink-0" />
                         <span className="text-[10px] text-foreground/70 flex-1">{missao.titulo}</span>
                         <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                          <Zap className="h-2 w-2" /> +{missao.xp} XP
+                          <Zap className="h-2 w-2" /> +{missao.xp} pts
                         </Badge>
                       </div>
+
                     ))}
                   </div>
                   <p className="text-[10px] text-primary font-bold mt-2 text-center">
