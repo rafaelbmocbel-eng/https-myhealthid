@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
-  TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
+  TrendingUp, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
   AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
 } from 'lucide-react';
@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
