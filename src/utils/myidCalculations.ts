@@ -271,12 +271,12 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
     { label: 'Alimentação', value: scores.NUT || 7, type: 'inner', color: getThermalColor(10 - (scores.NUT || 7)), scoreKey: 'NUT' },
     { label: 'Postura no dia', value: scores.ERG || 7, type: 'inner', color: getThermalColor(10 - (scores.ERG || 7)), scoreKey: 'ERG' },
     // ── DEMANDA (anéis externos) ──
-    { label: 'Dor', value: scores.D || 0, type: 'outer', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
     { label: 'Suas atividades do dia', value: scores.EFI || 0, type: 'outer', color: getThermalColor(scores.EFI || 0), scoreKey: 'EFI' },
     { label: 'Cabeça e emoções', value: scores.P || 0, type: 'outer', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
     { label: 'Mudanças recentes', value: scores.I || 0, type: 'outer', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
     { label: 'Sinais do corpo', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },
     { label: 'Medicação', value: scores.MED || 0, type: 'outer', color: getThermalColor(scores.MED || 0), scoreKey: 'MED' },
+    { label: 'Dor', value: scores.D || 0, type: 'outer', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
   ];
 }
 
