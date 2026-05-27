@@ -618,8 +618,9 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="icon-sm text-primary" />
                       <span className="text-[11px] font-bold text-primary">
-                        Prioridade: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
+                        Onde focar agora: {insights.driverInsight.driverLabel}
                       </span>
+
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {insights.driverInsight.intervencoes.slice(0, 3).map((i, idx) => (
