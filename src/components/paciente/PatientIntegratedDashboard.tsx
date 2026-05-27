@@ -547,7 +547,7 @@ export default function PatientIntegratedDashboard({
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Activity className="icon-sm text-muted-foreground" />
-                      Perfil clínico detalhado
+                      Detalhes da minha avaliação
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
