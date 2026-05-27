@@ -407,9 +407,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
         <CardContent className="p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-foreground">
-              {concluidas}/{metas.length} metas concluídas
+              {concluidas} de {metas.length} metas concluídas
             </span>
             <span className="text-[10px] font-bold text-primary">{progressoGeral.toFixed(0)}%</span>
+
           </div>
           <Progress value={progressoGeral} className="h-2" />
           {concluidas === metas.length && metas.length > 0 && (
