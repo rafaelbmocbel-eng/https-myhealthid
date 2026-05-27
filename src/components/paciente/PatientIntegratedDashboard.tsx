@@ -551,7 +551,7 @@ export default function PatientIntegratedDashboard({
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
-                    <ProtocoloScores scores={scores} />
+                    <PatientHealthAreas scores={scores} />
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
