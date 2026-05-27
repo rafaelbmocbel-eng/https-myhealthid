@@ -1545,7 +1545,7 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <CardContent className="p-6 flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground text-center">
-                Cruzando 6 lentes clínicas com base em evidências...
+                Consultando sua base científica + cruzando 6 lentes clínicas...
               </p>
             </CardContent>
           </Card>
