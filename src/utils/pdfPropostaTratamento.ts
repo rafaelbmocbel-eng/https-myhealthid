@@ -53,6 +53,13 @@ export interface PDFPropostaData {
   prognostico?: string;
   fases: FasePlano[];
   manutencao?: PlanoManutencao;
+  myidEnhancements?: {
+    myid_score?: number;
+    classificacao?: string;
+    driver?: { label?: string; intervencoes?: string[] };
+    reforcos_por_fase?: { numero: number; foco: string; intervencoes: string[] }[];
+    meta_final?: string;
+  };
   pacote: {
     numeroSessoes: number;
     frequencia: string;     // ex "2x por semana"
