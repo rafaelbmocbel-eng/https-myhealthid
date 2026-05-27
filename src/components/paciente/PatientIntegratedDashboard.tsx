@@ -436,8 +436,8 @@ export default function PatientIntegratedDashboard({
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-start justify-between gap-3 mb-5">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">Sua identidade de saúde</p>
-                      <h3 className="h-section text-foreground">MyID</h3>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">Sua saúde hoje</p>
+                      <h3 className="h-section text-foreground">Seu retrato</h3>
                     </div>
                     <Badge variant="outline" className={cn("text-[11px] font-semibold px-2.5 py-1 border-current", severityClass)}>
                       {classificacao}
@@ -458,6 +458,30 @@ export default function PatientIntegratedDashboard({
                       O ponto que mais merece atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>.
                     </p>
                   )}
+
+                  {/* Comparativo com último MyID */}
+                  {previousScore !== null && previousScore > 0 && (() => {
+                    const delta = Math.round(myidScore - previousScore);
+                    const isUp = delta > 0;
+                    const isFlat = delta === 0;
+                    return (
+                      <div className="mt-4 flex justify-center">
+                        <div className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
+                          isFlat && "bg-muted/60 text-muted-foreground",
+                          isUp && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                          !isFlat && !isUp && "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                        )}>
+                          {isFlat ? '→' : isUp ? '↑' : '↓'}
+                          <span>
+                            {isFlat
+                              ? 'Igual ao seu último MyID'
+                              : `${isUp ? '+' : ''}${delta} ${Math.abs(delta) === 1 ? 'ponto' : 'pontos'} desde o último MyID`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
