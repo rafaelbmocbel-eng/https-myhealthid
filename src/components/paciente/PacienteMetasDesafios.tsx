@@ -568,7 +568,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center gap-2">
                     <Heart className="h-3 w-3 text-emerald-600" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Seus Pontos Fortes</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">O que está indo bem</span>
+
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                     {missoesPositivas.map(m => (
