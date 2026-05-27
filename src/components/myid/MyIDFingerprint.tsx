@@ -352,46 +352,6 @@ export default function MyIDFingerprint({
           <text x={542} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Fora: Demanda</text>
         </g>
       </svg>
-
-      {/* ── Sidebar legend grid ── */}
-      {!compact && (
-        <div className="mt-4 grid grid-cols-3 sm:grid-cols-4 gap-2 px-1">
-          {ridgeData.map((ridge, idx) => {
-            const isActive = activeIdx === idx;
-            return (
-              <button
-                key={ridge.scoreKey}
-                className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-left transition-all duration-200 border ${
-                  isActive
-                    ? 'border-border bg-card shadow-md scale-[1.03]'
-                    : 'border-transparent hover:bg-muted/50'
-                }`}
-                onMouseEnter={() => { setHoveredIdx(idx); onRingHover?.(ridge.scoreKey); }}
-                onMouseLeave={() => { setHoveredIdx(null); onRingHover?.(null); }}
-                onClick={() => handleRidgeClick(ridge, idx)}
-                aria-label={`${ridge.label}: ${ridge.value.toFixed(1)}`}
-              >
-                <div
-                  className="w-3 h-3 rounded-full shrink-0 transition-transform duration-200"
-                  style={{
-                    backgroundColor: ridge.computedColor,
-                    transform: isActive ? 'scale(1.4)' : 'scale(1)',
-                    boxShadow: isActive ? `0 0 8px ${ridge.computedColor}` : 'none',
-                  }}
-                />
-                <div className="min-w-0 flex-1">
-                  <div className="text-[10px] font-bold text-foreground/80 truncate leading-tight">
-                    {FULL_LABELS[ridge.scoreKey] || ridge.label}
-                  </div>
-                  <div className="text-[9px] font-semibold tabular-nums" style={{ color: ridge.computedColor }}>
-                    {ridge.value.toFixed(1)} / 10
-                  </div>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
     </div>
   );
 }

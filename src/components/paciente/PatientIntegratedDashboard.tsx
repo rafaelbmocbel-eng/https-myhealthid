@@ -10,7 +10,7 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
-  TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
+  TrendingUp, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
   AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
 } from 'lucide-react';
@@ -18,7 +18,6 @@ import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
-import MyIDFormulaDisplay from '@/components/myid/MyIDFormulaDisplay';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
@@ -534,28 +533,9 @@ export default function PatientIntegratedDashboard({
                 </div>
               )}
 
-              {/* Detalhes técnicos colapsados — não invadem a leitura */}
+              {/* Detalhes da avaliação */}
               <Accordion type="single" collapsible className="border border-border/40 rounded-xl bg-card">
-                <AccordionItem value="formula" className="border-b-0">
-                  <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
-                    <div className="flex items-center gap-2">
-                      <Brain className="icon-sm text-muted-foreground" />
-                      Como minha nota é calculada?
-                    </div>
-                  </AccordionTrigger>
-                  <AccordionContent className="px-4 pb-4">
-                    {scores && (
-                      <MyIDFormulaDisplay
-                        scores={scores}
-                        myidScore={myidScore}
-                        highlightedKey={hoveredScoreKey}
-                        hasRedFlags={redFlagsDetected}
-                        hideGauge
-                      />
-                    )}
-                  </AccordionContent>
-                </AccordionItem>
-                <AccordionItem value="alertas" className="border-t border-border/40 border-b-0">
+                <AccordionItem value="alertas" className="border-b-0">
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Activity className="icon-sm text-muted-foreground" />
