@@ -6,11 +6,13 @@ import { ptBR } from 'date-fns/locale';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, Brain, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award, Clock
+  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
