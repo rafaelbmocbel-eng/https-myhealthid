@@ -70,9 +70,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
   // Only generate missions for dimensions with actual loss
   if (perdaR.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-sono', icon: Moon, titulo: 'Melhorar o Sono',
-      descricao: `Seu sono subtrai ${perdaR.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Dormir 30min mais cedo hoje e desligar telas 1h antes.',
+      id: 'missao-sono', icon: Moon, titulo: 'Dormir melhor',
+      descricao: 'Seu sono está atrapalhando sua recuperação.',
+      acaoImediata: 'Hoje, vá para a cama 30 min mais cedo e desligue as telas 1h antes.',
       categoria: perdaR.gatilho_critico ? 'urgente' : 'importante',
       lossPoints: perdaR.perda_pontos, xpRecompensa: 20, completavel: true,
       colorClass: 'text-indigo-700 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-950/30', borderClass: 'border-indigo-200 dark:border-indigo-800/50',
@@ -81,9 +81,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaHID.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-agua', icon: Droplets, titulo: 'Beber mais Água',
-      descricao: `Hidratação subtrai ${perdaHID.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Beber ao menos 2 litros de água ao longo do dia.',
+      id: 'missao-agua', icon: Droplets, titulo: 'Beber mais água',
+      descricao: 'Seu corpo está pedindo mais hidratação.',
+      acaoImediata: 'Beba 2 litros de água ao longo do dia.',
       categoria: 'importante', lossPoints: perdaHID.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-sky-700 dark:text-sky-400', bgClass: 'bg-sky-50 dark:bg-sky-950/30', borderClass: 'border-sky-200 dark:border-sky-800/50',
     });
@@ -91,9 +91,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaAF.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-movimento', icon: Dumbbell, titulo: 'Mais Movimento',
-      descricao: `Atividade física subtrai ${perdaAF.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Fazer uma caminhada leve de 15 min hoje.',
+      id: 'missao-movimento', icon: Dumbbell, titulo: 'Se mexer um pouco',
+      descricao: 'Seu corpo está pedindo movimento.',
+      acaoImediata: 'Faça uma caminhada leve de 15 minutos hoje.',
       categoria: perdaAF.gatilho_critico ? 'urgente' : 'oportunidade',
       lossPoints: perdaAF.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
@@ -102,9 +102,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaNUT.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-nutricao', icon: Apple, titulo: 'Ajustar Nutrição',
-      descricao: `Nutrição subtrai ${perdaNUT.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Evitar ultraprocessados nas próximas 3 refeições.',
+      id: 'missao-nutricao', icon: Apple, titulo: 'Comer melhor',
+      descricao: 'Pequenas trocas na alimentação fazem diferença.',
+      acaoImediata: 'Evite ultraprocessados nas próximas 3 refeições.',
       categoria: 'oportunidade', lossPoints: perdaNUT.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-green-700 dark:text-green-400', bgClass: 'bg-green-50 dark:bg-green-950/30', borderClass: 'border-green-200 dark:border-green-800/50',
     });
@@ -112,9 +112,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaP.perda_pontos >= 3) {
     missoes.push({
-      id: 'missao-respiracao', icon: Brain, titulo: 'Reduzir Ansiedade',
-      descricao: `Fator psicológico subtrai ${perdaP.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Praticar 5 min de respiração diafragmática antes de dormir.',
+      id: 'missao-respiracao', icon: Brain, titulo: 'Acalmar a mente',
+      descricao: 'Sua cabeça está sob pressão — vale uma pausa.',
+      acaoImediata: 'Faça 5 minutos de respiração lenta antes de dormir.',
       categoria: 'urgente', lossPoints: perdaP.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-purple-700 dark:text-purple-400', bgClass: 'bg-purple-50 dark:bg-purple-950/30', borderClass: 'border-purple-200 dark:border-purple-800/50',
     });
@@ -122,9 +122,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaERG.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-ergonomia', icon: Monitor, titulo: 'Ajustar Ergonomia',
-      descricao: `Ergonomia subtrai ${perdaERG.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Micro-pausas a cada 50 min: levante e alongue por 2 min.',
+      id: 'missao-ergonomia', icon: Monitor, titulo: 'Cuidar da postura',
+      descricao: 'Muito tempo na mesma posição cansa o corpo.',
+      acaoImediata: 'A cada 50 min, levante e alongue por 2 minutos.',
       categoria: perdaERG.gatilho_critico ? 'urgente' : 'oportunidade',
       lossPoints: perdaERG.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-violet-700 dark:text-violet-400', bgClass: 'bg-violet-50 dark:bg-violet-950/30', borderClass: 'border-violet-200 dark:border-violet-800/50',
@@ -133,9 +133,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaI.perda_pontos >= 2) {
     missoes.push({
-      id: 'missao-inercia', icon: Zap, titulo: 'Vencer a Inércia',
-      descricao: `Inércia subtrai ${perdaI.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Resolver uma tarefa pendente que te gera estresse.',
+      id: 'missao-inercia', icon: Zap, titulo: 'Tirar algo da frente',
+      descricao: 'Tarefas pendentes pesam mais do que parecem.',
+      acaoImediata: 'Resolva uma tarefa que está te estressando hoje.',
       categoria: 'oportunidade', lossPoints: perdaI.perda_pontos, xpRecompensa: 15, completavel: true,
       colorClass: 'text-orange-700 dark:text-orange-400', bgClass: 'bg-orange-50 dark:bg-orange-950/30', borderClass: 'border-orange-200 dark:border-orange-800/50',
     });
@@ -143,9 +143,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaD.perda_pontos >= 8) {
     missoes.push({
-      id: 'missao-dor', icon: AlertTriangle, titulo: 'Manejo da Dor',
-      descricao: `Dor subtrai ${perdaD.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Aplicar técnica de relaxamento ou crioterapia por 15 min.',
+      id: 'missao-dor', icon: AlertTriangle, titulo: 'Aliviar a dor',
+      descricao: 'Sua dor está alta hoje — vamos cuidar dela.',
+      acaoImediata: 'Aplique gelo ou faça relaxamento por 15 minutos.',
       categoria: 'urgente', lossPoints: perdaD.perda_pontos, xpRecompensa: 20, completavel: true,
       colorClass: 'text-red-700 dark:text-red-400', bgClass: 'bg-red-50 dark:bg-red-950/30', borderClass: 'border-red-200 dark:border-red-800/50',
     });
@@ -153,9 +153,9 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 
   if (perdaC.perda_pontos >= 4) {
     missoes.push({
-      id: 'missao-contexto', icon: Heart, titulo: 'Melhorar Contexto',
-      descricao: `Contexto social subtrai ${perdaC.perda_pontos}pts do MyID-100`,
-      acaoImediata: 'Dedique 10 min a uma atividade que lhe traz prazer.',
+      id: 'missao-contexto', icon: Heart, titulo: 'Fazer algo bom pra você',
+      descricao: 'Seu dia a dia está pesado — você merece uma pausa.',
+      acaoImediata: 'Reserve 10 minutos para algo que te dá prazer.',
       categoria: 'importante', lossPoints: perdaC.perda_pontos, xpRecompensa: 10, completavel: true,
       colorClass: 'text-indigo-700 dark:text-indigo-400', bgClass: 'bg-indigo-50 dark:bg-indigo-950/30', borderClass: 'border-indigo-200 dark:border-indigo-800/50',
     });
@@ -164,18 +164,18 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
   // Positive reinforcements (no loss = strength)
   if (perdaR.perda_pontos === 0) {
     missoes.push({
-      id: 'forca-sono', icon: Moon, titulo: '✅ Sono Excelente',
-      descricao: 'Seu sono não subtrai pontos! Continue assim.',
-      acaoImediata: 'Mantenha sua rotina de sono — ela acelera a recuperação.',
+      id: 'forca-sono', icon: Moon, titulo: '✅ Sono em dia',
+      descricao: 'Seu sono está ótimo — continue assim!',
+      acaoImediata: 'Manter essa rotina acelera sua recuperação.',
       categoria: 'positivo', lossPoints: 0, xpRecompensa: 5, completavel: false,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
     });
   }
   if (perdaAF.perda_pontos === 0) {
     missoes.push({
-      id: 'forca-atividade', icon: Dumbbell, titulo: '✅ Atividade Forte',
-      descricao: 'Sua atividade física não subtrai pontos!',
-      acaoImediata: 'Mantenha a consistência e progrida com orientação.',
+      id: 'forca-atividade', icon: Dumbbell, titulo: '✅ Bem ativo(a)',
+      descricao: 'Você está se movimentando bem!',
+      acaoImediata: 'Mantenha a constância — está fazendo diferença.',
       categoria: 'positivo', lossPoints: 0, xpRecompensa: 5, completavel: false,
       colorClass: 'text-emerald-700 dark:text-emerald-400', bgClass: 'bg-emerald-50 dark:bg-emerald-950/30', borderClass: 'border-emerald-200 dark:border-emerald-800/50',
     });
@@ -189,11 +189,12 @@ function gerarMissoesSaude(scores: any): MissaoSaude[] {
 }
 
 const categoriaLabel: Record<string, string> = {
-  urgente: '⚠️ Urgente',
-  importante: '📌 Importante',
-  oportunidade: '💡 Oportunidade',
-  positivo: '💪 Ponto Forte',
+  urgente: 'Cuidar agora',
+  importante: 'Importante',
+  oportunidade: 'Boa ideia',
+  positivo: 'Ponto forte',
 };
+
 
 export default function PacienteMetasDesafios({ pacienteId }: Props) {
   const [metas, setMetas] = useState<Meta[]>([]);
@@ -340,8 +341,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
 
       const diasDiario = new Set(diarios.map(d => d.created_at.split('T')[0])).size;
       metasList.push({
-        id: 'diario-semanal', titulo: 'Diário Consistente',
-        descricao: 'Preencha o diário de saúde todos os dias esta semana',
+        id: 'diario-semanal', titulo: 'Anotar como me sinto',
+        descricao: 'Preencha o diário todos os dias desta semana',
         progresso: Math.min(100, (diasDiario / 7) * 100), meta: 7, atual: diasDiario,
         unidade: 'dias', icon: Heart, cor: 'text-rose-600', concluida: diasDiario >= 7, xpRecompensa: 50,
       });
@@ -349,21 +350,22 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       const totalTreinosMeta = treinos.reduce((acc, t) => acc + parseInt(t.frequencia?.match(/\d+/)?.[0] || '3'), 0);
       const totalTreinosFeitos = execucoes.length;
       metasList.push({
-        id: 'treinos-semanal', titulo: 'Plano de Treino',
-        descricao: 'Complete todos os treinos prescritos esta semana',
+        id: 'treinos-semanal', titulo: 'Fazer meus exercícios',
+        descricao: 'Complete todos os exercícios da semana',
         progresso: totalTreinosMeta > 0 ? Math.min(100, (totalTreinosFeitos / totalTreinosMeta) * 100) : 0,
         meta: totalTreinosMeta || 3, atual: totalTreinosFeitos,
-        unidade: 'treinos', icon: Dumbbell, cor: 'text-blue-600',
+        unidade: 'exercícios', icon: Dumbbell, cor: 'text-blue-600',
         concluida: totalTreinosFeitos >= totalTreinosMeta && totalTreinosMeta > 0, xpRecompensa: 75,
       });
 
       metasList.push({
-        id: 'streak-5', titulo: 'Sequência de 5 Dias',
-        descricao: 'Mantenha 5 dias consecutivos de diário preenchido',
+        id: 'streak-5', titulo: '5 dias seguidos',
+        descricao: 'Preencha o diário por 5 dias sem parar',
         progresso: Math.min(100, (streakCount / 5) * 100), meta: 5, atual: streakCount,
-        unidade: 'dias seguidos', icon: Flame, cor: 'text-orange-600',
+        unidade: 'dias', icon: Flame, cor: 'text-orange-600',
         concluida: streakCount >= 5, xpRecompensa: 100,
       });
+
 
       setMetas(metasList);
       setLoading(false);
@@ -390,33 +392,36 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Target className="h-4 w-4 text-primary" />
-          <h2 className="text-sm font-bold text-foreground">Metas & Missões</h2>
+          <h2 className="text-sm font-bold text-foreground">Suas metas da semana</h2>
         </div>
         {streak > 0 && (
           <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-orange-100 dark:bg-orange-900/30">
             <Flame className="h-3 w-3 text-orange-600" />
-            <span className="text-[10px] font-black text-orange-600">{streak} dias</span>
+            <span className="text-[10px] font-black text-orange-600">{streak} dias seguidos</span>
           </div>
         )}
       </div>
+
 
       {/* Progresso geral metas semanais */}
       <Card className="bg-gradient-to-r from-primary/5 to-primary/10 border-primary/15">
         <CardContent className="p-3">
           <div className="flex items-center justify-between mb-2">
             <span className="text-[11px] font-bold text-foreground">
-              {concluidas}/{metas.length} metas concluídas
+              {concluidas} de {metas.length} metas concluídas
             </span>
             <span className="text-[10px] font-bold text-primary">{progressoGeral.toFixed(0)}%</span>
+
           </div>
           <Progress value={progressoGeral} className="h-2" />
           {concluidas === metas.length && metas.length > 0 && (
             <div className="flex items-center gap-1.5 mt-2">
               <Trophy className="icon-sm text-yellow-600" />
               <span className="text-[10px] font-bold text-yellow-700">
-                Todas as metas concluídas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} XP
+                Você bateu todas as metas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} pontos
               </span>
             </div>
+
           )}
         </CardContent>
       </Card>
@@ -441,7 +446,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                     {meta.titulo}
                   </p>
                   <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
+                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} pts
                   </Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground mb-1.5">{meta.descricao}</p>
@@ -466,11 +471,9 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           >
             <div className="flex items-center gap-2">
               <Lightbulb className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Missões de Saúde</h2>
-              <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold border-primary/20 text-primary">
-                MyID
-              </Badge>
+              <h2 className="text-sm font-bold text-foreground">Seu plano de hoje</h2>
             </div>
+
             <div className="flex items-center gap-2">
               {missoesConcluidas > 0 && (
                 <span className="text-[10px] font-bold text-emerald-600">
@@ -489,12 +492,13 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                   <CardContent className="p-3">
                     <div className="flex items-center justify-between mb-2">
                       <span className="text-[11px] font-bold text-white/90">
-                        {missoesConcluidas}/{missoesConcluiveis.length} missões do dia
+                        {missoesConcluidas} de {missoesConcluiveis.length} tarefas feitas hoje
                       </span>
                       <span className="text-[10px] font-bold text-white/60">
-                        +{missoesConcluiveis.filter(m => completedMissions.has(m.id)).reduce((a, m) => a + m.xpRecompensa, 0)} XP ganho
+                        +{missoesConcluiveis.filter(m => completedMissions.has(m.id)).reduce((a, m) => a + m.xpRecompensa, 0)} pontos
                       </span>
                     </div>
+
                     <Progress
                       value={missoesConcluiveis.length > 0 ? (missoesConcluidas / missoesConcluiveis.length) * 100 : 0}
                       className="h-2 bg-white/20 [&>div]:bg-white"
@@ -503,10 +507,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                       <div className="flex items-center gap-1.5 mt-2">
                         <Sparkles className="h-3 w-3 text-yellow-300" />
                         <span className="text-[10px] font-bold text-yellow-200">
-                          Todas as missões do dia concluídas! 🎉
+                          Você fechou o dia! 🎉
                         </span>
                       </div>
                     )}
+
                   </CardContent>
                 </Card>
               )}
@@ -546,13 +551,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                               {categoriaLabel[missao.categoria]}
                             </span>
                             <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5 ml-auto">
-                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} XP
+                              <Zap className="h-2 w-2" /> +{missao.xpRecompensa} pts
                             </Badge>
                           </div>
                           <p className="text-[10px] text-muted-foreground mb-0.5">{missao.descricao}</p>
                           <p className={cn("text-[10px] font-medium", isDone ? 'text-emerald-600' : 'text-foreground/70')}>
-                            {isDone ? '✅ Missão concluída!' : `👉 ${missao.acaoImediata}`}
+                            {isDone ? '✅ Feito hoje!' : `👉 ${missao.acaoImediata}`}
                           </p>
+
                         </div>
                       </div>
                     </CardContent>
@@ -565,7 +571,8 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 <div className="space-y-1.5 pt-1">
                   <div className="flex items-center gap-2">
                     <Heart className="h-3 w-3 text-emerald-600" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Seus Pontos Fortes</span>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">O que está indo bem</span>
+
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-1.5">
                     {missoesPositivas.map(m => (
@@ -594,13 +601,14 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
           >
             <div className="flex items-center gap-2">
               <Target className="h-4 w-4 text-primary" />
-              <h2 className="text-sm font-bold text-foreground">Seu Plano de Evolução</h2>
+              <h2 className="text-sm font-bold text-foreground">Seu caminho de recuperação</h2>
               {insights.driverInsight && (
                 <Badge variant="outline" className="text-[9px] h-4 px-1.5 font-bold border-primary/20 text-primary">
-                  Foco: {insights.driverInsight.driverLabel}
+                  Foco principal
                 </Badge>
               )}
             </div>
+
             {showFases ? <ChevronUp className="icon-sm text-muted-foreground" /> : <ChevronDown className="icon-sm text-muted-foreground" />}
           </div>
 
@@ -613,8 +621,9 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                     <div className="flex items-center gap-2 mb-2">
                       <AlertTriangle className="icon-sm text-primary" />
                       <span className="text-[11px] font-bold text-primary">
-                        Prioridade: {insights.driverInsight.driverLabel} (−{insights.driverInsight.perda}pts)
+                        Onde focar agora: {insights.driverInsight.driverLabel}
                       </span>
+
                     </div>
                     <div className="flex flex-wrap gap-1">
                       {insights.driverInsight.intervencoes.slice(0, 3).map((i, idx) => (
@@ -657,7 +666,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                 <CardContent className="p-3">
                   <div className="flex items-center gap-2 mb-2">
                     <Trophy className="h-4 w-4 text-primary" />
-                    <span className="text-xs font-bold text-foreground">Marcos de Evolução</span>
+                    <span className="text-xs font-bold text-foreground">Conquistas no caminho</span>
                   </div>
                   <div className="space-y-1.5">
                     {insights.missoes.filter(m => m.tipo === 'marco').map(missao => (
@@ -665,9 +674,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                         <Trophy className="h-3 w-3 text-primary/60 shrink-0" />
                         <span className="text-[10px] text-foreground/70 flex-1">{missao.titulo}</span>
                         <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                          <Zap className="h-2 w-2" /> +{missao.xp} XP
+                          <Zap className="h-2 w-2" /> +{missao.xp} pts
                         </Badge>
                       </div>
+
                     ))}
                   </div>
                   <p className="text-[10px] text-primary font-bold mt-2 text-center">
