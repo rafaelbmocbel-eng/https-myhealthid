@@ -512,7 +512,7 @@ export default function PatientIntegratedDashboard({
                   )}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={cn("h-2 w-2 rounded-full", redFlagsDetected ? "bg-destructive" : "bg-muted-foreground/40")} />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Classificação</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{label || classificacao}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -528,7 +528,7 @@ export default function PatientIntegratedDashboard({
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Brain className="icon-sm text-muted-foreground" />
-                      Como meu score é calculado?
+                      Como minha nota é calculada?
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
