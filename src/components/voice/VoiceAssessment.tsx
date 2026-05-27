@@ -1480,15 +1480,17 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
             <CardContent className="p-6 flex flex-col items-center gap-3">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
               <p className="text-sm text-muted-foreground text-center">
-                {audioBase64 ? 'Transcrevendo áudio e cruzando 6 lentes clínicas...' : 'Cruzando 6 lentes clínicas com base em evidências...'}
+                {audioBase64
+                  ? 'Transcrevendo áudio + consultando sua base científica + cruzando 6 lentes clínicas...'
+                  : 'Consultando sua base científica + cruzando 6 lentes clínicas...'}
               </p>
               <div className="flex flex-wrap gap-1.5 justify-center max-w-md">
-                <Badge variant="outline" className="text-[10px]">🦴 Fisio (Magee)</Badge>
-                <Badge variant="outline" className="text-[10px]">🧬 Neurociência (Moseley)</Badge>
-                <Badge variant="outline" className="text-[10px]">🏃 Esporte (Cook)</Badge>
-                <Badge variant="outline" className="text-[10px]">🌿 Osteopatia (Greenman)</Badge>
-                <Badge variant="outline" className="text-[10px]">⚙️ Quiropraxia (Bergmann)</Badge>
-                <Badge variant="outline" className="text-[10px]">📐 Posturologia (Souchard)</Badge>
+                <Badge variant="outline" className="text-[10px]">🦴 Fisio</Badge>
+                <Badge variant="outline" className="text-[10px]">🧬 Neurociência</Badge>
+                <Badge variant="outline" className="text-[10px]">🏃 Esporte</Badge>
+                <Badge variant="outline" className="text-[10px]">🌿 Osteopatia</Badge>
+                <Badge variant="outline" className="text-[10px]">⚙️ Quiropraxia</Badge>
+                <Badge variant="outline" className="text-[10px]">📐 Posturologia</Badge>
               </div>
             </CardContent>
           </Card>
