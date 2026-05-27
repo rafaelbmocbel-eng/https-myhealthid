@@ -242,38 +242,38 @@ export default function PatientIntegratedDashboard({
     return [
       {
         id: 'bio',
-        title: 'Biológica',
+        title: 'Corpo',
         level: bioLevel,
         color: 'text-emerald-600',
         icon: Heart,
-        description: 'Vitalidade e regulação interna.',
+        description: 'Sono, comida e água em equilíbrio.',
         factors: ['Sono', 'Hidratação', 'Nutrição']
       },
       {
         id: 'comp',
-        title: 'Comportamental',
+        title: 'Hábitos',
         level: compLevel,
         color: 'text-blue-600',
         icon: Zap,
-        description: 'Seu estilo de vida e movimento.',
+        description: 'Como você se move no dia a dia.',
         factors: ['Atividade', 'Inércia', 'Ergonomia']
       },
       {
         id: 'emo',
-        title: 'Emocional',
+        title: 'Mente',
         level: emoLevel,
         color: 'text-violet-600',
         icon: Smile,
-        description: 'Sua resiliência e suporte mental.',
+        description: 'Como sua cabeça lida com a rotina.',
         factors: ['Coping', 'Contexto']
       },
       {
         id: 'sist',
-        title: 'Sistêmica',
+        title: 'Proteção',
         level: sistLevel,
         color: 'text-amber-600',
         icon: Shield,
-        description: 'Proteção contra dor e ruído.',
+        description: 'O quanto seu corpo está protegido de dor.',
         factors: ['Dor', 'Ruído', 'Função']
       }
     ];
