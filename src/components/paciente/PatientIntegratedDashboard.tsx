@@ -139,7 +139,9 @@ export default function PatientIntegratedDashboard({
   });
 
   const ultimaMyID = myidAvaliacoes[0];
+  const previousMyID = myidAvaliacoes[1]; // para comparativo
   const myidLinkResult = myidFromLink[0]?.resultado_processado as any;
+  const previousScore = previousMyID ? Number(previousMyID.myid_score) || 0 : null;
 
   // Use whichever is more recent
   const hasMyID = !!ultimaMyID || !!myidLinkResult;
@@ -240,38 +242,38 @@ export default function PatientIntegratedDashboard({
     return [
       {
         id: 'bio',
-        title: 'Biológica',
+        title: 'Corpo',
         level: bioLevel,
         color: 'text-emerald-600',
         icon: Heart,
-        description: 'Vitalidade e regulação interna.',
+        description: 'Sono, comida e água em equilíbrio.',
         factors: ['Sono', 'Hidratação', 'Nutrição']
       },
       {
         id: 'comp',
-        title: 'Comportamental',
+        title: 'Hábitos',
         level: compLevel,
         color: 'text-blue-600',
         icon: Zap,
-        description: 'Seu estilo de vida e movimento.',
+        description: 'Como você se move no dia a dia.',
         factors: ['Atividade', 'Inércia', 'Ergonomia']
       },
       {
         id: 'emo',
-        title: 'Emocional',
+        title: 'Mente',
         level: emoLevel,
         color: 'text-violet-600',
         icon: Smile,
-        description: 'Sua resiliência e suporte mental.',
+        description: 'Como sua cabeça lida com a rotina.',
         factors: ['Coping', 'Contexto']
       },
       {
         id: 'sist',
-        title: 'Sistêmica',
+        title: 'Proteção',
         level: sistLevel,
         color: 'text-amber-600',
         icon: Shield,
-        description: 'Proteção contra dor e ruído.',
+        description: 'O quanto seu corpo está protegido de dor.',
         factors: ['Dor', 'Ruído', 'Função']
       }
     ];
@@ -434,8 +436,8 @@ export default function PatientIntegratedDashboard({
                 <CardContent className="p-5 sm:p-6">
                   <div className="flex items-start justify-between gap-3 mb-5">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">Sua identidade de saúde</p>
-                      <h3 className="h-section text-foreground">MyID</h3>
+                      <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">Sua saúde hoje</p>
+                      <h3 className="h-section text-foreground">Seu retrato</h3>
                     </div>
                     <Badge variant="outline" className={cn("text-[11px] font-semibold px-2.5 py-1 border-current", severityClass)}>
                       {classificacao}
@@ -456,6 +458,30 @@ export default function PatientIntegratedDashboard({
                       O ponto que mais merece atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>.
                     </p>
                   )}
+
+                  {/* Comparativo com último MyID */}
+                  {previousScore !== null && previousScore > 0 && (() => {
+                    const delta = Math.round(myidScore - previousScore);
+                    const isUp = delta > 0;
+                    const isFlat = delta === 0;
+                    return (
+                      <div className="mt-4 flex justify-center">
+                        <div className={cn(
+                          "inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium",
+                          isFlat && "bg-muted/60 text-muted-foreground",
+                          isUp && "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400",
+                          !isFlat && !isUp && "bg-amber-500/10 text-amber-700 dark:text-amber-400"
+                        )}>
+                          {isFlat ? '→' : isUp ? '↑' : '↓'}
+                          <span>
+                            {isFlat
+                              ? 'Igual ao seu último MyID'
+                              : `${isUp ? '+' : ''}${delta} ${Math.abs(delta) === 1 ? 'ponto' : 'pontos'} desde o último MyID`}
+                          </span>
+                        </div>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
 
@@ -486,7 +512,7 @@ export default function PatientIntegratedDashboard({
                   )}>
                     <div className="flex items-center gap-2 mb-2">
                       <span className={cn("h-2 w-2 rounded-full", redFlagsDetected ? "bg-destructive" : "bg-muted-foreground/40")} />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Classificação</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{label || classificacao}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
@@ -502,7 +528,7 @@ export default function PatientIntegratedDashboard({
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Brain className="icon-sm text-muted-foreground" />
-                      Como meu score é calculado?
+                      Como minha nota é calculada?
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
@@ -521,7 +547,7 @@ export default function PatientIntegratedDashboard({
                   <AccordionTrigger className="px-4 py-3 text-sm font-semibold hover:no-underline">
                     <div className="flex items-center gap-2">
                       <Activity className="icon-sm text-muted-foreground" />
-                      Perfil clínico detalhado
+                      Detalhes da minha avaliação
                     </div>
                   </AccordionTrigger>
                   <AccordionContent className="px-4 pb-4">
@@ -541,7 +567,7 @@ export default function PatientIntegratedDashboard({
                 <CardContent className="p-5">
                   <div className="flex items-center gap-2 mb-4">
                     <Award className="icon-sm text-primary" />
-                    <h4 className="h-card">Bio-Conquistas</h4>
+                    <h4 className="h-card">Suas conquistas</h4>
                   </div>
                   <div className="flex flex-wrap gap-2">
                     {scores && (
@@ -556,7 +582,7 @@ export default function PatientIntegratedDashboard({
                           "rounded-full px-3 py-1 gap-2 transition-opacity",
                           scores.R > 7 ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "opacity-30"
                         )}>
-                          🌙 Sono VIP
+                          🌙 Sono em dia
                         </Badge>
                         <Badge variant="secondary" className={cn(
                           "rounded-full px-3 py-1 gap-2 transition-opacity",
@@ -574,23 +600,23 @@ export default function PatientIntegratedDashboard({
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground mt-3">
-                    Desbloqueie novas conquistas mantendo bons hábitos.
+                    Cuide dos seus hábitos pra desbloquear mais.
                   </p>
                 </CardContent>
               </Card>
 
-              {/* Zonas de Poder */}
+              {/* Áreas da sua saúde */}
               <Card className="rounded-xl border-border/40 shadow-xs">
                 <CardContent className="p-5">
                   <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
                     <div>
-                      <h4 className="h-card">Zonas de Poder</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">Seu potencial em cada área da vida</p>
+                      <h4 className="h-card">Áreas da sua saúde</h4>
+                      <p className="text-xs text-muted-foreground mt-0.5">Como cada parte da sua vida está hoje</p>
                     </div>
                     <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                       <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Forte</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />Médio</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Foco</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />OK</span>
+                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Atenção</span>
                     </div>
                   </div>
 
