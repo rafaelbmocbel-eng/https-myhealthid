@@ -338,6 +338,34 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
       console.warn("Nota de prontuário não registrada:", noteErr);
     }
 
+    // 7. ENRIQUECER DIRETRIZ ATIVA COM MELHORIAS BASEADAS NO MyID
+    try {
+      const { data: protocoloAtivo } = await supabase
+        .from("protocolos")
+        .select("id, scores_avaliacao")
+        .eq("paciente_id", pacienteId)
+        .eq("terapeuta_id", terapeutaId)
+        .eq("status", "ativo")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (protocoloAtivo?.id) {
+        const myidEnhancements = buildMyIDEnhancements(cs, myidScore, classificacao);
+        const novosScores = {
+          ...(protocoloAtivo.scores_avaliacao || {}),
+          myid_enhancements: myidEnhancements,
+        };
+        await supabase
+          .from("protocolos")
+          .update({ scores_avaliacao: novosScores })
+          .eq("id", protocoloAtivo.id);
+        console.log(`[complete-myid] Diretriz ${protocoloAtivo.id} enriquecida com MyID.`);
+      }
+    } catch (enrichErr) {
+      console.warn("Enriquecimento MyID da diretriz falhou (não bloqueante):", enrichErr);
+    }
+
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
