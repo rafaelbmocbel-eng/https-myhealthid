@@ -352,8 +352,6 @@ export default function MyIDFingerprint({
           <text x={542} y={14} fontSize="14" fontWeight="600" fill="hsl(var(--foreground))" opacity="0.7">Fora: Demanda</text>
         </g>
       </svg>
-
-    </div>
     </div>
   );
 }
