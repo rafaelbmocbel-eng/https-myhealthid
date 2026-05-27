@@ -244,6 +244,75 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
         </div>
       )}
 
+      {myidEnh && (
+        <div className="rounded-xl border border-amber-300/60 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-600 shrink-0" />
+              <div>
+                <div className="text-sm font-semibold text-amber-900 dark:text-amber-100">Reforço baseado no MyID</div>
+                <div className="text-xs text-amber-700 dark:text-amber-300">
+                  MyID {Number(myidEnh.myid_score).toFixed(0)}/100 · {myidEnh.classificacao} · Driver: <strong>{myidEnh.driver?.label}</strong>
+                </div>
+              </div>
+            </div>
+            {myidEnh.meta_final && (
+              <Badge variant="outline" className="bg-white/60 border-amber-300 text-amber-800 text-[10px] shrink-0">
+                {myidEnh.meta_final}
+              </Badge>
+            )}
+          </div>
+
+          {Array.isArray(myidEnh.driver?.intervencoes) && myidEnh.driver.intervencoes.length > 0 && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                Intervenções prioritárias ({myidEnh.driver.label})
+              </div>
+              <ul className="text-xs text-amber-900 dark:text-amber-100 space-y-0.5">
+                {myidEnh.driver.intervencoes.slice(0, 4).map((i: string, k: number) => (
+                  <li key={k}>• {i}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {Array.isArray(myidEnh.reforcos_por_fase) && (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+              {myidEnh.reforcos_por_fase.map((rf: any) => (
+                <div key={rf.numero} className="rounded-lg bg-white/70 dark:bg-amber-950/30 border border-amber-200/60 p-2">
+                  <div className="text-[11px] font-semibold text-amber-800 dark:text-amber-200">Fase {rf.numero}</div>
+                  <div className="text-[11px] text-amber-700 dark:text-amber-300 mb-1">{rf.foco}</div>
+                  <ul className="text-[11px] text-foreground/80 space-y-0.5">
+                    {(rf.intervencoes || []).slice(0, 3).map((i: string, k: number) => (
+                      <li key={k}>• {i}</li>
+                    ))}
+                  </ul>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {Array.isArray(myidEnh.missoes_prioritarias) && myidEnh.missoes_prioritarias.length > 0 && (
+            <div>
+              <div className="text-[11px] uppercase tracking-wide font-semibold text-amber-800 dark:text-amber-300 mb-1">
+                Missões para o paciente
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {myidEnh.missoes_prioritarias.map((m: any, k: number) => (
+                  <Badge key={k} variant="outline" className="bg-white/70 border-amber-300 text-[10px] text-amber-900">
+                    {m.titulo} · +{m.xp}xp
+                  </Badge>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="text-[10px] text-amber-700/80 dark:text-amber-400/80 italic">
+            Atualizado automaticamente quando o paciente responde o MyID. Conteúdo da diretriz original preservado.
+          </div>
+        </div>
+      )}
+
       {fases.map((fase, idx) => {
         const isOpen = abertas.has(idx);
         const isAtual = faseAtual === fase.numero;
