@@ -160,6 +160,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
         prognostico: prognostico.trim() || undefined,
         fases: fasesLimpas,
         manutencao: manutLimpa,
+        myidEnhancements: protocolo?.scores_avaliacao?.myid_enhancements || undefined,
         pacote: { numeroSessoes, frequencia, duracao, valorSessao, desconto, formaPagamento },
         ctaTelefone: telefone || undefined,
         ctaMensagem: mensagem,

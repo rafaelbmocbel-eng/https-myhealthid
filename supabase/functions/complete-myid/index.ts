@@ -6,6 +6,126 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// ═══════════════════════════════════════════════════════════
+// MyID Enhancements — driver primário + reforços por fase + missões
+// Reúso simplificado das tabelas de perda e intervenções
+// ═══════════════════════════════════════════════════════════
+const TABELA_PERDAS: Record<string, { peso: number; bandas: { min: number; max: number; perda: number }[]; critico?: number }> = {
+  D: { peso: 20, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 3, perda: 3 }, { min: 3, max: 5, perda: 8 }, { min: 5, max: 7, perda: 14 }, { min: 7, max: 11, perda: 20 }] },
+  EFI: { peso: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }] },
+  P: { peso: 5, bandas: [{ min: 0, max: 3, perda: 0 }, { min: 3, max: 5, perda: 2 }, { min: 5, max: 7, perda: 4 }, { min: 7, max: 11, perda: 5 }] },
+  I: { peso: 5, bandas: [{ min: 0, max: 0.5, perda: 0 }, { min: 0.5, max: 1.5, perda: 2 }, { min: 1.5, max: 2.5, perda: 4 }, { min: 2.5, max: 11, perda: 5 }] },
+  R: { peso: 15, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 5 }, { min: 4, max: 6, perda: 10 }, { min: 6, max: 8, perda: 13 }, { min: 8, max: 11, perda: 15 }], critico: 7 },
+  C: { peso: 10, bandas: [{ min: 0, max: 2, perda: 0 }, { min: 2, max: 4, perda: 4 }, { min: 4, max: 6, perda: 7 }, { min: 6, max: 11, perda: 10 }] },
+  N: { peso: 5, bandas: [{ min: 0, max: 1, perda: 0 }, { min: 1, max: 2, perda: 2 }, { min: 2, max: 3, perda: 4 }, { min: 3, max: 11, perda: 5 }] },
+};
+
+const DIM_LABELS: Record<string, string> = {
+  D: "Dor", EFI: "Funcionalidade", P: "Psicológico", I: "Inércia",
+  R: "Regulação", C: "Contexto", N: "Ruído Sistêmico",
+};
+
+const DRIVER_INTERVENCOES: Record<string, { intervencoes: string[]; encaminhamentos: string[] }> = {
+  D: { intervencoes: ["Educação em neurociência da dor", "Modulação (TENS/crioterapia/terapia manual)", "Amplitude sem carga", "Respiração diafragmática 3×/dia"], encaminhamentos: ["Avaliação médica se dor > 8/10 persistente"] },
+  EFI: { intervencoes: ["Amplitude sem carga", "Adaptações funcionais", "Retorno gradual às AVDs", "Fisioterapia 2–3×/sem"], encaminhamentos: ["Avaliação ocupacional se limitação severa"] },
+  P: { intervencoes: ["Educação em neurociência da dor (crenças)", "Exposição gradual ao movimento temido", "Diário de atividades sem dor", "Reestruturação cognitiva"], encaminhamentos: ["Psicoterapia cognitivo-comportamental"] },
+  R: { intervencoes: ["Higiene do sono: rotina fixa", "Desligar telas 1h antes de dormir", "Relaxamento pré-sono", "Cafeína só até 14h"], encaminhamentos: ["Avaliação médica se insônia crônica"] },
+  C: { intervencoes: ["Gerenciamento de estresse", "Mindfulness e relaxamento", "Reestruturação da rotina de trabalho", "Lazer e socialização programados"], encaminhamentos: ["Encaminhamento psicológico", "Apoio social estruturado"] },
+  I: { intervencoes: ["Estabilizar rotina antes de progredir carga", "Adaptar equipamento gradualmente", "Evitar múltiplas mudanças simultâneas"], encaminhamentos: [] },
+  N: { intervencoes: ["Investigar fatores viscerais/hormonais", "Monitorar ciclo menstrual (se aplicável)", "Atenção a sinais autonômicos"], encaminhamentos: ["Avaliação médica para fatores sistêmicos ocultos"] },
+};
+
+function perdaDe(dim: string, score: number) {
+  const cfg = TABELA_PERDAS[dim];
+  if (!cfg) return { perda: 0, critico: false };
+  const banda = cfg.bandas.find(b => score >= b.min && score < b.max) || cfg.bandas[cfg.bandas.length - 1];
+  return { perda: banda.perda, critico: cfg.critico !== undefined && score >= cfg.critico };
+}
+
+function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string) {
+  const scores: Record<string, number> = {
+    D: Number(cs.D ?? cs.D_pain ?? 0),
+    EFI: Number(cs.EFI ?? cs.EFI_functionality ?? 0),
+    P: Number(cs.P ?? cs.P_psychological ?? 0),
+    I: Number(cs.I ?? cs.I_inertia ?? 0),
+    R: Number(cs.R ?? cs.R_regulation ?? 0),
+    C: Number(cs.C ?? cs.C_context ?? 0),
+    N: Number(cs.N ?? cs.N_noise ?? 0),
+  };
+  const perdas: Record<string, { perda: number; critico: boolean }> = {};
+  let driverKey = "D", maxPerda = 0;
+  for (const dim of Object.keys(scores)) {
+    const p = perdaDe(dim, scores[dim]);
+    perdas[dim] = p;
+    const ajustada = p.perda * (p.critico ? 1.5 : 1);
+    if (ajustada > maxPerda) { maxPerda = ajustada; driverKey = dim; }
+  }
+  const di = DRIVER_INTERVENCOES[driverKey] || DRIVER_INTERVENCOES.D;
+  const driver = {
+    key: driverKey,
+    label: DIM_LABELS[driverKey] || driverKey,
+    perda: perdas[driverKey].perda,
+    score: scores[driverKey],
+    intervencoes: di.intervencoes,
+    encaminhamentos: di.encaminhamentos,
+  };
+
+  // Reforços por fase alinhados às 3 fases da diretriz
+  const reforcos_por_fase = [
+    {
+      numero: 1,
+      foco: `Reduzir sobrecarga em ${driver.label}`,
+      intervencoes: [
+        ...di.intervencoes.slice(0, 3),
+        ...(perdas.R.perda >= 10 && driverKey !== "R" ? ["Higiene do sono: rotina fixa"] : []),
+        ...(perdas.D.perda >= 14 && driverKey !== "D" ? ["Manejo concomitante da dor"] : []),
+      ],
+    },
+    {
+      numero: 2,
+      foco: "Capacidade física e funcional",
+      intervencoes: [
+        "Core e estabilização 3×/sem",
+        "Caminhada progressiva (10→30 min/dia)",
+        "Mobilidade articular sistêmica",
+        ...(perdas.EFI.perda >= 10 ? ["Retorno gradual às AVDs"] : []),
+        ...(perdas.C.perda >= 7 ? ["Reestruturação gradual do contexto social"] : []),
+      ],
+    },
+    {
+      numero: 3,
+      foco: "Prevenção e consolidação de hábitos",
+      intervencoes: [
+        "Programa domiciliar autônomo",
+        "Hidratação 2L/dia",
+        "Nutrição: 2 porções de vegetais/dia",
+        "Ergonomia: ajuste definitivo do workstation",
+        "Reavaliação MyID em 30 dias",
+      ],
+    },
+  ];
+
+  // Missões prioritárias (top 3)
+  const missoes: { titulo: string; descricao: string; categoria: string; xp: number; dimensao: string }[] = [];
+  if (perdas.D.perda >= 8) missoes.push({ titulo: "Respiração Terapêutica", descricao: "5 min de respiração diafragmática (4-7-8) ao acordar e antes de dormir.", categoria: perdas.D.perda >= 14 ? "urgente" : "importante", xp: 15, dimensao: "D" });
+  if (perdas.R.perda >= 10) missoes.push({ titulo: "Ritual do Sono", descricao: "Desligar telas 1h antes de deitar e dormir 30 min mais cedo.", categoria: perdas.R.critico ? "urgente" : "importante", xp: 20, dimensao: "R" });
+  if (perdas.P.perda >= 4) missoes.push({ titulo: "Desafio da Coragem", descricao: "Fazer UMA atividade que evita por medo da dor — com calma.", categoria: "urgente", xp: 25, dimensao: "P" });
+  if (perdas.C.perda >= 7) missoes.push({ titulo: "Válvula de Escape", descricao: "Identificar UMA fonte de estresse controlável e definir ação para reduzi-la.", categoria: "importante", xp: 30, dimensao: "C" });
+  if (missoes.length < 3) missoes.push({ titulo: "Caminhada Progressiva", descricao: "10 min hoje, +5 min a cada 3 dias. Meta: 30 min/dia.", categoria: "oportunidade", xp: 15, dimensao: "AF" });
+
+  return {
+    generated_at: new Date().toISOString(),
+    myid_score: myidScore,
+    classificacao,
+    driver,
+    reforcos_por_fase,
+    missoes_prioritarias: missoes.slice(0, 4),
+    meta_final: `MyID ${Math.min(100, Math.round(myidScore + 20))} em 6 semanas`,
+  };
+}
+
+
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -336,6 +456,34 @@ Avaliação via MyID-100 v2.0. Dados completos no dashboard.`;
       });
     } catch (noteErr) {
       console.warn("Nota de prontuário não registrada:", noteErr);
+    }
+
+    // 7. ENRIQUECER DIRETRIZ ATIVA COM MELHORIAS BASEADAS NO MyID
+    try {
+      const { data: protocoloAtivo } = await supabase
+        .from("protocolos")
+        .select("id, scores_avaliacao")
+        .eq("paciente_id", pacienteId)
+        .eq("terapeuta_id", terapeutaId)
+        .eq("status", "ativo")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (protocoloAtivo?.id) {
+        const myidEnhancements = buildMyIDEnhancements(cs, myidScore, classificacao);
+        const novosScores = {
+          ...(protocoloAtivo.scores_avaliacao || {}),
+          myid_enhancements: myidEnhancements,
+        };
+        await supabase
+          .from("protocolos")
+          .update({ scores_avaliacao: novosScores })
+          .eq("id", protocoloAtivo.id);
+        console.log(`[complete-myid] Diretriz ${protocoloAtivo.id} enriquecida com MyID.`);
+      }
+    } catch (enrichErr) {
+      console.warn("Enriquecimento MyID da diretriz falhou (não bloqueante):", enrichErr);
     }
 
     return new Response(JSON.stringify({ ok: true, synced: true, avaliacao_identidade_id: inserted.id }), {
