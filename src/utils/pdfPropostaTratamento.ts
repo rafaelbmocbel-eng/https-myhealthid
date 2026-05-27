@@ -34,6 +34,14 @@ export interface FasePlano {
   focos?: string[]; // bullets curtos
 }
 
+export interface PlanoManutencao {
+  mensagemPaciente?: string;
+  rotinaMinima?: string[];
+  frequenciaReavaliacao?: string;
+  sinaisParaRetornar?: string[];
+  habitosChave?: string[];
+}
+
 export interface PDFPropostaData {
   pacienteNome: string;
   profissionalNome?: string;
@@ -44,6 +52,7 @@ export interface PDFPropostaData {
   resumoClinico?: string;
   prognostico?: string;
   fases: FasePlano[];
+  manutencao?: PlanoManutencao;
   pacote: {
     numeroSessoes: number;
     frequencia: string;     // ex "2x por semana"
