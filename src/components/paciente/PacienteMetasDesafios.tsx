@@ -504,10 +504,11 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                       <div className="flex items-center gap-1.5 mt-2">
                         <Sparkles className="h-3 w-3 text-yellow-300" />
                         <span className="text-[10px] font-bold text-yellow-200">
-                          Todas as missões do dia concluídas! 🎉
+                          Você fechou o dia! 🎉
                         </span>
                       </div>
                     )}
+
                   </CardContent>
                 </Card>
               )}
