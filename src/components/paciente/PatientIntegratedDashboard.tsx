@@ -24,7 +24,7 @@ import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreCol
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
 import type { MyIDResult as MyIDResultType, FingerprintRing } from '@/types/myid';
 import { Progress } from '@/components/ui/progress';
-import ProtocoloScores from '@/components/protocolo/ProtocoloScores';
+import PatientHealthAreas from '@/components/paciente/PatientHealthAreas';
 import MyIDDicasPessoais from '@/components/myid/MyIDDicasPessoais';
 import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import {
