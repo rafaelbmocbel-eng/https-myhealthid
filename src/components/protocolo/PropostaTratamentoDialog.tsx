@@ -56,6 +56,19 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
     }));
   }, [protocolo]);
 
+  // Extrai plano de manutenção do snapshot
+  const manutencao = useMemo(() => {
+    const m = protocolo?.scores_avaliacao?.diretriz_snapshot?.manutencao;
+    if (!m || typeof m !== 'object') return undefined;
+    return {
+      mensagemPaciente: m.mensagem_paciente || m.mensagemPaciente,
+      rotinaMinima: Array.isArray(m.rotina_minima) ? m.rotina_minima : (Array.isArray(m.rotinaMinima) ? m.rotinaMinima : []),
+      frequenciaReavaliacao: m.frequencia_reavaliacao || m.frequenciaReavaliacao,
+      sinaisParaRetornar: Array.isArray(m.sinais_para_retornar) ? m.sinais_para_retornar : (Array.isArray(m.sinaisParaRetornar) ? m.sinaisParaRetornar : []),
+      habitosChave: Array.isArray(m.habitos_chave) ? m.habitos_chave : (Array.isArray(m.habitosChave) ? m.habitosChave : []),
+    };
+  }, [protocolo]);
+
   const handleGerar = async (modo: 'share' | 'download') => {
     setLoading(true);
     try {
