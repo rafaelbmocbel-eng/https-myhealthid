@@ -416,9 +416,10 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
             <div className="flex items-center gap-1.5 mt-2">
               <Trophy className="icon-sm text-yellow-600" />
               <span className="text-[10px] font-bold text-yellow-700">
-                Todas as metas concluídas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} XP
+                Você bateu todas as metas! 🎉 +{metas.reduce((a, m) => a + m.xpRecompensa, 0)} pontos
               </span>
             </div>
+
           )}
         </CardContent>
       </Card>
