@@ -546,12 +546,41 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
 
     if (diretrizConfirmada?.id) {
       return (
-        <ProtocoloViewer
-          protocoloId={diretrizConfirmada.id}
-          embedded
-          onBack={() => undefined}
-          onExportPDF={() => handleExportPDF(diretrizConfirmada)}
-        />
+        <div className="space-y-3">
+          <div className="rounded-xl border border-amber-200/60 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/10 dark:to-orange-900/10 p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Sparkles className="h-4 w-4 text-amber-600" />
+              <span className="text-xs font-bold uppercase tracking-wider text-amber-900 dark:text-amber-200">Transformar em venda</span>
+            </div>
+            <p className="text-xs text-amber-900/80 dark:text-amber-100/80 mb-3">
+              Esta diretriz (com plano de manutenção) pode virar uma proposta comercial em PDF, pronta para enviar pelo WhatsApp.
+            </p>
+            <Button
+              onClick={() => setPropostaProtocolo(diretrizConfirmada)}
+              className="w-full h-11 gap-2 bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-semibold shadow-sm"
+            >
+              <Sparkles className="h-4 w-4" />
+              Gerar Proposta Comercial (PDF + WhatsApp)
+            </Button>
+          </div>
+
+          <ProtocoloViewer
+            protocoloId={diretrizConfirmada.id}
+            embedded
+            onBack={() => undefined}
+            onExportPDF={() => handleExportPDF(diretrizConfirmada)}
+          />
+
+          {propostaProtocolo && (
+            <PropostaTratamentoDialog
+              open={!!propostaProtocolo}
+              onOpenChange={(o) => !o && setPropostaProtocolo(null)}
+              protocolo={propostaProtocolo}
+              pacienteId={pacienteId}
+              pacienteNome={pacienteNome}
+            />
+          )}
+        </div>
       );
     }
 
