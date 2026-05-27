@@ -379,12 +379,12 @@ export default function MyIDFingerprint({
                     boxShadow: isActive ? `0 0 8px ${ridge.computedColor}` : 'none',
                   }}
                 />
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="text-[10px] font-bold text-foreground/80 truncate leading-tight">
-                    {SHORT_LABELS[ridge.scoreKey]}
+                    {FULL_LABELS[ridge.scoreKey] || ridge.label}
                   </div>
                   <div className="text-[9px] font-semibold tabular-nums" style={{ color: ridge.computedColor }}>
-                    {ridge.value.toFixed(1)}
+                    {ridge.value.toFixed(1)} / 10
                   </div>
                 </div>
               </button>
