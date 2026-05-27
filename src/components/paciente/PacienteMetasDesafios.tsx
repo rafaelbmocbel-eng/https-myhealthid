@@ -446,7 +446,7 @@ export default function PacienteMetasDesafios({ pacienteId }: Props) {
                     {meta.titulo}
                   </p>
                   <Badge variant="outline" className="text-[8px] py-0 h-4 gap-0.5">
-                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} XP
+                    <Zap className="h-2 w-2" /> +{meta.xpRecompensa} pts
                   </Badge>
                 </div>
                 <p className="text-[10px] text-muted-foreground mb-1.5">{meta.descricao}</p>
