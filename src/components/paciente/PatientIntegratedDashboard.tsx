@@ -139,7 +139,9 @@ export default function PatientIntegratedDashboard({
   });
 
   const ultimaMyID = myidAvaliacoes[0];
+  const previousMyID = myidAvaliacoes[1]; // para comparativo
   const myidLinkResult = myidFromLink[0]?.resultado_processado as any;
+  const previousScore = previousMyID ? Number(previousMyID.myid_score) || 0 : null;
 
   // Use whichever is more recent
   const hasMyID = !!ultimaMyID || !!myidLinkResult;
