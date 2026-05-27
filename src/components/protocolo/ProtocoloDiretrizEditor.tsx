@@ -74,6 +74,19 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
   const [dirty, setDirty] = useState(false);
   const snapshotKey = JSON.stringify(snapshot);
 
+  // MyID Enhancements (alimentado pelo edge complete-myid ao responder MyID)
+  const { data: myidEnh } = useQuery({
+    queryKey: ['protocolo-myid-enh', protocoloId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('protocolos' as any)
+        .select('scores_avaliacao')
+        .eq('id', protocoloId)
+        .maybeSingle();
+      return (data as any)?.scores_avaliacao?.myid_enhancements || null;
+    },
+  });
+
   useEffect(() => {
     if (dirty) return;
     setFases(snapshot.fases);
