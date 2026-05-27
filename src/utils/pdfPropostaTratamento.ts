@@ -34,6 +34,14 @@ export interface FasePlano {
   focos?: string[]; // bullets curtos
 }
 
+export interface PlanoManutencao {
+  mensagemPaciente?: string;
+  rotinaMinima?: string[];
+  frequenciaReavaliacao?: string;
+  sinaisParaRetornar?: string[];
+  habitosChave?: string[];
+}
+
 export interface PDFPropostaData {
   pacienteNome: string;
   profissionalNome?: string;
@@ -44,6 +52,7 @@ export interface PDFPropostaData {
   resumoClinico?: string;
   prognostico?: string;
   fases: FasePlano[];
+  manutencao?: PlanoManutencao;
   pacote: {
     numeroSessoes: number;
     frequencia: string;     // ex "2x por semana"
@@ -331,7 +340,93 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
   return y;
 }
 
-// =============== INVESTIMENTO ===============
+// =============== PLANO DE MANUTENÇÃO ===============
+function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
+  if (!m) return y;
+  const hasContent =
+    m.mensagemPaciente ||
+    (m.rotinaMinima && m.rotinaMinima.length) ||
+    m.frequenciaReavaliacao ||
+    (m.sinaisParaRetornar && m.sinaisParaRetornar.length) ||
+    (m.habitosChave && m.habitosChave.length);
+  if (!hasContent) return y;
+
+  y = ensure(doc, y + 4, 40);
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(11);
+  doc.setTextColor(...c(NAVY));
+  doc.text('PLANO DE MANUTENÇÃO (PÓS-ALTA)', 22, y);
+  y += 5;
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...c(MUTED));
+  doc.text('Como manter os resultados após o tratamento concluído.', 22, y);
+  y += 5;
+
+  // Card verde
+  const blocks: Array<{ titulo: string; itens: string[] }> = [];
+  if (m.rotinaMinima?.length) blocks.push({ titulo: 'Rotina mínima', itens: m.rotinaMinima.slice(0, 5) });
+  if (m.habitosChave?.length) blocks.push({ titulo: 'Hábitos-chave', itens: m.habitosChave.slice(0, 5) });
+  if (m.sinaisParaRetornar?.length) blocks.push({ titulo: 'Voltar ao profissional se', itens: m.sinaisParaRetornar.slice(0, 5) });
+
+  const totalItens = blocks.reduce((acc, b) => acc + b.itens.length + 1, 0);
+  const extraMsg = m.mensagemPaciente ? 12 : 0;
+  const extraFreq = m.frequenciaReavaliacao ? 8 : 0;
+  const altura = 10 + extraMsg + extraFreq + totalItens * 4.8 + 4;
+
+  y = ensure(doc, y, altura + 6);
+
+  doc.setFillColor(240, 253, 244);
+  doc.setDrawColor(...c(GREEN));
+  doc.setLineWidth(0.3);
+  doc.roundedRect(22, y, 166, altura, 2.5, 2.5, 'FD');
+  doc.setFillColor(...c(GREEN));
+  doc.rect(22, y, 2.5, altura, 'F');
+
+  let yi = y + 6;
+
+  if (m.mensagemPaciente) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(9);
+    doc.setTextColor(...c(TEXT));
+    const ml = wrap(doc, `"${m.mensagemPaciente}"`, 152);
+    doc.text(ml.slice(0, 2), 28, yi);
+    yi += ml.slice(0, 2).length * 4.5 + 2;
+  }
+
+  if (m.frequenciaReavaliacao) {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...c(NAVY));
+    doc.text('Reavaliação:', 28, yi);
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...c(TEXT));
+    doc.text(m.frequenciaReavaliacao, 53, yi);
+    yi += 6;
+  }
+
+  blocks.forEach((b) => {
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9);
+    doc.setTextColor(...c(NAVY));
+    doc.text(b.titulo, 28, yi);
+    yi += 4.5;
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(...c(TEXT));
+    b.itens.forEach((it) => {
+      doc.setTextColor(...c(GREEN));
+      doc.text('•', 30, yi);
+      doc.setTextColor(...c(TEXT));
+      const fl = wrap(doc, it, 150);
+      doc.text(fl[0], 33, yi);
+      yi += 4.5;
+    });
+  });
+
+  return y + altura + 4;
+}
 function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number {
   y = ensure(doc, y + 4, 70);
 
@@ -495,6 +590,7 @@ export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise
   let y = 40;
   y = drawDiagnostico(doc, y, data);
   y = drawFases(doc, y, data.fases);
+  y = drawManutencao(doc, y, data.manutencao);
   y = drawInvestimento(doc, y, data);
   drawCTA(doc, y, data);
 
