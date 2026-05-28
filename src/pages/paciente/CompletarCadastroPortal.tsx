@@ -25,6 +25,8 @@ const maskPhone = (v: string) => {
 function CompletarCadastroPortalInner() {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const editMode = searchParams.get('edit') === '1';
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
