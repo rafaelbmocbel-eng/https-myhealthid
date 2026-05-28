@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
@@ -6,7 +7,8 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
-import { User, Mail, Phone, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
