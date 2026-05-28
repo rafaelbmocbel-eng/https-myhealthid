@@ -12,6 +12,7 @@ import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [paciente, setPaciente] = useState<any>(null);
 
   useEffect(() => {
