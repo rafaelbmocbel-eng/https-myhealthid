@@ -384,7 +384,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                 {/* Capa */}
                 <div className="bg-gradient-to-br from-slate-900 to-slate-800 text-white p-6 text-center">
                   <p className="text-[10px] uppercase tracking-[0.3em] text-amber-300 mb-2">Proposta de Tratamento</p>
-                  <p className="text-2xl font-serif italic font-light">{pacienteNome}</p>
+                  <p className="text-2xl font-semibold tracking-tight">{pacienteNome}</p>
                   {profissionalNome && (
                     <p className="text-xs text-slate-300 mt-3">Preparado por {profissionalNome}</p>
                   )}
