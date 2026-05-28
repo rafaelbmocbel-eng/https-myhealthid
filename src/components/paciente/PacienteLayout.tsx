@@ -54,9 +54,10 @@ export default function PacienteLayout({ children }: Props) {
         .gte('created_at', desde)
         .order('created_at', { ascending: false })
         .limit(5);
-      const recente = (data || []).some((r: { resultado: { _meta?: { origem?: string } } | null }) =>
-        r?.resultado?._meta?.origem === 'portal_paciente_historia'
-      );
+      const recente = (data || []).some((r) => {
+        const meta = (r?.resultado as { _meta?: { origem?: string } } | null)?._meta;
+        return meta?.origem === 'portal_paciente_historia';
+      });
       if (!cancelled) setHistoriaRecente(recente);
     };
     check();
