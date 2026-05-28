@@ -2,13 +2,14 @@ import { ReactNode, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
-import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket, MessageSquare } from 'lucide-react';
+import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início', shortLabel: 'Início', icon: LayoutDashboard, badgeKey: null },
+  { path: '/paciente/historia', label: 'Minha História', shortLabel: 'História', icon: Mic, badgeKey: null },
   { path: '/paciente/saude', label: 'Saúde', shortLabel: 'Saúde', icon: Watch, badgeKey: null },
   { path: '/paciente/diario', label: 'Diário', shortLabel: 'Diário', icon: Heart, badgeKey: 'diario' as const },
   { path: '/paciente/evolucao', label: 'Evolução e Prontuários', shortLabel: 'Evolução', icon: Flame, badgeKey: null },
@@ -22,7 +23,7 @@ const navItems = [
 ];
 
 // Show max 5 items in bottom nav: Início, Chat, Agenda, Treinos, Perfil
-const MOBILE_NAV_ITEMS = [0, 9, 5, 4, 10];
+const MOBILE_NAV_ITEMS = [0, 10, 6, 5, 11];
 
 interface Props {
   children: ReactNode;
