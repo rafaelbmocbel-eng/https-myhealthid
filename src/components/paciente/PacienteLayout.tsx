@@ -96,7 +96,24 @@ export default function PacienteLayout({ children }: Props) {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Mic — Conte sua história. Fica "apagado" depois de enviar nas últimas 24h, mas continua clicável. */}
+          <button
+            onClick={() => navigate('/paciente/historia')}
+            className={cn(
+              'relative p-2 rounded-full transition-all active:scale-95 backdrop-blur-sm',
+              historiaRecente
+                ? 'bg-white/5 text-primary-foreground/40 hover:text-primary-foreground/70'
+                : 'bg-white/10 text-primary-foreground hover:bg-white/20'
+            )}
+            aria-label={historiaRecente ? 'Adicionar mais sobre sua história' : 'Contar sua história por voz'}
+            title={historiaRecente ? 'Adicionar mais à sua história' : 'Contar sua história'}
+          >
+            <Mic className="h-4 w-4" />
+            {!historiaRecente && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent animate-pulse" />
+            )}
+          </button>
           {/* Streak badge */}
           {notifications.streak > 0 && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-sm">
