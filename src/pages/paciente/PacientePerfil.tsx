@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO } from 'date-fns';
@@ -6,10 +7,12 @@ import PacienteLayout from '@/components/paciente/PacienteLayout';
 import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimentoLGPD';
 import { Card, CardContent } from '@/components/ui/card';
-import { User, Mail, Phone, Calendar } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [paciente, setPaciente] = useState<any>(null);
 
   useEffect(() => {
@@ -35,7 +38,17 @@ export default function PacientePerfil() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          <h1 className="text-lg font-black text-foreground">Meu Perfil</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-lg font-black text-foreground">Meu Perfil</h1>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/paciente/completar-cadastro?edit=1')}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Editar cadastro
+            </Button>
+          </div>
 
           <Card>
             <CardContent className="p-4 space-y-3">
