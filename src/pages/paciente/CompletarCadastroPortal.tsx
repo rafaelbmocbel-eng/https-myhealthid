@@ -128,8 +128,8 @@ function CompletarCadastroPortalInner() {
         p_data: payload,
       });
       if (error) throw error;
-      toast({ title: '✅ Cadastro concluído!', description: 'Agora vamos para sua avaliação MyID.' });
-      navigate('/paciente/questionarios', { replace: true });
+      toast({ title: editMode ? '✅ Cadastro atualizado!' : '✅ Cadastro concluído!', description: editMode ? 'Suas informações foram salvas.' : 'Agora vamos para sua avaliação MyID.' });
+      navigate(editMode ? '/paciente/perfil' : '/paciente/questionarios', { replace: true });
     } catch (e: any) {
       const msg = e?.message || '';
       let friendly = 'Não foi possível salvar. Tente novamente.';
