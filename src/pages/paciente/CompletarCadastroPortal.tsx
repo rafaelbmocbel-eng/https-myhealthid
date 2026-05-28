@@ -47,12 +47,12 @@ function CompletarCadastroPortalInner() {
     (async () => {
       const { data: pac } = await supabase
         .from('pacientes')
-        .select('nome, sobrenome, telefone, cadastro_status, terapeuta_id')
+        .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
 
       if (pac) {
-        if (pac.cadastro_status === 'completo') {
+        if (pac.cadastro_status === 'completo' && !editMode) {
           navigate('/paciente/questionarios', { replace: true });
           return;
         }
@@ -61,6 +61,24 @@ function CompletarCadastroPortalInner() {
           nome: pac.nome || '',
           sobrenome: pac.sobrenome || '',
           telefone: pac.telefone || '',
+          data_nascimento: pac.data_nascimento || '',
+          genero: pac.genero || '',
+          cpf: pac.cpf ? maskCPF(pac.cpf) : '',
+          cep: pac.cep ? maskCEP(pac.cep) : '',
+          endereco: pac.endereco || '',
+          endereco_numero: pac.endereco_numero || '',
+          endereco_complemento: pac.endereco_complemento || '',
+          bairro: pac.bairro || '',
+          cidade: pac.cidade || '',
+          uf: pac.uf || '',
+          queixa_principal: pac.queixa_principal || '',
+          alergias: pac.alergias || '',
+          medicamentos_uso: pac.medicamentos_uso || '',
+          condicoes_preexistentes: pac.condicoes_preexistentes || '',
+          contato_emergencia_nome: pac.contato_emergencia_nome || '',
+          contato_emergencia_telefone: pac.contato_emergencia_telefone || '',
+          contato_emergencia_parentesco: pac.contato_emergencia_parentesco || '',
+          lgpd_aceite: editMode ? true : false,
         }));
         const { data: prof } = await supabase
           .from('profiles')
@@ -71,7 +89,7 @@ function CompletarCadastroPortalInner() {
       }
       setLoading(false);
     })();
-  }, [user, navigate]);
+  }, [user, navigate, editMode]);
 
   const buscarCEP = async (cep: string) => {
     const digits = cep.replace(/\D/g, '');
