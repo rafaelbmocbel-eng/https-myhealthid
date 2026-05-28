@@ -128,7 +128,7 @@ function buildMyIDEnhancements(cs: any, myidScore: number, classificacao: string
 
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  console.log("[complete-myid] incoming", req.method, "hasAuth=", !!req.headers.get("Authorization"));
+
   try {
     const { avaliacao_id, link_avaliacao_id, token_acesso, result, raw_data } = await req.json();
 
