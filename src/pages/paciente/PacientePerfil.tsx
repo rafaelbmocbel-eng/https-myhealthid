@@ -38,9 +38,20 @@ export default function PacientePerfil() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          <h1 className="text-lg font-black text-foreground">Meu Perfil</h1>
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-lg font-black text-foreground">Meu Perfil</h1>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => navigate('/paciente/completar-cadastro?edit=1')}
+            >
+              <Pencil className="h-3.5 w-3.5 mr-1.5" />
+              Editar cadastro
+            </Button>
+          </div>
 
           <Card>
+            <CardContent className="p-4 space-y-3">
             <CardContent className="p-4 space-y-3">
               {infoItems.map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
