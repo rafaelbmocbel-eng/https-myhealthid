@@ -20,25 +20,30 @@ serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    if (terapeuta_id !== userId) {
-      return new Response(JSON.stringify({ error: "Forbidden" }), {
-        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Verify patient belongs to this therapist
+    // Autoriza: profissional dono OU o próprio paciente
+    const isTherapist = terapeuta_id === userId;
+
     const { data: ownedPatient } = await supabase
       .from("pacientes")
-      .select("id")
+      .select("id, user_id, terapeuta_id")
       .eq("id", paciente_id)
-      .eq("terapeuta_id", userId)
+      .eq("terapeuta_id", terapeuta_id)
       .maybeSingle();
+
     if (!ownedPatient) {
-      return new Response(JSON.stringify({ error: "Patient not owned by this therapist" }), {
+      return new Response(JSON.stringify({ error: "Paciente não encontrado para este profissional." }), {
+        status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    const isPatientSelf = ownedPatient.user_id === userId;
+
+    if (!isTherapist && !isPatientSelf) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
         status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
