@@ -1,15 +1,15 @@
-import { ReactNode, useMemo } from 'react';
+import { ReactNode, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import { LayoutDashboard, CalendarDays, ClipboardList, User, LogOut, Heart, Flame, Dumbbell, Wallet, Watch, Ticket, MessageSquare, Mic } from 'lucide-react';
 import LogoIcon from '@/components/LogoIcon';
 import PortalOfflineBanner from './PortalOfflineBanner';
+import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const navItems = [
   { path: '/paciente/dashboard', label: 'Início', shortLabel: 'Início', icon: LayoutDashboard, badgeKey: null },
-  { path: '/paciente/historia', label: 'Minha História', shortLabel: 'História', icon: Mic, badgeKey: null },
   { path: '/paciente/saude', label: 'Saúde', shortLabel: 'Saúde', icon: Watch, badgeKey: null },
   { path: '/paciente/diario', label: 'Diário', shortLabel: 'Diário', icon: Heart, badgeKey: 'diario' as const },
   { path: '/paciente/evolucao', label: 'Evolução e Prontuários', shortLabel: 'Evolução', icon: Flame, badgeKey: null },
@@ -22,8 +22,8 @@ const navItems = [
   { path: '/paciente/perfil', label: 'Perfil', shortLabel: 'Perfil', icon: User, badgeKey: null },
 ];
 
-// Show max 5 items in bottom nav: Início, Chat, Agenda, Minha História, Perfil
-const MOBILE_NAV_ITEMS = [0, 10, 6, 1, 11];
+// Show max 5 items in bottom nav: Início, Chat, Agenda, Treinos, Perfil
+const MOBILE_NAV_ITEMS = [0, 9, 5, 4, 10];
 
 interface Props {
   children: ReactNode;
@@ -34,8 +34,37 @@ export default function PacienteLayout({ children }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const notifications = usePacienteNotifications(user?.id);
+  const [historiaRecente, setHistoriaRecente] = useState(false);
 
   const mobileItems = useMemo(() => MOBILE_NAV_ITEMS.map(i => navItems[i]), []);
+
+  // Detecta se o paciente enviou história nas últimas 24h (para "apagar" o botão)
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const check = async () => {
+      const { data: pac } = await supabase
+        .from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      if (!pac || cancelled) return;
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from('avaliacoes_voz')
+        .select('id, resultado')
+        .eq('paciente_id', pac.id)
+        .gte('created_at', desde)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      const recente = (data || []).some((r) => {
+        const meta = (r?.resultado as { _meta?: { origem?: string } } | null)?._meta;
+        return meta?.origem === 'portal_paciente_historia';
+      });
+      if (!cancelled) setHistoriaRecente(recente);
+    };
+    check();
+    const interval = setInterval(check, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id, location.pathname]);
+
 
   const getBadgeCount = (key: string | null): number => {
     if (!key) return 0;
@@ -67,7 +96,24 @@ export default function PacienteLayout({ children }: Props) {
             </span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5">
+          {/* Mic — Conte sua história. Fica "apagado" depois de enviar nas últimas 24h, mas continua clicável. */}
+          <button
+            onClick={() => navigate('/paciente/historia')}
+            className={cn(
+              'relative p-2 rounded-full transition-all active:scale-95 backdrop-blur-sm',
+              historiaRecente
+                ? 'bg-white/5 text-primary-foreground/40 hover:text-primary-foreground/70'
+                : 'bg-white/10 text-primary-foreground hover:bg-white/20'
+            )}
+            aria-label={historiaRecente ? 'Adicionar mais sobre sua história' : 'Contar sua história por voz'}
+            title={historiaRecente ? 'Adicionar mais à sua história' : 'Contar sua história'}
+          >
+            <Mic className="h-4 w-4" />
+            {!historiaRecente && (
+              <span className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full bg-accent animate-pulse" />
+            )}
+          </button>
           {/* Streak badge */}
           {notifications.streak > 0 && (
             <div className="flex items-center gap-1 px-2 py-0.5 rounded-full bg-white/10 backdrop-blur-sm">
