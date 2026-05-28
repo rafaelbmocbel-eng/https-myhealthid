@@ -176,7 +176,17 @@ serve(async (req) => {
 
       const tokenMatch = token_acesso && avaliacao.token_acesso === token_acesso;
       const therapistMatch = authorizedUserId && authorizedUserId === avaliacao.terapeuta_id;
-      if (!tokenMatch && !therapistMatch) {
+      let patientSelfMatch = false;
+      if (authorizedUserId && !therapistMatch && avaliacao.paciente_id) {
+        const { data: pac } = await supabase
+          .from("pacientes")
+          .select("user_id")
+          .eq("id", avaliacao.paciente_id)
+          .maybeSingle();
+        patientSelfMatch = !!pac && pac.user_id === authorizedUserId;
+      }
+      
+      if (!tokenMatch && !therapistMatch && !patientSelfMatch) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
