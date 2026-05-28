@@ -52,7 +52,6 @@ export default function PacientePerfil() {
 
           <Card>
             <CardContent className="p-4 space-y-3">
-            <CardContent className="p-4 space-y-3">
               {infoItems.map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center">
