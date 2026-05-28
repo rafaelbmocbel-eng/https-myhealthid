@@ -154,9 +154,21 @@ function CompletarCadastroPortalInner() {
     <div className="min-h-[100dvh] bg-background pb-12">
       <header className="px-4 py-5 border-b border-border/40 bg-card sticky top-0 z-10">
         <div className="max-w-xl mx-auto flex items-center gap-3">
+          {editMode && (
+            <button
+              type="button"
+              onClick={() => navigate('/paciente/perfil')}
+              className="p-2 -ml-2 rounded-lg hover:bg-muted active:scale-95 transition"
+              aria-label="Voltar"
+            >
+              <ArrowLeft className="h-5 w-5 text-foreground" />
+            </button>
+          )}
           <LogoIcon size={36} />
           <div className="min-w-0 flex-1">
-            <div className="text-[11px] text-muted-foreground">Bem-vindo(a) ao portal</div>
+            <div className="text-[11px] text-muted-foreground">
+              {editMode ? 'Editando cadastro' : 'Bem-vindo(a) ao portal'}
+            </div>
             <div className="text-sm font-bold text-foreground leading-tight truncate">
               {terapeutaNome || 'Complete seu cadastro'}
             </div>
