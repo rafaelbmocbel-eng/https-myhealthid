@@ -34,8 +34,36 @@ export default function PacienteLayout({ children }: Props) {
   const navigate = useNavigate();
   const location = useLocation();
   const notifications = usePacienteNotifications(user?.id);
+  const [historiaRecente, setHistoriaRecente] = useState(false);
 
   const mobileItems = useMemo(() => MOBILE_NAV_ITEMS.map(i => navItems[i]), []);
+
+  // Detecta se o paciente enviou história nas últimas 24h (para "apagar" o botão)
+  useEffect(() => {
+    if (!user?.id) return;
+    let cancelled = false;
+    const check = async () => {
+      const { data: pac } = await supabase
+        .from('pacientes').select('id').eq('user_id', user.id).maybeSingle();
+      if (!pac || cancelled) return;
+      const desde = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+      const { data } = await supabase
+        .from('avaliacoes_voz')
+        .select('id, resultado')
+        .eq('paciente_id', pac.id)
+        .gte('created_at', desde)
+        .order('created_at', { ascending: false })
+        .limit(5);
+      const recente = (data || []).some((r: { resultado: { _meta?: { origem?: string } } | null }) =>
+        r?.resultado?._meta?.origem === 'portal_paciente_historia'
+      );
+      if (!cancelled) setHistoriaRecente(recente);
+    };
+    check();
+    const interval = setInterval(check, 60000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, [user?.id, location.pathname]);
+
 
   const getBadgeCount = (key: string | null): number => {
     if (!key) return 0;
