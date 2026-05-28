@@ -185,6 +185,7 @@ serve(async (req) => {
           .maybeSingle();
         patientSelfMatch = !!pac && pac.user_id === authorizedUserId;
       }
+      console.log("[complete-myid auth]", { authorizedUserId, terapeuta: avaliacao.terapeuta_id, paciente: avaliacao.paciente_id, tokenMatch, therapistMatch, patientSelfMatch });
       if (!tokenMatch && !therapistMatch && !patientSelfMatch) {
         return new Response(JSON.stringify({ error: "Unauthorized" }), {
           status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
