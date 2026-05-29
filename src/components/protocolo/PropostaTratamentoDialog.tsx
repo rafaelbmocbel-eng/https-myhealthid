@@ -17,13 +17,22 @@ interface Props {
   pacienteNome: string;
 }
 
+interface TecnicaEd {
+  tecnica: string;
+  justificativa?: string;
+  lente_clinica?: string;
+  nivel_evidencia?: string | number;
+}
+
 interface FaseEd {
   numero: number;
   titulo: string;
   objetivo: string;
   semanas: string;
   focos: string[];
+  tecnicas: TecnicaEd[];
 }
+
 
 function brl(n: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
