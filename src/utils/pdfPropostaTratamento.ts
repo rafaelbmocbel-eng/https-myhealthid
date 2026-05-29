@@ -9,7 +9,7 @@
  *   const { gerarPDFPropostaTratamento, downloadPDFBlob } = await import('@/utils/pdfPropostaTratamento');
  */
 import jsPDF from 'jspdf';
-import { addLogoToDoc } from './pdfLogoHelper';
+import { drawFingerprintWatermark, drawFingerprintMark } from './pdfFingerprintWatermark';
 
 // Paleta Serene
 const NAVY = [28, 55, 83] as const;
