@@ -219,53 +219,48 @@ function drawHeader(doc: jsPDF, titulo: string) {
 function drawDiagnostico(doc: jsPDF, y: number, data: PDFPropostaData): number {
   if (!data.resumoClinico && !data.classificacao && !data.prognostico) return y;
 
-  y = ensure(doc, y, 60);
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('O QUE ENCONTRAMOS NA SUA AVALIAÇÃO', 22, y);
-  y += 6;
 
   if (data.classificacao) {
     const cor = data.classificacao.toUpperCase().includes('GRAV')
       || data.classificacao.toUpperCase().includes('CRÍT') ? RED
       : data.classificacao.toUpperCase().includes('MOD') ? AMBER : GREEN;
     doc.setFillColor(...c(cor));
-    doc.roundedRect(22, y - 3, 52, 7, 1.5, 1.5, 'F');
+    doc.roundedRect(140, y - 4, 48, 6, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(...c(WHITE));
-    doc.text(data.classificacao.toUpperCase(), 48, y + 1.5, { align: 'center', charSpace: 1 });
-    y += 8;
+    doc.text(data.classificacao.toUpperCase(), 164, y, { align: 'center', charSpace: 1 });
   }
+  y += 5;
 
   if (data.resumoClinico) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...c(TEXT));
-    const lines = wrap(doc, data.resumoClinico, 166);
-    doc.text(lines, 22, y + 2);
-    y += lines.length * 5 + 4;
+    const lines = wrap(doc, data.resumoClinico, 166).slice(0, 3);
+    doc.text(lines, 22, y);
+    y += lines.length * 4.2 + 2;
   }
 
   if (data.prognostico) {
-    y = ensure(doc, y, 22);
-    doc.setFillColor(...c(SOFT));
-    doc.roundedRect(22, y, 166, 18, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...c(GOLD));
-    doc.text('PROGNÓSTICO', 27, y + 6, { charSpace: 1 });
+    doc.text('PROGNÓSTICO:', 22, y, { charSpace: 1 });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setTextColor(...c(TEXT));
-    const linesP = wrap(doc, data.prognostico, 156);
-    doc.text(linesP.slice(0, 2), 27, y + 12);
-    y += 22;
+    const linesP = wrap(doc, data.prognostico, 140).slice(0, 2);
+    doc.text(linesP, 48, y);
+    y += linesP.length * 4.2 + 2;
   }
-  return y;
+  return y + 2;
 }
+
 
 // =============== PLANO EM FASES ===============
 function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
