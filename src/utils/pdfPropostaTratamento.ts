@@ -551,8 +551,9 @@ function drawCTA(doc: jsPDF, y: number, data: PDFPropostaData) {
   doc.setFillColor(...c(SOFT));
   doc.roundedRect(22, y, 166, 38, 3, 3, 'F');
 
-  doc.setFont('times', 'italic');
-  doc.setFontSize(13);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+
   doc.setTextColor(...c(NAVY));
   doc.text('Vamos começar?', 30, y + 12);
 
