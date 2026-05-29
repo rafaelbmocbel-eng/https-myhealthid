@@ -17,13 +17,22 @@ interface Props {
   pacienteNome: string;
 }
 
+interface TecnicaEd {
+  tecnica: string;
+  justificativa?: string;
+  lente_clinica?: string;
+  nivel_evidencia?: string | number;
+}
+
 interface FaseEd {
   numero: number;
   titulo: string;
   objetivo: string;
   semanas: string;
   focos: string[];
+  tecnicas: TecnicaEd[];
 }
+
 
 function brl(n: number) {
   return new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(n || 0);
@@ -67,19 +76,34 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
     const arr = Array.isArray(snap?.fases) ? snap.fases : [];
     if (arr.length === 0) {
       return [
-        { numero: 1, titulo: 'Alívio & Proteção', objetivo: 'Reduzir dor e estabilizar', semanas: '1-2', focos: ['Controle de sintomas', 'Educação em dor'] },
-        { numero: 2, titulo: 'Carga Progressiva', objetivo: 'Reganhar força e mobilidade', semanas: '3-6', focos: ['Exercícios progressivos'] },
-        { numero: 3, titulo: 'Retorno Funcional', objetivo: 'Voltar às atividades', semanas: '7-12', focos: ['Atividades específicas'] },
+        { numero: 1, titulo: 'Alívio & Proteção', objetivo: 'Reduzir dor e estabilizar', semanas: '1-2', focos: ['Controle de sintomas', 'Educação em dor'], tecnicas: [] },
+        { numero: 2, titulo: 'Carga Progressiva', objetivo: 'Reganhar força e mobilidade', semanas: '3-6', focos: ['Exercícios progressivos'], tecnicas: [] },
+        { numero: 3, titulo: 'Retorno Funcional', objetivo: 'Voltar às atividades', semanas: '7-12', focos: ['Atividades específicas'], tecnicas: [] },
       ];
     }
-    return arr.slice(0, 3).map((f: any, i: number) => ({
-      numero: f.numero ?? i + 1,
-      titulo: f.titulo || `Fase ${i + 1}`,
-      objetivo: f.objetivo || '',
-      semanas: f.semanas_inicio && f.semanas_fim ? `${f.semanas_inicio}-${f.semanas_fim}` : '',
-      focos: (Array.isArray(f.demandasAlvo) ? f.demandasAlvo : (Array.isArray(f.criteriosProgressao) ? f.criteriosProgressao : [])).slice(0, 6),
-    }));
+    return arr.slice(0, 3).map((f: any, i: number) => {
+      const objetivos = Array.isArray(f.objetivos) ? f.objetivos : [];
+      const demandas = Array.isArray(f.demandasAlvo) ? f.demandasAlvo : (Array.isArray(f.demandas_alvo) ? f.demandas_alvo : []);
+      const criterios = Array.isArray(f.criteriosProgressao) ? f.criteriosProgressao : (Array.isArray(f.criterios_progressao) ? f.criterios_progressao : []);
+      const focos = [...objetivos, ...demandas, ...criterios].filter(Boolean).slice(0, 6);
+      const tecnicasRaw = Array.isArray(f.tecnicas) ? f.tecnicas : [];
+      const tecnicas: TecnicaEd[] = tecnicasRaw.map((t: any) => ({
+        tecnica: t?.tecnica || t?.nome || '',
+        justificativa: t?.justificativa || t?.descricao || '',
+        lente_clinica: t?.lente_clinica || t?.lente || '',
+        nivel_evidencia: t?.nivel_evidencia ?? t?.evidencia ?? '',
+      })).filter((t: TecnicaEd) => t.tecnica);
+      return {
+        numero: f.numero ?? i + 1,
+        titulo: f.titulo || `Fase ${i + 1}`,
+        objetivo: f.objetivo || (objetivos[0] || ''),
+        semanas: f.semanas_inicio && f.semanas_fim ? `${f.semanas_inicio}-${f.semanas_fim}` : (f.semanas || ''),
+        focos,
+        tecnicas,
+      };
+    });
   }, [protocolo]);
+
 
   const [fases, setFases] = useState<FaseEd[]>(initialFases);
   useEffect(() => setFases(initialFases), [initialFases]);
@@ -140,7 +164,9 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
       const fasesLimpas = fases.map(f => ({
         ...f,
         focos: f.focos.map(x => x.trim()).filter(Boolean),
+        tecnicas: (f.tecnicas || []).filter(t => t.tecnica && t.tecnica.trim()),
       }));
+
       const manutLimpa = {
         mensagemPaciente: manut.mensagemPaciente.trim() || undefined,
         rotinaMinima: manut.rotinaMinima.map((x: string) => x.trim()).filter(Boolean),
@@ -286,6 +312,21 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                         <Plus className="h-3 w-3" /> Adicionar foco
                       </Button>
                     </div>
+                    {f.tecnicas && f.tecnicas.length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-border/40">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Técnicas da diretriz ({f.tecnicas.length}) — incluídas no PDF
+                        </Label>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {f.tecnicas.map((t, k) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/40">
+                              {t.tecnica}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 ))}
               </section>
