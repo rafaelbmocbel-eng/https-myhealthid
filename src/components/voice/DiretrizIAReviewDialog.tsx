@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Sparkles, CheckCircle2, Edit3, Trash2, Loader2, Target, Lightbulb, Activity } from 'lucide-react';
+import { Sparkles, CheckCircle2, Edit3, Trash2, Loader2, Target, Lightbulb, Activity, Leaf, AlertTriangle, CalendarClock } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -141,6 +141,59 @@ export default function DiretrizIAReviewDialog({
                   {diretriz.criterios_alta.map((c: string, i: number) => <li key={i}>✓ {c}</li>)}
                 </ul>
               </div>
+            )}
+
+            {diretriz?.manutencao && (
+              (() => {
+                const m = diretriz.manutencao;
+                const rotina = Array.isArray(m.rotina_minima) ? m.rotina_minima : [];
+                const habitos = Array.isArray(m.habitos_chave) ? m.habitos_chave : [];
+                const sinais = Array.isArray(m.sinais_para_retornar) ? m.sinais_para_retornar : [];
+                const hasContent = m.mensagem_paciente || m.frequencia_reavaliacao || rotina.length || habitos.length || sinais.length;
+                if (!hasContent) return null;
+                return (
+                  <div className="rounded-xl border border-emerald-300/60 dark:border-emerald-700/40 bg-emerald-50/70 dark:bg-emerald-900/15 p-3 space-y-2">
+                    <p className="text-[10px] font-semibold text-emerald-700 dark:text-emerald-300 uppercase flex items-center gap-1">
+                      <Leaf className="h-3 w-3" /> Plano de Manutenção (pós-alta)
+                    </p>
+                    {m.mensagem_paciente && (
+                      <p className="text-xs italic text-emerald-900 dark:text-emerald-100 leading-snug">"{m.mensagem_paciente}"</p>
+                    )}
+                    {m.frequencia_reavaliacao && (
+                      <p className="text-xs text-emerald-900 dark:text-emerald-100 flex items-start gap-1.5">
+                        <CalendarClock className="h-3 w-3 mt-0.5 shrink-0" />
+                        <span><strong>Reavaliação:</strong> {m.frequencia_reavaliacao}</span>
+                      </p>
+                    )}
+                    {rotina.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-200 uppercase mb-0.5">Rotina mínima</p>
+                        <ul className="text-xs text-emerald-900 dark:text-emerald-100 space-y-0.5 pl-1">
+                          {rotina.map((r: string, i: number) => <li key={i}>• {r}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {habitos.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-emerald-800 dark:text-emerald-200 uppercase mb-0.5">Hábitos-chave</p>
+                        <ul className="text-xs text-emerald-900 dark:text-emerald-100 space-y-0.5 pl-1">
+                          {habitos.map((h: string, i: number) => <li key={i}>• {h}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                    {sinais.length > 0 && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-amber-700 dark:text-amber-300 uppercase mb-0.5 flex items-center gap-1">
+                          <AlertTriangle className="h-3 w-3" /> Voltar ao profissional se
+                        </p>
+                        <ul className="text-xs text-amber-900 dark:text-amber-100 space-y-0.5 pl-1">
+                          {sinais.map((s: string, i: number) => <li key={i}>• {s}</li>)}
+                        </ul>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()
             )}
           </div>
         </ScrollArea>
