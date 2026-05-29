@@ -104,114 +104,97 @@ function brl(n: number): string {
 // Banda navy compacta (~88mm) que ocupa só o topo da primeira página,
 // liberando o restante da página para já começar o plano de tratamento.
 async function drawHero(doc: jsPDF, data: PDFPropostaData): Promise<number> {
-  const HERO_H = 88;
+  const HERO_H = 62;
 
-  // Fundo claro da página inteira primeiro
   doc.setFillColor(...c(LIGHT));
   doc.rect(0, 0, 210, 297, 'F');
 
-  // Banda navy do hero
   doc.setFillColor(...c(NAVY));
   doc.rect(0, 0, 210, HERO_H, 'F');
-
-  // Faixa dourada inferior do hero
   doc.setFillColor(...c(GOLD));
-  doc.rect(0, HERO_H, 210, 1, 'F');
-
-  // Faixa dourada lateral
+  doc.rect(0, HERO_H, 210, 0.8, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(0, 0, 4, HERO_H, 'F');
+  doc.rect(0, 0, 3, HERO_H, 'F');
 
-  // Marca d'água sutil dentro do hero
-  await drawFingerprintWatermark(doc, 130, 0, 110, 0.07);
+  await drawFingerprintWatermark(doc, 130, -10, 90, 0.07);
+  await drawFingerprintMark(doc, 180, 11, 12);
 
-  // Marca pequena no topo direito
-  await drawFingerprintMark(doc, 178, 14, 16);
-
-  // Marca / clínica
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...c(GOLD));
-  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 16, { charSpace: 1.4 });
-
   doc.setFontSize(7);
+  doc.setTextColor(...c(GOLD));
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 12, { charSpace: 1.3 });
+
+  doc.setFontSize(6.5);
   doc.setTextColor(200, 195, 180);
-  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 22, { charSpace: 1.3 });
+  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 17, { charSpace: 1.2 });
 
-  // Título compacto
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFontSize(17);
   doc.setTextColor(...c(WHITE));
-  doc.text('Seu plano de recuperação', 22, 38);
+  doc.text('Seu plano de recuperação', 22, 28);
   doc.setTextColor(...c(GOLD));
-  doc.text('começa aqui.', 22, 50);
+  doc.text('começa aqui.', 22, 37);
 
-  // Para quem
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(180, 175, 160);
-  doc.text('PREPARADO PARA', 22, 60, { charSpace: 1.2 });
+  doc.text('PREPARADO PARA', 22, 45, { charSpace: 1.2 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setTextColor(...c(WHITE));
-  doc.text(data.pacienteNome, 22, 68);
+  doc.text(data.pacienteNome, 22, 51);
 
   if (data.queixaPrincipal) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(220, 215, 200);
-    const linhas = wrap(doc, data.queixaPrincipal, 100).slice(0, 2);
-    doc.text(linhas, 22, 75);
+    const linhas = wrap(doc, data.queixaPrincipal, 95).slice(0, 1);
+    doc.text(linhas, 22, 56);
   }
 
-  // Mini-strip de dados do pacote (direita do hero)
+  // Mini-strip à direita
   const totalBruto = data.pacote.numeroSessoes * data.pacote.valorSessao;
   const desc = data.pacote.desconto || 0;
   const total = totalBruto * (1 - desc / 100);
 
-  const stripX = 128;
-  const stripY = 58;
+  const stripX = 125;
+  const stripY = 43;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(200, 195, 180);
   doc.text('PLANO', stripX, stripY, { charSpace: 1 });
   doc.text('SESSÕES', stripX + 22, stripY, { charSpace: 1 });
   doc.text('INVESTIMENTO', stripX + 44, stripY, { charSpace: 1 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(WHITE));
-  doc.text(`${data.fases.length} fases`, stripX, stripY + 6);
-  doc.text(String(data.pacote.numeroSessoes), stripX + 22, stripY + 6);
+  doc.text(`${data.fases.length} fases`, stripX, stripY + 5);
+  doc.text(String(data.pacote.numeroSessoes), stripX + 22, stripY + 5);
   doc.setTextColor(...c(GOLD));
-  doc.text(total > 0 ? brl(total) : 'Consulta', stripX + 44, stripY + 6);
+  doc.text(total > 0 ? brl(total) : 'Consulta', stripX + 44, stripY + 5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(200, 195, 180);
-  doc.text(data.pacote.frequencia, stripX, stripY + 11);
-  doc.text(data.pacote.duracao, stripX + 22, stripY + 11);
-  if (desc > 0) {
-    doc.text(`${desc}% off`, stripX + 44, stripY + 11);
-  }
+  doc.text(data.pacote.frequencia, stripX, stripY + 9);
+  doc.text(data.pacote.duracao, stripX + 22, stripY + 9);
+  if (desc > 0) doc.text(`${desc}% off`, stripX + 44, stripY + 9);
 
-  // Profissional + data (rodapé do hero)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(180, 175, 160);
   doc.text(
     `Por ${data.profissionalNome || 'seu profissional'}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
-    22, 83
+    22, 59
   );
-  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 83, { align: 'right' });
-  if (data.validadeDias) {
-    doc.text(`Válida por ${data.validadeDias} dias`, 105, 83, { align: 'center' });
-  }
+  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 59, { align: 'right' });
 
-  return HERO_H + 8;
+  return HERO_H + 5;
 }
+
 
 // =============== HEADER DAS PÁGINAS INTERNAS ===============
 function drawHeader(doc: jsPDF, titulo: string) {
@@ -236,228 +219,160 @@ function drawHeader(doc: jsPDF, titulo: string) {
 function drawDiagnostico(doc: jsPDF, y: number, data: PDFPropostaData): number {
   if (!data.resumoClinico && !data.classificacao && !data.prognostico) return y;
 
-  y = ensure(doc, y, 60);
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('O QUE ENCONTRAMOS NA SUA AVALIAÇÃO', 22, y);
-  y += 6;
 
   if (data.classificacao) {
     const cor = data.classificacao.toUpperCase().includes('GRAV')
       || data.classificacao.toUpperCase().includes('CRÍT') ? RED
       : data.classificacao.toUpperCase().includes('MOD') ? AMBER : GREEN;
     doc.setFillColor(...c(cor));
-    doc.roundedRect(22, y - 3, 52, 7, 1.5, 1.5, 'F');
+    doc.roundedRect(140, y - 4, 48, 6, 1.5, 1.5, 'F');
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(...c(WHITE));
-    doc.text(data.classificacao.toUpperCase(), 48, y + 1.5, { align: 'center', charSpace: 1 });
-    y += 8;
+    doc.text(data.classificacao.toUpperCase(), 164, y, { align: 'center', charSpace: 1 });
   }
+  y += 5;
 
   if (data.resumoClinico) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(10);
+    doc.setFontSize(9);
     doc.setTextColor(...c(TEXT));
-    const lines = wrap(doc, data.resumoClinico, 166);
-    doc.text(lines, 22, y + 2);
-    y += lines.length * 5 + 4;
+    const lines = wrap(doc, data.resumoClinico, 166).slice(0, 3);
+    doc.text(lines, 22, y);
+    y += lines.length * 4.2 + 2;
   }
 
   if (data.prognostico) {
-    y = ensure(doc, y, 22);
-    doc.setFillColor(...c(SOFT));
-    doc.roundedRect(22, y, 166, 18, 2, 2, 'F');
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...c(GOLD));
-    doc.text('PROGNÓSTICO', 27, y + 6, { charSpace: 1 });
+    doc.text('PROGNÓSTICO:', 22, y, { charSpace: 1 });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9.5);
+    doc.setFontSize(9);
     doc.setTextColor(...c(TEXT));
-    const linesP = wrap(doc, data.prognostico, 156);
-    doc.text(linesP.slice(0, 2), 27, y + 12);
-    y += 22;
+    const linesP = wrap(doc, data.prognostico, 140).slice(0, 2);
+    doc.text(linesP, 48, y);
+    y += linesP.length * 4.2 + 2;
   }
-  return y;
+  return y + 2;
 }
+
 
 // =============== PLANO EM FASES ===============
 function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
-  y = ensure(doc, y + 4, 18);
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('SEU PLANO EM 3 FASES', 22, y);
-  y += 6;
-
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...c(MUTED));
-  doc.text('Cada fase tem objetivo claro e critérios para avançar para a próxima.', 22, y);
-  y += 6;
+  y += 5;
 
   const FASE_COLORS: C3[] = [RED, AMBER, GREEN];
 
-  fases.forEach((f, idx) => {
+  fases.slice(0, 3).forEach((f, idx) => {
     const corFase = FASE_COLORS[idx] || NAVY;
-    const focos = (f.focos || []).slice(0, 6);
-    const tecnicas = (f.tecnicas || []).slice(0, 10);
+    const focos = (f.focos || []).slice(0, 3);
+    const tecnicas = (f.tecnicas || []).slice(0, 4);
 
-    // ---- pré-medir (mesma fonte/tamanho usados depois) ----
-    // Cabeçalho do card (número + título + semanas): ~16mm
-    let measuredBody = 0;
-
-    let objLines: string[] = [];
-    if (f.objetivo) {
-      doc.setFont('helvetica', 'italic');
-      doc.setFontSize(9);
-      objLines = wrap(doc, `"${f.objetivo}"`, 138).slice(0, 3);
-      measuredBody += objLines.length * 4.2 + 2;
-    }
-
-    type FocoLines = { lines: string[] };
-    const focoMeas: FocoLines[] = [];
-    if (focos.length) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      focos.forEach((foco) => {
-        const fl = wrap(doc, foco, 135).slice(0, 2);
-        focoMeas.push({ lines: fl });
-        measuredBody += fl.length * 4.5;
-      });
-      measuredBody += 1;
-    }
-
-    type TecMeas = { titulo: string; justLines: string[]; badge: string };
-    const tecMeas: TecMeas[] = [];
-    if (tecnicas.length) {
-      measuredBody += 6; // título "Técnicas (n)"
-      tecnicas.forEach((t) => {
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        const tit = t.tecnica;
-        const badgeParts = [t.lente_clinica, t.nivel_evidencia ? `N${t.nivel_evidencia}` : '']
-          .filter(Boolean).join(' · ');
-        doc.setFont('helvetica', 'normal');
-        doc.setFontSize(8.5);
-        const justLines = t.justificativa ? wrap(doc, t.justificativa, 138).slice(0, 3) : [];
-        tecMeas.push({ titulo: tit, justLines, badge: badgeParts });
-        measuredBody += 5 + justLines.length * 3.8 + 2;
-      });
-    }
-
-    const cabecalho = 16;
-    const padBottom = 4;
-    const altura = cabecalho + measuredBody + padBottom;
-
-    y = ensure(doc, y, altura + 6);
+    // medir: header (10) + objetivo (5) + max(focos, tecnicas) * 4 + pad
+    const objLines = f.objetivo
+      ? wrap(doc, `"${f.objetivo}"`, 156).slice(0, 1)
+      : [];
+    const linhasConteudo = Math.max(focos.length, tecnicas.length);
+    const altura = 11 + (objLines.length ? 5 : 0) + linhasConteudo * 4 + 5;
 
     // Card
     doc.setFillColor(...c(WHITE));
     doc.setDrawColor(...c(SOFT));
     doc.setLineWidth(0.2);
-    doc.roundedRect(22, y, 166, altura, 2.5, 2.5, 'FD');
-
-    // Faixa lateral colorida
+    doc.roundedRect(22, y, 166, altura, 2, 2, 'FD');
     doc.setFillColor(...c(corFase));
-    doc.rect(22, y, 2.5, altura, 'F');
+    doc.rect(22, y, 2, altura, 'F');
 
-    // Número grande
+    // Cabeçalho: número + título + semanas
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(20);
+    doc.setFontSize(13);
     doc.setTextColor(...c(corFase));
-    doc.text(String(f.numero), 30, y + 12);
+    doc.text(String(f.numero), 28, y + 8);
 
-    // Título
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(11);
+    doc.setFontSize(10);
     doc.setTextColor(...c(NAVY));
-    doc.text(f.titulo, 45, y + 9);
+    doc.text(f.titulo, 35, y + 7);
 
     if (f.semanas) {
       doc.setFont('helvetica', 'normal');
-      doc.setFontSize(8);
+      doc.setFontSize(7);
       doc.setTextColor(...c(MUTED));
-      doc.text(`Semanas ${f.semanas}`, 45, y + 14);
+      doc.text(`Semanas ${f.semanas}`, 186, y + 7, { align: 'right' });
     }
 
-    let yi = y + cabecalho;
+    let yi = y + 11;
 
-    // Objetivo
+    // Objetivo (1 linha)
     if (objLines.length) {
       doc.setFont('helvetica', 'italic');
-      doc.setFontSize(9);
+      doc.setFontSize(8);
       doc.setTextColor(...c(TEXT));
-      doc.text(objLines, 30, yi);
-      yi += objLines.length * 4.2 + 2;
+      doc.text(objLines, 28, yi);
+      yi += 5;
     }
 
-    // Focos
-    if (focoMeas.length) {
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      focoMeas.forEach((fm) => {
-        doc.setTextColor(...c(corFase));
-        doc.text('•', 30, yi);
-        doc.setTextColor(...c(TEXT));
-        doc.text(fm.lines[0], 33, yi);
-        yi += 4.5;
-        if (fm.lines[1]) {
-          doc.text(fm.lines[1], 33, yi);
-          yi += 4.5;
-        }
-      });
-      yi += 1;
+    // 2 colunas: FOCOS | TÉCNICAS
+    const colY = yi;
+    if (focos.length) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...c(GOLD));
+      doc.text('FOCOS', 28, colY - 1, { charSpace: 1 });
+    }
+    if (tecnicas.length) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(6.5);
+      doc.setTextColor(...c(GOLD));
+      doc.text('TÉCNICAS', 110, colY - 1, { charSpace: 1 });
     }
 
-    // Técnicas (a parte que faltava)
-    if (tecMeas.length) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    focos.forEach((foco, i) => {
+      const yLine = colY + 3 + i * 4;
+      doc.setTextColor(...c(corFase));
+      doc.text('•', 28, yLine);
+      doc.setTextColor(...c(TEXT));
+      const fl = wrap(doc, foco, 75).slice(0, 1);
+      doc.text(fl, 31, yLine);
+    });
+
+    tecnicas.forEach((t, i) => {
+      const yLine = colY + 3 + i * 4;
+      doc.setTextColor(...c(NAVY));
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(8);
-      doc.setTextColor(...c(GOLD));
-      doc.text(`TÉCNICAS DA DIRETRIZ (${tecMeas.length})`, 30, yi, { charSpace: 0.8 });
-      yi += 5;
+      doc.text('›', 110, yLine);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(...c(TEXT));
+      const tl = wrap(doc, t.tecnica, 70).slice(0, 1);
+      doc.text(tl, 113, yLine);
+      if (t.nivel_evidencia) {
+        doc.setFontSize(6.5);
+        doc.setTextColor(...c(MUTED));
+        doc.text(`N${t.nivel_evidencia}`, 186, yLine, { align: 'right' });
+      }
+    });
 
-      tecMeas.forEach((t) => {
-        // título
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
-        doc.setTextColor(...c(NAVY));
-        doc.text(`› ${t.titulo}`, 30, yi);
-
-        // badge à direita
-        if (t.badge) {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(7.5);
-          doc.setTextColor(...c(MUTED));
-          doc.text(t.badge, 186, yi, { align: 'right' });
-        }
-        yi += 4;
-
-        // justificativa
-        if (t.justLines.length) {
-          doc.setFont('helvetica', 'normal');
-          doc.setFontSize(8.5);
-          doc.setTextColor(...c(TEXT));
-          doc.text(t.justLines, 33, yi);
-          yi += t.justLines.length * 3.8;
-        }
-        yi += 2;
-      });
-    }
-
-    y += altura + 4;
+    y += altura + 3;
   });
 
   return y;
 }
 
 
-// =============== PLANO DE MANUTENÇÃO ===============
+
+// =============== PLANO DE MANUTENÇÃO (compacto, 2 colunas) ===============
 function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
   if (!m) return y;
   const hasContent =
@@ -468,90 +383,86 @@ function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
     (m.habitosChave && m.habitosChave.length);
   if (!hasContent) return y;
 
-  y = ensure(doc, y + 4, 40);
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('PLANO DE MANUTENÇÃO (PÓS-ALTA)', 22, y);
   y += 5;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...c(MUTED));
-  doc.text('Como manter os resultados após o tratamento concluído.', 22, y);
-  y += 5;
+  // Card verde compacto
+  const rotina = (m.rotinaMinima || []).slice(0, 3);
+  const habitos = (m.habitosChave || []).slice(0, 3);
+  const sinais = (m.sinaisParaRetornar || []).slice(0, 3);
 
-  // Card verde
-  const blocks: Array<{ titulo: string; itens: string[] }> = [];
-  if (m.rotinaMinima?.length) blocks.push({ titulo: 'Rotina mínima', itens: m.rotinaMinima.slice(0, 5) });
-  if (m.habitosChave?.length) blocks.push({ titulo: 'Hábitos-chave', itens: m.habitosChave.slice(0, 5) });
-  if (m.sinaisParaRetornar?.length) blocks.push({ titulo: 'Voltar ao profissional se', itens: m.sinaisParaRetornar.slice(0, 5) });
-
-  const totalItens = blocks.reduce((acc, b) => acc + b.itens.length + 1, 0);
-  const extraMsg = m.mensagemPaciente ? 12 : 0;
-  const extraFreq = m.frequenciaReavaliacao ? 8 : 0;
-  const altura = 10 + extraMsg + extraFreq + totalItens * 4.8 + 4;
-
-  y = ensure(doc, y, altura + 6);
+  const linhasCol = Math.max(rotina.length, habitos.length, sinais.length);
+  const altura = 8 + (m.mensagemPaciente ? 6 : 0) + (m.frequenciaReavaliacao ? 5 : 0) + 5 + linhasCol * 4 + 4;
 
   doc.setFillColor(240, 253, 244);
   doc.setDrawColor(...c(GREEN));
   doc.setLineWidth(0.3);
-  doc.roundedRect(22, y, 166, altura, 2.5, 2.5, 'FD');
+  doc.roundedRect(22, y, 166, altura, 2, 2, 'FD');
   doc.setFillColor(...c(GREEN));
-  doc.rect(22, y, 2.5, altura, 'F');
+  doc.rect(22, y, 2, altura, 'F');
 
-  let yi = y + 6;
+  let yi = y + 5;
 
   if (m.mensagemPaciente) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...c(TEXT));
-    const ml = wrap(doc, `"${m.mensagemPaciente}"`, 152);
-    doc.text(ml.slice(0, 2), 28, yi);
-    yi += ml.slice(0, 2).length * 4.5 + 2;
+    const ml = wrap(doc, `"${m.mensagemPaciente}"`, 158).slice(0, 1);
+    doc.text(ml, 28, yi);
+    yi += 5;
   }
 
   if (m.frequenciaReavaliacao) {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...c(NAVY));
     doc.text('Reavaliação:', 28, yi);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...c(TEXT));
-    doc.text(m.frequenciaReavaliacao, 53, yi);
-    yi += 6;
+    doc.text(m.frequenciaReavaliacao, 50, yi);
+    yi += 5;
   }
 
-  blocks.forEach((b) => {
+  // 3 colunas
+  const colTitles = [
+    { titulo: 'ROTINA MÍNIMA', itens: rotina, x: 28 },
+    { titulo: 'HÁBITOS-CHAVE', itens: habitos, x: 82 },
+    { titulo: 'VOLTAR SE', itens: sinais, x: 138 },
+  ];
+  colTitles.forEach((col) => {
+    if (!col.itens.length) return;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...c(NAVY));
-    doc.text(b.titulo, 28, yi);
-    yi += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...c(TEXT));
-    b.itens.forEach((it) => {
+    doc.setFontSize(6.5);
+    doc.setTextColor(...c(GOLD));
+    doc.text(col.titulo, col.x, yi, { charSpace: 1 });
+  });
+  yi += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  colTitles.forEach((col) => {
+    col.itens.forEach((it, i) => {
+      const yLine = yi + i * 4;
       doc.setTextColor(...c(GREEN));
-      doc.text('•', 30, yi);
+      doc.text('•', col.x, yLine);
       doc.setTextColor(...c(TEXT));
-      const fl = wrap(doc, it, 150);
-      doc.text(fl[0], 33, yi);
-      yi += 4.5;
+      const fl = wrap(doc, it, 48).slice(0, 1);
+      doc.text(fl, col.x + 2.5, yLine);
     });
   });
 
   return y + altura + 4;
 }
-function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number {
-  y = ensure(doc, y + 4, 70);
 
+// =============== INVESTIMENTO (compacto) ===============
+function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number {
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('SEU INVESTIMENTO', 22, y);
-  y += 6;
+  y += 5;
 
   const p = data.pacote;
   const bruto = p.numeroSessoes * p.valorSessao;
@@ -559,138 +470,136 @@ function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number 
   const total = bruto * (1 - desc / 100);
   const valorPorSessao = total / Math.max(1, p.numeroSessoes);
 
-  // Card destaque
+  // Card navy compacto
+  const H = 42;
   doc.setFillColor(...c(NAVY));
-  doc.roundedRect(22, y, 166, 56, 3, 3, 'F');
-
+  doc.roundedRect(22, y, 166, H, 2.5, 2.5, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(22, y, 2.5, 56, 'F');
+  doc.rect(22, y, 2, H, 'F');
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...c(GOLD));
-  doc.text('PACOTE COMPLETO', 30, y + 9, { charSpace: 1.2 });
+  doc.text('PACOTE COMPLETO', 28, y + 7, { charSpace: 1.2 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(11);
   doc.setTextColor(...c(WHITE));
-  doc.text(`${p.numeroSessoes} sessões · ${p.frequencia}`, 30, y + 18);
+  doc.text(`${p.numeroSessoes} sessões · ${p.frequencia} · ${p.duracao}`, 28, y + 14);
 
-  // Valor
+  // Total
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(200, 195, 180);
-  doc.text('INVESTIMENTO TOTAL', 30, y + 28, { charSpace: 1.2 });
-
+  doc.text('INVESTIMENTO TOTAL', 28, y + 22, { charSpace: 1.2 });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
+  doc.setFontSize(22);
   doc.setTextColor(...c(GOLD));
-  doc.text(brl(total), 30, y + 41);
+  doc.text(brl(total), 28, y + 33);
 
   if (desc > 0) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(200, 195, 180);
-    doc.text(`de ${brl(bruto)} · economia de ${brl(bruto - total)}`, 30, y + 48);
+    doc.text(`de ${brl(bruto)} · economia ${brl(bruto - total)}`, 28, y + 38);
   }
 
   // Coluna direita
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(200, 195, 180);
-  doc.text('EQUIVALENTE POR SESSÃO', 120, y + 28, { charSpace: 1.2 });
-
+  doc.text('POR SESSÃO', 120, y + 22, { charSpace: 1.2 });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setTextColor(...c(WHITE));
-  doc.text(brl(valorPorSessao), 120, y + 38);
+  doc.text(brl(valorPorSessao), 120, y + 31);
 
   if (p.formaPagamento) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(200, 195, 180);
-    const fp = wrap(doc, p.formaPagamento, 60);
-    doc.text(fp.slice(0, 2), 120, y + 46);
+    const fp = wrap(doc, p.formaPagamento, 62).slice(0, 1);
+    doc.text(fp, 120, y + 37);
   }
 
-  y += 60;
+  y += H + 4;
 
-  // Benefícios incluídos
-  y = ensure(doc, y, 36);
+  // Benefícios — 2 colunas inline
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setTextColor(...c(NAVY));
-  doc.text('INCLUSO NO PACOTE', 22, y);
-  y += 5;
+  doc.text('INCLUSO NO PACOTE', 22, y, { charSpace: 1 });
+  y += 4;
 
   const beneficios = [
-    'Plano clínico personalizado em 3 fases',
+    'Plano clínico em 3 fases',
     'Acompanhamento direto pelo profissional',
-    'Acesso ao portal do paciente com missões e evolução',
-    'Reavaliações periódicas para ajustar o plano',
+    'Portal do paciente com missões e evolução',
+    'Reavaliações periódicas',
   ];
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.setTextColor(...c(TEXT));
-  beneficios.forEach((b) => {
+  doc.setFontSize(8);
+  beneficios.forEach((b, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const xb = 22 + col * 85;
+    const yb = y + row * 4.5;
     doc.setTextColor(...c(GOLD));
-    doc.text('✓', 22, y + 4);
+    doc.text('✓', xb, yb);
     doc.setTextColor(...c(TEXT));
-    doc.text(b, 28, y + 4);
-    y += 5.5;
+    doc.text(b, xb + 4, yb);
   });
+  y += Math.ceil(beneficios.length / 2) * 4.5 + 2;
 
   return y;
 }
 
-// =============== CTA ===============
+// =============== CTA (compacto) ===============
 function drawCTA(doc: jsPDF, y: number, data: PDFPropostaData) {
-  // Card compacto — cabe junto com investimento
-  y = ensure(doc, y + 4, 30);
-
+  const H = 22;
   doc.setFillColor(...c(NAVY));
-  doc.roundedRect(22, y, 166, 26, 3, 3, 'F');
+  doc.roundedRect(22, y, 166, H, 2.5, 2.5, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(22, y, 2.5, 26, 'F');
+  doc.rect(22, y, 2, H, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(...c(WHITE));
-  doc.text('Vamos começar?', 30, y + 10);
+  doc.text('Vamos começar?', 28, y + 9);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(220, 215, 200);
   const msg = data.ctaMensagem
     || 'Responda esta proposta para reservarmos sua primeira sessão.';
-  const ml = wrap(doc, msg, 110).slice(0, 2);
-  doc.text(ml, 30, y + 17);
+  const ml = wrap(doc, msg, 105).slice(0, 1);
+  doc.text(ml, 28, y + 15);
 
   if (data.ctaTelefone) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...c(GOLD));
-    doc.text(data.ctaTelefone, 186, y + 14, { align: 'right' });
+    doc.text(data.ctaTelefone, 184, y + 11, { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(200, 195, 180);
-    doc.text('WHATSAPP', 186, y + 9, { align: 'right', charSpace: 1.2 });
+    doc.text('WHATSAPP', 184, y + 6.5, { align: 'right', charSpace: 1.2 });
   }
 
   if (data.validadeDias) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(200, 195, 180);
-    doc.text(`Válida por ${data.validadeDias} dias`, 186, y + 21, { align: 'right' });
+    doc.text(`Válida por ${data.validadeDias} dias`, 184, y + 17, { align: 'right' });
   }
 
-  return y + 30;
+  return y + H;
 }
 
-// =============== ASSINATURA / RODAPÉ ===============
+// =============== RODAPÉ ===============
 function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaData) {
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(...c(MUTED));
   doc.text(
     `${data.profissionalNome || ''}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
@@ -703,23 +612,29 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
 export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  // Página 1: hero compacto + já começa o plano logo abaixo
+  // PÁGINA 1 — hero + diagnóstico + 3 fases
   let y = await drawHero(doc, data);
   y = drawDiagnostico(doc, y, data);
-  y = drawFases(doc, y, data.fases);
-  y = drawManutencao(doc, y, data.manutencao);
-  y = drawInvestimento(doc, y, data);
-  drawCTA(doc, y, data);
+  drawFases(doc, y, data.fases);
 
-  // Footer em todas as páginas (a partir da 2)
+  // PÁGINA 2 — manutenção + investimento + CTA
+  doc.addPage();
+  paintBg(doc);
+  let y2 = 22;
+  y2 = drawManutencao(doc, y2, data.manutencao);
+  y2 = drawInvestimento(doc, y2, data);
+  drawCTA(doc, y2, data);
+
+  // Footer em todas as páginas
   const total = doc.getNumberOfPages();
-  for (let i = 2; i <= total; i++) {
+  for (let i = 1; i <= total; i++) {
     doc.setPage(i);
-    drawFooter(doc, i - 1, total - 1, data);
+    drawFooter(doc, i, total, data);
   }
 
   return doc.output('blob');
 }
+
 
 export function downloadPDFBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
