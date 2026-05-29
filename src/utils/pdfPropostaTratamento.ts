@@ -672,40 +672,46 @@ function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number 
 
 // =============== CTA ===============
 function drawCTA(doc: jsPDF, y: number, data: PDFPropostaData) {
-  y = ensure(doc, y + 6, 50);
+  // Card compacto — cabe junto com investimento
+  y = ensure(doc, y + 4, 30);
 
-  doc.setFillColor(...c(SOFT));
-  doc.roundedRect(22, y, 166, 38, 3, 3, 'F');
+  doc.setFillColor(...c(NAVY));
+  doc.roundedRect(22, y, 166, 26, 3, 3, 'F');
+  doc.setFillColor(...c(GOLD));
+  doc.rect(22, y, 2.5, 26, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
-
-  doc.setTextColor(...c(NAVY));
-  doc.text('Vamos começar?', 30, y + 12);
+  doc.setFontSize(12);
+  doc.setTextColor(...c(WHITE));
+  doc.text('Vamos começar?', 30, y + 10);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.setTextColor(...c(TEXT));
+  doc.setFontSize(9);
+  doc.setTextColor(220, 215, 200);
   const msg = data.ctaMensagem
     || 'Responda esta proposta para reservarmos sua primeira sessão.';
-  const ml = wrap(doc, msg, 150);
-  doc.text(ml.slice(0, 2), 30, y + 20);
+  const ml = wrap(doc, msg, 110).slice(0, 2);
+  doc.text(ml, 30, y + 17);
 
   if (data.ctaTelefone) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...c(GOLD));
-    doc.text(`WhatsApp: ${data.ctaTelefone}`, 30, y + 32);
+    doc.text(data.ctaTelefone, 186, y + 14, { align: 'right' });
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(7);
+    doc.setTextColor(200, 195, 180);
+    doc.text('WHATSAPP', 186, y + 9, { align: 'right', charSpace: 1.2 });
   }
 
   if (data.validadeDias) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(8);
-    doc.setTextColor(...c(MUTED));
-    doc.text(`Proposta válida por ${data.validadeDias} dias.`, 188, y + 32, { align: 'right' });
+    doc.setFontSize(7);
+    doc.setTextColor(200, 195, 180);
+    doc.text(`Válida por ${data.validadeDias} dias`, 186, y + 21, { align: 'right' });
   }
 
-  return y + 42;
+  return y + 30;
 }
 
 // =============== ASSINATURA / RODAPÉ ===============
