@@ -164,7 +164,9 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
       const fasesLimpas = fases.map(f => ({
         ...f,
         focos: f.focos.map(x => x.trim()).filter(Boolean),
+        tecnicas: (f.tecnicas || []).filter(t => t.tecnica && t.tecnica.trim()),
       }));
+
       const manutLimpa = {
         mensagemPaciente: manut.mensagemPaciente.trim() || undefined,
         rotinaMinima: manut.rotinaMinima.map((x: string) => x.trim()).filter(Boolean),
