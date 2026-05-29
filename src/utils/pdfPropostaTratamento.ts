@@ -372,7 +372,7 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
 
 
 
-// =============== PLANO DE MANUTENÇÃO ===============
+// =============== PLANO DE MANUTENÇÃO (compacto, 2 colunas) ===============
 function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
   if (!m) return y;
   const hasContent =
@@ -383,90 +383,86 @@ function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
     (m.habitosChave && m.habitosChave.length);
   if (!hasContent) return y;
 
-  y = ensure(doc, y + 4, 40);
-
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('PLANO DE MANUTENÇÃO (PÓS-ALTA)', 22, y);
   y += 5;
 
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(...c(MUTED));
-  doc.text('Como manter os resultados após o tratamento concluído.', 22, y);
-  y += 5;
+  // Card verde compacto
+  const rotina = (m.rotinaMinima || []).slice(0, 3);
+  const habitos = (m.habitosChave || []).slice(0, 3);
+  const sinais = (m.sinaisParaRetornar || []).slice(0, 3);
 
-  // Card verde
-  const blocks: Array<{ titulo: string; itens: string[] }> = [];
-  if (m.rotinaMinima?.length) blocks.push({ titulo: 'Rotina mínima', itens: m.rotinaMinima.slice(0, 5) });
-  if (m.habitosChave?.length) blocks.push({ titulo: 'Hábitos-chave', itens: m.habitosChave.slice(0, 5) });
-  if (m.sinaisParaRetornar?.length) blocks.push({ titulo: 'Voltar ao profissional se', itens: m.sinaisParaRetornar.slice(0, 5) });
-
-  const totalItens = blocks.reduce((acc, b) => acc + b.itens.length + 1, 0);
-  const extraMsg = m.mensagemPaciente ? 12 : 0;
-  const extraFreq = m.frequenciaReavaliacao ? 8 : 0;
-  const altura = 10 + extraMsg + extraFreq + totalItens * 4.8 + 4;
-
-  y = ensure(doc, y, altura + 6);
+  const linhasCol = Math.max(rotina.length, habitos.length, sinais.length);
+  const altura = 8 + (m.mensagemPaciente ? 6 : 0) + (m.frequenciaReavaliacao ? 5 : 0) + 5 + linhasCol * 4 + 4;
 
   doc.setFillColor(240, 253, 244);
   doc.setDrawColor(...c(GREEN));
   doc.setLineWidth(0.3);
-  doc.roundedRect(22, y, 166, altura, 2.5, 2.5, 'FD');
+  doc.roundedRect(22, y, 166, altura, 2, 2, 'FD');
   doc.setFillColor(...c(GREEN));
-  doc.rect(22, y, 2.5, altura, 'F');
+  doc.rect(22, y, 2, altura, 'F');
 
-  let yi = y + 6;
+  let yi = y + 5;
 
   if (m.mensagemPaciente) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...c(TEXT));
-    const ml = wrap(doc, `"${m.mensagemPaciente}"`, 152);
-    doc.text(ml.slice(0, 2), 28, yi);
-    yi += ml.slice(0, 2).length * 4.5 + 2;
+    const ml = wrap(doc, `"${m.mensagemPaciente}"`, 158).slice(0, 1);
+    doc.text(ml, 28, yi);
+    yi += 5;
   }
 
   if (m.frequenciaReavaliacao) {
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(...c(NAVY));
     doc.text('Reavaliação:', 28, yi);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...c(TEXT));
-    doc.text(m.frequenciaReavaliacao, 53, yi);
-    yi += 6;
+    doc.text(m.frequenciaReavaliacao, 50, yi);
+    yi += 5;
   }
 
-  blocks.forEach((b) => {
+  // 3 colunas
+  const colTitles = [
+    { titulo: 'ROTINA MÍNIMA', itens: rotina, x: 28 },
+    { titulo: 'HÁBITOS-CHAVE', itens: habitos, x: 82 },
+    { titulo: 'VOLTAR SE', itens: sinais, x: 138 },
+  ];
+  colTitles.forEach((col) => {
+    if (!col.itens.length) return;
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(9);
-    doc.setTextColor(...c(NAVY));
-    doc.text(b.titulo, 28, yi);
-    yi += 4.5;
-    doc.setFont('helvetica', 'normal');
-    doc.setTextColor(...c(TEXT));
-    b.itens.forEach((it) => {
+    doc.setFontSize(6.5);
+    doc.setTextColor(...c(GOLD));
+    doc.text(col.titulo, col.x, yi, { charSpace: 1 });
+  });
+  yi += 4;
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  colTitles.forEach((col) => {
+    col.itens.forEach((it, i) => {
+      const yLine = yi + i * 4;
       doc.setTextColor(...c(GREEN));
-      doc.text('•', 30, yi);
+      doc.text('•', col.x, yLine);
       doc.setTextColor(...c(TEXT));
-      const fl = wrap(doc, it, 150);
-      doc.text(fl[0], 33, yi);
-      yi += 4.5;
+      const fl = wrap(doc, it, 48).slice(0, 1);
+      doc.text(fl, col.x + 2.5, yLine);
     });
   });
 
   return y + altura + 4;
 }
-function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number {
-  y = ensure(doc, y + 4, 70);
 
+// =============== INVESTIMENTO (compacto) ===============
+function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number {
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(NAVY));
   doc.text('SEU INVESTIMENTO', 22, y);
-  y += 6;
+  y += 5;
 
   const p = data.pacote;
   const bruto = p.numeroSessoes * p.valorSessao;
@@ -474,138 +470,136 @@ function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number 
   const total = bruto * (1 - desc / 100);
   const valorPorSessao = total / Math.max(1, p.numeroSessoes);
 
-  // Card destaque
+  // Card navy compacto
+  const H = 42;
   doc.setFillColor(...c(NAVY));
-  doc.roundedRect(22, y, 166, 56, 3, 3, 'F');
-
+  doc.roundedRect(22, y, 166, H, 2.5, 2.5, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(22, y, 2.5, 56, 'F');
+  doc.rect(22, y, 2, H, 'F');
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(...c(GOLD));
-  doc.text('PACOTE COMPLETO', 30, y + 9, { charSpace: 1.2 });
+  doc.text('PACOTE COMPLETO', 28, y + 7, { charSpace: 1.2 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(11);
   doc.setTextColor(...c(WHITE));
-  doc.text(`${p.numeroSessoes} sessões · ${p.frequencia}`, 30, y + 18);
+  doc.text(`${p.numeroSessoes} sessões · ${p.frequencia} · ${p.duracao}`, 28, y + 14);
 
-  // Valor
+  // Total
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(200, 195, 180);
-  doc.text('INVESTIMENTO TOTAL', 30, y + 28, { charSpace: 1.2 });
-
+  doc.text('INVESTIMENTO TOTAL', 28, y + 22, { charSpace: 1.2 });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(26);
+  doc.setFontSize(22);
   doc.setTextColor(...c(GOLD));
-  doc.text(brl(total), 30, y + 41);
+  doc.text(brl(total), 28, y + 33);
 
   if (desc > 0) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(7.5);
     doc.setTextColor(200, 195, 180);
-    doc.text(`de ${brl(bruto)} · economia de ${brl(bruto - total)}`, 30, y + 48);
+    doc.text(`de ${brl(bruto)} · economia ${brl(bruto - total)}`, 28, y + 38);
   }
 
   // Coluna direita
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
+  doc.setFontSize(7);
   doc.setTextColor(200, 195, 180);
-  doc.text('EQUIVALENTE POR SESSÃO', 120, y + 28, { charSpace: 1.2 });
-
+  doc.text('POR SESSÃO', 120, y + 22, { charSpace: 1.2 });
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
+  doc.setFontSize(14);
   doc.setTextColor(...c(WHITE));
-  doc.text(brl(valorPorSessao), 120, y + 38);
+  doc.text(brl(valorPorSessao), 120, y + 31);
 
   if (p.formaPagamento) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(8);
+    doc.setFontSize(7);
     doc.setTextColor(200, 195, 180);
-    const fp = wrap(doc, p.formaPagamento, 60);
-    doc.text(fp.slice(0, 2), 120, y + 46);
+    const fp = wrap(doc, p.formaPagamento, 62).slice(0, 1);
+    doc.text(fp, 120, y + 37);
   }
 
-  y += 60;
+  y += H + 4;
 
-  // Benefícios incluídos
-  y = ensure(doc, y, 36);
+  // Benefícios — 2 colunas inline
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(9);
+  doc.setFontSize(7);
   doc.setTextColor(...c(NAVY));
-  doc.text('INCLUSO NO PACOTE', 22, y);
-  y += 5;
+  doc.text('INCLUSO NO PACOTE', 22, y, { charSpace: 1 });
+  y += 4;
 
   const beneficios = [
-    'Plano clínico personalizado em 3 fases',
+    'Plano clínico em 3 fases',
     'Acompanhamento direto pelo profissional',
-    'Acesso ao portal do paciente com missões e evolução',
-    'Reavaliações periódicas para ajustar o plano',
+    'Portal do paciente com missões e evolução',
+    'Reavaliações periódicas',
   ];
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9.5);
-  doc.setTextColor(...c(TEXT));
-  beneficios.forEach((b) => {
+  doc.setFontSize(8);
+  beneficios.forEach((b, i) => {
+    const col = i % 2;
+    const row = Math.floor(i / 2);
+    const xb = 22 + col * 85;
+    const yb = y + row * 4.5;
     doc.setTextColor(...c(GOLD));
-    doc.text('✓', 22, y + 4);
+    doc.text('✓', xb, yb);
     doc.setTextColor(...c(TEXT));
-    doc.text(b, 28, y + 4);
-    y += 5.5;
+    doc.text(b, xb + 4, yb);
   });
+  y += Math.ceil(beneficios.length / 2) * 4.5 + 2;
 
   return y;
 }
 
-// =============== CTA ===============
+// =============== CTA (compacto) ===============
 function drawCTA(doc: jsPDF, y: number, data: PDFPropostaData) {
-  // Card compacto — cabe junto com investimento
-  y = ensure(doc, y + 4, 30);
-
+  const H = 22;
   doc.setFillColor(...c(NAVY));
-  doc.roundedRect(22, y, 166, 26, 3, 3, 'F');
+  doc.roundedRect(22, y, 166, H, 2.5, 2.5, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(22, y, 2.5, 26, 'F');
+  doc.rect(22, y, 2, H, 'F');
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(12);
+  doc.setFontSize(11);
   doc.setTextColor(...c(WHITE));
-  doc.text('Vamos começar?', 30, y + 10);
+  doc.text('Vamos começar?', 28, y + 9);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(220, 215, 200);
   const msg = data.ctaMensagem
     || 'Responda esta proposta para reservarmos sua primeira sessão.';
-  const ml = wrap(doc, msg, 110).slice(0, 2);
-  doc.text(ml, 30, y + 17);
+  const ml = wrap(doc, msg, 105).slice(0, 1);
+  doc.text(ml, 28, y + 15);
 
   if (data.ctaTelefone) {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(10);
     doc.setTextColor(...c(GOLD));
-    doc.text(data.ctaTelefone, 186, y + 14, { align: 'right' });
+    doc.text(data.ctaTelefone, 184, y + 11, { align: 'right' });
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(200, 195, 180);
-    doc.text('WHATSAPP', 186, y + 9, { align: 'right', charSpace: 1.2 });
+    doc.text('WHATSAPP', 184, y + 6.5, { align: 'right', charSpace: 1.2 });
   }
 
   if (data.validadeDias) {
     doc.setFont('helvetica', 'italic');
-    doc.setFontSize(7);
+    doc.setFontSize(6.5);
     doc.setTextColor(200, 195, 180);
-    doc.text(`Válida por ${data.validadeDias} dias`, 186, y + 21, { align: 'right' });
+    doc.text(`Válida por ${data.validadeDias} dias`, 184, y + 17, { align: 'right' });
   }
 
-  return y + 30;
+  return y + H;
 }
 
-// =============== ASSINATURA / RODAPÉ ===============
+// =============== RODAPÉ ===============
 function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaData) {
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7.5);
+  doc.setFontSize(7);
   doc.setTextColor(...c(MUTED));
   doc.text(
     `${data.profissionalNome || ''}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
@@ -618,23 +612,29 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
 export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  // Página 1: hero compacto + já começa o plano logo abaixo
+  // PÁGINA 1 — hero + diagnóstico + 3 fases
   let y = await drawHero(doc, data);
   y = drawDiagnostico(doc, y, data);
-  y = drawFases(doc, y, data.fases);
-  y = drawManutencao(doc, y, data.manutencao);
-  y = drawInvestimento(doc, y, data);
-  drawCTA(doc, y, data);
+  drawFases(doc, y, data.fases);
 
-  // Footer em todas as páginas (a partir da 2)
+  // PÁGINA 2 — manutenção + investimento + CTA
+  doc.addPage();
+  paintBg(doc);
+  let y2 = 22;
+  y2 = drawManutencao(doc, y2, data.manutencao);
+  y2 = drawInvestimento(doc, y2, data);
+  drawCTA(doc, y2, data);
+
+  // Footer em todas as páginas
   const total = doc.getNumberOfPages();
-  for (let i = 2; i <= total; i++) {
+  for (let i = 1; i <= total; i++) {
     doc.setPage(i);
-    drawFooter(doc, i - 1, total - 1, data);
+    drawFooter(doc, i, total, data);
   }
 
   return doc.output('blob');
 }
+
 
 export function downloadPDFBlob(blob: Blob, filename: string) {
   const url = URL.createObjectURL(blob);
