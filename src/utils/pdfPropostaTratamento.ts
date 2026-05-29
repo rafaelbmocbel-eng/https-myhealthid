@@ -104,114 +104,97 @@ function brl(n: number): string {
 // Banda navy compacta (~88mm) que ocupa só o topo da primeira página,
 // liberando o restante da página para já começar o plano de tratamento.
 async function drawHero(doc: jsPDF, data: PDFPropostaData): Promise<number> {
-  const HERO_H = 88;
+  const HERO_H = 62;
 
-  // Fundo claro da página inteira primeiro
   doc.setFillColor(...c(LIGHT));
   doc.rect(0, 0, 210, 297, 'F');
 
-  // Banda navy do hero
   doc.setFillColor(...c(NAVY));
   doc.rect(0, 0, 210, HERO_H, 'F');
-
-  // Faixa dourada inferior do hero
   doc.setFillColor(...c(GOLD));
-  doc.rect(0, HERO_H, 210, 1, 'F');
-
-  // Faixa dourada lateral
+  doc.rect(0, HERO_H, 210, 0.8, 'F');
   doc.setFillColor(...c(GOLD));
-  doc.rect(0, 0, 4, HERO_H, 'F');
+  doc.rect(0, 0, 3, HERO_H, 'F');
 
-  // Marca d'água sutil dentro do hero
-  await drawFingerprintWatermark(doc, 130, 0, 110, 0.07);
+  await drawFingerprintWatermark(doc, 130, -10, 90, 0.07);
+  await drawFingerprintMark(doc, 180, 11, 12);
 
-  // Marca pequena no topo direito
-  await drawFingerprintMark(doc, 178, 14, 16);
-
-  // Marca / clínica
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(8);
-  doc.setTextColor(...c(GOLD));
-  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 16, { charSpace: 1.4 });
-
   doc.setFontSize(7);
+  doc.setTextColor(...c(GOLD));
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 12, { charSpace: 1.3 });
+
+  doc.setFontSize(6.5);
   doc.setTextColor(200, 195, 180);
-  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 22, { charSpace: 1.3 });
+  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 17, { charSpace: 1.2 });
 
-  // Título compacto
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(22);
+  doc.setFontSize(17);
   doc.setTextColor(...c(WHITE));
-  doc.text('Seu plano de recuperação', 22, 38);
+  doc.text('Seu plano de recuperação', 22, 28);
   doc.setTextColor(...c(GOLD));
-  doc.text('começa aqui.', 22, 50);
+  doc.text('começa aqui.', 22, 37);
 
-  // Para quem
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(180, 175, 160);
-  doc.text('PREPARADO PARA', 22, 60, { charSpace: 1.2 });
+  doc.text('PREPARADO PARA', 22, 45, { charSpace: 1.2 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(14);
+  doc.setFontSize(12);
   doc.setTextColor(...c(WHITE));
-  doc.text(data.pacienteNome, 22, 68);
+  doc.text(data.pacienteNome, 22, 51);
 
   if (data.queixaPrincipal) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(9);
+    doc.setFontSize(8);
     doc.setTextColor(220, 215, 200);
-    const linhas = wrap(doc, data.queixaPrincipal, 100).slice(0, 2);
-    doc.text(linhas, 22, 75);
+    const linhas = wrap(doc, data.queixaPrincipal, 95).slice(0, 1);
+    doc.text(linhas, 22, 56);
   }
 
-  // Mini-strip de dados do pacote (direita do hero)
+  // Mini-strip à direita
   const totalBruto = data.pacote.numeroSessoes * data.pacote.valorSessao;
   const desc = data.pacote.desconto || 0;
   const total = totalBruto * (1 - desc / 100);
 
-  const stripX = 128;
-  const stripY = 58;
+  const stripX = 125;
+  const stripY = 43;
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(6.5);
+  doc.setFontSize(6);
   doc.setTextColor(200, 195, 180);
   doc.text('PLANO', stripX, stripY, { charSpace: 1 });
   doc.text('SESSÕES', stripX + 22, stripY, { charSpace: 1 });
   doc.text('INVESTIMENTO', stripX + 44, stripY, { charSpace: 1 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
+  doc.setFontSize(10);
   doc.setTextColor(...c(WHITE));
-  doc.text(`${data.fases.length} fases`, stripX, stripY + 6);
-  doc.text(String(data.pacote.numeroSessoes), stripX + 22, stripY + 6);
+  doc.text(`${data.fases.length} fases`, stripX, stripY + 5);
+  doc.text(String(data.pacote.numeroSessoes), stripX + 22, stripY + 5);
   doc.setTextColor(...c(GOLD));
-  doc.text(total > 0 ? brl(total) : 'Consulta', stripX + 44, stripY + 6);
+  doc.text(total > 0 ? brl(total) : 'Consulta', stripX + 44, stripY + 5);
 
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(200, 195, 180);
-  doc.text(data.pacote.frequencia, stripX, stripY + 11);
-  doc.text(data.pacote.duracao, stripX + 22, stripY + 11);
-  if (desc > 0) {
-    doc.text(`${desc}% off`, stripX + 44, stripY + 11);
-  }
+  doc.text(data.pacote.frequencia, stripX, stripY + 9);
+  doc.text(data.pacote.duracao, stripX + 22, stripY + 9);
+  if (desc > 0) doc.text(`${desc}% off`, stripX + 44, stripY + 9);
 
-  // Profissional + data (rodapé do hero)
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(7);
+  doc.setFontSize(6.5);
   doc.setTextColor(180, 175, 160);
   doc.text(
     `Por ${data.profissionalNome || 'seu profissional'}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
-    22, 83
+    22, 59
   );
-  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 83, { align: 'right' });
-  if (data.validadeDias) {
-    doc.text(`Válida por ${data.validadeDias} dias`, 105, 83, { align: 'center' });
-  }
+  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 59, { align: 'right' });
 
-  return HERO_H + 8;
+  return HERO_H + 5;
 }
+
 
 // =============== HEADER DAS PÁGINAS INTERNAS ===============
 function drawHeader(doc: jsPDF, titulo: string) {
