@@ -110,87 +110,117 @@ async function drawCapa(doc: jsPDF, data: PDFPropostaData) {
   doc.setFillColor(...c(GOLD));
   doc.rect(0, 0, 6, 297, 'F');
 
-  // Logo
-  try { await addLogoToDoc(doc, 22, 22, 14); }
-  catch { /* fallback abaixo */ }
+  // Marca d'água: digital gigante atrás, deslocada à direita/baixo
+  await drawFingerprintWatermark(doc, 95, 60, 180, 0.08);
 
-  // Nome da clínica/marca
+  // Marca d'água pequena no topo direito (substitui logo redonda)
+  await drawFingerprintMark(doc, 170, 18, 22);
+
+  // Nome da clínica/marca (topo esquerdo)
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(9);
   doc.setTextColor(...c(GOLD));
-  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 50, { charSpace: 1.2 });
+  doc.text((data.clinicaNome || 'MY HEALTH ID').toUpperCase(), 22, 26, { charSpace: 1.4 });
 
-  // Etiqueta
-  doc.setFontSize(8);
-  doc.setTextColor(220, 215, 200);
-  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 58, { charSpace: 1.5 });
+  doc.setFontSize(7.5);
+  doc.setTextColor(200, 195, 180);
+  doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 33, { charSpace: 1.4 });
 
-  // Título grande
+  // Título grande — movido para cima
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(36);
+  doc.setFontSize(34);
   doc.setTextColor(...c(WHITE));
-  doc.text('Seu plano de', 22, 105);
-  doc.text('recuperação', 22, 122);
+  doc.text('Seu plano de', 22, 68);
+  doc.text('recuperação', 22, 83);
   doc.setTextColor(...c(GOLD));
-  doc.text('começa aqui.', 22, 139);
-
+  doc.text('começa aqui.', 22, 98);
 
   // Linha de separação
   doc.setDrawColor(...c(GOLD));
   doc.setLineWidth(0.4);
-  doc.line(22, 158, 80, 158);
+  doc.line(22, 110, 60, 110);
 
-  // Para
+  // Para quem
   doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
+  doc.setFontSize(8);
   doc.setTextColor(180, 175, 160);
-  doc.text('PREPARADO PARA', 22, 172, { charSpace: 1.2 });
+  doc.text('PREPARADO PARA', 22, 122, { charSpace: 1.3 });
 
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(22);
   doc.setTextColor(...c(WHITE));
-  doc.text(data.pacienteNome, 22, 184);
+  doc.text(data.pacienteNome, 22, 134);
 
   if (data.queixaPrincipal) {
     doc.setFont('helvetica', 'normal');
-    doc.setFontSize(11);
+    doc.setFontSize(10.5);
     doc.setTextColor(220, 215, 200);
-    const linhas = wrap(doc, data.queixaPrincipal, 160);
-    doc.text(linhas, 22, 194);
+    const linhas = wrap(doc, data.queixaPrincipal, 165).slice(0, 4);
+    doc.text(linhas, 22, 144);
   }
 
-  // Card resumo embaixo
+  // Card resumo — agora maior e mais rico
+  const cardY = 192;
+  const cardH = 62;
   doc.setFillColor(255, 255, 255);
   doc.setDrawColor(...c(GOLD));
   doc.setLineWidth(0.3);
-  doc.roundedRect(22, 232, 166, 42, 3, 3, 'FD');
+  doc.roundedRect(22, cardY, 166, cardH, 3, 3, 'FD');
 
+  // Labels
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(7.5);
   doc.setTextColor(...c(MUTED));
-  doc.text('PLANO EM', 30, 244, { charSpace: 1 });
-  doc.text('SESSÕES', 78, 244, { charSpace: 1 });
-  doc.text('INVESTIMENTO', 130, 244, { charSpace: 1 });
+  doc.text('PLANO EM', 30, cardY + 10, { charSpace: 1 });
+  doc.text('SESSÕES', 82, cardY + 10, { charSpace: 1 });
+  doc.text('FREQUÊNCIA', 130, cardY + 10, { charSpace: 1 });
 
   doc.setFont('helvetica', 'bold');
-  doc.setFontSize(13);
+  doc.setFontSize(15);
   doc.setTextColor(...c(NAVY));
-  doc.text(`${data.fases.length} fases`, 30, 256);
-  doc.text(String(data.pacote.numeroSessoes), 78, 256);
-
-  const totalBruto = data.pacote.numeroSessoes * data.pacote.valorSessao;
-  const desc = data.pacote.desconto || 0;
-  const total = totalBruto * (1 - desc / 100);
-  doc.setTextColor(...c(GOLD));
-  doc.text(brl(total), 130, 256);
+  doc.text(`${data.fases.length} fases`, 30, cardY + 22);
+  doc.text(String(data.pacote.numeroSessoes), 82, cardY + 22);
+  doc.setFontSize(11);
+  doc.text(data.pacote.frequencia, 130, cardY + 22);
 
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
   doc.setTextColor(...c(MUTED));
-  doc.text(data.pacote.duracao, 30, 264);
-  doc.text(data.pacote.frequencia, 78, 264);
-  if (desc > 0) doc.text(`${desc}% desconto aplicado`, 130, 264);
-  else if (data.pacote.formaPagamento) doc.text(data.pacote.formaPagamento, 130, 264);
+  doc.text(data.pacote.duracao, 30, cardY + 28);
+
+  // Divisória interna
+  doc.setDrawColor(...c(SOFT));
+  doc.setLineWidth(0.2);
+  doc.line(30, cardY + 36, 178, cardY + 36);
+
+  // Investimento (destaque)
+  const totalBruto = data.pacote.numeroSessoes * data.pacote.valorSessao;
+  const desc = data.pacote.desconto || 0;
+  const total = totalBruto * (1 - desc / 100);
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...c(MUTED));
+  doc.text('INVESTIMENTO TOTAL', 30, cardY + 45, { charSpace: 1.2 });
+
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(22);
+  doc.setTextColor(...c(GOLD));
+  doc.text(total > 0 ? brl(total) : 'Sob consulta', 30, cardY + 56);
+
+  if (desc > 0) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...c(MUTED));
+    doc.text(`de ${brl(totalBruto)} · ${desc}% off`, 110, cardY + 50);
+  }
+  if (data.pacote.formaPagamento) {
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8);
+    doc.setTextColor(...c(MUTED));
+    const fp = wrap(doc, data.pacote.formaPagamento, 70).slice(0, 2);
+    doc.text(fp, 110, cardY + 56);
+  }
 
   // Rodapé capa
   doc.setFont('helvetica', 'normal');
@@ -198,9 +228,16 @@ async function drawCapa(doc: jsPDF, data: PDFPropostaData) {
   doc.setTextColor(180, 175, 160);
   doc.text(
     `Elaborada por ${data.profissionalNome || 'seu profissional'}${data.profissionalRegistro ? ' · ' + data.profissionalRegistro : ''}`,
-    22, 286
+    22, 282
   );
-  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 286, { align: 'right' });
+  doc.text(new Date().toLocaleDateString('pt-BR'), 188, 282, { align: 'right' });
+
+  if (data.validadeDias) {
+    doc.setFont('helvetica', 'italic');
+    doc.setFontSize(7);
+    doc.setTextColor(180, 175, 160);
+    doc.text(`Proposta válida por ${data.validadeDias} dias`, 105, 289, { align: 'center' });
+  }
 }
 
 // =============== HEADER DAS PÁGINAS INTERNAS ===============
