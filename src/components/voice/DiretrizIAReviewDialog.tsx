@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Separator } from '@/components/ui/separator';
-import { Sparkles, CheckCircle2, Edit3, Trash2, Loader2, Target, Lightbulb, Activity } from 'lucide-react';
+import { Sparkles, CheckCircle2, Edit3, Trash2, Loader2, Target, Lightbulb, Activity, Leaf, AlertTriangle, CalendarClock } from 'lucide-react';
 
 interface Props {
   open: boolean;
