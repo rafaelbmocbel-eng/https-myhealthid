@@ -26,13 +26,22 @@ const RED = [196, 76, 76] as const;
 type C3 = readonly [number, number, number];
 const c = (x: C3) => [x[0], x[1], x[2]] as [number, number, number];
 
+export interface TecnicaPlano {
+  tecnica: string;
+  justificativa?: string;
+  lente_clinica?: string;
+  nivel_evidencia?: string | number;
+}
+
 export interface FasePlano {
   numero: number;
   titulo: string;
   objetivo?: string;
   semanas?: string; // ex "1-2"
   focos?: string[]; // bullets curtos
+  tecnicas?: TecnicaPlano[];
 }
+
 
 export interface PlanoManutencao {
   mensagemPaciente?: string;
