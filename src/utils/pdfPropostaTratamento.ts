@@ -294,8 +294,56 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
 
   fases.forEach((f, idx) => {
     const corFase = FASE_COLORS[idx] || NAVY;
-    const focos = f.focos || [];
-    const altura = 22 + focos.length * 4.5 + (f.objetivo ? 10 : 0);
+    const focos = (f.focos || []).slice(0, 6);
+    const tecnicas = (f.tecnicas || []).slice(0, 10);
+
+    // ---- pré-medir (mesma fonte/tamanho usados depois) ----
+    // Cabeçalho do card (número + título + semanas): ~16mm
+    let measuredBody = 0;
+
+    let objLines: string[] = [];
+    if (f.objetivo) {
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(9);
+      objLines = wrap(doc, `"${f.objetivo}"`, 138).slice(0, 3);
+      measuredBody += objLines.length * 4.2 + 2;
+    }
+
+    type FocoLines = { lines: string[] };
+    const focoMeas: FocoLines[] = [];
+    if (focos.length) {
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      focos.forEach((foco) => {
+        const fl = wrap(doc, foco, 135).slice(0, 2);
+        focoMeas.push({ lines: fl });
+        measuredBody += fl.length * 4.5;
+      });
+      measuredBody += 1;
+    }
+
+    type TecMeas = { titulo: string; justLines: string[]; badge: string };
+    const tecMeas: TecMeas[] = [];
+    if (tecnicas.length) {
+      measuredBody += 6; // título "Técnicas (n)"
+      tecnicas.forEach((t) => {
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        const tit = t.tecnica;
+        const badgeParts = [t.lente_clinica, t.nivel_evidencia ? `N${t.nivel_evidencia}` : '']
+          .filter(Boolean).join(' · ');
+        doc.setFont('helvetica', 'normal');
+        doc.setFontSize(8.5);
+        const justLines = t.justificativa ? wrap(doc, t.justificativa, 138).slice(0, 3) : [];
+        tecMeas.push({ titulo: tit, justLines, badge: badgeParts });
+        measuredBody += 5 + justLines.length * 3.8 + 2;
+      });
+    }
+
+    const cabecalho = 16;
+    const padBottom = 4;
+    const altura = cabecalho + measuredBody + padBottom;
+
     y = ensure(doc, y, altura + 6);
 
     // Card
@@ -310,9 +358,9 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
 
     // Número grande
     doc.setFont('helvetica', 'bold');
-    doc.setFontSize(22);
+    doc.setFontSize(20);
     doc.setTextColor(...c(corFase));
-    doc.text(String(f.numero), 30, y + 13);
+    doc.text(String(f.numero), 30, y + 12);
 
     // Título
     doc.setFont('helvetica', 'bold');
@@ -327,28 +375,68 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
       doc.text(`Semanas ${f.semanas}`, 45, y + 14);
     }
 
-    let yi = y + (f.semanas ? 19 : 16);
+    let yi = y + cabecalho;
 
-    if (f.objetivo) {
+    // Objetivo
+    if (objLines.length) {
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(9);
       doc.setTextColor(...c(TEXT));
-      const ol = wrap(doc, `“${f.objetivo}”`, 140);
-      doc.text(ol.slice(0, 2), 45, yi);
-      yi += ol.length * 4.5;
+      doc.text(objLines, 30, yi);
+      yi += objLines.length * 4.2 + 2;
     }
 
-    if (focos.length) {
+    // Focos
+    if (focoMeas.length) {
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(9);
-      doc.setTextColor(...c(TEXT));
-      focos.slice(0, 4).forEach((foco) => {
+      focoMeas.forEach((fm) => {
         doc.setTextColor(...c(corFase));
-        doc.text('•', 45, yi);
+        doc.text('•', 30, yi);
         doc.setTextColor(...c(TEXT));
-        const fl = wrap(doc, foco, 135);
-        doc.text(fl[0], 48, yi);
+        doc.text(fm.lines[0], 33, yi);
         yi += 4.5;
+        if (fm.lines[1]) {
+          doc.text(fm.lines[1], 33, yi);
+          yi += 4.5;
+        }
+      });
+      yi += 1;
+    }
+
+    // Técnicas (a parte que faltava)
+    if (tecMeas.length) {
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(...c(GOLD));
+      doc.text(`TÉCNICAS DA DIRETRIZ (${tecMeas.length})`, 30, yi, { charSpace: 0.8 });
+      yi += 5;
+
+      tecMeas.forEach((t) => {
+        // título
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(...c(NAVY));
+        doc.text(`› ${t.titulo}`, 30, yi);
+
+        // badge à direita
+        if (t.badge) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(7.5);
+          doc.setTextColor(...c(MUTED));
+          doc.text(t.badge, 186, yi, { align: 'right' });
+        }
+        yi += 4;
+
+        // justificativa
+        if (t.justLines.length) {
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(8.5);
+          doc.setTextColor(...c(TEXT));
+          doc.text(t.justLines, 33, yi);
+          yi += t.justLines.length * 3.8;
+        }
+        yi += 2;
       });
     }
 
@@ -357,6 +445,7 @@ function drawFases(doc: jsPDF, y: number, fases: FasePlano[]): number {
 
   return y;
 }
+
 
 // =============== PLANO DE MANUTENÇÃO ===============
 function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
