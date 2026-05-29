@@ -215,11 +215,12 @@ function drawHeader(doc: jsPDF, titulo: string) {
   doc.setTextColor(...c(GOLD));
   doc.text('PROPOSTA DE TRATAMENTO', 22, 13, { charSpace: 1.2 });
 
-  doc.setFont('times', 'italic');
-  doc.setFontSize(15);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
   doc.setTextColor(...c(WHITE));
   doc.text(titulo, 22, 22);
 }
+
 
 // =============== SEU DIAGNÓSTICO ===============
 function drawDiagnostico(doc: jsPDF, y: number, data: PDFPropostaData): number {
