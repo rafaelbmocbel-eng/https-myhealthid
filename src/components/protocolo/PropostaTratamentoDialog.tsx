@@ -312,6 +312,21 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                         <Plus className="h-3 w-3" /> Adicionar foco
                       </Button>
                     </div>
+                    {f.tecnicas && f.tecnicas.length > 0 && (
+                      <div className="mt-3 pt-2 border-t border-border/40">
+                        <Label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                          Técnicas da diretriz ({f.tecnicas.length}) — incluídas no PDF
+                        </Label>
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {f.tecnicas.map((t, k) => (
+                            <span key={k} className="text-[10px] px-2 py-0.5 rounded-md bg-muted text-foreground border border-border/40">
+                              {t.tecnica}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
                   </div>
                 ))}
               </section>
