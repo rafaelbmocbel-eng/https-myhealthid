@@ -703,22 +703,15 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
 export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise<Blob> {
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
-  // Capa
-  await drawCapa(doc, data);
-
-  // Página 2+
-  doc.addPage();
-  paintBg(doc);
-  drawHeader(doc, 'Seu plano de tratamento');
-
-  let y = 40;
+  // Página 1: hero compacto + já começa o plano logo abaixo
+  let y = await drawHero(doc, data);
   y = drawDiagnostico(doc, y, data);
   y = drawFases(doc, y, data.fases);
   y = drawManutencao(doc, y, data.manutencao);
   y = drawInvestimento(doc, y, data);
   drawCTA(doc, y, data);
 
-  // Footer em todas as páginas internas
+  // Footer em todas as páginas (a partir da 2)
   const total = doc.getNumberOfPages();
   for (let i = 2; i <= total; i++) {
     doc.setPage(i);
