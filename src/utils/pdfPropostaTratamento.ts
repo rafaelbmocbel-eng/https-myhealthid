@@ -126,13 +126,14 @@ async function drawCapa(doc: jsPDF, data: PDFPropostaData) {
   doc.text('PROPOSTA DE TRATAMENTO PERSONALIZADA', 22, 58, { charSpace: 1.5 });
 
   // Título grande
-  doc.setFont('times', 'italic');
-  doc.setFontSize(40);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(36);
   doc.setTextColor(...c(WHITE));
   doc.text('Seu plano de', 22, 105);
-  doc.text('recuperação', 22, 125);
+  doc.text('recuperação', 22, 122);
   doc.setTextColor(...c(GOLD));
-  doc.text('começa aqui.', 22, 145);
+  doc.text('começa aqui.', 22, 139);
+
 
   // Linha de separação
   doc.setDrawColor(...c(GOLD));
