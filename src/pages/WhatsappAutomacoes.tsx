@@ -300,9 +300,9 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               </div>
               <div>
                 <Label>Delay antes de responder (s)</Label>
-                <Input type="number" min={0} max={120}
-                  value={cfg.delay_resposta_segundos}
-                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: +e.target.value })} />
+                <Input type="number" inputMode="numeric" min={0} max={120}
+                  value={cfg.delay_resposta_segundos ?? ''}
+                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: e.target.value === '' ? 0 : Number(e.target.value) })} />
               </div>
             </div>
             <div>
