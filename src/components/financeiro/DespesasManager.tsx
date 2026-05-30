@@ -237,10 +237,11 @@ export default function DespesasManager() {
                 <Label>Valor (R$)</Label>
                 <Input
                   type="number"
+                  inputMode="decimal"
                   step="0.01"
                   min="0"
-                  value={form.valor ?? ''}
-                  onChange={(e) => setForm({ ...form, valor: parseFloat(e.target.value) || 0 })}
+                  value={form.valor || ''}
+                  onChange={(e) => setForm({ ...form, valor: e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0) })}
                 />
               </div>
               <div>
