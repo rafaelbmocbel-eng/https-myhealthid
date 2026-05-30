@@ -426,9 +426,10 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
                               <label className="text-[9px] font-semibold text-muted-foreground uppercase">Séries</label>
                               <Input
                                 type="number"
+                                inputMode="numeric"
                                 min="1"
-                                value={s.series}
-                                onChange={(e) => updateField(i, 'series', parseInt(e.target.value) || 1)}
+                                value={s.series || ''}
+                                onChange={(e) => updateField(i, 'series', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
                                 className="h-7 text-xs"
                                 style={{ fontSize: '16px' }}
                               />
@@ -437,9 +438,10 @@ export default function DeverDeCasaDialog({ open, onOpenChange, pacienteId, paci
                               <label className="text-[9px] font-semibold text-muted-foreground uppercase">Reps/Tempo</label>
                               <Input
                                 type="number"
+                                inputMode="numeric"
                                 min="1"
-                                value={s.repeticoes}
-                                onChange={(e) => updateField(i, 'repeticoes', parseInt(e.target.value) || 1)}
+                                value={s.repeticoes || ''}
+                                onChange={(e) => updateField(i, 'repeticoes', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
                                 className="h-7 text-xs"
                                 style={{ fontSize: '16px' }}
                               />
