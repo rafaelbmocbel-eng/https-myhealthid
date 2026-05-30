@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -32,12 +32,28 @@ interface PacienteBasico {
 
 export default function CompletarCadastro() {
   const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [paciente, setPaciente] = useState<PacienteBasico | null>(null);
   const [erro, setErro] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  // Garante que nenhuma sessão (profissional ou outro paciente) esteja ativa
+  // quando o link público de cadastro for aberto — evita que o usuário caia
+  // "dentro do app" do profissional após concluir o cadastro.
+  useEffect(() => {
+    (async () => {
+      try { await supabase.auth.signOut(); } catch { /* ignore */ }
+      try {
+        Object.keys(localStorage).forEach(k => {
+          if (k.startsWith('sb-') && k.includes('-auth-token')) localStorage.removeItem(k);
+        });
+        sessionStorage.removeItem('myhealthid.last-route');
+      } catch { /* ignore */ }
+    })();
+  }, []);
 
   const [form, setForm] = useState({
     nome: '', sobrenome: '', telefone: '',
@@ -150,8 +166,14 @@ export default function CompletarCadastro() {
         </div>
         <h1 className="text-xl font-bold text-foreground">Cadastro concluído!</h1>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Suas informações foram enviadas a {paciente?.terapeuta_nome}. Em breve você terá acesso ao portal completo.
+          Suas informações foram enviadas a {paciente?.terapeuta_nome}. Agora crie seu acesso para entrar no seu portal.
         </p>
+        <Button
+          className="h-12 px-6 rounded-xl font-bold mt-2"
+          onClick={() => navigate(`/portal/${token}`, { replace: true })}
+        >
+          Acessar meu portal →
+        </Button>
       </div>
     );
   }
