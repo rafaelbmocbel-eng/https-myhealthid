@@ -395,7 +395,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="dias">Dias de afastamento</Label>
-                  <Input id="dias" type="number" min={1} value={diasAfastamento} onChange={(e) => setDiasAfastamento(Number(e.target.value))} />
+                  <Input id="dias" type="number" inputMode="numeric" min={1} value={diasAfastamento || ''} onChange={(e) => setDiasAfastamento(e.target.value === '' ? 0 : Number(e.target.value))} />
                 </div>
                 <div>
                   <Label htmlFor="dini">A partir de</Label>
