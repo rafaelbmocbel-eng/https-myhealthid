@@ -65,8 +65,8 @@ export default function CobEtapaAntropometrica({ data, onChange, onNext, onBack 
           ].map(({ key, label }) => (
             <div key={key}>
               <Label>{label}</Label>
-              <Input type="number" min={0} max={100} value={(local as any)[key]}
-                onChange={e => update(key as keyof EtapaAntropometrica, Number(e.target.value))} className="mt-1.5" />
+              <Input type="number" inputMode="numeric" min={0} max={100} value={(local as any)[key] || ''}
+                onChange={e => update(key as keyof EtapaAntropometrica, e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" />
             </div>
           ))}
         </div>
