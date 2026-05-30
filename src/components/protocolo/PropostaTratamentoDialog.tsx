@@ -376,7 +376,7 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                 <div className="grid grid-cols-2 gap-2">
                   <div>
                     <Label className="text-[11px]">Nº de sessões</Label>
-                    <Input type="number" min={1} value={numeroSessoes} onChange={(e) => setNumeroSessoes(Number(e.target.value) || 0)} />
+                    <Input type="number" inputMode="numeric" min={1} value={numeroSessoes || ''} onChange={(e) => setNumeroSessoes(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                   <div>
                     <Label className="text-[11px]">Frequência</Label>
@@ -388,15 +388,15 @@ export default function PropostaTratamentoDialog({ open, onOpenChange, protocolo
                   </div>
                   <div>
                     <Label className="text-[11px]">Valor por sessão (R$)</Label>
-                    <Input type="number" min={0} value={valorSessao} onChange={(e) => setValorSessao(Number(e.target.value) || 0)} />
+                    <Input type="number" inputMode="decimal" min={0} step="0.01" value={valorSessao || ''} onChange={(e) => setValorSessao(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                   <div>
                     <Label className="text-[11px]">Desconto (%)</Label>
-                    <Input type="number" min={0} max={90} value={desconto} onChange={(e) => setDesconto(Number(e.target.value) || 0)} />
+                    <Input type="number" inputMode="decimal" min={0} max={90} value={desconto || ''} onChange={(e) => setDesconto(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                   <div>
                     <Label className="text-[11px]">Validade (dias)</Label>
-                    <Input type="number" min={1} value={validadeDias} onChange={(e) => setValidadeDias(Number(e.target.value) || 7)} />
+                    <Input type="number" inputMode="numeric" min={1} value={validadeDias || ''} onChange={(e) => setValidadeDias(e.target.value === '' ? 0 : Number(e.target.value))} />
                   </div>
                 </div>
                 <div>
