@@ -34,11 +34,11 @@ export default function CobEtapaAntropometrica({ data, onChange, onNext, onBack 
         <div className="grid grid-cols-3 gap-4">
           <div>
             <Label>Altura (cm)</Label>
-            <Input type="number" value={local.altura} onChange={e => update('altura', Number(e.target.value))} className="mt-1.5" />
+            <Input type="number" inputMode="decimal" value={local.altura || ''} onChange={e => update('altura', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" />
           </div>
           <div>
             <Label>Peso (kg)</Label>
-            <Input type="number" value={local.peso} onChange={e => update('peso', Number(e.target.value))} className="mt-1.5" />
+            <Input type="number" inputMode="decimal" value={local.peso || ''} onChange={e => update('peso', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" />
           </div>
           <div>
             <Label>IMC</Label>
@@ -49,11 +49,11 @@ export default function CobEtapaAntropometrica({ data, onChange, onNext, onBack 
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Teste de Adam – ΔH (mm)</Label>
-            <Input type="number" value={local.testeAdam} onChange={e => update('testeAdam', Number(e.target.value))} className="mt-1.5" placeholder="0-30 mm" />
+            <Input type="number" inputMode="decimal" value={local.testeAdam || ''} onChange={e => update('testeAdam', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" placeholder="0-30 mm" />
           </div>
           <div>
             <Label>ATR – Ângulo Tronco (°)</Label>
-            <Input type="number" value={local.atr} onChange={e => update('atr', Number(e.target.value))} className="mt-1.5" placeholder="0-20°" />
+            <Input type="number" inputMode="decimal" value={local.atr || ''} onChange={e => update('atr', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" placeholder="0-20°" />
           </div>
         </div>
 
