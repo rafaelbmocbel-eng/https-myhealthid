@@ -5,6 +5,8 @@ import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
+import MyIDResumoInline from './MyIDResumoInline';
+
 
 interface Props {
   pacienteId: string;
