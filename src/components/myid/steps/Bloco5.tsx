@@ -39,10 +39,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <Label className="font-semibold">5A.1 Quantas horas você dorme por noite? (Ideal 7-9h)</Label>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="24"
                         placeholder="Ex: 7"
-                        value={data.bloco_5a_hours || ''}
-                        onChange={(e) => updateData({ bloco_5a_hours: parseFloat(e.target.value) })}
+                        value={data.bloco_5a_hours ?? ''}
+                        onChange={(e) => updateData({ bloco_5a_hours: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
@@ -247,10 +248,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas horas por dia fica sentado direto?</p>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="24"
                         placeholder="Ex: 8"
-                        value={data.bloco_5e_sitting_hours || ''}
-                        onChange={(e) => updateData({ bloco_5e_sitting_hours: parseFloat(e.target.value) })}
+                        value={data.bloco_5e_sitting_hours ?? ''}
+                        onChange={(e) => updateData({ bloco_5e_sitting_hours: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
@@ -321,10 +323,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="10" step="0.1"
                         placeholder="Ex: 2.5"
-                        value={data.bloco_5f_water_liters || ''}
-                        onChange={(e) => updateData({ bloco_5f_water_liters: parseFloat(e.target.value) })}
+                        value={data.bloco_5f_water_liters ?? ''}
+                        onChange={(e) => updateData({ bloco_5f_water_liters: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
@@ -349,10 +352,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
                     <Input
                         type="number"
+                        inputMode="numeric"
                         min="0" max="30"
                         placeholder="Ex: 6"
-                        value={data.bloco_5f_micturition || ''}
-                        onChange={(e) => updateData({ bloco_5f_micturition: parseInt(e.target.value) })}
+                        value={data.bloco_5f_micturition ?? ''}
+                        onChange={(e) => updateData({ bloco_5f_micturition: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
@@ -414,10 +418,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
                     <Input
                         type="number"
+                        inputMode="numeric"
                         min="0" max="20"
                         placeholder="Ex: 3"
-                        value={data.bloco_5g_fruits_portions || ''}
-                        onChange={(e) => updateData({ bloco_5g_fruits_portions: parseInt(e.target.value) })}
+                        value={data.bloco_5g_fruits_portions ?? ''}
+                        onChange={(e) => updateData({ bloco_5g_fruits_portions: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
@@ -495,10 +500,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <div className="flex items-center gap-2">
                         <Input
                             type="number"
+                            inputMode="numeric"
                             min="0" max="600"
                             placeholder="Ex: 120"
-                            value={data.bloco_5h_sitting_continuous || ''}
-                            onChange={(e) => updateData({ bloco_5h_sitting_continuous: parseInt(e.target.value) })}
+                            value={data.bloco_5h_sitting_continuous ?? ''}
+                            onChange={(e) => updateData({ bloco_5h_sitting_continuous: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                             className="w-32"
                         />
                         <span className="text-sm text-slate-500">minutos (sem pausar)</span>

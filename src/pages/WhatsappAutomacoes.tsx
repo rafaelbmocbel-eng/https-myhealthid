@@ -300,9 +300,9 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               </div>
               <div>
                 <Label>Delay antes de responder (s)</Label>
-                <Input type="number" min={0} max={120}
-                  value={cfg.delay_resposta_segundos}
-                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: +e.target.value })} />
+                <Input type="number" inputMode="numeric" min={0} max={120}
+                  value={cfg.delay_resposta_segundos ?? ''}
+                  onChange={(e) => setCfg({ ...cfg, delay_resposta_segundos: e.target.value === '' ? 0 : Number(e.target.value) })} />
               </div>
             </div>
             <div>
@@ -440,8 +440,8 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
             </div>
             <div>
               <Label>Máximo de turnos do bot antes de escalar</Label>
-              <Input type="number" min={1} max={20} value={cfg.max_turnos_bot || 5}
-                onChange={(e) => setCfg({ ...cfg, max_turnos_bot: +e.target.value })} />
+              <Input type="number" inputMode="numeric" min={1} max={20} value={cfg.max_turnos_bot ?? ''}
+                onChange={(e) => setCfg({ ...cfg, max_turnos_bot: e.target.value === '' ? null : Number(e.target.value) })} />
               <p className="text-micro mt-1">Se a conversa passar disso sem resolver, alerta um humano.</p>
             </div>
             <div className="rounded-lg border border-border/40 p-3 space-y-3">
@@ -456,9 +456,9 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               {cfg.sla_ativo !== false && (
                 <div className="flex items-center gap-2">
                   <Label className="text-xs">Responder em até</Label>
-                  <Input type="number" min={1} max={1440} className="w-24 h-9"
-                    value={cfg.sla_minutos ?? 30}
-                    onChange={(e) => setCfg({ ...cfg, sla_minutos: +e.target.value })} />
+                  <Input type="number" inputMode="numeric" min={1} max={1440} className="w-24 h-9"
+                    value={cfg.sla_minutos ?? ''}
+                    onChange={(e) => setCfg({ ...cfg, sla_minutos: e.target.value === '' ? null : Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">minutos</span>
                 </div>
               )}
@@ -524,11 +524,11 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                         <Label className="text-sm">Variante {v.key}</Label>
                         <div className="flex items-center gap-2">
                           <Label className="text-micro">Peso %</Label>
-                          <Input type="number" min={0} max={100} className="w-20 h-8"
-                            value={v.peso}
+                          <Input type="number" inputMode="numeric" min={0} max={100} className="w-20 h-8"
+                            value={v.peso ?? ''}
                             onChange={(e) => {
                               const nv = [...broadcast.variantes];
-                              nv[i] = { ...v, peso: +e.target.value };
+                              nv[i] = { ...v, peso: e.target.value === '' ? 0 : Number(e.target.value) };
                               setBroadcast({ ...broadcast, variantes: nv });
                             }} />
                         </div>

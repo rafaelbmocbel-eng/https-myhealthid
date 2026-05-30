@@ -72,8 +72,8 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
         {localData.traumaAxial && (
           <div>
             <Label>Há quantos anos?</Label>
-            <Input type="number" min={0} max={80} value={localData.traumaAxialAnos ?? ''}
-              onChange={e => update('traumaAxialAnos', parseInt(e.target.value) || null)}
+            <Input type="number" inputMode="numeric" min={0} max={80} value={localData.traumaAxialAnos ?? ''}
+              onChange={e => update('traumaAxialAnos', e.target.value === '' ? null : (parseInt(e.target.value) || 0))}
               className="mt-1.5 w-32" placeholder="anos" />
           </div>
         )}
@@ -105,8 +105,8 @@ export default function MyIDBloco6({ data, onChange, onSubmit, onBack, submittin
             </div>
             <div>
               <Label>Há quantos anos?</Label>
-              <Input type="number" min={0} max={80} value={localData.cicatrizAnos ?? ''}
-                onChange={e => update('cicatrizAnos', parseInt(e.target.value) || null)}
+              <Input type="number" inputMode="numeric" min={0} max={80} value={localData.cicatrizAnos ?? ''}
+                onChange={e => update('cicatrizAnos', e.target.value === '' ? null : (parseInt(e.target.value) || 0))}
                 className="mt-1.5" placeholder="anos" />
             </div>
           </div>

@@ -77,11 +77,11 @@ export default function ConveniosManager() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Valor padrão (R$)</Label>
-                <Input type="number" step="0.01" value={form.valor_padrao ?? ''} onChange={(e) => setForm({ ...form, valor_padrao: e.target.value as any })} />
+                <Input type="number" inputMode="decimal" step="0.01" value={form.valor_padrao ?? ''} onChange={(e) => setForm({ ...form, valor_padrao: e.target.value as any })} />
               </div>
               <div>
                 <Label>Prazo repasse (dias)</Label>
-                <Input type="number" value={form.prazo_repasse_dias ?? 30} onChange={(e) => setForm({ ...form, prazo_repasse_dias: e.target.value as any })} />
+                <Input type="number" inputMode="numeric" value={form.prazo_repasse_dias ?? ''} onChange={(e) => setForm({ ...form, prazo_repasse_dias: e.target.value as any })} placeholder="30" />
               </div>
             </div>
             <div>

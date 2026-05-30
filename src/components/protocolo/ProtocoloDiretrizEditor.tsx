@@ -380,9 +380,9 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
                         <label className="text-xs text-muted-foreground">
                           Frequência (x/semana)
                           <Input
-                            type="number" min={1} max={7}
+                            type="number" inputMode="numeric" min={1} max={7}
                             value={fase.frequenciaSemanal || ''}
-                            onChange={e => updateFase(idx, { frequenciaSemanal: Number(e.target.value) || 0 })}
+                            onChange={e => updateFase(idx, { frequenciaSemanal: e.target.value === '' ? 0 : Number(e.target.value) })}
                             className="mt-1 h-8"
                           />
                         </label>

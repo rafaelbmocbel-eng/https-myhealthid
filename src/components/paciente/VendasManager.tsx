@@ -458,9 +458,9 @@ export default function VendasManager() {
               <div className="space-y-1.5">
                 <Label className="text-xs font-semibold">Qtd</Label>
                 <Input
-                  type="number" min={1}
-                  value={form.quantidade}
-                  onChange={e => setForm(f => ({ ...f, quantidade: Math.max(1, Number(e.target.value) || 1) }))}
+                  type="number" inputMode="numeric" min={1}
+                  value={form.quantidade || ''}
+                  onChange={e => setForm(f => ({ ...f, quantidade: e.target.value === '' ? 1 : Math.max(1, Number(e.target.value) || 1) }))}
                 />
               </div>
               <div className="space-y-1.5">
@@ -468,9 +468,9 @@ export default function VendasManager() {
                   <DollarSign className="h-3 w-3" /> Valor unit. *
                 </Label>
                 <Input
-                  type="number" min={0} step="0.01"
+                  type="number" inputMode="decimal" min={0} step="0.01"
                   value={form.valor_unitario || ''}
-                  onChange={e => setForm(f => ({ ...f, valor_unitario: Number(e.target.value) || 0 }))}
+                  onChange={e => setForm(f => ({ ...f, valor_unitario: e.target.value === '' ? 0 : Number(e.target.value) }))}
                 />
               </div>
               <div className="space-y-1.5">

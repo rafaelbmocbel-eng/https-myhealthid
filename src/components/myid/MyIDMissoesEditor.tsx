@@ -318,7 +318,7 @@ function AddManualDialog({
             </div>
             <div>
               <label className="text-xs font-semibold mb-1 block">XP</label>
-              <Input type="number" min={0} max={500} value={xp} onChange={(e) => setXp(Number(e.target.value))} />
+              <Input type="number" inputMode="numeric" min={0} max={500} value={xp || ''} onChange={(e) => setXp(e.target.value === '' ? 0 : Number(e.target.value))} />
             </div>
           </div>
         </div>

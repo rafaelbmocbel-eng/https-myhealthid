@@ -137,9 +137,9 @@ export default function CrmCadencias({ embedded = false }: { embedded?: boolean 
                       <div className="flex items-center gap-1 mt-2 shrink-0">
                         <Clock className="icon-xs text-muted-foreground" />
                         <Input
-                          type="number" min={0} className="w-16 h-8"
+                          type="number" inputMode="numeric" min={0} className="w-16 h-8"
                           defaultValue={p.delay_horas}
-                          onBlur={e => atualizarPasso(p.id, { delay_horas: parseInt(e.target.value) || 0 })}
+                          onBlur={e => atualizarPasso(p.id, { delay_horas: e.target.value === '' ? 0 : (parseInt(e.target.value) || 0) })}
                         />
                         <span className="text-caption text-muted-foreground">h</span>
                       </div>

@@ -2053,7 +2053,7 @@ export default function Agenda() {
                       {form.recorrencia !== 'none' && (
                         <div>
                           <Label className="text-xs font-bold">Por quantas semanas?</Label>
-                          <Input type="number" min={1} max={52} className="mt-1.5" value={form.recorrencia_semanas} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: parseInt(e.target.value) || 4 }))} />
+                          <Input type="number" inputMode="numeric" min={1} max={52} className="mt-1.5" value={form.recorrencia_semanas || ''} onChange={e => setForm(f => ({ ...f, recorrencia_semanas: e.target.value === '' ? 1 : (parseInt(e.target.value) || 1) }))} />
                           <p className="text-[10px] text-muted-foreground mt-1">
                             {form.recorrencia === 'dias_semana'
                               ? `Aprox. ${form.recorrencia_dias.length * form.recorrencia_semanas} sessões serão criadas`

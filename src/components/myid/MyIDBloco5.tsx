@@ -51,8 +51,8 @@ export default function MyIDBloco5({ data, onChange, onNext, onBack }: Props) {
         </div>
         <div>
           <Label>Horas de sono por noite</Label>
-          <Input type="number" min={0} max={14} step={0.5} value={localData.horasSono}
-            onChange={e => update('horasSono', parseFloat(e.target.value) || 0)} className="mt-1.5 w-32" />
+          <Input type="number" inputMode="decimal" min={0} max={14} step={0.5} value={localData.horasSono || ''}
+            onChange={e => update('horasSono', e.target.value === '' ? 0 : parseFloat(e.target.value) || 0)} className="mt-1.5 w-32" />
         </div>
         <div>
           <Label>Acorda durante a noite por causa da dor?</Label>
