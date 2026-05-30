@@ -177,8 +177,8 @@ export default function RecompensasManager() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Custo (XP) *</Label>
-                <Input type="number" min={1} value={form.xp_custo}
-                  onChange={e => setForm({ ...form, xp_custo: Number(e.target.value) })} />
+                <Input type="number" inputMode="numeric" min={1} value={form.xp_custo || ''}
+                  onChange={e => setForm({ ...form, xp_custo: e.target.value === '' ? 0 : Number(e.target.value) })} />
               </div>
               <div>
                 <Label>Estoque (vazio = ilimitado)</Label>
