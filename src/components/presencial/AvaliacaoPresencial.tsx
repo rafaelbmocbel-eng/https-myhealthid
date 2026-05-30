@@ -5,6 +5,8 @@ import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
+import MyIDResumoInline from './MyIDResumoInline';
+
 
 interface Props {
   pacienteId: string;
@@ -79,7 +81,11 @@ export default function AvaliacaoPresencial({
 
   return (
     <div className="space-y-3">
+      {/* Resumo MyID do paciente — base para montar exercícios */}
+      <MyIDResumoInline pacienteId={pacienteId} />
+
       {/* Topo: MyID + chip da lente ativa */}
+
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button
           onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
