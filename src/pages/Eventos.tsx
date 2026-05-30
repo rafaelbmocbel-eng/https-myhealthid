@@ -519,7 +519,7 @@ function EventoFormFields({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pl-2 border-l-2 border-accent/30">
             <div>
               <Label>Valor (R$)</Label>
-              <Input type="number" value={valor} onChange={e => setValor(Number(e.target.value))} min={0} step={0.01} />
+              <Input type="number" inputMode="decimal" value={valor || ''} onChange={e => setValor(e.target.value === '' ? 0 : Number(e.target.value))} min={0} step={0.01} />
             </div>
             <div>
               <Label>Chave PIX</Label>
