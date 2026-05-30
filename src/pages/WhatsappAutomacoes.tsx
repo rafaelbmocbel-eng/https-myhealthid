@@ -440,8 +440,8 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
             </div>
             <div>
               <Label>Máximo de turnos do bot antes de escalar</Label>
-              <Input type="number" min={1} max={20} value={cfg.max_turnos_bot || 5}
-                onChange={(e) => setCfg({ ...cfg, max_turnos_bot: +e.target.value })} />
+              <Input type="number" inputMode="numeric" min={1} max={20} value={cfg.max_turnos_bot ?? ''}
+                onChange={(e) => setCfg({ ...cfg, max_turnos_bot: e.target.value === '' ? null : Number(e.target.value) })} />
               <p className="text-micro mt-1">Se a conversa passar disso sem resolver, alerta um humano.</p>
             </div>
             <div className="rounded-lg border border-border/40 p-3 space-y-3">
