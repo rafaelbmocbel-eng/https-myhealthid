@@ -5,12 +5,15 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Eye, EyeOff, Loader2, CheckCircle2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import LogoIcon from '@/components/LogoIcon';
 
 export default function NovaSenha() {
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const isPortal = searchParams.get('portal') === '1';
+  const successRedirect = isPortal ? '/paciente/login' : '/auth';
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -81,7 +84,7 @@ export default function NovaSenha() {
     } else {
       setSuccess(true);
       toast({ title: 'Senha redefinida com sucesso!' });
-      setTimeout(() => navigate('/auth'), 2500);
+      setTimeout(() => navigate(successRedirect), 2500);
     }
     setSubmitting(false);
   };
@@ -120,7 +123,7 @@ export default function NovaSenha() {
           <p className="text-sm text-muted-foreground mb-6">
             Você será redirecionado para o login em instantes…
           </p>
-          <Button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground rounded-xl h-11 px-6">
+          <Button onClick={() => navigate(successRedirect)} className="bg-primary text-primary-foreground rounded-xl h-11 px-6">
             Ir para o login
           </Button>
         </div>
