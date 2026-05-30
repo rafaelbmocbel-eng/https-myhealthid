@@ -248,10 +248,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas horas por dia fica sentado direto?</p>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="24"
                         placeholder="Ex: 8"
-                        value={data.bloco_5e_sitting_hours || ''}
-                        onChange={(e) => updateData({ bloco_5e_sitting_hours: parseFloat(e.target.value) })}
+                        value={data.bloco_5e_sitting_hours ?? ''}
+                        onChange={(e) => updateData({ bloco_5e_sitting_hours: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
