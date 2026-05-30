@@ -155,10 +155,11 @@ export default function Configuracoes() {
                 <Label className="text-xs font-medium mb-1.5 block">Minutos de intervalo</Label>
                 <Input
                   type="number"
+                  inputMode="numeric"
                   min={0}
                   max={60}
-                  value={form.intervalo_entre_sessoes}
-                  onChange={e => setForm(f => ({ ...f, intervalo_entre_sessoes: Number(e.target.value) }))}
+                  value={form.intervalo_entre_sessoes || ''}
+                  onChange={e => setForm(f => ({ ...f, intervalo_entre_sessoes: e.target.value === '' ? 0 : Number(e.target.value) }))}
                 />
                 <p className="text-[11px] text-muted-foreground mt-1">Tempo livre entre cada sessão (0 = sem intervalo).</p>
               </div>
