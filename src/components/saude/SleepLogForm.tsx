@@ -71,11 +71,11 @@ export default function SleepLogForm({ current, onSave }: Props) {
         <div className="grid grid-cols-2 gap-3">
           <div>
             <Label className="text-[10px]">Sono profundo (h)</Label>
-            <Input type="number" value={deepHours} onChange={e => setDeepHours(Number(e.target.value))} step={0.5} min={0} max={totalHours} className="h-9 text-sm" />
+            <Input type="number" inputMode="decimal" value={deepHours || ''} onChange={e => setDeepHours(e.target.value === '' ? 0 : Number(e.target.value))} step={0.5} min={0} max={totalHours} className="h-9 text-sm" />
           </div>
           <div>
             <Label className="text-[10px]">Sono REM (h)</Label>
-            <Input type="number" value={remHours} onChange={e => setRemHours(Number(e.target.value))} step={0.5} min={0} max={totalHours} className="h-9 text-sm" />
+            <Input type="number" inputMode="decimal" value={remHours || ''} onChange={e => setRemHours(e.target.value === '' ? 0 : Number(e.target.value))} step={0.5} min={0} max={totalHours} className="h-9 text-sm" />
           </div>
         </div>
 
