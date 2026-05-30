@@ -456,9 +456,9 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
               {cfg.sla_ativo !== false && (
                 <div className="flex items-center gap-2">
                   <Label className="text-xs">Responder em até</Label>
-                  <Input type="number" min={1} max={1440} className="w-24 h-9"
-                    value={cfg.sla_minutos ?? 30}
-                    onChange={(e) => setCfg({ ...cfg, sla_minutos: +e.target.value })} />
+                  <Input type="number" inputMode="numeric" min={1} max={1440} className="w-24 h-9"
+                    value={cfg.sla_minutos ?? ''}
+                    onChange={(e) => setCfg({ ...cfg, sla_minutos: e.target.value === '' ? null : Number(e.target.value) })} />
                   <span className="text-xs text-muted-foreground">minutos</span>
                 </div>
               )}
