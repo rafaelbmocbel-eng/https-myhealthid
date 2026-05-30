@@ -269,9 +269,10 @@ function PacoteDialog({ form, setForm, onSave, saving, isEditing }: {
           </div>
           <Input
             type="number"
+            inputMode="numeric"
             min={1}
-            value={form.total_sessoes}
-            onChange={(e) => setForm({ ...form, total_sessoes: parseInt(e.target.value) || 1 })}
+            value={form.total_sessoes || ''}
+            onChange={(e) => setForm({ ...form, total_sessoes: e.target.value === '' ? 0 : (parseInt(e.target.value) || 0) })}
             placeholder="Ou digite um valor personalizado"
           />
         </div>
