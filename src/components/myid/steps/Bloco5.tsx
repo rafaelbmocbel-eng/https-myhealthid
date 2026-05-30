@@ -323,10 +323,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantos LITROS DE ÁGUA você bebe por dia? (Apenas água pura)</p>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="10" step="0.1"
                         placeholder="Ex: 2.5"
-                        value={data.bloco_5f_water_liters || ''}
-                        onChange={(e) => updateData({ bloco_5f_water_liters: parseFloat(e.target.value) })}
+                        value={data.bloco_5f_water_liters ?? ''}
+                        onChange={(e) => updateData({ bloco_5f_water_liters: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
