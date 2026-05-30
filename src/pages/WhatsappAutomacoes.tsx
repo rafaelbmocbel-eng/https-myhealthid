@@ -524,11 +524,11 @@ export default function WhatsappAutomacoes({ embedded = false }: { embedded?: bo
                         <Label className="text-sm">Variante {v.key}</Label>
                         <div className="flex items-center gap-2">
                           <Label className="text-micro">Peso %</Label>
-                          <Input type="number" min={0} max={100} className="w-20 h-8"
-                            value={v.peso}
+                          <Input type="number" inputMode="numeric" min={0} max={100} className="w-20 h-8"
+                            value={v.peso ?? ''}
                             onChange={(e) => {
                               const nv = [...broadcast.variantes];
-                              nv[i] = { ...v, peso: +e.target.value };
+                              nv[i] = { ...v, peso: e.target.value === '' ? 0 : Number(e.target.value) };
                               setBroadcast({ ...broadcast, variantes: nv });
                             }} />
                         </div>
