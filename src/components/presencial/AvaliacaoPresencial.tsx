@@ -81,7 +81,11 @@ export default function AvaliacaoPresencial({
 
   return (
     <div className="space-y-3">
+      {/* Resumo MyID do paciente — base para montar exercícios */}
+      <MyIDResumoInline pacienteId={pacienteId} />
+
       {/* Topo: MyID + chip da lente ativa */}
+
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button
           onClick={() => navigate(`/metodo-identidade?paciente=${pacienteId}&iniciar=1`)}
