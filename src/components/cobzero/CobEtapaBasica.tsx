@@ -43,8 +43,8 @@ export default function CobEtapaBasica({ data, onChange, onNext }: Props) {
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Duração (meses)</Label>
-            <Input type="number" min={0} value={local.duracaoMeses}
-              onChange={e => update('duracaoMeses', Number(e.target.value))} className="mt-1.5" />
+            <Input type="number" inputMode="numeric" min={0} value={local.duracaoMeses || ''}
+              onChange={e => update('duracaoMeses', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" />
           </div>
           <div>
             <Label>Atividade física</Label>
