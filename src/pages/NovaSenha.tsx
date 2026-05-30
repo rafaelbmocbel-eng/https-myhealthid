@@ -123,7 +123,7 @@ export default function NovaSenha() {
           <p className="text-sm text-muted-foreground mb-6">
             Você será redirecionado para o login em instantes…
           </p>
-          <Button onClick={() => navigate('/auth')} className="bg-primary text-primary-foreground rounded-xl h-11 px-6">
+          <Button onClick={() => navigate(successRedirect)} className="bg-primary text-primary-foreground rounded-xl h-11 px-6">
             Ir para o login
           </Button>
         </div>
