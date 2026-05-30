@@ -154,7 +154,7 @@ export default function PacienteLogin() {
     setResetting(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(form.email, {
-        redirectTo: `${window.location.origin}/paciente/login`,
+        redirectTo: `${window.location.origin}/nova-senha?portal=1`,
       });
       if (error) throw error;
       toast({
