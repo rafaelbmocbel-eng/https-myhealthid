@@ -352,10 +352,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas vezes você URINA por dia? (Normal: 6-8 vezes)</p>
                     <Input
                         type="number"
+                        inputMode="numeric"
                         min="0" max="30"
                         placeholder="Ex: 6"
-                        value={data.bloco_5f_micturition || ''}
-                        onChange={(e) => updateData({ bloco_5f_micturition: parseInt(e.target.value) })}
+                        value={data.bloco_5f_micturition ?? ''}
+                        onChange={(e) => updateData({ bloco_5f_micturition: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
