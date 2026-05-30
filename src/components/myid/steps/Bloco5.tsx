@@ -500,10 +500,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <div className="flex items-center gap-2">
                         <Input
                             type="number"
+                            inputMode="numeric"
                             min="0" max="600"
                             placeholder="Ex: 120"
-                            value={data.bloco_5h_sitting_continuous || ''}
-                            onChange={(e) => updateData({ bloco_5h_sitting_continuous: parseInt(e.target.value) })}
+                            value={data.bloco_5h_sitting_continuous ?? ''}
+                            onChange={(e) => updateData({ bloco_5h_sitting_continuous: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                             className="w-32"
                         />
                         <span className="text-sm text-slate-500">minutos (sem pausar)</span>
