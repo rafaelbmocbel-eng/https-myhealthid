@@ -418,10 +418,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <p className="text-sm text-gray-500">Quantas PORÇÕES de frutas/verduras você come por dia?</p>
                     <Input
                         type="number"
+                        inputMode="numeric"
                         min="0" max="20"
                         placeholder="Ex: 3"
-                        value={data.bloco_5g_fruits_portions || ''}
-                        onChange={(e) => updateData({ bloco_5g_fruits_portions: parseInt(e.target.value) })}
+                        value={data.bloco_5g_fruits_portions ?? ''}
+                        onChange={(e) => updateData({ bloco_5g_fruits_portions: e.target.value === '' ? undefined : (parseInt(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
