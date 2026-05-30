@@ -325,18 +325,21 @@ const FunilConfigPanel = () => {
                       <Label className="text-xs">Valor (R$)</Label>
                       <Input
                         type="number"
-                        value={serv.valor ?? 0}
-                        onChange={(e) => updateServico(idx, 'valor', parseFloat(e.target.value) || 0)}
+                        inputMode="decimal"
+                        step="0.01"
+                        value={serv.valor ?? ''}
+                        onChange={(e) => updateServico(idx, 'valor', e.target.value === '' ? 0 : (parseFloat(e.target.value) || 0))}
                       />
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs">Parcelas Máx</Label>
                       <Input
                         type="number"
+                        inputMode="numeric"
                         min={1}
                         max={12}
-                        value={serv.parcelas_max ?? 1}
-                        onChange={(e) => updateServico(idx, 'parcelas_max', parseInt(e.target.value) || 1)}
+                        value={serv.parcelas_max ?? ''}
+                        onChange={(e) => updateServico(idx, 'parcelas_max', e.target.value === '' ? 1 : (parseInt(e.target.value) || 1))}
                       />
                     </div>
                   </div>
