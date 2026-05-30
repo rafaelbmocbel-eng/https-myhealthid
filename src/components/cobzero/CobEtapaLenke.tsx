@@ -51,8 +51,8 @@ export default function CobEtapaLenke({ data, pacienteSexo, onChange, onRiscoCha
         <div className="grid grid-cols-2 gap-4">
           <div>
             <Label>Ângulo de Cobb (°)</Label>
-            <Input type="number" min={0} max={180} value={local.cobbAngle}
-              onChange={e => update('cobbAngle', Number(e.target.value))} className="mt-1.5" />
+            <Input type="number" inputMode="numeric" min={0} max={180} value={local.cobbAngle || ''}
+              onChange={e => update('cobbAngle', e.target.value === '' ? 0 : Number(e.target.value))} className="mt-1.5" />
             {local.cobbAngle > 0 && (
               <span className={`inline-block mt-1 text-xs px-2 py-0.5 rounded-full ${cobbClass.color}`}>
                 {cobbClass.label} ({local.cobbAngle}°)
