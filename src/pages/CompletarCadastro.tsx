@@ -166,8 +166,14 @@ export default function CompletarCadastro() {
         </div>
         <h1 className="text-xl font-bold text-foreground">Cadastro concluído!</h1>
         <p className="text-sm text-muted-foreground max-w-sm">
-          Suas informações foram enviadas a {paciente?.terapeuta_nome}. Em breve você terá acesso ao portal completo.
+          Suas informações foram enviadas a {paciente?.terapeuta_nome}. Agora crie seu acesso para entrar no seu portal.
         </p>
+        <Button
+          className="h-12 px-6 rounded-xl font-bold mt-2"
+          onClick={() => navigate(`/portal/${token}`, { replace: true })}
+        >
+          Acessar meu portal →
+        </Button>
       </div>
     );
   }
