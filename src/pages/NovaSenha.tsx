@@ -84,7 +84,7 @@ export default function NovaSenha() {
     } else {
       setSuccess(true);
       toast({ title: 'Senha redefinida com sucesso!' });
-      setTimeout(() => navigate('/auth'), 2500);
+      setTimeout(() => navigate(successRedirect), 2500);
     }
     setSubmitting(false);
   };
