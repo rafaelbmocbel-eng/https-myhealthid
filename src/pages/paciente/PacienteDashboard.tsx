@@ -302,7 +302,7 @@ export default function PacienteDashboard() {
           )}
 
           {/* Conte sua história — voz guiada (só na primeira vez) */}
-          {stats.avaliacoes === 0 && (
+          {!historiaContada && (
             <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
               <Card
                 className="border-0 shadow-md overflow-hidden cursor-pointer"
