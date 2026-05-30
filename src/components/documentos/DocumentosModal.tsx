@@ -447,7 +447,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="valor">Valor (R$)</Label>
-                  <Input id="valor" type="number" step="0.01" value={valor} onChange={(e) => setValor(Number(e.target.value))} />
+                  <Input id="valor" type="number" inputMode="decimal" step="0.01" value={valor || ''} onChange={(e) => setValor(e.target.value === '' ? 0 : Number(e.target.value))} />
                 </div>
                 <div>
                   <Label htmlFor="forma">Forma de pagamento</Label>
