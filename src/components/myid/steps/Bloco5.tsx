@@ -39,10 +39,11 @@ export function Bloco5({ data, updateData }: Bloco5Props) {
                     <Label className="font-semibold">5A.1 Quantas horas você dorme por noite? (Ideal 7-9h)</Label>
                     <Input
                         type="number"
+                        inputMode="decimal"
                         min="0" max="24"
                         placeholder="Ex: 7"
-                        value={data.bloco_5a_hours || ''}
-                        onChange={(e) => updateData({ bloco_5a_hours: parseFloat(e.target.value) })}
+                        value={data.bloco_5a_hours ?? ''}
+                        onChange={(e) => updateData({ bloco_5a_hours: e.target.value === '' ? undefined : (parseFloat(e.target.value) || 0) })}
                         className="w-32"
                     />
                 </div>
