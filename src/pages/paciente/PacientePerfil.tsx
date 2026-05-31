@@ -9,6 +9,7 @@ import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimen
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
+import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
@@ -51,7 +52,20 @@ export default function PacientePerfil() {
           </div>
 
           <Card>
-            <CardContent className="p-4 space-y-3">
+            <CardContent className="p-4 space-y-4">
+              {paciente && user && (
+                <div className="flex justify-center pb-2 border-b border-border/40">
+                  <PacienteAvatarUpload
+                    folderId={user.id}
+                    pacienteId={paciente.id}
+                    avatarUrl={paciente.avatar_url}
+                    nome={paciente.nome}
+                    sobrenome={paciente.sobrenome}
+                    size="xl"
+                    onUpdated={(url) => setPaciente({ ...paciente, avatar_url: url })}
+                  />
+                </div>
+              )}
               {infoItems.map((item) => (
                 <div key={item.label} className="flex items-center gap-3">
                   <div className="w-8 h-8 rounded-lg bg-primary/8 flex items-center justify-center">
