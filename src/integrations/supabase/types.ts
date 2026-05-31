@@ -2820,6 +2820,7 @@ export type Database = {
         Row: {
           alergias: string | null
           ativo: boolean
+          avatar_url: string | null
           bairro: string | null
           cadastro_status: string
           cep: string | null
@@ -2865,6 +2866,7 @@ export type Database = {
         Insert: {
           alergias?: string | null
           ativo?: boolean
+          avatar_url?: string | null
           bairro?: string | null
           cadastro_status?: string
           cep?: string | null
@@ -2910,6 +2912,7 @@ export type Database = {
         Update: {
           alergias?: string | null
           ativo?: boolean
+          avatar_url?: string | null
           bairro?: string | null
           cadastro_status?: string
           cep?: string | null
