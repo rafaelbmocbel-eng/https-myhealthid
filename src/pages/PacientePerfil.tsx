@@ -642,7 +642,7 @@ export default function PacientePerfil() {
                 sobrenome={paciente.sobrenome}
                 size="lg"
                 editable={true}
-                onUpdated={() => queryClient.invalidateQueries({ queryKey: ['paciente', id] })}
+                onUpdated={() => qc.invalidateQueries({ queryKey: ['paciente', id] })}
               />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
