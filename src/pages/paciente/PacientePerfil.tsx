@@ -9,6 +9,7 @@ import PacienteConsentimentoLGPD from '@/components/paciente/PacienteConsentimen
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { User, Mail, Phone, Calendar, Pencil } from 'lucide-react';
+import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 
 export default function PacientePerfil() {
   const { user } = useAuth();
