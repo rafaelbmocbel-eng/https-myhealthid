@@ -61,6 +61,7 @@ import { PacienteSchema } from '@/lib/validations';
 import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
+import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 
 const maskPhone = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 11);
