@@ -633,12 +633,16 @@ export default function PacientePerfil() {
 
             {/* Identity row */}
             <div className="flex items-center gap-3 sm:gap-4">
-              <div
-                className="h-12 w-12 sm:h-14 sm:w-14 rounded-full flex items-center justify-center shrink-0 bg-primary/10 text-primary font-semibold text-base sm:text-lg ring-1 ring-primary/15"
-              >
-                {paciente.nome[0]}
-                {paciente.sobrenome?.[0] || ''}
-              </div>
+              <PacienteAvatarUpload
+                folderId={paciente.id}
+                pacienteId={paciente.id}
+                avatarUrl={(paciente as any).avatar_url}
+                nome={paciente.nome}
+                sobrenome={paciente.sobrenome}
+                size="lg"
+                editable={true}
+                onUpdated={() => queryClient.invalidateQueries({ queryKey: ['paciente', id] })}
+              />
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2 flex-wrap">
                   <h1 className="text-xl sm:text-2xl font-semibold tracking-tight text-foreground leading-tight truncate">
