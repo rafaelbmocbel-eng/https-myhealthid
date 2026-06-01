@@ -1,9 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { ClipboardList, Sparkles, Stethoscope } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
 
