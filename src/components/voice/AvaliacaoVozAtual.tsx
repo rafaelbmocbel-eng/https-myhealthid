@@ -80,11 +80,43 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
       if (fnErr) throw fnErr;
       if (data?.error) throw new Error(data.error);
 
+      let autoPainMap: Record<string, number> | null = null;
       if (data?.assessment) {
         const cleanResult = JSON.parse(JSON.stringify(data.assessment));
         const finalTranscript = data.transcricao && data.transcricao.length > merged.length
           ? data.transcricao
           : merged;
+
+        // Re-extrai mapa de dor após o reprocesso para manter o avatar atualizado
+        try {
+          const { REGIONS, STRUCTURES } = await import('@/components/presencial/Body3DAvatar');
+          const regions = REGIONS.map((r: any) => ({
+            id: r.id,
+            label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})`,
+          }));
+          const catalog = Object.fromEntries(
+            Object.entries(STRUCTURES).map(([rid, cats]) => [rid, { categories: cats as any }])
+          );
+          const { data: painData } = await supabase.functions.invoke('extract-pain-from-voice', {
+            body: { transcript: finalTranscript, regions, catalog },
+          });
+          if (painData?.findings?.length) {
+            const map: Record<string, number> = {};
+            painData.findings.forEach((f: any) => { map[f.region_id] = f.intensity; });
+            autoPainMap = map;
+          }
+        } catch (e) {
+          console.warn('[Complementar] pain extraction failed', e);
+        }
+
+        const prevMeta = ((latest as any).resultado as any)?._meta || {};
+        cleanResult._meta = {
+          ...prevMeta,
+          ...(cleanResult._meta || {}),
+          savedAt: new Date().toISOString(),
+          mapa_dor: autoPainMap ?? prevMeta.mapa_dor ?? null,
+        };
+
         await (supabase as any).from('avaliacoes_voz').update({
           resultado: cleanResult,
           transcricao: finalTranscript,
