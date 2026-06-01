@@ -421,20 +421,21 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const saveAssessment = async (
     assessmentToSave = assessment,
     transcriptToSave = editedTranscript,
-    options?: { silent?: boolean }
+    options?: { silent?: boolean; painMapOverride?: Record<string, number> | null }
   ) => {
     if (!assessmentToSave || !user || isSaving) return { saved: false, noteWarning: null };
 
     setIsSaving(true);
     try {
       const origem = mode === 'written' ? 'escrita' : 'voice_assessment';
+      const effectivePainMap = options?.painMapOverride ?? painMap ?? extractedPainMap ?? null;
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
         _meta: {
           origem,
           mode,
           savedAt: new Date().toISOString(),
-          mapa_dor: painMap || null,
+          mapa_dor: effectivePainMap,
           myid_contexto: myidContext || null,
         },
       };
