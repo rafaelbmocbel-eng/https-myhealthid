@@ -24,6 +24,7 @@ export default function AvaliacaoPresencial({
   onAssessmentComplete,
 }: Props) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { data: lente } = useLenteAtiva();
   const [painMap, setPainMap] = useState<Record<string, number>>({});
   const [structState, setStructState] = useState<Record<string, string[]>>({});
@@ -31,26 +32,28 @@ export default function AvaliacaoPresencial({
 
   const mostraAvatar = temBloco(lente, 'avatar');
 
-  // Carrega o último mapa de dor salvo desse paciente para que a marcação persista entre sessões
-  useEffect(() => {
-    if (!pacienteId || !mostraAvatar) return;
-    let cancelled = false;
-    (async () => {
+  // Usa a mesma query key da AvaliacaoVozAtual para que invalidations sincronizem o avatar
+  const { data: latestAval } = useQuery({
+    queryKey: ['avaliacao-voz-latest', pacienteId, user?.id],
+    queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_voz')
-        .select('resultado')
+        .select('id, resultado')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
-      if (cancelled || !data) return;
-      const meta = (data.resultado as any)?._meta;
-      if (meta?.mapa_dor && typeof meta.mapa_dor === 'object') {
-        setPainMap((prev) => (Object.keys(prev).length ? prev : meta.mapa_dor));
-      }
-    })();
-    return () => { cancelled = true; };
-  }, [pacienteId, mostraAvatar]);
+      return data;
+    },
+    enabled: !!pacienteId && !!user && mostraAvatar,
+  });
+
+  useEffect(() => {
+    const meta = (latestAval?.resultado as any)?._meta;
+    if (meta?.mapa_dor && typeof meta.mapa_dor === 'object' && Object.keys(meta.mapa_dor).length) {
+      setPainMap(meta.mapa_dor);
+    }
+  }, [latestAval?.id, latestAval?.resultado]);
 
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
