@@ -106,25 +106,8 @@ export default function AvaliacaoPresencial({
         )}
       </div>
 
-      {/* Voz / Áudio / Escrita — sem moldura */}
-      <div className="space-y-2">
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-          <Sparkles className="h-3 w-3" />
-          A IA estrutura a avaliação{mostraAvatar ? ' e marca o avatar' : ''} a partir da sua fala.
-        </p>
-        <VoiceAssessment
-          mode="voice"
-          serviceType={serviceType}
-          pacienteId={pacienteId}
-          patientName={patientName}
-          contextPrefix={painText || undefined}
-          onAssessmentComplete={onAssessmentComplete}
-          onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
-          painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
-          painMap={mostraAvatar ? painMap : undefined}
-          perfilProfissional={lente?.id}
-        />
-      </div>
+
+
 
       {/* Avatar — só para lentes que têm o bloco 'avatar' (fisio, T.O.) */}
       {mostraAvatar && (
