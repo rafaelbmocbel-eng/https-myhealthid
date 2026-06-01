@@ -144,6 +144,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [assessment, setAssessment] = useState<any>(null);
+  const [extractedPainMap, setExtractedPainMap] = useState<Record<string, number> | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: true,
     redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
