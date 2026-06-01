@@ -17,6 +17,17 @@ import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
+import { REGIONS as BODY_REGIONS, STRUCTURES as BODY_STRUCTURES } from '@/components/presencial/Body3DAvatar';
+
+const DEFAULT_PAIN_CATALOG = {
+  regions: BODY_REGIONS.map((r: any) => ({
+    id: r.id,
+    label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})`,
+  })),
+  catalog: Object.fromEntries(
+    Object.entries(BODY_STRUCTURES).map(([rid, cats]) => [rid, { categories: cats as Record<string, string[]> }])
+  ),
+};
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
