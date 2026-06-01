@@ -17,6 +17,17 @@ import { buildSoapFromVoice } from '@/components/prontuario/SoapNoteForm';
 import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
+import { REGIONS as BODY_REGIONS, STRUCTURES as BODY_STRUCTURES } from '@/components/presencial/Body3DAvatar';
+
+const DEFAULT_PAIN_CATALOG = {
+  regions: BODY_REGIONS.map((r: any) => ({
+    id: r.id,
+    label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})`,
+  })),
+  catalog: Object.fromEntries(
+    Object.entries(BODY_STRUCTURES).map(([rid, cats]) => [rid, { categories: cats as Record<string, string[]> }])
+  ),
+};
 
 type ServiceType = 'identidade' | 'cobzero' | 'studio';
 
@@ -133,6 +144,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [isSaving, setIsSaving] = useState(false);
   const [isSaved, setIsSaved] = useState(false);
   const [assessment, setAssessment] = useState<any>(null);
+  const [extractedPainMap, setExtractedPainMap] = useState<Record<string, number> | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     soap: true, resumo: true, dor: true, funcionalidade: true, psicossocial: true,
     redflags: true, multi: true, hipoteses: true, cif: true, diretriz: true,
@@ -409,20 +421,21 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const saveAssessment = async (
     assessmentToSave = assessment,
     transcriptToSave = editedTranscript,
-    options?: { silent?: boolean }
+    options?: { silent?: boolean; painMapOverride?: Record<string, number> | null }
   ) => {
     if (!assessmentToSave || !user || isSaving) return { saved: false, noteWarning: null };
 
     setIsSaving(true);
     try {
       const origem = mode === 'written' ? 'escrita' : 'voice_assessment';
+      const effectivePainMap = options?.painMapOverride ?? painMap ?? extractedPainMap ?? null;
       const resultadoComOrigem = {
         ...normalizeJson(assessmentToSave),
         _meta: {
           origem,
           mode,
           savedAt: new Date().toISOString(),
-          mapa_dor: painMap || null,
+          mapa_dor: effectivePainMap,
           myid_contexto: myidContext || null,
         },
       };
@@ -573,18 +586,25 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       setAssessment(generatedAssessment);
       setEditedTranscript(generatedTranscript);
 
-      // Extrai mapa de dor (regiões + estruturas) a partir da transcrição, se solicitado
-      if (onPainExtracted && painRegionsCatalog?.regions?.length && generatedTranscript) {
+      // Extrai mapa de dor (regiões + estruturas) a partir da transcrição — SEMPRE roda,
+      // usando o catálogo padrão do Body3DAvatar quando o chamador não fornece um.
+      let autoPainMap: Record<string, number> | null = null;
+      const activeCatalog = painRegionsCatalog?.regions?.length ? painRegionsCatalog : DEFAULT_PAIN_CATALOG;
+      if (generatedTranscript) {
         try {
           const { data: painData, error: painErr } = await supabase.functions.invoke('extract-pain-from-voice', {
             body: {
               transcript: generatedTranscript,
-              regions: painRegionsCatalog.regions,
-              catalog: painRegionsCatalog.catalog,
+              regions: activeCatalog.regions,
+              catalog: activeCatalog.catalog,
             },
           });
           if (!painErr && painData?.findings?.length) {
-            onPainExtracted(painData.findings);
+            const map: Record<string, number> = {};
+            painData.findings.forEach((f: any) => { map[f.region_id] = f.intensity; });
+            autoPainMap = map;
+            setExtractedPainMap(map);
+            if (onPainExtracted) onPainExtracted(painData.findings);
             toast({
               title: '🎯 Avatar atualizado pela IA',
               description: `${painData.findings.length} região(ões) marcada(s) automaticamente.`,
@@ -595,7 +615,10 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         }
       }
 
-      const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, { silent: true });
+      const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, {
+        silent: true,
+        painMapOverride: painMap ?? autoPainMap ?? null,
+      });
 
       setStep('result');
       toast({
