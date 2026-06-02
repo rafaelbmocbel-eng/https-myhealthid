@@ -18,6 +18,7 @@ import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
 import MyIDFingerprint from '@/components/myid/MyIDFingerprint';
+import MyIDDimensionDrillDown from '@/components/myid/MyIDDimensionDrillDown';
 import StructuralConnectionMap from '@/components/structural/StructuralConnectionMap';
 import { StructuralAssessmentData, UNIT_CONFIGS, classifyScore, classifyScoreColor } from '@/types/structural';
 import { generateRehabInsights } from '@/utils/tissueHealingTimelines';
@@ -36,6 +37,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
   serviceType: 'identidade' | 'cob_zero' | 'studio';
+  isProfessional?: boolean;
 }
 
 // ─── Componentes Gráficos Auxiliares ──────────────────────────────────────────
@@ -100,11 +102,13 @@ interface Mission {
 
 export default function PatientIntegratedDashboard({
   pacienteId,
-  serviceType
+  serviceType,
+  isProfessional = false,
 }: PatientIntegratedDashboardProps) {
   const { user } = useAuth();
   const [hoveredScoreKey, setHoveredScoreKey] = useState<string | null>(null);
   const [showDiretrizes, setShowDiretrizes] = useState(false);
+  const [drillDownKey, setDrillDownKey] = useState<string | null>(null);
 
   // ── MyID data
   const { data: myidAvaliacoes = [] } = useQuery({
@@ -448,7 +452,14 @@ export default function PatientIntegratedDashboard({
                     myidScore={myidScore}
                     highlightedKey={hoveredScoreKey}
                     onRingHover={setHoveredScoreKey}
+                    onRingClick={isProfessional ? (r) => setDrillDownKey(r.scoreKey) : undefined}
                   />
+
+                  {isProfessional && (
+                    <p className="mt-2 text-center text-[10px] text-muted-foreground">
+                      💡 Clique em qualquer anel para ver as respostas e gerar propostas de melhora.
+                    </p>
+                  )}
 
                   {/* Microlegenda: como ler os anéis */}
                   <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
@@ -748,6 +759,19 @@ export default function PatientIntegratedDashboard({
       {/* ─── SEÇÃO 4: DIRETRIZES DE TRATAMENTO (dados reais) ─── */}
       {hasMyID && (
         <ActiveDiretrizSection pacienteId={pacienteId} />
+      )}
+
+      {/* Drill-down do MyID (apenas profissional) */}
+      {isProfessional && (
+        <MyIDDimensionDrillDown
+          open={!!drillDownKey}
+          onOpenChange={(o) => !o && setDrillDownKey(null)}
+          pacienteId={pacienteId}
+          dimensao={drillDownKey}
+          scoreValor={drillDownKey && scores ? Number((scores as any)[drillDownKey]) : undefined}
+          respostasBrutas={(myidFromLink[0] as any)?.respostas_brutas || (ultimaMyID as any)?.dados_avaliacao || {}}
+          queixaPrincipal={(myidFromLink[0] as any)?.respostas_brutas?.bloco_1_main_complaint || (ultimaMyID as any)?.queixa_principal}
+        />
       )}
     </div>
   );

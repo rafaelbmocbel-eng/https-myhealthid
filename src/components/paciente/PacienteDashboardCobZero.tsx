@@ -328,7 +328,7 @@ export default function PacienteDashboardCobZero({ paciente, onBack, onIniciarAv
             </TabsList>
 
             <TabsContent value="integrada" className="mt-4">
-              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" />
+              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="cob_zero" isProfessional />
             </TabsContent>
 
             <TabsContent value="voz" className="mt-4 space-y-4">
