@@ -36,6 +36,7 @@ import { useAuth } from '@/contexts/AuthContext';
 interface PatientIntegratedDashboardProps {
   pacienteId: string;
   serviceType: 'identidade' | 'cob_zero' | 'studio';
+  isProfessional?: boolean;
 }
 
 // ─── Componentes Gráficos Auxiliares ──────────────────────────────────────────
