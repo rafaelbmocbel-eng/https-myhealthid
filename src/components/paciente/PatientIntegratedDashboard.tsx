@@ -358,6 +358,16 @@ export default function PatientIntegratedDashboard({
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const classificacao = interpretation.status;
   const label = interpretation.label;
+  // Wording mais suave para o paciente (evita nocebo)
+  const softenForPatient = (txt: string) => {
+    if (!txt) return txt;
+    return txt
+      .replace(/SITUAÇÃO CRÍTICA/gi, 'Índice alto')
+      .replace(/CRÍTICO/gi, 'Índice alto')
+      .replace(/CRITICO/gi, 'Índice alto');
+  };
+  const classificacaoDisplay = isProfessional ? classificacao : softenForPatient(classificacao);
+  const labelDisplay = isProfessional ? (label || classificacao) : softenForPatient(label || classificacao);
   const rawRec = interpretation.recommendation || myidLinkResult?.recommendation || '';
   const recommendation = typeof rawRec === 'string' ? rawRec : (rawRec && typeof rawRec === 'object' ? JSON.stringify(rawRec) : '');
   const painPattern = typeof (myidLinkResult?.pain_pattern) === 'string' ? myidLinkResult.pain_pattern : '';
@@ -443,7 +453,7 @@ export default function PatientIntegratedDashboard({
                       <h3 className="h-section text-foreground">Seu retrato</h3>
                     </div>
                     <Badge variant="outline" className={cn("text-[11px] font-semibold px-2.5 py-1 border-current", severityClass)}>
-                      {classificacao}
+                      {classificacaoDisplay}
                     </Badge>
                   </div>
 
@@ -466,10 +476,12 @@ export default function PatientIntegratedDashboard({
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-sky-500/80" />
                       Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
+                      <span className="text-muted-foreground/80">· quanto maior, melhor</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-red-500/80" />
                       Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
+                      <span className="text-muted-foreground/80">· quanto maior, pior</span>
                     </span>
                   </div>
 
@@ -706,9 +718,9 @@ export default function PatientIntegratedDashboard({
                       <span className={cn("h-2 w-2 rounded-full", redFlagsDetected ? "bg-destructive" : "bg-muted-foreground/40")} />
                       <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
-                    <p className="text-sm font-semibold text-foreground leading-snug">{label || classificacao}</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{labelDisplay}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {redFlagsDetected ? 'Sinais de alerta — converse com seu profissional.' : 'Continue com seu plano de cuidado.'}
+                      {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
                     </p>
                   </div>
                 </div>
