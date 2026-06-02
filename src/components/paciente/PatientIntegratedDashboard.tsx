@@ -358,6 +358,16 @@ export default function PatientIntegratedDashboard({
   const interpretation = getMyIDInterpretation(myidScore, hasRedFlags, dimScores);
   const classificacao = interpretation.status;
   const label = interpretation.label;
+  // Wording mais suave para o paciente (evita nocebo)
+  const softenForPatient = (txt: string) => {
+    if (!txt) return txt;
+    return txt
+      .replace(/SITUAÇÃO CRÍTICA/gi, 'Índice alto')
+      .replace(/CRÍTICO/gi, 'Índice alto')
+      .replace(/CRITICO/gi, 'Índice alto');
+  };
+  const classificacaoDisplay = isProfessional ? classificacao : softenForPatient(classificacao);
+  const labelDisplay = isProfessional ? (label || classificacao) : softenForPatient(label || classificacao);
   const rawRec = interpretation.recommendation || myidLinkResult?.recommendation || '';
   const recommendation = typeof rawRec === 'string' ? rawRec : (rawRec && typeof rawRec === 'object' ? JSON.stringify(rawRec) : '');
   const painPattern = typeof (myidLinkResult?.pain_pattern) === 'string' ? myidLinkResult.pain_pattern : '';
