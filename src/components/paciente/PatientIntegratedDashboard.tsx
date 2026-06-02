@@ -476,10 +476,12 @@ export default function PatientIntegratedDashboard({
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-sky-500/80" />
                       Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
+                      <span className="text-muted-foreground/80">· quanto maior, melhor</span>
                     </span>
                     <span className="inline-flex items-center gap-1.5">
                       <span className="h-2 w-2 rounded-full bg-red-500/80" />
                       Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
+                      <span className="text-muted-foreground/80">· quanto maior, pior</span>
                     </span>
                   </div>
 
