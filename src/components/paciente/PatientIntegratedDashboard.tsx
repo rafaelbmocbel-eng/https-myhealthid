@@ -578,47 +578,12 @@ export default function PatientIntegratedDashboard({
                       </span>
                       <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
                     </summary>
-                    <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-foreground/85 space-y-2">
-                      <p>
-                        Seu MyID hoje é <span className="font-bold text-foreground">{Math.round(myidScore)}/100</span>,
-                        classificado como <span className="font-semibold" style={{ color: interpretation.color }}>{classificacao}</span>.
-                        Esse número é uma fotografia da sua saúde no momento — quanto mais alto, melhor seu equilíbrio geral.
+                    <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-foreground/85 space-y-3">
+                      <p className="text-[12.5px]">
+                        Cada anel parte de uma <span className="font-medium">nota de 0 a 10</span> e desconta uma quantidade de pontos do seu MyID (que começa em <span className="font-mono">100</span>).
+                        Abaixo, do <span className="font-semibold text-destructive">mais crítico</span> ao menos, mostramos quanto cada anel tirou — e a soma é o que falta para 100.
                       </p>
-                      <p>
-                        Ele é construído a partir de <span className="font-medium">12 anéis</span>: os <span className="text-sky-600 dark:text-sky-400 font-medium">internos</span> mostram o que te sustenta (sono, vida pessoal, movimento, hidratação, alimentação e postura) e os <span className="text-red-600 dark:text-red-400 font-medium">externos</span> mostram o que está pesando (dor, atividades do dia, cabeça e emoções, mudanças recentes, sinais do corpo e medicação).
-                      </p>
-                      {insights && (
-                        <p>
-                          Hoje, sua <span className="font-semibold text-emerald-700 dark:text-emerald-400">maior força</span> é <span className="font-medium">{insights.opportunity.label.toLowerCase()}</span> — continue cuidando dela.
-                          O ponto que pede mais atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>, e é por aí que pequenas mudanças trazem o maior ganho.
-                        </p>
-                      )}
-                      {interpretation.dimensionAlerts && interpretation.dimensionAlerts.length > 0 && (
-                        <p>
-                          Há <span className="font-semibold text-amber-700 dark:text-amber-400">{interpretation.dimensionAlerts.length} dimensã{interpretation.dimensionAlerts.length === 1 ? 'o' : 'ões'} em alerta</span>: {interpretation.dimensionAlerts.map(a => a.label.toLowerCase()).join(', ')}. Vale priorizar esses anéis no plano.
-                        </p>
-                      )}
 
-                      {/* Como ler os dois números */}
-                      <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-1.5">
-                        <p className="text-xs font-semibold text-foreground">Por que aparecem dois números diferentes?</p>
-                        <p className="text-[12.5px] leading-snug">
-                          <span className="font-medium">No anel (ex.: "Dor · 7"):</span> é a <span className="font-medium">nota daquela área</span>, de 0 a 10.
-                          Nos anéis <span className="text-red-600 dark:text-red-400 font-medium">externos</span> (dor, mudanças, cabeça…) <span className="font-medium">quanto maior, pior</span>.
-                          Nos <span className="text-sky-600 dark:text-sky-400 font-medium">internos</span> (sono, movimento, hidratação…) <span className="font-medium">quanto maior, melhor</span>.
-                        </p>
-                        <p className="text-[12.5px] leading-snug">
-                          <span className="font-medium">Aqui embaixo (ex.: "14 pts"):</span> é <span className="font-medium">quanto aquela área tirou do seu MyID de 100</span>.
-                          Cada anel tem um peso diferente — por isso a Dor pode tirar até 20 pts, enquanto a Ergonomia tira até 5.
-                          A soma de tudo que foi perdido é <span className="font-mono">100 − {Math.round(myidScore)} = {100 - Math.round(myidScore)} pts</span>.
-                        </p>
-                        <p className="text-[12.5px] leading-snug text-muted-foreground">
-                          Em resumo: a <span className="font-medium">nota</span> mostra <span className="italic">como você está</span> naquela área; os <span className="font-medium">pts</span> mostram <span className="italic">o quanto ela está pesando</span> no seu MyID geral.
-                        </p>
-                      </div>
-
-
-                      {/* Ranking de todos os anéis por magnitude (pior → melhor) */}
                       {rings.length > 0 && (() => {
                         const ACTION_MAP: Record<string, { ok: string; alerta: string; critico: string; acao: string }> = {
                           D:   { ok: 'dor sob controle',        alerta: 'dor incomodando o dia',         critico: 'dor intensa e persistente',        acao: 'aplicar técnicas de alívio, educação em dor e revisar com seu profissional.' },
@@ -633,6 +598,8 @@ export default function PatientIntegratedDashboard({
                           NUT: { ok: 'alimentação equilibrada', alerta: 'qualidade alimentar baixa',     critico: 'déficit nutricional',              acao: 'aumentar proteína e frutas, reduzir ultraprocessados; avaliar com nutri.' },
                           ERG: { ok: 'postura no dia ok',       alerta: 'ergonomia precisa de ajuste',   critico: 'ergonomia crítica',                acao: 'pausa a cada 50 min, ajuste de tela/cadeira e revisão do colchão.' },
                         };
+                        // Peso máximo por dimensão (do lossTable)
+                        const PESO_MAX: Record<string, number> = { D: 20, EFI: 15, R: 15, C: 10, AF: 8, HID: 6, NUT: 6, P: 5, I: 5, ERG: 5, N: 5 };
                         const ranked = rings
                           .filter(r => r.scoreKey !== 'MED')
                           .map(r => {
@@ -641,50 +608,67 @@ export default function PatientIntegratedDashboard({
                             return { ring: r, perda: p.perda_pontos, critico: p.gatilho_critico };
                           })
                           .sort((a, b) => b.perda - a.perda);
+                        const totalPerdido = ranked.reduce((s, x) => s + x.perda, 0);
                         return (
-                          <div className="pt-2 border-t border-border/40">
-                            <p className="text-xs font-semibold text-foreground/80 mb-2">Todos os anéis, do mais ao menos crítico:</p>
-                            <ol className="space-y-1.5">
+                          <div>
+                            <ol className="space-y-2">
                               {ranked.map(({ ring, perda, critico }, idx) => {
                                 const a = ACTION_MAP[ring.scoreKey];
                                 if (!a) return null;
+                                const pesoMax = PESO_MAX[ring.scoreKey] ?? 10;
                                 const limiarCrit = ring.scoreKey === 'D' ? 14 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 10 : 6;
                                 const limiarAlerta = ring.scoreKey === 'D' ? 8 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 5 : 3;
                                 const isCrit = critico || perda >= limiarCrit;
                                 const isAlerta = !isCrit && perda >= limiarAlerta;
                                 const estado = isCrit ? a.critico : isAlerta ? a.alerta : a.ok;
                                 const tone = isCrit ? 'text-destructive' : isAlerta ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400';
+                                const direcao = ring.type === 'inner' ? 'maior = melhor' : 'maior = pior';
                                 return (
                                   <li key={ring.scoreKey} className="flex gap-2 text-[12.5px] leading-snug">
                                     <span className="text-muted-foreground tabular-nums shrink-0 w-5">{idx + 1}.</span>
                                     <span className="flex-1">
                                       <span className="font-semibold text-foreground">{ring.label}</span>
-                                      <span className="text-muted-foreground"> · </span>
-                                      <span className={cn('font-medium', tone)}>{estado}</span>
-                                      <span className="text-muted-foreground"> ({perda} pts{critico ? ' · crítico' : ''}).</span>
-                                      <span className="block text-muted-foreground">→ {a.acao}</span>
+                                      <span className="text-muted-foreground"> · nota </span>
+                                      <span className="font-semibold tabular-nums" style={{ color: ring.color }}>{Number(ring.value).toFixed(1)}/10</span>
+                                      <span className="text-muted-foreground"> ({direcao})</span>
+                                      <span className="text-muted-foreground"> → tirou </span>
+                                      <span className={cn('font-semibold tabular-nums', tone)}>{perda} pts</span>
+                                      <span className="text-muted-foreground"> de {pesoMax} possíveis{critico ? ' · gatilho crítico' : ''}.</span>
+                                      <span className="block">
+                                        <span className={cn('font-medium', tone)}>{estado}.</span>
+                                        <span className="text-muted-foreground"> → {a.acao}</span>
+                                      </span>
                                     </span>
                                   </li>
                                 );
                               })}
                             </ol>
+                            <div className="mt-3 rounded-lg border border-border/40 bg-background/60 px-3 py-2 text-[12.5px] space-y-0.5">
+                              <p className="flex items-center justify-between">
+                                <span className="text-muted-foreground">Total perdido</span>
+                                <span className="font-mono font-semibold text-foreground">{totalPerdido} pts</span>
+                              </p>
+                              <p className="flex items-center justify-between">
+                                <span className="text-muted-foreground">MyID final</span>
+                                <span className="font-mono font-bold" style={{ color: interpretation.color }}>
+                                  100 − {totalPerdido} = {Math.max(0, 100 - totalPerdido)}/100
+                                </span>
+                              </p>
+                              {Math.round(myidScore) !== (100 - totalPerdido) && (
+                                <p className="text-[11px] text-muted-foreground pt-0.5">
+                                  Pequena diferença com o MyID exibido ({Math.round(myidScore)}) pode ocorrer por bônus/penalidades de medicação.
+                                </p>
+                              )}
+                            </div>
                           </div>
                         );
                       })()}
-                      {previousScore !== null && previousScore > 0 && (() => {
-                        const delta = Math.round(myidScore - previousScore);
-                        if (delta === 0) return <p>Seu MyID está <span className="font-medium">estável</span> em relação ao último — é sinal de consistência, agora o próximo passo é destravar uma das oportunidades acima.</p>;
-                        if (delta > 0) return <p>Comparado ao último MyID, você ganhou <span className="font-semibold text-emerald-700 dark:text-emerald-400">{delta} pontos</span>. Os ajustes que você fez estão funcionando — siga firme.</p>;
-                        return <p>Comparado ao último MyID, você caiu <span className="font-semibold text-amber-700 dark:text-amber-400">{Math.abs(delta)} pontos</span>. Não é recaída — é um sinal para revisar sono, dor e carga emocional com seu profissional.</p>;
-                      })()}
+
                       {redFlagsDetected && (
-                        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive text-[12.5px]">
                           ⚠️ Foram detectados <span className="font-semibold">sinais de alerta clínico</span>. Converse com seu profissional antes de iniciar qualquer mudança no plano.
                         </p>
                       )}
-                      <p className="text-muted-foreground">
-                        {rawRec || 'Use a aba "Minha Jornada" para ver as missões prioritárias do seu plano.'}
-                      </p>
                       <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
                         O MyID é um apoio à decisão clínica — ele não substitui a avaliação do seu profissional.
                       </p>
