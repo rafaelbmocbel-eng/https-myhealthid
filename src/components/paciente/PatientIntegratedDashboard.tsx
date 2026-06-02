@@ -598,6 +598,60 @@ export default function PatientIntegratedDashboard({
                           Há <span className="font-semibold text-amber-700 dark:text-amber-400">{interpretation.dimensionAlerts.length} dimensã{interpretation.dimensionAlerts.length === 1 ? 'o' : 'ões'} em alerta</span>: {interpretation.dimensionAlerts.map(a => a.label.toLowerCase()).join(', ')}. Vale priorizar esses anéis no plano.
                         </p>
                       )}
+
+                      {/* Ranking de todos os anéis por magnitude (pior → melhor) */}
+                      {rings.length > 0 && (() => {
+                        const ACTION_MAP: Record<string, { ok: string; alerta: string; critico: string; acao: string }> = {
+                          D:   { ok: 'dor sob controle',        alerta: 'dor incomodando o dia',         critico: 'dor intensa e persistente',        acao: 'aplicar técnicas de alívio, educação em dor e revisar com seu profissional.' },
+                          EFI: { ok: 'rotina funcionando bem',  alerta: 'algumas atividades limitadas',  critico: 'dificuldade séria nas atividades', acao: 'adaptar tarefas e reintroduzir movimento de forma gradual.' },
+                          P:   { ok: 'cabeça estável',          alerta: 'medo/ansiedade ao se mexer',    critico: 'catastrofização e evitação altas', acao: 'exposição gradual ao movimento + apoio psicológico se necessário.' },
+                          I:   { ok: 'sem mudanças bruscas',    alerta: 'mudanças recentes pesando',     critico: 'múltiplos gatilhos novos',         acao: 'mapear o que mudou (carga, postura, equipamento) e ajustar.' },
+                          N:   { ok: 'corpo sem ruído extra',   alerta: 'sinais autonômicos presentes',  critico: 'ruído sistêmico alto',             acao: 'investigar trauma axial, cicatrizes e sinais viscerais com o profissional.' },
+                          R:   { ok: 'sono e energia bons',     alerta: 'sono ou energia em queda',      critico: 'desregulação importante do sono',  acao: 'higiene do sono, respiração diafragmática e regulação autonômica.' },
+                          C:   { ok: 'contexto favorável',      alerta: 'estresse contextual',           critico: 'contexto muito adverso',           acao: 'reduzir estressores chave (trabalho, família, finanças) e buscar suporte.' },
+                          AF:  { ok: 'bom nível de movimento',  alerta: 'atividade física insuficiente', critico: 'sedentarismo crítico',             acao: 'iniciar 150 min/sem de atividade leve-moderada de forma progressiva.' },
+                          HID: { ok: 'hidratação adequada',     alerta: 'hidratação inconsistente',      critico: 'desidratação',                     acao: 'meta de 30–35 ml/kg/dia, distribuída ao longo do dia.' },
+                          NUT: { ok: 'alimentação equilibrada', alerta: 'qualidade alimentar baixa',     critico: 'déficit nutricional',              acao: 'aumentar proteína e frutas, reduzir ultraprocessados; avaliar com nutri.' },
+                          ERG: { ok: 'postura no dia ok',       alerta: 'ergonomia precisa de ajuste',   critico: 'ergonomia crítica',                acao: 'pausa a cada 50 min, ajuste de tela/cadeira e revisão do colchão.' },
+                        };
+                        const ranked = rings
+                          .filter(r => r.scoreKey !== 'MED')
+                          .map(r => {
+                            const deficit = r.type === 'inner' ? 10 - r.value : r.value;
+                            const p = calcularPerdaDimensao(r.scoreKey, deficit);
+                            return { ring: r, perda: p.perda_pontos, critico: p.gatilho_critico };
+                          })
+                          .sort((a, b) => b.perda - a.perda);
+                        return (
+                          <div className="pt-2 border-t border-border/40">
+                            <p className="text-xs font-semibold text-foreground/80 mb-2">Todos os anéis, do mais ao menos crítico:</p>
+                            <ol className="space-y-1.5">
+                              {ranked.map(({ ring, perda, critico }, idx) => {
+                                const a = ACTION_MAP[ring.scoreKey];
+                                if (!a) return null;
+                                const limiarCrit = ring.scoreKey === 'D' ? 14 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 10 : 6;
+                                const limiarAlerta = ring.scoreKey === 'D' ? 8 : ring.scoreKey === 'EFI' || ring.scoreKey === 'R' ? 5 : 3;
+                                const isCrit = critico || perda >= limiarCrit;
+                                const isAlerta = !isCrit && perda >= limiarAlerta;
+                                const estado = isCrit ? a.critico : isAlerta ? a.alerta : a.ok;
+                                const tone = isCrit ? 'text-destructive' : isAlerta ? 'text-amber-700 dark:text-amber-400' : 'text-emerald-700 dark:text-emerald-400';
+                                return (
+                                  <li key={ring.scoreKey} className="flex gap-2 text-[12.5px] leading-snug">
+                                    <span className="text-muted-foreground tabular-nums shrink-0 w-5">{idx + 1}.</span>
+                                    <span className="flex-1">
+                                      <span className="font-semibold text-foreground">{ring.label}</span>
+                                      <span className="text-muted-foreground"> · </span>
+                                      <span className={cn('font-medium', tone)}>{estado}</span>
+                                      <span className="text-muted-foreground"> ({perda} pts{critico ? ' · crítico' : ''}).</span>
+                                      <span className="block text-muted-foreground">→ {a.acao}</span>
+                                    </span>
+                                  </li>
+                                );
+                              })}
+                            </ol>
+                          </div>
+                        );
+                      })()}
                       {previousScore !== null && previousScore > 0 && (() => {
                         const delta = Math.round(myidScore - previousScore);
                         if (delta === 0) return <p>Seu MyID está <span className="font-medium">estável</span> em relação ao último — é sinal de consistência, agora o próximo passo é destravar uma das oportunidades acima.</p>;
