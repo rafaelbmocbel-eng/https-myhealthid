@@ -599,6 +599,25 @@ export default function PatientIntegratedDashboard({
                         </p>
                       )}
 
+                      {/* Como ler os dois números */}
+                      <div className="rounded-lg border border-border/40 bg-background/60 p-3 space-y-1.5">
+                        <p className="text-xs font-semibold text-foreground">Por que aparecem dois números diferentes?</p>
+                        <p className="text-[12.5px] leading-snug">
+                          <span className="font-medium">No anel (ex.: "Dor · 7"):</span> é a <span className="font-medium">nota daquela área</span>, de 0 a 10.
+                          Nos anéis <span className="text-red-600 dark:text-red-400 font-medium">externos</span> (dor, mudanças, cabeça…) <span className="font-medium">quanto maior, pior</span>.
+                          Nos <span className="text-sky-600 dark:text-sky-400 font-medium">internos</span> (sono, movimento, hidratação…) <span className="font-medium">quanto maior, melhor</span>.
+                        </p>
+                        <p className="text-[12.5px] leading-snug">
+                          <span className="font-medium">Aqui embaixo (ex.: "14 pts"):</span> é <span className="font-medium">quanto aquela área tirou do seu MyID de 100</span>.
+                          Cada anel tem um peso diferente — por isso a Dor pode tirar até 20 pts, enquanto a Ergonomia tira até 5.
+                          A soma de tudo que foi perdido é <span className="font-mono">100 − {Math.round(myidScore)} = {100 - Math.round(myidScore)} pts</span>.
+                        </p>
+                        <p className="text-[12.5px] leading-snug text-muted-foreground">
+                          Em resumo: a <span className="font-medium">nota</span> mostra <span className="italic">como você está</span> naquela área; os <span className="font-medium">pts</span> mostram <span className="italic">o quanto ela está pesando</span> no seu MyID geral.
+                        </p>
+                      </div>
+
+
                       {/* Ranking de todos os anéis por magnitude (pior → melhor) */}
                       {rings.length > 0 && (() => {
                         const ACTION_MAP: Record<string, { ok: string; alerta: string; critico: string; acao: string }> = {
