@@ -156,6 +156,7 @@ export default function MyIDDimensionDrillDown({
         insights?: Insight[];
         integracao_diretriz?: string;
         respostas?: Record<string, any>;
+        referencias?: Reference[];
       };
     },
   });
