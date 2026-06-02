@@ -716,9 +716,9 @@ export default function PatientIntegratedDashboard({
                       <span className={cn("h-2 w-2 rounded-full", redFlagsDetected ? "bg-destructive" : "bg-muted-foreground/40")} />
                       <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
-                    <p className="text-sm font-semibold text-foreground leading-snug">{label || classificacao}</p>
+                    <p className="text-sm font-semibold text-foreground leading-snug">{labelDisplay}</p>
                     <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {redFlagsDetected ? 'Sinais de alerta — converse com seu profissional.' : 'Continue com seu plano de cuidado.'}
+                      {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
                     </p>
                   </div>
                 </div>
