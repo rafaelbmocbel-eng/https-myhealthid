@@ -167,6 +167,8 @@ export default function MyIDDimensionDrillDown({
   const respostasFiltradas = data?.respostas || respostasBrutas || {};
   const respostasEntries = Object.entries(respostasFiltradas);
   const insights = data?.insights || [];
+  const referencias = data?.referencias || [];
+  const refsByN = new Map(referencias.map(r => [r.n, r]));
   const referrals = REFERRALS_BY_DIM[dimensao] || [];
 
   const toggle = (i: number) => setSelecionados(s => ({ ...s, [i]: !s[i] }));
