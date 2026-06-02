@@ -102,11 +102,19 @@ function formatValue(v: any): string {
   return String(v);
 }
 
+interface Reference {
+  n: number; id: string; title: string;
+  authors: string[] | null; journal: string | null; year: number | null;
+  doi: string | null; url: string | null; evidence_level: string | null;
+}
+
 interface Insight {
   titulo: string;
   acao: string;
   evidencia?: string;
   prazo?: string;
+  refs?: number[];
+  profissional?: string;
 }
 
 interface Props {
