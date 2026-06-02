@@ -453,7 +453,7 @@ export default function PatientIntegratedDashboard({
                       <h3 className="h-section text-foreground">Seu retrato</h3>
                     </div>
                     <Badge variant="outline" className={cn("text-[11px] font-semibold px-2.5 py-1 border-current", severityClass)}>
-                      {classificacao}
+                      {classificacaoDisplay}
                     </Badge>
                   </div>
 
