@@ -776,18 +776,8 @@ export default function PatientIntegratedDashboard({
         <ActiveDiretrizSection pacienteId={pacienteId} />
       )}
 
-      {/* Drill-down do MyID (apenas profissional) */}
-      {isProfessional && (
-        <MyIDDimensionDrillDown
-          open={!!drillDownKey}
-          onOpenChange={(o) => !o && setDrillDownKey(null)}
-          pacienteId={pacienteId}
-          dimensao={drillDownKey}
-          scoreValor={drillDownKey && scores ? Number((scores as any)[drillDownKey]) : undefined}
-          respostasBrutas={(myidFromLink[0] as any)?.respostas_brutas || (ultimaMyID as any)?.dados_avaliacao || {}}
-          queixaPrincipal={(myidFromLink[0] as any)?.respostas_brutas?.bloco_1_main_complaint || (ultimaMyID as any)?.queixa_principal}
-        />
-      )}
+      {/* (Drill-down agora é inline, renderizado abaixo da impressão digital) */}
+
     </div>
   );
 }
