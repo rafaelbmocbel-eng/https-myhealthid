@@ -568,6 +568,55 @@ export default function PatientIntegratedDashboard({
                       </div>
                     );
                   })()}
+
+                  {/* Resumo explicativo — clique para abrir */}
+                  <details className="mt-5 group rounded-xl border border-border/40 bg-muted/20 open:bg-muted/30 transition-colors">
+                    <summary className="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
+                      <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                        <Sparkles className="icon-sm text-primary" />
+                        Entenda este resultado
+                      </span>
+                      <ChevronDown className="h-4 w-4 text-muted-foreground transition-transform group-open:rotate-180" />
+                    </summary>
+                    <div className="px-4 pb-4 pt-1 text-sm leading-relaxed text-foreground/85 space-y-2">
+                      <p>
+                        Seu MyID hoje é <span className="font-bold text-foreground">{Math.round(myidScore)}/100</span>,
+                        classificado como <span className="font-semibold" style={{ color: interpretation.color }}>{classificacao}</span>.
+                        Esse número é uma fotografia da sua saúde no momento — quanto mais alto, melhor seu equilíbrio geral.
+                      </p>
+                      <p>
+                        Ele é construído a partir de <span className="font-medium">12 anéis</span>: os <span className="text-sky-600 dark:text-sky-400 font-medium">internos</span> mostram o que te sustenta (sono, vida pessoal, movimento, hidratação, alimentação e postura) e os <span className="text-red-600 dark:text-red-400 font-medium">externos</span> mostram o que está pesando (dor, atividades do dia, cabeça e emoções, mudanças recentes, sinais do corpo e medicação).
+                      </p>
+                      {insights && (
+                        <p>
+                          Hoje, sua <span className="font-semibold text-emerald-700 dark:text-emerald-400">maior força</span> é <span className="font-medium">{insights.opportunity.label.toLowerCase()}</span> — continue cuidando dela.
+                          O ponto que pede mais atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>, e é por aí que pequenas mudanças trazem o maior ganho.
+                        </p>
+                      )}
+                      {interpretation.dimensionAlerts && interpretation.dimensionAlerts.length > 0 && (
+                        <p>
+                          Há <span className="font-semibold text-amber-700 dark:text-amber-400">{interpretation.dimensionAlerts.length} dimensã{interpretation.dimensionAlerts.length === 1 ? 'o' : 'ões'} em alerta</span>: {interpretation.dimensionAlerts.map(a => a.label.toLowerCase()).join(', ')}. Vale priorizar esses anéis no plano.
+                        </p>
+                      )}
+                      {previousScore !== null && previousScore > 0 && (() => {
+                        const delta = Math.round(myidScore - previousScore);
+                        if (delta === 0) return <p>Seu MyID está <span className="font-medium">estável</span> em relação ao último — é sinal de consistência, agora o próximo passo é destravar uma das oportunidades acima.</p>;
+                        if (delta > 0) return <p>Comparado ao último MyID, você ganhou <span className="font-semibold text-emerald-700 dark:text-emerald-400">{delta} pontos</span>. Os ajustes que você fez estão funcionando — siga firme.</p>;
+                        return <p>Comparado ao último MyID, você caiu <span className="font-semibold text-amber-700 dark:text-amber-400">{Math.abs(delta)} pontos</span>. Não é recaída — é um sinal para revisar sono, dor e carga emocional com seu profissional.</p>;
+                      })()}
+                      {redFlagsDetected && (
+                        <p className="rounded-md border border-destructive/30 bg-destructive/5 px-3 py-2 text-destructive">
+                          ⚠️ Foram detectados <span className="font-semibold">sinais de alerta clínico</span>. Converse com seu profissional antes de iniciar qualquer mudança no plano.
+                        </p>
+                      )}
+                      <p className="text-muted-foreground">
+                        {rawRec || 'Use a aba "Minha Jornada" para ver as missões prioritárias do seu plano.'}
+                      </p>
+                      <p className="text-[11px] text-muted-foreground italic pt-1 border-t border-border/40">
+                        O MyID é um apoio à decisão clínica — ele não substitui a avaliação do seu profissional.
+                      </p>
+                    </div>
+                  </details>
                 </CardContent>
               </Card>
 
