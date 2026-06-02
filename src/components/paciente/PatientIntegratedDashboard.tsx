@@ -457,7 +457,7 @@ export default function PatientIntegratedDashboard({
 
                   {isProfessional && (
                     <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                      💡 Clique em um anel para abrir os detalhes abaixo. Clique de novo para fechar.
+                      💡 Toque em um anel da lista para ver as respostas e os insights abaixo.
                     </p>
                   )}
 
@@ -473,9 +473,58 @@ export default function PatientIntegratedDashboard({
                     </span>
                   </div>
 
+                  {/* Listas compactas: anéis internos e externos (apenas profissional) */}
+                  {isProfessional && rings.length > 0 && (() => {
+                    const inner = rings.filter(r => r.type === 'inner');
+                    const outer = rings.filter(r => r.type === 'outer');
+                    const RingList = ({ title, items, dotClass }: { title: string; items: typeof rings; dotClass: string }) => (
+                      <div>
+                        <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1.5 flex items-center gap-1.5">
+                          <span className={cn('h-1.5 w-1.5 rounded-full', dotClass)} />
+                          {title}
+                        </p>
+                        <ul className="rounded-lg border border-border/40 bg-card/40 divide-y divide-border/40">
+                          {items.map(r => {
+                            const active = drillDownKey === r.scoreKey;
+                            return (
+                              <li key={r.scoreKey}>
+                                <button
+                                  type="button"
+                                  onClick={() => setDrillDownKey(prev => prev === r.scoreKey ? null : r.scoreKey)}
+                                  className={cn(
+                                    'w-full flex items-center justify-between gap-2 px-2.5 py-1.5 text-left transition',
+                                    active ? 'bg-primary/10' : 'hover:bg-muted/40'
+                                  )}
+                                >
+                                  <span className="flex items-center gap-2 min-w-0">
+                                    <span className="h-2 w-2 rounded-full shrink-0" style={{ background: r.color }} />
+                                    <span className="text-[12px] font-medium text-foreground truncate">{r.label}</span>
+                                    <span className="text-[10px] text-muted-foreground">({r.scoreKey})</span>
+                                  </span>
+                                  <span className="flex items-center gap-1.5 shrink-0">
+                                    <span className="text-[12px] font-bold tabular-nums" style={{ color: r.color }}>
+                                      {Number(r.value).toFixed(1)}
+                                    </span>
+                                    <ChevronDown className={cn('h-3 w-3 text-muted-foreground transition-transform', active && 'rotate-180')} />
+                                  </span>
+                                </button>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      </div>
+                    );
+                    return (
+                      <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                        {inner.length > 0 && <RingList title="Anéis internos · sustento" items={inner} dotClass="bg-sky-500" />}
+                        {outer.length > 0 && <RingList title="Anéis externos · pressão" items={outer} dotClass="bg-red-500" />}
+                      </div>
+                    );
+                  })()}
+
                   {/* Painel inline do anel selecionado (apenas profissional) */}
                   {isProfessional && drillDownKey && (
-                    <div className="mt-5">
+                    <div className="mt-4">
                       <MyIDDimensionDrillDown
                         pacienteId={pacienteId}
                         dimensao={drillDownKey}
