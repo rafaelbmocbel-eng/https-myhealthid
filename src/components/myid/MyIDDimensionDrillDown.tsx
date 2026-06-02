@@ -205,6 +205,9 @@ export default function MyIDDimensionDrillDown({
           interpretacao: data?.interpretacao,
           integracao_diretriz: data?.integracao_diretriz,
           encaminhamentos: referrals.map(k => PROF[k].label),
+          referencias_cientificas: escolhidos
+            .flatMap(it => (it.refs || []).map(n => refsByN.get(n)))
+            .filter(Boolean),
         },
       });
       if (notaErr) throw notaErr;
