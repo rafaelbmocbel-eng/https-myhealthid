@@ -705,7 +705,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
       <Tabs value={subTabAtiva} onValueChange={(v) => setSubTabAtiva(v as typeof subTabAtiva)}>
             
             <TabsContent value="integrada" className="mt-4">
-              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
+              <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" isProfessional />
             </TabsContent>
 
 
