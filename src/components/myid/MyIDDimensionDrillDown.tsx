@@ -1,12 +1,16 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, Lightbulb } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import {
+  Loader2, Sparkles, FileText, CheckCircle2, AlertTriangle, Lightbulb,
+  ChevronDown, X, Users, Stethoscope, Brain, Apple, Dumbbell, Activity,
+} from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 const FULL_LABELS: Record<string, string> = {
   D: 'Dor', EFI: 'Atividades do dia', P: 'Cabeça e emoções', I: 'Mudanças recentes',
@@ -14,7 +18,31 @@ const FULL_LABELS: Record<string, string> = {
   NUT: 'Alimentação', ERG: 'Postura no dia', N: 'Sinais do corpo', MED: 'Medicação',
 };
 
-// Friendly labels for the most common raw keys (best-effort)
+// Indicação de profissionais por dimensão
+type Prof = { label: string; icon: any; tone: string };
+const PROF: Record<string, Prof> = {
+  fisio:    { label: 'Fisioterapeuta',         icon: Activity,    tone: 'bg-sky-500/10 text-sky-700 dark:text-sky-300 border-sky-500/30' },
+  medico:   { label: 'Médico',                 icon: Stethoscope, tone: 'bg-rose-500/10 text-rose-700 dark:text-rose-300 border-rose-500/30' },
+  psi:      { label: 'Psicólogo(a)',           icon: Brain,       tone: 'bg-violet-500/10 text-violet-700 dark:text-violet-300 border-violet-500/30' },
+  nutri:    { label: 'Nutricionista',          icon: Apple,       tone: 'bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 border-emerald-500/30' },
+  edf:      { label: 'Educador(a) Físico(a)',  icon: Dumbbell,    tone: 'bg-amber-500/10 text-amber-700 dark:text-amber-300 border-amber-500/30' },
+  to:       { label: 'Terapeuta Ocupacional',  icon: Users,       tone: 'bg-teal-500/10 text-teal-700 dark:text-teal-300 border-teal-500/30' },
+};
+const REFERRALS_BY_DIM: Record<string, (keyof typeof PROF)[]> = {
+  D:   ['fisio', 'medico'],
+  EFI: ['fisio', 'edf', 'to'],
+  P:   ['psi'],
+  I:   ['psi', 'fisio'],
+  R:   ['medico', 'psi'],
+  C:   ['psi'],
+  AF:  ['edf', 'fisio'],
+  HID: ['nutri'],
+  NUT: ['nutri'],
+  ERG: ['fisio', 'to'],
+  N:   ['medico'],
+  MED: ['medico'],
+};
+
 const FRIENDLY_KEY: Record<string, string> = {
   bloco_1_did_physio: 'Já fez fisioterapia',
   bloco_1_physio_result: 'Resultado da fisioterapia',
@@ -82,27 +110,32 @@ interface Insight {
 }
 
 interface Props {
-  open: boolean;
-  onOpenChange: (v: boolean) => void;
   pacienteId: string;
   pacienteNome?: string;
   dimensao: string | null;
   scoreValor?: number;
   respostasBrutas?: Record<string, any>;
   queixaPrincipal?: string;
+  onClose?: () => void;
 }
 
+/**
+ * Painel inline (renderiza embaixo da impressão digital MyID).
+ * Mostra respostas em colapsável + insights IA + indicação de profissionais.
+ * Substitui o antigo Dialog para permitir trocar de anel sem perder o contexto.
+ */
 export default function MyIDDimensionDrillDown({
-  open, onOpenChange, pacienteId, pacienteNome, dimensao, scoreValor, respostasBrutas, queixaPrincipal,
+  pacienteId, pacienteNome, dimensao, scoreValor, respostasBrutas, queixaPrincipal, onClose,
 }: Props) {
   const { user } = useAuth();
   const { toast } = useToast();
   const [selecionados, setSelecionados] = useState<Record<number, boolean>>({});
   const [aplicando, setAplicando] = useState(false);
+  const [respostasOpen, setRespostasOpen] = useState(false);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: ['myid-dim-insights', pacienteId, dimensao],
-    enabled: open && !!dimensao,
+    enabled: !!dimensao,
     staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data, error } = await supabase.functions.invoke('myid-dimension-insights', {
@@ -119,13 +152,18 @@ export default function MyIDDimensionDrillDown({
     },
   });
 
+  if (!dimensao) return null;
+
+  const dimLabel = FULL_LABELS[dimensao] || dimensao;
   const respostasFiltradas = data?.respostas || respostasBrutas || {};
+  const respostasEntries = Object.entries(respostasFiltradas);
   const insights = data?.insights || [];
+  const referrals = REFERRALS_BY_DIM[dimensao] || [];
 
   const toggle = (i: number) => setSelecionados(s => ({ ...s, [i]: !s[i] }));
 
   const aplicarNaAvaliacao = async () => {
-    if (!user || !dimensao) return;
+    if (!user) return;
     const escolhidos = insights.filter((_, i) => selecionados[i]);
     if (escolhidos.length === 0) {
       toast({ title: 'Selecione ao menos um insight', variant: 'destructive' });
@@ -133,12 +171,12 @@ export default function MyIDDimensionDrillDown({
     }
     setAplicando(true);
     try {
-      const dimLabel = FULL_LABELS[dimensao] || dimensao;
       const descricao = [
         `Análise da dimensão MyID: ${dimLabel} (score ${scoreValor?.toFixed(1) ?? '—'}/10).`,
         data?.interpretacao ? `\nInterpretação: ${data.interpretacao}` : '',
         '\nPropostas incorporadas à avaliação:',
         ...escolhidos.map((it, idx) => `${idx + 1}. ${it.titulo} — ${it.acao}${it.prazo ? ` (${it.prazo})` : ''}`),
+        referrals.length ? `\nEncaminhamentos sugeridos: ${referrals.map(k => PROF[k].label).join(', ')}.` : '',
         data?.integracao_diretriz ? `\nIntegração com a diretriz: ${data.integracao_diretriz}` : '',
       ].filter(Boolean).join('\n');
 
@@ -155,6 +193,7 @@ export default function MyIDDimensionDrillDown({
           insights: escolhidos,
           interpretacao: data?.interpretacao,
           integracao_diretriz: data?.integracao_diretriz,
+          encaminhamentos: referrals.map(k => PROF[k].label),
         },
       });
       if (notaErr) throw notaErr;
@@ -164,7 +203,6 @@ export default function MyIDDimensionDrillDown({
         description: 'Adicionados à avaliação e ao prontuário. Atualize a diretriz se necessário.',
       });
       setSelecionados({});
-      onOpenChange(false);
     } catch (e: any) {
       toast({ title: 'Erro ao aplicar', description: e?.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
@@ -172,138 +210,175 @@ export default function MyIDDimensionDrillDown({
     }
   };
 
-  if (!dimensao) return null;
-  const dimLabel = FULL_LABELS[dimensao] || dimensao;
-  const respostasEntries = Object.entries(respostasFiltradas);
-
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90dvh] overflow-y-auto">
-        <DialogHeader>
-          <div className="flex items-center justify-between gap-2">
-            <DialogTitle className="flex items-center gap-2 text-base">
-              <Sparkles className="icon-sm text-primary" />
-              {dimLabel} <span className="text-muted-foreground">({dimensao})</span>
-            </DialogTitle>
-            {scoreValor != null && (
-              <Badge variant="outline" className="text-xs">{scoreValor.toFixed(1)} / 10</Badge>
-            )}
-          </div>
-          <DialogDescription className="text-xs">
-            Respostas da paciente nesta dimensão e propostas de melhora geradas com base em evidência.
-          </DialogDescription>
-        </DialogHeader>
+    <div className="rounded-xl border border-primary/30 bg-card shadow-sm p-4 sm:p-5 space-y-4">
+      {/* Header */}
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground font-semibold mb-1">
+            Anel selecionado
+          </p>
+          <h3 className="h-card flex items-center gap-2">
+            <Sparkles className="icon-sm text-primary shrink-0" />
+            <span className="truncate">{dimLabel}</span>
+            <span className="text-muted-foreground text-sm font-normal">({dimensao})</span>
+          </h3>
+        </div>
+        <div className="flex items-center gap-2 shrink-0">
+          {scoreValor != null && (
+            <Badge variant="outline" className="text-xs whitespace-nowrap">{scoreValor.toFixed(1)} / 10</Badge>
+          )}
+          {onClose && (
+            <Button variant="ghost" size="icon" onClick={onClose} className="h-7 w-7">
+              <X className="icon-xs" />
+            </Button>
+          )}
+        </div>
+      </div>
 
-        {/* Respostas brutas */}
-        <section className="rounded-lg border border-border/40 bg-card/40 p-3">
-          <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2">
-            <FileText className="icon-xs text-muted-foreground" /> Respostas registradas
+      {/* Indicação de profissionais */}
+      {referrals.length > 0 && (
+        <section>
+          <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2 text-muted-foreground uppercase tracking-wide">
+            <Users className="icon-xs" /> Indicação de profissionais
           </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {referrals.map(key => {
+              const p = PROF[key];
+              const Icon = p.icon;
+              return (
+                <span key={key} className={cn('inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[11px] font-medium border', p.tone)}>
+                  <Icon className="icon-xs" />
+                  {p.label}
+                </span>
+              );
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Respostas (colapsável — fechado por padrão) */}
+      <Collapsible open={respostasOpen} onOpenChange={setRespostasOpen}>
+        <CollapsibleTrigger asChild>
+          <button
+            type="button"
+            className="w-full flex items-center justify-between gap-2 rounded-lg border border-border/40 bg-muted/30 hover:bg-muted/50 px-3 py-2 transition"
+          >
+            <span className="text-xs font-semibold flex items-center gap-1.5">
+              <FileText className="icon-xs text-muted-foreground" />
+              Respostas do cliente
+              <Badge variant="secondary" className="text-[10px] py-0 px-1.5 ml-1">{respostasEntries.length}</Badge>
+            </span>
+            <ChevronDown className={cn('icon-xs text-muted-foreground transition-transform', respostasOpen && 'rotate-180')} />
+          </button>
+        </CollapsibleTrigger>
+        <CollapsibleContent className="pt-2">
           {respostasEntries.length === 0 ? (
-            <p className="text-[11px] text-muted-foreground">Sem respostas registradas nesta dimensão.</p>
+            <p className="text-[11px] text-muted-foreground px-3 py-2">Sem respostas registradas nesta dimensão.</p>
           ) : (
-            <ul className="divide-y divide-border/40">
+            <ul className="divide-y divide-border/40 rounded-lg border border-border/40 bg-card/40 px-3">
               {respostasEntries.map(([k, v]) => (
-                <li key={k} className="py-1.5 flex items-start gap-3 text-[12px]">
-                  <span className="text-muted-foreground min-w-[140px]">{formatKey(k)}</span>
-                  <span className="font-medium text-foreground/90">{formatValue(v)}</span>
+                <li key={k} className="py-2 flex items-start gap-3 text-[12px]">
+                  <span className="text-muted-foreground min-w-[140px] shrink-0">{formatKey(k)}</span>
+                  <span className="font-medium text-foreground/90 break-words">{formatValue(v)}</span>
                 </li>
               ))}
             </ul>
           )}
-        </section>
+        </CollapsibleContent>
+      </Collapsible>
 
-        {/* AI insights */}
-        <section className="rounded-lg border border-primary/30 bg-primary/5 p-3">
-          <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2">
-            <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
-          </h4>
+      {/* Insights IA */}
+      <section className="rounded-lg border border-primary/20 bg-primary/5 p-3">
+        <h4 className="text-xs font-bold flex items-center gap-1.5 mb-2">
+          <Lightbulb className="icon-xs text-primary" /> Insights de possibilidades
+        </h4>
 
-          {isLoading && (
-            <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
-              <Loader2 className="icon-sm animate-spin" /> Gerando propostas com IA…
-            </div>
-          )}
-
-          {error && (
-            <div className="text-xs text-destructive flex items-center gap-2">
-              <AlertTriangle className="icon-xs" />
-              {(error as Error).message}
-              <Button size="sm" variant="outline" onClick={() => refetch()} className="ml-2 h-7">Tentar de novo</Button>
-            </div>
-          )}
-
-          {!isLoading && !error && (
-            <>
-              {data?.interpretacao && (
-                <p className="text-[12px] text-foreground/80 leading-relaxed mb-3 italic">
-                  {data.interpretacao}
-                </p>
-              )}
-
-              {data?.achados && data.achados.length > 0 && (
-                <ul className="text-[11px] text-muted-foreground mb-3 list-disc pl-4 space-y-0.5">
-                  {data.achados.map((a, i) => <li key={i}>{a}</li>)}
-                </ul>
-              )}
-
-              {insights.length === 0 ? (
-                <p className="text-xs text-muted-foreground">Sem propostas geradas.</p>
-              ) : (
-                <ul className="space-y-2">
-                  {insights.map((it, i) => (
-                    <li
-                      key={i}
-                      onClick={() => toggle(i)}
-                      className={`cursor-pointer rounded-md border p-2.5 transition ${
-                        selecionados[i] ? 'border-primary bg-primary/10' : 'border-border/40 bg-background hover:border-primary/50'
-                      }`}
-                    >
-                      <div className="flex items-start gap-2">
-                        <CheckCircle2 className={`icon-sm shrink-0 mt-0.5 ${selecionados[i] ? 'text-primary' : 'text-muted-foreground/40'}`} />
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2 flex-wrap">
-                            <span className="text-[12px] font-semibold">{it.titulo}</span>
-                            {it.prazo && <Badge variant="outline" className="text-[9px] py-0">{it.prazo}</Badge>}
-                          </div>
-                          <p className="text-[11px] text-foreground/80 mt-1 leading-relaxed">{it.acao}</p>
-                          {it.evidencia && (
-                            <p className="text-[10px] text-muted-foreground mt-1 italic">📚 {it.evidencia}</p>
-                          )}
-                        </div>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-              )}
-
-              {data?.integracao_diretriz && (
-                <div className="mt-3 pt-3 border-t border-border/40">
-                  <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Integração com a diretriz</p>
-                  <p className="text-[11px] text-foreground/80 leading-relaxed">{data.integracao_diretriz}</p>
-                </div>
-              )}
-            </>
-          )}
-        </section>
-
-        <div className="flex items-center justify-between gap-2 pt-2">
-          <p className="text-[10px] text-muted-foreground">
-            {Object.values(selecionados).filter(Boolean).length} de {insights.length} selecionado(s)
-          </p>
-          <div className="flex gap-2">
-            <Button variant="outline" size="sm" onClick={() => onOpenChange(false)}>Fechar</Button>
-            <Button
-              size="sm"
-              onClick={aplicarNaAvaliacao}
-              disabled={aplicando || Object.values(selecionados).filter(Boolean).length === 0}
-            >
-              {aplicando ? <Loader2 className="icon-sm animate-spin mr-1" /> : <Sparkles className="icon-sm mr-1" />}
-              Aplicar à avaliação
-            </Button>
+        {isLoading && (
+          <div className="flex items-center gap-2 text-xs text-muted-foreground py-4">
+            <Loader2 className="icon-sm animate-spin" /> Gerando propostas com IA…
           </div>
-        </div>
-      </DialogContent>
-    </Dialog>
+        )}
+
+        {error && (
+          <div className="text-xs text-destructive flex items-center gap-2 flex-wrap">
+            <AlertTriangle className="icon-xs" />
+            {(error as Error).message}
+            <Button size="sm" variant="outline" onClick={() => refetch()} className="ml-2 h-7">Tentar de novo</Button>
+          </div>
+        )}
+
+        {!isLoading && !error && (
+          <>
+            {data?.interpretacao && (
+              <p className="text-[12px] text-foreground/80 leading-relaxed mb-3 italic">
+                {data.interpretacao}
+              </p>
+            )}
+
+            {data?.achados && data.achados.length > 0 && (
+              <ul className="text-[11px] text-muted-foreground mb-3 list-disc pl-4 space-y-0.5">
+                {data.achados.map((a, i) => <li key={i}>{a}</li>)}
+              </ul>
+            )}
+
+            {insights.length === 0 ? (
+              <p className="text-xs text-muted-foreground">Sem propostas geradas.</p>
+            ) : (
+              <ul className="space-y-2">
+                {insights.map((it, i) => (
+                  <li
+                    key={i}
+                    onClick={() => toggle(i)}
+                    className={cn(
+                      'cursor-pointer rounded-md border p-2.5 transition',
+                      selecionados[i]
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border/40 bg-background hover:border-primary/50'
+                    )}
+                  >
+                    <div className="flex items-start gap-2">
+                      <CheckCircle2 className={cn('icon-sm shrink-0 mt-0.5', selecionados[i] ? 'text-primary' : 'text-muted-foreground/40')} />
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <span className="text-[12px] font-semibold">{it.titulo}</span>
+                          {it.prazo && <Badge variant="outline" className="text-[9px] py-0">{it.prazo}</Badge>}
+                        </div>
+                        <p className="text-[11px] text-foreground/80 mt-1 leading-relaxed">{it.acao}</p>
+                        {it.evidencia && (
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">📚 {it.evidencia}</p>
+                        )}
+                      </div>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {data?.integracao_diretriz && (
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Integração com a diretriz</p>
+                <p className="text-[11px] text-foreground/80 leading-relaxed">{data.integracao_diretriz}</p>
+              </div>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Footer */}
+      <div className="flex items-center justify-between gap-2 pt-1">
+        <p className="text-[10px] text-muted-foreground">
+          {Object.values(selecionados).filter(Boolean).length} de {insights.length} selecionado(s)
+        </p>
+        <Button
+          size="sm"
+          onClick={aplicarNaAvaliacao}
+          disabled={aplicando || Object.values(selecionados).filter(Boolean).length === 0}
+        >
+          {aplicando ? <Loader2 className="icon-sm animate-spin mr-1" /> : <Sparkles className="icon-sm mr-1" />}
+          Aplicar à avaliação
+        </Button>
+      </div>
+    </div>
   );
 }
