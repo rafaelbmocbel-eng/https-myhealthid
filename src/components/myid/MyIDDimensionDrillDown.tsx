@@ -406,6 +406,34 @@ export default function MyIDDimensionDrillDown({
                 <p className="text-[11px] text-foreground/80 leading-relaxed">{data.integracao_diretriz}</p>
               </div>
             )}
+
+            {referencias.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+                  <FileText className="icon-xs" /> Base científica ({referencias.length})
+                </p>
+                <ol className="space-y-1">
+                  {referencias.map(r => {
+                    const href = r.url || (r.doi ? `https://doi.org/${r.doi}` : null);
+                    const authors = (r.authors || []).slice(0, 2).join(', ') + ((r.authors?.length || 0) > 2 ? ' et al.' : '');
+                    return (
+                      <li key={r.n} className="text-[10px] text-muted-foreground leading-snug">
+                        <span className="font-bold text-foreground/70">[{r.n}]</span>{' '}
+                        {href ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.title}</a>
+                        ) : (
+                          <span className="text-foreground/80">{r.title}</span>
+                        )}
+                        {authors && <span> — {authors}</span>}
+                        {r.journal && <span className="italic"> · {r.journal}</span>}
+                        {r.year && <span> ({r.year})</span>}
+                        {r.evidence_level && <Badge variant="outline" className="ml-1 text-[9px] py-0">Nível {r.evidence_level}</Badge>}
+                      </li>
+                    );
+                  })}
+                </ol>
+              </div>
+            )}
           </>
         )}
       </section>
