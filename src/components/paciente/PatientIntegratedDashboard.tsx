@@ -450,14 +450,14 @@ export default function PatientIntegratedDashboard({
                   <MyIDFingerprint
                     rings={rings}
                     myidScore={myidScore}
-                    highlightedKey={hoveredScoreKey}
+                    highlightedKey={isProfessional ? (drillDownKey || hoveredScoreKey) : hoveredScoreKey}
                     onRingHover={setHoveredScoreKey}
-                    onRingClick={isProfessional ? (r) => setDrillDownKey(r.scoreKey) : undefined}
+                    onRingClick={isProfessional ? (r) => setDrillDownKey(prev => prev === r.scoreKey ? null : r.scoreKey) : undefined}
                   />
 
                   {isProfessional && (
                     <p className="mt-2 text-center text-[10px] text-muted-foreground">
-                      💡 Clique em qualquer anel para ver as respostas e gerar propostas de melhora.
+                      💡 Clique em um anel para abrir os detalhes abaixo. Clique de novo para fechar.
                     </p>
                   )}
 
@@ -472,6 +472,21 @@ export default function PatientIntegratedDashboard({
                       Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
                     </span>
                   </div>
+
+                  {/* Painel inline do anel selecionado (apenas profissional) */}
+                  {isProfessional && drillDownKey && (
+                    <div className="mt-5">
+                      <MyIDDimensionDrillDown
+                        pacienteId={pacienteId}
+                        dimensao={drillDownKey}
+                        scoreValor={scores ? Number((scores as any)[drillDownKey]) : undefined}
+                        respostasBrutas={(myidFromLink[0] as any)?.respostas_brutas || (ultimaMyID as any)?.dados_avaliacao || {}}
+                        queixaPrincipal={(myidFromLink[0] as any)?.respostas_brutas?.bloco_1_main_complaint || (ultimaMyID as any)?.queixa_principal}
+                        onClose={() => setDrillDownKey(null)}
+                      />
+                    </div>
+                  )}
+
 
                   {/* Resumo humano de 2 linhas */}
                   {insights && (
@@ -761,18 +776,8 @@ export default function PatientIntegratedDashboard({
         <ActiveDiretrizSection pacienteId={pacienteId} />
       )}
 
-      {/* Drill-down do MyID (apenas profissional) */}
-      {isProfessional && (
-        <MyIDDimensionDrillDown
-          open={!!drillDownKey}
-          onOpenChange={(o) => !o && setDrillDownKey(null)}
-          pacienteId={pacienteId}
-          dimensao={drillDownKey}
-          scoreValor={drillDownKey && scores ? Number((scores as any)[drillDownKey]) : undefined}
-          respostasBrutas={(myidFromLink[0] as any)?.respostas_brutas || (ultimaMyID as any)?.dados_avaliacao || {}}
-          queixaPrincipal={(myidFromLink[0] as any)?.respostas_brutas?.bloco_1_main_complaint || (ultimaMyID as any)?.queixa_principal}
-        />
-      )}
+      {/* (Drill-down agora é inline, renderizado abaixo da impressão digital) */}
+
     </div>
   );
 }
