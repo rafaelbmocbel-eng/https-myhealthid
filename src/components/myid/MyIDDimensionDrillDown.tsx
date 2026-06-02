@@ -357,10 +357,41 @@ export default function MyIDDimensionDrillDown({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[12px] font-semibold">{it.titulo}</span>
                           {it.prazo && <Badge variant="outline" className="text-[9px] py-0">{it.prazo}</Badge>}
+                          {it.profissional && PROF[it.profissional as keyof typeof PROF] && (
+                            <Badge variant="outline" className={cn('text-[9px] py-0', PROF[it.profissional as keyof typeof PROF].tone)}>
+                              {PROF[it.profissional as keyof typeof PROF].label}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-[11px] text-foreground/80 mt-1 leading-relaxed">{it.acao}</p>
                         {it.evidencia && (
                           <p className="text-[10px] text-muted-foreground mt-1 italic">📚 {it.evidencia}</p>
+                        )}
+                        {it.refs && it.refs.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                            {it.refs.map(n => {
+                              const r = refsByN.get(n);
+                              if (!r) return null;
+                              const href = r.url || (r.doi ? `https://doi.org/${r.doi}` : null);
+                              const content = (
+                                <>
+                                  <span className="font-bold">[{n}]</span>
+                                  <span className="truncate max-w-[180px]">{r.title}</span>
+                                  {r.year && <span className="text-muted-foreground">· {r.year}</span>}
+                                </>
+                              );
+                              return href ? (
+                                <a key={n} href={href} target="_blank" rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 hover:bg-primary/10 px-1.5 py-0.5 text-[10px]">
+                                  {content}
+                                </a>
+                              ) : (
+                                <span key={n} className="inline-flex items-center gap-1 rounded border border-border/40 px-1.5 py-0.5 text-[10px]">
+                                  {content}
+                                </span>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
