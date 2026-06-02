@@ -101,11 +101,13 @@ interface Mission {
 
 export default function PatientIntegratedDashboard({
   pacienteId,
-  serviceType
+  serviceType,
+  isProfessional = false,
 }: PatientIntegratedDashboardProps) {
   const { user } = useAuth();
   const [hoveredScoreKey, setHoveredScoreKey] = useState<string | null>(null);
   const [showDiretrizes, setShowDiretrizes] = useState(false);
+  const [drillDownKey, setDrillDownKey] = useState<string | null>(null);
 
   // ── MyID data
   const { data: myidAvaliacoes = [] } = useQuery({
