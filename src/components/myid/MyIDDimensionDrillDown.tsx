@@ -102,11 +102,19 @@ function formatValue(v: any): string {
   return String(v);
 }
 
+interface Reference {
+  n: number; id: string; title: string;
+  authors: string[] | null; journal: string | null; year: number | null;
+  doi: string | null; url: string | null; evidence_level: string | null;
+}
+
 interface Insight {
   titulo: string;
   acao: string;
   evidencia?: string;
   prazo?: string;
+  refs?: number[];
+  profissional?: string;
 }
 
 interface Props {
@@ -148,6 +156,7 @@ export default function MyIDDimensionDrillDown({
         insights?: Insight[];
         integracao_diretriz?: string;
         respostas?: Record<string, any>;
+        referencias?: Reference[];
       };
     },
   });
@@ -158,6 +167,8 @@ export default function MyIDDimensionDrillDown({
   const respostasFiltradas = data?.respostas || respostasBrutas || {};
   const respostasEntries = Object.entries(respostasFiltradas);
   const insights = data?.insights || [];
+  const referencias = data?.referencias || [];
+  const refsByN = new Map(referencias.map(r => [r.n, r]));
   const referrals = REFERRALS_BY_DIM[dimensao] || [];
 
   const toggle = (i: number) => setSelecionados(s => ({ ...s, [i]: !s[i] }));
@@ -194,6 +205,9 @@ export default function MyIDDimensionDrillDown({
           interpretacao: data?.interpretacao,
           integracao_diretriz: data?.integracao_diretriz,
           encaminhamentos: referrals.map(k => PROF[k].label),
+          referencias_cientificas: escolhidos
+            .flatMap(it => (it.refs || []).map(n => refsByN.get(n)))
+            .filter(Boolean),
         },
       });
       if (notaErr) throw notaErr;
@@ -343,10 +357,41 @@ export default function MyIDDimensionDrillDown({
                         <div className="flex items-center gap-2 flex-wrap">
                           <span className="text-[12px] font-semibold">{it.titulo}</span>
                           {it.prazo && <Badge variant="outline" className="text-[9px] py-0">{it.prazo}</Badge>}
+                          {it.profissional && PROF[it.profissional as keyof typeof PROF] && (
+                            <Badge variant="outline" className={cn('text-[9px] py-0', PROF[it.profissional as keyof typeof PROF].tone)}>
+                              {PROF[it.profissional as keyof typeof PROF].label}
+                            </Badge>
+                          )}
                         </div>
                         <p className="text-[11px] text-foreground/80 mt-1 leading-relaxed">{it.acao}</p>
                         {it.evidencia && (
                           <p className="text-[10px] text-muted-foreground mt-1 italic">📚 {it.evidencia}</p>
+                        )}
+                        {it.refs && it.refs.length > 0 && (
+                          <div className="flex flex-wrap gap-1 mt-1.5" onClick={(e) => e.stopPropagation()}>
+                            {it.refs.map(n => {
+                              const r = refsByN.get(n);
+                              if (!r) return null;
+                              const href = r.url || (r.doi ? `https://doi.org/${r.doi}` : null);
+                              const content = (
+                                <>
+                                  <span className="font-bold">[{n}]</span>
+                                  <span className="truncate max-w-[180px]">{r.title}</span>
+                                  {r.year && <span className="text-muted-foreground">· {r.year}</span>}
+                                </>
+                              );
+                              return href ? (
+                                <a key={n} href={href} target="_blank" rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 rounded border border-primary/30 bg-primary/5 hover:bg-primary/10 px-1.5 py-0.5 text-[10px]">
+                                  {content}
+                                </a>
+                              ) : (
+                                <span key={n} className="inline-flex items-center gap-1 rounded border border-border/40 px-1.5 py-0.5 text-[10px]">
+                                  {content}
+                                </span>
+                              );
+                            })}
+                          </div>
                         )}
                       </div>
                     </div>
@@ -359,6 +404,34 @@ export default function MyIDDimensionDrillDown({
               <div className="mt-3 pt-3 border-t border-border/40">
                 <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1">Integração com a diretriz</p>
                 <p className="text-[11px] text-foreground/80 leading-relaxed">{data.integracao_diretriz}</p>
+              </div>
+            )}
+
+            {referencias.length > 0 && (
+              <div className="mt-3 pt-3 border-t border-border/40">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-semibold mb-1.5 flex items-center gap-1">
+                  <FileText className="icon-xs" /> Base científica ({referencias.length})
+                </p>
+                <ol className="space-y-1">
+                  {referencias.map(r => {
+                    const href = r.url || (r.doi ? `https://doi.org/${r.doi}` : null);
+                    const authors = (r.authors || []).slice(0, 2).join(', ') + ((r.authors?.length || 0) > 2 ? ' et al.' : '');
+                    return (
+                      <li key={r.n} className="text-[10px] text-muted-foreground leading-snug">
+                        <span className="font-bold text-foreground/70">[{r.n}]</span>{' '}
+                        {href ? (
+                          <a href={href} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">{r.title}</a>
+                        ) : (
+                          <span className="text-foreground/80">{r.title}</span>
+                        )}
+                        {authors && <span> — {authors}</span>}
+                        {r.journal && <span className="italic"> · {r.journal}</span>}
+                        {r.year && <span> ({r.year})</span>}
+                        {r.evidence_level && <Badge variant="outline" className="ml-1 text-[9px] py-0">Nível {r.evidence_level}</Badge>}
+                      </li>
+                    );
+                  })}
+                </ol>
               </div>
             )}
           </>
