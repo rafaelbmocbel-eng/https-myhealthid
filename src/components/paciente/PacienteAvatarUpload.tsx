@@ -16,6 +16,8 @@ interface Props {
   sobrenome?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   editable?: boolean;
+  /** Mostra o botão lateral com texto "Adicionar foto / Trocar foto". Default true. */
+  showLabel?: boolean;
   onUpdated?: (url: string | null) => void;
 }
 
@@ -28,7 +30,7 @@ const sizeMap = {
 
 export default function PacienteAvatarUpload({
   folderId, pacienteId, avatarUrl, nome = '', sobrenome = '',
-  size = 'lg', editable = true, onUpdated,
+  size = 'lg', editable = true, showLabel = true, onUpdated,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
@@ -113,7 +115,7 @@ export default function PacienteAvatarUpload({
         )}
       </div>
 
-      {editable && (
+      {editable && showLabel && (
         <div className="flex flex-col gap-1">
           <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={loading}>
             <Camera className="h-3.5 w-3.5 mr-1.5" />
