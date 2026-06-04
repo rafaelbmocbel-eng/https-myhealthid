@@ -115,7 +115,7 @@ export default function PacienteAvatarUpload({
         )}
       </div>
 
-      {editable && (
+      {editable && showLabel && (
         <div className="flex flex-col gap-1">
           <Button size="sm" variant="outline" onClick={() => inputRef.current?.click()} disabled={loading}>
             <Camera className="h-3.5 w-3.5 mr-1.5" />
