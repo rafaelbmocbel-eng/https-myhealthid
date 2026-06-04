@@ -43,9 +43,17 @@ export default function RouteRestorer() {
   const { user, loading, authReady } = useAuth();
   const restored = useRef(false);
 
+  // Query params que disparam modais/wizards e NÃO devem ser restaurados
+  // quando o usuário reabre o app (ex: /agenda?novo=1 reabria o modal de
+  // cadastro de horário toda vez que o app era aberto).
+  const TRANSIENT_PARAMS = ['novo', 'paciente', 'openNew', 'open', 'modal', 'edit', 'editar', 'action'];
+
   // Salva a rota atual em localStorage a cada navegação válida.
   useEffect(() => {
-    const full = location.pathname + location.search;
+    const sp = new URLSearchParams(location.search);
+    TRANSIENT_PARAMS.forEach(k => sp.delete(k));
+    const cleanSearch = sp.toString();
+    const full = location.pathname + (cleanSearch ? `?${cleanSearch}` : '');
     try {
       if (shouldPersistPro(location.pathname)) {
         localStorage.setItem(PRO_KEY, full);
