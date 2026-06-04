@@ -16,6 +16,8 @@ interface Props {
   sobrenome?: string;
   size?: 'sm' | 'md' | 'lg' | 'xl';
   editable?: boolean;
+  /** Mostra o botão lateral com texto "Adicionar foto / Trocar foto". Default true. */
+  showLabel?: boolean;
   onUpdated?: (url: string | null) => void;
 }
 
