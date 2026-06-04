@@ -30,7 +30,7 @@ const sizeMap = {
 
 export default function PacienteAvatarUpload({
   folderId, pacienteId, avatarUrl, nome = '', sobrenome = '',
-  size = 'lg', editable = true, onUpdated,
+  size = 'lg', editable = true, showLabel = true, onUpdated,
 }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
