@@ -11,10 +11,15 @@ const isInIframe = (() => {
   try { return window.self !== window.top; } catch { return true; }
 })();
 
+// Apenas hosts de PREVIEW/sandbox (não a produção em *.lovable.app).
+// O domínio canônico de produção é "https-myhealthid.lovable.app" e PRECISA
+// registrar o Service Worker, senão o Android não instala como PWA e o app
+// abre dentro de um Chrome Custom Tab (com barra "X / URL" no topo).
+const host = window.location.hostname;
 const isPreviewHost =
-  window.location.hostname.includes("id-preview--") ||
-  window.location.hostname.includes("lovableproject.com") ||
-  window.location.hostname.includes("lovable.app");
+  host.includes("id-preview--") ||
+  host.includes("lovableproject.com") ||
+  host.endsWith(".sandbox.lovable.dev");
 
 const isSafeForSW = !isInIframe && !isPreviewHost && !import.meta.env.DEV;
 
