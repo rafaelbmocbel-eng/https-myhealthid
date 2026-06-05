@@ -42,6 +42,10 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
   };
 
   const handleVoice = () => {
+    if (!isSupported) {
+      alert('A ditadura por voz não é suportada neste navegador. Use o Chrome no Android ou o Safari mais recente no iOS, e digite sua resposta enquanto isso.');
+      return;
+    }
     if (isListening) { stopListening(); return; }
     startListening((text) => {
       update('queixaPrincipal', localData.queixaPrincipal + (localData.queixaPrincipal ? ' ' : '') + text);
