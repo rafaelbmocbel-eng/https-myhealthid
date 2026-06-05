@@ -42,6 +42,10 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
   };
 
   const handleVoice = () => {
+    if (!isSupported) {
+      alert('A ditadura por voz não é suportada neste navegador. Use o Chrome no Android ou o Safari mais recente no iOS, e digite sua resposta enquanto isso.');
+      return;
+    }
     if (isListening) { stopListening(); return; }
     startListening((text) => {
       update('queixaPrincipal', localData.queixaPrincipal + (localData.queixaPrincipal ? ' ' : '') + text);
@@ -70,15 +74,18 @@ export default function MyIDBloco1({ data, onChange, onNext }: Props) {
           Qual é sua queixa principal?
         </h3>
         <div>
-          <div className="flex items-center justify-between mb-1">
+          <div className="flex items-center justify-between gap-2 mb-1.5 flex-wrap">
             <Label>Descreva com suas palavras <span className="text-destructive">*</span></Label>
-            {isSupported && (
-              <Button variant="ghost" size="sm" className={cn('h-7 gap-1 text-xs', isListening && 'text-destructive')}
-                onClick={handleVoice}>
-                {isListening ? <MicOff className="h-3 w-3" /> : <Mic className="h-3 w-3" />}
-                {isListening ? 'Parar' : 'Ditar'}
-              </Button>
-            )}
+            <Button
+              type="button"
+              variant={isListening ? 'destructive' : 'outline'}
+              size="sm"
+              className="h-8 gap-1.5 text-xs shrink-0"
+              onClick={handleVoice}
+            >
+              {isListening ? <MicOff className="h-3.5 w-3.5" /> : <Mic className="h-3.5 w-3.5" />}
+              {isListening ? 'Parar gravação' : 'Ditar por voz'}
+            </Button>
           </div>
           <Textarea
             placeholder="Ex: Dor nas costas ao acordar, dor no joelho ao correr, formigamento no braço..."
