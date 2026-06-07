@@ -46,14 +46,14 @@ export default function PerfilProfissionalCard() {
   const [salvo, setSalvo] = useState(false);
   const [salvoEsp, setSalvoEsp] = useState(false);
 
-  // Status de confirmação no banco
+  // Status de confirmação no banco + especialidade atual
   const { data: status } = useQuery({
     queryKey: ['perfil-profissional-status', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('perfil_profissional_confirmado, perfil_profissional_confirmado_em')
+        .select('perfil_profissional_confirmado, perfil_profissional_confirmado_em, especialidade_medica')
         .eq('user_id', user!.id)
         .maybeSingle();
       return data as any;
@@ -65,6 +65,28 @@ export default function PerfilProfissionalCard() {
   useEffect(() => {
     if (lente) setValor(lente.id);
   }, [lente]);
+
+  useEffect(() => {
+    if (status?.especialidade_medica) setEspecialidade(status.especialidade_medica);
+  }, [status?.especialidade_medica]);
+
+  const salvarEspecialidade = async (nova: string) => {
+    if (!user) return;
+    setEspecialidade(nova);
+    setSalvandoEsp(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ especialidade_medica: nova || null } as any)
+      .eq('user_id', user.id);
+    setSalvandoEsp(false);
+    if (error) {
+      toast({ title: 'Não foi possível salvar a especialidade', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setSalvoEsp(true);
+    setTimeout(() => setSalvoEsp(false), 2000);
+    qc.invalidateQueries({ queryKey: ['perfil-profissional-status'] });
+  };
 
   const salvar = async () => {
     if (!user) return;
