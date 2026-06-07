@@ -22,24 +22,38 @@ const OPCOES: { value: PerfilProfissional; label: string; hint: string }[] = [
   { value: 'terapeuta_ocupacional', label: 'Terapeuta Ocupacional', hint: 'AVDs, ambiente, ocupações significativas' },
 ];
 
+const ESPECIALIDADES_MEDICAS: { value: string; label: string; hint: string }[] = [
+  { value: 'clinico_geral', label: 'Clínico Geral / Família', hint: 'Anamnese SOAP, sinais vitais, prescrição' },
+  { value: 'ortopedista', label: 'Ortopedista', hint: 'MyID + testes ortopédicos por região' },
+  { value: 'endocrinologista', label: 'Endocrinologista', hint: 'Glicemia, HbA1c, perfil lipídico, TSH, IMC' },
+  { value: 'cardiologista', label: 'Cardiologista', hint: 'PA, FC, ECG, risco cardiovascular' },
+  { value: 'psiquiatra', label: 'Psiquiatra', hint: 'PHQ-9, GAD-7, sono, medicação' },
+  { value: 'ginecologista', label: 'Ginecologista', hint: 'Ciclo, gestação, preventivos' },
+  { value: 'pediatra', label: 'Pediatra', hint: 'Crescimento, marcos, vacinação' },
+  { value: 'dermatologista', label: 'Dermatologista', hint: 'Lesões, fotos, checklist ABCDE' },
+];
+
 export default function PerfilProfissionalCard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const qc = useQueryClient();
   const { data: lente } = useLenteAtiva();
   const [valor, setValor] = useState<PerfilProfissional>('fisioterapeuta');
+  const [especialidade, setEspecialidade] = useState<string>('');
   const [confirmacao, setConfirmacao] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [salvandoEsp, setSalvandoEsp] = useState(false);
   const [salvo, setSalvo] = useState(false);
+  const [salvoEsp, setSalvoEsp] = useState(false);
 
-  // Status de confirmação no banco
+  // Status de confirmação no banco + especialidade atual
   const { data: status } = useQuery({
     queryKey: ['perfil-profissional-status', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
       const { data } = await supabase
         .from('profiles')
-        .select('perfil_profissional_confirmado, perfil_profissional_confirmado_em')
+        .select('perfil_profissional_confirmado, perfil_profissional_confirmado_em, especialidade_medica')
         .eq('user_id', user!.id)
         .maybeSingle();
       return data as any;
@@ -51,6 +65,28 @@ export default function PerfilProfissionalCard() {
   useEffect(() => {
     if (lente) setValor(lente.id);
   }, [lente]);
+
+  useEffect(() => {
+    if (status?.especialidade_medica) setEspecialidade(status.especialidade_medica);
+  }, [status?.especialidade_medica]);
+
+  const salvarEspecialidade = async (nova: string) => {
+    if (!user) return;
+    setEspecialidade(nova);
+    setSalvandoEsp(true);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ especialidade_medica: nova || null } as any)
+      .eq('user_id', user.id);
+    setSalvandoEsp(false);
+    if (error) {
+      toast({ title: 'Não foi possível salvar a especialidade', description: error.message, variant: 'destructive' });
+      return;
+    }
+    setSalvoEsp(true);
+    setTimeout(() => setSalvoEsp(false), 2000);
+    qc.invalidateQueries({ queryKey: ['perfil-profissional-status'] });
+  };
 
   const salvar = async () => {
     if (!user) return;
@@ -119,6 +155,37 @@ export default function PerfilProfissionalCard() {
           </Select>
           {sel && <p className="text-[11px] text-muted-foreground mt-1.5">{sel.hint}</p>}
         </div>
+
+        {valor === 'medico' && (
+          <div>
+            <Label className="text-xs font-medium mb-1.5 block flex items-center gap-2">
+              Especialidade médica
+              {salvandoEsp && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              {salvoEsp && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
+            </Label>
+            <Select
+              value={especialidade || undefined}
+              onValueChange={salvarEspecialidade}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione sua especialidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESPECIALIDADES_MEDICAS.map(e => (
+                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {especialidade && (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {ESPECIALIDADES_MEDICAS.find(e => e.value === especialidade)?.hint}
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-1">
+              A especialidade pode ser alterada quando precisar — ela apenas refina os blocos exibidos.
+            </p>
+          </div>
+        )}
 
         {confirmado ? (
           <div className="rounded-xl bg-muted/40 border border-border/40 p-3 text-[12px] text-muted-foreground flex gap-2">

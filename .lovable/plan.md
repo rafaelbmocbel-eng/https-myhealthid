@@ -1,99 +1,153 @@
-# Plano: 4 Features MyID Completas
 
-Escopo grande. Vou entregar em **4 sprints sequenciais**, validando cada um antes do próximo. Total estimado: ~6-8 etapas de implementação.
+# Fase 1 — Multi-profissional (Fisio + Medicina + Educação Física)
 
----
-
-## Sprint 1 — Notificações Inteligentes Contextuais
-
-**Objetivo:** Disparar notificações automáticas no canal certo (push/WhatsApp/in-app) baseadas no **Driver Primário** do MyID do paciente.
-
-**Banco:**
-- Tabela `notificacao_regras` (driver, horario_envio, canal, template, ativo)
-- Tabela `notificacao_envios` (log: paciente_id, regra_id, enviada_em, status, lida_em)
-- Seed de regras default (Sono→22h, Hidratação→3/3h, Estresse→manhã, Dor→tarde, etc.)
-
-**Edge function:** `notificacoes-inteligentes` (cron 30/30min)
-- Lê pacientes ativos, busca último MyID, identifica driver, checa janela horária, envia via push/WhatsApp/in-app, registra envio.
-
-**UI:**
-- Pro: `/configuracoes/notificacoes-inteligentes` — tabela editável de regras + log de envios.
-- Paciente: badge no portal mostra próxima dica contextual.
+Objetivo: abrir o MY HEALTH ID para 3 profissões com o **menor risco possível**, mantendo o app atual 100% funcional. Tudo aditivo, modo Solo continua default, lente é opcional.
 
 ---
 
-## Sprint 2 — Relatório PDF MyID para o Paciente
+## Princípio guia
 
-**Objetivo:** PDF Serene-style compartilhável.
+**"Um núcleo, várias lentes."**
+- MyID v2.0, Agenda, Pacientes, Prontuário e Portal do Paciente **não mudam**.
+- Cada profissional escolhe uma **lente** (perfil profissional) no cadastro/configurações.
+- A lente só altera: blocos extras na avaliação, template de evolução, dashboard e PDF.
+- Quem não trocar de lente continua vendo o app exatamente como hoje (default = Fisioterapeuta).
 
-**Componentes:**
-- `utils/pdfMyIDPaciente.ts` (lazy-loaded como os outros PDFs)
-- Página 1: capa com Global Score + Gauge SVG
-- Página 2: Fingerprint radar das 11 dimensões
-- Página 3: Driver Primário em linguagem leiga + recomendação
-- Página 4: Plano de 3 fases com metas
-- Página 5: Missões ativas (XP por categoria)
-- Página 6: Próximos passos + assinatura do profissional
-
-**UI:** Botão "Baixar meu relatório" no `PacienteDashboard` + "Compartilhar via WhatsApp" (Web Share API).
-
-**Mirror Pro:** Mesmo PDF disponível no perfil do paciente para o profissional baixar.
+A infraestrutura de lentes já existe (`useLenteAtiva`, tabela `perfis_profissionais`, coluna `profiles.perfil_profissional`). Esta fase **ativa e amadurece** essa estrutura — não cria nada do zero.
 
 ---
 
-## Sprint 3 — Programa de Recompensas (XP → Prêmios)
+## Escopo das 3 lentes
 
-**Objetivo:** Sistema de níveis + catálogo de recompensas configurável.
+### 1. Fisioterapeuta (já é o default — só formaliza)
+- Blocos: MyID v2.0 + Avaliação Presencial + Voz + Avatar (como hoje)
+- Template evolução: **SOAP** (já existe)
+- Nada muda visualmente
 
-**Banco:**
-- Coluna `nivel_atual` em `pacientes` (Bronze/Prata/Ouro/Platina/Diamante)
-- Tabela `recompensas_catalogo` (terapeuta_id, titulo, descricao, xp_custo, ativa, estoque)
-- Tabela `recompensas_resgates` (paciente_id, recompensa_id, xp_gasto, status, resgatado_em, entregue_em)
-- Trigger: recalcula `nivel_atual` quando XP muda
+### 2. Medicina (cobertura ampla das especialidades mais comuns)
+Sub-lentes opcionais dentro de "Médico" para cobrir várias especialidades sem duplicar módulo:
+- **Clínico Geral / Família** — anamnese SOAP + sinais vitais + prescrição
+- **Ortopedista** — usa MyID + bloco "Exame ortopédico" (testes especiais por região)
+- **Endocrinologista** — bloco metabólico (glicemia, HbA1c, perfil lipídico, TSH, peso/IMC, circunferência)
+- **Cardiologista** — bloco cardiovascular (PA, FC, ECG anexável, risco Framingham)
+- **Psiquiatra** — bloco saúde mental (PHQ-9, GAD-7, sono, medicação)
+- **Ginecologista** — bloco saúde da mulher (ciclo, gestação, exames preventivos)
+- **Pediatra** — bloco crescimento/desenvolvimento (percentil, marcos, vacinação)
+- **Dermatologista** — bloco lesões (fotos + checklist ABCDE)
 
-**UI Paciente:**
-- `/portal/recompensas` — catálogo, "Resgatar" debita XP, status do resgate
-- Header do portal: nível atual + barra de progresso para próximo nível
+**Ferramentas que reduzem digitação:**
+- **Anamnese por voz** (Whisper já integrado) com template SOAP
+- **Prescrição assistida** — busca de medicamentos com posologia padrão (autocomplete)
+- **Atestado e receita em 1 clique** com PDF carimbado
+- **CID-10 com autocomplete** + sugestão por queixa
+- **Solicitação de exames** com templates por especialidade
+- **Importar PDF de exame** → IA extrai resultado e preenche prontuário (Gemini Vision)
+- **Bloco "Sinais Vitais" rápido** (PA, FC, Tax, SpO2, peso) com tendência gráfica
 
-**UI Pro:**
-- `/configuracoes/recompensas` — CRUD do catálogo
-- Notificação quando paciente resgata (precisa marcar como entregue)
-- KPI em `/dashboard`: resgates do mês
+### 3. Educação Física (Personal / Treinador)
+Cobre personal, treinador esportivo, preparador físico, academia.
 
----
+Blocos:
+- **Anamnese de treino** (objetivos, histórico esportivo, lesões prévias, restrições)
+- **PAR-Q+** (questionário de prontidão — auto-preenchido pelo paciente)
+- **Avaliação física** — peso, altura, IMC, % gordura (Pollock 3/7 dobras), circunferências
+- **Testes de performance** — 1RM estimado (Brzycki), VO2máx (Cooper/Astrand), flexibilidade (sentar-alcançar), Yoyo
+- **Periodização** — montagem de microciclo/mesociclo com templates (hipertrofia, força, resistência, emagrecimento)
+- **Prescrição de treino** — biblioteca de exercícios com vídeo, séries/reps/carga/descanso
+- **Diário de treino do aluno** — aluno marca treinos feitos no portal (já existe estrutura de portal)
 
-## Sprint 4 — Integração Wearables (Apple Health / Google Fit)
-
-**Objetivo:** Sincronizar passos, sono, HRV e alimentar o MyID automaticamente.
-
-**Base:** Já existe `useHealthData` + `useHealthSync` com Capacitor Health. Vou estender:
-
-**Banco:**
-- Tabela `wearable_sync_log` (paciente_id, fonte, dados_jsonb, sincronizado_em)
-- View `wearable_metricas_semanais` (média passos/sono/HRV últimos 7d)
-
-**Lógica:**
-- Função `recalcular_af_hid_r1_from_wearable(paciente_id)` — atualiza scores AF (atividade física), R1 (sono) automaticamente entre MyIDs manuais
-- Edge function `wearable-alert-monitor` (cron diário): detecta piora (ex: passos ↓50% em 7d) e notifica profissional
-- Banner no portal: "Última sincronização: X horas atrás"
-
-**UI Pro:**
-- Aba "Wearable" no perfil do paciente: gráficos passos/sono/HRV + alertas
-- Indicador no card do paciente quando wearable mostra piora
-
----
-
-## Ordem e validação
-
-Implemento Sprint 1 completo (banco + edge + UI Pro + UI Paciente), você testa, valido com você, e só então parto pro Sprint 2. Isso evita rework caso algo precise ajustar de rota no meio.
-
-## Risco e compatibilidade
-
-- Nenhuma mudança quebra fluxo existente. Tudo é aditivo.
-- Wearables só ativam se o paciente autorizar Capacitor Health (já é o comportamento atual).
-- PDF é lazy-loaded — não afeta performance inicial.
-- Notificações inteligentes começam **desativadas por default** — profissional liga regra por regra.
+**Ferramentas que reduzem digitação:**
+- **Biblioteca de exercícios pronta** (~300 exercícios com vídeo) — clique e adiciona ao treino
+- **Templates de treino por objetivo** (hipertrofia full body, ABC, ABCD, push-pull-legs, emagrecimento HIIT, etc.)
+- **Cálculos automáticos** — IMC, %GC, FCmáx (Tanaka), zonas de FC, 1RM
+- **Progressão automática** — sugere aumento de carga baseado no histórico do aluno
+- **Wearables (já temos Capacitor Health)** — puxa passos, FC, calorias para fechar a sessão sem digitar
+- **PDF do treino** com QR code que abre vídeo do exercício para o aluno
 
 ---
 
-**Posso começar pelo Sprint 1 agora?** Se quiser ajustar algo (ex: pular alguma sprint, mudar canais, etc.), me avisa antes.
+## Princípio anti-digitação (vale para as 3 lentes)
+
+| Recurso | Onde se aplica |
+|---|---|
+| **Voz → texto** (Whisper, já integrado) | Anamnese, evolução, observações |
+| **IA preenche por contexto** (Gemini, já integrada) | Sugestão de hipótese diagnóstica, plano, missões, treino |
+| **Templates por especialidade** | Anamnese, evolução, prescrição, treino |
+| **Autocomplete inteligente** | CID-10, medicamentos, exercícios, exames |
+| **Importar PDF/imagem** | Exames laboratoriais, exames de imagem, receitas antigas |
+| **Wearables** | Sinais vitais, atividade, sono, FC |
+| **Portal do paciente preenche sozinho** | PAR-Q+, MyID, questionários, diário |
+| **Histórico carrega automaticamente** | Última consulta vira ponto de partida da próxima |
+
+---
+
+## Entregas técnicas (3 sprints curtos)
+
+### Sprint A — Fundação das lentes (1 etapa, baixíssimo risco)
+1. Seed da tabela `perfis_profissionais` com as 3 lentes (Fisio já existe — adicionar Médico e Edu Física)
+2. Tela em **Configurações → Meu Perfil** para o profissional escolher/trocar lente
+3. Sub-seleção de especialidade dentro de Medicina (Clínico, Orto, Endo, Cardio, Psiq, Gineco, Pedi, Dermato)
+4. `useLenteAtiva` já existe — apenas adicionar uso em mais lugares
+5. **Default continua Fisio** — nenhum usuário existente é afetado
+
+### Sprint B — Lente Medicina
+1. Bloco "Sinais Vitais" reutilizável
+2. Bloco "Exame Ortopédico" (testes por região, checkbox + observação por voz)
+3. Bloco "Metabólico" (campos laboratoriais + alertas de fora da faixa)
+4. PDFs: Receita, Atestado, Solicitação de exames
+5. Autocomplete CID-10 e medicamentos (lista local, ~5k itens)
+6. Importar PDF de exame via Gemini Vision (edge function)
+
+### Sprint C — Lente Educação Física
+1. Bloco "Avaliação Física" (antropometria + cálculos automáticos)
+2. Bloco "Testes de Performance"
+3. Biblioteca de exercícios (tabela `exercicios_biblioteca` com vídeo URL)
+4. Montagem de treino (drag-and-drop, templates por objetivo)
+5. PAR-Q+ no portal do paciente (já temos infra de questionários)
+6. Diário de treino no portal (já temos `progresso_exercicios`)
+7. PDF do treino com QR code
+
+---
+
+## O que NÃO vai mudar
+
+- MyID v2.0 e cálculo de score (intocado)
+- Agenda, CRM, Financeiro, Eventos, Pagamentos
+- Portal do paciente atual (só ganha PAR-Q+ e diário de treino como opcionais)
+- Sistema de autenticação, RLS, planos comerciais
+- Layout, branding, navegação principal
+
+---
+
+## Detalhes técnicos (seção para revisão técnica)
+
+**Banco — tudo aditivo, zero `DROP`:**
+- `perfis_profissionais` — seed de novas linhas (Medicina, EduFisica)
+- `profiles.especialidade_medica` — nova coluna nullable
+- `exercicios_biblioteca` — nova tabela (catálogo global + custom por profissional)
+- `treinos_montados` — nova tabela (link com paciente + exercicios)
+- `medicamentos_catalogo` / `cid10_catalogo` — tabelas read-only com seed
+- `exames_importados` — nova tabela (PDF + extração IA)
+- Sinais vitais e blocos extras vão em `avaliacoes_identidade.dados_adicionais` (jsonb já existe) — sem nova tabela
+
+**Edge functions novas:**
+- `extract-exame-pdf` (Gemini Vision)
+- `sugerir-treino` (Gemini, opcional)
+
+**Frontend:**
+- Componentes condicionais via `temBloco(lente, 'sinais_vitais')` — padrão já existente
+- Templates de evolução por lente (já suportado em `perfis_profissionais.template_evolucao`)
+
+**Migrations:** uma por sprint, com `IF NOT EXISTS` em tudo, GRANTs explícitos, RLS por terapeuta_id.
+
+**Validação:** cada sprint sobe em preview, eu testo cadastro/login/MyID antes de publicar.
+
+---
+
+## Próximo passo
+
+Confirma se a divisão das 3 sprints faz sentido e eu começo pelo **Sprint A (fundação das lentes)** — é o de menor risco e já libera a UI de escolher perfil profissional. Depois decidimos a ordem entre Medicina e Educação Física.
+
+Se preferir, posso também:
+- Reduzir o escopo médico inicial para só Clínico + Orto (deixar as outras especialidades pra fase seguinte)
+- Começar pela Educação Física se for prioridade comercial
