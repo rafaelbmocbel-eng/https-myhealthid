@@ -22,7 +22,7 @@ export interface SinaisVitais {
 
 export type NovoSinalVital = Omit<
   SinaisVitais,
-  'id' | 'terapeuta_id' | 'created_at'
+  'id' | 'terapeuta_id' | 'paciente_id' | 'created_at'
 >;
 
 export function useSinaisVitais(pacienteId: string | undefined) {
