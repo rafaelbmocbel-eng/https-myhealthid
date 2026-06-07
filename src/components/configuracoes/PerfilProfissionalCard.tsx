@@ -22,6 +22,17 @@ const OPCOES: { value: PerfilProfissional; label: string; hint: string }[] = [
   { value: 'terapeuta_ocupacional', label: 'Terapeuta Ocupacional', hint: 'AVDs, ambiente, ocupações significativas' },
 ];
 
+const ESPECIALIDADES_MEDICAS: { value: string; label: string; hint: string }[] = [
+  { value: 'clinico_geral', label: 'Clínico Geral / Família', hint: 'Anamnese SOAP, sinais vitais, prescrição' },
+  { value: 'ortopedista', label: 'Ortopedista', hint: 'MyID + testes ortopédicos por região' },
+  { value: 'endocrinologista', label: 'Endocrinologista', hint: 'Glicemia, HbA1c, perfil lipídico, TSH, IMC' },
+  { value: 'cardiologista', label: 'Cardiologista', hint: 'PA, FC, ECG, risco cardiovascular' },
+  { value: 'psiquiatra', label: 'Psiquiatra', hint: 'PHQ-9, GAD-7, sono, medicação' },
+  { value: 'ginecologista', label: 'Ginecologista', hint: 'Ciclo, gestação, preventivos' },
+  { value: 'pediatra', label: 'Pediatra', hint: 'Crescimento, marcos, vacinação' },
+  { value: 'dermatologista', label: 'Dermatologista', hint: 'Lesões, fotos, checklist ABCDE' },
+];
+
 export default function PerfilProfissionalCard() {
   const { user } = useAuth();
   const { toast } = useToast();
