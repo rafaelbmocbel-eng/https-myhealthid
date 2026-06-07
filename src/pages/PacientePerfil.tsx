@@ -1093,6 +1093,9 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'exames') && id && <ImportarExameCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'antropometria') && id && <AntropometriaCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
