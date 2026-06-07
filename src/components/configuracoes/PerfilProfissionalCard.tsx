@@ -156,6 +156,37 @@ export default function PerfilProfissionalCard() {
           {sel && <p className="text-[11px] text-muted-foreground mt-1.5">{sel.hint}</p>}
         </div>
 
+        {valor === 'medico' && (
+          <div>
+            <Label className="text-xs font-medium mb-1.5 block flex items-center gap-2">
+              Especialidade médica
+              {salvandoEsp && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
+              {salvoEsp && <CheckCircle2 className="h-3 w-3 text-emerald-600" />}
+            </Label>
+            <Select
+              value={especialidade || undefined}
+              onValueChange={salvarEspecialidade}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione sua especialidade" />
+              </SelectTrigger>
+              <SelectContent>
+                {ESPECIALIDADES_MEDICAS.map(e => (
+                  <SelectItem key={e.value} value={e.value}>{e.label}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {especialidade && (
+              <p className="text-[11px] text-muted-foreground mt-1.5">
+                {ESPECIALIDADES_MEDICAS.find(e => e.value === especialidade)?.hint}
+              </p>
+            )}
+            <p className="text-[10px] text-muted-foreground mt-1">
+              A especialidade pode ser alterada quando precisar — ela apenas refina os blocos exibidos.
+            </p>
+          </div>
+        )}
+
         {confirmado ? (
           <div className="rounded-xl bg-muted/40 border border-border/40 p-3 text-[12px] text-muted-foreground flex gap-2">
             <ShieldAlert className="h-4 w-4 shrink-0 mt-0.5 text-amber-600" />
