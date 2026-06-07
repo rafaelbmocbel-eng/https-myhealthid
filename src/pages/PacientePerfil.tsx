@@ -63,6 +63,7 @@ import { useConvenios } from '@/hooks/useConvenios';
 import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
+import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1084,6 +1085,7 @@ export default function PacientePerfil() {
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
           <TabsContent value="presencial" className="mt-4 space-y-4">
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}

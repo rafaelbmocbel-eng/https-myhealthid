@@ -1362,6 +1362,48 @@ export type Database = {
         }
         Relationships: []
       }
+      diagnosticos_paciente: {
+        Row: {
+          ativo: boolean
+          cid_codigo: string
+          cid_descricao: string
+          created_at: string
+          data_diagnostico: string | null
+          id: string
+          observacao: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          cid_codigo: string
+          cid_descricao: string
+          created_at?: string
+          data_diagnostico?: string | null
+          id?: string
+          observacao?: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          cid_codigo?: string
+          cid_descricao?: string
+          created_at?: string
+          data_diagnostico?: string | null
+          id?: string
+          observacao?: string | null
+          paciente_id?: string
+          terapeuta_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       documentos_emitidos: {
         Row: {
           conteudo: Json
