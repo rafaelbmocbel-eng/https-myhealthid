@@ -3346,6 +3346,7 @@ export type Database = {
           crefito: string | null
           email: string
           especialidade: string | null
+          especialidade_medica: string | null
           id: string
           nome: string
           perfil_profissional: Database["public"]["Enums"]["perfil_profissional"]
@@ -3363,6 +3364,7 @@ export type Database = {
           crefito?: string | null
           email?: string
           especialidade?: string | null
+          especialidade_medica?: string | null
           id?: string
           nome?: string
           perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
@@ -3380,6 +3382,7 @@ export type Database = {
           crefito?: string | null
           email?: string
           especialidade?: string | null
+          especialidade_medica?: string | null
           id?: string
           nome?: string
           perfil_profissional?: Database["public"]["Enums"]["perfil_profissional"]
