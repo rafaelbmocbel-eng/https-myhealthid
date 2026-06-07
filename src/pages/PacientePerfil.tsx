@@ -63,6 +63,7 @@ import { useConvenios } from '@/hooks/useConvenios';
 import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
+import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
