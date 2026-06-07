@@ -483,3 +483,97 @@ export const TIPO_DOCUMENTO_LABEL: Record<TipoDocumento, string> = {
   recibo: 'Recibo de Pagamento',
   laudo_cinetico: 'Laudo Cinético-Funcional',
 };
+
+// ============ RECEITA MÉDICA ============
+
+export interface ReceitaItem {
+  nome: string;
+  apresentacao?: string;
+  posologia: string;
+  quantidade?: string;
+}
+
+export interface DocReceitaData {
+  itens: ReceitaItem[];
+  orientacoes?: string;
+  tipo?: 'simples' | 'especial';
+}
+
+export async function gerarReceita(
+  input: BaseInput & { dados: DocReceitaData }
+): Promise<jsPDF> {
+  const doc = new jsPDF();
+  await drawHeader(doc, input.clinica);
+  const titulo = input.dados.tipo === 'especial' ? 'Receituário Especial' : 'Receituário Médico';
+  let y = drawTitle(doc, titulo, 50);
+
+  doc.setTextColor(...MUTED);
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.text('PACIENTE', 25, y);
+  doc.setTextColor(...TEXT);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.text(pacienteLine(input.paciente), 25, y + 5);
+  y += 14;
+
+  input.dados.itens.forEach((it, idx) => {
+    y = ensureSpace(doc, y, 22);
+    doc.setTextColor(...PRIMARY);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.text(`${idx + 1}.`, 25, y);
+    doc.setTextColor(...TEXT);
+    const nomeLinha = `${it.nome}${it.apresentacao ? ' — ' + it.apresentacao : ''}${it.quantidade ? '  ·  ' + it.quantidade : ''}`;
+    doc.text(nomeLinha, 32, y);
+    y += 5;
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    doc.setTextColor(60, 60, 70);
+    const pos = doc.splitTextToSize(`Posologia: ${it.posologia}`, 160);
+    doc.text(pos, 32, y);
+    y += pos.length * 5 + 4;
+  });
+
+  if (input.dados.orientacoes) {
+    y = ensureSpace(doc, y, 24);
+    y += 2;
+    doc.setTextColor(...MUTED);
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(8);
+    doc.text('ORIENTAÇÕES GERAIS', 25, y);
+    doc.setTextColor(...TEXT);
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(10);
+    const orient = doc.splitTextToSize(input.dados.orientacoes, 160);
+    doc.text(orient, 25, y + 5);
+  }
+
+  await drawFooter(doc, input.terapeuta, input.clinica);
+  return doc;
+}
+
+// ============ ATESTADO MÉDICO ============
+
+export interface DocAtestadoMedicoData {
+  diasAfastamento: number;
+  dataInicio: string;
+  cid?: string;
+  cidDescricao?: string;
+  motivo?: string;
+}
+
+export async function gerarAtestadoMedico(
+  input: BaseInput & { dados: DocAtestadoMedicoData }
+): Promise<jsPDF> {
+  const doc = new jsPDF();
+  await drawHeader(doc, input.clinica);
+  let y = drawTitle(doc, 'Atestado Médico', 50);
+
+  const dias = input.dados.diasAfastamento;
+  const text = `Atesto, para os devidos fins, que ${pacienteLine(input.paciente)} esteve sob meus cuidados médicos e necessita de afastamento de suas atividades habituais (laborais e/ou escolares) por um período de ${dias} (${dias === 1 ? 'um' : dias}) dia${dias > 1 ? 's' : ''}, a contar de ${fmtDate(input.dados.dataInicio)}.${input.dados.cid ? `\n\nCID-10: ${input.dados.cid}${input.dados.cidDescricao ? ' — ' + input.dados.cidDescricao : ''}` : ''}${input.dados.motivo ? `\n\nObservações: ${input.dados.motivo}` : ''}\n\nEmitido em conformidade com a Resolução CFM nº 1.658/2002 e suas alterações.`;
+
+  y = drawBody(doc, text, y + 4);
+  await drawFooter(doc, input.terapeuta, input.clinica);
+  return doc;
+}
