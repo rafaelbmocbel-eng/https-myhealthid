@@ -62,6 +62,8 @@ import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
+import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
+import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 11);
@@ -99,6 +101,7 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: acessoClinico } = useAcessoClinicoPaciente(id);
+  const { data: lenteAtiva } = useLenteAtiva();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
@@ -1080,6 +1083,7 @@ export default function PacientePerfil() {
 
           {/* TAB: AVALIAÇÃO PRESENCIAL — Avatar 3D + Voz/Áudio/Escrita */}
           <TabsContent value="presencial" className="mt-4 space-y-4">
+            {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
