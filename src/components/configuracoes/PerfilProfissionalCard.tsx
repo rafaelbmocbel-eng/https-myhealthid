@@ -39,9 +39,12 @@ export default function PerfilProfissionalCard() {
   const qc = useQueryClient();
   const { data: lente } = useLenteAtiva();
   const [valor, setValor] = useState<PerfilProfissional>('fisioterapeuta');
+  const [especialidade, setEspecialidade] = useState<string>('');
   const [confirmacao, setConfirmacao] = useState('');
   const [salvando, setSalvando] = useState(false);
+  const [salvandoEsp, setSalvandoEsp] = useState(false);
   const [salvo, setSalvo] = useState(false);
+  const [salvoEsp, setSalvoEsp] = useState(false);
 
   // Status de confirmação no banco
   const { data: status } = useQuery({
