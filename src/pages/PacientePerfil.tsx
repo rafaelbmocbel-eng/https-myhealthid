@@ -66,6 +66,9 @@ import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
 import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
 import PrescricaoMedicaCard from '@/components/medicina/PrescricaoMedicaCard';
 import ImportarExameCard from '@/components/medicina/ImportarExameCard';
+import AntropometriaCard from '@/components/educador/AntropometriaCard';
+import TestesFuncionaisCard from '@/components/educador/TestesFuncionaisCard';
+import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
