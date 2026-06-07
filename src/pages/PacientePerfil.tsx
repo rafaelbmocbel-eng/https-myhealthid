@@ -64,6 +64,7 @@ import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCar
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
 import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
+import PrescricaoMedicaCard from '@/components/medicina/PrescricaoMedicaCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1086,6 +1087,7 @@ export default function PacientePerfil() {
           <TabsContent value="presencial" className="mt-4 space-y-4">
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
+            {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}

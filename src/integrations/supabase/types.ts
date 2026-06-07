@@ -265,6 +265,48 @@ export type Database = {
           },
         ]
       }
+      atestados_medicos: {
+        Row: {
+          cid_codigo: string | null
+          cid_descricao: string | null
+          created_at: string
+          data_inicio: string
+          dias_afastamento: number
+          id: string
+          motivo: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          cid_codigo?: string | null
+          cid_descricao?: string | null
+          created_at?: string
+          data_inicio?: string
+          dias_afastamento?: number
+          id?: string
+          motivo?: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          cid_codigo?: string | null
+          cid_descricao?: string | null
+          created_at?: string
+          data_inicio?: string
+          dias_afastamento?: number
+          id?: string
+          motivo?: string | null
+          paciente_id?: string
+          terapeuta_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ausencias_terapeuta: {
         Row: {
           cor: string | null
@@ -3472,6 +3514,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      prescricoes_paciente: {
+        Row: {
+          created_at: string
+          data_emissao: string
+          id: string
+          itens: Json
+          orientacoes: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_emissao?: string
+          id?: string
+          itens?: Json
+          orientacoes?: string | null
+          paciente_id: string
+          terapeuta_id: string
+          tipo?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_emissao?: string
+          id?: string
+          itens?: Json
+          orientacoes?: string | null
+          paciente_id?: string
+          terapeuta_id?: string
+          tipo?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       profiles: {
         Row: {
