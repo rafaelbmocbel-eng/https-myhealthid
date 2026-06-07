@@ -101,6 +101,7 @@ export default function PacientePerfil() {
   const navigate = useNavigate();
   const location = useLocation();
   const { data: acessoClinico } = useAcessoClinicoPaciente(id);
+  const { data: lenteAtiva } = useLenteAtiva();
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
