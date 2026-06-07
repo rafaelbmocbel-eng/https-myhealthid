@@ -1089,6 +1089,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'exames') && id && <ImportarExameCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
