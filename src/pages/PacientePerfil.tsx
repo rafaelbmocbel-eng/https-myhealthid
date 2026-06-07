@@ -62,6 +62,8 @@ import { useEquipe } from '@/hooks/useEquipe';
 import { useConvenios } from '@/hooks/useConvenios';
 import WearableMonitorCard from '@/components/perfil-paciente/WearableMonitorCard';
 import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
+import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
+import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
   const d = v.replace(/\D/g, '').slice(0, 11);
