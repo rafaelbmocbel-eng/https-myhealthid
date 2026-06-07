@@ -700,6 +700,27 @@ export type Database = {
           },
         ]
       }
+      cid10_catalogo: {
+        Row: {
+          categoria: string | null
+          codigo: string
+          created_at: string
+          descricao: string
+        }
+        Insert: {
+          categoria?: string | null
+          codigo: string
+          created_at?: string
+          descricao: string
+        }
+        Update: {
+          categoria?: string | null
+          codigo?: string
+          created_at?: string
+          descricao?: string
+        }
+        Relationships: []
+      }
       clinica_convites: {
         Row: {
           clinica_id: string
@@ -1892,6 +1913,48 @@ export type Database = {
           },
         ]
       }
+      exames_importados: {
+        Row: {
+          arquivo_url: string | null
+          created_at: string
+          dados_extraidos: Json | null
+          data_exame: string | null
+          erro: string | null
+          id: string
+          paciente_id: string
+          status: string
+          terapeuta_id: string
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          arquivo_url?: string | null
+          created_at?: string
+          dados_extraidos?: Json | null
+          data_exame?: string | null
+          erro?: string | null
+          id?: string
+          paciente_id: string
+          status?: string
+          terapeuta_id: string
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          arquivo_url?: string | null
+          created_at?: string
+          dados_extraidos?: Json | null
+          data_exame?: string | null
+          erro?: string | null
+          id?: string
+          paciente_id?: string
+          status?: string
+          terapeuta_id?: string
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       exercicios_biblioteca: {
         Row: {
           categoria: string
@@ -2370,6 +2433,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      medicamentos_catalogo: {
+        Row: {
+          apresentacao: string | null
+          classe: string | null
+          created_at: string
+          id: string
+          nome: string
+          posologia_sugerida: string | null
+          principio_ativo: string | null
+        }
+        Insert: {
+          apresentacao?: string | null
+          classe?: string | null
+          created_at?: string
+          id?: string
+          nome: string
+          posologia_sugerida?: string | null
+          principio_ativo?: string | null
+        }
+        Update: {
+          apresentacao?: string | null
+          classe?: string | null
+          created_at?: string
+          id?: string
+          nome?: string
+          posologia_sugerida?: string | null
+          principio_ativo?: string | null
+        }
+        Relationships: []
       }
       mensagens_whatsapp: {
         Row: {
@@ -3949,6 +4042,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      sinais_vitais: {
+        Row: {
+          altura_cm: number | null
+          created_at: string
+          fc: number | null
+          glicemia: number | null
+          id: string
+          medido_em: string
+          observacoes: string | null
+          pa_diastolica: number | null
+          pa_sistolica: number | null
+          paciente_id: string
+          peso_kg: number | null
+          spo2: number | null
+          temperatura: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          altura_cm?: number | null
+          created_at?: string
+          fc?: number | null
+          glicemia?: number | null
+          id?: string
+          medido_em?: string
+          observacoes?: string | null
+          pa_diastolica?: number | null
+          pa_sistolica?: number | null
+          paciente_id: string
+          peso_kg?: number | null
+          spo2?: number | null
+          temperatura?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          altura_cm?: number | null
+          created_at?: string
+          fc?: number | null
+          glicemia?: number | null
+          id?: string
+          medido_em?: string
+          observacoes?: string | null
+          pa_diastolica?: number | null
+          pa_sistolica?: number | null
+          paciente_id?: string
+          peso_kg?: number | null
+          spo2?: number | null
+          temperatura?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       sleep_logs: {
         Row: {
@@ -5689,6 +5836,8 @@ export type Database = {
         Args: { p_terapeuta_id: string }
         Returns: undefined
       }
+      show_limit: { Args: never; Returns: number }
+      show_trgm: { Args: { "": string }; Returns: string[] }
       track_agenda_link_access: {
         Args: { p_token: string }
         Returns: undefined
