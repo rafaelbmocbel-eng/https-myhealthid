@@ -65,6 +65,7 @@ import PacienteAvatarUpload from '@/components/paciente/PacienteAvatarUpload';
 import SinaisVitaisCard from '@/components/medicina/SinaisVitaisCard';
 import DiagnosticosCID10Card from '@/components/medicina/DiagnosticosCID10Card';
 import PrescricaoMedicaCard from '@/components/medicina/PrescricaoMedicaCard';
+import ImportarExameCard from '@/components/medicina/ImportarExameCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1088,6 +1089,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'vitais') && id && <SinaisVitaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'cid') && id && <DiagnosticosCID10Card pacienteId={id} />}
             {temBloco(lenteAtiva, 'prescricao') && id && <PrescricaoMedicaCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'exames') && id && <ImportarExameCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
