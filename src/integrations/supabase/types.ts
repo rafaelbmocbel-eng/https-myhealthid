@@ -218,6 +218,69 @@ export type Database = {
           },
         ]
       }
+      antropometria: {
+        Row: {
+          altura_cm: number | null
+          braco_cm: number | null
+          cintura_cm: number | null
+          coxa_cm: number | null
+          created_at: string
+          data_medicao: string
+          gordura_pct: number | null
+          id: string
+          imc: number | null
+          massa_magra_kg: number | null
+          observacao: string | null
+          paciente_id: string
+          panturrilha_cm: number | null
+          pescoco_cm: number | null
+          peso_kg: number | null
+          quadril_cm: number | null
+          terapeuta_id: string
+          updated_at: string
+        }
+        Insert: {
+          altura_cm?: number | null
+          braco_cm?: number | null
+          cintura_cm?: number | null
+          coxa_cm?: number | null
+          created_at?: string
+          data_medicao?: string
+          gordura_pct?: number | null
+          id?: string
+          imc?: number | null
+          massa_magra_kg?: number | null
+          observacao?: string | null
+          paciente_id: string
+          panturrilha_cm?: number | null
+          pescoco_cm?: number | null
+          peso_kg?: number | null
+          quadril_cm?: number | null
+          terapeuta_id: string
+          updated_at?: string
+        }
+        Update: {
+          altura_cm?: number | null
+          braco_cm?: number | null
+          cintura_cm?: number | null
+          coxa_cm?: number | null
+          created_at?: string
+          data_medicao?: string
+          gordura_pct?: number | null
+          id?: string
+          imc?: number | null
+          massa_magra_kg?: number | null
+          observacao?: string | null
+          paciente_id?: string
+          panturrilha_cm?: number | null
+          pescoco_cm?: number | null
+          peso_kg?: number | null
+          quadril_cm?: number | null
+          terapeuta_id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assinaturas: {
         Row: {
           created_at: string
@@ -3415,6 +3478,54 @@ export type Database = {
         }
         Relationships: []
       }
+      planos_treino: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          duracao_semanas: number | null
+          estrutura: Json
+          frequencia_semanal: number | null
+          id: string
+          nivel: string | null
+          objetivo: string | null
+          paciente_id: string
+          restricoes: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          duracao_semanas?: number | null
+          estrutura?: Json
+          frequencia_semanal?: number | null
+          id?: string
+          nivel?: string | null
+          objetivo?: string | null
+          paciente_id: string
+          restricoes?: string | null
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          duracao_semanas?: number | null
+          estrutura?: Json
+          frequencia_semanal?: number | null
+          id?: string
+          nivel?: string | null
+          objetivo?: string | null
+          paciente_id?: string
+          restricoes?: string | null
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       preferencias_notificacao: {
         Row: {
           alerta_falta: boolean
@@ -4781,6 +4892,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      testes_funcionais_paciente: {
+        Row: {
+          classificacao: string | null
+          created_at: string
+          data_teste: string
+          id: string
+          observacao: string | null
+          paciente_id: string
+          resultado: number | null
+          terapeuta_id: string
+          tipo_teste: string
+          unidade: string | null
+          updated_at: string
+        }
+        Insert: {
+          classificacao?: string | null
+          created_at?: string
+          data_teste?: string
+          id?: string
+          observacao?: string | null
+          paciente_id: string
+          resultado?: number | null
+          terapeuta_id: string
+          tipo_teste: string
+          unidade?: string | null
+          updated_at?: string
+        }
+        Update: {
+          classificacao?: string | null
+          created_at?: string
+          data_teste?: string
+          id?: string
+          observacao?: string | null
+          paciente_id?: string
+          resultado?: number | null
+          terapeuta_id?: string
+          tipo_teste?: string
+          unidade?: string | null
+          updated_at?: string
+        }
+        Relationships: []
       }
       tracking_config: {
         Row: {
