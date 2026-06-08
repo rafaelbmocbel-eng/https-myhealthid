@@ -845,6 +845,7 @@ export default function Agenda() {
           status: payload.status,
           tipo_atendimento: payload.tipo_atendimento,
           observacoes: payload.observacoes,
+          membro_equipe_id: payload.membro_equipe_id,
         };
 
         await updateFutureAgendamentos(
