@@ -3478,6 +3478,59 @@ export type Database = {
         }
         Relationships: []
       }
+      planos_alimentares: {
+        Row: {
+          ativo: boolean
+          calorias_alvo: number | null
+          created_at: string
+          id: string
+          macros_alvo: Json | null
+          objetivo: string | null
+          observacoes: string | null
+          paciente_id: string
+          plano: Json
+          terapeuta_id: string
+          titulo: string
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          calorias_alvo?: number | null
+          created_at?: string
+          id?: string
+          macros_alvo?: Json | null
+          objetivo?: string | null
+          observacoes?: string | null
+          paciente_id: string
+          plano: Json
+          terapeuta_id: string
+          titulo: string
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          calorias_alvo?: number | null
+          created_at?: string
+          id?: string
+          macros_alvo?: Json | null
+          objetivo?: string | null
+          observacoes?: string | null
+          paciente_id?: string
+          plano?: Json
+          terapeuta_id?: string
+          titulo?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "planos_alimentares_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       planos_treino: {
         Row: {
           ativo: boolean
@@ -4171,6 +4224,50 @@ export type Database = {
             columns: ["recompensa_id"]
             isOneToOne: false
             referencedRelation: "recompensas_catalogo"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recordatorios_24h: {
+        Row: {
+          created_at: string
+          data_referencia: string
+          id: string
+          observacoes: string | null
+          paciente_id: string
+          refeicoes: Json
+          terapeuta_id: string
+          totais: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          data_referencia?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id: string
+          refeicoes?: Json
+          terapeuta_id: string
+          totais?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          data_referencia?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string
+          refeicoes?: Json
+          terapeuta_id?: string
+          totais?: Json | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recordatorios_24h_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
             referencedColumns: ["id"]
           },
         ]

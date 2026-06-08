@@ -69,6 +69,8 @@ import ImportarExameCard from '@/components/medicina/ImportarExameCard';
 import AntropometriaCard from '@/components/educador/AntropometriaCard';
 import TestesFuncionaisCard from '@/components/educador/TestesFuncionaisCard';
 import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
+import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
+import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1096,6 +1098,8 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'antropometria') && id && <AntropometriaCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
