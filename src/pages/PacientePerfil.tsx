@@ -69,6 +69,8 @@ import ImportarExameCard from '@/components/medicina/ImportarExameCard';
 import AntropometriaCard from '@/components/educador/AntropometriaCard';
 import TestesFuncionaisCard from '@/components/educador/TestesFuncionaisCard';
 import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
+import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
+import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
