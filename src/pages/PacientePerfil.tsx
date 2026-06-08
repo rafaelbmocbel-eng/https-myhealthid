@@ -1098,6 +1098,8 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'antropometria') && id && <AntropometriaCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'testes_funcionais') && id && <TestesFuncionaisCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_treino') && id && <PlanoTreinoCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
+            {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
