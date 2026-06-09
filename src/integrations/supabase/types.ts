@@ -1575,6 +1575,59 @@ export type Database = {
         }
         Relationships: []
       }
+      escalas_psicologia: {
+        Row: {
+          classificacao: string | null
+          created_at: string
+          data_aplicacao: string
+          id: string
+          observacoes: string | null
+          paciente_id: string
+          pontuacao_total: number
+          respostas: Json
+          severidade: string | null
+          terapeuta_id: string
+          tipo_escala: string
+          updated_at: string
+        }
+        Insert: {
+          classificacao?: string | null
+          created_at?: string
+          data_aplicacao?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id: string
+          pontuacao_total?: number
+          respostas?: Json
+          severidade?: string | null
+          terapeuta_id: string
+          tipo_escala: string
+          updated_at?: string
+        }
+        Update: {
+          classificacao?: string | null
+          created_at?: string
+          data_aplicacao?: string
+          id?: string
+          observacoes?: string | null
+          paciente_id?: string
+          pontuacao_total?: number
+          respostas?: Json
+          severidade?: string | null
+          terapeuta_id?: string
+          tipo_escala?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "escalas_psicologia_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evento_inscricoes: {
         Row: {
           created_at: string
