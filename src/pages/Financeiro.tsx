@@ -11,6 +11,7 @@ import FinanceiroHeaderKPIs from '@/components/financeiro/FinanceiroHeaderKPIs';
 import AReceber from '@/components/financeiro/AReceber';
 import DespesasManager from '@/components/financeiro/DespesasManager';
 import ConvenioReconciliacao from '@/components/financeiro/ConvenioReconciliacao';
+import TissManager from '@/components/financeiro/TissManager';
 
 export default function Financeiro({ embedded = false }: { embedded?: boolean } = {}) {
   return (
@@ -28,7 +29,7 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
 
       <Tabs defaultValue="mensal" className="w-full">
 
-        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-7">
+        <TabsList className="grid w-full grid-cols-4 sm:grid-cols-8">
           <TabsTrigger value="mensal">Mensal</TabsTrigger>
           <TabsTrigger value="receber">A Receber</TabsTrigger>
           <TabsTrigger value="despesas">Despesas</TabsTrigger>
@@ -36,6 +37,7 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
           <TabsTrigger value="fechamento">Fechamento</TabsTrigger>
           <TabsTrigger value="convenios">Convênios</TabsTrigger>
           <TabsTrigger value="repasses">Repasses</TabsTrigger>
+          <TabsTrigger value="tiss">TISS</TabsTrigger>
         </TabsList>
 
         <TabsContent value="mensal" className="space-y-4 sm:space-y-5 mt-4">
