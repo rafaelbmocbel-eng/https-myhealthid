@@ -5085,6 +5085,325 @@ export type Database = {
         }
         Relationships: []
       }
+      tiss_config: {
+        Row: {
+          cnes: string | null
+          cnpj_prestador: string | null
+          codigo_prestador_operadora: string | null
+          contato: Json | null
+          cpf_prestador: string | null
+          created_at: string
+          endereco: Json | null
+          id: string
+          nome_prestador: string | null
+          registro_ans: string | null
+          terapeuta_id: string
+          tipo_prestador: string | null
+          updated_at: string
+          versao_tiss: string
+        }
+        Insert: {
+          cnes?: string | null
+          cnpj_prestador?: string | null
+          codigo_prestador_operadora?: string | null
+          contato?: Json | null
+          cpf_prestador?: string | null
+          created_at?: string
+          endereco?: Json | null
+          id?: string
+          nome_prestador?: string | null
+          registro_ans?: string | null
+          terapeuta_id: string
+          tipo_prestador?: string | null
+          updated_at?: string
+          versao_tiss?: string
+        }
+        Update: {
+          cnes?: string | null
+          cnpj_prestador?: string | null
+          codigo_prestador_operadora?: string | null
+          contato?: Json | null
+          cpf_prestador?: string | null
+          created_at?: string
+          endereco?: Json | null
+          id?: string
+          nome_prestador?: string | null
+          registro_ans?: string | null
+          terapeuta_id?: string
+          tipo_prestador?: string | null
+          updated_at?: string
+          versao_tiss?: string
+        }
+        Relationships: []
+      }
+      tiss_guia_procedimentos: {
+        Row: {
+          codigo_procedimento: string
+          codigo_tabela: string
+          created_at: string
+          data_execucao: string
+          descricao: string
+          guia_id: string
+          hora_final: string | null
+          hora_inicial: string | null
+          id: string
+          quantidade: number
+          reducao_acrescimo: number | null
+          sequencia: number
+          tecnica_utilizada: string | null
+          valor_total: number
+          valor_unitario: number
+          via_acesso: string | null
+        }
+        Insert: {
+          codigo_procedimento: string
+          codigo_tabela?: string
+          created_at?: string
+          data_execucao?: string
+          descricao: string
+          guia_id: string
+          hora_final?: string | null
+          hora_inicial?: string | null
+          id?: string
+          quantidade?: number
+          reducao_acrescimo?: number | null
+          sequencia?: number
+          tecnica_utilizada?: string | null
+          valor_total?: number
+          valor_unitario?: number
+          via_acesso?: string | null
+        }
+        Update: {
+          codigo_procedimento?: string
+          codigo_tabela?: string
+          created_at?: string
+          data_execucao?: string
+          descricao?: string
+          guia_id?: string
+          hora_final?: string | null
+          hora_inicial?: string | null
+          id?: string
+          quantidade?: number
+          reducao_acrescimo?: number | null
+          sequencia?: number
+          tecnica_utilizada?: string | null
+          valor_total?: number
+          valor_unitario?: number
+          via_acesso?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_guia_procedimentos_guia_id_fkey"
+            columns: ["guia_id"]
+            isOneToOne: false
+            referencedRelation: "tiss_guias"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiss_guias: {
+        Row: {
+          carater_atendimento: string | null
+          convenio_id: string | null
+          created_at: string
+          data_atendimento: string
+          data_autorizacao: string | null
+          data_validade_senha: string | null
+          id: string
+          indicacao_acidente: string | null
+          lote_id: string | null
+          nome_beneficiario: string | null
+          numero_carteira: string | null
+          numero_guia_operadora: string | null
+          numero_guia_prestador: string | null
+          observacoes: string | null
+          paciente_id: string | null
+          senha_autorizacao: string | null
+          sessao_id: string | null
+          status: string
+          terapeuta_id: string
+          tipo_consulta: string | null
+          tipo_guia: string
+          updated_at: string
+          valor_total: number | null
+          xml_gerado: string | null
+        }
+        Insert: {
+          carater_atendimento?: string | null
+          convenio_id?: string | null
+          created_at?: string
+          data_atendimento?: string
+          data_autorizacao?: string | null
+          data_validade_senha?: string | null
+          id?: string
+          indicacao_acidente?: string | null
+          lote_id?: string | null
+          nome_beneficiario?: string | null
+          numero_carteira?: string | null
+          numero_guia_operadora?: string | null
+          numero_guia_prestador?: string | null
+          observacoes?: string | null
+          paciente_id?: string | null
+          senha_autorizacao?: string | null
+          sessao_id?: string | null
+          status?: string
+          terapeuta_id: string
+          tipo_consulta?: string | null
+          tipo_guia?: string
+          updated_at?: string
+          valor_total?: number | null
+          xml_gerado?: string | null
+        }
+        Update: {
+          carater_atendimento?: string | null
+          convenio_id?: string | null
+          created_at?: string
+          data_atendimento?: string
+          data_autorizacao?: string | null
+          data_validade_senha?: string | null
+          id?: string
+          indicacao_acidente?: string | null
+          lote_id?: string | null
+          nome_beneficiario?: string | null
+          numero_carteira?: string | null
+          numero_guia_operadora?: string | null
+          numero_guia_prestador?: string | null
+          observacoes?: string | null
+          paciente_id?: string | null
+          senha_autorizacao?: string | null
+          sessao_id?: string | null
+          status?: string
+          terapeuta_id?: string
+          tipo_consulta?: string | null
+          tipo_guia?: string
+          updated_at?: string
+          valor_total?: number | null
+          xml_gerado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_guias_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiss_guias_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tiss_guias_sessao_id_fkey"
+            columns: ["sessao_id"]
+            isOneToOne: false
+            referencedRelation: "controle_sessoes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiss_lotes: {
+        Row: {
+          competencia: string
+          convenio_id: string | null
+          created_at: string
+          data_envio: string | null
+          id: string
+          numero_lote: string
+          observacoes: string | null
+          qtd_guias: number
+          status: string
+          terapeuta_id: string
+          updated_at: string
+          valor_total: number
+          xml_gerado: string | null
+        }
+        Insert: {
+          competencia: string
+          convenio_id?: string | null
+          created_at?: string
+          data_envio?: string | null
+          id?: string
+          numero_lote: string
+          observacoes?: string | null
+          qtd_guias?: number
+          status?: string
+          terapeuta_id: string
+          updated_at?: string
+          valor_total?: number
+          xml_gerado?: string | null
+        }
+        Update: {
+          competencia?: string
+          convenio_id?: string | null
+          created_at?: string
+          data_envio?: string | null
+          id?: string
+          numero_lote?: string
+          observacoes?: string | null
+          qtd_guias?: number
+          status?: string
+          terapeuta_id?: string
+          updated_at?: string
+          valor_total?: number
+          xml_gerado?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_lotes_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tiss_tuss_codigos: {
+        Row: {
+          ativo: boolean
+          codigo: string
+          convenio_id: string | null
+          created_at: string
+          descricao: string
+          id: string
+          terapeuta_id: string
+          updated_at: string
+          valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          codigo: string
+          convenio_id?: string | null
+          created_at?: string
+          descricao: string
+          id?: string
+          terapeuta_id: string
+          updated_at?: string
+          valor?: number
+        }
+        Update: {
+          ativo?: boolean
+          codigo?: string
+          convenio_id?: string | null
+          created_at?: string
+          descricao?: string
+          id?: string
+          terapeuta_id?: string
+          updated_at?: string
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tiss_tuss_codigos_convenio_id_fkey"
+            columns: ["convenio_id"]
+            isOneToOne: false
+            referencedRelation: "convenios"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tracking_config: {
         Row: {
           ativos: boolean
