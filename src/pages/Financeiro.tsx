@@ -71,6 +71,10 @@ export default function Financeiro({ embedded = false }: { embedded?: boolean } 
         <TabsContent value="repasses" className="mt-4">
           <RepasseConfigManager />
         </TabsContent>
+
+        <TabsContent value="tiss" className="mt-4">
+          <TissManager />
+        </TabsContent>
       </Tabs>
     </div>
   );
