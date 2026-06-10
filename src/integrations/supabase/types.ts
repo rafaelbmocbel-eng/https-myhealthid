@@ -1869,6 +1869,80 @@ export type Database = {
         }
         Relationships: []
       }
+      eventos_clinicos_anatomicos: {
+        Row: {
+          created_at: string
+          data_inicio: string
+          data_resolucao: string | null
+          diagnostico_cid: string | null
+          estrutura: string | null
+          evento_origem_id: string | null
+          id: string
+          metadata: Json
+          notas_clinicas: string | null
+          origem: Database["public"]["Enums"]["origem_achado_anatomico"]
+          paciente_id: string
+          regiao_id: string
+          severidade: number
+          sistema: Database["public"]["Enums"]["sistema_corporal"]
+          status: Database["public"]["Enums"]["status_evento_anatomico"]
+          terapeuta_id: string
+          tipo_achado: string
+          updated_at: string
+          visivel_paciente: boolean
+        }
+        Insert: {
+          created_at?: string
+          data_inicio?: string
+          data_resolucao?: string | null
+          diagnostico_cid?: string | null
+          estrutura?: string | null
+          evento_origem_id?: string | null
+          id?: string
+          metadata?: Json
+          notas_clinicas?: string | null
+          origem?: Database["public"]["Enums"]["origem_achado_anatomico"]
+          paciente_id: string
+          regiao_id: string
+          severidade?: number
+          sistema?: Database["public"]["Enums"]["sistema_corporal"]
+          status?: Database["public"]["Enums"]["status_evento_anatomico"]
+          terapeuta_id: string
+          tipo_achado: string
+          updated_at?: string
+          visivel_paciente?: boolean
+        }
+        Update: {
+          created_at?: string
+          data_inicio?: string
+          data_resolucao?: string | null
+          diagnostico_cid?: string | null
+          estrutura?: string | null
+          evento_origem_id?: string | null
+          id?: string
+          metadata?: Json
+          notas_clinicas?: string | null
+          origem?: Database["public"]["Enums"]["origem_achado_anatomico"]
+          paciente_id?: string
+          regiao_id?: string
+          severidade?: number
+          sistema?: Database["public"]["Enums"]["sistema_corporal"]
+          status?: Database["public"]["Enums"]["status_evento_anatomico"]
+          terapeuta_id?: string
+          tipo_achado?: string
+          updated_at?: string
+          visivel_paciente?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "eventos_clinicos_anatomicos_paciente_id_fkey"
+            columns: ["paciente_id"]
+            isOneToOne: false
+            referencedRelation: "pacientes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_ingestion_log: {
         Row: {
           articles_fetched: number | null
@@ -6610,6 +6684,13 @@ export type Database = {
         | "ANY"
       nivel_paciente: "bronze" | "prata" | "ouro" | "platina" | "diamante"
       notif_canal: "in_app" | "whatsapp" | "push"
+      origem_achado_anatomico:
+        | "subjetivo_myid"
+        | "exame_clinico"
+        | "exame_imagem"
+        | "voz_ia"
+        | "autocadastro_paciente"
+        | "outro"
       perfil_profissional:
         | "fisioterapeuta"
         | "medico"
@@ -6618,6 +6699,23 @@ export type Database = {
         | "educador_fisico"
         | "terapeuta_ocupacional"
       recompensa_status: "solicitado" | "aprovado" | "entregue" | "cancelado"
+      sistema_corporal:
+        | "musculoesqueletico"
+        | "nervoso"
+        | "cardiovascular"
+        | "respiratorio"
+        | "digestorio"
+        | "endocrino"
+        | "urinario"
+        | "reprodutor"
+        | "tegumentar"
+        | "linfatico"
+        | "sensorial"
+      status_evento_anatomico:
+        | "ativo"
+        | "em_tratamento"
+        | "resolvido"
+        | "cronico"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -6771,6 +6869,14 @@ export const Constants = {
       ],
       nivel_paciente: ["bronze", "prata", "ouro", "platina", "diamante"],
       notif_canal: ["in_app", "whatsapp", "push"],
+      origem_achado_anatomico: [
+        "subjetivo_myid",
+        "exame_clinico",
+        "exame_imagem",
+        "voz_ia",
+        "autocadastro_paciente",
+        "outro",
+      ],
       perfil_profissional: [
         "fisioterapeuta",
         "medico",
@@ -6780,6 +6886,25 @@ export const Constants = {
         "terapeuta_ocupacional",
       ],
       recompensa_status: ["solicitado", "aprovado", "entregue", "cancelado"],
+      sistema_corporal: [
+        "musculoesqueletico",
+        "nervoso",
+        "cardiovascular",
+        "respiratorio",
+        "digestorio",
+        "endocrino",
+        "urinario",
+        "reprodutor",
+        "tegumentar",
+        "linfatico",
+        "sensorial",
+      ],
+      status_evento_anatomico: [
+        "ativo",
+        "em_tratamento",
+        "resolvido",
+        "cronico",
+      ],
     },
   },
 } as const
