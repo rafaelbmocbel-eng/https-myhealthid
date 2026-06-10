@@ -72,6 +72,7 @@ import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
 import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
 import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
+import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
