@@ -72,6 +72,7 @@ import PlanoTreinoCard from '@/components/educador/PlanoTreinoCard';
 import RecordatorioCard from '@/components/nutricao/RecordatorioCard';
 import PlanoAlimentarCard from '@/components/nutricao/PlanoAlimentarCard';
 import EscalasPsicologiaCard from '@/components/psicologia/EscalasPsicologiaCard';
+import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 
 const maskPhone = (v: string) => {
@@ -1102,6 +1103,7 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'recordatorio') && id && <RecordatorioCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
+            {id && <AvatarClinicoCard pacienteId={id} />}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
