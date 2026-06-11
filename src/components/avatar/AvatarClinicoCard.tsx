@@ -167,8 +167,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       }
     });
 
+    // Sincroniza Cirurgias (Vermelho Escuro/Trauma)
+    const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
+    if (cirurgias.length > 0 && !map['pelve']) {
+       map['pelve'] = 'rgba(220, 38, 38, 0.2)'; 
+    }
+
     return map;
-  }, [eventosFiltrados, painRegions, sinalRegions]);
+  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r => 
