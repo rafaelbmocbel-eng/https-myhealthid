@@ -12,8 +12,9 @@ import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
+  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket, Stethoscope
 } from 'lucide-react';
+import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -431,14 +432,21 @@ export default function PatientIntegratedDashboard({
         <>
           {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
           <Tabs defaultValue="diagnostico" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-11 p-1 rounded-xl bg-muted/60">
+            <TabsList className="grid w-full grid-cols-3 h-11 p-1 rounded-xl bg-muted/60">
               <TabsTrigger value="diagnostico" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Fingerprint className="icon-sm" />
-                Meu MyID
+                <span className="hidden xs:inline">Meu MyID</span>
+                <span className="xs:hidden">MyID</span>
+              </TabsTrigger>
+              <TabsTrigger value="corpo" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Stethoscope className="icon-sm" />
+                <span className="hidden xs:inline">Meu Corpo</span>
+                <span className="xs:hidden">Corpo</span>
               </TabsTrigger>
               <TabsTrigger value="jornada" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Rocket className="icon-sm" />
-                Minha Jornada
+                <span className="hidden xs:inline">Minha Jornada</span>
+                <span className="xs:hidden">Jornada</span>
               </TabsTrigger>
             </TabsList>
 
