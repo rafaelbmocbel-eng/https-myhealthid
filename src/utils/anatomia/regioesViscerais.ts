@@ -9,12 +9,43 @@ export interface OrganRegion {
 
 export const VISCERAL_REGIONS: OrganRegion[] = [
   // ===== FRONT =====
+  // SISTEMA ENDÓCRINO
   {
     id: 'tireoide',
     label: 'Tireoide',
     view: 'front',
     sistemas: ['endocrino', 'visceral'],
     d: 'M112 98 Q120 102 128 98 L126 104 Q120 108 114 104 Z'
+  },
+  {
+    id: 'hipofise',
+    label: 'Hipófise',
+    view: 'front',
+    sistemas: ['endocrino'],
+    d: 'M119 45 A1.5 1.5 0 1 0 121 45 A1.5 1.5 0 1 0 119 45'
+  },
+  {
+    id: 'adrenais',
+    label: 'Suprarrenais',
+    view: 'front',
+    sistemas: ['endocrino'],
+    d: 'M110 200 Q112 195 115 200 M125 200 Q128 195 130 200'
+  },
+  {
+    id: 'pancreas',
+    label: 'Pâncreas',
+    view: 'front',
+    sistemas: ['endocrino', 'digestorio'],
+    d: 'M105 208 Q120 205 135 210 L132 215 Q118 212 106 215 Z'
+  },
+
+  // SISTEMA RESPIRATÓRIO
+  {
+    id: 'traqueia',
+    label: 'Traqueia',
+    view: 'front',
+    sistemas: ['respiratorio'],
+    d: 'M118 108 L118 130 L122 130 L122 108 Z'
   },
   {
     id: 'pulmao_e',
@@ -30,6 +61,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['respiratorio', 'visceral'],
     d: 'M115 135 C105 132 90 135 88 155 C86 175 100 180 112 178 Q115 155 115 135 Z'
   },
+
+  // SISTEMA CIRCULATÓRIO
   {
     id: 'coracao',
     label: 'Coração',
@@ -37,35 +70,6 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio', 'visceral'],
     d: 'M118 148 C115 142 125 140 132 145 C140 150 135 165 125 168 C115 165 112 155 118 148 Z'
   },
-  {
-    id: 'figado',
-    label: 'Fígado',
-    view: 'front',
-    sistemas: ['digestorio', 'visceral'],
-    d: 'M88 188 C100 185 120 190 125 205 L115 212 C100 215 85 205 88 188 Z'
-  },
-  {
-    id: 'estomago',
-    label: 'Estômago',
-    view: 'front',
-    sistemas: ['digestorio', 'visceral'],
-    d: 'M128 190 C140 188 152 195 150 210 C148 220 135 215 128 205 Z'
-  },
-  {
-    id: 'intestino',
-    label: 'Intestinos',
-    view: 'front',
-    sistemas: ['digestorio', 'visceral'],
-    d: 'M95 215 L145 215 C150 235 145 255 120 258 C95 255 90 235 95 215 Z'
-  },
-  {
-    id: 'bexiga',
-    label: 'Bexiga',
-    view: 'front',
-    sistemas: ['urinario', 'visceral'],
-    d: 'M110 265 Q120 260 130 265 Q130 275 120 280 Q110 275 110 265 Z'
-  },
-  // ===== SISTEMA CIRCULATÓRIO (Vias Principais) =====
   {
     id: 'carotida_d',
     label: 'Artéria Carótida D',
@@ -87,21 +91,54 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['circulatorio'],
     d: 'M118 185 L118 245'
   },
+
+  // SISTEMA DIGESTÓRIO
   {
-    id: 'arteria_femoral_d',
-    label: 'Artéria Femoral D',
+    id: 'esofago',
+    label: 'Esôfago',
     view: 'front',
-    sistemas: ['circulatorio'],
-    d: 'M115 285 L125 360'
+    sistemas: ['digestorio'],
+    d: 'M119 108 L119 188 L121 188 L121 108 Z'
   },
   {
-    id: 'arteria_femoral_e',
-    label: 'Artéria Femoral E',
+    id: 'figado',
+    label: 'Fígado',
     view: 'front',
-    sistemas: ['circulatorio'],
-    d: 'M125 285 L115 360'
+    sistemas: ['digestorio', 'visceral'],
+    d: 'M88 188 C100 185 120 190 125 205 L115 212 C100 215 85 205 88 188 Z'
   },
-  // ===== SISTEMA LINFÁTICO =====
+  {
+    id: 'estomago',
+    label: 'Estômago',
+    view: 'front',
+    sistemas: ['digestorio', 'visceral'],
+    d: 'M128 190 C140 188 152 195 150 210 C148 220 135 215 128 205 Z'
+  },
+  {
+    id: 'vesicula_biliar',
+    label: 'Vesícula Biliar',
+    view: 'front',
+    sistemas: ['digestorio'],
+    d: 'M108 205 A2 3 0 1 0 112 205 A2 3 0 1 0 108 205'
+  },
+  {
+    id: 'intestino',
+    label: 'Intestinos',
+    view: 'front',
+    sistemas: ['digestorio', 'visceral'],
+    d: 'M95 215 L145 215 C150 235 145 255 120 258 C95 255 90 235 95 215 Z'
+  },
+
+  // SISTEMA URINÁRIO
+  {
+    id: 'bexiga',
+    label: 'Bexiga',
+    view: 'front',
+    sistemas: ['urinario', 'visceral'],
+    d: 'M110 265 Q120 260 130 265 Q130 275 120 280 Q110 275 110 265 Z'
+  },
+
+  // SISTEMA LINFÁTICO
   {
     id: 'linfonodos_cervicais',
     label: 'Linfonodos Cervicais',
@@ -137,6 +174,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['linfatico'],
     d: 'M100 285 A2.5 2.5 0 1 0 105 285 A2.5 2.5 0 1 0 100 285 M135 285 A2.5 2.5 0 1 0 140 285 A2.5 2.5 0 1 0 135 285'
   },
+
   // ===== BACK =====
   {
     id: 'rim_d',
@@ -155,26 +193,80 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 ];
 
 export const VISCERAL_STRUCTURES: Record<string, any> = {
-  tireoide: { glandulas: ['Lobo direito', 'Lobo esquerdo', 'Istmo'] },
-  pulmao_d: { lobos: ['Superior', 'Médio', 'Inferior'], pleura: ['Visceral', 'Parietal'] },
-  pulmao_e: { lobos: ['Superior', 'Inferior'], pleura: ['Visceral', 'Parietal'] },
-  coracao: { cavidades: ['Átrio D', 'Átrio E', 'Ventrículo D', 'Ventrículo E'], valvas: ['Mitral', 'Tricúspide', 'Aórtica', 'Pulmonar'], vasos: ['Aorta', 'Veia Cava', 'Artérias Coronárias'] },
-  figado: { lobos: ['Direito', 'Esquerdo', 'Caudado', 'Quadrado'], vesicula: ['Vesícula biliar'] },
-  estomago: { partes: ['Cárdia', 'Fundo', 'Corpo', 'Antro', 'Piloro'] },
-  intestino: { partes: ['Duodeno', 'Jejuno', 'Íleo', 'Ceco', 'Cólon ascendente', 'Cólon transverso', 'Cólon descendente', 'Reto'] },
-  rim_d: { partes: ['Córtex', 'Medula', 'Pelve renal', 'Ureter'] },
-  rim_e: { partes: ['Córtex', 'Medula', 'Pelve renal', 'Ureter'] },
-  bexiga: { partes: ['Detrusor', 'Trígono'] },
-  linfonodos_cervicais: { grupos: ['Submandibulares', 'Cervicais superficiais', 'Cervicais profundos'] },
-  linfonodos_axilares_d: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
-  linfonodos_axilares_e: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
-  baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Cápsula fibroelástica'] },
-  linfonodos_inguinais: { grupos: ['Superficiais', 'Profundos'] },
-  carotida_d: { segmentos: ['Comum', 'Interna', 'Externa'] },
-  carotida_e: { segmentos: ['Comum', 'Interna', 'Externa'] },
-  aorta_abdominal: { ramos: ['Celíaco', 'Mesentérica superior', 'Renais', 'Mesentérica inferior', 'Ilíacas'] },
-  arteria_femoral_d: { segmentos: ['Comum', 'Superficial', 'Profunda'] },
-  arteria_femoral_e: { segmentos: ['Comum', 'Superficial', 'Profunda'] }
+  // Endócrino
+  tireoide: { 
+    glandulas: ['Lobo direito', 'Lobo esquerdo', 'Istmo'],
+    hormonios: ['T3', 'T4', 'Calcitonina']
+  },
+  hipofise: {
+    lobos: ['Adeno-hipófise (anterior)', 'Neuro-hipófise (posterior)'],
+    hormonios: ['GH', 'TSH', 'ACTH', 'FSH', 'LH', 'Prolactina', 'ADH', 'Ocitocina']
+  },
+  adrenais: {
+    partes: ['Córtex adrenal', 'Medula adrenal'],
+    hormonios: ['Cortisol', 'Aldosterona', 'Adrenalina', 'Noradrenalina']
+  },
+  pancreas: {
+    partes: ['Cabeça', 'Corpo', 'Cauda', 'Processo uncinado'],
+    exocrino: ['Ducto pancreático', 'Ácinos pancreáticos'],
+    endocrino: ['Ilhotas de Langerhans (Insulina, Glucagon)']
+  },
+
+  // Respiratório
+  traqueia: { partes: ['Anéis cartilaginosos', 'Carina', 'Mucosa respiratória'] },
+  pulmao_d: { 
+    lobos: ['Superior', 'Médio', 'Inferior'],
+    segmentos: ['Apical', 'Posterior', 'Anterior', 'Lateral', 'Medial', 'Basais'],
+    pleura: ['Visceral', 'Parietal'] 
+  },
+  pulmao_e: { 
+    lobos: ['Superior', 'Inferior'],
+    segmentos: ['Apical-posterior', 'Anterior', 'Lingular superior', 'Lingular inferior', 'Basais'],
+    pleura: ['Visceral', 'Parietal'] 
+  },
+
+  // Circulatório
+  coracao: { 
+    cavidades: ['Átrio D', 'Átrio E', 'Ventrículo D', 'Ventrículo E'],
+    valvas: ['Mitral (Bicúspide)', 'Tricúspide', 'Aórtica', 'Pulmonar'],
+    vasos: ['Aorta ascendente', 'Arco aórtico', 'Tronco pulmonar', 'Veias pulmonares', 'Veia cava superior', 'Veia cava inferior'],
+    coronarias: ['Coronária direita', 'Coronária esquerda', 'Ramo descendente anterior', 'Ramo circunflexo']
+  },
+  carotida_d: { segmentos: ['Carótida comum', 'Carótida interna', 'Carótida externa', 'Seio carotídeo'] },
+  carotida_e: { segmentos: ['Carótida comum', 'Carótida interna', 'Carótida externa', 'Seio carotídeo'] },
+  aorta_abdominal: { 
+    segmentos: ['Suprarrenal', 'Infrarrenal'],
+    ramos: ['Tronco celíaco', 'Artéria mesentérica superior', 'Artérias renais', 'Artéria mesentérica inferior', 'Artérias ilíacas comuns'] 
+  },
+
+  // Digestório
+  esofago: { segmentos: ['Cervical', 'Torácico', 'Abdominal'], esfincteres: ['Esfíncter superior', 'Esfíncter inferior (Cárdia)'] },
+  figado: { 
+    lobos: ['Direito', 'Esquerdo', 'Caudado', 'Quadrado'],
+    ligamentos: ['Falciforme', 'Redondo', 'Coronário'],
+    vasos: ['Veia porta', 'Artéria hepática', 'Veias hepáticas']
+  },
+  vesicula_biliar: { partes: ['Fundo', 'Corpo', 'Pescoço'], ductos: ['Ducto cístico', 'Ducto colédoco'] },
+  estomago: { 
+    partes: ['Cárdia', 'Fundo', 'Corpo', 'Antro', 'Piloro'],
+    curvaturas: ['Grande curvatura', 'Pequena curvatura'],
+    camadas: ['Mucosa', 'Submucosa', 'Muscular', 'Serosa']
+  },
+  intestino: { 
+    delgado: ['Duodeno', 'Jejuno', 'Íleo'],
+    grosso: ['Ceco', 'Apêndice', 'Cólon ascendente', 'Cólon transverso', 'Cólon descendente', 'Cólon sigmoide', 'Reto', 'Ânus'],
+    valvas: ['Válvula ileocecal']
+  },
+
+  // Urinário
+  rim_d: { partes: ['Córtex renal', 'Medula renal', 'Pirâmides renais', 'Cálices maiores/menores', 'Pelve renal', 'Ureter'] },
+  rim_e: { partes: ['Córtex renal', 'Medula renal', 'Pirâmides renais', 'Cálices maiores/menores', 'Pelve renal', 'Ureter'] },
+  bexiga: { partes: ['Ápice', 'Corpo', 'Fundo', 'Trígono vesical', 'Colo da bexiga', 'Músculo detrusor'] },
+
+  // Linfático
+  linfonodos_cervicais: { grupos: ['Submentonianos', 'Submandibulares', 'Cervicais anteriores', 'Cervicais laterais', 'Supraclaviculares'] },
+  linfonodos_axilares_d: { grupos: ['Peitorais (anteriores)', 'Subescapulares (posteriores)', 'Humerais (laterais)', 'Centrais', 'Apicais'] },
+  linfonodos_axilares_e: { grupos: ['Peitorais (anteriores)', 'Subescapulares (posteriores)', 'Humerais (laterais)', 'Centrais', 'Apicais'] },
+  baco: { partes: ['Polpa branca (linfóide)', 'Polpa vermelha', 'Cápsula', 'Hilo esplênico'] },
+  linfonodos_inguinais: { grupos: ['Superficiais (horizontais/verticais)', 'Profundos'] }
 };
-
-
