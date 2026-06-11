@@ -384,7 +384,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'nervo_femoral_e',
     label: 'Nervo Femoral E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso'],
     d: 'M100 320 L95 350'
   }
 ];
