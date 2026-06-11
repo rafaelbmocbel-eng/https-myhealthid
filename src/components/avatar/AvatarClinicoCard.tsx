@@ -27,7 +27,7 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'respiratorio', 'digestorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
-const SISTEMAS_INICIAIS: SistemaCorporal[] = ['musculoesqueletico', 'nervoso'];
+const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = {
   musculoesqueletico: 'Musculoesquelético',
   nervoso: 'Nervoso',
