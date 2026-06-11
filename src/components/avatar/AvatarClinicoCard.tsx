@@ -91,7 +91,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .filter(i => i.intensidade > 0) : [];
 
       const respostas = dados?.respostas || {};
-      const componentScores = data.myid_analysis?.componentScores || data.myid_analysis?.component_scores || {};
+      const analysis = data.myid_analysis as any;
+      const componentScores = analysis?.componentScores || analysis?.component_scores || {};
       
       // Mapeamento de sinais autonômicos (Bloco 6)
       const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
@@ -128,9 +129,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const painRegions = lastMyIDData?.painRegions || [];
   const sinalRegions = lastMyIDData?.sinalRegions || [];
   const myidScores = lastMyIDData?.scores || {};
-
-  const painRegions = lastMyID?.painRegions || [];
-  const sinalRegions = lastMyID?.sinalRegions || [];
 
   const eventosFiltrados = useMemo(
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
