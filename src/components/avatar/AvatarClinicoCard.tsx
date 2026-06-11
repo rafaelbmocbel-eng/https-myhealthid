@@ -557,11 +557,32 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                               }
                               return false;
                             });
+
+                            // Flags específicas do sistema
+                            const flagsSistema: string[] = [];
+                            if (sysToShow === 'musculoesqueletico') {
+                              if (lastMyIDData?.respostas?.bloco_6_axial_trauma) flagsSistema.push('Histórico de Trauma Axial');
+                              if (lastMyIDData?.respostas?.bloco_6_muscle_relaxant) flagsSistema.push('Uso de Relaxante Muscular');
+                            }
+                            if (sysToShow === 'digestorio') {
+                              if (lastMyIDData?.respostas?.bloco_6_abdominal_surgeries?.length > 0) {
+                                lastMyIDData.respostas.bloco_6_abdominal_surgeries.forEach((s: string) => flagsSistema.push(`Cirurgia Abdominal: ${s}`));
+                              }
+                            }
+                            if (sysToShow === 'nervoso') {
+                              if (lastMyIDData?.respostas?.bloco_6_antidepressant) flagsSistema.push('Uso de Antidepressivo');
+                            }
                             
                             // Dores do MyID para o sistema musculoesquelético
                             const doresMyID = sysToShow === 'musculoesqueletico' 
                               ? painRegions.map(p => ({ ...p, sinal: `Dor em ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (Intensidade: ${p.intensidade}/10)` }))
                               : [];
+                            
+                            const todosRelatosMyID = [
+                              ...achadosMyID.map(a => a.sinal),
+                              ...doresMyID.map(d => d.sinal),
+                              ...flagsSistema
+                            ];
                             
                             return (
                               <div className="space-y-3">
