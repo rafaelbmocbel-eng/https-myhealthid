@@ -540,16 +540,59 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           if (sysToShow) {
                             const config = SISTEMA_CONFIG[sysToShow];
                             const Icon = config.icon;
+                            
+                            // Busca achados específicos do sistema (Clínicos + MyID)
+                            const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
+                            const achadosMyID = sinalRegions.filter(sr => {
+                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
+                              return regVisceral?.sistemas.includes(sysToShow);
+                            });
+                            
+                            // Adiciona dor se for musculoesquelético
+                            const doresMyID = sysToShow === 'musculoesqueletico' 
+                              ? painRegions.map(p => ({ ...p, sinal: `Relato de Dor: ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (${p.intensidade}/10)` }))
+                              : [];
+
+                            const temAchados = achadosClinicos.length > 0 || achadosMyID.length > 0 || doresMyID.length > 0;
+
                             return (
-                              <div className="flex gap-3 items-start">
-                                <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
-                                  <Icon className="w-4 h-4" />
+                              <div className="space-y-3">
+                                <div className="flex gap-3 items-start border-b border-primary/10 pb-2">
+                                  <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
+                                    <Icon className="w-4 h-4" />
+                                  </div>
+                                  <div className="space-y-0.5">
+                                    <p className="text-[10px] font-black uppercase tracking-wider">{config.label}</p>
+                                    <p className="text-[10px] text-muted-foreground leading-tight italic">
+                                      {config.resumo}
+                                    </p>
+                                  </div>
                                 </div>
-                                <div className="space-y-0.5">
-                                  <p className="text-[10px] font-black uppercase tracking-wider">{config.label}</p>
-                                  <p className="text-[11px] text-muted-foreground leading-snug">
-                                    {config.resumo}
-                                  </p>
+
+                                <div className="space-y-2">
+                                  <p className="text-[10px] font-bold text-primary uppercase">Achados Clínicos e Físicos:</p>
+                                  {!temAchados ? (
+                                    <p className="text-[11px] text-muted-foreground italic">Nenhum achado significativo registrado para este sistema.</p>
+                                  ) : (
+                                    <div className="space-y-1.5">
+                                      {achadosClinicos.map((e, idx) => (
+                                        <div key={`clin-${idx}`} className="flex items-start gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                                          <p className="text-[11px] leading-snug">
+                                            <span className="font-semibold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
+                                          </p>
+                                        </div>
+                                      ))}
+                                      {[...achadosMyID, ...doresMyID].map((s, idx) => (
+                                        <div key={`myid-${idx}`} className="flex items-start gap-2">
+                                          <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0 bg-sky-400" />
+                                          <p className="text-[11px] leading-snug text-sky-700">
+                                            <span className="font-semibold">MyID:</span> {s.sinal}
+                                          </p>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -557,15 +600,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
                           return (
                             <div className="space-y-2">
-                              <p className="text-[9px] font-bold text-muted-foreground uppercase">Sistemas em Análise ({sistemasAtivos.length})</p>
-                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                {sistemasAtivos.slice(0, 4).map(s => (
-                                  <div key={s} className="flex items-center gap-2">
-                                    <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
-                                    <span className="text-[10px] font-medium">{SISTEMA_CONFIG[s].label}</span>
-                                  </div>
-                                ))}
-                                {sistemasAtivos.length > 4 && <span className="text-[9px] text-muted-foreground">...e mais {sistemasAtivos.length - 4}</span>}
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase">Resumo de Achados ({sistemasAtivos.length} sistemas)</p>
+                              <div className="grid grid-cols-1 gap-2">
+                                {sistemasAtivos.slice(0, 3).map(s => {
+                                  const count = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
+                                  return (
+                                    <div key={s} className="flex items-center justify-between bg-background/50 p-1.5 rounded border border-border/30">
+                                      <div className="flex items-center gap-2">
+                                        <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
+                                        <span className="text-[10px] font-bold">{SISTEMA_CONFIG[s].label}</span>
+                                      </div>
+                                      <span className="text-[9px] text-muted-foreground">{count} achados clínicos</span>
+                                    </div>
+                                  );
+                                })}
+                                {sistemasAtivos.length > 3 && <span className="text-[9px] text-muted-foreground text-center">...e mais {sistemasAtivos.length - 3} sistemas ativos</span>}
                               </div>
                             </div>
                           );
