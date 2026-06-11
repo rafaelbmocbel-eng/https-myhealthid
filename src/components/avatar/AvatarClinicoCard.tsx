@@ -69,6 +69,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
   const [modoSimplificado, setModoSimplificado] = useState(!isProfessional);
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_INICIAIS);
+  const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
@@ -399,6 +400,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         <button
                           key={s}
                           type="button"
+                          onMouseEnter={() => setHoveredSistema(s)}
+                          onMouseLeave={() => setHoveredSistema(null)}
                           onClick={() => {
                             setSistemasAtivos(prev =>
                               prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
@@ -407,6 +410,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           className={cn(
                             "text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
                             active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.8] opacity-70",
+                            hoveredSistema === s && "ring-2 ring-primary border-primary",
                             statusClasses
                           )}
                         >
@@ -459,21 +463,39 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
+              <radialGradient id="organ-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+              </radialGradient>
             </defs>
+            <style>
+              {`
+                @keyframes pulse-organ {
+                  0% { transform: scale(1); opacity: 0.8; }
+                  50% { transform: scale(1.02); opacity: 1; }
+                  100% { transform: scale(1); opacity: 0.8; }
+                }
+                .pulse-organ {
+                  animation: pulse-organ 2s infinite ease-in-out;
+                  transform-origin: center;
+                }
+              `}
+            </style>
             <g clipPath="url(#avc-clip)">
               <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
               
               {/* Camada Base (Musculoesquelético/Geral) */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
+                const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
                 return (
                   <path
                     key={r.id}
                     d={r.d}
-                    fill={fill || 'transparent'}
-                    fillOpacity={fill ? 0.7 : 0}
-                    stroke="hsl(var(--border))"
-                    strokeWidth={0.6}
+                    fill={fill || (isHoveredSystem ? 'rgba(168, 85, 247, 0.2)' : 'transparent')}
+                    fillOpacity={fill ? 0.7 : isHoveredSystem ? 0.5 : 0}
+                    stroke={isHoveredSystem ? 'purple' : "hsl(var(--border))"}
+                    strokeWidth={isHoveredSystem ? 1.2 : 0.6}
                     className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
@@ -484,22 +506,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
-                if (!belongsToActiveSystem) return null;
+                const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
+                
+                if (!belongsToActiveSystem && !isHoveredSystem) return null;
+
+                const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
+                const isUrgent = severityScore >= 13; // status ativo (10) + severidade alta
 
                 return (
-                  <path
-                    key={r.id}
-                    d={r.d}
-                    fill={fill || 'hsl(var(--background))'}
-                    fillOpacity={fill ? 0.9 : 0.4}
-                    stroke={fill ? 'white' : 'hsl(var(--muted-foreground))'}
-                    strokeWidth={0.8}
-                    filter={fill ? "url(#glow)" : undefined}
-                    className="cursor-pointer hover:brightness-110 transition-all"
-                    onClick={() => abrirSheet(r.id)}
-                  >
-                    <title>{r.label}</title>
-                  </path>
+                  <g key={r.id} className={cn(isUrgent && "pulse-organ")}>
+                    <path
+                      d={r.d}
+                      fill={fill || (isHoveredSystem ? 'rgba(14, 165, 233, 0.3)' : 'hsl(var(--background))')}
+                      fillOpacity={fill ? 0.9 : 0.4}
+                      stroke={isHoveredSystem ? 'var(--primary)' : fill ? 'white' : 'hsl(var(--muted-foreground))'}
+                      strokeWidth={isHoveredSystem ? 1.5 : 0.8}
+                      filter={fill ? "url(#glow)" : undefined}
+                      className="cursor-pointer hover:brightness-110 transition-all"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                    {/* Efeito de Volume/Gradiente nos Órgãos */}
+                    <path
+                      d={r.d}
+                      fill="url(#organ-gradient)"
+                      pointerEvents="none"
+                      opacity={0.5}
+                    />
+                  </g>
                 );
               })}
             </g>
