@@ -529,6 +529,50 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       );
                     })}
                   </div>
+
+                  {/* Resumo Dinâmico dos Sistemas Selecionados/Hovered */}
+                  {(hoveredSistema || sistemasAtivos.length > 0) && (
+                    <div className="bg-primary/5 border border-primary/10 rounded-lg p-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                      <div className="flex flex-col gap-2">
+                        {(() => {
+                          const sysToShow = hoveredSistema || (sistemasAtivos.length === 1 ? sistemasAtivos[0] : null);
+                          
+                          if (sysToShow) {
+                            const config = SISTEMA_CONFIG[sysToShow];
+                            const Icon = config.icon;
+                            return (
+                              <div className="flex gap-3 items-start">
+                                <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
+                                  <Icon className="w-4 h-4" />
+                                </div>
+                                <div className="space-y-0.5">
+                                  <p className="text-[10px] font-black uppercase tracking-wider">{config.label}</p>
+                                  <p className="text-[11px] text-muted-foreground leading-snug">
+                                    {config.resumo}
+                                  </p>
+                                </div>
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div className="space-y-2">
+                              <p className="text-[9px] font-bold text-muted-foreground uppercase">Sistemas em Análise ({sistemasAtivos.length})</p>
+                              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                {sistemasAtivos.slice(0, 4).map(s => (
+                                  <div key={s} className="flex items-center gap-2">
+                                    <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
+                                    <span className="text-[10px] font-medium">{SISTEMA_CONFIG[s].label}</span>
+                                  </div>
+                                ))}
+                                {sistemasAtivos.length > 4 && <span className="text-[9px] text-muted-foreground">...e mais {sistemasAtivos.length - 4}</span>}
+                              </div>
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
@@ -536,33 +580,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
 
         <div className="relative">
-          {/* Informação do Sistema em Foco */}
-          {(hoveredSistema || (sistemasAtivos.length === 1 && sistemasAtivos[0])) && (
-            <div className="absolute top-0 left-0 right-0 bg-background/95 backdrop-blur-sm border border-primary/20 p-3 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-top-2 duration-300 mx-auto w-[90%] pointer-events-none">
-              <div className="flex flex-col gap-1.5">
-                {(() => {
-                  const sys = hoveredSistema || sistemasAtivos[0];
-                  const config = SISTEMA_CONFIG[sys];
-                  const Icon = config.icon;
-                  return (
-                    <>
-                      <div className="flex items-center gap-2">
-                        <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
-                          <Icon className="w-4 h-4" />
-                        </div>
-                        <span className="text-xs font-black uppercase tracking-tighter">
-                          {config.label}
-                        </span>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground leading-relaxed">
-                        {config.resumo}
-                      </p>
-                    </>
-                  );
-                })()}
-              </div>
-            </div>
-          )}
+          {/* Toggle frente / costas */}
 
           {/* Toggle frente / costas */}
           <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
