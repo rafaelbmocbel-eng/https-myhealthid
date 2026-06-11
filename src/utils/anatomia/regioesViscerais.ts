@@ -207,6 +207,13 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M104 94 A1.5 1.5 0 1 0 107 94 A1.5 1.5 0 1 0 104 94 M133 94 A1.5 1.5 0 1 0 136 94 A1.5 1.5 0 1 0 133 94'
   },
   {
+    id: 'timo_linfatico',
+    label: 'Timo',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M115 130 Q120 125 125 130 L122 145 Q120 148 118 145 Z'
+  },
+  {
     id: 'linfonodos_axilares_d',
     label: 'Linfonodos Axilares D',
     view: 'front',
@@ -221,10 +228,17 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M78 128 A2 2 0 1 0 82 128 A2 2 0 1 0 78 128 M75.4 135 A1.8 1.8 0 1 0 79 135 A1.8 1.8 0 1 0 75.4 135'
   },
   {
+    id: 'vasos_quiferos',
+    label: 'Cisterna do Quilo',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M118 210 A2 2 0 1 0 122 210 A2 2 0 1 0 118 210'
+  },
+  {
     id: 'baco',
     label: 'Baço',
     view: 'front',
-    sistemas: ['linfatico', ],
+    sistemas: ['linfatico'],
     d: 'M155 205 Q162 208 158 220 Q152 225 148 215 Q148 205 155 205'
   },
   {
@@ -233,6 +247,13 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     view: 'front',
     sistemas: ['linfatico'],
     d: 'M102 282 A2 2 0 1 0 106 282 A2 2 0 1 0 102 282 M134 282 A2 2 0 1 0 138 282 A2 2 0 1 0 134 282'
+  },
+  {
+    id: 'linfaticos_membros_inferiores',
+    label: 'Vasos Linfáticos (MI)',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M104 290 L104 480 M136 290 L136 480'
   },
 
   // REPRODUCTIVE
@@ -358,8 +379,11 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
 
   // Lymphatic
   linfonodos_cervicais: { grupos: ['Nível I (Submentonianos)', 'Nível II/III/IV (Jugulares)', 'Nível V (Triângulo posterior)', 'Nível VI (Compartimento anterior)'] },
+  timo_linfatico: { funcao: ['Maturação de linfócitos T', 'Drenagem torácica superior'] },
   linfonodos_axilares_d: { grupos: ['Grupo lateral', 'Grupo anterior (peitoral)', 'Grupo posterior (subescapular)', 'Grupo central', 'Grupo apical'] },
   linfonodos_axilares_e: { grupos: ['Grupo lateral', 'Grupo anterior (peitoral)', 'Grupo posterior (subescapular)', 'Grupo central', 'Grupo apical'] },
+  vasos_quiferos: { partes: ['Cisterna do Quilo', 'Ducto torácico', 'Drenagem linfática abdominal'] },
   baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Hilo esplênico', 'Cápsula esplênica'] },
-  linfonodos_inguinais: { grupos: ['Superficiais (Cadeia vertical e horizontal)', 'Profundos (Linfonodo de Cloquet)'] }
+  linfonodos_inguinais: { grupos: ['Superficiais (Cadeia vertical e horizontal)', 'Profundos (Linfonodo de Cloquet)'] },
+  linfaticos_membros_inferiores: { partes: ['Vasos linfáticos profundos', 'Vasos linfáticos superficiais', 'Drenagem de retorno'] }
 };
