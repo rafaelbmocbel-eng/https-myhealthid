@@ -275,31 +275,46 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Filtra pelos sistemas ativos
     sinalRegions.forEach(item => {
       const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
-      const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
       
-      // Determina se o sinal deve aparecer no sistema selecionado baseado na natureza do sintoma
+      // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
       const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(item.sinal);
       const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => item.sinal.toLowerCase().includes(s));
       const isRespiratorySymptom = ['falta_ar', 'shortness_breath'].includes(item.sinal);
       const isCirculatorySymptom = ['palpitacao', 'palpitations'].includes(item.sinal);
+      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(item.sinal);
       
-      const isSystemActive = isPeitoralDorsal 
-        ? sistemasAtivos.includes('musculoesqueletico') 
-        : (isNervousSystemSymptom && sistemasAtivos.includes('nervoso')) || 
-          (isDigestiveSymptom && sistemasAtivos.includes('digestorio')) ||
-          (isRespiratorySymptom && sistemasAtivos.includes('respiratorio')) ||
-          (isCirculatorySymptom && sistemasAtivos.includes('circulatorio')) ||
-          regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
+      // Determina se o sinal pertence a um sistema que está ATIVO no momento
+      let isSystemActive = false;
+      if (isNervousSystemSymptom) isSystemActive = sistemasAtivos.includes('nervoso');
+      else if (isDigestiveSymptom) isSystemActive = sistemasAtivos.includes('digestorio');
+      else if (isRespiratorySymptom) isSystemActive = sistemasAtivos.includes('respiratorio');
+      else if (isCirculatorySymptom) isSystemActive = sistemasAtivos.includes('circulatorio');
+      else if (isUrinarySymptom) isSystemActive = sistemasAtivos.includes('urinario');
+      else if (isPeitoralDorsal) isSystemActive = sistemasAtivos.includes('musculoesqueletico');
+      else {
+        // Fallback para mapeamento regional se não for um sintoma específico detectado acima
+        const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
+        isSystemActive = regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any)) || false;
+      }
       
       if (isSystemActive && !map[item.regiao_id]) {
-        map[item.regiao_id] = (isPeitoralDorsal || item.regiao_id === 'cabeca') ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
+        // Define a cor baseada no comprometimento (nível de severidade implícito do MyID)
+        // Usamos cores que sinalizam comprometimento por sistema
+        const config = SISTEMA_CONFIG[isNervousSystemSymptom ? 'nervoso' : 
+                                     isDigestiveSymptom ? 'digestorio' : 
+                                     isRespiratorySymptom ? 'respiratorio' :
+                                     isCirculatorySymptom ? 'circulatorio' :
+                                     isUrinarySymptom ? 'urinario' :
+                                     isPeitoralDorsal ? 'musculoesqueletico' : 'nervoso'];
+        
+        map[item.regiao_id] = isPeitoralDorsal ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
 
-    // Sincroniza Cirurgias (Vermelho Escuro/Trauma)
+    // Sincroniza Cirurgias (Vermelho Escuro/Trauma) - APENAS no digestório ou reprodutor
     const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
-    if (cirurgias.length > 0 && !map['pelve']) {
+    if (cirurgias.length > 0 && !map['pelve'] && (sistemasAtivos.includes('digestorio') || sistemasAtivos.includes('reprodutor'))) {
        map['pelve'] = 'rgba(220, 38, 38, 0.2)'; 
     }
 
@@ -560,23 +575,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             
                             // Sinais do MyID para este sistema
                             const achadosMyID = sinalRegions.filter(sr => {
-                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                              
-                              // Lógica estrita de associação de sintomas a sistemas
+                              // Lógica estrita de associação de sintomas a sistemas para o resumo
                               const isNervousSymp = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
                               const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => sr.sinal.toLowerCase().includes(s));
                               const isRespSymp = ['falta_ar', 'shortness_breath'].includes(sr.sinal);
                               const isCircSymp = ['palpitacao', 'palpitations'].includes(sr.sinal);
+                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(sr.sinal);
 
                               if (sysToShow === 'nervoso') return isNervousSymp;
                               if (sysToShow === 'digestorio') return isDigestiveSymp;
                               if (sysToShow === 'respiratorio') return isRespSymp;
                               if (sysToShow === 'circulatorio') return isCircSymp;
+                              if (sysToShow === 'urinario') return isUrinSymp;
 
+                              // Se não for um sintoma mapeado acima, verifica se a região pertence a este sistema
+                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
                               if (regVisceral) {
                                 return regVisceral.sistemas.includes(sysToShow);
                               }
-                              // Se não for visceral, associamos ao musculoesquelético se for uma região de dor comum
+                              
                               if (sysToShow === 'musculoesqueletico') {
                                 return sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal';
                               }
