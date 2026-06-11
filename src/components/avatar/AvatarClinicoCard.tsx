@@ -28,18 +28,73 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
 const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
-const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
-  musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
-  nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
-  digestorio: { label: 'Digestório', icon: Stethoscope, color: 'orange' },
-  circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
-  respiratorio: { label: 'Respiratório', icon: Wind, color: 'cyan' },
-  endocrino: { label: 'Endócrino', icon: Dna, color: 'yellow' },
-  urinario: { label: 'Urinário', icon: Droplets, color: 'indigo' },
-  reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
-  tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
-  linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
-  sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
+const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string; resumo: string }> = {
+  musculoesqueletico: { 
+    label: 'Musculoesquelético', 
+    icon: Zap, 
+    color: 'purple',
+    resumo: 'Compreende ossos, músculos, articulações e tendões que dão suporte, proteção aos órgãos e permitem a movimentação voluntária do corpo.'
+  },
+  nervoso: { 
+    label: 'Nervoso', 
+    icon: Brain, 
+    color: 'blue',
+    resumo: 'Centro de controle e comunicação, integrando o cérebro, medula espinhal e nervos para coordenar funções sensoriais, motoras e cognitivas.'
+  },
+  digestorio: { 
+    label: 'Digestório', 
+    icon: Stethoscope, 
+    color: 'orange',
+    resumo: 'Responsável pelo processamento de alimentos, absorção de nutrientes e eliminação de resíduos, abrangendo do trato gastrointestinal aos órgãos anexos.'
+  },
+  circulatorio: { 
+    label: 'Circulatório', 
+    icon: Heart, 
+    color: 'red',
+    resumo: 'Rede de transporte composta pelo coração e vasos sanguíneos, essencial para a distribuição de oxigênio, nutrientes e regulação térmica.'
+  },
+  respiratorio: { 
+    label: 'Respiratório', 
+    icon: Wind, 
+    color: 'cyan',
+    resumo: 'Sistema encarregado da troca de oxigênio e dióxido de carbono entre o sangue e o ar atmosférico através dos pulmões e vias aéreas.'
+  },
+  endocrino: { 
+    label: 'Endócrino', 
+    icon: Dna, 
+    color: 'yellow',
+    resumo: 'Conjunto de glândulas que produzem e secretam hormônios diretamente na corrente sanguínea para regular o metabolismo e crescimento.'
+  },
+  urinario: { 
+    label: 'Urinário', 
+    icon: Droplets, 
+    color: 'indigo',
+    resumo: 'Filtra o sangue para remover toxinas e resíduos metabólicos, mantendo o equilíbrio hídrico e eletrolítico através da excreção de urina.'
+  },
+  reprodutor: { 
+    label: 'Reprodutor', 
+    icon: Heart, 
+    color: 'pink',
+    resumo: 'Sistema composto pelos órgãos genitais e glândulas sexuais, responsável pela reprodução e produção de hormônios sexuais.'
+  },
+  tegumentar: { 
+    label: 'Tegumentar', 
+    icon: Shield, 
+    color: 'stone',
+    resumo: 'Formado pela pele e seus anexos, atua como barreira protetora contra agentes externos, auxilia na termorregulação e percepção sensorial.'
+  },
+  linfatico: { 
+    label: 'Linfático', 
+    icon: Waves, 
+    color: 'lime',
+    resumo: 'Drena o excesso de fluidos dos tecidos e desempenha um papel crucial na defesa imunológica através da produção de linfócitos.'
+  },
+  sensorial: { 
+    label: 'Sensorial', 
+    icon: Eye, 
+    color: 'emerald',
+    resumo: 'Conjunto de receptores e órgãos responsáveis por captar estímulos externos (visão, audição, paladar, olfato e tato) e traduzi-los ao sistema nervoso.'
+  },
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
@@ -482,20 +537,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         <div className="relative">
           {/* Informação do Sistema em Foco */}
-          {hoveredSistema && (
-            <div className="absolute top-1/4 left-0 bg-background/95 backdrop-blur-sm border border-primary/20 p-2.5 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-left-2 duration-300 max-w-[120px]">
-              <div className="flex flex-col items-center gap-1.5 text-center">
+          {(hoveredSistema || (sistemasAtivos.length === 1 && sistemasAtivos[0])) && (
+            <div className="absolute top-0 left-0 right-0 bg-background/95 backdrop-blur-sm border border-primary/20 p-3 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-top-2 duration-300 mx-auto w-[90%] pointer-events-none">
+              <div className="flex flex-col gap-1.5">
                 {(() => {
-                  const config = SISTEMA_CONFIG[hoveredSistema];
+                  const sys = hoveredSistema || sistemasAtivos[0];
+                  const config = SISTEMA_CONFIG[sys];
                   const Icon = config.icon;
                   return (
                     <>
-                      <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
-                        <Icon className="w-5 h-5" />
+                      <div className="flex items-center gap-2">
+                        <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <span className="text-xs font-black uppercase tracking-tighter">
+                          {config.label}
+                        </span>
                       </div>
-                      <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
-                        {config.label}
-                      </span>
+                      <p className="text-[10px] text-muted-foreground leading-relaxed">
+                        {config.resumo}
+                      </p>
                     </>
                   );
                 })()}
