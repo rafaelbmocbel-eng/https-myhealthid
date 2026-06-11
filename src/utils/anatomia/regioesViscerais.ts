@@ -335,8 +335,72 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     view: 'back',
     sistemas: ['respiratorio'],
     d: 'M155 135 C140 130 125 140 122 170 C120 200 135 215 158 212'
-  }
-];
+  },
+
+  // NERVOUS SYSTEM (Brain & Major Nerves)
+  {
+    id: 'cerebro',
+    label: 'Cérebro',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M100 45 C100 30 110 25 120 25 C130 25 140 30 140 45 C140 60 130 65 120 65 C110 65 100 60 100 45 Z'
+  },
+  {
+    id: 'tronco_encefalico',
+    label: 'Tronco Encefálico',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M118 65 L118 85 L122 85 L122 65 Z'
+  },
+  {
+    id: 'medula_espinhal_v',
+    label: 'Medula Espinhal (Trajeto Anterior)',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M119 85 L119 280 L121 280 L121 85 Z'
+  },
+  {
+    id: 'plexo_braquial_d',
+    label: 'Plexo Braquial D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M134 108 L160 130'
+  },
+  {
+    id: 'plexo_braquial_e',
+    label: 'Plexo Braquial E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M106 108 L80 130'
+  },
+  {
+    id: 'nervo_mediano_d',
+    label: 'Nervo Mediano D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M160 130 L195 280'
+  },
+  {
+    id: 'nervo_mediano_e',
+    label: 'Nervo Mediano E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M80 130 L45 280'
+  },
+  {
+    id: 'nervo_femoral_d',
+    label: 'Nervo Femoral D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M125 280 L145 350'
+  },
+  {
+    id: 'nervo_femoral_e',
+    label: 'Nervo Femoral E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M115 280 L95 350'
+  },
 
 export const VISCERAL_STRUCTURES: Record<string, any> = {
   // Endocrine
