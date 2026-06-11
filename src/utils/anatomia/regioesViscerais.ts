@@ -312,79 +312,79 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   // NERVOUS SYSTEM (Brain & Major Nerves)
   {
     id: 'cerebro',
-    label: 'Cérebro',
+    label: 'Encéfalo',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'endocrino', 'sensorial'],
     d: 'M100 45 C100 30 110 25 120 25 C130 25 140 30 140 45 C140 60 130 65 120 65 C110 65 100 60 100 45 Z'
   },
   {
     id: 'tronco_encefalico',
     label: 'Tronco Encefálico',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'circulatorio', 'respiratorio'],
     d: 'M118 65 L118 85 L122 85 L122 65 Z'
   },
   {
     id: 'medula_espinhal_v',
-    label: 'Medula Espinhal (Trajeto Anterior)',
+    label: 'Medula Espinhal (Eixo Central)',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M119 85 L119 280 L121 280 L121 85 Z'
   },
   {
     id: 'plexo_braquial_d',
     label: 'Plexo Braquial D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso', 'musculoesqueletico', 'circulatorio'],
     d: 'M134 108 L160 130'
   },
   {
     id: 'plexo_braquial_e',
     label: 'Plexo Braquial E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso', 'musculoesqueletico', 'circulatorio'],
     d: 'M106 108 L80 130'
   },
   {
     id: 'nervo_mediano_d',
     label: 'Nervo Mediano D',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M160 130 L195 280'
   },
   {
     id: 'nervo_mediano_e',
     label: 'Nervo Mediano E',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M80 130 L45 280'
   },
   {
     id: 'plexo_lombosacro_d',
     label: 'Plexo Lombossacro D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso', 'musculoesqueletico', 'urinario'],
     d: 'M122 260 L135 295 L140 320'
   },
   {
     id: 'plexo_lombosacro_e',
     label: 'Plexo Lombossacro E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso', 'musculoesqueletico', 'urinario'],
     d: 'M118 260 L105 295 L100 320'
   },
   {
     id: 'nervo_femoral_d',
     label: 'Nervo Femoral D',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M140 320 L145 350'
   },
   {
     id: 'nervo_femoral_e',
     label: 'Nervo Femoral E',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M100 320 L95 350'
   }
 ];
