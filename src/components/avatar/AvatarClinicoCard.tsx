@@ -152,7 +152,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    // Isso cria o vínculo visual imediato
     painRegions.forEach(item => {
       if (!map[item.regiao_id]) {
         map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
@@ -163,7 +162,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
     sinalRegions.forEach(item => {
       if (!map[item.regiao_id]) {
-        // Tom azulado translúcido para sinais autonômicos/viscerais do MyID
         map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
