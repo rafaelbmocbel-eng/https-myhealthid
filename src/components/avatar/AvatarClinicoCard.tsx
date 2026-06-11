@@ -898,7 +898,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         await saveMut.mutateAsync({
                           paciente_id: pacienteId,
                           regiao_id: item.regiao_id,
-                          sistema: 'visceral',
+                          sistema: (VISCERAL_REGIONS.find(v => v.id === item.regiao_id)?.sistemas[0] as any) || 'digestorio',
                           origem: 'subjetivo_myid',
                           tipo_achado: `Relato MyID: ${item.sinal}`,
                           severidade: 2,
