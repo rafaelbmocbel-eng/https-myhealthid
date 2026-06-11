@@ -436,7 +436,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
-                if (!belongsToActiveSystem && !sinalRegions.some(sr => sr.regiao_id === r.id)) return null;
+                if (!belongsToActiveSystem) return null;
 
                 return (
                   <path
