@@ -558,42 +558,55 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
                             return (
                               <div className="space-y-3">
-                                <div className="flex gap-3 items-start border-b border-primary/10 pb-2">
+                                <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
                                   <div className={cn("p-1.5 rounded-lg bg-background border border-primary/10", `text-${config.color}-500`)}>
                                     <Icon className="w-4 h-4" />
                                   </div>
-                                  <div className="space-y-0.5">
-                                    <p className="text-[10px] font-black uppercase tracking-wider">{config.label}</p>
-                                    <p className="text-[10px] text-muted-foreground leading-tight italic">
-                                      {config.resumo}
-                                    </p>
-                                  </div>
+                                  <p className="text-xs font-black uppercase tracking-wider">{config.label}</p>
                                 </div>
 
-                                <div className="space-y-2">
-                                  <p className="text-[10px] font-bold text-primary uppercase">Achados Clínicos e Físicos:</p>
-                                  {!temAchados ? (
-                                    <p className="text-[11px] text-muted-foreground italic">Nenhum achado significativo registrado para este sistema.</p>
-                                  ) : (
-                                    <div className="space-y-1.5">
-                                      {achadosClinicos.map((e, idx) => (
-                                        <div key={`clin-${idx}`} className="flex items-start gap-2">
-                                          <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0" style={{ backgroundColor: corEvento(e) }} />
-                                          <p className="text-[11px] leading-snug">
-                                            <span className="font-semibold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
-                                          </p>
-                                        </div>
-                                      ))}
-                                      {[...achadosMyID, ...doresMyID].map((s, idx) => (
-                                        <div key={`myid-${idx}`} className="flex items-start gap-2">
-                                          <div className="w-1.5 h-1.5 rounded-full mt-1 shrink-0 bg-sky-400" />
-                                          <p className="text-[11px] leading-snug text-sky-700">
-                                            <span className="font-semibold">MyID:</span> {s.sinal}
-                                          </p>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  )}
+                                <div className="space-y-3">
+                                  {/* MyID Findings */}
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
+                                      <User className="w-3 h-3" /> Relatos MyID (Paciente):
+                                    </p>
+                                    {(achadosMyID.length === 0 && doresMyID.length === 0) ? (
+                                      <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum relato subjetivo registrado.</p>
+                                    ) : (
+                                      <div className="space-y-1 pl-4">
+                                        {[...achadosMyID, ...doresMyID].map((s, idx) => (
+                                          <div key={`myid-${idx}`} className="flex items-start gap-2">
+                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-sky-400" />
+                                            <p className="text-[11px] leading-tight text-sky-800">
+                                              {s.sinal}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* Clinical Evaluation Findings */}
+                                  <div className="space-y-1">
+                                    <p className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
+                                      <Stethoscope className="w-3 h-3" /> Avaliação Presencial (Clínico):
+                                    </p>
+                                    {achadosClinicos.length === 0 ? (
+                                      <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
+                                    ) : (
+                                      <div className="space-y-1 pl-4">
+                                        {achadosClinicos.map((e, idx) => (
+                                          <div key={`clin-${idx}`} className="flex items-start gap-2">
+                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                                            <p className="text-[11px] leading-tight">
+                                              <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
+                                            </p>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             );
