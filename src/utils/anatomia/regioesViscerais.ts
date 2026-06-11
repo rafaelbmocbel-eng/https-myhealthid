@@ -388,18 +388,32 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M80 130 L45 280'
   },
   {
+    id: 'plexo_lombosacro_d',
+    label: 'Plexo Lombossacro D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M122 260 L135 295 L140 320'
+  },
+  {
+    id: 'plexo_lombosacro_e',
+    label: 'Plexo Lombossacro E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M118 260 L105 295 L100 320'
+  },
+  {
     id: 'nervo_femoral_d',
     label: 'Nervo Femoral D',
     view: 'front',
     sistemas: ['nervoso'],
-    d: 'M125 280 L145 350'
+    d: 'M140 320 L145 350'
   },
   {
     id: 'nervo_femoral_e',
     label: 'Nervo Femoral E',
     view: 'front',
     sistemas: ['nervoso'],
-    d: 'M115 280 L95 350'
+    d: 'M100 320 L95 350'
   }
 ];
 
