@@ -703,10 +703,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               })}
             </div>
 
-            {syncData?.length === 0 && (
+            {(isSyncing ? sinalRegions.length : painRegions.length) === 0 && (
               <div className="text-center py-8">
                 <Check className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm font-medium">Todas as regiões foram processadas.</p>
+                <p className="text-sm font-medium">Sem itens pendentes nesta categoria.</p>
                 <Button variant="outline" className="mt-4" onClick={() => setSyncData(null)}>Fechar</Button>
               </div>
             )}
