@@ -358,7 +358,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
               
               {/* Camada Base (Musculoesquelético/Geral) */}
-              {regioesBase.map(r => {
+              {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 return (
                   <path
@@ -374,9 +374,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               })}
 
-              {/* Camada Visceral (Órgãos Internos) */}
+              {/* Camada Visceral e Outros Sistemas Individualizados */}
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
+                const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
+                if (!belongsToActiveSystem && !sinalRegions.some(sr => sr.regiao_id === r.id)) return null;
+
                 return (
                   <path
                     key={r.id}
