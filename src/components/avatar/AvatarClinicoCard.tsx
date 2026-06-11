@@ -284,10 +284,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       
       // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
       const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(item.sinal);
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => item.sinal.toLowerCase().includes(s));
-      const isRespiratorySymptom = ['falta_ar', 'shortness_breath'].includes(item.sinal);
-      const isCirculatorySymptom = ['palpitacao', 'palpitations'].includes(item.sinal);
-      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(item.sinal);
+      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => item.sinal.toLowerCase().includes(s));
+      const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse'].some(s => item.sinal.toLowerCase().includes(s));
+      const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia'].some(s => item.sinal.toLowerCase().includes(s));
+      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => item.sinal.toLowerCase().includes(s));
       
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
       let isSystemActive = false;
@@ -597,10 +597,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const achadosMyID = sinalRegions.filter(sr => {
                               // Lógica estrita de associação de sintomas a sistemas para o resumo
                               const isNervousSymp = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isRespSymp = ['falta_ar', 'shortness_breath'].includes(sr.sinal);
-                              const isCircSymp = ['palpitacao', 'palpitations'].includes(sr.sinal);
-                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(sr.sinal);
+                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isRespSymp = ['falta_ar', 'shortness_breath', 'tosse'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isCircSymp = ['palpitacao', 'palpitations', 'taquicardia'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => sr.sinal.toLowerCase().includes(s));
 
                               if (sysToShow === 'nervoso') return isNervousSymp;
                               if (sysToShow === 'digestorio') return isDigestiveSymp;
