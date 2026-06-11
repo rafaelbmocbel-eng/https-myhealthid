@@ -462,11 +462,65 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
               <SheetFooter className="gap-2">
                 <Button variant="outline" onClick={() => setEditing(null)}>Cancelar</Button>
                 <Button onClick={handleSave} disabled={saveMut.isPending || !editing.tipo_achado?.trim()}>
-                  <Activity className="icon-xs mr-1" /> Salvar achado
+                  {saveMut.isPending ? 'Salvando…' : 'Salvar Achado'}
                 </Button>
               </SheetFooter>
             </div>
           )}
+        </SheetContent>
+      </Sheet>
+
+      {/* Dialog de Sincronização MyID */}
+      <Sheet open={!!syncData} onOpenChange={(o) => !o && setSyncData(null)}>
+        <SheetContent side="bottom" className="h-[70vh] rounded-t-2xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <RefreshCcw className="h-5 w-5 text-primary" />
+              Sincronização Assistida MyID
+            </SheetTitle>
+          </SheetHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Detectamos {syncData?.length} regiões com queixas na última avaliação MyID do paciente. 
+              Selecione quais deseja importar para o Avatar Clínico como achados ativos.
+            </p>
+            
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
+              {syncData?.map((item) => {
+                const reg = REGIONS.find(r => r.id === item.regiao_id);
+                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.origem === 'subjetivo_myid' && e.status === 'ativo');
+                
+                return (
+                  <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
+                    <div>
+                      <p className="text-sm font-semibold">{reg?.label || item.regiao_id}</p>
+                      <p className="text-[11px] text-muted-foreground">Intensidade: {item.intensidade}/10</p>
+                    </div>
+                    {jaImportado ? (
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <Check className="h-3 w-3" /> Importado
+                      </Badge>
+                    ) : (
+                      <Button size="sm" className="h-8 text-xs" onClick={() => handleSyncImport(item)} disabled={saveMut.isPending}>
+                        Importar
+                      </Button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {syncData?.length === 0 && (
+              <div className="text-center py-8">
+                <Check className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
+                <p className="text-sm font-medium">Todas as regiões foram processadas.</p>
+                <Button variant="outline" className="mt-4" onClick={() => setSyncData(null)}>Fechar</Button>
+              </div>
+            )}
+          </div>
+          <SheetFooter className="pb-6">
+            <Button variant="outline" onClick={() => setSyncData(null)} className="w-full">Concluir</Button>
+          </SheetFooter>
         </SheetContent>
       </Sheet>
     </Card>
