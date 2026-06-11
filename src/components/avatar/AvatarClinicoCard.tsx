@@ -162,14 +162,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
       const mapping: Record<string, string> = {
-        // Cabeça e Pescoço
+        // Cabeça e Pescoço (Nervoso/Sensorial)
         bruxismo: 'cabeca', bruxism: 'cabeca',
         zumbido: 'cabeca', tinnitus: 'cabeca',
         sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
         cefaleia: 'cabeca', headache: 'cabeca',
         tontura: 'cabeca', dizziness: 'cabeca',
         
-        // Digestório / Visceral
+        // Digestório (Exclusivo)
         ma_digestao: 'estomago', 
         bloating: 'intestino_delgado',
         empachamento: 'estomago',
@@ -188,14 +188,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         halitose: 'lingua',
         dificuldade_deglutir: 'esofago',
         
-        // Circulatório / Respiratório / Torácico
+        // Circulatório (Exclusivo)
         palpitacao: 'coracao', palpitations: 'coracao',
-        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
-        dor_peito: 'peitoral', chest_pain: 'peitoral', // Mapeado para peitoral (gradil costal) por padrão
+        taquicardia: 'coracao', tachycardia: 'coracao',
         
-        // Urinário
+        // Respiratório (Exclusivo)
+        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
+        tosse_cronica: 'traqueia',
+        
+        // Urinário (Exclusivo)
         dor_urinar: 'pelve', urinary_pain: 'pelve',
-        frequencia_urinaria: 'pelve', urinary_frequency: 'pelve'
+        frequencia_urinaria: 'pelve', urinary_frequency: 'pelve',
+        
+        // Musculoesquelético (Peitoral/Dorsal como áreas de dor referida ou mecânica)
+        dor_peito: 'peitoral', chest_pain: 'peitoral',
       };
 
       [...sinais, ...visceralIssues].forEach(s => {
@@ -278,10 +284,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       
       // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
       const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(item.sinal);
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => item.sinal.toLowerCase().includes(s));
-      const isRespiratorySymptom = ['falta_ar', 'shortness_breath'].includes(item.sinal);
-      const isCirculatorySymptom = ['palpitacao', 'palpitations'].includes(item.sinal);
-      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(item.sinal);
+      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => item.sinal.toLowerCase().includes(s));
+      const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse'].some(s => item.sinal.toLowerCase().includes(s));
+      const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia'].some(s => item.sinal.toLowerCase().includes(s));
+      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => item.sinal.toLowerCase().includes(s));
       
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
       let isSystemActive = false;
@@ -455,17 +461,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
                 
+                // Mapeamento preciso de Sinais MyID para Scores de Sistema
+                const myidSinaisDoSistema = sinalRegions.filter(sr => {
+                  const isNervous = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
+                  const isDigestive = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(term => sr.sinal.toLowerCase().includes(term));
+                  const isResp = ['falta_ar', 'shortness_breath', 'tosse'].some(term => sr.sinal.toLowerCase().includes(term));
+                  const isCirc = ['palpitacao', 'palpitations', 'taquicardia'].some(term => sr.sinal.toLowerCase().includes(term));
+                  const isUrin = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(term => sr.sinal.toLowerCase().includes(term));
+                  
+                  if (s === 'nervoso') return isNervous;
+                  if (s === 'digestorio') return isDigestive;
+                  if (s === 'respiratorio') return isResp;
+                  if (s === 'circulatorio') return isCirc;
+                  if (s === 'urinario') return isUrin;
+                  
+                  // Fallback regional para MyID
+                  const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
+                  return regVisceral?.sistemas.includes(s);
+                });
+
                 if (s === 'musculoesqueletico') {
-                  score += painRegions.length * 0.5;
-                  // Adiciona peso para queixas de dor na queixa principal (como a dor torácica da Narlicelma)
+                  score += painRegions.length * 0.8;
                   const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
                   score += queixasTexto.length * 2.0;
                 }
                 
-                const myidSinaisDoSistema = sinalRegions.filter(sr => {
-                  const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                  return regVisceral?.sistemas.includes(s);
-                });
                 score += myidSinaisDoSistema.length * 1.5;
 
                 return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
@@ -538,18 +558,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           }}
                           className={cn(
                             "relative text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
-                            active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10 opacity-100 grayscale-0" : "grayscale-0 opacity-100",
+                            active ? "ring-2 ring-primary ring-offset-1 shadow-md z-10 opacity-100 scale-105" : "opacity-90",
                             hoveredSistema === s && "ring-2 ring-primary border-primary",
                             statusClasses
                           )}
                         >
                           {alertBadge}
-                          <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-500` : "")} />
+                          <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-600` : "")} />
                           {config.label}
                           {count > 0 && (
                             <span className={cn(
-                              "ml-1 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black",
-                              score >= 5 ? "bg-red-200 text-red-900" : "bg-foreground/10"
+                              "ml-1 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black shadow-sm",
+                              score >= 5 ? "bg-red-200 text-red-900 border border-red-300" : "bg-foreground/10"
                             )}>
                               {count}
                             </span>
@@ -577,10 +597,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const achadosMyID = sinalRegions.filter(sr => {
                               // Lógica estrita de associação de sintomas a sistemas para o resumo
                               const isNervousSymp = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isRespSymp = ['falta_ar', 'shortness_breath'].includes(sr.sinal);
-                              const isCircSymp = ['palpitacao', 'palpitations'].includes(sr.sinal);
-                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].includes(sr.sinal);
+                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isRespSymp = ['falta_ar', 'shortness_breath', 'tosse'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isCircSymp = ['palpitacao', 'palpitations', 'taquicardia'].some(s => sr.sinal.toLowerCase().includes(s));
+                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => sr.sinal.toLowerCase().includes(s));
 
                               if (sysToShow === 'nervoso') return isNervousSymp;
                               if (sysToShow === 'digestorio') return isDigestiveSymp;
