@@ -434,31 +434,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </div>
         </div>
 
-        {/* Informação do Sistema em Foco */}
-        {hoveredSistema && (
-          <div className="absolute top-1/2 left-4 -translate-y-1/2 bg-background/95 backdrop-blur-sm border border-primary/20 p-2.5 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-left-2 duration-300 max-w-[120px]">
-            <div className="flex flex-col items-center gap-1.5 text-center">
-              {(() => {
-                const config = SISTEMA_CONFIG[hoveredSistema];
-                const Icon = config.icon;
-                return (
-                  <>
-                    <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
-                      <Icon className="w-5 h-5" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
-                      {config.label}
-                    </span>
-                  </>
-                );
-              })()}
-            </div>
-          </div>
-        )}
-
         <div className="relative">
+          {/* Informação do Sistema em Foco */}
+          {hoveredSistema && (
+            <div className="absolute top-1/4 left-0 bg-background/95 backdrop-blur-sm border border-primary/20 p-2.5 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-left-2 duration-300 max-w-[120px]">
+              <div className="flex flex-col items-center gap-1.5 text-center">
+                {(() => {
+                  const config = SISTEMA_CONFIG[hoveredSistema];
+                  const Icon = config.icon;
+                  return (
+                    <>
+                      <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
+                        {config.label}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
           {/* Toggle frente / costas */}
-        <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto">
+          <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
           {(['front', 'back'] as const).map(v => (
             <button
               key={v}
