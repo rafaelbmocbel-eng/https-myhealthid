@@ -360,7 +360,7 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
                   <Select value={editing.sistema} onValueChange={(v: any) => setEditing({ ...editing, sistema: v })}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
-                      {SISTEMAS_F1.map(s => (
+                      {SISTEMAS_ORDEM.map(s => (
                         <SelectItem key={s} value={s}>{SISTEMA_LABEL[s]}</SelectItem>
                       ))}
                     </SelectContent>
