@@ -750,6 +750,28 @@ export default function PatientIntegratedDashboard({
               </Accordion>
             </TabsContent>
 
+            {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
+            <TabsContent value="corpo" className="mt-5 space-y-5 focus-visible:outline-none">
+              <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
+              
+              <Card className="rounded-xl border-border/40 bg-muted/20">
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Como ler este mapa?</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Este é o seu prontuário visual georreferenciado. As cores indicam áreas de atenção mapeadas pelo seu profissional. 
+                        Áreas vermelhas indicam maior prioridade no momento, enquanto as cinzas representam histórico ou resoluções.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+
             {/* ─────────── ABA 2: JORNADA (energia, leve, motivacional) ─────────── */}
             <TabsContent value="jornada" className="mt-5 space-y-5 focus-visible:outline-none">
               {/* Missões da semana */}
