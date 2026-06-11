@@ -29,7 +29,8 @@ const SISTEMAS_INICIAIS: SistemaCorporal[] = ['musculoesqueletico', 'nervoso'];
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = {
   musculoesqueletico: 'Musculoesquelético',
   nervoso: 'Nervoso',
-  cardiovascular: 'Cardiovascular',
+  visceral: 'Visceral',
+  circulatorio: 'Circulatório',
   respiratorio: 'Respiratório',
   digestorio: 'Digestório',
   endocrino: 'Endócrino',
