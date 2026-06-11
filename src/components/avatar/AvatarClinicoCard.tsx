@@ -482,6 +482,76 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </div>
           )}
 
+          {/* Painel Informativo MyID (Contexto e Características do Formulário) */}
+          {lastMyIDData && !editing && (
+            <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
+              <div className="flex items-center gap-2 border-b border-primary/10 pb-2">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <h4 className="text-xs font-bold uppercase text-primary">Perfil MyID</h4>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Queixa Principal */}
+                <div>
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                    <Info className="h-3 w-3" /> Queixa Principal
+                  </Label>
+                  <p className="text-xs italic bg-background/50 p-2 rounded border border-border/50 mt-1">
+                    "{lastMyIDData.respostas.bloco_1_queixa || 'Não informada'}"
+                  </p>
+                </div>
+
+                {/* Métricas de Capacidade */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-background/40 p-2 rounded border border-border/30">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Heart className="h-3 w-3 text-emerald-500" />
+                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Resiliência</Label>
+                    </div>
+                    <span className="text-xs font-bold">{Number(myidScores.R || 0).toFixed(1)}/10</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{lastMyIDData.respostas.bloco_5a_hours}h sono · qlty {lastMyIDData.respostas.bloco_5a_quality}/10</p>
+                  </div>
+                  <div className="bg-background/40 p-2 rounded border border-border/30">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Brain className="h-3 w-3 text-violet-500" />
+                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Psicológico</Label>
+                    </div>
+                    <span className="text-xs font-bold">{Number(myidScores.P || 0).toFixed(1)}/10</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Stress {lastMyIDData.respostas.bloco_5c_stress}/10 · Anx {lastMyIDData.respostas.bloco_5c_anxiety}/10</p>
+                  </div>
+                </div>
+
+                {/* Sinais Sistêmicos e Traumas */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold">Sinais do Corpo e Histórico</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {lastMyIDData.respostas.bloco_6_axial_trauma && (
+                      <Badge variant="outline" className="text-[9px] border-amber-200 bg-amber-50 text-amber-700">Trauma Axial</Badge>
+                    )}
+                    {lastMyIDData.respostas.bloco_6_abdominal_surgeries?.map((s: string) => (
+                      <Badge key={s} variant="outline" className="text-[9px] border-red-200 bg-red-50 text-red-700">Cirurgia: {s}</Badge>
+                    ))}
+                    {lastMyIDData.respostas.bloco_6_visceral_issues?.map((s: string) => (
+                      <Badge key={s} variant="outline" className="text-[9px] border-blue-200 bg-blue-50 text-blue-700">{s}</Badge>
+                    ))}
+                    {lastMyIDData.respostas.bloco_6_antidepressant && (
+                      <Badge variant="outline" className="text-[9px] border-purple-200 bg-purple-50 text-purple-700">Uso Antidepressivo</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Comportamento e Estilo de Vida */}
+                <div className="bg-muted/30 p-2 rounded-lg">
+                  <Label className="text-[9px] text-muted-foreground uppercase font-bold block mb-1">Comportamento (Inércia {Number(myidScores.I || 0).toFixed(1)})</Label>
+                  <p className="text-[10px] text-foreground leading-tight">
+                    Vida {lastMyIDData.respostas.bloco_5e_lifestyle} · {lastMyIDData.respostas.bloco_5e_sitting_hours}h sentado · Fumo: {lastMyIDData.respostas.bloco_6_smoking ? 'Sim' : 'Não'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {editing && (
             <div className="mt-4 space-y-3">
               <div className="space-y-1.5">
