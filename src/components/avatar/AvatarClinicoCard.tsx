@@ -102,6 +102,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       // Mapeamento de sinais autonômicos (Bloco 6)
       const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
       const visceralIssues = respostas.bloco_6_visceral_issues || [];
+      const queixaPrincipal = (respostas.bloco_1_queixa || '').toLowerCase();
+      
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
       const mapping: Record<string, string> = {
@@ -133,6 +135,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       [...sinais, ...visceralIssues].forEach(s => {
         if (mapping[s]) sinalRegions.push({ regiao_id: mapping[s], sinal: s });
       });
+
+      // Lógica de Extração Inteligente da Queixa Principal (NLP simples)
+      if (queixaPrincipal.includes('torácica') || queixaPrincipal.includes('peito')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'peitoral')) {
+          sinalRegions.push({ regiao_id: 'peitoral', sinal: 'Relato: Dor Torácica' });
+        }
+      }
+      if (queixaPrincipal.includes('costas') || queixaPrincipal.includes('dorsal')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'dorsal')) {
+          sinalRegions.push({ regiao_id: 'dorsal', sinal: 'Relato: Dor nas Costas' });
+        }
+      }
 
       return { 
         painRegions, 
