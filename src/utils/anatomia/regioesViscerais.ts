@@ -279,6 +279,13 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M110 285 Q120 280 130 285 L135 282 M105 282'
   },
   {
+    id: 'testiculos',
+    label: 'Testículos',
+    view: 'front',
+    sistemas: ['reprodutor'],
+    d: 'M115 305 A2.5 2.5 0 1 0 120 305 M120 305 A2.5 2.5 0 1 0 125 305'
+  },
+  {
     id: 'prostata',
     label: 'Próstata / Região Pélvica',
     view: 'front',
@@ -421,4 +428,9 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Hilo esplênico', 'Cápsula esplênica'] },
   linfonodos_inguinais: { grupos: ['Superficiais (Cadeia vertical e horizontal)', 'Profundos (Linfonodo de Cloquet)'] },
   linfaticos_membros_inferiores: { partes: ['Vasos linfáticos profundos', 'Vasos linfáticos superficiais', 'Drenagem de retorno'] }
+  utero_ovarios: { partes: ['Corpo uterino', 'Cérvix', 'Trompas de Falópio', 'Ovários (Folículos)', 'Endométrio', 'Miométrio'] },
+  testiculos: { partes: ['Epidídimo', 'Túbulos seminíferos', 'Células de Leydig', 'Túnica albugínea'], hormonios: ['Testosterona'] },
+  prostata: { partes: ['Zona periférica', 'Zona central', 'Zona de transição', 'Glândulas bulbouretrais'], funcao: ['Produção de fluido seminal'] },
+  gluteos_p: { musculos: ['Glúteo profundo', 'Piriforme', 'Obturador interno', 'Quadrado femoral'], nervos: ['Nervo Isquiático', 'Nervo Pudendo'] },
+  nervo_ciatico_p: { trajeto: ['Forame isquiático maior', 'Espaço subglúteo', 'Divisão tibial', 'Divisão fibular'], patologias: ['Ciatalgia', 'Síndrome do Piriforme'] }
 };
