@@ -224,44 +224,44 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'baco',
     label: 'Baço',
     view: 'front',
-    sistemas: ['linfatico'],
+    sistemas: ['linfatico', 'circulatorio', 'digestorio'],
     d: 'M155 205 Q162 208 158 220 Q152 225 148 215 Q148 205 155 205'
   },
   {
     id: 'linfonodos_inguinais',
     label: 'Linfonodos Inguinais',
     view: 'front',
-    sistemas: ['linfatico'],
+    sistemas: ['linfatico', 'reprodutor'],
     d: 'M102 282 A2 2 0 1 0 106 282 A2 2 0 1 0 102 282 M134 282 A2 2 0 1 0 138 282 A2 2 0 1 0 134 282'
   },
   {
     id: 'linfaticos_membros_inferiores',
     label: 'Vasos Linfáticos (MI)',
     view: 'front',
-    sistemas: ['linfatico'],
+    sistemas: ['linfatico', 'tegumentar'],
     d: 'M104 290 L104 480 M136 290 L136 480'
   },
 
   // REPRODUCTIVE
   {
     id: 'utero_ovarios',
-    label: 'Útero e Ovários',
+    label: 'Útero e Ovários / Pélvica',
     view: 'front',
-    sistemas: ['reprodutor'],
+    sistemas: ['reprodutor', 'endocrino', 'urinario'],
     d: 'M110 285 Q120 280 130 285 L135 282 M105 282'
   },
   {
     id: 'testiculos',
-    label: 'Testículos',
+    label: 'Testículos / Gônadas',
     view: 'front',
-    sistemas: ['reprodutor'],
+    sistemas: ['reprodutor', 'endocrino', 'urinario'],
     d: 'M115 305 A2.5 2.5 0 1 0 120 305 M120 305 A2.5 2.5 0 1 0 125 305'
   },
   {
     id: 'prostata',
-    label: 'Próstata / Região Pélvica',
+    label: 'Próstata / Assoalho Pélvico',
     view: 'front',
-    sistemas: ['reprodutor', 'urinario'],
+    sistemas: ['reprodutor', 'urinario', 'musculoesqueletico'],
     d: 'M118 295 A2 2 0 1 0 122 295 A2 2 0 1 0 118 295'
   },
 
