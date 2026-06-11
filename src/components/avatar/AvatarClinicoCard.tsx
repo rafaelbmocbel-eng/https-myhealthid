@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import {
@@ -71,12 +71,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
 
-  const { data: lastMyID } = useQuery({
-    queryKey: ['last-myid-data', pacienteId],
+  const { data: lastMyIDData } = useQuery({
+    queryKey: ['last-myid-data-full', pacienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('avaliacoes_identidade')
-        .select('dados_avaliacao')
+        .select('*')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -90,30 +90,44 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
         .filter(i => i.intensidade > 0) : [];
 
-      // Mapeamento de sinais autonômicos (Bloco 6) para regiões do corpo
       const respostas = dados?.respostas || {};
+      const componentScores = data.myid_analysis?.componentScores || data.myid_analysis?.component_scores || {};
+      
+      // Mapeamento de sinais autonômicos (Bloco 6)
       const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
+      const visceralIssues = respostas.bloco_6_visceral_issues || [];
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
-      if (sinais.includes('bruxismo') || sinais.includes('bruxism')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Bruxismo/Apertamento' });
-      if (sinais.includes('zumbido') || sinais.includes('tinnitus')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Zumbido' });
-      if (sinais.includes('sensibilidade_luz') || sinais.includes('light_sensitivity')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Fotofobia' });
-      if (sinais.includes('ma_digestao') || sinais.includes('bloating')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Má digestão/Estufamento' });
-      if (sinais.includes('refluxo') || sinais.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
-      if (sinais.includes('gastrite') || sinais.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
-      if (sinais.includes('intestino_irritavel') || sinais.includes('ibs')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Intestino irritável' });
-      if (sinais.includes('palpitacao') || sinais.includes('palpitations')) sinalRegions.push({ regiao_id: 'coracao', sinal: 'Palpitação/Taquicardia' });
-      if (sinais.includes('falta_ar') || sinais.includes('shortness_breath')) sinalRegions.push({ regiao_id: 'pulmao_d', sinal: 'Dispneia/Falta de ar' });
+      const mapping: Record<string, string> = {
+        bruxismo: 'cabeca', bruxism: 'cabeca',
+        zumbido: 'cabeca', tinnitus: 'cabeca',
+        sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
+        ma_digestao: 'estomago', bloating: 'intestino',
+        refluxo: 'esofago', reflux: 'esofago',
+        gastrite: 'estomago', gastritis: 'estomago',
+        intestino_irritavel: 'intestino', ibs: 'intestino',
+        palpitacao: 'coracao', palpitations: 'coracao',
+        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d'
+      };
 
-      const visceralIssues = respostas.bloco_6_visceral_issues || [];
-      if (visceralIssues.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
-      if (visceralIssues.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
-      if (visceralIssues.includes('bloating')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Estufamento abdominal' });
+      [...sinais, ...visceralIssues].forEach(s => {
+        if (mapping[s]) sinalRegions.push({ regiao_id: mapping[s], sinal: s });
+      });
 
-      return { painRegions, sinalRegions };
+      return { 
+        painRegions, 
+        sinalRegions, 
+        scores: componentScores,
+        raw: data,
+        respostas
+      };
     },
     enabled: !!pacienteId,
   });
+
+  const painRegions = lastMyIDData?.painRegions || [];
+  const sinalRegions = lastMyIDData?.sinalRegions || [];
+  const myidScores = lastMyIDData?.scores || {};
 
   const painRegions = lastMyID?.painRegions || [];
   const sinalRegions = lastMyID?.sinalRegions || [];
