@@ -190,19 +190,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     if (modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
-    // Ao abrir a sheet, o dashboard deve resetar para a categoria correta se houver sinal
-    if (sinalRegions.some(sr => sr.regiao_id === rid)) {
-      setIsSyncing(true);
+    // Identifica o sistema predominante da região para sugerir no formulário
+    const regVisceral = VISCERAL_REGIONS.find(v => v.id === rid);
+    if (regVisceral) {
+      setIsSyncing(true); // Aba de sinais se for visceral
     } else {
-      setIsSyncing(false);
+      setIsSyncing(false); // Aba de dor se for musculoesquelético
     }
   };
 
   const novoAchado = () => {
+    const regVisceral = VISCERAL_REGIONS.find(v => v.id === sheetRegiao);
     setEditing({
       paciente_id: pacienteId,
       regiao_id: sheetRegiao!,
-      sistema: 'musculoesqueletico',
+      sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
       origem: 'exame_clinico',
       tipo_achado: '',
       severidade: 1,
@@ -278,10 +280,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Toggles de sistema */}
+        {/* Toggles de sistema - Agora como Ecossistema Dinâmico */}
         <div className="flex flex-wrap gap-1.5">
           {SISTEMAS_ORDEM.map(s => {
             const active = sistemasAtivos.includes(s);
+            // Cálculo do nível de acometimento do sistema
+            const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
+            const severidadeMedia = evsDoSistema.length > 0 
+              ? evsDoSistema.reduce((acc, curr) => acc + curr.severidade, 0) / evsDoSistema.length 
+              : 0;
+            
+            // Cor do badge baseada no acometimento
+            const statusColor = severidadeMedia >= 3 
+              ? 'border-red-500 text-red-700 bg-red-50' 
+              : severidadeMedia >= 1.5 
+                ? 'border-amber-500 text-amber-700 bg-amber-50' 
+                : evsDoSistema.length > 0 
+                  ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
+                  : 'border-border/50 text-muted-foreground bg-background';
+
             return (
               <button
                 key={s}
@@ -291,13 +308,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
                   )
                 }
-                className={`text-[11px] px-2.5 py-1 rounded-full border transition ${
-                  active
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-background text-muted-foreground border-border/50'
-                }`}
+                className={cn(
+                  "text-[10px] px-2 py-1 rounded-md border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight",
+                  active ? "ring-2 ring-primary ring-offset-1 shadow-sm" : "opacity-70 grayscale-[0.5]",
+                  statusColor
+                )}
               >
+                {active && <Check className="h-2.5 w-2.5" />}
                 {SISTEMA_LABEL[s]}
+                {evsDoSistema.length > 0 && (
+                  <span className="ml-1 w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center text-[8px]">
+                    {evsDoSistema.length}
+                  </span>
+                )}
               </button>
             );
           })}
@@ -337,7 +360,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
               
               {/* Camada Base (Musculoesquelético/Geral) */}
-              {regioesBase.map(r => {
+              {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 return (
                   <path
@@ -353,9 +376,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               })}
 
-              {/* Camada Visceral (Órgãos Internos) */}
+              {/* Camada Visceral e Outros Sistemas Individualizados */}
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
+                const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
+                if (!belongsToActiveSystem && !sinalRegions.some(sr => sr.regiao_id === r.id)) return null;
+
                 return (
                   <path
                     key={r.id}
