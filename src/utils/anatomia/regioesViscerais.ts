@@ -400,7 +400,8 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     view: 'front',
     sistemas: ['nervoso'],
     d: 'M115 280 L95 350'
-  },
+  }
+];
 
 export const VISCERAL_STRUCTURES: Record<string, any> = {
   // Endocrine
