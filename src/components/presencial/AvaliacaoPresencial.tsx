@@ -1,13 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope } from 'lucide-react';
+import { ClipboardList, Sparkles, Stethoscope, Save } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
+import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import { Button } from '@/components/ui/button';
+import { toast } from '@/hooks/use-toast';
 
 
 interface Props {
@@ -28,6 +31,8 @@ export default function AvaliacaoPresencial({
   const { data: lente } = useLenteAtiva();
   const [painMap, setPainMap] = useState<Record<string, number>>({});
   const [structState, setStructState] = useState<Record<string, string[]>>({});
+  const [isSaving, setIsSaving] = useState(false);
+  const saveEvento = useSaveEventoAnatomico();
   const painText = painMapToText(painMap);
 
   const mostraAvatar = temBloco(lente, 'avatar');
@@ -84,6 +89,41 @@ export default function AvaliacaoPresencial({
     });
   };
 
+  const handleSaveToAvatar = async () => {
+    const entries = Object.entries(painMap).filter(([_, intensity]) => intensity > 0);
+    if (entries.length === 0) {
+      toast({ title: "Nenhum achado para salvar", description: "Marque as regiões no avatar primeiro." });
+      return;
+    }
+
+    setIsSaving(true);
+    try {
+      const promises = entries.map(([regiao_id, intensity]) => {
+        const structures = structState[regiao_id] || [];
+        return saveEvento.mutateAsync({
+          paciente_id: pacienteId,
+          regiao_id,
+          sistema: 'musculoesqueletico',
+          origem: 'exame_clinico',
+          tipo_achado: 'Achado em Avaliação Presencial',
+          estrutura: structures.join(', ') || null,
+          severidade: intensity >= 7 ? 3 : intensity >= 4 ? 2 : 1,
+          status: 'ativo',
+          visivel_paciente: true,
+          data_inicio: new Date().toISOString().slice(0, 10),
+          notas_clinicas: `Sincronizado automaticamente da Avaliação Presencial. Intensidade: ${intensity}/10. Estruturas: ${structures.join(', ')}`,
+        });
+      });
+
+      await Promise.all(promises);
+      toast({ title: "Avatar Sincronizado", description: `${entries.length} achados foram salvos no Avatar Clínico.` });
+    } catch (error) {
+      console.error("Erro ao sincronizar avatar:", error);
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <div className="space-y-3">
       {/* Resumo MyID do paciente — base para montar exercícios */}
@@ -138,12 +178,30 @@ export default function AvaliacaoPresencial({
 
       {/* Avatar — só para lentes que têm o bloco 'avatar' (fisio, T.O.) */}
       {mostraAvatar && (
-        <Body3DAvatar
-          value={painMap}
-          onChange={setPainMap}
-          structures={structState}
-          onStructuresChange={setStructState}
-        />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between border-t border-border/40 pt-4">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <Stethoscope className="h-4 w-4 text-primary" />
+              Mapeamento de Achados
+            </h3>
+            <Button 
+              size="sm" 
+              className="h-8 gap-1.5" 
+              onClick={handleSaveToAvatar}
+              disabled={isSaving || Object.keys(painMap).length === 0}
+            >
+              <Save className="h-3.5 w-3.5" />
+              {isSaving ? "Salvando..." : "Salvar no Avatar Clínico"}
+            </Button>
+          </div>
+          
+          <Body3DAvatar
+            value={painMap}
+            onChange={setPainMap}
+            structures={structState}
+            onStructuresChange={setStructState}
+          />
+        </div>
       )}
     </div>
   );
