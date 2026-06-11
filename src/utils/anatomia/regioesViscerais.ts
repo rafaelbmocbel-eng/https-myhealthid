@@ -65,6 +65,42 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario', 'visceral'],
     d: 'M110 265 Q120 260 130 265 Q130 275 120 280 Q110 275 110 265 Z'
   },
+  // ===== SISTEMA LINFÁTICO (Novos) =====
+  {
+    id: 'linfonodos_cervicais',
+    label: 'Linfonodos Cervicais',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M102 95 A2 2 0 1 0 106 95 A2 2 0 1 0 102 95 M134 95 A2 2 0 1 0 138 95 A2 2 0 1 0 134 95'
+  },
+  {
+    id: 'linfonodos_axilares_d',
+    label: 'Linfonodos Axilares D',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M155 130 A2.5 2.5 0 1 0 160 130 A2.5 2.5 0 1 0 155 130 M158 138 A2 2 0 1 0 162 138 A2 2 0 1 0 158 138'
+  },
+  {
+    id: 'linfonodos_axilares_e',
+    label: 'Linfonodos Axilares E',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M80 130 A2.5 2.5 0 1 0 85 130 A2.5 2.5 0 1 0 80 130 M78 138 A2 2 0 1 0 82 138 A2 2 0 1 0 78 138'
+  },
+  {
+    id: 'baco',
+    label: 'Baço',
+    view: 'front',
+    sistemas: ['linfatico', 'visceral'],
+    d: 'M152 185 Q158 190 155 200 Q148 205 145 195 Q145 185 152 185'
+  },
+  {
+    id: 'linfonodos_inguinais',
+    label: 'Linfonodos Inguinais',
+    view: 'front',
+    sistemas: ['linfatico'],
+    d: 'M100 285 A2.5 2.5 0 1 0 105 285 A2.5 2.5 0 1 0 100 285 M135 285 A2.5 2.5 0 1 0 140 285 A2.5 2.5 0 1 0 135 285'
+  },
   // ===== BACK =====
   {
     id: 'rim_d',
@@ -92,5 +128,11 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   intestino: { partes: ['Duodeno', 'Jejuno', 'Íleo', 'Ceco', 'Cólon ascendente', 'Cólon transverso', 'Cólon descendente', 'Reto'] },
   rim_d: { partes: ['Córtex', 'Medula', 'Pelve renal', 'Ureter'] },
   rim_e: { partes: ['Córtex', 'Medula', 'Pelve renal', 'Ureter'] },
-  bexiga: { partes: ['Detrusor', 'Trígono'] }
+  bexiga: { partes: ['Detrusor', 'Trígono'] },
+  linfonodos_cervicais: { grupos: ['Submandibulares', 'Cervicais superficiais', 'Cervicais profundos'] },
+  linfonodos_axilares_d: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
+  linfonodos_axilares_e: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
+  baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Cápsula fibroelástica'] },
+  linfonodos_inguinais: { grupos: ['Superficiais', 'Profundos'] }
 };
+
