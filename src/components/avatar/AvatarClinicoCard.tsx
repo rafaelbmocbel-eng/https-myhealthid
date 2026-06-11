@@ -188,10 +188,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         halitose: 'lingua',
         dificuldade_deglutir: 'esofago',
         
-        // Circulatório / Respiratório
+        // Circulatório / Respiratório / Torácico
         palpitacao: 'coracao', palpitations: 'coracao',
         falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
-        dor_peito: 'coracao', chest_pain: 'coracao',
+        dor_peito: 'peitoral', chest_pain: 'peitoral', // Mapeado para peitoral (gradil costal) por padrão
         
         // Urinário
         dor_urinar: 'pelve', urinary_pain: 'pelve',
@@ -203,9 +203,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       });
 
       // Lógica de Extração Inteligente da Queixa Principal (NLP simples)
+      // Ajustado para priorizar o gradil costal (musculoesquelético) em queixas de dor torácica/peito
       if (queixaPrincipal.includes('torácica') || queixaPrincipal.includes('peito')) {
-        if (!sinalRegions.some(sr => sr.regiao_id === 'coracao')) {
-          sinalRegions.push({ regiao_id: 'coracao', sinal: 'Relato: Dor Torácica/Peito' });
+        if (!sinalRegions.some(sr => sr.regiao_id === 'peitoral')) {
+          sinalRegions.push({ regiao_id: 'peitoral', sinal: 'Relato: Dor Torácica/Gradil Costal' });
         }
       }
       if (queixaPrincipal.includes('estômago') || queixaPrincipal.includes('barriga') || queixaPrincipal.includes('digestão')) {
