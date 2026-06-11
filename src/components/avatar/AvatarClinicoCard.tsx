@@ -406,10 +406,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       const Icon = config.icon;
                       
                       let statusClasses = "";
+                      let alertBadge = null;
+
                       if (score >= 5) {
                         statusClasses = `border-red-500 text-red-700 bg-red-50 ring-1 ring-red-200 animate-pulse-subtle`;
+                        alertBadge = <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-red-600 rounded-full border border-white" />;
                       } else if (score >= 2) {
                         statusClasses = `border-amber-500 text-amber-700 bg-amber-50`;
+                        alertBadge = <span className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-amber-500 rounded-full border border-white" />;
                       } else if (score > 0) {
                         statusClasses = `border-emerald-500 text-emerald-700 bg-emerald-50`;
                       } else {
@@ -428,12 +432,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             );
                           }}
                           className={cn(
-                            "text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
-                            active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.8] opacity-70",
+                            "relative text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
+                            active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10 opacity-100 grayscale-0" : "grayscale-0 opacity-100",
                             hoveredSistema === s && "ring-2 ring-primary border-primary",
                             statusClasses
                           )}
                         >
+                          {alertBadge}
                           <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-500` : "")} />
                           {config.label}
                           {count > 0 && (
