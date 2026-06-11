@@ -544,18 +544,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             
                             // Busca achados específicos do sistema (Clínicos + MyID)
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
+                            
+                            // Sinais do MyID para este sistema
                             const achadosMyID = sinalRegions.filter(sr => {
                               const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                              return regVisceral?.sistemas.includes(sysToShow);
+                              if (regVisceral) {
+                                return regVisceral.sistemas.includes(sysToShow);
+                              }
+                              // Se não for visceral, associamos ao musculoesquelético se for uma região de dor comum
+                              if (sysToShow === 'musculoesqueletico') {
+                                return sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal' || sr.regiao_id === 'cabeca';
+                              }
+                              return false;
                             });
                             
-                            // Adiciona dor se for musculoesquelético
+                            // Dores do MyID para o sistema musculoesquelético
                             const doresMyID = sysToShow === 'musculoesqueletico' 
-                              ? painRegions.map(p => ({ ...p, sinal: `Relato de Dor: ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (${p.intensidade}/10)` }))
+                              ? painRegions.map(p => ({ ...p, sinal: `Dor em ${REGIONS.find(r => r.id === p.regiao_id)?.label || p.regiao_id} (Intensidade: ${p.intensidade}/10)` }))
                               : [];
-
-                            const temAchados = achadosClinicos.length > 0 || achadosMyID.length > 0 || doresMyID.length > 0;
-
+                            
                             return (
                               <div className="space-y-3">
                                 <div className="flex gap-3 items-center border-b border-primary/10 pb-2">
@@ -566,10 +573,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                 </div>
 
                                 <div className="space-y-3">
-                                  {/* MyID Findings */}
+                                  {/* MyID Findings - Relatos Subjetivos */}
                                   <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
-                                      <User className="w-3 h-3" /> Relatos MyID (Paciente):
+                                      <User className="w-3 h-3" /> Relatos do Paciente (MyID):
                                     </p>
                                     {(achadosMyID.length === 0 && doresMyID.length === 0) ? (
                                       <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum relato subjetivo registrado.</p>
@@ -587,10 +594,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                     )}
                                   </div>
 
-                                  {/* Clinical Evaluation Findings */}
+                                  {/* Clinical Evaluation Findings - Avaliação Presencial */}
                                   <div className="space-y-1">
                                     <p className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
-                                      <Stethoscope className="w-3 h-3" /> Avaliação Presencial (Clínico):
+                                      <Stethoscope className="w-3 h-3" /> Achados da Avaliação Presencial:
                                     </p>
                                     {achadosClinicos.length === 0 ? (
                                       <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
@@ -599,9 +606,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                         {achadosClinicos.map((e, idx) => (
                                           <div key={`clin-${idx}`} className="flex items-start gap-2">
                                             <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
-                                            <p className="text-[11px] leading-tight">
+                                            <div className="text-[11px] leading-tight">
                                               <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
-                                            </p>
+                                              {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
+                                            </div>
                                           </div>
                                         ))}
                                       </div>
