@@ -25,28 +25,28 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'hipofise',
     label: 'Hipófise',
     view: 'front',
-    sistemas: ['endocrino', 'nervoso'],
+    sistemas: ['endocrino'],
     d: 'M119 44 A1.5 1.5 0 1 0 121 44 A1.5 1.5 0 1 0 119 44'
   },
   {
     id: 'timo',
     label: 'Timo',
     view: 'front',
-    sistemas: ['linfatico', 'endocrino'],
+    sistemas: ['linfatico'],
     d: 'M115 130 Q120 125 125 130 L122 145 Q120 148 118 145 Z'
   },
   {
     id: 'adrenais',
     label: 'Glândulas Suprarrenais',
     view: 'front',
-    sistemas: ['endocrino', 'urinario'],
+    sistemas: ['endocrino'],
     d: 'M108 200 Q112 196 116 201 M124 201 Q128 196 132 200'
   },
   {
     id: 'pancreas_endocrino',
     label: 'Pâncreas (Ilhotas)',
     view: 'front',
-    sistemas: ['endocrino', 'digestorio'],
+    sistemas: ['endocrino'],
     d: 'M105 212 C108 208 125 205 138 210 L136 218 C120 215 110 218 105 212'
   },
 
@@ -55,7 +55,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'traqueia',
     label: 'Traqueia',
     view: 'front',
-    sistemas: ['respiratorio', 'digestorio'],
+    sistemas: ['respiratorio'],
     d: 'M118 102 L118 132 Q120 134 122 132 L122 102 Z'
   },
   {
@@ -85,7 +85,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'aorta_abdominal',
     label: 'Aorta Abdominal',
     view: 'front',
-    sistemas: ['circulatorio', 'digestorio', 'urinario'],
+    sistemas: ['circulatorio'],
     d: 'M119 180 L119 255 L121 255 L121 180 Z'
   },
 
@@ -94,14 +94,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'lingua',
     label: 'Língua',
     view: 'front',
-    sistemas: ['digestorio', 'sensorial'],
+    sistemas: ['digestorio'],
     d: 'M115 72 Q120 78 125 72 L122 75 Q120 78 118 75 Z'
   },
   {
     id: 'glandulas_salivais',
     label: 'Glândulas Salivais',
     view: 'front',
-    sistemas: ['digestorio', 'linfatico'],
+    sistemas: ['digestorio'],
     d: 'M102 78 A1.5 1.5 0 1 0 105 78 A1.5 1.5 0 1 0 102 78 M135 78 A1.5 1.5 0 1 0 138 78 A1.5 1.5 0 1 0 135 78'
   },
   {
@@ -115,7 +115,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'figado',
     label: 'Fígado',
     view: 'front',
-    sistemas: ['digestorio', 'endocrino'],
+    sistemas: ['digestorio'],
     d: 'M85 190 C100 185 125 188 140 205 L135 215 C115 220 90 220 82 210 Z'
   },
   {
@@ -136,7 +136,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'pancreas_anexo',
     label: 'Pâncreas (Glândula)',
     view: 'front',
-    sistemas: ['digestorio', 'endocrino'],
+    sistemas: ['digestorio'],
     d: 'M105 212 C108 208 125 205 138 210 L136 218 C120 215 110 218 105 212'
   },
   {
@@ -166,21 +166,21 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'ureteres',
     label: 'Ureteres',
     view: 'front',
-    sistemas: ['urinario', 'reprodutor'],
+    sistemas: ['urinario'],
     d: 'M115 210 L112 275 M125 210 L128 275'
   },
   {
     id: 'bexiga',
     label: 'Bexiga Urinária',
     view: 'front',
-    sistemas: ['urinario', 'reprodutor'],
+    sistemas: ['urinario'],
     d: 'M110 275 Q120 270 130 275 Q135 290 120 295 Q105 290 110 275'
   },
   {
     id: 'uretra',
     label: 'Uretra',
     view: 'front',
-    sistemas: ['urinario', 'reprodutor'],
+    sistemas: ['urinario'],
     d: 'M120 295 L120 305'
   },
 
@@ -231,14 +231,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'linfonodos_inguinais',
     label: 'Linfonodos Inguinais',
     view: 'front',
-    sistemas: ['linfatico', 'reprodutor'],
+    sistemas: ['linfatico'],
     d: 'M102 282 A2 2 0 1 0 106 282 A2 2 0 1 0 102 282 M134 282 A2 2 0 1 0 138 282 A2 2 0 1 0 134 282'
   },
   {
     id: 'linfaticos_membros_inferiores',
     label: 'Vasos Linfáticos (MI)',
     view: 'front',
-    sistemas: ['linfatico', 'tegumentar'],
+    sistemas: ['linfatico'],
     d: 'M104 290 L104 480 M136 290 L136 480'
   },
 
@@ -247,21 +247,21 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'utero_ovarios',
     label: 'Útero e Ovários / Pélvica',
     view: 'front',
-    sistemas: ['reprodutor', 'endocrino', 'urinario'],
+    sistemas: ['reprodutor'],
     d: 'M110 285 Q120 280 130 285 L135 282 M105 282'
   },
   {
     id: 'testiculos',
     label: 'Testículos / Gônadas',
     view: 'front',
-    sistemas: ['reprodutor', 'endocrino', 'urinario'],
+    sistemas: ['reprodutor'],
     d: 'M115 305 A2.5 2.5 0 1 0 120 305 M120 305 A2.5 2.5 0 1 0 125 305'
   },
   {
     id: 'prostata',
     label: 'Próstata / Assoalho Pélvico',
     view: 'front',
-    sistemas: ['reprodutor', 'urinario', 'musculoesqueletico'],
+    sistemas: ['reprodutor'],
     d: 'M118 295 A2 2 0 1 0 122 295 A2 2 0 1 0 118 295'
   },
 
@@ -284,7 +284,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'gluteos_p',
     label: 'Região Glútea (Estruturas Profundas)',
     view: 'back',
-    sistemas: ['musculoesqueletico', 'nervoso'],
+    sistemas: ['musculoesqueletico'],
     d: 'M80 240 L160 240 L156 290 L84 290 Z'
   },
   {
@@ -314,7 +314,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'cerebro',
     label: 'Encéfalo',
     view: 'front',
-    sistemas: ['nervoso', 'endocrino', 'sensorial'],
+    sistemas: ['nervoso'],
     d: 'M100 45 C100 30 110 25 120 25 C130 25 140 30 140 45 C140 60 130 65 120 65 C110 65 100 60 100 45 Z'
   },
   {
@@ -328,56 +328,56 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'medula_espinhal_v',
     label: 'Medula Espinhal (Eixo Central)',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso'],
     d: 'M119 85 L119 280 L121 280 L121 85 Z'
   },
   {
     id: 'plexo_braquial_d',
     label: 'Plexo Braquial D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico', 'circulatorio'],
+    sistemas: ['nervoso'],
     d: 'M134 108 L160 130'
   },
   {
     id: 'plexo_braquial_e',
     label: 'Plexo Braquial E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico', 'circulatorio'],
+    sistemas: ['nervoso'],
     d: 'M106 108 L80 130'
   },
   {
     id: 'nervo_mediano_d',
     label: 'Nervo Mediano D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso'],
     d: 'M160 130 L195 280'
   },
   {
     id: 'nervo_mediano_e',
     label: 'Nervo Mediano E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso'],
     d: 'M80 130 L45 280'
   },
   {
     id: 'plexo_lombosacro_d',
     label: 'Plexo Lombossacro D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico', 'urinario'],
+    sistemas: ['nervoso'],
     d: 'M122 260 L135 295 L140 320'
   },
   {
     id: 'plexo_lombosacro_e',
     label: 'Plexo Lombossacro E',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico', 'urinario'],
+    sistemas: ['nervoso'],
     d: 'M118 260 L105 295 L100 320'
   },
   {
     id: 'nervo_femoral_d',
     label: 'Nervo Femoral D',
     view: 'front',
-    sistemas: ['nervoso', 'musculoesqueletico'],
+    sistemas: ['nervoso'],
     d: 'M140 320 L145 350'
   },
   {
