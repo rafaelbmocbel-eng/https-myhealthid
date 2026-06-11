@@ -497,5 +497,16 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   testiculos: { partes: ['Epidídimo', 'Túbulos seminíferos', 'Células de Leydig', 'Túnica albugínea'], hormonios: ['Testosterona'] },
   prostata: { partes: ['Zona periférica', 'Zona central', 'Zona de transição', 'Glândulas bulbouretrais'], funcao: ['Produção de fluido seminal'] },
   gluteos_p: { musculos: ['Glúteo profundo', 'Piriforme', 'Obturador interno', 'Quadrado femoral'], nervos: ['Nervo Isquiático', 'Nervo Pudendo'] },
-  nervo_ciatico_p: { trajeto: ['Forame isquiático maior', 'Espaço subglúteo', 'Divisão tibial', 'Divisão fibular'], patologias: ['Ciatalgia', 'Síndrome do Piriforme'] }
+  nervo_ciatico_p: { trajeto: ['Forame isquiático maior', 'Espaço subglúteo', 'Divisão tibial', 'Divisão fibular'], patologias: ['Ciatalgia', 'Síndrome do Piriforme'] },
+  
+  // Nervous System Details
+  cerebro: { partes: ['Telencéfalo', 'Diencéfalo', 'Cerebelo', 'Córtex cerebral', 'Núcleos da base'], funcoes: ['Cognição', 'Controle Motor', 'Sensibilidade'] },
+  tronco_encefalico: { partes: ['Mesencéfalo', 'Ponte', 'Bulbo'], funcoes: ['Controle Autonômico', 'Nervos Cranianos'] },
+  medula_espinhal_v: { segmentos: ['Cervical', 'Torácico', 'Lombar', 'Sacral'], funcoes: ['Condução Nervosa', 'Reflexos'] },
+  plexo_braquial_d: { partes: ['Troncos', 'Divisões', 'Fascículos', 'Ramos terminais'], inervacao: ['Membro Superior D'] },
+  plexo_braquial_e: { partes: ['Troncos', 'Divisões', 'Fascículos', 'Ramos terminais'], inervacao: ['Membro Superior E'] },
+  nervo_mediano_d: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
+  nervo_mediano_e: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
+  nervo_femoral_d: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] },
+  nervo_femoral_e: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] }
 };
