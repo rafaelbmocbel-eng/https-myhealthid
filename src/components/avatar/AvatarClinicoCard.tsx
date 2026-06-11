@@ -115,12 +115,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         tontura: 'cabeca', dizziness: 'cabeca',
         
         // Digestório / Visceral
-        ma_digestao: 'estomago', bloating: 'intestino',
+        ma_digestao: 'estomago', 
+        bloating: 'intestino_delgado',
+        empachamento: 'estomago',
+        azia: 'esofago',
+        queimacao_estomago: 'estomago',
+        nausea: 'estomago',
+        vomito: 'estomago',
+        gases: 'intestino_grosso',
         refluxo: 'esofago', reflux: 'esofago',
         gastrite: 'estomago', gastritis: 'estomago',
-        intestino_irritavel: 'intestino', ibs: 'intestino',
-        constipacao: 'intestino', constipation: 'intestino',
-        diarreia: 'intestino', diarrhea: 'intestino',
+        intestino_irritavel: 'intestino_grosso', ibs: 'intestino_grosso',
+        constipacao: 'intestino_grosso', constipation: 'intestino_grosso',
+        diarreia: 'intestino_delgado', diarrhea: 'intestino_delgado',
+        dor_abdominal: 'intestino_delgado',
+        distensao_abdominal: 'intestino_delgado',
+        halitose: 'lingua',
+        dificuldade_deglutir: 'esofago',
         
         // Circulatório / Respiratório
         palpitacao: 'coracao', palpitations: 'coracao',
@@ -138,8 +149,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
       // Lógica de Extração Inteligente da Queixa Principal (NLP simples)
       if (queixaPrincipal.includes('torácica') || queixaPrincipal.includes('peito')) {
-        if (!sinalRegions.some(sr => sr.regiao_id === 'peitoral')) {
-          sinalRegions.push({ regiao_id: 'peitoral', sinal: 'Relato: Dor Torácica' });
+        if (!sinalRegions.some(sr => sr.regiao_id === 'coracao')) {
+          sinalRegions.push({ regiao_id: 'coracao', sinal: 'Relato: Dor Torácica/Peito' });
+        }
+      }
+      if (queixaPrincipal.includes('estômago') || queixaPrincipal.includes('barriga') || queixaPrincipal.includes('digestão')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'estomago')) {
+          sinalRegions.push({ regiao_id: 'estomago', sinal: 'Relato: Desconforto Digestório' });
+        }
+      }
+      if (queixaPrincipal.includes('intestino') || queixaPrincipal.includes('evacuar')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'intestino_grosso')) {
+          sinalRegions.push({ regiao_id: 'intestino_grosso', sinal: 'Relato: Queixa Intestinal' });
         }
       }
       if (queixaPrincipal.includes('costas') || queixaPrincipal.includes('dorsal')) {
