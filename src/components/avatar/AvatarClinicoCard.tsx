@@ -161,7 +161,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r => 
-    r.view === view && r.sistemas.some(s => sistemasAtivos.includes(s as any))
+    r.view === view && (
+      r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
+      sinalRegions.some(sr => sr.regiao_id === r.id)
+    )
   );
 
   const eventosDaRegiao = (rid: string) => eventosFiltrados.filter(e => e.regiao_id === rid);
