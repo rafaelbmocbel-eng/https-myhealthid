@@ -521,6 +521,8 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   plexo_braquial_e: { partes: ['Troncos', 'Divisões', 'Fascículos', 'Ramos terminais'], inervacao: ['Membro Superior E'] },
   nervo_mediano_d: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
   nervo_mediano_e: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
+  plexo_lombosacro_d: { partes: ['Plexo Lombar (L1-L4)', 'Plexo Sacral (L4-S4)'], nervos: ['Femoral', 'Obturatório', 'Isquiático'], funcoes: ['Inervação de Pelve e Membros Inferiores'] },
+  plexo_lombosacro_e: { partes: ['Plexo Lombar (L1-L4)', 'Plexo Sacral (L4-S4)'], nervos: ['Femoral', 'Obturatório', 'Isquiático'], funcoes: ['Inervação de Pelve e Membros Inferiores'] },
   nervo_femoral_d: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] },
   nervo_femoral_e: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] }
 };
