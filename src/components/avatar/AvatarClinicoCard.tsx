@@ -8,9 +8,10 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
+import { cn } from '@/lib/utils';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
   corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
@@ -71,12 +72,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
 
-  const { data: lastMyID } = useQuery({
-    queryKey: ['last-myid-data', pacienteId],
+  const { data: lastMyIDData } = useQuery({
+    queryKey: ['last-myid-data-full', pacienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('avaliacoes_identidade')
-        .select('dados_avaliacao')
+        .select('*')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false })
         .limit(1)
@@ -90,33 +91,45 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
         .filter(i => i.intensidade > 0) : [];
 
-      // Mapeamento de sinais autonômicos (Bloco 6) para regiões do corpo
       const respostas = dados?.respostas || {};
+      const analysis = data.myid_analysis as any;
+      const componentScores = analysis?.componentScores || analysis?.component_scores || {};
+      
+      // Mapeamento de sinais autonômicos (Bloco 6)
       const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
+      const visceralIssues = respostas.bloco_6_visceral_issues || [];
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
-      if (sinais.includes('bruxismo') || sinais.includes('bruxism')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Bruxismo/Apertamento' });
-      if (sinais.includes('zumbido') || sinais.includes('tinnitus')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Zumbido' });
-      if (sinais.includes('sensibilidade_luz') || sinais.includes('light_sensitivity')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Fotofobia' });
-      if (sinais.includes('ma_digestao') || sinais.includes('bloating')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Má digestão/Estufamento' });
-      if (sinais.includes('refluxo') || sinais.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
-      if (sinais.includes('gastrite') || sinais.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
-      if (sinais.includes('intestino_irritavel') || sinais.includes('ibs')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Intestino irritável' });
-      if (sinais.includes('palpitacao') || sinais.includes('palpitations')) sinalRegions.push({ regiao_id: 'coracao', sinal: 'Palpitação/Taquicardia' });
-      if (sinais.includes('falta_ar') || sinais.includes('shortness_breath')) sinalRegions.push({ regiao_id: 'pulmao_d', sinal: 'Dispneia/Falta de ar' });
+      const mapping: Record<string, string> = {
+        bruxismo: 'cabeca', bruxism: 'cabeca',
+        zumbido: 'cabeca', tinnitus: 'cabeca',
+        sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
+        ma_digestao: 'estomago', bloating: 'intestino',
+        refluxo: 'esofago', reflux: 'esofago',
+        gastrite: 'estomago', gastritis: 'estomago',
+        intestino_irritavel: 'intestino', ibs: 'intestino',
+        palpitacao: 'coracao', palpitations: 'coracao',
+        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d'
+      };
 
-      const visceralIssues = respostas.bloco_6_visceral_issues || [];
-      if (visceralIssues.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
-      if (visceralIssues.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
-      if (visceralIssues.includes('bloating')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Estufamento abdominal' });
+      [...sinais, ...visceralIssues].forEach(s => {
+        if (mapping[s]) sinalRegions.push({ regiao_id: mapping[s], sinal: s });
+      });
 
-      return { painRegions, sinalRegions };
+      return { 
+        painRegions, 
+        sinalRegions, 
+        scores: componentScores,
+        raw: data,
+        respostas
+      };
     },
     enabled: !!pacienteId,
   });
 
-  const painRegions = lastMyID?.painRegions || [];
-  const sinalRegions = lastMyID?.sinalRegions || [];
+  const painRegions = lastMyIDData?.painRegions || [];
+  const sinalRegions = lastMyIDData?.sinalRegions || [];
+  const myidScores = lastMyIDData?.scores || {};
 
   const eventosFiltrados = useMemo(
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
@@ -139,7 +152,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    // Isso cria o vínculo visual imediato
     painRegions.forEach(item => {
       if (!map[item.regiao_id]) {
         map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
@@ -150,14 +162,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
     sinalRegions.forEach(item => {
       if (!map[item.regiao_id]) {
-        // Tom azulado translúcido para sinais autonômicos/viscerais do MyID
         map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
 
+    // Sincroniza Cirurgias (Vermelho Escuro/Trauma)
+    const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
+    if (cirurgias.length > 0 && !map['pelve']) {
+       map['pelve'] = 'rgba(220, 38, 38, 0.2)'; 
+    }
+
     return map;
-  }, [eventosFiltrados, painRegions, sinalRegions]);
+  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r => 
@@ -170,9 +187,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const eventosDaRegiao = (rid: string) => eventosFiltrados.filter(e => e.regiao_id === rid);
 
   const abrirSheet = (rid: string) => {
-    if (modoSimplificado) return; // Paciente não edita no avatar clínico (ou apenas visualiza)
+    if (modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
+    // Ao abrir a sheet, o dashboard deve resetar para a categoria correta se houver sinal
+    if (sinalRegions.some(sr => sr.regiao_id === rid)) {
+      setIsSyncing(true);
+    } else {
+      setIsSyncing(false);
+    }
   };
 
   const novoAchado = () => {
@@ -471,6 +494,76 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </div>
           )}
 
+          {/* Painel Informativo MyID (Contexto e Características do Formulário) */}
+          {lastMyIDData && !editing && (
+            <div className="mt-4 p-4 rounded-xl bg-primary/5 border border-primary/10 space-y-4">
+              <div className="flex items-center gap-2 border-b border-primary/10 pb-2">
+                <ClipboardList className="h-4 w-4 text-primary" />
+                <h4 className="text-xs font-bold uppercase text-primary">Perfil MyID</h4>
+              </div>
+              
+              <div className="space-y-4">
+                {/* Queixa Principal */}
+                <div>
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold flex items-center gap-1">
+                    <Info className="h-3 w-3" /> Queixa Principal
+                  </Label>
+                  <p className="text-xs italic bg-background/50 p-2 rounded border border-border/50 mt-1">
+                    "{lastMyIDData.respostas.bloco_1_queixa || 'Não informada'}"
+                  </p>
+                </div>
+
+                {/* Métricas de Capacidade */}
+                <div className="grid grid-cols-2 gap-2">
+                  <div className="bg-background/40 p-2 rounded border border-border/30">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Heart className="h-3 w-3 text-emerald-500" />
+                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Resiliência</Label>
+                    </div>
+                    <span className="text-xs font-bold">{Number(myidScores.R || 0).toFixed(1)}/10</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">{lastMyIDData.respostas.bloco_5a_hours}h sono · qlty {lastMyIDData.respostas.bloco_5a_quality}/10</p>
+                  </div>
+                  <div className="bg-background/40 p-2 rounded border border-border/30">
+                    <div className="flex items-center gap-1 mb-1">
+                      <Brain className="h-3 w-3 text-violet-500" />
+                      <Label className="text-[9px] text-muted-foreground uppercase font-bold">Psicológico</Label>
+                    </div>
+                    <span className="text-xs font-bold">{Number(myidScores.P || 0).toFixed(1)}/10</span>
+                    <p className="text-[9px] text-muted-foreground mt-0.5">Stress {lastMyIDData.respostas.bloco_5c_stress}/10 · Anx {lastMyIDData.respostas.bloco_5c_anxiety}/10</p>
+                  </div>
+                </div>
+
+                {/* Sinais Sistêmicos e Traumas */}
+                <div className="space-y-2">
+                  <Label className="text-[10px] text-muted-foreground uppercase font-bold">Sinais do Corpo e Histórico</Label>
+                  <div className="flex flex-wrap gap-1">
+                    {lastMyIDData.respostas.bloco_6_axial_trauma && (
+                      <Badge variant="outline" className="text-[9px] border-amber-200 bg-amber-50 text-amber-700">Trauma Axial</Badge>
+                    )}
+                    {lastMyIDData.respostas.bloco_6_abdominal_surgeries?.map((s: string) => (
+                      <Badge key={s} variant="outline" className="text-[9px] border-red-200 bg-red-50 text-red-700">Cirurgia: {s}</Badge>
+                    ))}
+                    {lastMyIDData.respostas.bloco_6_visceral_issues?.map((s: string) => (
+                      <Badge key={s} variant="outline" className="text-[9px] border-blue-200 bg-blue-50 text-blue-700">{s}</Badge>
+                    ))}
+                    {lastMyIDData.respostas.bloco_6_antidepressant && (
+                      <Badge variant="outline" className="text-[9px] border-purple-200 bg-purple-50 text-purple-700">Uso Antidepressivo</Badge>
+                    )}
+                  </div>
+                </div>
+
+                {/* Comportamento e Estilo de Vida */}
+                <div className="bg-muted/30 p-2 rounded-lg">
+                  <Label className="text-[9px] text-muted-foreground uppercase font-bold block mb-1">Comportamento (Inércia {Number(myidScores.I || 0).toFixed(1)})</Label>
+                  <p className="text-[10px] text-foreground leading-tight">
+                    Vida {lastMyIDData.respostas.bloco_5e_lifestyle} · {lastMyIDData.respostas.bloco_5e_sitting_hours}h sentado · Fumo: {lastMyIDData.respostas.bloco_6_smoking ? 'Sim' : 'Não'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+
           {editing && (
             <div className="mt-4 space-y-3">
               <div className="space-y-1.5">
@@ -608,21 +701,42 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </SheetTitle>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Detectamos {syncData?.length} regiões com queixas na última avaliação MyID do paciente. 
-              Selecione quais deseja importar para o Avatar Clínico como achados ativos.
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                Detectamos queixas e sinais no MyID do paciente. 
+                Selecione o que deseja importar para o Avatar Clínico.
+              </p>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
+                  onClick={() => setIsSyncing(false)}
+                >
+                  <Shield className="h-3 w-3 mr-1" /> Mapa de Dor ({painRegions.length})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
+                  onClick={() => setIsSyncing(true)}
+                >
+                  <Activity className="h-3 w-3 mr-1" /> Sinais do Corpo ({sinalRegions.length})
+                </Button>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-              {syncData?.map((item) => {
-                const reg = REGIONS.find(r => r.id === item.regiao_id);
+              {!isSyncing ? painRegions.map((item) => {
+                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
                 const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.origem === 'subjetivo_myid' && e.status === 'ativo');
                 
                 return (
                   <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
                       <p className="text-sm font-semibold">{reg?.label || item.regiao_id}</p>
-                      <p className="text-[11px] text-muted-foreground">Intensidade: {item.intensidade}/10</p>
+                      <p className="text-[11px] text-muted-foreground italic">Intensidade: {item.intensidade}/10</p>
                     </div>
                     {jaImportado ? (
                       <Badge variant="secondary" className="gap-1 text-[10px]">
@@ -635,13 +749,46 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     )}
                   </div>
                 );
+              }) : sinalRegions.map((item, idx) => {
+                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
+                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.tipo_achado.includes(item.sinal));
+                
+                return (
+                  <div key={`${item.regiao_id}-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
+                    <div>
+                      <p className="text-sm font-semibold">{item.sinal}</p>
+                      <p className="text-[11px] text-muted-foreground">{reg?.label || item.regiao_id}</p>
+                    </div>
+                    {jaImportado ? (
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <Check className="h-3 w-3" /> Importado
+                      </Badge>
+                    ) : (
+                      <Button size="sm" className="h-8 text-xs" onClick={async () => {
+                        await saveMut.mutateAsync({
+                          paciente_id: pacienteId,
+                          regiao_id: item.regiao_id,
+                          sistema: 'visceral',
+                          origem: 'subjetivo_myid',
+                          tipo_achado: `Relato MyID: ${item.sinal}`,
+                          severidade: 2,
+                          status: 'ativo',
+                          visivel_paciente: true,
+                          data_inicio: new Date().toISOString().slice(0, 10),
+                        });
+                      }} disabled={saveMut.isPending}>
+                        Importar
+                      </Button>
+                    )}
+                  </div>
+                );
               })}
             </div>
 
-            {syncData?.length === 0 && (
+            {(isSyncing ? sinalRegions.length : painRegions.length) === 0 && (
               <div className="text-center py-8">
                 <Check className="h-10 w-10 text-emerald-500 mx-auto mb-2" />
-                <p className="text-sm font-medium">Todas as regiões foram processadas.</p>
+                <p className="text-sm font-medium">Sem itens pendentes nesta categoria.</p>
                 <Button variant="outline" className="mt-4" onClick={() => setSyncData(null)}>Fechar</Button>
               </div>
             )}
