@@ -18,7 +18,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'tireoide',
     label: 'Tireoide',
     view: 'front',
-    sistemas: ['endocrino', 'visceral'],
+    sistemas: ['endocrino', ],
     d: 'M112 98 Q120 102 128 98 L126 104 Q120 108 114 104 Z'
   },
   {
@@ -55,14 +55,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'pulmao_d',
     label: 'Pulmão Direito',
     view: 'front',
-    sistemas: ['respiratorio', 'visceral'],
+    sistemas: ['respiratorio', ],
     d: 'M115 135 C100 130 85 140 82 170 C80 200 95 215 118 212 Q115 170 115 135'
   },
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
     view: 'front',
-    sistemas: ['respiratorio', 'visceral'],
+    sistemas: ['respiratorio', ],
     d: 'M125 135 C140 130 155 140 158 170 C160 200 145 215 122 212 Q125 170 125 135'
   },
 
@@ -71,7 +71,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'coracao',
     label: 'Coração',
     view: 'front',
-    sistemas: ['circulatorio', 'visceral'],
+    sistemas: ['circulatorio', ],
     d: 'M120 145 C110 145 105 160 120 175 C135 185 145 170 140 155 C135 145 125 142 120 145'
   },
   {
@@ -108,14 +108,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'figado',
     label: 'Fígado',
     view: 'front',
-    sistemas: ['digestorio', 'visceral'],
+    sistemas: ['digestorio', ],
     d: 'M85 190 C100 185 125 188 140 205 L135 215 C115 220 90 220 82 210 Z'
   },
   {
     id: 'estomago',
     label: 'Estômago',
     view: 'front',
-    sistemas: ['digestorio', 'visceral'],
+    sistemas: ['digestorio', ],
     d: 'M130 195 C145 190 158 205 155 225 C150 240 135 235 125 220 Q122 205 130 195'
   },
   {
@@ -129,7 +129,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'intestino',
     label: 'Intestinos',
     view: 'front',
-    sistemas: ['digestorio', 'visceral'],
+    sistemas: ['digestorio', ],
     d: 'M90 225 L150 225 L155 270 L85 270 Z'
   },
 
@@ -138,7 +138,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'bexiga',
     label: 'Bexiga',
     view: 'front',
-    sistemas: ['urinario', 'visceral'],
+    sistemas: ['urinario', ],
     d: 'M110 275 Q120 270 130 275 Q135 290 120 295 Q105 290 110 275'
   },
 
@@ -168,7 +168,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'baco',
     label: 'Baço',
     view: 'front',
-    sistemas: ['linfatico', 'visceral'],
+    sistemas: ['linfatico', ],
     d: 'M155 205 Q162 208 158 220 Q152 225 148 215 Q148 205 155 205'
   },
   {
@@ -184,14 +184,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'rim_d',
     label: 'Rim Direito',
     view: 'back',
-    sistemas: ['urinario', 'visceral'],
+    sistemas: ['urinario', ],
     d: 'M95 210 Q105 205 115 210 Q120 225 115 240 Q105 245 95 240 Q90 225 95 210'
   },
   {
     id: 'rim_e',
     label: 'Rim Esquerdo',
     view: 'back',
-    sistemas: ['urinario', 'visceral'],
+    sistemas: ['urinario', ],
     d: 'M125 210 Q135 205 145 210 Q150 225 145 240 Q135 245 125 240 Q120 225 125 210'
   }
 ];
