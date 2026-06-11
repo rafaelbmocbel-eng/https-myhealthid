@@ -65,7 +65,43 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     sistemas: ['urinario', 'visceral'],
     d: 'M110 265 Q120 260 130 265 Q130 275 120 280 Q110 275 110 265 Z'
   },
-  // ===== SISTEMA LINFÁTICO (Novos) =====
+  // ===== SISTEMA CIRCULATÓRIO (Vias Principais) =====
+  {
+    id: 'carotida_d',
+    label: 'Artéria Carótida D',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    d: 'M112 90 L110 108'
+  },
+  {
+    id: 'carotida_e',
+    label: 'Artéria Carótida E',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    d: 'M128 90 L130 108'
+  },
+  {
+    id: 'aorta_abdominal',
+    label: 'Aorta Abdominal',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    d: 'M118 185 L118 245'
+  },
+  {
+    id: 'arteria_femoral_d',
+    label: 'Artéria Femoral D',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    d: 'M115 285 L125 360'
+  },
+  {
+    id: 'arteria_femoral_e',
+    label: 'Artéria Femoral E',
+    view: 'front',
+    sistemas: ['circulatorio'],
+    d: 'M125 285 L115 360'
+  },
+  // ===== SISTEMA LINFÁTICO =====
   {
     id: 'linfonodos_cervicais',
     label: 'Linfonodos Cervicais',
@@ -122,7 +158,7 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   tireoide: { glandulas: ['Lobo direito', 'Lobo esquerdo', 'Istmo'] },
   pulmao_d: { lobos: ['Superior', 'Médio', 'Inferior'], pleura: ['Visceral', 'Parietal'] },
   pulmao_e: { lobos: ['Superior', 'Inferior'], pleura: ['Visceral', 'Parietal'] },
-  coracao: { cavidades: ['Átrio D', 'Átrio E', 'Ventrículo D', 'Ventrículo E'], valvas: ['Mitral', 'Tricúspide', 'Aórtica', 'Pulmonar'] },
+  coracao: { cavidades: ['Átrio D', 'Átrio E', 'Ventrículo D', 'Ventrículo E'], valvas: ['Mitral', 'Tricúspide', 'Aórtica', 'Pulmonar'], vasos: ['Aorta', 'Veia Cava', 'Artérias Coronárias'] },
   figado: { lobos: ['Direito', 'Esquerdo', 'Caudado', 'Quadrado'], vesicula: ['Vesícula biliar'] },
   estomago: { partes: ['Cárdia', 'Fundo', 'Corpo', 'Antro', 'Piloro'] },
   intestino: { partes: ['Duodeno', 'Jejuno', 'Íleo', 'Ceco', 'Cólon ascendente', 'Cólon transverso', 'Cólon descendente', 'Reto'] },
@@ -133,6 +169,12 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   linfonodos_axilares_d: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
   linfonodos_axilares_e: { grupos: ['Apicais', 'Peitorais', 'Laterais', 'Subescapulares'] },
   baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Cápsula fibroelástica'] },
-  linfonodos_inguinais: { grupos: ['Superficiais', 'Profundos'] }
+  linfonodos_inguinais: { grupos: ['Superficiais', 'Profundos'] },
+  carotida_d: { segmentos: ['Comum', 'Interna', 'Externa'] },
+  carotida_e: { segmentos: ['Comum', 'Interna', 'Externa'] },
+  aorta_abdominal: { ramos: ['Celíaco', 'Mesentérica superior', 'Renais', 'Mesentérica inferior', 'Ilíacas'] },
+  arteria_femoral_d: { segmentos: ['Comum', 'Superficial', 'Profunda'] },
+  arteria_femoral_e: { segmentos: ['Comum', 'Superficial', 'Profunda'] }
 };
+
 
