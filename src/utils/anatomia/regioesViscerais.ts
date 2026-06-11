@@ -363,14 +363,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'plexo_braquial_d',
     label: 'Plexo Braquial D',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M134 108 L160 130'
   },
   {
     id: 'plexo_braquial_e',
     label: 'Plexo Braquial E',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M106 108 L80 130'
   },
   {
