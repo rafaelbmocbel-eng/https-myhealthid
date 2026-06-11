@@ -132,6 +132,10 @@ export default {
   					height: 'var(--radix-accordion-content-height)'
   				}
   			},
+  			'pulse-subtle': {
+  				'0%, 100%': { opacity: '1', transform: 'scale(1)' },
+  				'50%': { opacity: '0.85', transform: 'scale(0.98)' }
+  			},
   			'accordion-up': {
   				from: {
   					height: 'var(--radix-accordion-content-height)'
