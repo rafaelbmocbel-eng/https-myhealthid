@@ -338,40 +338,63 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               return systemScores.map(({ sistema: s, score, count }) => {
                 const active = sistemasAtivos.includes(s);
                 
+                // Cores dos sistemas para facilitar identificação visual
+                const systemBaseColors: Record<SistemaCorporal, string> = {
+                  musculoesqueletico: 'purple',
+                  nervoso: 'blue',
+                  visceral: 'rose',
+                  circulatorio: 'red',
+                  respiratorio: 'cyan',
+                  digestorio: 'orange',
+                  endocrino: 'yellow',
+                  urinario: 'indigo',
+                  reprodutor: 'pink',
+                  tegumentar: 'stone',
+                  linfatico: 'lime',
+                  sensorial: 'emerald'
+                };
+
+                const baseColor = systemBaseColors[s];
+                
                 // Cor do badge baseada no score (acometimento)
-                const statusColor = score >= 5 
-                  ? 'border-red-500 text-red-700 bg-red-50' 
-                  : score >= 2 
-                    ? 'border-amber-500 text-amber-700 bg-amber-50' 
-                    : score > 0 
-                      ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
-                      : 'border-border/50 text-muted-foreground bg-background opacity-60';
+                let statusClasses = "";
+                if (score >= 5) {
+                  statusClasses = `border-red-500 text-red-700 bg-red-50 ring-1 ring-red-200 animate-pulse-subtle`;
+                } else if (score >= 2) {
+                  statusClasses = `border-amber-500 text-amber-700 bg-amber-50`;
+                } else if (score > 0) {
+                  statusClasses = `border-emerald-500 text-emerald-700 bg-emerald-50`;
+                } else {
+                  statusClasses = `border-border/50 text-muted-foreground bg-background opacity-60`;
+                }
 
                 return (
                   <button
                     key={s}
                     type="button"
-                    onClick={() => {
-                      // Se clicar em um sistema, alterna entre "Só ele" ou "Adicionar/Remover"
-                      // Mantemos o comportamento de toggle múltiplo mas facilitamos o individual
-                      setSistemasAtivos(prev =>
-                        prev.includes(s) && prev.length === 1 
-                          ? SISTEMAS_ORDEM // Se era o único ativo, volta para todos
-                          : prev.includes(s) 
-                            ? prev.filter(x => x !== s) 
-                            : [...prev, s]
-                      );
+                    title={`${SISTEMA_LABEL[s]}: Score de Acometimento ${score.toFixed(1)}`}
+                    onClick={(e) => {
+                      if (e.shiftKey) {
+                        setSistemasAtivos(prev =>
+                          prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+                        );
+                      } else {
+                        setSistemasAtivos([s]);
+                      }
                     }}
                     className={cn(
-                      "text-[10px] px-2 py-1.5 rounded-md border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight",
-                      active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.4]",
-                      statusColor
+                      "text-[10px] px-2.5 py-1.5 rounded-full border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
+                      active ? "ring-2 ring-primary ring-offset-2 shadow-md z-10" : "grayscale-[0.6]",
+                      statusClasses
                     )}
                   >
-                    {active && <Check className="h-2.5 w-2.5" />}
+                    <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${baseColor}-500`)} />
                     {SISTEMA_LABEL[s]}
                     {count > 0 && (
-                      <span className="ml-1 px-1 min-w-[16px] h-4 rounded-full bg-foreground/10 flex items-center justify-center text-[8px]">
+                      <span className={cn(
+                        "ml-0.5 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black",
+                        score >= 5 ? "bg-red-200 text-red-900" : "bg-foreground/10"
+                      )}>
                         {count}
                       </span>
                     )}

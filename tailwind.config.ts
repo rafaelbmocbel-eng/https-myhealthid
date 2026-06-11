@@ -132,6 +132,10 @@ export default {
   					height: 'var(--radix-accordion-content-height)'
   				}
   			},
+  			'pulse-subtle': {
+  				'0%, 100%': { opacity: '1', transform: 'scale(1)' },
+  				'50%': { opacity: '0.85', transform: 'scale(0.98)' }
+  			},
   			'accordion-up': {
   				from: {
   					height: 'var(--radix-accordion-content-height)'
@@ -196,6 +200,7 @@ export default {
   		},
   		animation: {
   			'accordion-down': 'accordion-down 0.2s ease-out',
+  			'pulse-subtle': 'pulse-subtle 2s ease-in-out infinite',
   			'accordion-up': 'accordion-up 0.2s ease-out',
   			'slide-in': 'slide-in 0.3s ease-out',
   			'fade-in': 'fade-in 0.4s ease-out',
