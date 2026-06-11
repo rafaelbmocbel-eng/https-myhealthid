@@ -387,9 +387,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         <p className="text-sm font-semibold">{ev.tipo_achado}</p>
                         <div className="flex gap-1">
                           {ev.visivel_paciente ? (
-                            <User className="h-3 w-3 text-green-500" title="Visível ao paciente" />
+                            <User className="h-3 w-3 text-green-500" />
                           ) : (
-                            <ShieldCheck className="h-3 w-3 text-muted-foreground" title="Apenas profissional" />
+                            <ShieldCheck className="h-3 w-3 text-muted-foreground" />
                           )}
                         </div>
                       </div>
