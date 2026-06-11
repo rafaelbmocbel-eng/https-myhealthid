@@ -72,7 +72,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
 
   const { data: lastMyID } = useQuery({
-    queryKey: ['last-myid-painmap', pacienteId],
+    queryKey: ['last-myid-data', pacienteId],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('avaliacoes_identidade')
@@ -85,16 +85,38 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       if (!data) return null;
       
       const dados = data.dados_avaliacao as any;
-      // Procura painMap ou mapa_dor em várias possíveis localizações
       const painMap = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
-      if (!painMap) return null;
-
-      return Object.entries(painMap)
+      const painRegions = painMap ? Object.entries(painMap)
         .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
-        .filter(i => i.intensidade > 0);
+        .filter(i => i.intensidade > 0) : [];
+
+      // Mapeamento de sinais autonômicos (Bloco 6) para regiões do corpo
+      const respostas = dados?.respostas || {};
+      const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
+      const sinalRegions: { regiao_id: string; sinal: string }[] = [];
+      
+      if (sinais.includes('bruxismo') || sinais.includes('bruxism')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Bruxismo/Apertamento' });
+      if (sinais.includes('zumbido') || sinais.includes('tinnitus')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Zumbido' });
+      if (sinais.includes('sensibilidade_luz') || sinais.includes('light_sensitivity')) sinalRegions.push({ regiao_id: 'cabeca', sinal: 'Fotofobia' });
+      if (sinais.includes('ma_digestao') || sinais.includes('bloating')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Má digestão/Estufamento' });
+      if (sinais.includes('refluxo') || sinais.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
+      if (sinais.includes('gastrite') || sinais.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
+      if (sinais.includes('intestino_irritavel') || sinais.includes('ibs')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Intestino irritável' });
+      if (sinais.includes('palpitacao') || sinais.includes('palpitations')) sinalRegions.push({ regiao_id: 'coracao', sinal: 'Palpitação/Taquicardia' });
+      if (sinais.includes('falta_ar') || sinais.includes('shortness_breath')) sinalRegions.push({ regiao_id: 'pulmao_d', sinal: 'Dispneia/Falta de ar' });
+
+      const visceralIssues = respostas.bloco_6_visceral_issues || [];
+      if (visceralIssues.includes('reflux')) sinalRegions.push({ regiao_id: 'esofago', sinal: 'Refluxo' });
+      if (visceralIssues.includes('gastritis')) sinalRegions.push({ regiao_id: 'estomago', sinal: 'Gastrite' });
+      if (visceralIssues.includes('bloating')) sinalRegions.push({ regiao_id: 'intestino', sinal: 'Estufamento abdominal' });
+
+      return { painRegions, sinalRegions };
     },
     enabled: !!pacienteId,
   });
+
+  const painRegions = lastMyID?.painRegions || [];
+  const sinalRegions = lastMyID?.sinalRegions || [];
 
   const eventosFiltrados = useMemo(
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
@@ -118,18 +140,24 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
     // Isso cria o vínculo visual imediato
-    if (lastMyID) {
-      lastMyID.forEach(item => {
-        if (!map[item.regiao_id]) {
-          // Tom de roxo/magenta translúcido para indicar "Relato de Dor sem Diagnóstico"
-          map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
-          map[item.regiao_id + '__is_myid'] = 'true';
-        }
-      });
-    }
+    painRegions.forEach(item => {
+      if (!map[item.regiao_id]) {
+        map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
+        map[item.regiao_id + '__is_myid'] = 'true';
+      }
+    });
+
+    // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
+    sinalRegions.forEach(item => {
+      if (!map[item.regiao_id]) {
+        // Tom azulado translúcido para sinais autonômicos/viscerais do MyID
+        map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
+        map[item.regiao_id + '__is_sinal'] = 'true';
+      }
+    });
 
     return map;
-  }, [eventosFiltrados, lastMyID]);
+  }, [eventosFiltrados, painRegions, sinalRegions]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r => 
@@ -192,12 +220,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <Stethoscope className="icon-sm shrink-0" />
           Avatar Clínico Anatômico
           <div className="ml-auto flex items-center gap-1.5">
-            {lastMyID && lastMyID.length > 0 && (
+            {(painRegions.length > 0 || sinalRegions.length > 0) && (
               <Button 
                 variant="outline" 
                 size="sm" 
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData(lastMyID)}
+                onClick={() => setSyncData(painRegions)}
               >
                 <RefreshCcw className="h-3 w-3" />
                 Sincronizar MyID
@@ -330,7 +358,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa MyID</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa de Dor</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
         </div>
 
         {/* Lista resumida */}
