@@ -32,7 +32,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'timo',
     label: 'Timo',
     view: 'front',
-    sistemas: ['endocrino', 'linfatico', 'circulatorio'],
+    sistemas: ['linfatico', 'endocrino'],
     d: 'M115 130 Q120 125 125 130 L122 145 Q120 148 118 145 Z'
   },
   {
@@ -62,14 +62,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'pulmao_d',
     label: 'Pulmão Direito',
     view: 'front',
-    sistemas: ['respiratorio', 'circulatorio'],
+    sistemas: ['respiratorio'],
     d: 'M115 135 C100 130 85 140 82 170 C80 200 95 215 118 212 Q115 170 115 135'
   },
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
     view: 'front',
-    sistemas: ['respiratorio', 'circulatorio'],
+    sistemas: ['respiratorio'],
     d: 'M125 135 C140 130 155 140 158 170 C160 200 145 215 122 212 Q125 170 125 135'
   },
 
@@ -78,7 +78,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'coracao',
     label: 'Coração',
     view: 'front',
-    sistemas: ['circulatorio', 'respiratorio'],
+    sistemas: ['circulatorio'],
     d: 'M120 145 C110 145 105 160 120 175 C135 185 145 170 140 155 C135 145 125 142 120 145'
   },
   {
@@ -108,14 +108,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'esofago',
     label: 'Esôfago',
     view: 'front',
-    sistemas: ['digestorio', 'respiratorio'],
+    sistemas: ['digestorio'],
     d: 'M119 102 L119 185 L121 185 L121 102 Z'
   },
   {
     id: 'figado',
     label: 'Fígado',
     view: 'front',
-    sistemas: ['digestorio', 'circulatorio', 'endocrino'],
+    sistemas: ['digestorio', 'endocrino'],
     d: 'M85 190 C100 185 125 188 140 205 L135 215 C115 220 90 220 82 210 Z'
   },
   {
@@ -143,14 +143,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'intestino_delgado',
     label: 'Intestino Delgado',
     view: 'front',
-    sistemas: ['digestorio', 'linfatico', 'nervoso'],
+    sistemas: ['digestorio', 'nervoso'],
     d: 'M105 230 L135 230 L138 255 L102 255 Z'
   },
   {
     id: 'intestino_grosso',
     label: 'Intestino Grosso',
     view: 'front',
-    sistemas: ['digestorio', 'urinario', 'nervoso'],
+    sistemas: ['digestorio', 'nervoso'],
     d: 'M90 225 L105 225 L102 265 L138 265 L135 225 L150 225 L155 270 L85 270 Z'
   },
   {
@@ -224,7 +224,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'baco',
     label: 'Baço',
     view: 'front',
-    sistemas: ['linfatico', 'circulatorio', 'digestorio'],
+    sistemas: ['linfatico'],
     d: 'M155 205 Q162 208 158 220 Q152 225 148 215 Q148 205 155 205'
   },
   {
@@ -321,7 +321,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'tronco_encefalico',
     label: 'Tronco Encefálico',
     view: 'front',
-    sistemas: ['nervoso', 'circulatorio', 'respiratorio'],
+    sistemas: ['nervoso'],
     d: 'M118 65 L118 85 L122 85 L122 65 Z'
   },
   {
