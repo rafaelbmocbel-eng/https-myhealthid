@@ -8,17 +8,24 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
   corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
 } from '@/hooks/useEventosAnatomicos';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
 
 const FRONT_OUTLINE =
   'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
 
-const SISTEMAS_F1: SistemaCorporal[] = ['musculoesqueletico', 'nervoso'];
+const SISTEMAS_ORDEM: SistemaCorporal[] = [
+  'musculoesqueletico', 'nervoso', 'visceral' as any, 'circulatorio' as any,
+  'respiratorio', 'digestorio', 'endocrino', 'urinario',
+  'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
+];
+const SISTEMAS_INICIAIS: SistemaCorporal[] = ['musculoesqueletico', 'nervoso'];
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = {
   musculoesqueletico: 'Musculoesquelético',
   nervoso: 'Nervoso',
@@ -53,10 +60,37 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
   const saveMut = useSaveEventoAnatomico();
   const deleteMut = useDeleteEventoAnatomico(pacienteId);
 
-  const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_F1);
+  const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_INICIAIS);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
+
+  const { data: lastMyID } = useQuery({
+    queryKey: ['last-myid-painmap', pacienteId],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('avaliacoes_identidade')
+        .select('dados_avaliacao')
+        .eq('paciente_id', pacienteId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (error) throw error;
+      if (!data) return null;
+      
+      const dados = data.dados_avaliacao as any;
+      // Procura painMap ou mapa_dor em várias possíveis localizações
+      const painMap = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+      if (!painMap) return null;
+
+      return Object.entries(painMap)
+        .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
+        .filter(i => i.intensidade > 0);
+    },
+    enabled: !!pacienteId,
+  });
 
   const eventosFiltrados = useMemo(
     () => eventos.filter(e => sistemasAtivos.includes(e.sistema)),
@@ -110,13 +144,43 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
     setEditing(null);
   };
 
+  const handleSyncImport = async (item: { regiao_id: string; intensidade: number }) => {
+    const reg = REGIONS.find(r => r.id === item.regiao_id);
+    await saveMut.mutateAsync({
+      paciente_id: pacienteId,
+      regiao_id: item.regiao_id,
+      sistema: 'musculoesqueletico',
+      origem: 'subjetivo_myid',
+      tipo_achado: `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
+      severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
+      status: 'ativo',
+      visivel_paciente: true,
+      data_inicio: new Date().toISOString().slice(0, 10),
+      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. Intensidade relatada pelo paciente: ${item.intensidade}/10.`,
+    });
+    setSyncData(prev => prev ? prev.filter(i => i.regiao_id !== item.regiao_id) : null);
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base">
           <Stethoscope className="icon-sm shrink-0" />
           Avatar Clínico Anatômico
-          <Badge variant="outline" className="ml-auto text-[10px]">Sprint F1</Badge>
+          <div className="ml-auto flex items-center gap-1.5">
+            {lastMyID && lastMyID.length > 0 && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
+                onClick={() => setSyncData(lastMyID)}
+              >
+                <RefreshCcw className="h-3 w-3" />
+                Sincronizar MyID
+              </Button>
+            )}
+            <Badge variant="outline" className="text-[10px]">Sprint F1+</Badge>
+          </div>
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Mapa de achados clínicos por região. Complementar à Impressão Digital MyID.
@@ -125,7 +189,7 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
       <CardContent className="space-y-3">
         {/* Toggles de sistema */}
         <div className="flex flex-wrap gap-1.5">
-          {SISTEMAS_F1.map(s => {
+          {SISTEMAS_ORDEM.map(s => {
             const active = sistemasAtivos.includes(s);
             return (
               <button
