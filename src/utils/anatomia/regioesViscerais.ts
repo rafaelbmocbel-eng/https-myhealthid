@@ -388,18 +388,32 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M80 130 L45 280'
   },
   {
+    id: 'plexo_lombosacro_d',
+    label: 'Plexo Lombossacro D',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M122 260 L135 295 L140 320'
+  },
+  {
+    id: 'plexo_lombosacro_e',
+    label: 'Plexo Lombossacro E',
+    view: 'front',
+    sistemas: ['nervoso'],
+    d: 'M118 260 L105 295 L100 320'
+  },
+  {
     id: 'nervo_femoral_d',
     label: 'Nervo Femoral D',
     view: 'front',
     sistemas: ['nervoso'],
-    d: 'M125 280 L145 350'
+    d: 'M140 320 L145 350'
   },
   {
     id: 'nervo_femoral_e',
     label: 'Nervo Femoral E',
     view: 'front',
     sistemas: ['nervoso'],
-    d: 'M115 280 L95 350'
+    d: 'M100 320 L95 350'
   }
 ];
 
@@ -507,6 +521,8 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   plexo_braquial_e: { partes: ['Troncos', 'Divisões', 'Fascículos', 'Ramos terminais'], inervacao: ['Membro Superior E'] },
   nervo_mediano_d: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
   nervo_mediano_e: { trajeto: ['Braço', 'Túnel do Carpo'], funcoes: ['Sensibilidade Palmar', 'Flexão de dedos'] },
+  plexo_lombosacro_d: { partes: ['Plexo Lombar (L1-L4)', 'Plexo Sacral (L4-S4)'], nervos: ['Femoral', 'Obturatório', 'Isquiático'], funcoes: ['Inervação de Pelve e Membros Inferiores'] },
+  plexo_lombosacro_e: { partes: ['Plexo Lombar (L1-L4)', 'Plexo Sacral (L4-S4)'], nervos: ['Femoral', 'Obturatório', 'Isquiático'], funcoes: ['Inervação de Pelve e Membros Inferiores'] },
   nervo_femoral_d: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] },
   nervo_femoral_e: { origem: ['L2-L4'], inervacao: ['Quadríceps', 'Sensibilidade da coxa anterior'] }
 };
