@@ -350,7 +350,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
                 
-                if (s === 'musculoesqueletico') score += painRegions.length * 0.5;
+                if (s === 'musculoesqueletico') {
+                  score += painRegions.length * 0.5;
+                  // Adiciona peso para queixas de dor na queixa principal (como a dor torácica da Narlicelma)
+                  const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
+                  score += queixasTexto.length * 2.0;
+                }
                 
                 const myidSinaisDoSistema = sinalRegions.filter(sr => {
                   const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
