@@ -337,11 +337,11 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     glandulas: ['Lobo direito', 'Lobo esquerdo', 'Istmo'],
     hormonios: ['T3 (Tri-iodotironina)', 'T4 (Tiroxina)', 'Calcitonina']
   },
+  paratireoides: { hormonios: ['PTH (Paratormônio)'], funcao: ['Controle do cálcio e fósforo'] },
   hipofise: {
     lobos: ['Adeno-hipófise (Anterior)', 'Neuro-hipófise (Posterior)'],
     hormonios: ['GH', 'TSH', 'ACTH', 'FSH', 'LH', 'Prolactina', 'ADH', 'Ocitocina']
   },
-  paratireoides: { hormonios: ['PTH (Paratormônio)'], funcao: ['Controle do cálcio e fósforo'] },
   pineal: { hormonios: ['Melatonina'], funcao: ['Ciclo circadiano'] },
   timo: { funcao: ['Maturação de linfócitos T', 'Imunidade'] },
   adrenais: {
