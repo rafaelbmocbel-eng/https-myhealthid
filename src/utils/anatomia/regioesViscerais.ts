@@ -405,7 +405,7 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   rim_e: { partes: ['Córtex renal', 'Medula (Pirâmides)', 'Cálices maiores e menores', 'Pelve renal', 'Hilo renal'] },
   ureteres: { segmentos: ['Abdominal', 'Pélvico', 'Intramural'], funcao: ['Transporte de urina por peristaltismo'] },
   bexiga: { partes: ['Vértice', 'Corpo', 'Fundo (Trígono)', 'Colo vesical', 'Músculo detrusor'] },
-  uretra: { partes: ['Esfíncter interno', 'Esfíncter externo', 'Segmento prostático/membranoso/esponjoso (H)', 'Segmento curto (M)'] }
+  uretra: { partes: ['Esfíncter interno', 'Esfíncter externo', 'Segmento prostático/membranoso/esponjoso (H)', 'Segmento curto (M)'] },
 
   // Lymphatic
   linfonodos_cervicais: { grupos: ['Nível I (Submentonianos)', 'Nível II/III/IV (Jugulares)', 'Nível V (Triângulo posterior)', 'Nível VI (Compartimento anterior)'] },
