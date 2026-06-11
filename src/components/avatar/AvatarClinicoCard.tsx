@@ -181,9 +181,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const eventosDaRegiao = (rid: string) => eventosFiltrados.filter(e => e.regiao_id === rid);
 
   const abrirSheet = (rid: string) => {
-    if (modoSimplificado) return; // Paciente não edita no avatar clínico (ou apenas visualiza)
+    if (modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
+    // Ao abrir a sheet, o dashboard deve resetar para a categoria correta se houver sinal
+    if (sinalRegions.some(sr => sr.regiao_id === rid)) {
+      setIsSyncing(true);
+    } else {
+      setIsSyncing(false);
+    }
   };
 
   const novoAchado = () => {
