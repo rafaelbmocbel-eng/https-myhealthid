@@ -21,7 +21,7 @@ const FRONT_OUTLINE =
   'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
 
 const SISTEMAS_ORDEM: SistemaCorporal[] = [
-  'musculoesqueletico', 'nervoso', 'visceral' as any, 'circulatorio' as any,
+  'musculoesqueletico', 'nervoso', 'visceral', 'circulatorio',
   'respiratorio', 'digestorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
