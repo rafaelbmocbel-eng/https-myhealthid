@@ -190,19 +190,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     if (modoSimplificado) return;
     setSheetRegiao(rid);
     setEditing(null);
-    // Ao abrir a sheet, o dashboard deve resetar para a categoria correta se houver sinal
-    if (sinalRegions.some(sr => sr.regiao_id === rid)) {
-      setIsSyncing(true);
+    // Identifica o sistema predominante da região para sugerir no formulário
+    const regVisceral = VISCERAL_REGIONS.find(v => v.id === rid);
+    if (regVisceral) {
+      setIsSyncing(true); // Aba de sinais se for visceral
     } else {
-      setIsSyncing(false);
+      setIsSyncing(false); // Aba de dor se for musculoesquelético
     }
   };
 
   const novoAchado = () => {
+    const regVisceral = VISCERAL_REGIONS.find(v => v.id === sheetRegiao);
     setEditing({
       paciente_id: pacienteId,
       regiao_id: sheetRegiao!,
-      sistema: 'musculoesqueletico',
+      sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
       origem: 'exame_clinico',
       tipo_achado: '',
       severidade: 1,
