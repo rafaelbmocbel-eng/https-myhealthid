@@ -4,9 +4,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/hooks/use-toast';
 
 export type SistemaCorporal =
-  | 'musculoesqueletico' | 'nervoso' | 'cardiovascular' | 'respiratorio'
-  | 'digestorio' | 'endocrino' | 'urinario' | 'reprodutor'
-  | 'tegumentar' | 'linfatico' | 'sensorial';
+  | 'musculoesqueletico' | 'nervoso' | 'visceral' | 'circulatorio'
+  | 'respiratorio' | 'digestorio' | 'endocrino' | 'urinario'
+  | 'reprodutor' | 'tegumentar' | 'linfatico' | 'sensorial';
 
 export type OrigemAchado =
   | 'subjetivo_myid' | 'exame_clinico' | 'exame_imagem'
