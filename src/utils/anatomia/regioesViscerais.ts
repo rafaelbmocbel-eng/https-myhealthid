@@ -94,35 +94,35 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'lingua',
     label: 'Língua',
     view: 'front',
-    sistemas: ['digestorio', 'sensorial'],
+    sistemas: ['digestorio', 'sensorial', 'respiratorio'],
     d: 'M115 72 Q120 78 125 72 L122 75 Q120 78 118 75 Z'
   },
   {
     id: 'glandulas_salivais',
     label: 'Glândulas Salivais',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'linfatico'],
     d: 'M102 78 A1.5 1.5 0 1 0 105 78 A1.5 1.5 0 1 0 102 78 M135 78 A1.5 1.5 0 1 0 138 78 A1.5 1.5 0 1 0 135 78'
   },
   {
     id: 'esofago',
     label: 'Esôfago',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'respiratorio'],
     d: 'M119 102 L119 185 L121 185 L121 102 Z'
   },
   {
     id: 'figado',
     label: 'Fígado',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'circulatorio', 'endocrino'],
     d: 'M85 190 C100 185 125 188 140 205 L135 215 C115 220 90 220 82 210 Z'
   },
   {
     id: 'estomago',
     label: 'Estômago',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'nervoso'],
     d: 'M130 195 C145 190 158 205 155 225 C150 240 135 235 125 220 Q122 205 130 195'
   },
   {
@@ -134,30 +134,30 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   },
   {
     id: 'pancreas_anexo',
-    label: 'Pâncreas (Exócrino)',
+    label: 'Pâncreas (Glândula)',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'endocrino'],
     d: 'M105 212 C108 208 125 205 138 210 L136 218 C120 215 110 218 105 212'
   },
   {
     id: 'intestino_delgado',
     label: 'Intestino Delgado',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'linfatico', 'nervoso'],
     d: 'M105 230 L135 230 L138 255 L102 255 Z'
   },
   {
     id: 'intestino_grosso',
     label: 'Intestino Grosso',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'urinario', 'nervoso'],
     d: 'M90 225 L105 225 L102 265 L138 265 L135 225 L150 225 L155 270 L85 270 Z'
   },
   {
     id: 'reto_ano',
     label: 'Reto e Ânus',
     view: 'front',
-    sistemas: ['digestorio'],
+    sistemas: ['digestorio', 'reprodutor'],
     d: 'M118 270 L122 270 L122 285 L118 285 Z'
   },
 
@@ -166,21 +166,21 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'ureteres',
     label: 'Ureteres',
     view: 'front',
-    sistemas: ['urinario'],
+    sistemas: ['urinario', 'reprodutor'],
     d: 'M115 210 L112 275 M125 210 L128 275'
   },
   {
     id: 'bexiga',
-    label: 'Bexiga',
+    label: 'Bexiga Urinária',
     view: 'front',
-    sistemas: ['urinario'],
+    sistemas: ['urinario', 'reprodutor', 'nervoso'],
     d: 'M110 275 Q120 270 130 275 Q135 290 120 295 Q105 290 110 275'
   },
   {
     id: 'uretra',
     label: 'Uretra',
     view: 'front',
-    sistemas: ['urinario'],
+    sistemas: ['urinario', 'reprodutor'],
     d: 'M120 295 L120 305'
   },
 
