@@ -94,7 +94,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'lingua',
     label: 'Língua',
     view: 'front',
-    sistemas: ['digestorio', 'sensorial', 'respiratorio'],
+    sistemas: ['digestorio', 'sensorial'],
     d: 'M115 72 Q120 78 125 72 L122 75 Q120 78 118 75 Z'
   },
   {
@@ -157,7 +157,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'reto_ano',
     label: 'Reto e Ânus',
     view: 'front',
-    sistemas: ['digestorio', 'reprodutor'],
+    sistemas: ['digestorio'],
     d: 'M118 270 L122 270 L122 285 L118 285 Z'
   },
 
