@@ -33,67 +33,67 @@ const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color:
     label: 'Musculoesquelético', 
     icon: Zap, 
     color: 'purple',
-    resumo: 'Compreende ossos, músculos, articulações e tendões que dão suporte, proteção aos órgãos e permitem a movimentação voluntária do corpo.'
+    resumo: 'Sistema de suporte e alavanca mecânica, integrando ossos, articulações, músculos e fáscias sob controle neural para postura e movimento.'
   },
   nervoso: { 
     label: 'Nervoso', 
     icon: Brain, 
     color: 'blue',
-    resumo: 'Centro de controle e comunicação, integrando o cérebro, medula espinhal e nervos para coordenar funções sensoriais, motoras e cognitivas.'
+    resumo: 'Rede eletroquímica central e periférica que processa estímulos, coordena respostas reflexas e voluntárias e mantém a homeostase sistêmica.'
   },
   digestorio: { 
     label: 'Digestório', 
     icon: Stethoscope, 
     color: 'orange',
-    resumo: 'Responsável pelo processamento de alimentos, absorção de nutrientes e eliminação de resíduos, abrangendo do trato gastrointestinal aos órgãos anexos.'
+    resumo: 'Trato gastrointestinal e glândulas anexas responsáveis pela quebra mecânico-química, absorção de nutrientes e barreira imunológica entérica.'
   },
   circulatorio: { 
     label: 'Circulatório', 
     icon: Heart, 
     color: 'red',
-    resumo: 'Rede de transporte composta pelo coração e vasos sanguíneos, essencial para a distribuição de oxigênio, nutrientes e regulação térmica.'
+    resumo: 'Sistema hemodinâmico de transporte de gases, nutrientes e sinalizadores hormonais através de uma rede contínua de vasos e bomba cardíaca.'
   },
   respiratorio: { 
     label: 'Respiratório', 
     icon: Wind, 
     color: 'cyan',
-    resumo: 'Sistema encarregado da troca de oxigênio e dióxido de carbono entre o sangue e o ar atmosférico através dos pulmões e vias aéreas.'
+    resumo: 'Interface de hematose entre o ambiente e o sangue, abrangendo vias condutoras e unidades alveolares para troca de oxigênio e CO2.'
   },
   endocrino: { 
     label: 'Endócrino', 
     icon: Dna, 
     color: 'yellow',
-    resumo: 'Conjunto de glândulas que produzem e secretam hormônios diretamente na corrente sanguínea para regular o metabolismo e crescimento.'
+    resumo: 'Eixo de controle humoral composto por glândulas que secretam mensageiros químicos (hormônios) para regulação metabólica de longo prazo.'
   },
   urinario: { 
     label: 'Urinário', 
     icon: Droplets, 
     color: 'indigo',
-    resumo: 'Filtra o sangue para remover toxinas e resíduos metabólicos, mantendo o equilíbrio hídrico e eletrolítico através da excreção de urina.'
+    resumo: 'Complexo de filtração renal e vias excretoras essencial para o equilíbrio hidroeletrolítico, controle pressórico e depuração de catabólitos.'
   },
   reprodutor: { 
     label: 'Reprodutor', 
     icon: Heart, 
     color: 'pink',
-    resumo: 'Sistema composto pelos órgãos genitais e glândulas sexuais, responsável pela reprodução e produção de hormônios sexuais.'
+    resumo: 'Órgãos e gônadas responsáveis pela perpetuação da espécie e produção de esteroides sexuais que influenciam múltiplos sistemas.'
   },
   tegumentar: { 
     label: 'Tegumentar', 
     icon: Shield, 
     color: 'stone',
-    resumo: 'Formado pela pele e seus anexos, atua como barreira protetora contra agentes externos, auxilia na termorregulação e percepção sensorial.'
+    resumo: 'Interface de proteção externa, termorregulação e vasta rede de exterocepção sensorial através da pele e seus anexos epidérmicos.'
   },
   linfatico: { 
     label: 'Linfático', 
     icon: Waves, 
     color: 'lime',
-    resumo: 'Drena o excesso de fluidos dos tecidos e desempenha um papel crucial na defesa imunológica através da produção de linfócitos.'
+    resumo: 'Sistema de drenagem intersticial e vigilância imunológica, integrando linfonodos e vasos para transporte de lipídios e defesa celular.'
   },
   sensorial: { 
     label: 'Sensorial', 
     icon: Eye, 
     color: 'emerald',
-    resumo: 'Conjunto de receptores e órgãos responsáveis por captar estímulos externos (visão, audição, paladar, olfato e tato) e traduzi-los ao sistema nervoso.'
+    resumo: 'Complexo de transdutores biológicos (visão, audição, olfato, paladar, tato) que convertem estímulos ambientais em impulsos neurais.'
   },
 };
 
