@@ -102,6 +102,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       // Mapeamento de sinais autonômicos (Bloco 6)
       const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
       const visceralIssues = respostas.bloco_6_visceral_issues || [];
+      const queixaPrincipal = (respostas.bloco_1_queixa || '').toLowerCase();
+      
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
       const mapping: Record<string, string> = {
@@ -133,6 +135,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       [...sinais, ...visceralIssues].forEach(s => {
         if (mapping[s]) sinalRegions.push({ regiao_id: mapping[s], sinal: s });
       });
+
+      // Lógica de Extração Inteligente da Queixa Principal (NLP simples)
+      if (queixaPrincipal.includes('torácica') || queixaPrincipal.includes('peito')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'peitoral')) {
+          sinalRegions.push({ regiao_id: 'peitoral', sinal: 'Relato: Dor Torácica' });
+        }
+      }
+      if (queixaPrincipal.includes('costas') || queixaPrincipal.includes('dorsal')) {
+        if (!sinalRegions.some(sr => sr.regiao_id === 'dorsal')) {
+          sinalRegions.push({ regiao_id: 'dorsal', sinal: 'Relato: Dor nas Costas' });
+        }
+      }
 
       return { 
         painRegions, 
@@ -183,11 +197,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
     // Filtra pelos sistemas ativos
     sinalRegions.forEach(item => {
+      const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
       const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
-      const isSystemActive = regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
+      const isSystemActive = isPeitoralDorsal ? sistemasAtivos.includes('musculoesqueletico') : regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
       
       if (isSystemActive && !map[item.regiao_id]) {
-        map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
+        map[item.regiao_id] = isPeitoralDorsal ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
@@ -335,7 +350,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
                 
-                if (s === 'musculoesqueletico') score += painRegions.length * 0.5;
+                if (s === 'musculoesqueletico') {
+                  score += painRegions.length * 0.5;
+                  // Adiciona peso para queixas de dor na queixa principal (como a dor torácica da Narlicelma)
+                  const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
+                  score += queixasTexto.length * 2.0;
+                }
                 
                 const myidSinaisDoSistema = sinalRegions.filter(sr => {
                   const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
