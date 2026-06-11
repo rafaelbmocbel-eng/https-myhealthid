@@ -68,15 +68,23 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
       zumbido: { label: 'Zumbido', regiao: 'cabeca' },
       tinnitus: { label: 'Zumbido', regiao: 'cabeca' },
       reflux: { label: 'Refluxo', regiao: 'esofago' },
+      refluxo: { label: 'Refluxo', regiao: 'esofago' },
       gastritis: { label: 'Gastrite', regiao: 'estomago' },
-      bloating: { label: 'Má digestão/Estufamento', regiao: 'intestino' },
+      gastrite: { label: 'Gastrite', regiao: 'estomago' },
+      bloating: { label: 'Estufamento/Gases', regiao: 'intestino_grosso' },
+      gases: { label: 'Gases', regiao: 'intestino_grosso' },
       palpitations: { label: 'Palpitações', regiao: 'coracao' },
+      palpitacao: { label: 'Palpitações', regiao: 'coracao' },
+      antidepressivo: { label: 'Uso de Antidepressivo', regiao: 'cabeca' },
     };
 
     const sinaisCorpo = todosSinais
-      .filter(s => sinalMapping[s])
       .map(s => {
-        const info = sinalMapping[s];
+        const signalKey = s.toLowerCase();
+        const found = Object.entries(sinalMapping).find(([key]) => signalKey.includes(key));
+        if (!found) return null;
+        
+        const info = found[1];
         const achados = eventos.filter(e => e.regiao_id === info.regiao && e.status !== 'resolvido');
         return {
           key: s,
@@ -86,7 +94,8 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
           confirmado: achados.length > 0,
           achados
         };
-      });
+      })
+      .filter((s): s is NonNullable<typeof s> => s !== null);
 
     return { correlacoes, sinaisCorpo };
   })();

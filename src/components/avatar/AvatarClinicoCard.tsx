@@ -168,6 +168,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
         cefaleia: 'cabeca', headache: 'cabeca',
         tontura: 'cabeca', dizziness: 'cabeca',
+        uso_antidepressivo: 'cabeca', antidepressivo: 'cabeca',
         
         // Digestório (Exclusivo)
         ma_digestao: 'estomago', 
@@ -191,21 +192,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         // Circulatório (Exclusivo)
         palpitacao: 'coracao', palpitations: 'coracao',
         taquicardia: 'coracao', tachycardia: 'coracao',
+        hipertensao: 'coracao', pressure: 'coracao',
         
         // Respiratório (Exclusivo)
         falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
         tosse_cronica: 'traqueia',
+        bronquite: 'pulmao_d', asma: 'pulmao_d',
         
         // Urinário (Exclusivo)
         dor_urinar: 'pelve', urinary_pain: 'pelve',
         frequencia_urinaria: 'pelve', urinary_frequency: 'pelve',
+        pedra_rins: 'rim_d', kidney_stones: 'rim_d',
         
         // Musculoesquelético (Peitoral/Dorsal como áreas de dor referida ou mecânica)
         dor_peito: 'peitoral', chest_pain: 'peitoral',
       };
 
       [...sinais, ...visceralIssues].forEach(s => {
-        if (mapping[s]) sinalRegions.push({ regiao_id: mapping[s], sinal: s });
+        const signalKey = s.toLowerCase();
+        // Match partial strings or exact keys
+        for (const [key, regionId] of Object.entries(mapping)) {
+          if (signalKey.includes(key)) {
+            sinalRegions.push({ regiao_id: regionId, sinal: s });
+            break;
+          }
+        }
       });
 
       // Lógica de Extração Inteligente da Queixa Principal (NLP simples)
