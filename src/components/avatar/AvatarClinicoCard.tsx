@@ -170,6 +170,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         tontura: 'cabeca', dizziness: 'cabeca',
         uso_antidepressivo: 'cabeca', antidepressivo: 'cabeca',
         ansiedade: 'cabeca', estresse: 'cabeca', insonia: 'cabeca',
+        'trauma de cranio': 'cabeca',
+        'trauma de crânio': 'cabeca',
         
         // --- DIGESTIVE ---
         ma_digestao: 'estomago', digestao: 'estomago',
@@ -207,17 +209,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         frequencia_urinaria: 'pelve', urinary_frequency: 'pelve',
         pedra_rins: 'rim_d', kidney_stones: 'rim_d', rins: 'rim_d',
         
-        // --- MUSCULOSKELETAL ---
+        // --- MUSCULOSKELETAL & NEURAL ---
         dor_peito: 'peitoral', chest_pain: 'peitoral',
         tensao_pescoco: 'pescoco', torcicolo: 'pescoco',
-        dor_lombar: 'colunaLombar_f', lumbago: 'colunaLombar_f',
-        dor_cronica_cervical: 'cervical',
-        dor_lombar_cronica: 'lombar',
-        irradiacao_maos: 'mao_d',
-        irradiacao_pe: 'pe_e',
-        trauma_cranio: 'cabeca',
-        trauma_mao: 'mao_d',
-        sporting: 'cervical', spurling: 'cervical'
+        dor_lombar: 'lombar', lumbago: 'lombar',
+        'dor cervical': 'cervical',
+        'dor lombar': 'lombar',
+        'irradiacao para maos': 'mao_d',
+        'irradiacao para membros superiores': 'mao_d',
+        'irradiacao para pés': 'pe_e',
+        'irradiacao para membros inferiores': 'pe_e',
+        'pe esquerdo': 'pe_e',
+        'pé esquerdo': 'pe_e',
+        'trauma de mao': 'mao_d',
+        'trauma de mão': 'mao_d',
+        'teste de sporting': 'cervical',
+        'spurling': 'cervical',
+        'sobrepeso': 'estomago',
+        'bancaria': 'lombar',
+        'postura sentada': 'lombar'
       };
 
       [...sinais, ...visceralIssues].forEach(s => {
@@ -299,12 +309,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
       
       // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
-      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'dor de cabeca', 'tontura', 'antidepressivo', 'ansiedade', 'estresse', 'insonia', 'trauma de cranio', 'neural'].some(s => item.sinal.toLowerCase().includes(s));
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula', 'bariatrica'].some(s => item.sinal.toLowerCase().includes(s));
+      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'dor de cabeca', 'tontura', 'antidepressivo', 'ansiedade', 'estresse', 'insonia', 'trauma de cranio', 'trauma de crânio', 'neural', 'comprometimento neural'].some(s => item.sinal.toLowerCase().includes(s));
+      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula', 'bariatrica', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
       const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse', 'bronquite', 'asma', 'respiracao'].some(s => item.sinal.toLowerCase().includes(s));
       const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia', 'hipertensao', 'pressao', 'circulao'].some(s => item.sinal.toLowerCase().includes(s));
       const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency', 'pedra_rins', 'rins'].some(s => item.sinal.toLowerCase().includes(s));
-      const isMusculoSymptom = ['dor cronica', 'cervical', 'lombar', 'irradiacao', 'trauma de mao', 'sporting', 'spurling', 'bancaria', 'postura', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
+      const isMusculoSymptom = ['dor cronica', 'cervical', 'lombar', 'irradiacao', 'trauma de mao', 'trauma de mão', 'sporting', 'spurling', 'bancaria', 'postura', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
       
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
       let isSystemActive = false;
@@ -321,16 +331,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       }
       
       if (isSystemActive && !map[item.regiao_id]) {
-        // Define a cor baseada no comprometimento (nível de severidade implícito do MyID)
-        // Usamos cores que sinalizam comprometimento por sistema
-        const config = SISTEMA_CONFIG[isNervousSystemSymptom ? 'nervoso' : 
-                                     isDigestiveSymptom ? 'digestorio' : 
-                                     isRespiratorySymptom ? 'respiratorio' :
-                                     isCirculatorySymptom ? 'circulatorio' :
-                                     isUrinarySymptom ? 'urinario' :
-                                     isMusculoSymptom || isPeitoralDorsal ? 'musculoesqueletico' : 'nervoso'];
-        
-        map[item.regiao_id] = (isMusculoSymptom || isPeitoralDorsal) ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
+        // Define a cor baseada no comprometimento
+        if (isNervousSystemSymptom) {
+           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul para Nervoso
+        } else if (isDigestiveSymptom) {
+           map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja para Digestório
+        } else if (isMusculoSymptom || isPeitoralDorsal) {
+           map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo para Musculoesquelético
+        } else {
+           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
+        }
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
