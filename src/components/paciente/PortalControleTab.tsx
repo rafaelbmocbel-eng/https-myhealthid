@@ -9,9 +9,10 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   Calendar, Dumbbell, Heart, MessageCircle, DollarSign,
   CalendarDays, ClipboardList, Activity, ExternalLink, Loader2, Smartphone,
-  TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap
+  TrendingUp, Trophy, Apple, Ruler, Bell, GraduationCap, Stethoscope
 } from 'lucide-react';
 import DeverDeCasaDialog from './DeverDeCasaDialog';
+import AvatarClinicoCard from '../avatar/AvatarClinicoCard';
 import { format, parseISO, subDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { getPortalUrl } from '@/utils/linkUrls';
@@ -301,6 +302,18 @@ export default function PortalControleTab({ pacienteId, pacienteNome, portalToke
                   {data.pagamentos.length === 0 && <p className="text-[11px] text-muted-foreground italic px-2">Sem pagamentos</p>}
                 </div>
               </ScrollArea>
+            </AccordionContent>
+          </AccordionItem>
+
+          {/* Avatar Clínico (Novo) */}
+          <AccordionItem value="avatar">
+            <AccordionTrigger className="text-xs font-bold py-2 px-2">
+              <div className="flex items-center gap-2"><Stethoscope className="icon-sm text-primary" /> Prontuário Visual (Avatar)</div>
+            </AccordionTrigger>
+            <AccordionContent>
+              <div className="p-1">
+                <AvatarClinicoCard pacienteId={pacienteId} isProfessional={false} />
+              </div>
             </AccordionContent>
           </AccordionItem>
 

@@ -12,8 +12,9 @@ import {
   Activity, Fingerprint, AlignCenter, Dumbbell,
   TrendingUp, ChevronDown, ChevronUp, FileText,
   Sparkles, Printer, Copy, Shield, Zap, Heart, Smile,
-  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket
+  AlertTriangle, CheckCircle2, Target, Award, Clock, Rocket, Stethoscope
 } from 'lucide-react';
+import AvatarClinicoCard from '@/components/avatar/AvatarClinicoCard';
 import { cn } from '@/lib/utils';
 import { calcularPerdaDimensao } from '@/utils/myid/lossTable';
 import { getMyIDFingerprintData, getMyIDSeverityColor, getMyIDInterpretation } from '@/utils/myidCalculations';
@@ -431,14 +432,21 @@ export default function PatientIntegratedDashboard({
         <>
           {/* ═══════════ MEU MyID — duas leituras, dois tons ═══════════ */}
           <Tabs defaultValue="diagnostico" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 h-11 p-1 rounded-xl bg-muted/60">
+            <TabsList className="grid w-full grid-cols-3 h-11 p-1 rounded-xl bg-muted/60">
               <TabsTrigger value="diagnostico" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Fingerprint className="icon-sm" />
-                Meu MyID
+                <span className="hidden xs:inline">Meu MyID</span>
+                <span className="xs:hidden">MyID</span>
+              </TabsTrigger>
+              <TabsTrigger value="corpo" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                <Stethoscope className="icon-sm" />
+                <span className="hidden xs:inline">Meu Corpo</span>
+                <span className="xs:hidden">Corpo</span>
               </TabsTrigger>
               <TabsTrigger value="jornada" className="rounded-lg gap-2 text-sm font-semibold data-[state=active]:bg-background data-[state=active]:shadow-sm">
                 <Rocket className="icon-sm" />
-                Minha Jornada
+                <span className="hidden xs:inline">Minha Jornada</span>
+                <span className="xs:hidden">Jornada</span>
               </TabsTrigger>
             </TabsList>
 
@@ -740,6 +748,28 @@ export default function PatientIntegratedDashboard({
                   </AccordionContent>
                 </AccordionItem>
               </Accordion>
+            </TabsContent>
+
+            {/* ─────────── ABA 1.1: MEU CORPO (Avatar Clínico) ─────────── */}
+            <TabsContent value="corpo" className="mt-5 space-y-5 focus-visible:outline-none">
+              <AvatarClinicoCard pacienteId={pacienteId} isProfessional={isProfessional} />
+              
+              <Card className="rounded-xl border-border/40 bg-muted/20">
+                <CardContent className="p-4">
+                  <div className="flex gap-3">
+                    <div className="h-8 w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-4 w-4 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-foreground">Como ler este mapa?</p>
+                      <p className="text-[11px] text-muted-foreground mt-1">
+                        Este é o seu prontuário visual georreferenciado. As cores indicam áreas de atenção mapeadas pelo seu profissional. 
+                        Áreas vermelhas indicam maior prioridade no momento, enquanto as cinzas representam histórico ou resoluções.
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
             </TabsContent>
 
             {/* ─────────── ABA 2: JORNADA (energia, leve, motivacional) ─────────── */}
