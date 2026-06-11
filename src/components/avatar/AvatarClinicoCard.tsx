@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
@@ -31,15 +31,15 @@ const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
 const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
   musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
   nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
-  digestorio: { label: 'Digestório', icon: ClipboardList, color: 'orange' },
+  digestorio: { label: 'Digestório', icon: Stethoscope, color: 'orange' },
   circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
-  respiratorio: { label: 'Respiratório', icon: Activity, color: 'cyan' },
-  endocrino: { label: 'Endócrino', icon: Zap, color: 'yellow' },
-  urinario: { label: 'Urinário', icon: Shield, color: 'indigo' },
+  respiratorio: { label: 'Respiratório', icon: Wind, color: 'cyan' },
+  endocrino: { label: 'Endócrino', icon: Dna, color: 'yellow' },
+  urinario: { label: 'Urinário', icon: Droplets, color: 'indigo' },
   reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
   tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
-  linfatico: { label: 'Linfático', icon: Activity, color: 'lime' },
-  sensorial: { label: 'Sensorial', icon: Brain, color: 'emerald' },
+  linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
+  sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
@@ -414,7 +414,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             statusClasses
                           )}
                         >
-                          <Icon className={cn("w-3 h-3", active ? `text-${config.color}-500` : "")} />
+                          <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-500` : "")} />
                           {config.label}
                           {count > 0 && (
                             <span className={cn(
@@ -430,11 +430,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   </div>
                 </div>
               );
-            }, [eventos, sistemasAtivos, painRegions, sinalRegions])}
+            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
           </div>
         </div>
 
-        {/* Toggle frente / costas */}
+        {/* Informação do Sistema em Foco */}
+        {hoveredSistema && (
+          <div className="absolute top-1/2 left-4 -translate-y-1/2 bg-background/95 backdrop-blur-sm border border-primary/20 p-2.5 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-left-2 duration-300 max-w-[120px]">
+            <div className="flex flex-col items-center gap-1.5 text-center">
+              {(() => {
+                const config = SISTEMA_CONFIG[hoveredSistema];
+                const Icon = config.icon;
+                return (
+                  <>
+                    <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
+                      <Icon className="w-5 h-5" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
+                      {config.label}
+                    </span>
+                  </>
+                );
+              })()}
+            </div>
+          </div>
+        )}
+
+        <div className="relative">
+          {/* Toggle frente / costas */}
         <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto">
           {(['front', 'back'] as const).map(v => (
             <button
@@ -451,7 +474,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         {/* Silhueta */}
         <div className="mx-auto" style={{ maxWidth: 260 }}>
-          <svg viewBox="0 0 240 520" className="w-full h-auto" style={{ maxHeight: 480 }}>
+          <svg viewBox="0 0 240 520" className="w-full h-auto drop-shadow-2xl" style={{ maxHeight: 480 }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
