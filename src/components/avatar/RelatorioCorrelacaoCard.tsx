@@ -32,17 +32,18 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
     enabled: !!pacienteId,
   });
 
-  const correlacoes = (() => {
-    if (!lastMyID) return [];
+  const { correlacoes, sinaisCorpo } = (() => {
+    if (!lastMyID) return { correlacoes: [], sinaisCorpo: [] };
     const dados = lastMyID.dados_avaliacao as any;
     const painMap = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || {};
+    const respostas = dados?.respostas || {};
     
     // Filtra regiões relatadas no MyID (subjetivo)
     const regioesMyID = Object.entries(painMap)
       .filter(([_, val]) => Number(val) > 0)
       .map(([id, val]) => ({ id, intensidade: Number(val) }));
 
-    return regioesMyID.map(relato => {
+    const correlacoes = regioesMyID.map(relato => {
       // Procura achados clínicos (objetivo) na mesma região
       const achadosNaRegiao = eventos.filter(e => e.regiao_id === relato.id && e.status !== 'resolvido');
       const regInfo = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === relato.id);
@@ -55,6 +56,39 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
         confirmado: achadosNaRegiao.length > 0,
       };
     });
+
+    // Mapeamento de Sinais do Corpo (Bloco 6)
+    const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
+    const visceralIssues = respostas.bloco_6_visceral_issues || [];
+    const todosSinais = [...new Set([...sinais, ...visceralIssues])];
+
+    const sinalMapping: Record<string, { label: string; regiao: string }> = {
+      bruxismo: { label: 'Bruxismo', regiao: 'cabeca' },
+      bruxism: { label: 'Bruxismo', regiao: 'cabeca' },
+      zumbido: { label: 'Zumbido', regiao: 'cabeca' },
+      tinnitus: { label: 'Zumbido', regiao: 'cabeca' },
+      reflux: { label: 'Refluxo', regiao: 'esofago' },
+      gastritis: { label: 'Gastrite', regiao: 'estomago' },
+      bloating: { label: 'Má digestão/Estufamento', regiao: 'intestino' },
+      palpitations: { label: 'Palpitações', regiao: 'coracao' },
+    };
+
+    const sinaisCorpo = todosSinais
+      .filter(s => sinalMapping[s])
+      .map(s => {
+        const info = sinalMapping[s];
+        const achados = eventos.filter(e => e.regiao_id === info.regiao && e.status !== 'resolvido');
+        return {
+          key: s,
+          label: info.label,
+          regiaoId: info.regiao,
+          regiaoLabel: [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === info.regiao)?.label || info.regiao,
+          confirmado: achados.length > 0,
+          achados
+        };
+      });
+
+    return { correlacoes, sinaisCorpo };
   })();
 
   const achadosNaoRelatados = eventos.filter(e => {
@@ -144,7 +178,29 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
                   <div className="flex items-center gap-1.5 mb-1 px-1">
                     <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-[9px] h-4 uppercase">Lacuna</Badge>
                     <span className="text-[10px] text-muted-foreground italic">Queixa sem diagnóstico mapeado</span>
-                  </div>
+        </div>
+
+        {/* Sinais do Corpo (Sistema Nervoso/Visceral) */}
+        {sinaisCorpo.length > 0 && (
+          <div className="space-y-2 mt-4">
+            <h4 className="text-[11px] font-bold uppercase text-muted-foreground flex items-center gap-1.5 px-1">
+              <Activity className="h-3 w-3" /> Sinais do Corpo (Autonômicos)
+            </h4>
+            {sinaisCorpo.map(s => (
+              <div key={s.key} className="bg-background border border-border/50 rounded-lg p-2.5 flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-semibold">{s.label}</p>
+                  <p className="text-[10px] text-muted-foreground">{s.regiaoLabel}</p>
+                </div>
+                {s.confirmado ? (
+                  <Badge className="bg-emerald-500 text-[9px] h-4">Validado</Badge>
+                ) : (
+                  <Badge variant="outline" className="text-sky-600 border-sky-200 bg-sky-50 text-[9px] h-4">Relatado</Badge>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
                   <div className="flex items-center gap-2 text-xs bg-amber-500/5 p-2 rounded-md border border-amber-500/10 text-amber-700">
                     <AlertCircle className="h-3.5 w-3.5" />
                     <span>O paciente relatou dor nesta área no MyID, mas não há um evento clínico registrado no Avatar.</span>
