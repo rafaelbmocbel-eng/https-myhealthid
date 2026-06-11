@@ -599,15 +599,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                     <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
                                       <User className="w-3 h-3" /> Relatos do Paciente (MyID):
                                     </p>
-                                    {(achadosMyID.length === 0 && doresMyID.length === 0) ? (
+                                    {todosRelatosMyID.length === 0 ? (
                                       <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum relato subjetivo registrado.</p>
                                     ) : (
                                       <div className="space-y-1 pl-4">
-                                        {[...achadosMyID, ...doresMyID].map((s, idx) => (
+                                        {todosRelatosMyID.map((s, idx) => (
                                           <div key={`myid-${idx}`} className="flex items-start gap-2">
                                             <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-sky-400" />
                                             <p className="text-[11px] leading-tight text-sky-800">
-                                              {s.sinal}
+                                              {s}
                                             </p>
                                           </div>
                                         ))}
