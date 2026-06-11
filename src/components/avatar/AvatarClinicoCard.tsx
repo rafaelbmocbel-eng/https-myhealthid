@@ -575,6 +575,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa de Dor</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
         </div>
+      </div>
 
         {/* Lista resumida */}
         {isLoading ? (
