@@ -28,20 +28,24 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
 const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
-const SISTEMA_LABEL: Record<SistemaCorporal, string> = {
-  musculoesqueletico: 'Musculoesquelético',
-  nervoso: 'Nervoso',
-  visceral: 'Visceral',
-  circulatorio: 'Circulatório',
-  respiratorio: 'Respiratório',
-  digestorio: 'Digestório',
-  endocrino: 'Endócrino',
-  urinario: 'Urinário',
-  reprodutor: 'Reprodutor',
-  tegumentar: 'Tegumentar',
-  linfatico: 'Linfático',
-  sensorial: 'Sensorial',
+const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
+  musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
+  nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
+  visceral: { label: 'Visceral', icon: Shield, color: 'rose' },
+  circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
+  respiratorio: { label: 'Respiratório', icon: Activity, color: 'cyan' },
+  digestorio: { label: 'Digestório', icon: ClipboardList, color: 'orange' },
+  endocrino: { label: 'Endócrino', icon: Zap, color: 'yellow' },
+  urinario: { label: 'Urinário', icon: Shield, color: 'indigo' },
+  reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
+  tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
+  linfatico: { label: 'Linfático', icon: Activity, color: 'lime' },
+  sensorial: { label: 'Sensorial', icon: Brain, color: 'emerald' },
 };
+
+const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
+  Object.entries(SISTEMA_CONFIG).map(([k, v]) => [k, v.label])
+) as any;
 const STATUS_LABEL: Record<StatusEvento, string> = {
   ativo: 'Ativo', em_tratamento: 'Em tratamento', resolvido: 'Resolvido', cronico: 'Crônico',
 };
@@ -101,15 +105,29 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const sinalRegions: { regiao_id: string; sinal: string }[] = [];
       
       const mapping: Record<string, string> = {
+        // Cabeça e Pescoço
         bruxismo: 'cabeca', bruxism: 'cabeca',
         zumbido: 'cabeca', tinnitus: 'cabeca',
         sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
+        cefaleia: 'cabeca', headache: 'cabeca',
+        tontura: 'cabeca', dizziness: 'cabeca',
+        
+        // Digestório / Visceral
         ma_digestao: 'estomago', bloating: 'intestino',
         refluxo: 'esofago', reflux: 'esofago',
         gastrite: 'estomago', gastritis: 'estomago',
         intestino_irritavel: 'intestino', ibs: 'intestino',
+        constipacao: 'intestino', constipation: 'intestino',
+        diarreia: 'intestino', diarrhea: 'intestino',
+        
+        // Circulatório / Respiratório
         palpitacao: 'coracao', palpitations: 'coracao',
-        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d'
+        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
+        dor_peito: 'coracao', chest_pain: 'coracao',
+        
+        // Urinário
+        dor_urinar: 'pelve', urinary_pain: 'pelve',
+        frequencia_urinaria: 'pelve', urinary_frequency: 'pelve'
       };
 
       [...sinais, ...visceralIssues].forEach(s => {
@@ -313,19 +331,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           
           <div className="flex flex-wrap gap-1.5">
             {useMemo(() => {
-              // Cálculo de score para ranking
               const systemScores = SISTEMAS_ORDEM.map(s => {
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-                
-                // Score base: severidade acumulada
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
                 
-                // Bônus de score por MyID
-                if (s === 'musculoesqueletico') {
-                  score += painRegions.length * 0.5;
-                }
+                if (s === 'musculoesqueletico') score += painRegions.length * 0.5;
                 
-                // Mapear sinais MyID para sistemas específicos
                 const myidSinaisDoSistema = sinalRegions.filter(sr => {
                   const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
                   return regVisceral?.sistemas.includes(s);
@@ -335,70 +346,87 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
               }).sort((a, b) => b.score - a.score);
 
-              return systemScores.map(({ sistema: s, score, count }) => {
-                const active = sistemasAtivos.includes(s);
-                
-                // Cores dos sistemas para facilitar identificação visual
-                const systemBaseColors: Record<SistemaCorporal, string> = {
-                  musculoesqueletico: 'purple',
-                  nervoso: 'blue',
-                  visceral: 'rose',
-                  circulatorio: 'red',
-                  respiratorio: 'cyan',
-                  digestorio: 'orange',
-                  endocrino: 'yellow',
-                  urinario: 'indigo',
-                  reprodutor: 'pink',
-                  tegumentar: 'stone',
-                  linfatico: 'lime',
-                  sensorial: 'emerald'
-                };
+              // Cálculo de Homeostase (Inverso do score total normalizado)
+              const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
+              const homeostase = Math.max(0, Math.min(100, 100 - (totalScore * 5)));
 
-                const baseColor = systemBaseColors[s];
-                
-                // Cor do badge baseada no score (acometimento)
-                let statusClasses = "";
-                if (score >= 5) {
-                  statusClasses = `border-red-500 text-red-700 bg-red-50 ring-1 ring-red-200 animate-pulse-subtle`;
-                } else if (score >= 2) {
-                  statusClasses = `border-amber-500 text-amber-700 bg-amber-50`;
-                } else if (score > 0) {
-                  statusClasses = `border-emerald-500 text-emerald-700 bg-emerald-50`;
-                } else {
-                  statusClasses = `border-border/50 text-muted-foreground bg-background opacity-60`;
-                }
+              return (
+                <div className="w-full space-y-4">
+                  <div className="bg-muted/30 p-3 rounded-lg border border-border/50 flex items-center justify-between">
+                    <div>
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Índice de Homeostase</p>
+                      <div className="flex items-center gap-2">
+                        <span className={cn(
+                          "text-xl font-black",
+                          homeostase > 80 ? "text-emerald-600" : homeostase > 50 ? "text-amber-600" : "text-red-600"
+                        )}>
+                          {homeostase.toFixed(0)}%
+                        </span>
+                        <div className="h-1.5 w-24 bg-border rounded-full overflow-hidden">
+                          <div 
+                            className={cn(
+                              "h-full transition-all duration-1000",
+                              homeostase > 80 ? "bg-emerald-500" : homeostase > 50 ? "bg-amber-500" : "bg-red-500"
+                            )}
+                            style={{ width: `${homeostase}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-[10px] font-bold text-muted-foreground uppercase">Alertas Ativos</p>
+                      <span className="text-lg font-bold">{systemScores.filter(s => s.score > 0).length} Sistemas</span>
+                    </div>
+                  </div>
 
-                return (
-                  <button
-                    key={s}
-                    type="button"
-                    title={`${SISTEMA_LABEL[s]}: Score de Acometimento ${score.toFixed(1)}`}
-                    onClick={() => {
-                      setSistemasAtivos(prev =>
-                        prev.includes(s) 
-                          ? prev.filter(x => x !== s) 
-                          : [...prev, s]
+                  <div className="flex flex-wrap gap-2">
+                    {systemScores.map(({ sistema: s, score, count }) => {
+                      const active = sistemasAtivos.includes(s);
+                      const config = SISTEMA_CONFIG[s];
+                      const Icon = config.icon;
+                      
+                      let statusClasses = "";
+                      if (score >= 5) {
+                        statusClasses = `border-red-500 text-red-700 bg-red-50 ring-1 ring-red-200 animate-pulse-subtle`;
+                      } else if (score >= 2) {
+                        statusClasses = `border-amber-500 text-amber-700 bg-amber-50`;
+                      } else if (score > 0) {
+                        statusClasses = `border-emerald-500 text-emerald-700 bg-emerald-50`;
+                      } else {
+                        statusClasses = `border-border/50 text-muted-foreground bg-background opacity-60`;
+                      }
+
+                      return (
+                        <button
+                          key={s}
+                          type="button"
+                          onClick={() => {
+                            setSistemasAtivos(prev =>
+                              prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
+                            );
+                          }}
+                          className={cn(
+                            "text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
+                            active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.8] opacity-70",
+                            statusClasses
+                          )}
+                        >
+                          <Icon className={cn("w-3 h-3", active ? `text-${config.color}-500` : "")} />
+                          {config.label}
+                          {count > 0 && (
+                            <span className={cn(
+                              "ml-1 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black",
+                              score >= 5 ? "bg-red-200 text-red-900" : "bg-foreground/10"
+                            )}>
+                              {count}
+                            </span>
+                          )}
+                        </button>
                       );
-                    }}
-                    className={cn(
-                      "text-[10px] px-2.5 py-1.5 rounded-full border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
-                      active ? "ring-2 ring-primary ring-offset-2 shadow-md z-10" : "grayscale-[0.6]",
-                      statusClasses
-                    )}
-                  >
-                    <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${baseColor}-500`)} />
-                    {SISTEMA_LABEL[s]}
-                    {count > 0 && (
-                      <span className={cn(
-                        "ml-0.5 px-1.5 min-w-[18px] h-4 rounded-full flex items-center justify-center text-[9px] font-black",
-                        score >= 5 ? "bg-red-200 text-red-900" : "bg-foreground/10"
-                      )}>
-                        {count}
-                      </span>
-                    )}
-                  </button>
-                );
-              });
+                    })}
+                  </div>
+                </div>
+              );
             }, [eventos, sistemasAtivos, painRegions, sinalRegions])}
           </div>
         </div>
