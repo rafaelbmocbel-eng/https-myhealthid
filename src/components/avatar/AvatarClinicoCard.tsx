@@ -11,6 +11,7 @@ import { Switch } from '@/components/ui/switch';
 import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
+import { cn } from '@/lib/utils';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
   corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
@@ -620,21 +621,42 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             </SheetTitle>
           </SheetHeader>
           <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Detectamos {syncData?.length} regiões com queixas na última avaliação MyID do paciente. 
-              Selecione quais deseja importar para o Avatar Clínico como achados ativos.
-            </p>
+            <div className="flex flex-col gap-2">
+              <p className="text-sm text-muted-foreground">
+                Detectamos queixas e sinais no MyID do paciente. 
+                Selecione o que deseja importar para o Avatar Clínico.
+              </p>
+              
+              <div className="flex gap-2">
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
+                  onClick={() => setIsSyncing(false)}
+                >
+                  <Shield className="h-3 w-3 mr-1" /> Mapa de Dor ({painRegions.length})
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className={cn("h-8 text-xs", isSyncing ? "bg-primary/10" : "")}
+                  onClick={() => setIsSyncing(true)}
+                >
+                  <Activity className="h-3 w-3 mr-1" /> Sinais do Corpo ({sinalRegions.length})
+                </Button>
+              </div>
+            </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-8">
-              {syncData?.map((item) => {
-                const reg = REGIONS.find(r => r.id === item.regiao_id);
+              {!isSyncing ? painRegions.map((item) => {
+                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
                 const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.origem === 'subjetivo_myid' && e.status === 'ativo');
                 
                 return (
                   <div key={item.regiao_id} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
                     <div>
                       <p className="text-sm font-semibold">{reg?.label || item.regiao_id}</p>
-                      <p className="text-[11px] text-muted-foreground">Intensidade: {item.intensidade}/10</p>
+                      <p className="text-[11px] text-muted-foreground italic">Intensidade: {item.intensidade}/10</p>
                     </div>
                     {jaImportado ? (
                       <Badge variant="secondary" className="gap-1 text-[10px]">
@@ -642,6 +664,39 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       </Badge>
                     ) : (
                       <Button size="sm" className="h-8 text-xs" onClick={() => handleSyncImport(item)} disabled={saveMut.isPending}>
+                        Importar
+                      </Button>
+                    )}
+                  </div>
+                );
+              }) : sinalRegions.map((item, idx) => {
+                const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === item.regiao_id);
+                const jaImportado = eventos.some(e => e.regiao_id === item.regiao_id && e.tipo_achado.includes(item.sinal));
+                
+                return (
+                  <div key={`${item.regiao_id}-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
+                    <div>
+                      <p className="text-sm font-semibold">{item.sinal}</p>
+                      <p className="text-[11px] text-muted-foreground">{reg?.label || item.regiao_id}</p>
+                    </div>
+                    {jaImportado ? (
+                      <Badge variant="secondary" className="gap-1 text-[10px]">
+                        <Check className="h-3 w-3" /> Importado
+                      </Badge>
+                    ) : (
+                      <Button size="sm" className="h-8 text-xs" onClick={async () => {
+                        await saveMut.mutateAsync({
+                          paciente_id: pacienteId,
+                          regiao_id: item.regiao_id,
+                          sistema: 'visceral',
+                          origem: 'subjetivo_myid',
+                          tipo_achado: `Relato MyID: ${item.sinal}`,
+                          severidade: 2,
+                          status: 'ativo',
+                          visivel_paciente: true,
+                          data_inicio: new Date().toISOString().slice(0, 10),
+                        });
+                      }} disabled={saveMut.isPending}>
                         Importar
                       </Button>
                     )}
