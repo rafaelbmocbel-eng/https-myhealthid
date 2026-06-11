@@ -27,7 +27,7 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'respiratorio', 'digestorio', 'endocrino', 'urinario',
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
-const SISTEMAS_INICIAIS: SistemaCorporal[] = ['musculoesqueletico', 'nervoso'];
+const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = {
   musculoesqueletico: 'Musculoesquelético',
   nervoso: 'Nervoso',
@@ -152,16 +152,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    painRegions.forEach(item => {
-      if (!map[item.regiao_id]) {
-        map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
-        map[item.regiao_id + '__is_myid'] = 'true';
-      }
-    });
+    // APENAS se o sistema musculoesquelético estiver ativo
+    if (sistemasAtivos.includes('musculoesqueletico')) {
+      painRegions.forEach(item => {
+        if (!map[item.regiao_id]) {
+          map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
+          map[item.regiao_id + '__is_myid'] = 'true';
+        }
+      });
+    }
 
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
+    // Filtra pelos sistemas ativos
     sinalRegions.forEach(item => {
-      if (!map[item.regiao_id]) {
+      const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
+      const isSystemActive = regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
+      
+      if (isSystemActive && !map[item.regiao_id]) {
         map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
@@ -280,50 +287,99 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
-        {/* Toggles de sistema - Agora como Ecossistema Dinâmico */}
-        <div className="flex flex-wrap gap-1.5">
-          {SISTEMAS_ORDEM.map(s => {
-            const active = sistemasAtivos.includes(s);
-            // Cálculo do nível de acometimento do sistema
-            const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
-            const severidadeMedia = evsDoSistema.length > 0 
-              ? evsDoSistema.reduce((acc, curr) => acc + curr.severidade, 0) / evsDoSistema.length 
-              : 0;
-            
-            // Cor do badge baseada no acometimento
-            const statusColor = severidadeMedia >= 3 
-              ? 'border-red-500 text-red-700 bg-red-50' 
-              : severidadeMedia >= 1.5 
-                ? 'border-amber-500 text-amber-700 bg-amber-50' 
-                : evsDoSistema.length > 0 
-                  ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
-                  : 'border-border/50 text-muted-foreground bg-background';
-
-            return (
-              <button
-                key={s}
-                type="button"
-                onClick={() =>
-                  setSistemasAtivos(prev =>
-                    prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s],
-                  )
-                }
-                className={cn(
-                  "text-[10px] px-2 py-1 rounded-md border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight",
-                  active ? "ring-2 ring-primary ring-offset-1 shadow-sm" : "opacity-70 grayscale-[0.5]",
-                  statusColor
-                )}
+        {/* Toggles de sistema - Ecossistema Dinâmico com Ranking de Acometimento */}
+        <div className="space-y-2">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
+            <div className="flex gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] px-2"
+                onClick={() => setSistemasAtivos(SISTEMAS_ORDEM)}
               >
-                {active && <Check className="h-2.5 w-2.5" />}
-                {SISTEMA_LABEL[s]}
-                {evsDoSistema.length > 0 && (
-                  <span className="ml-1 w-4 h-4 rounded-full bg-foreground/10 flex items-center justify-center text-[8px]">
-                    {evsDoSistema.length}
-                  </span>
-                )}
-              </button>
-            );
-          })}
+                Ver Todos
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 text-[10px] px-2"
+                onClick={() => setSistemasAtivos([])}
+              >
+                Limpar
+              </Button>
+            </div>
+          </div>
+          
+          <div className="flex flex-wrap gap-1.5">
+            {useMemo(() => {
+              // Cálculo de score para ranking
+              const systemScores = SISTEMAS_ORDEM.map(s => {
+                const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
+                
+                // Score base: severidade acumulada
+                let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
+                
+                // Bônus de score por MyID
+                if (s === 'musculoesqueletico') {
+                  score += painRegions.length * 0.5;
+                }
+                
+                // Mapear sinais MyID para sistemas específicos
+                const myidSinaisDoSistema = sinalRegions.filter(sr => {
+                  const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
+                  return regVisceral?.sistemas.includes(s);
+                });
+                score += myidSinaisDoSistema.length * 1.5;
+
+                return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
+              }).sort((a, b) => b.score - a.score);
+
+              return systemScores.map(({ sistema: s, score, count }) => {
+                const active = sistemasAtivos.includes(s);
+                
+                // Cor do badge baseada no score (acometimento)
+                const statusColor = score >= 5 
+                  ? 'border-red-500 text-red-700 bg-red-50' 
+                  : score >= 2 
+                    ? 'border-amber-500 text-amber-700 bg-amber-50' 
+                    : score > 0 
+                      ? 'border-emerald-500 text-emerald-700 bg-emerald-50'
+                      : 'border-border/50 text-muted-foreground bg-background opacity-60';
+
+                return (
+                  <button
+                    key={s}
+                    type="button"
+                    onClick={() => {
+                      // Se clicar em um sistema, alterna entre "Só ele" ou "Adicionar/Remover"
+                      // Mantemos o comportamento de toggle múltiplo mas facilitamos o individual
+                      setSistemasAtivos(prev =>
+                        prev.includes(s) && prev.length === 1 
+                          ? SISTEMAS_ORDEM // Se era o único ativo, volta para todos
+                          : prev.includes(s) 
+                            ? prev.filter(x => x !== s) 
+                            : [...prev, s]
+                      );
+                    }}
+                    className={cn(
+                      "text-[10px] px-2 py-1.5 rounded-md border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight",
+                      active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.4]",
+                      statusColor
+                    )}
+                  >
+                    {active && <Check className="h-2.5 w-2.5" />}
+                    {SISTEMA_LABEL[s]}
+                    {count > 0 && (
+                      <span className="ml-1 px-1 min-w-[16px] h-4 rounded-full bg-foreground/10 flex items-center justify-center text-[8px]">
+                        {count}
+                      </span>
+                    )}
+                  </button>
+                );
+              });
+            }, [eventos, sistemasAtivos, painRegions, sinalRegions])}
+          </div>
         </div>
 
         {/* Toggle frente / costas */}
@@ -380,7 +436,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
-                if (!belongsToActiveSystem && !sinalRegions.some(sr => sr.regiao_id === r.id)) return null;
+                if (!belongsToActiveSystem) return null;
 
                 return (
                   <path
