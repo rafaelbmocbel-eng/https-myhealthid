@@ -365,17 +365,22 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
     pleura: ['Visceral', 'Parietal'] 
   },
 
+  pulmao_d_p: { partes: ['Lobos posteriores', 'Segmentos basais', 'Pleura parietal posterior'] },
+  pulmao_e_p: { partes: ['Lobos posteriores', 'Segmentos basais', 'Pleura parietal posterior'] },
+
   // Circulatory
   coracao: { 
     cavidades: ['Átrio Direito', 'Átrio Esquerdo', 'Ventrículo Direito', 'Ventrículo Esquerdo'],
     valvas: ['Mitral (Bicúspide)', 'Tricúspide', 'Aórtica semilunar', 'Pulmonar semilunar'],
     vasos: ['Aorta ascendente', 'Arco aórtico', 'Veia cava superior', 'Veia cava inferior', 'Tronco pulmonar', 'Veias pulmonares'],
-    coronarias: ['Tronco da coronária esquerda', 'Coronária direita', 'Ramo descendente anterior', 'Ramo circunflexo']
+    coronarias: ['Tronco da coronária esquerda', 'Coronária direita', 'Ramo descendente anterior', 'Ramo circunflexo'],
+    conducao: ['Nodo SA', 'Nodo AV', 'Feixe de His', 'Fibras de Purkinje']
   },
   carotida_d: { segmentos: ['Carótida comum', 'Carótida interna', 'Carótida externa', 'Bulbo carotídeo (barorreceptores)'] },
   carotida_e: { segmentos: ['Carótida comum', 'Carótida interna', 'Carótida externa', 'Bulbo carotídeo (barorreceptores)'] },
   aorta_abdominal: { 
-    segmentos: ['Tronco celíaco', 'Artéria mesentérica superior', 'Artérias renais', 'Artéria mesentérica inferior', 'Bifurcação ilíaca'] 
+    segmentos: ['Tronco celíaco', 'Artéria mesentérica superior', 'Artérias renais', 'Artéria mesentérica inferior', 'Bifurcação ilíaca'],
+    camadas: ['Íntima', 'Média', 'Adventícia']
   },
 
   // Digestive
