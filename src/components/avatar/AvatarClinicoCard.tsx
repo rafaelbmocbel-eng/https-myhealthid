@@ -8,8 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
+import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
   corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
@@ -54,13 +55,15 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
 
 interface Props {
   pacienteId: string;
+  isProfessional?: boolean;
 }
 
-export default function AvatarClinicoCard({ pacienteId }: Props) {
+export default function AvatarClinicoCard({ pacienteId, isProfessional = true }: Props) {
   const { data: eventos = [], isLoading } = useEventosAnatomicos(pacienteId);
   const saveMut = useSaveEventoAnatomico();
   const deleteMut = useDeleteEventoAnatomico(pacienteId);
 
+  const [modoSimplificado, setModoSimplificado] = useState(!isProfessional);
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_INICIAIS);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
@@ -113,10 +116,15 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
     return map;
   }, [eventosFiltrados]);
 
-  const regioes = REGIONS.filter(r => r.view === view);
+  const regioesBase = REGIONS.filter(r => r.view === view);
+  const regioesViscerais = VISCERAL_REGIONS.filter(r => 
+    r.view === view && r.sistemas.some(s => sistemasAtivos.includes(s as any))
+  );
+
   const eventosDaRegiao = (rid: string) => eventosFiltrados.filter(e => e.regiao_id === rid);
 
   const abrirSheet = (rid: string) => {
+    if (modoSimplificado) return; // Paciente não edita no avatar clínico (ou apenas visualiza)
     setSheetRegiao(rid);
     setEditing(null);
   };
@@ -135,9 +143,9 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
     });
   };
 
-  const regiao = sheetRegiao ? REGIONS.find(r => r.id === sheetRegiao) : null;
-  const estruturasCat = regiao ? STRUCTURES[regiao.id] || {} : {};
-  const todasEstruturas = Object.values(estruturasCat).flat();
+  const regiao = sheetRegiao ? [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === sheetRegiao) : null;
+  const estruturasCat = regiao ? (STRUCTURES[regiao.id] || (VISCERAL_STRUCTURES as any)[regiao.id] || {}) : {};
+  const todasEstruturas = Object.values(estruturasCat).flat() as string[];
 
   const handleSave = async () => {
     if (!editing?.tipo_achado?.trim()) return;
@@ -180,12 +188,25 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
                 Sincronizar MyID
               </Button>
             )}
-            <Badge variant="outline" className="text-[10px]">Sprint F1+</Badge>
+            <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
-        <p className="text-xs text-muted-foreground">
-          Mapa de achados clínicos por região. Complementar à Impressão Digital MyID.
-        </p>
+        <div className="flex justify-between items-center mt-1">
+          <p className="text-xs text-muted-foreground">
+            Mapa de achados clínicos georreferenciados.
+          </p>
+          <div className="flex items-center gap-2">
+            <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
+              {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
+            </Label>
+            <Switch 
+              id="modo-view"
+              checked={!modoSimplificado} 
+              onCheckedChange={(v) => setModoSimplificado(!v)}
+              className="h-4 w-8"
+            />
+          </div>
+        </div>
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Toggles de sistema */}
@@ -235,10 +256,19 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
             </defs>
             <g clipPath="url(#avc-clip)">
               <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
-              {regioes.map(r => {
+              
+              {/* Camada Base (Musculoesquelético/Geral) */}
+              {regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 return (
                   <path
@@ -248,9 +278,29 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
                     fillOpacity={fill ? 0.7 : 0}
                     stroke="hsl(var(--border))"
                     strokeWidth={0.6}
-                    className="cursor-pointer hover:opacity-80"
+                    className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
+                );
+              })}
+
+              {/* Camada Visceral (Órgãos Internos) */}
+              {regioesViscerais.map(r => {
+                const fill = corPorRegiao[r.id];
+                return (
+                  <path
+                    key={r.id}
+                    d={r.d}
+                    fill={fill || 'hsl(var(--background))'}
+                    fillOpacity={fill ? 0.9 : 0.4}
+                    stroke={fill ? 'white' : 'hsl(var(--muted-foreground))'}
+                    strokeWidth={0.8}
+                    filter={fill ? "url(#glow)" : undefined}
+                    className="cursor-pointer hover:brightness-110 transition-all"
+                    onClick={() => abrirSheet(r.id)}
+                  >
+                    <title>{r.label}</title>
+                  </path>
                 );
               })}
             </g>
@@ -270,28 +320,36 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
         {/* Lista resumida */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : eventosFiltrados.length === 0 ? (
+        ) : (eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum achado registrado. Toque em uma região para adicionar.
+            Nenhum achado {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
           </p>
         ) : (
           <div className="space-y-1.5">
-            {eventosFiltrados.slice(0, 6).map(ev => {
-              const reg = REGIONS.find(r => r.id === ev.regiao_id);
+            {eventosFiltrados
+              .filter(e => modoSimplificado ? e.visivel_paciente : true)
+              .slice(0, 6)
+              .map(ev => {
+              const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
               return (
                 <button
                   key={ev.id}
+                  disabled={modoSimplificado}
                   onClick={() => abrirSheet(ev.regiao_id)}
-                  className="w-full flex items-center gap-2 text-left p-2 rounded-lg hover:bg-muted/40 transition"
+                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition ${
+                    modoSimplificado ? 'cursor-default' : 'hover:bg-muted/40'
+                  }`}
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">
                       {ev.tipo_achado} <span className="text-muted-foreground">· {reg?.label || ev.regiao_id}</span>
                     </p>
-                    <p className="text-[10px] text-muted-foreground">
-                      {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]} · {ORIGEM_LABEL[ev.origem]}
-                    </p>
+                    {!modoSimplificado && (
+                      <p className="text-[10px] text-muted-foreground">
+                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]} · {ORIGEM_LABEL[ev.origem]}
+                      </p>
+                    )}
                   </div>
                 </button>
               );
@@ -304,42 +362,63 @@ export default function AvatarClinicoCard({ pacienteId }: Props) {
       <Sheet open={!!sheetRegiao} onOpenChange={(o) => { if (!o) { setSheetRegiao(null); setEditing(null); } }}>
         <SheetContent side="right" className="w-full sm:max-w-md overflow-y-auto">
           <SheetHeader>
-            <SheetTitle>{regiao?.label || 'Região'}</SheetTitle>
+            <SheetTitle className="flex items-center gap-2">
+              {regiao?.label || 'Região'}
+              {VISCERAL_REGIONS.some(vr => vr.id === regiao?.id) && (
+                <Badge variant="secondary" className="text-[9px] uppercase">Órgão Interno</Badge>
+              )}
+            </SheetTitle>
           </SheetHeader>
 
           {!editing && (
             <div className="mt-4 space-y-2">
               {sheetRegiao && eventosDaRegiao(sheetRegiao).length === 0 && (
-                <p className="text-xs text-muted-foreground">Sem achados nessa região.</p>
+                <div className="text-center py-8 border-2 border-dashed rounded-xl border-muted">
+                  <Activity className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">Sem achados nessa região.</p>
+                </div>
               )}
               {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => (
-                <div key={ev.id} className="border border-border/50 rounded-lg p-2.5 space-y-1">
+                <div key={ev.id} className="border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors">
                   <div className="flex items-start gap-2">
-                    <span className="w-2.5 h-2.5 rounded-full mt-1 shrink-0" style={{ background: corEvento(ev) }} />
+                    <span className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ background: corEvento(ev) }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium">{ev.tipo_achado}</p>
-                      <p className="text-[10px] text-muted-foreground">
-                        {STATUS_LABEL[ev.status]} · sev {ev.severidade}/4 · {SISTEMA_LABEL[ev.sistema]}
-                        {ev.estrutura && ` · ${ev.estrutura}`}
-                        {ev.diagnostico_cid && ` · ${ev.diagnostico_cid}`}
+                      <div className="flex justify-between items-start">
+                        <p className="text-sm font-semibold">{ev.tipo_achado}</p>
+                        <div className="flex gap-1">
+                          {ev.visivel_paciente ? (
+                            <User className="h-3 w-3 text-green-500" title="Visível ao paciente" />
+                          ) : (
+                            <ShieldCheck className="h-3 w-3 text-muted-foreground" title="Apenas profissional" />
+                          )}
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-1 mt-1">
+                        <span className="bg-muted px-1.5 py-0.5 rounded">{STATUS_LABEL[ev.status]}</span>
+                        <span>Sev: {ev.severidade}/4</span>
+                        <span>{SISTEMA_LABEL[ev.sistema]}</span>
+                        {ev.estrutura && <span className="text-primary font-medium">· {ev.estrutura}</span>}
+                        {ev.diagnostico_cid && <span className="bg-primary/10 text-primary px-1 rounded">{ev.diagnostico_cid}</span>}
                       </p>
                       {ev.notas_clinicas && (
-                        <p className="text-[11px] text-muted-foreground mt-1 line-clamp-2">{ev.notas_clinicas}</p>
+                        <p className="text-[11px] text-muted-foreground mt-2 bg-muted/30 p-2 rounded italic">
+                          "{ev.notas_clinicas}"
+                        </p>
                       )}
                     </div>
-                    <div className="flex flex-col gap-1">
-                      <Button size="icon" variant="ghost" onClick={() => setEditing(ev)}>
-                        <Pencil className="icon-xs" />
+                    <div className="flex flex-col gap-1 shrink-0">
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(ev)}>
+                        <Pencil className="h-3.5 w-3.5" />
                       </Button>
-                      <Button size="icon" variant="ghost" onClick={() => deleteMut.mutate(ev.id)}>
-                        <Trash2 className="icon-xs text-destructive" />
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMut.mutate(ev.id)}>
+                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
                       </Button>
                     </div>
                   </div>
                 </div>
               ))}
-              <Button onClick={novoAchado} className="w-full" size="sm">
-                <Plus className="icon-xs mr-1" /> Adicionar achado
+              <Button onClick={novoAchado} className="w-full mt-4" size="sm">
+                <Plus className="icon-xs mr-1" /> Novo Achado Clínico
               </Button>
             </div>
           )}
