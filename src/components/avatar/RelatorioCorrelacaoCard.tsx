@@ -125,6 +125,10 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
 
               {c.confirmado ? (
                 <div className="space-y-1.5">
+                  <div className="flex items-center gap-1.5 mb-1 px-1">
+                    <Badge className="bg-emerald-500 hover:bg-emerald-600 text-[9px] h-4">Confirmado</Badge>
+                    <span className="text-[10px] text-muted-foreground italic">Achado objetivo no Avatar</span>
+                  </div>
                   {c.achadosObjetivos.map(ev => (
                     <div key={ev.id} className="flex items-start gap-2 text-xs bg-emerald-500/5 p-2 rounded-md border border-emerald-500/10">
                       <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 mt-0.5" />
@@ -136,9 +140,15 @@ export default function RelatorioCorrelacaoCard({ pacienteId }: Props) {
                   ))}
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-xs bg-amber-500/5 p-2 rounded-md border border-amber-500/10 text-amber-700">
-                  <AlertCircle className="h-3.5 w-3.5" />
-                  <span>Queixa sem achado clínico mapeado no Avatar.</span>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-1.5 mb-1 px-1">
+                    <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50 text-[9px] h-4 uppercase">Lacuna</Badge>
+                    <span className="text-[10px] text-muted-foreground italic">Queixa sem diagnóstico mapeado</span>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs bg-amber-500/5 p-2 rounded-md border border-amber-500/10 text-amber-700">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    <span>O paciente relatou dor nesta área no MyID, mas não há um evento clínico registrado no Avatar.</span>
+                  </div>
                 </div>
               )}
             </div>

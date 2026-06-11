@@ -106,6 +106,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     const map: Record<string, string> = {};
     const peso = (e: EventoAnatomico) =>
       (e.status === 'resolvido' ? 0 : 10) + e.severidade;
+    
+    // Primeiro, aplica cores dos achados clínicos (objetivo)
     eventosFiltrados.forEach(ev => {
       const prev = map[ev.regiao_id + '__peso'];
       if (!prev || (peso(ev) > Number(prev))) {
@@ -113,8 +115,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         map[ev.regiao_id + '__peso'] = String(peso(ev));
       }
     });
+
+    // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
+    // Isso cria o vínculo visual imediato
+    if (lastMyID) {
+      lastMyID.forEach(item => {
+        if (!map[item.regiao_id]) {
+          // Tom de roxo/magenta translúcido para indicar "Relato de Dor sem Diagnóstico"
+          map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; 
+          map[item.regiao_id + '__is_myid'] = 'true';
+        }
+      });
+    }
+
     return map;
-  }, [eventosFiltrados]);
+  }, [eventosFiltrados, lastMyID]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
   const regioesViscerais = VISCERAL_REGIONS.filter(r => 
@@ -315,6 +330,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
+          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa MyID</span>
         </div>
 
         {/* Lista resumida */}
