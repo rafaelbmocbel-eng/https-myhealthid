@@ -166,7 +166,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         bruxismo: 'cabeca', bruxism: 'cabeca',
         zumbido: 'cabeca', tinnitus: 'cabeca',
         sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
-        cefaleia: 'cabeca', headache: 'cabeca',
+        cefaleia: 'cabeca', headache: 'cabeca', dor_de_cabeca: 'cabeca',
         tontura: 'cabeca', dizziness: 'cabeca',
         uso_antidepressivo: 'cabeca', antidepressivo: 'cabeca',
         ansiedade: 'cabeca', estresse: 'cabeca', insonia: 'cabeca',
@@ -189,6 +189,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         halitose: 'lingua',
         dificuldade_deglutir: 'esofago', swallowing: 'esofago',
         figado: 'figado', liver: 'figado', vesicula: 'vesicula_biliar',
+        bariatrica: 'estomago',
         
         // --- CIRCULATORY ---
         palpitacao: 'coracao', palpitations: 'coracao',
@@ -210,6 +211,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         dor_peito: 'peitoral', chest_pain: 'peitoral',
         tensao_pescoco: 'pescoco', torcicolo: 'pescoco',
         dor_lombar: 'colunaLombar_f', lumbago: 'colunaLombar_f',
+        dor_cronica_cervical: 'cervical',
+        dor_lombar_cronica: 'lombar',
+        irradiacao_maos: 'mao_d',
+        irradiacao_pe: 'pe_e',
+        trauma_cranio: 'cabeca',
+        trauma_mao: 'mao_d',
+        sporting: 'cervical', spurling: 'cervical'
       };
 
       [...sinais, ...visceralIssues].forEach(s => {
@@ -291,11 +299,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
       
       // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
-      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo', 'ansiedade', 'estresse', 'insonia'].some(s => item.sinal.toLowerCase().includes(s));
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula'].some(s => item.sinal.toLowerCase().includes(s));
+      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'dor de cabeca', 'tontura', 'antidepressivo', 'ansiedade', 'estresse', 'insonia', 'trauma de cranio', 'neural'].some(s => item.sinal.toLowerCase().includes(s));
+      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula', 'bariatrica'].some(s => item.sinal.toLowerCase().includes(s));
       const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse', 'bronquite', 'asma', 'respiracao'].some(s => item.sinal.toLowerCase().includes(s));
       const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia', 'hipertensao', 'pressao', 'circulao'].some(s => item.sinal.toLowerCase().includes(s));
       const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency', 'pedra_rins', 'rins'].some(s => item.sinal.toLowerCase().includes(s));
+      const isMusculoSymptom = ['dor cronica', 'cervical', 'lombar', 'irradiacao', 'trauma de mao', 'sporting', 'spurling', 'bancaria', 'postura', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
       
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
       let isSystemActive = false;
@@ -304,7 +313,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       else if (isRespiratorySymptom) isSystemActive = sistemasAtivos.includes('respiratorio');
       else if (isCirculatorySymptom) isSystemActive = sistemasAtivos.includes('circulatorio');
       else if (isUrinarySymptom) isSystemActive = sistemasAtivos.includes('urinario');
-      else if (isPeitoralDorsal) isSystemActive = sistemasAtivos.includes('musculoesqueletico');
+      else if (isMusculoSymptom || isPeitoralDorsal) isSystemActive = sistemasAtivos.includes('musculoesqueletico');
       else {
         // Fallback para mapeamento regional se não for um sintoma específico detectado acima
         const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
@@ -319,9 +328,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                      isRespiratorySymptom ? 'respiratorio' :
                                      isCirculatorySymptom ? 'circulatorio' :
                                      isUrinarySymptom ? 'urinario' :
-                                     isPeitoralDorsal ? 'musculoesqueletico' : 'nervoso'];
+                                     isMusculoSymptom || isPeitoralDorsal ? 'musculoesqueletico' : 'nervoso'];
         
-        map[item.regiao_id] = isPeitoralDorsal ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
+        map[item.regiao_id] = (isMusculoSymptom || isPeitoralDorsal) ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
