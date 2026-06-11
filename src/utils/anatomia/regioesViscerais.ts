@@ -391,14 +391,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'plexo_lombosacro_d',
     label: 'Plexo Lombossacro D',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M122 260 L135 295 L140 320'
   },
   {
     id: 'plexo_lombosacro_e',
     label: 'Plexo Lombossacro E',
     view: 'front',
-    sistemas: ['nervoso'],
+    sistemas: ['nervoso', 'musculoesqueletico'],
     d: 'M118 260 L105 295 L100 320'
   },
   {
