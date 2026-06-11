@@ -581,8 +581,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         <div className="relative">
           {/* Toggle frente / costas */}
-
-          {/* Toggle frente / costas */}
           <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
           {(['front', 'back'] as const).map(v => (
             <button
