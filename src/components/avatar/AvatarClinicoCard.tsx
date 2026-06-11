@@ -276,7 +276,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     sinalRegions.forEach(item => {
       const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
       const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
-      const isSystemActive = isPeitoralDorsal ? sistemasAtivos.includes('musculoesqueletico') : regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
+      
+      // Determina se o sinal deve aparecer no sistema nervoso baseado na natureza do sintoma
+      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(item.sinal);
+      
+      const isSystemActive = isPeitoralDorsal 
+        ? sistemasAtivos.includes('musculoesqueletico') 
+        : (isNervousSystemSymptom && sistemasAtivos.includes('nervoso')) || 
+          regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any));
       
       if (isSystemActive && !map[item.regiao_id]) {
         map[item.regiao_id] = isPeitoralDorsal ? 'rgba(168, 85, 247, 0.4)' : 'rgba(14, 165, 233, 0.4)';

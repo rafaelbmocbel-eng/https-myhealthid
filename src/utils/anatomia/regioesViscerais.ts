@@ -122,7 +122,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'estomago',
     label: 'Estômago',
     view: 'front',
-    sistemas: ['digestorio', 'nervoso'],
+    sistemas: ['digestorio'],
     d: 'M130 195 C145 190 158 205 155 225 C150 240 135 235 125 220 Q122 205 130 195'
   },
   {
@@ -143,14 +143,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'intestino_delgado',
     label: 'Intestino Delgado',
     view: 'front',
-    sistemas: ['digestorio', 'nervoso'],
+    sistemas: ['digestorio'],
     d: 'M105 230 L135 230 L138 255 L102 255 Z'
   },
   {
     id: 'intestino_grosso',
     label: 'Intestino Grosso',
     view: 'front',
-    sistemas: ['digestorio', 'nervoso'],
+    sistemas: ['digestorio'],
     d: 'M90 225 L105 225 L102 265 L138 265 L135 225 L150 225 L155 270 L85 270 Z'
   },
   {
@@ -173,7 +173,7 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'bexiga',
     label: 'Bexiga Urinária',
     view: 'front',
-    sistemas: ['urinario', 'reprodutor', 'nervoso'],
+    sistemas: ['urinario', 'reprodutor'],
     d: 'M110 275 Q120 270 130 275 Q135 290 120 295 Q105 290 110 275'
   },
   {
