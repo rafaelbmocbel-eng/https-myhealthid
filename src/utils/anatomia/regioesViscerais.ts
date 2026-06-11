@@ -427,7 +427,7 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   vasos_quiferos: { partes: ['Cisterna do Quilo', 'Ducto torácico', 'Drenagem linfática abdominal'] },
   baco: { partes: ['Polpa branca', 'Polpa vermelha', 'Hilo esplênico', 'Cápsula esplênica'] },
   linfonodos_inguinais: { grupos: ['Superficiais (Cadeia vertical e horizontal)', 'Profundos (Linfonodo de Cloquet)'] },
-  linfaticos_membros_inferiores: { partes: ['Vasos linfáticos profundos', 'Vasos linfáticos superficiais', 'Drenagem de retorno'] }
+  linfaticos_membros_inferiores: { partes: ['Vasos linfáticos profundos', 'Vasos linfáticos superficiais', 'Drenagem de retorno'] },
   utero_ovarios: { partes: ['Corpo uterino', 'Cérvix', 'Trompas de Falópio', 'Ovários (Folículos)', 'Endométrio', 'Miométrio'] },
   testiculos: { partes: ['Epidídimo', 'Túbulos seminíferos', 'Células de Leydig', 'Túnica albugínea'], hormonios: ['Testosterona'] },
   prostata: { partes: ['Zona periférica', 'Zona central', 'Zona de transição', 'Glândulas bulbouretrais'], funcao: ['Produção de fluido seminal'] },
