@@ -373,14 +373,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     key={s}
                     type="button"
                     title={`${SISTEMA_LABEL[s]}: Score de Acometimento ${score.toFixed(1)}`}
-                    onClick={(e) => {
-                      if (e.shiftKey) {
-                        setSistemasAtivos(prev =>
-                          prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
-                        );
-                      } else {
-                        setSistemasAtivos([s]);
-                      }
+                    onClick={() => {
+                      setSistemasAtivos(prev =>
+                        prev.includes(s) 
+                          ? prev.filter(x => x !== s) 
+                          : [...prev, s]
+                      );
                     }}
                     className={cn(
                       "text-[10px] px-2.5 py-1.5 rounded-full border transition-all flex items-center gap-1.5 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
