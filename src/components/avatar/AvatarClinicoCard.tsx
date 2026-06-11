@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
@@ -31,15 +31,15 @@ const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
 const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string }> = {
   musculoesqueletico: { label: 'Musculoesquelético', icon: Zap, color: 'purple' },
   nervoso: { label: 'Nervoso', icon: Brain, color: 'blue' },
-  digestorio: { label: 'Digestório', icon: ClipboardList, color: 'orange' },
+  digestorio: { label: 'Digestório', icon: Stethoscope, color: 'orange' },
   circulatorio: { label: 'Circulatório', icon: Heart, color: 'red' },
-  respiratorio: { label: 'Respiratório', icon: Activity, color: 'cyan' },
-  endocrino: { label: 'Endócrino', icon: Zap, color: 'yellow' },
-  urinario: { label: 'Urinário', icon: Shield, color: 'indigo' },
+  respiratorio: { label: 'Respiratório', icon: Wind, color: 'cyan' },
+  endocrino: { label: 'Endócrino', icon: Dna, color: 'yellow' },
+  urinario: { label: 'Urinário', icon: Droplets, color: 'indigo' },
   reprodutor: { label: 'Reprodutor', icon: Heart, color: 'pink' },
   tegumentar: { label: 'Tegumentar', icon: Shield, color: 'stone' },
-  linfatico: { label: 'Linfático', icon: Activity, color: 'lime' },
-  sensorial: { label: 'Sensorial', icon: Brain, color: 'emerald' },
+  linfatico: { label: 'Linfático', icon: Waves, color: 'lime' },
+  sensorial: { label: 'Sensorial', icon: Eye, color: 'emerald' },
 };
 
 const SISTEMA_LABEL: Record<SistemaCorporal, string> = Object.fromEntries(
@@ -69,6 +69,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
   const [modoSimplificado, setModoSimplificado] = useState(!isProfessional);
   const [sistemasAtivos, setSistemasAtivos] = useState<SistemaCorporal[]>(SISTEMAS_INICIAIS);
+  const [hoveredSistema, setHoveredSistema] = useState<SistemaCorporal | null>(null);
   const [view, setView] = useState<'front' | 'back'>('front');
   const [sheetRegiao, setSheetRegiao] = useState<string | null>(null);
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
@@ -399,6 +400,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         <button
                           key={s}
                           type="button"
+                          onMouseEnter={() => setHoveredSistema(s)}
+                          onMouseLeave={() => setHoveredSistema(null)}
                           onClick={() => {
                             setSistemasAtivos(prev =>
                               prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s]
@@ -407,10 +410,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                           className={cn(
                             "text-[10px] px-3 py-2 rounded-lg border transition-all flex items-center gap-2 font-bold uppercase tracking-tight hover:scale-105 active:scale-95",
                             active ? "ring-2 ring-primary ring-offset-1 shadow-sm z-10" : "grayscale-[0.8] opacity-70",
+                            hoveredSistema === s && "ring-2 ring-primary border-primary",
                             statusClasses
                           )}
                         >
-                          <Icon className={cn("w-3 h-3", active ? `text-${config.color}-500` : "")} />
+                          <Icon className={cn("w-3.5 h-3.5", active ? `text-${config.color}-500` : "")} />
                           {config.label}
                           {count > 0 && (
                             <span className={cn(
@@ -426,12 +430,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   </div>
                 </div>
               );
-            }, [eventos, sistemasAtivos, painRegions, sinalRegions])}
+            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
           </div>
         </div>
 
-        {/* Toggle frente / costas */}
-        <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto">
+        <div className="relative">
+          {/* Informação do Sistema em Foco */}
+          {hoveredSistema && (
+            <div className="absolute top-1/4 left-0 bg-background/95 backdrop-blur-sm border border-primary/20 p-2.5 rounded-xl shadow-xl z-20 animate-in fade-in slide-in-from-left-2 duration-300 max-w-[120px]">
+              <div className="flex flex-col items-center gap-1.5 text-center">
+                {(() => {
+                  const config = SISTEMA_CONFIG[hoveredSistema];
+                  const Icon = config.icon;
+                  return (
+                    <>
+                      <div className={cn("p-1.5 rounded-lg bg-primary/10", `text-${config.color}-500`)}>
+                        <Icon className="w-5 h-5" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-tighter leading-none">
+                        {config.label}
+                      </span>
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+          )}
+
+          {/* Toggle frente / costas */}
+          <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
           {(['front', 'back'] as const).map(v => (
             <button
               key={v}
@@ -447,7 +474,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
         {/* Silhueta */}
         <div className="mx-auto" style={{ maxWidth: 260 }}>
-          <svg viewBox="0 0 240 520" className="w-full h-auto" style={{ maxHeight: 480 }}>
+          <svg viewBox="0 0 240 520" className="w-full h-auto drop-shadow-2xl" style={{ maxHeight: 480 }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -459,21 +486,39 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
+              <radialGradient id="organ-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+              </radialGradient>
             </defs>
+            <style>
+              {`
+                @keyframes pulse-organ {
+                  0% { transform: scale(1); opacity: 0.8; }
+                  50% { transform: scale(1.02); opacity: 1; }
+                  100% { transform: scale(1); opacity: 0.8; }
+                }
+                .pulse-organ {
+                  animation: pulse-organ 2s infinite ease-in-out;
+                  transform-origin: center;
+                }
+              `}
+            </style>
             <g clipPath="url(#avc-clip)">
               <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
               
               {/* Camada Base (Musculoesquelético/Geral) */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
+                const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
                 return (
                   <path
                     key={r.id}
                     d={r.d}
-                    fill={fill || 'transparent'}
-                    fillOpacity={fill ? 0.7 : 0}
-                    stroke="hsl(var(--border))"
-                    strokeWidth={0.6}
+                    fill={fill || (isHoveredSystem ? 'rgba(168, 85, 247, 0.2)' : 'transparent')}
+                    fillOpacity={fill ? 0.7 : isHoveredSystem ? 0.5 : 0}
+                    stroke={isHoveredSystem ? 'purple' : "hsl(var(--border))"}
+                    strokeWidth={isHoveredSystem ? 1.2 : 0.6}
                     className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
@@ -484,22 +529,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
-                if (!belongsToActiveSystem) return null;
+                const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
+                
+                if (!belongsToActiveSystem && !isHoveredSystem) return null;
+
+                const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
+                const isUrgent = severityScore >= 13; // status ativo (10) + severidade alta
 
                 return (
-                  <path
-                    key={r.id}
-                    d={r.d}
-                    fill={fill || 'hsl(var(--background))'}
-                    fillOpacity={fill ? 0.9 : 0.4}
-                    stroke={fill ? 'white' : 'hsl(var(--muted-foreground))'}
-                    strokeWidth={0.8}
-                    filter={fill ? "url(#glow)" : undefined}
-                    className="cursor-pointer hover:brightness-110 transition-all"
-                    onClick={() => abrirSheet(r.id)}
-                  >
-                    <title>{r.label}</title>
-                  </path>
+                  <g key={r.id} className={cn(isUrgent && "pulse-organ")}>
+                    <path
+                      d={r.d}
+                      fill={fill || (isHoveredSystem ? 'rgba(14, 165, 233, 0.3)' : 'hsl(var(--background))')}
+                      fillOpacity={fill ? 0.9 : 0.4}
+                      stroke={isHoveredSystem ? 'var(--primary)' : fill ? 'white' : 'hsl(var(--muted-foreground))'}
+                      strokeWidth={isHoveredSystem ? 1.5 : 0.8}
+                      filter={fill ? "url(#glow)" : undefined}
+                      className="cursor-pointer hover:brightness-110 transition-all"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                    {/* Efeito de Volume/Gradiente nos Órgãos */}
+                    <path
+                      d={r.d}
+                      fill="url(#organ-gradient)"
+                      pointerEvents="none"
+                      opacity={0.5}
+                    />
+                  </g>
                 );
               })}
             </g>
@@ -517,6 +575,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa de Dor</span>
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
         </div>
+      </div>
 
         {/* Lista resumida */}
         {isLoading ? (
