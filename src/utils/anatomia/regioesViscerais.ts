@@ -191,11 +191,25 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
 
   // URINARY
   {
+    id: 'ureteres',
+    label: 'Ureteres',
+    view: 'front',
+    sistemas: ['urinario'],
+    d: 'M115 210 L112 275 M125 210 L128 275'
+  },
+  {
     id: 'bexiga',
     label: 'Bexiga',
     view: 'front',
-    sistemas: ['urinario', ],
+    sistemas: ['urinario'],
     d: 'M110 275 Q120 270 130 275 Q135 290 120 295 Q105 290 110 275'
+  },
+  {
+    id: 'uretra',
+    label: 'Uretra',
+    view: 'front',
+    sistemas: ['urinario'],
+    d: 'M120 295 L120 305'
   },
 
   // LYMPHATIC
@@ -288,6 +302,20 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     d: 'M125 210 Q135 205 145 210 Q150 225 145 240 Q135 245 125 240 Q120 225 125 210'
   },
   {
+    id: 'gluteos_p',
+    label: 'Região Glútea (Estruturas Profundas)',
+    view: 'back',
+    sistemas: ['musculoesqueletico', 'nervoso'],
+    d: 'M80 240 L160 240 L156 290 L84 290 Z'
+  },
+  {
+    id: 'nervo_ciatico_p',
+    label: 'Nervo Isquiático (Caminho)',
+    view: 'back',
+    sistemas: ['nervoso'],
+    d: 'M120 270 L135 330 M120 270 L105 330'
+  },
+  {
     id: 'pulmao_d_p',
     label: 'Pulmão Direito (Posterior)',
     view: 'back',
@@ -375,7 +403,9 @@ export const VISCERAL_STRUCTURES: Record<string, any> = {
   // Urinary
   rim_d: { partes: ['Córtex renal', 'Medula (Pirâmides)', 'Cálices maiores e menores', 'Pelve renal', 'Hilo renal'] },
   rim_e: { partes: ['Córtex renal', 'Medula (Pirâmides)', 'Cálices maiores e menores', 'Pelve renal', 'Hilo renal'] },
+  ureteres: { segmentos: ['Abdominal', 'Pélvico', 'Intramural'], funcao: ['Transporte de urina por peristaltismo'] },
   bexiga: { partes: ['Vértice', 'Corpo', 'Fundo (Trígono)', 'Colo vesical', 'Músculo detrusor'] },
+  uretra: { partes: ['Esfíncter interno', 'Esfíncter externo', 'Segmento prostático/membranoso/esponjoso (H)', 'Segmento curto (M)'] }
 
   // Lymphatic
   linfonodos_cervicais: { grupos: ['Nível I (Submentonianos)', 'Nível II/III/IV (Jugulares)', 'Nível V (Triângulo posterior)', 'Nível VI (Compartimento anterior)'] },
