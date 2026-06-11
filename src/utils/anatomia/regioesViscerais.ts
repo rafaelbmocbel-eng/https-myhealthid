@@ -16,51 +16,37 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
   // ENDOCRINE
   {
     id: 'tireoide',
-    label: 'Tireoide',
+    label: 'Glândula Tireoide',
     view: 'front',
     sistemas: ['endocrino'],
     d: 'M112 98 Q120 102 128 98 L126 104 Q120 108 114 104 Z'
   },
   {
-    id: 'paratireoides',
-    label: 'Paratireoides',
-    view: 'front',
-    sistemas: ['endocrino'],
-    d: 'M114 99 A0.5 0.5 0 1 0 115 99 M125 99 A0.5 0.5 0 1 0 126 99'
-  },
-  {
     id: 'hipofise',
     label: 'Hipófise',
     view: 'front',
-    sistemas: ['endocrino'],
+    sistemas: ['endocrino', 'nervoso'],
     d: 'M119 44 A1.5 1.5 0 1 0 121 44 A1.5 1.5 0 1 0 119 44'
-  },
-  {
-    id: 'pineal',
-    label: 'Glândula Pineal',
-    view: 'front',
-    sistemas: ['endocrino'],
-    d: 'M122 42 A1 1 0 1 0 124 42'
   },
   {
     id: 'timo',
     label: 'Timo',
     view: 'front',
-    sistemas: ['endocrino', 'linfatico'],
+    sistemas: ['endocrino', 'linfatico', 'circulatorio'],
     d: 'M115 130 Q120 125 125 130 L122 145 Q120 148 118 145 Z'
   },
   {
     id: 'adrenais',
-    label: 'Suprarrenais',
+    label: 'Glândulas Suprarrenais',
     view: 'front',
-    sistemas: ['endocrino'],
+    sistemas: ['endocrino', 'urinario'],
     d: 'M108 200 Q112 196 116 201 M124 201 Q128 196 132 200'
   },
   {
     id: 'pancreas_endocrino',
-    label: 'Pâncreas (Endócrino)',
+    label: 'Pâncreas (Ilhotas)',
     view: 'front',
-    sistemas: ['endocrino'],
+    sistemas: ['endocrino', 'digestorio'],
     d: 'M105 212 C108 208 125 205 138 210 L136 218 C120 215 110 218 105 212'
   },
 
@@ -69,21 +55,21 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'traqueia',
     label: 'Traqueia',
     view: 'front',
-    sistemas: ['respiratorio'],
+    sistemas: ['respiratorio', 'digestorio'],
     d: 'M118 102 L118 132 Q120 134 122 132 L122 102 Z'
   },
   {
     id: 'pulmao_d',
     label: 'Pulmão Direito',
     view: 'front',
-    sistemas: ['respiratorio', ],
+    sistemas: ['respiratorio', 'circulatorio'],
     d: 'M115 135 C100 130 85 140 82 170 C80 200 95 215 118 212 Q115 170 115 135'
   },
   {
     id: 'pulmao_e',
     label: 'Pulmão Esquerdo',
     view: 'front',
-    sistemas: ['respiratorio', ],
+    sistemas: ['respiratorio', 'circulatorio'],
     d: 'M125 135 C140 130 155 140 158 170 C160 200 145 215 122 212 Q125 170 125 135'
   },
 
@@ -92,28 +78,14 @@ export const VISCERAL_REGIONS: OrganRegion[] = [
     id: 'coracao',
     label: 'Coração',
     view: 'front',
-    sistemas: ['circulatorio', ],
+    sistemas: ['circulatorio', 'respiratorio'],
     d: 'M120 145 C110 145 105 160 120 175 C135 185 145 170 140 155 C135 145 125 142 120 145'
-  },
-  {
-    id: 'carotida_d',
-    label: 'Artéria Carótida D',
-    view: 'front',
-    sistemas: ['circulatorio'],
-    d: 'M112 90 L110 102'
-  },
-  {
-    id: 'carotida_e',
-    label: 'Artéria Carótida E',
-    view: 'front',
-    sistemas: ['circulatorio'],
-    d: 'M128 90 L130 102'
   },
   {
     id: 'aorta_abdominal',
     label: 'Aorta Abdominal',
     view: 'front',
-    sistemas: ['circulatorio'],
+    sistemas: ['circulatorio', 'digestorio', 'urinario'],
     d: 'M119 180 L119 255 L121 255 L121 180 Z'
   },
 
