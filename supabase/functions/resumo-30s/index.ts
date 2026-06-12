@@ -26,12 +26,19 @@ serve(async (req) => {
     const { data: userData } = await supabase.auth.getUser(token);
     if (!userData?.user) throw new Error("Não autenticado");
 
-    // Paciente
+    // Paciente — valida ownership (terapeuta dono OU o próprio paciente)
     const { data: paciente } = await supabase
       .from("pacientes")
-      .select("nome, sobrenome, data_nascimento, queixa_principal, observacoes")
+      .select("nome, sobrenome, data_nascimento, queixa_principal, observacoes, terapeuta_id, user_id")
       .eq("id", pacienteId)
       .maybeSingle();
+
+    if (!paciente || (paciente.terapeuta_id !== userData.user.id && paciente.user_id !== userData.user.id)) {
+      return new Response(JSON.stringify({ error: "Forbidden" }), {
+        status: 403,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Última MyID concluída
     const { data: myid } = await supabase
