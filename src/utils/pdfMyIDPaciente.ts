@@ -430,9 +430,9 @@ export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<B
 
   drawAssinatura(doc, data);
 
-  // Footer on every page
+  // Footer on every page (skip cover = page 1)
   const total = doc.getNumberOfPages();
-  for (let i = 1; i <= total; i++) {
+  for (let i = 2; i <= total; i++) {
     doc.setPage(i);
     drawFooter(doc, i, total);
   }
