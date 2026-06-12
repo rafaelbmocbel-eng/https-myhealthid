@@ -152,117 +152,35 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
         .filter(i => i.intensidade > 0) : [];
 
-      const respostas = dados?.respostas || {};
+      const respostas = dados || {};
       const analysis = data.myid_analysis as any;
       const componentScores = analysis?.componentScores || analysis?.component_scores || {};
       
-      // Mapeamento de sinais autonômicos (Bloco 6)
-      const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
-      const visceralIssues = respostas.bloco_6_visceral_issues || [];
-      const queixaPrincipal = (respostas.bloco_1_queixa || '').toLowerCase();
+      // Nova abordagem: Extração exaustiva de texto de toda a avaliação
+      const textoCompleto = extrairTextoDeObjeto(dados);
+      const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);
       
-      const sinalRegions: { regiao_id: string; sinal: string }[] = [];
+      const sinalRegions: { regiao_id: string; sinal: string; sistema: string }[] = [];
       
-      const mapping: Record<string, string> = {
-        // --- NERVOUS / SENSORIAL ---
-        bruxismo: 'cabeca', bruxism: 'cabeca',
-        zumbido: 'cabeca', tinnitus: 'cabeca',
-        sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
-        cefaleia: 'cabeca', headache: 'cabeca', dor_de_cabeca: 'cabeca',
-        tontura: 'cabeca', dizziness: 'cabeca',
-        uso_antidepressivo: 'cabeca', antidepressivo: 'cabeca',
-        ansiedade: 'cabeca', estresse: 'cabeca', insonia: 'cabeca',
-        'trauma de cranio': 'cabeca',
-        'trauma de crânio': 'cabeca',
-        
-        // --- DIGESTIVE ---
-        ma_digestao: 'estomago', digestao: 'estomago',
-        bloating: 'intestino_delgado', estufamento: 'intestino_delgado',
-        empachamento: 'estomago',
-        azia: 'esofago', heartburn: 'esofago',
-        queimacao_estomago: 'estomago',
-        nausea: 'estomago', vomito: 'estomago',
-        gases: 'intestino_grosso', gas: 'intestino_grosso',
-        refluxo: 'esofago', reflux: 'esofago',
-        gastrite: 'estomago', gastritis: 'estomago',
-        intestino_irritavel: 'intestino_grosso', ibs: 'intestino_grosso',
-        constipacao: 'intestino_grosso', constipation: 'intestino_grosso',
-        diarreia: 'intestino_delgado', diarrhea: 'intestino_delgado',
-        dor_abdominal: 'intestino_delgado',
-        distensao_abdominal: 'intestino_delgado',
-        halitose: 'lingua',
-        dificuldade_deglutir: 'esofago', swallowing: 'esofago',
-        figado: 'figado', liver: 'figado', vesicula: 'vesicula_biliar',
-        bariatrica: 'estomago',
-        
-        // --- CIRCULATORY ---
-        palpitacao: 'coracao', palpitations: 'coracao',
-        taquicardia: 'coracao', tachycardia: 'coracao',
-        hipertensao: 'coracao', pressure: 'coracao', pressao: 'coracao',
-        varizes: 'linfaticos_membros_inferiores', circulao: 'coracao',
-        
-        // --- RESPIRATORY ---
-        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
-        tosse_cronica: 'traqueia', tosse: 'traqueia',
-        bronquite: 'pulmao_d', asma: 'pulmao_d', respiracao: 'pulmao_d',
-        
-        // --- URINARY ---
-        dor_urinar: 'pelve', urinary_pain: 'pelve',
-        frequencia_urinaria: 'pelve', urinary_frequency: 'pelve',
-        pedra_rins: 'rim_d', kidney_stones: 'rim_d', rins: 'rim_d',
-        
-        // --- MUSCULOSKELETAL & NEURAL ---
-        dor_peito: 'peitoral', chest_pain: 'peitoral',
-        tensao_pescoco: 'pescoco', torcicolo: 'pescoco',
-        dor_lombar: 'lombar', lumbago: 'lombar',
-        'dor cervical': 'cervical',
-        'dor lombar': 'lombar',
-        'irradiacao para maos': 'mao_d',
-        'irradiacao para membros superiores': 'mao_d',
-        'irradiacao para pés': 'pe_e',
-        'irradiacao para membros inferiores': 'pe_e',
-        'pe esquerdo': 'pe_e',
-        'pé esquerdo': 'pe_e',
-        'trauma de mao': 'mao_d',
-        'trauma de mão': 'mao_d',
-        'teste de sporting': 'cervical',
-        'spurling': 'cervical',
-        'sobrepeso': 'estomago',
-        'bancaria': 'lombar',
-        'postura sentada': 'lombar'
-      };
-
-      [...sinais, ...visceralIssues].forEach(s => {
-        const signalKey = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        for (const [key, regionId] of Object.entries(mapping)) {
-          const normalizedKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          if (signalKey.includes(normalizedKey)) {
-            sinalRegions.push({ regiao_id: regionId, sinal: s });
-            break;
-          }
+      sintomasDetectados.forEach(s => {
+        if (!sinalRegions.some(sr => sr.regiao_id === s.regiao_id && sr.sistema === s.sistema)) {
+          sinalRegions.push({ 
+            regiao_id: s.regiao_id, 
+            sinal: `Detectado: ${s.termo}`,
+            sistema: s.sistema
+          });
         }
       });
-
-      // Extração da Queixa Principal
-      if (queixaPrincipal) {
-        const normalizedQueixa = queixaPrincipal.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        Object.entries(mapping).forEach(([key, regionId]) => {
-          const normalizedKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          if (normalizedQueixa.includes(normalizedKey)) {
-            if (!sinalRegions.some(sr => sr.regiao_id === regionId)) {
-              sinalRegions.push({ regiao_id: regionId, sinal: `Queixa: ${queixaPrincipal}` });
-            }
-          }
-        });
-      }
 
       return { 
         painRegions, 
         sinalRegions, 
         scores: componentScores,
         raw: data,
-        respostas
+        respostas,
+        textoCompleto
       };
+
     },
     enabled: !!pacienteId,
   });
