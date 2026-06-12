@@ -167,7 +167,14 @@ export default function PacienteLayout({ children }: Props) {
         </nav>
 
         {/* Main content */}
-        <main className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6">
+        <main
+          className="flex-1 overflow-y-auto overflow-x-hidden pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-6"
+          style={{
+            WebkitOverflowScrolling: 'touch',
+            overscrollBehaviorY: 'contain',
+            scrollBehavior: 'auto',
+          }}
+        >
           {children}
         </main>
       </div>
