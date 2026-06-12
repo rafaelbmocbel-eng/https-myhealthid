@@ -305,6 +305,21 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tipo]);
 
+  // Auto-preview debounced: regenera quando qualquer campo do form muda
+  useEffect(() => {
+    if (!tipo || !terapeuta) return;
+    const t = setTimeout(() => { handlePreview(); }, 600);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [
+    tipo, terapeuta, clinica,
+    data, horaEntrada, horaSaida, diasAfastamento, cid, motivo,
+    desde, finalidade, observacoes, valor, referente, formaPagamento, numeroSessoes,
+    profissao, queixaPrincipal, hma, hpp, medicamentos, exameFisico, testesEspeciais,
+    diagnosticoFuncional, cidPrincipal, cifCodigos, objetivos, conduta,
+    frequenciaSugerida, prognostico, myidData,
+  ]);
+
   const handleGerar = async () => {
     if (!tipo || !terapeuta || !user) return;
     setGerando(true);
