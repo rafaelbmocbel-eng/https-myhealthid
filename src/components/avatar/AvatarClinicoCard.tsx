@@ -156,9 +156,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const analysis = data.myid_analysis as any;
       const componentScores = analysis?.componentScores || analysis?.component_scores || {};
       
-      // Nova abordagem: Extração exaustiva de texto de toda a avaliação
-      const textoCompleto = extrairTextoDeObjeto(dados);
+      // Nova abordagem: Extração exaustiva de texto de toda a avaliação + análise
+      const textoCompleto = extrairTextoDeObjeto(dados) + " " + extrairTextoDeObjeto(analysis);
       const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);
+
       
       const sinalRegions: { regiao_id: string; sinal: string; sistema: string }[] = [];
       
