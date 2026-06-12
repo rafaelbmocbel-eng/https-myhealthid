@@ -6517,6 +6517,13 @@ export type Database = {
           user_id: string
         }[]
       }
+      get_public_tracking_config: {
+        Args: { p_terapeuta_id: string }
+        Returns: {
+          ga4_id: string
+          meta_pixel_id: string
+        }[]
+      }
       get_terapeuta_by_agenda_token: {
         Args: { p_token: string }
         Returns: {
