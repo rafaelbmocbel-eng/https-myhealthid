@@ -18,6 +18,8 @@ import {
 } from '@/hooks/useEventosAnatomicos';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
+import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
+
 
 const FRONT_OUTLINE =
   'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
@@ -150,117 +152,36 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
         .filter(i => i.intensidade > 0) : [];
 
-      const respostas = dados?.respostas || {};
+      const respostas = dados || {};
       const analysis = data.myid_analysis as any;
       const componentScores = analysis?.componentScores || analysis?.component_scores || {};
       
-      // Mapeamento de sinais autonômicos (Bloco 6)
-      const sinais = respostas.bloco_6_sinais_autonomicos || respostas.bloco_6_sinaisAutonomicos || [];
-      const visceralIssues = respostas.bloco_6_visceral_issues || [];
-      const queixaPrincipal = (respostas.bloco_1_queixa || '').toLowerCase();
-      
-      const sinalRegions: { regiao_id: string; sinal: string }[] = [];
-      
-      const mapping: Record<string, string> = {
-        // --- NERVOUS / SENSORIAL ---
-        bruxismo: 'cabeca', bruxism: 'cabeca',
-        zumbido: 'cabeca', tinnitus: 'cabeca',
-        sensibilidade_luz: 'cabeca', light_sensitivity: 'cabeca',
-        cefaleia: 'cabeca', headache: 'cabeca', dor_de_cabeca: 'cabeca',
-        tontura: 'cabeca', dizziness: 'cabeca',
-        uso_antidepressivo: 'cabeca', antidepressivo: 'cabeca',
-        ansiedade: 'cabeca', estresse: 'cabeca', insonia: 'cabeca',
-        'trauma de cranio': 'cabeca',
-        'trauma de crânio': 'cabeca',
-        
-        // --- DIGESTIVE ---
-        ma_digestao: 'estomago', digestao: 'estomago',
-        bloating: 'intestino_delgado', estufamento: 'intestino_delgado',
-        empachamento: 'estomago',
-        azia: 'esofago', heartburn: 'esofago',
-        queimacao_estomago: 'estomago',
-        nausea: 'estomago', vomito: 'estomago',
-        gases: 'intestino_grosso', gas: 'intestino_grosso',
-        refluxo: 'esofago', reflux: 'esofago',
-        gastrite: 'estomago', gastritis: 'estomago',
-        intestino_irritavel: 'intestino_grosso', ibs: 'intestino_grosso',
-        constipacao: 'intestino_grosso', constipation: 'intestino_grosso',
-        diarreia: 'intestino_delgado', diarrhea: 'intestino_delgado',
-        dor_abdominal: 'intestino_delgado',
-        distensao_abdominal: 'intestino_delgado',
-        halitose: 'lingua',
-        dificuldade_deglutir: 'esofago', swallowing: 'esofago',
-        figado: 'figado', liver: 'figado', vesicula: 'vesicula_biliar',
-        bariatrica: 'estomago',
-        
-        // --- CIRCULATORY ---
-        palpitacao: 'coracao', palpitations: 'coracao',
-        taquicardia: 'coracao', tachycardia: 'coracao',
-        hipertensao: 'coracao', pressure: 'coracao', pressao: 'coracao',
-        varizes: 'linfaticos_membros_inferiores', circulao: 'coracao',
-        
-        // --- RESPIRATORY ---
-        falta_ar: 'pulmao_d', shortness_breath: 'pulmao_d',
-        tosse_cronica: 'traqueia', tosse: 'traqueia',
-        bronquite: 'pulmao_d', asma: 'pulmao_d', respiracao: 'pulmao_d',
-        
-        // --- URINARY ---
-        dor_urinar: 'pelve', urinary_pain: 'pelve',
-        frequencia_urinaria: 'pelve', urinary_frequency: 'pelve',
-        pedra_rins: 'rim_d', kidney_stones: 'rim_d', rins: 'rim_d',
-        
-        // --- MUSCULOSKELETAL & NEURAL ---
-        dor_peito: 'peitoral', chest_pain: 'peitoral',
-        tensao_pescoco: 'pescoco', torcicolo: 'pescoco',
-        dor_lombar: 'lombar', lumbago: 'lombar',
-        'dor cervical': 'cervical',
-        'dor lombar': 'lombar',
-        'irradiacao para maos': 'mao_d',
-        'irradiacao para membros superiores': 'mao_d',
-        'irradiacao para pés': 'pe_e',
-        'irradiacao para membros inferiores': 'pe_e',
-        'pe esquerdo': 'pe_e',
-        'pé esquerdo': 'pe_e',
-        'trauma de mao': 'mao_d',
-        'trauma de mão': 'mao_d',
-        'teste de sporting': 'cervical',
-        'spurling': 'cervical',
-        'sobrepeso': 'estomago',
-        'bancaria': 'lombar',
-        'postura sentada': 'lombar'
-      };
+      // Nova abordagem: Extração exaustiva de texto de toda a avaliação + análise
+      const textoCompleto = extrairTextoDeObjeto(dados) + " " + extrairTextoDeObjeto(analysis);
+      const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);
 
-      [...sinais, ...visceralIssues].forEach(s => {
-        const signalKey = s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        for (const [key, regionId] of Object.entries(mapping)) {
-          const normalizedKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          if (signalKey.includes(normalizedKey)) {
-            sinalRegions.push({ regiao_id: regionId, sinal: s });
-            break;
-          }
+      
+      const sinalRegions: { regiao_id: string; sinal: string; sistema: string }[] = [];
+      
+      sintomasDetectados.forEach(s => {
+        if (!sinalRegions.some(sr => sr.regiao_id === s.regiao_id && sr.sistema === s.sistema)) {
+          sinalRegions.push({ 
+            regiao_id: s.regiao_id, 
+            sinal: `Detectado: ${s.termo}`,
+            sistema: s.sistema
+          });
         }
       });
-
-      // Extração da Queixa Principal
-      if (queixaPrincipal) {
-        const normalizedQueixa = queixaPrincipal.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-        Object.entries(mapping).forEach(([key, regionId]) => {
-          const normalizedKey = key.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          if (normalizedQueixa.includes(normalizedKey)) {
-            if (!sinalRegions.some(sr => sr.regiao_id === regionId)) {
-              sinalRegions.push({ regiao_id: regionId, sinal: `Queixa: ${queixaPrincipal}` });
-            }
-          }
-        });
-      }
 
       return { 
         painRegions, 
         sinalRegions, 
         scores: componentScores,
         raw: data,
-        respostas
+        respostas,
+        textoCompleto
       };
+
     },
     enabled: !!pacienteId,
   });
@@ -306,44 +227,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
     // Filtra pelos sistemas ativos
     sinalRegions.forEach(item => {
-      const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
-      
-      // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
-      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'dor de cabeca', 'tontura', 'antidepressivo', 'ansiedade', 'estresse', 'insonia', 'trauma de cranio', 'trauma de crânio', 'neural', 'comprometimento neural'].some(s => item.sinal.toLowerCase().includes(s));
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula', 'bariatrica', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
-      const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse', 'bronquite', 'asma', 'respiracao'].some(s => item.sinal.toLowerCase().includes(s));
-      const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia', 'hipertensao', 'pressao', 'circulao'].some(s => item.sinal.toLowerCase().includes(s));
-      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency', 'pedra_rins', 'rins'].some(s => item.sinal.toLowerCase().includes(s));
-      const isMusculoSymptom = ['dor cronica', 'cervical', 'lombar', 'irradiacao', 'trauma de mao', 'trauma de mão', 'sporting', 'spurling', 'bancaria', 'postura', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
-      
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
-      let isSystemActive = false;
-      if (isNervousSystemSymptom) isSystemActive = sistemasAtivos.includes('nervoso');
-      else if (isDigestiveSymptom) isSystemActive = sistemasAtivos.includes('digestorio');
-      else if (isRespiratorySymptom) isSystemActive = sistemasAtivos.includes('respiratorio');
-      else if (isCirculatorySymptom) isSystemActive = sistemasAtivos.includes('circulatorio');
-      else if (isUrinarySymptom) isSystemActive = sistemasAtivos.includes('urinario');
-      else if (isMusculoSymptom || isPeitoralDorsal) isSystemActive = sistemasAtivos.includes('musculoesqueletico');
-      else {
-        // Fallback para mapeamento regional se não for um sintoma específico detectado acima
-        const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
-        isSystemActive = regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any)) || false;
-      }
+      const isSystemActive = sistemasAtivos.includes(item.sistema as any);
       
       if (isSystemActive && !map[item.regiao_id]) {
-        // Define a cor baseada no comprometimento
-        if (isNervousSystemSymptom) {
-           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul para Nervoso
-        } else if (isDigestiveSymptom) {
-           map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja para Digestório
-        } else if (isMusculoSymptom || isPeitoralDorsal) {
-           map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo para Musculoesquelético
-        } else {
-           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
+        // Define a cor baseada no sistema
+        switch (item.sistema) {
+          case 'nervoso':
+            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul
+            break;
+          case 'digestorio':
+            map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja
+            break;
+          case 'musculoesqueletico':
+            map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo
+            break;
+          case 'circulatorio':
+            map[item.regiao_id] = 'rgba(239, 68, 68, 0.4)'; // Vermelho
+            break;
+          case 'respiratorio':
+            map[item.regiao_id] = 'rgba(6, 182, 212, 0.4)'; // Ciano
+            break;
+          default:
+            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
         }
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
+
 
     // Sincroniza Cirurgias (Vermelho Escuro/Trauma) - APENAS no digestório ou reprodutor
     const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
@@ -402,22 +313,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     setEditing(null);
   };
 
-  const handleSyncImport = async (item: { regiao_id: string; intensidade: number }) => {
-    const reg = REGIONS.find(r => r.id === item.regiao_id);
+  const handleSyncImport = async (item: any) => {
     await saveMut.mutateAsync({
       paciente_id: pacienteId,
       regiao_id: item.regiao_id,
-      sistema: 'musculoesqueletico',
+      sistema: (item.sistema as any) || 'musculoesqueletico',
       origem: 'subjetivo_myid',
-      tipo_achado: `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
+      tipo_achado: item.sinal || `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
       severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
       status: 'ativo',
       visivel_paciente: true,
       data_inicio: new Date().toISOString().slice(0, 10),
-      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. Intensidade relatada pelo paciente: ${item.intensidade}/10.`,
+      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. ${item.sinal ? `Sinal: ${item.sinal}` : `Intensidade: ${item.intensidade}/10`}`,
     });
     setSyncData(prev => prev ? prev.filter(i => i.regiao_id !== item.regiao_id) : null);
   };
+
 
   return (
     <Card>
@@ -431,12 +342,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 variant="outline" 
                 size="sm" 
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData(painRegions)}
+                onClick={() => setSyncData([...painRegions, ...sinalRegions.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
               >
                 <RefreshCcw className="h-3 w-3" />
                 Sincronizar MyID
               </Button>
             )}
+
             <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
@@ -621,31 +533,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
                             
                             // Sinais do MyID para este sistema
-                            const achadosMyID = sinalRegions.filter(sr => {
-                              // Lógica estrita de associação de sintomas a sistemas para o resumo
-                              const isNervousSymp = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isRespSymp = ['falta_ar', 'shortness_breath', 'tosse'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isCircSymp = ['palpitacao', 'palpitations', 'taquicardia'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => sr.sinal.toLowerCase().includes(s));
+                            const achadosMyID = sinalRegions.filter(sr => sr.sistema === sysToShow);
 
-                              if (sysToShow === 'nervoso') return isNervousSymp;
-                              if (sysToShow === 'digestorio') return isDigestiveSymp;
-                              if (sysToShow === 'respiratorio') return isRespSymp;
-                              if (sysToShow === 'circulatorio') return isCircSymp;
-                              if (sysToShow === 'urinario') return isUrinSymp;
-
-                              // Se não for um sintoma mapeado acima, verifica se a região pertence a este sistema
-                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                              if (regVisceral) {
-                                return regVisceral.sistemas.includes(sysToShow);
-                              }
-                              
-                              if (sysToShow === 'musculoesqueletico') {
-                                return sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal';
-                              }
-                              return false;
-                            });
 
                             // Flags específicas do sistema
                             const flagsSistema: string[] = [];
@@ -935,13 +824,56 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </SheetHeader>
 
           {!editing && (
-            <div className="mt-4 space-y-2">
-              {sheetRegiao && eventosDaRegiao(sheetRegiao).length === 0 && (
+            <div className="mt-4 space-y-4">
+              {/* Sinais Detectados pelo MyID */}
+              {(() => {
+                const sinaisDaRegiao = sinalRegions.filter(sr => sr.regiao_id === sheetRegiao);
+                if (sinaisDaRegiao.length === 0) return null;
+                return (
+                  <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
+                      <User className="w-3 h-3" /> Detectado via MyID:
+                    </p>
+                    <div className="space-y-1">
+                      {sinaisDaRegiao.map((s, idx) => (
+                        <div key={`sinal-reg-${idx}`} className="flex items-center justify-between">
+                          <p className="text-xs text-sky-800">{s.sinal}</p>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-sky-600 hover:bg-sky-200"
+                            onClick={() => {
+                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
+                              setEditing({
+                                paciente_id: pacienteId,
+                                regiao_id: s.regiao_id,
+                                sistema: (s.sistema as any) || (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
+                                origem: 'subjetivo_myid',
+                                tipo_achado: s.sinal,
+                                severidade: 2,
+                                status: 'ativo',
+                                visivel_paciente: true,
+                                data_inicio: new Date().toISOString().slice(0, 10),
+                                notas_clinicas: `Sinal detectado automaticamente via processamento MyID: ${s.sinal}`,
+                              });
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {sheetRegiao && eventosDaRegiao(sheetRegiao).length === 0 && sinalRegions.filter(sr => sr.regiao_id === sheetRegiao).length === 0 && (
                 <div className="text-center py-8 border-2 border-dashed rounded-xl border-muted">
                   <Activity className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
                   <p className="text-sm text-muted-foreground">Sem achados nessa região.</p>
                 </div>
               )}
+
               {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => (
                 <div key={ev.id} className="border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors">
                   <div className="flex items-start gap-2">
