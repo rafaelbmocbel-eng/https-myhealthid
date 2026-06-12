@@ -31,10 +31,11 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['irradiação', 'irradiacao', 'neural', 'formigamento', 'dormencia', 'dormência', 'choque', 'nervo', 'comprometimento neural'],
-    regioes: ['nervo_mediano_d', 'nervo_mediano_e', 'nervo_ciatico_p', 'plexo_braquial_d', 'plexo_braquial_e'],
+    keywords: ['irradiação', 'irradiacao', 'neural', 'formigamento', 'dormencia', 'dormência', 'choque', 'nervo', 'comprometimento neural', 'radiculopatia'],
+    regioes: ['nervo_mediano_d', 'nervo_mediano_e', 'nervo_ciatico_p', 'plexo_braquial_d', 'plexo_braquial_e', 'plexo_lombosacro_d', 'plexo_lombosacro_e'],
     sistema: 'nervoso'
   },
+
   {
     keywords: ['mãos', 'maos', 'mão', 'mao', 'punho', 'dedos', 'membros superiores'],
     regioes: ['mao_d', 'mao_e', 'antebraco_d', 'antebraco_e'],
