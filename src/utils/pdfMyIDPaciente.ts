@@ -341,9 +341,57 @@ function drawAssinatura(doc: jsPDF, data: PDFMyIDPacienteData) {
   }
 }
 
+async function drawCover(doc: jsPDF, data: PDFMyIDPacienteData, dataFmt: string) {
+  // Full navy cover
+  doc.setFillColor(...color(NAVY));
+  doc.rect(0, 0, 210, 297, 'F');
+
+  // Logo top
+  try { await addLogoToDoc(doc, 14, 12, 16); } catch { /* ignore */ }
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(...color(SOFT));
+  doc.text('MY HEALTH ID', 34, 22);
+
+  // Big fingerprint centered — the hero
+  const fpSize = 140;
+  const fpX = (210 - fpSize) / 2;
+  const fpY = 60;
+  await drawFingerprintMark(doc, fpX, fpY, fpSize);
+
+  // Gold accent line under fingerprint
+  doc.setDrawColor(...color(GOLD));
+  doc.setLineWidth(0.6);
+  doc.line(60, fpY + fpSize + 8, 150, fpY + fpSize + 8);
+
+  // Title block
+  const titleY = fpY + fpSize + 24;
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(26);
+  doc.setTextColor(...color(WHITE));
+  doc.text('Sua Impressão Digital', 105, titleY, { align: 'center' });
+  doc.text('de Saúde', 105, titleY + 10, { align: 'center' });
+
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(11);
+  doc.setTextColor(...color(SOFT));
+  doc.text(data.pacienteNome, 105, titleY + 22, { align: 'center' });
+
+  doc.setFontSize(9);
+  doc.text(`Avaliação MyID • ${dataFmt}`, 105, titleY + 30, { align: 'center' });
+
+  // Footer line
+  doc.setDrawColor(...color(SOFT));
+  doc.setLineWidth(0.2);
+  doc.line(14, 280, 196, 280);
+  doc.setFontSize(8);
+  doc.setTextColor(...color(SOFT));
+  doc.text('Cada digital é única. A sua também.', 105, 287, { align: 'center' });
+}
+
 export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<Blob> {
   const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
-  paintBackground(doc);
 
   const dataFmt = (() => {
     try {
@@ -352,6 +400,13 @@ export async function gerarPDFMyIDPaciente(data: PDFMyIDPacienteData): Promise<B
     } catch { /* */ }
     return data.dataAvaliacao;
   })();
+
+  // Page 1: cover with big fingerprint
+  await drawCover(doc, data, dataFmt);
+
+  // Page 2: content
+  doc.addPage();
+  paintBackground(doc);
 
   await drawHeader(doc, `Olá, ${data.pacienteNome.split(' ')[0] || data.pacienteNome}`,
     `Seu resultado MyID • ${dataFmt}`);
