@@ -9,6 +9,7 @@
  */
 import jsPDF from 'jspdf';
 import { addLogoToDoc } from './pdfLogoHelper';
+import { drawFingerprintMark } from './pdfFingerprintWatermark';
 
 // Paleta Serene (alinhada com o portal do paciente)
 const NAVY = [28, 55, 83] as const;
