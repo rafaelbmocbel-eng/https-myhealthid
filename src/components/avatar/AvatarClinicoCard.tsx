@@ -823,13 +823,56 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </SheetHeader>
 
           {!editing && (
-            <div className="mt-4 space-y-2">
-              {sheetRegiao && eventosDaRegiao(sheetRegiao).length === 0 && (
+            <div className="mt-4 space-y-4">
+              {/* Sinais Detectados pelo MyID */}
+              {(() => {
+                const sinaisDaRegiao = sinalRegions.filter(sr => sr.regiao_id === sheetRegiao);
+                if (sinaisDaRegiao.length === 0) return null;
+                return (
+                  <div className="bg-sky-50 border border-sky-100 rounded-lg p-3 space-y-2">
+                    <p className="text-[10px] font-bold text-sky-600 uppercase flex items-center gap-1">
+                      <User className="w-3 h-3" /> Detectado via MyID:
+                    </p>
+                    <div className="space-y-1">
+                      {sinaisDaRegiao.map((s, idx) => (
+                        <div key={`sinal-reg-${idx}`} className="flex items-center justify-between">
+                          <p className="text-xs text-sky-800">{s.sinal}</p>
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-6 w-6 text-sky-600 hover:bg-sky-200"
+                            onClick={() => {
+                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === s.regiao_id);
+                              setEditing({
+                                paciente_id: pacienteId,
+                                regiao_id: s.regiao_id,
+                                sistema: (s.sistema as any) || (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
+                                origem: 'subjetivo_myid',
+                                tipo_achado: s.sinal,
+                                severidade: 2,
+                                status: 'ativo',
+                                visivel_paciente: true,
+                                data_inicio: new Date().toISOString().slice(0, 10),
+                                notas_clinicas: `Sinal detectado automaticamente via processamento MyID: ${s.sinal}`,
+                              });
+                            }}
+                          >
+                            <Plus className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                );
+              })()}
+
+              {sheetRegiao && eventosDaRegiao(sheetRegiao).length === 0 && sinalRegions.filter(sr => sr.regiao_id === sheetRegiao).length === 0 && (
                 <div className="text-center py-8 border-2 border-dashed rounded-xl border-muted">
                   <Activity className="mx-auto h-8 w-8 text-muted-foreground/30 mb-2" />
                   <p className="text-sm text-muted-foreground">Sem achados nessa região.</p>
                 </div>
               )}
+
               {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => (
                 <div key={ev.id} className="border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors">
                   <div className="flex items-start gap-2">
