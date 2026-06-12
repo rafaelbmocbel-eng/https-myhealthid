@@ -342,12 +342,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 variant="outline" 
                 size="sm" 
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData(painRegions)}
+                onClick={() => setSyncData([...painRegions, ...sinalRegions.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
               >
                 <RefreshCcw className="h-3 w-3" />
                 Sincronizar MyID
               </Button>
             )}
+
             <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
