@@ -313,22 +313,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     setEditing(null);
   };
 
-  const handleSyncImport = async (item: { regiao_id: string; intensidade: number }) => {
-    const reg = REGIONS.find(r => r.id === item.regiao_id);
+  const handleSyncImport = async (item: any) => {
     await saveMut.mutateAsync({
       paciente_id: pacienteId,
       regiao_id: item.regiao_id,
-      sistema: 'musculoesqueletico',
+      sistema: (item.sistema as any) || 'musculoesqueletico',
       origem: 'subjetivo_myid',
-      tipo_achado: `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
+      tipo_achado: item.sinal || `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
       severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
       status: 'ativo',
       visivel_paciente: true,
       data_inicio: new Date().toISOString().slice(0, 10),
-      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. Intensidade relatada pelo paciente: ${item.intensidade}/10.`,
+      notas_clinicas: `Importado automaticamente da Impressão Digital MyID. ${item.sinal ? `Sinal: ${item.sinal}` : `Intensidade: ${item.intensidade}/10`}`,
     });
     setSyncData(prev => prev ? prev.filter(i => i.regiao_id !== item.regiao_id) : null);
   };
+
 
   return (
     <Card>
