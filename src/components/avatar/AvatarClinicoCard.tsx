@@ -226,44 +226,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     // Sincroniza Sinais do Corpo (Nervoso/Visceral) do MyID
     // Filtra pelos sistemas ativos
     sinalRegions.forEach(item => {
-      const isPeitoralDorsal = item.regiao_id === 'peitoral' || item.regiao_id === 'dorsal';
-      
-      // Mapeamento estrito de sinais para sistemas para evitar sobreposição visual
-      const isNervousSystemSymptom = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'dor de cabeca', 'tontura', 'antidepressivo', 'ansiedade', 'estresse', 'insonia', 'trauma de cranio', 'trauma de crânio', 'neural', 'comprometimento neural'].some(s => item.sinal.toLowerCase().includes(s));
-      const isDigestiveSymptom = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose', 'digestao', 'estufamento', 'figado', 'vesicula', 'bariatrica', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
-      const isRespiratorySymptom = ['falta_ar', 'shortness_breath', 'tosse', 'bronquite', 'asma', 'respiracao'].some(s => item.sinal.toLowerCase().includes(s));
-      const isCirculatorySymptom = ['palpitacao', 'palpitations', 'taquicardia', 'hipertensao', 'pressao', 'circulao'].some(s => item.sinal.toLowerCase().includes(s));
-      const isUrinarySymptom = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency', 'pedra_rins', 'rins'].some(s => item.sinal.toLowerCase().includes(s));
-      const isMusculoSymptom = ['dor cronica', 'cervical', 'lombar', 'irradiacao', 'trauma de mao', 'trauma de mão', 'sporting', 'spurling', 'bancaria', 'postura', 'sobrepeso'].some(s => item.sinal.toLowerCase().includes(s));
-      
       // Determina se o sinal pertence a um sistema que está ATIVO no momento
-      let isSystemActive = false;
-      if (isNervousSystemSymptom) isSystemActive = sistemasAtivos.includes('nervoso');
-      else if (isDigestiveSymptom) isSystemActive = sistemasAtivos.includes('digestorio');
-      else if (isRespiratorySymptom) isSystemActive = sistemasAtivos.includes('respiratorio');
-      else if (isCirculatorySymptom) isSystemActive = sistemasAtivos.includes('circulatorio');
-      else if (isUrinarySymptom) isSystemActive = sistemasAtivos.includes('urinario');
-      else if (isMusculoSymptom || isPeitoralDorsal) isSystemActive = sistemasAtivos.includes('musculoesqueletico');
-      else {
-        // Fallback para mapeamento regional se não for um sintoma específico detectado acima
-        const regVisceral = VISCERAL_REGIONS.find(v => v.id === item.regiao_id);
-        isSystemActive = regVisceral?.sistemas.some(s => sistemasAtivos.includes(s as any)) || false;
-      }
+      const isSystemActive = sistemasAtivos.includes(item.sistema as any);
       
       if (isSystemActive && !map[item.regiao_id]) {
-        // Define a cor baseada no comprometimento
-        if (isNervousSystemSymptom) {
-           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul para Nervoso
-        } else if (isDigestiveSymptom) {
-           map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja para Digestório
-        } else if (isMusculoSymptom || isPeitoralDorsal) {
-           map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo para Musculoesquelético
-        } else {
-           map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
+        // Define a cor baseada no sistema
+        switch (item.sistema) {
+          case 'nervoso':
+            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)'; // Azul
+            break;
+          case 'digestorio':
+            map[item.regiao_id] = 'rgba(249, 115, 22, 0.4)'; // Laranja
+            break;
+          case 'musculoesqueletico':
+            map[item.regiao_id] = 'rgba(168, 85, 247, 0.4)'; // Roxo
+            break;
+          case 'circulatorio':
+            map[item.regiao_id] = 'rgba(239, 68, 68, 0.4)'; // Vermelho
+            break;
+          case 'respiratorio':
+            map[item.regiao_id] = 'rgba(6, 182, 212, 0.4)'; // Ciano
+            break;
+          default:
+            map[item.regiao_id] = 'rgba(14, 165, 233, 0.4)';
         }
         map[item.regiao_id + '__is_sinal'] = 'true';
       }
     });
+
 
     // Sincroniza Cirurgias (Vermelho Escuro/Trauma) - APENAS no digestório ou reprodutor
     const cirurgias = lastMyIDData?.respostas?.bloco_6_abdominal_surgeries || [];
