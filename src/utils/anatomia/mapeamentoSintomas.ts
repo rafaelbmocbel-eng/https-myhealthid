@@ -38,14 +38,15 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
 
   {
     keywords: ['mãos', 'maos', 'mão', 'mao', 'punho', 'dedos', 'membros superiores'],
-    regioes: ['mao_d', 'mao_e', 'antebraco_d', 'antebraco_e'],
+    regioes: ['mao_d', 'mao_e', 'antebraco_d', 'antebraco_e', 'plexo_braquial_d', 'plexo_braquial_e', 'nervo_mediano_d', 'nervo_mediano_e'],
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['pés', 'pes', 'pé', 'pe', 'tornozelo', 'membros inferiores', 'pé esquerdo', 'pe esquerdo'],
-    regioes: ['pe_d', 'pe_e', 'canela_d', 'canela_e'],
+    keywords: ['pés', 'pes', 'pé', 'pe', 'tornozelo', 'membros inferiores', 'pé esquerdo', 'pe esquerdo', 'pernas'],
+    regioes: ['pe_d', 'pe_e', 'canela_d', 'canela_e', 'nervo_ciatico_p', 'plexo_lombosacro_d', 'plexo_lombosacro_e'],
     sistema: 'musculoesqueletico'
   },
+
   {
     keywords: ['cabeça', 'cabeca', 'cefaleia', 'enxaqueca', 'dor de cabeça', 'crânio', 'cranio'],
     regioes: ['cabeca', 'cerebro'],
