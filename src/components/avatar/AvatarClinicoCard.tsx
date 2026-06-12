@@ -531,31 +531,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
                             
                             // Sinais do MyID para este sistema
-                            const achadosMyID = sinalRegions.filter(sr => {
-                              // Lógica estrita de associação de sintomas a sistemas para o resumo
-                              const isNervousSymp = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                              const isDigestiveSymp = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea', 'distensao_abdominal', 'dor_abdominal', 'halitose'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isRespSymp = ['falta_ar', 'shortness_breath', 'tosse'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isCircSymp = ['palpitacao', 'palpitations', 'taquicardia'].some(s => sr.sinal.toLowerCase().includes(s));
-                              const isUrinSymp = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(s => sr.sinal.toLowerCase().includes(s));
+                            const achadosMyID = sinalRegions.filter(sr => sr.sistema === sysToShow);
 
-                              if (sysToShow === 'nervoso') return isNervousSymp;
-                              if (sysToShow === 'digestorio') return isDigestiveSymp;
-                              if (sysToShow === 'respiratorio') return isRespSymp;
-                              if (sysToShow === 'circulatorio') return isCircSymp;
-                              if (sysToShow === 'urinario') return isUrinSymp;
-
-                              // Se não for um sintoma mapeado acima, verifica se a região pertence a este sistema
-                              const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                              if (regVisceral) {
-                                return regVisceral.sistemas.includes(sysToShow);
-                              }
-                              
-                              if (sysToShow === 'musculoesqueletico') {
-                                return sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal';
-                              }
-                              return false;
-                            });
 
                             // Flags específicas do sistema
                             const flagsSistema: string[] = [];
