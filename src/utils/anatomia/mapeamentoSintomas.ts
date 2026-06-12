@@ -26,7 +26,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['lombar', 'lumbago', 'dor nas costas', 'bancaria', 'sentada', 'lombo', 'sacro'],
+    keywords: ['lombar', 'lumbago', 'dor nas costas', 'bancaria', 'sentada', 'lombo', 'sacro', 'postura sentada'],
     regioes: ['lombar', 'gluteos'],
     sistema: 'musculoesqueletico'
   },
@@ -43,7 +43,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   },
   {
     keywords: ['pés', 'pes', 'pé', 'pe', 'tornozelo', 'membros inferiores', 'pé esquerdo', 'pe esquerdo', 'pernas'],
-    regioes: ['pe_d', 'pe_e', 'canela_d', 'canela_e', 'nervo_ciatico_p', 'plexo_lombosacro_d', 'plexo_lombosacro_e'],
+    regioes: ['pe_d', 'pe_e', 'canela_d', 'canela_e', 'nervo_ciatico_p', 'plexo_lombosacro_d', 'plexo_lombosacro_e', 'calc_d', 'calc_e'],
     sistema: 'musculoesqueletico'
   },
 
@@ -101,16 +101,26 @@ export function encontrarSintomasEmTexto(texto: string): { regiao_id: string; si
   const textoNormalizado = normalizarTexto(texto);
   const resultados: { regiao_id: string; sistema: SistemaCorporal; termo: string }[] = [];
 
+  // Mapeamento de dimensões do MyID para sistemas/regiões
+  if (textoNormalizado.includes('score_d')) {
+    // Se houver score de dor, podemos marcar regiões genéricas se não houver keyword específica
+  }
+
   MAPEAMENTO_SINTOMAS.forEach(mapeamento => {
     mapeamento.keywords.forEach(keyword => {
       const keywordNormalizada = normalizarTexto(keyword);
+      // Use regex to find whole words for keywords like 'D' or 'EFI' if they were present, 
+      // but here we use simple inclusion for longer keywords
       if (textoNormalizado.includes(keywordNormalizada)) {
         mapeamento.regioes.forEach(regId => {
-          resultados.push({
-            regiao_id: regId,
-            sistema: mapeamento.sistema,
-            termo: keyword
-          });
+          // Evitar duplicatas de região
+          if (!resultados.find(r => r.regiao_id === regId)) {
+            resultados.push({
+              regiao_id: regId,
+              sistema: mapeamento.sistema,
+              termo: keyword
+            });
+          }
         });
       }
     });
@@ -124,7 +134,17 @@ export function extrairTextoDeObjeto(obj: any): string {
   if (typeof obj === 'string') return obj;
   if (typeof obj !== 'object' || obj === null) return '';
 
-  Object.values(obj).forEach(val => {
+  // Handle specific MyID fields if passed directly
+  if (obj.myid_score !== undefined) {
+    texto += ` MyID Score: ${obj.myid_score}.`;
+  }
+
+  Object.entries(obj).forEach(([key, val]) => {
+    // Include the key if it's a score field to give context to the number
+    if (key.startsWith('score_') && typeof val === 'number') {
+      texto += ` ${key.replace('score_', '')}: ${val}/10.`;
+    }
+    
     if (typeof val === 'string') {
       texto += ' ' + val;
     } else if (typeof val === 'object') {

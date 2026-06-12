@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope, Save } from 'lucide-react';
+import { ClipboardList, Sparkles, Stethoscope, Save, Link2 } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -11,6 +11,7 @@ import MyIDResumoInline from './MyIDResumoInline';
 import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
+import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 
 
 interface Props {
@@ -32,6 +33,7 @@ export default function AvaliacaoPresencial({
   const [painMap, setPainMap] = useState<Record<string, number>>({});
   const [structState, setStructState] = useState<Record<string, string[]>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [lastMyIDSync, setLastMyIDSync] = useState<string | null>(null);
   const saveEvento = useSaveEventoAnatomico();
   const painText = painMapToText(painMap);
 
@@ -52,6 +54,51 @@ export default function AvaliacaoPresencial({
     },
     enabled: !!pacienteId && !!user && mostraAvatar,
   });
+
+  const { data: lastMyID } = useQuery({
+    queryKey: ['myid-latest-sync', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('avaliacoes_identidade')
+        .select('*')
+        .eq('paciente_id', pacienteId)
+        .not('myid_score', 'is', null)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!pacienteId && mostraAvatar,
+  });
+
+  const handleSyncMyID = () => {
+    if (!lastMyID) return;
+    
+    const myidText = `MyID Score: ${lastMyID.myid_score}. D: ${lastMyID.score_d}. EFI: ${lastMyID.score_efi}. P: ${lastMyID.score_p}. I: ${lastMyID.score_i}. R: ${lastMyID.score_r}. C: ${lastMyID.score_c}. N: ${lastMyID.score_n}.`;
+    const findings = encontrarSintomasEmTexto(myidText);
+    
+    if (findings.length === 0) {
+      toast({ title: "MyID sem achados físicos diretos", description: "O score MyID não mapeou para regiões específicas do avatar." });
+      return;
+    }
+
+    setPainMap(prev => {
+      const next = { ...prev };
+      findings.forEach(f => {
+        // Only set if not already set or if intensity is low (defaulting MyID findings to moderate 5)
+        if (!next[f.regiao_id] || next[f.regiao_id] < 5) {
+          next[f.regiao_id] = 5;
+        }
+      });
+      return next;
+    });
+    
+    setLastMyIDSync(lastMyID.id);
+    toast({ 
+      title: "MyID Sincronizado", 
+      description: `${findings.length} regiões pré-marcadas com base nos scores do MyID.` 
+    });
+  };
 
   useEffect(() => {
     const meta = (latestAval?.resultado as any)?._meta;
@@ -180,10 +227,23 @@ export default function AvaliacaoPresencial({
       {mostraAvatar && (
         <div className="space-y-4">
           <div className="flex items-center justify-between border-t border-border/40 pt-4">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <Stethoscope className="h-4 w-4 text-primary" />
-              Mapeamento de Achados
-            </h3>
+            <div className="space-y-1">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <Stethoscope className="h-4 w-4 text-primary" />
+                Mapeamento de Achados
+              </h3>
+              {lastMyID && lastMyIDSync !== lastMyID.id && (
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="h-6 text-[10px] text-primary gap-1 px-0 hover:bg-transparent" 
+                  onClick={handleSyncMyID}
+                >
+                  <Link2 className="h-3 w-3" />
+                  Sincronizar achados do MyID ao Avatar
+                </Button>
+              )}
+            </div>
             <Button 
               size="sm" 
               className="h-8 gap-1.5" 
