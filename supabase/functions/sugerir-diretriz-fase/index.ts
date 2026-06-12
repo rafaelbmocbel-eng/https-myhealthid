@@ -1,4 +1,5 @@
 import { corsHeaders } from 'npm:@supabase/supabase-js@2/cors';
+import { requireUser } from '../_shared/auth.ts';
 
 interface Body {
   tipo: 'exercicios' | 'tecnicas';
@@ -11,6 +12,7 @@ interface Body {
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
+  try { await requireUser(req); } catch (r) { return r as Response; }
 
   try {
     const body = (await req.json()) as Body;

@@ -52,11 +52,15 @@ export function useTrackingConfig() {
 /** Public fetch by terapeuta_id (uses public SELECT RLS). */
 export async function fetchPublicTrackingConfig(terapeutaId: string): Promise<TrackingConfig | null> {
   if (!terapeutaId) return null;
-  const { data } = await supabase
-    .from('tracking_config')
-    .select('*')
-    .eq('terapeuta_id', terapeutaId)
-    .eq('ativos', true)
-    .maybeSingle();
-  return (data || null) as TrackingConfig | null;
+  const { data } = await supabase.rpc('get_public_tracking_config', { p_terapeuta_id: terapeutaId });
+  const row = Array.isArray(data) ? data[0] : null;
+  if (!row) return null;
+  return {
+    terapeuta_id: terapeutaId,
+    meta_pixel_id: row.meta_pixel_id ?? null,
+    ga4_id: row.ga4_id ?? null,
+    ativos: true,
+    updated_at: '',
+  } as TrackingConfig;
 }
+
