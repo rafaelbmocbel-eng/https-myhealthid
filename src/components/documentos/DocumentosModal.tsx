@@ -628,7 +628,7 @@ export default function DocumentosModal({ open, onOpenChange, paciente }: Props)
               </Button>
             </div>
             <p className="text-[11px] text-muted-foreground text-center">
-              Edite os campos acima e clique em <strong>Atualizar pré-visualização</strong> para ver as mudanças antes de baixar.
+              A pré-visualização atualiza automaticamente conforme você edita os campos.
             </p>
           </div>
         )}
