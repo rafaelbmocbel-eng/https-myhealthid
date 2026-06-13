@@ -32,7 +32,7 @@ export default function MobileQuickActionsFab() {
       const f = JSON.parse(localStorage.getItem(FREQ_KEY) || '{}');
       f[key] = (f[key] || 0) + 1;
       localStorage.setItem(FREQ_KEY, JSON.stringify(f));
-    } catch {}
+    } catch { /* ignore localStorage errors */ }
     setOpen(false);
     navigate(href);
   }, [navigate]);

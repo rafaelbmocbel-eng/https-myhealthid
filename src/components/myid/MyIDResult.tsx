@@ -92,6 +92,15 @@ function buildPerdasBreakdown(perdas: Record<string, PerdaCalculada> | undefined
 }
 
 export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, avaliacaoId }: MyIDResultProps) {
+    const [celebrate, setCelebrate] = useState(false);
+    const myidScoreEarly = result?.MyID_score ?? 0;
+    useEffect(() => {
+        if (myidScoreEarly >= 70) {
+            const t = setTimeout(() => setCelebrate(true), 400);
+            return () => clearTimeout(t);
+        }
+    }, [myidScoreEarly]);
+
     if (!result) return null;
 
     const {
@@ -135,15 +144,6 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
         if (v >= 50) return { emoji: '🟠', titulo: 'Atenção: seu sistema está sobrecarregado', cor: 'text-orange-600', bg: 'bg-orange-50 dark:bg-orange-950/20', borda: 'border-orange-300', frase: 'Vários fatores estão somando contra você. Hora de agir com apoio profissional.' };
         return { emoji: '🔴', titulo: 'Situação crítica — busque ajuda', cor: 'text-destructive', bg: 'bg-destructive/10', borda: 'border-destructive/40', frase: 'Seu corpo está pedindo socorro. Procure acompanhamento profissional o quanto antes.' };
     })();
-
-    // Celebração ao concluir (apenas para scores ≥ 70 — momento positivo)
-    const [celebrate, setCelebrate] = useState(false);
-    useEffect(() => {
-        if (myidScoreValue >= 70) {
-            const t = setTimeout(() => setCelebrate(true), 400);
-            return () => clearTimeout(t);
-        }
-    }, [myidScoreValue]);
 
     return (
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">

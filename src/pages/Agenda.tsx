@@ -186,6 +186,8 @@ export default function Agenda() {
   const gridRef = useRef<HTMLDivElement>(null);
   const headerRef = useRef<HTMLDivElement>(null);
   const [headerHeight, setHeaderHeight] = useState(52);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const prefillHandledRef = useRef(false);
   const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
 
   // Drag-and-drop state
@@ -494,6 +496,39 @@ export default function Agenda() {
     };
   }, [modal.open, form]);
 
+  const openNew = (date?: Date) => {
+    const base = date || new Date();
+    const end = new Date(base.getTime() + config.duracao_padrao * 60000);
+    setForm({
+      paciente_id: '', titulo: '',
+      data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
+      data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
+      status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
+      recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
+      membro_equipe_id: '',
+    });
+    setModal({ open: true });
+  };
+
+  // Pré-preenche modal quando vindo de outro módulo: /agenda?novo=1&paciente=<id>
+  useEffect(() => {
+    if (prefillHandledRef.current) return;
+    if (loading) return;
+    if (searchParams.get('novo') !== '1') return;
+    const pacienteId = searchParams.get('paciente') || '';
+    prefillHandledRef.current = true;
+    openNew(new Date());
+    if (pacienteId) {
+      setForm(f => ({ ...f, paciente_id: pacienteId }));
+    }
+    // limpa params para não reabrir
+    const next = new URLSearchParams(searchParams);
+    next.delete('novo');
+    next.delete('paciente');
+    setSearchParams(next, { replace: true });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, searchParams, setSearchParams]);
+
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 
   const navPrev = () => {
@@ -598,40 +633,6 @@ export default function Agenda() {
       return s < ae && e > as;
     }).length;
   };
-
-  const openNew = (date?: Date) => {
-    const base = date || new Date();
-    const end = new Date(base.getTime() + config.duracao_padrao * 60000);
-    setForm({
-      paciente_id: '', titulo: '',
-      data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
-      data_fim: format(end, "yyyy-MM-dd'T'HH:mm"),
-      status: 'confirmado', tipo_atendimento: 'retorno', observacoes: '',
-      recorrencia: 'none', recorrencia_semanas: 4, recorrencia_dias: [],
-      membro_equipe_id: '',
-    });
-    setModal({ open: true });
-  };
-
-  // Pré-preenche modal quando vindo de outro módulo: /agenda?novo=1&paciente=<id>
-  const [searchParams, setSearchParams] = useSearchParams();
-  const prefillHandledRef = useRef(false);
-  useEffect(() => {
-    if (prefillHandledRef.current) return;
-    if (loading) return;
-    if (searchParams.get('novo') !== '1') return;
-    const pacienteId = searchParams.get('paciente') || '';
-    prefillHandledRef.current = true;
-    openNew(new Date());
-    if (pacienteId) {
-      setForm(f => ({ ...f, paciente_id: pacienteId }));
-    }
-    // limpa params para não reabrir
-    const next = new URLSearchParams(searchParams);
-    next.delete('novo');
-    next.delete('paciente');
-    setSearchParams(next, { replace: true });
-  }, [loading, searchParams, setSearchParams]);
 
   const openEdit = (ag: Agendamento) => {
     setForm({
@@ -1904,7 +1905,7 @@ export default function Agenda() {
                         backgroundColor: m.cor + '18',
                         borderColor: m.cor,
                         color: m.cor,
-                        // @ts-ignore
+                        // @ts-expect-error -- CSS custom property not in CSSProperties type
                         '--tw-ring-color': m.cor,
                       } : {}}
                     >

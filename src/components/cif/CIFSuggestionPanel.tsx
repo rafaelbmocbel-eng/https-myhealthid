@@ -90,7 +90,7 @@ export default function CIFSuggestionPanel({ myidResult, voiceAssessment, struct
   const toggleCategory = (cat: string) => {
     setExpandedCategories(prev => {
       const next = new Set(prev);
-      next.has(cat) ? next.delete(cat) : next.add(cat);
+      if (next.has(cat)) { next.delete(cat); } else { next.add(cat); }
       return next;
     });
   };

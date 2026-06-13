@@ -88,8 +88,6 @@ export default function Protocolos() {
   const [analiseAvaliacao, setAnaliseAvaliacao] = useState<Avaliacao | null>(null);
   const [salvando, setSalvando] = useState(false);
 
-  if (!loading && !user) { navigate('/auth'); return null; }
-
   // Protocolos existentes
   const { data: protocolos = [], isLoading } = useQuery({
     queryKey: ['protocolos', user?.id],
@@ -145,6 +143,8 @@ export default function Protocolos() {
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['protocolos'] }); toast({ title: 'Diretriz excluída' }); },
     onError: () => toast({ title: 'Erro ao excluir', variant: 'destructive' }),
   });
+
+  if (!loading && !user) { navigate('/auth'); return null; }
 
   const getPacienteNome = (id: string) => {
     const p = pacientes.find(p => p.id === id);
