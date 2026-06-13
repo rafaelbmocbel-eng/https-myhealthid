@@ -184,7 +184,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             regionClassCross[nome][cls] = (regionClassCross[nome][cls] || 0) + 1;
           });
         }
-      } catch {}
+      } catch { /* ignore parse errors */ }
     });
     const topRegionsCross = Object.entries(regionClassCross)
       .sort((a, b) => {
@@ -212,7 +212,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             comorbScores[c].sumID += Number(a.id_final || 0);
           });
         }
-      } catch {}
+      } catch { /* ignore parse errors */ }
     });
     const topComorbCross = Object.entries(comorbScores)
       .filter(([, v]) => v.count >= 2)
@@ -239,7 +239,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             }
           });
         }
-      } catch {}
+      } catch { /* ignore parse errors */ }
     });
     const tskAnalysis = tskTotals.map((counts, idx) => {
       const total = counts.reduce((a: number, b: number) => a + b, 0);
@@ -261,7 +261,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
             });
           });
         }
-      } catch {}
+      } catch { /* ignore parse errors */ }
     });
     const topPainTypes = Object.entries(painTypeCross)
       .sort((a, b) => b[1].count - a[1].count)
@@ -301,7 +301,7 @@ export default function AmostraEpidemiologica({ avaliacoes }: Props) {
           funcByClass[cls].sumSoc += Number(d.bloco3.vidaSocial || 0);
           funcByClass[cls].sumInd += Number(d.bloco3.independencia || 0);
         }
-      } catch {}
+      } catch { /* ignore parse errors */ }
     });
 
     return {

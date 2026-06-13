@@ -672,9 +672,7 @@ Diretriz registrada automaticamente após avaliação COB° ZERO.`;
       )}
 
       {/* Avaliações prontas para protocolo (cob_zero) — DEPRECATED: serviço descontinuado, mantido apenas para histórico */}
-      {false && tipo === 'cob_zero' && avaliacoesCobZeroSemProtocolo.length > 0 && (
-        <div className="space-y-2" id="secao-pendencias" />
-      )}
+      {/* cob_zero section removed — service discontinued */}
 
       {/* Lista de protocolos */}
       <div className="space-y-2">

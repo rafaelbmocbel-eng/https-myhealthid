@@ -96,7 +96,7 @@ export default function ProtocoloDiretrizEditor({ protocoloId, snapshot, faseAtu
   const toggle = (i: number) => {
     setAbertas(p => {
       const n = new Set(p);
-      n.has(i) ? n.delete(i) : n.add(i);
+      if (n.has(i)) { n.delete(i); } else { n.add(i); }
       return n;
     });
   };
