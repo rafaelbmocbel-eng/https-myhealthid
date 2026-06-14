@@ -1,4 +1,4 @@
-import { forwardRef } from 'react';
+import { forwardRef, Fragment } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, CalendarDays, Users,
@@ -14,14 +14,14 @@ import { useServicosAtivos } from '@/hooks/useServicosAtivos';
 
 type ServiceKey = 'identidade' | 'cob_zero' | 'eventos';
 
-const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey }[] = [
+const NAV_ITEMS: { label: string; href: string; icon: LucideIcon; hasBadge?: boolean; serviceKey?: ServiceKey; separatorAfter?: boolean }[] = [
   { label: 'Home', href: '/hoje', icon: Sun },
   { label: 'Agenda', href: '/agenda', icon: CalendarDays, hasBadge: true },
   { label: 'Pacientes', href: '/pacientes', icon: Users },
-  { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle },
+  { label: 'WhatsApp', href: '/crm/inbox', icon: MessageCircle, separatorAfter: true },
   { label: 'Financeiro', href: '/pacientes?tab=financeiro', icon: Wallet },
   { label: 'Dashboard', href: '/', icon: LayoutDashboard },
-  { label: 'Pendências', href: '/pendencias', icon: ListChecks },
+  { label: 'Pendências', href: '/pendencias', icon: ListChecks, separatorAfter: true },
   { label: 'Configurações', href: '/configuracoes', icon: Settings },
 ];
 
@@ -82,10 +82,11 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
 
       {/* Nav Items */}
       <nav className="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        {visibleItems.map(item => {
+        {visibleItems.map((item, idx) => {
           const Icon = item.icon;
           const active = isActive(item.href);
           const showBadge = item.hasBadge && pendingCount > 0;
+          const needsSep = item.separatorAfter && idx < visibleItems.length - 1;
 
           const handleClick = () => {
             onNavClick?.();
@@ -94,7 +95,6 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
 
           const linkEl = (
             <Link
-              key={item.href}
               to={item.href}
               onClick={handleClick}
               className={cn(
@@ -129,18 +129,24 @@ const AppSidebar = forwardRef<HTMLElement, AppSidebarProps>(function AppSidebar(
             </Link>
           );
 
-          if (collapsed) {
-            return (
-              <Tooltip key={item.href} delayDuration={0}>
-                <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
-                <TooltipContent side="right" className="font-medium">
-                  {item.label}
-                  {showBadge && ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})`}
-                </TooltipContent>
-              </Tooltip>
-            );
-          }
-          return linkEl;
+          const el = collapsed ? (
+            <Tooltip delayDuration={0}>
+              <TooltipTrigger asChild>{linkEl}</TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">
+                {item.label}
+                {showBadge && ` (${pendingCount} pendente${pendingCount > 1 ? 's' : ''})`}
+              </TooltipContent>
+            </Tooltip>
+          ) : linkEl;
+
+          return (
+            <Fragment key={item.href}>
+              {el}
+              {needsSep && (
+                <div className="mx-2 my-2 h-px bg-white/10" aria-hidden />
+              )}
+            </Fragment>
+          );
         })}
       </nav>
 

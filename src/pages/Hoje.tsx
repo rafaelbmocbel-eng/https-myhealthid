@@ -64,7 +64,7 @@ export default function Hoje() {
     staleTime: 60_000,
   });
 
-  const { data: proxima } = useQuery({
+  const { data: proximasList = [] } = useQuery({
     queryKey: ['hoje-proxima-sessao', user?.id],
     queryFn: async () => {
       const { data } = await supabase
@@ -73,13 +73,13 @@ export default function Hoje() {
         .eq('terapeuta_id', user!.id)
         .gte('data_inicio', new Date().toISOString())
         .order('data_inicio', { ascending: true })
-        .limit(1)
-        .maybeSingle();
-      return data;
+        .limit(5);
+      return data || [];
     },
     enabled: authReady && !!user,
     staleTime: 30_000,
   });
+  const proxima = proximasList[0] ?? null;
 
   // Pulse indicators — necessidades por módulo
   const { data: alerts } = useQuery({
@@ -237,21 +237,61 @@ export default function Hoje() {
             </section>
           </div>
 
-          {/* Atalhos — configuráveis em Configurações > Home */}
-          {atalhos.length > 0 && (
-            <section className="flex-1 min-h-0 flex flex-col gap-1.5 sm:gap-2">
-              <SectionLabel>Atalhos</SectionLabel>
-              <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 content-start">
-                {atalhos.map(a => (
-                  <PillBtn
-                    key={a.id}
-                    icon={a.icon}
-                    label={a.label}
-                    urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
-                    onClick={() => navigate(a.to)}
-                  />
-                ))}
-              </div>
+          {/* Upcoming sessions (2nd+) + Atalhos */}
+          {(proximasList.length > 1 || atalhos.length > 0) && (
+            <section className="flex-1 min-h-0 flex flex-col gap-2 sm:gap-3 overflow-y-auto">
+
+              {/* Próximas sessões (da 2ª em diante) */}
+              {proximasList.length > 1 && (
+                <div className="space-y-1.5 shrink-0">
+                  <SectionLabel>Próximas sessões</SectionLabel>
+                  <div className="space-y-1">
+                    {proximasList.slice(1, 4).map(s => {
+                      const d = new Date(s.data_inicio);
+                      const pac = (s as any).pacientes;
+                      const nome = pac
+                        ? `${pac.nome || ''} ${pac.sobrenome || ''}`.trim()
+                        : (s.titulo || 'Sessão agendada');
+                      const quando = isToday(d)
+                        ? `Hoje · ${format(d, 'HH:mm')}`
+                        : isTomorrow(d)
+                          ? `Amanhã · ${format(d, 'HH:mm')}`
+                          : format(d, "EEE d · HH:mm", { locale: ptBR });
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => navigate('/agenda')}
+                          className="w-full flex items-center gap-3 px-3 py-2 rounded-xl bg-card border border-border/40 shadow-xs hover:shadow-sm hover:border-border transition-all text-left active:scale-[0.99]"
+                        >
+                          <div className="h-7 w-7 rounded-lg bg-primary/8 flex items-center justify-center shrink-0">
+                            <CalendarDays className="h-3.5 w-3.5 text-primary" />
+                          </div>
+                          <span className="flex-1 text-xs font-semibold truncate text-foreground">{nome}</span>
+                          <span className="text-[10px] font-medium text-muted-foreground whitespace-nowrap shrink-0">{quando}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+
+              {/* Atalhos configuráveis */}
+              {atalhos.length > 0 && (
+                <div className="flex-1 min-h-0 flex flex-col gap-1.5">
+                  <SectionLabel>Atalhos</SectionLabel>
+                  <div className="flex-1 min-h-0 overflow-y-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2 content-start">
+                    {atalhos.map(a => (
+                      <PillBtn
+                        key={a.id}
+                        icon={a.icon}
+                        label={a.label}
+                        urgency={a.id === 'dashboard' ? urgency((alerts?.whatsapp ?? 0) + (proxima ? 1 : 0), 5) : undefined}
+                        onClick={() => navigate(a.to)}
+                      />
+                    ))}
+                  </div>
+                </div>
+              )}
             </section>
           )}
         </div>

@@ -44,22 +44,24 @@ export default function MobileBottomNav() {
                 to={item.href}
                 onClick={() => { if (!active) vibrate('tick'); }}
                 className={cn(
-                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl tap-pop',
+                  'relative flex flex-col items-center justify-center gap-0.5 py-1.5 rounded-xl tap-pop transition-colors duration-200',
                   active ? 'text-primary' : 'text-muted-foreground hover:text-foreground',
                 )}
               >
-                {active && (
-                  <span
-                    className="absolute -top-1.5 left-1/2 -translate-x-1/2 h-1 w-8 rounded-full"
-                    style={{ background: 'var(--gradient-gold)' }}
-                  />
-                )}
+                {/* Gold pill indicator on top */}
+                <span
+                  className={cn(
+                    'absolute -top-1.5 left-1/2 -translate-x-1/2 h-[3px] rounded-full transition-all duration-300',
+                    active ? 'w-10 opacity-100' : 'w-0 opacity-0',
+                  )}
+                  style={{ background: 'var(--gradient-gold)' }}
+                />
                 <div className={cn(
-                  'relative flex items-center justify-center transition-all',
-                  active && 'bg-primary/10 rounded-full px-3 py-0.5'
+                  'relative flex items-center justify-center transition-all duration-200',
+                  active && 'bg-primary/12 rounded-xl px-3.5 py-1'
                 )}>
                   <Icon
-                    className={cn('h-5 w-5 transition-transform', active && 'scale-110')}
+                    className={cn('h-5 w-5 transition-transform duration-200', active && 'scale-110')}
                     fill={active ? 'currentColor' : 'none'}
                     fillOpacity={active ? 0.15 : 0}
                   />
@@ -69,7 +71,7 @@ export default function MobileBottomNav() {
                     </span>
                   )}
                 </div>
-                <span className={cn('text-[10px] leading-none font-medium', active && 'font-semibold')}>
+                <span className={cn('text-[10px] leading-none font-medium transition-all duration-200', active && 'font-semibold')}>
                   {item.label}
                 </span>
               </Link>
