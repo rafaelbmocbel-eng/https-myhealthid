@@ -591,8 +591,8 @@ export default function PatientIntegratedDashboard({
                     );
                   })()}
 
-                  {/* Resumo explicativo — clique para abrir */}
-                  <details className="mt-5 group rounded-xl border border-border/40 bg-muted/20 open:bg-muted/30 transition-colors">
+                  {/* Resumo explicativo — aberto por padrão para o profissional */}
+                  <details open={isProfessional} className="mt-5 group rounded-xl border border-border/40 bg-muted/20 open:bg-muted/30 transition-colors">
                     <summary className="flex items-center justify-between gap-2 cursor-pointer select-none px-4 py-3 list-none [&::-webkit-details-marker]:hidden">
                       <span className="flex items-center gap-2 text-sm font-semibold text-foreground">
                         <Sparkles className="icon-sm text-primary" />
@@ -705,19 +705,31 @@ export default function PatientIntegratedDashboard({
                   <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="h-2 w-2 rounded-full bg-emerald-500" />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">Oportunidade</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-emerald-700 dark:text-emerald-400">Maior oportunidade</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{insights.opportunity.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insights.opportunity.mission}</p>
+                    {isProfessional && insights.opportunity.potential > 0 ? (
+                      <p className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400 mt-1">
+                        Recupera até +{insights.opportunity.potential} pts no MyID
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{insights.opportunity.mission}</p>
+                    )}
                   </div>
 
                   <div className="rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
                     <div className="flex items-center gap-2 mb-2">
                       <span className="h-2 w-2 rounded-full bg-amber-500" />
-                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">Atenção</span>
+                      <span className="text-[10px] uppercase tracking-wider font-semibold text-amber-700 dark:text-amber-400">Ponto de atenção</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{insights.limitation.label}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Vamos cuidar disso com calma, no seu ritmo.</p>
+                    {isProfessional && insights.limitation.potential > 0 ? (
+                      <p className="text-[11px] font-bold text-amber-600 dark:text-amber-400 mt-1">
+                        Responsável por −{insights.limitation.potential} pts no MyID
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">Vamos cuidar disso com calma, no seu ritmo.</p>
+                    )}
                   </div>
 
                   <div className={cn(
@@ -729,9 +741,15 @@ export default function PatientIntegratedDashboard({
                       <span className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground">Resumo de hoje</span>
                     </div>
                     <p className="text-sm font-semibold text-foreground leading-snug">{labelDisplay}</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
-                      {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
-                    </p>
+                    {isProfessional ? (
+                      <p className="text-[11px] font-bold text-muted-foreground mt-1">
+                        Score: {Math.round(myidScore)}/100 · {redFlagsDetected ? '⚠ Red flags presentes' : 'Sem red flags'}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                        {redFlagsDetected ? 'Alguns pontos merecem atenção — vale conversar com seu profissional.' : 'Continue com seu plano de cuidado.'}
+                      </p>
+                    )}
                   </div>
                 </div>
               )}

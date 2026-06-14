@@ -64,14 +64,17 @@ export default function PatientHealthAreas({ scores }: Props) {
                       <p className="text-[10px] text-muted-foreground truncate leading-tight mt-0.5">{r.hint}</p>
                     </div>
                   </div>
-                  <span className={`text-[10px] font-bold whitespace-nowrap ${r.status.color}`}>
-                    {r.status.label}
-                  </span>
+                  <div className="flex flex-col items-end gap-0.5 shrink-0">
+                    <span className={`text-[10px] font-bold ${r.status.color}`}>{r.status.label}</span>
+                    <span className="text-[10px] text-muted-foreground tabular-nums">
+                      {r.value.toFixed(1)}/10 · <span className="text-destructive font-semibold">−{r.loss}pts</span>
+                    </span>
+                  </div>
                 </div>
                 <div className="h-1 bg-muted/60 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${r.status.bar} transition-all`}
-                    style={{ width: `${Math.min(100, (r.loss / 15) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (r.loss / MAX_LOSS[r.key] ?? 10) * 100)}%` }}
                   />
                 </div>
               </div>
