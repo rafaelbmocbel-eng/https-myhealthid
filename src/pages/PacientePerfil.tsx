@@ -1019,9 +1019,6 @@ export default function PacientePerfil() {
             <TabsTrigger value="presencial" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Avaliação Clínica (Voz/Áudio/Escrita + IA baseada em PubMed)">
               <Activity className="h-4 w-4 shrink-0" /> <span>Avaliação</span>
             </TabsTrigger>
-            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
-              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
-            </TabsTrigger>
             <TabsTrigger value="diretrizes" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Diretrizes e Tratamentos">
               <Target className="h-4 w-4 shrink-0" /> <span>Diretrizes</span>
             </TabsTrigger>
@@ -1030,6 +1027,9 @@ export default function PacientePerfil() {
             </TabsTrigger>
             <TabsTrigger value="portal" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Controle do Portal do Paciente">
               <Smartphone className="h-4 w-4 shrink-0" /> <span>Portal</span>
+            </TabsTrigger>
+            <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
+              <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
           </TabsList>
 
