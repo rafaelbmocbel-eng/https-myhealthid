@@ -22,8 +22,8 @@
     /* Hover/Dark */
     --primary-dark: 218 50% 18%;
 
-    /* Refined accent — cyan (matches logo gradient) */
-    --accent: 190 85% 45%;
+    /* Accent — cyan vibrante (alinhado ao gradiente do logo) */
+    --accent: 192 88% 42%;
     --accent-foreground: 0 0% 100%;
 
     --secondary: 220 20% 95%;
@@ -41,9 +41,9 @@
     --success: 152 60% 38%;
     --success-foreground: 0 0% 100%;
 
-    --border: 220 15% 92%;
-    --input: 220 15% 92%;
-    --ring: 218 50% 25%;
+    --border: 220 18% 88%;
+    --input: 220 18% 88%;
+    --ring: 218 55% 30%;
 
     --radius: 1rem;
 
@@ -106,11 +106,11 @@
     --gradient-premium-hero: linear-gradient(135deg, hsl(218 55% 18%) 0%, hsl(220 45% 10%) 60%, hsl(215 40% 8%) 100%);
     --gradient-radial-glow: radial-gradient(circle at center, hsl(190 85% 50% / 0.18) 0%, transparent 65%);
 
-    /* Soft, layered shadows for depth without weight */
-    --shadow-card: 0 1px 2px hsl(220 20% 70% / 0.06), 0 4px 16px hsl(220 25% 60% / 0.06);
-    --shadow-primary: 0 6px 20px -8px hsl(218 50% 25% / 0.25);
-    --shadow-danger: 0 6px 20px -8px hsl(0 80% 55% / 0.2);
-    --shadow-premium: 0 20px 50px -20px hsl(218 60% 15% / 0.35), 0 8px 20px -10px hsl(218 55% 20% / 0.2);
+    /* Layered shadows — perceptível mas não pesado */
+    --shadow-card: 0 1px 3px hsl(220 25% 60% / 0.10), 0 6px 22px hsl(220 30% 55% / 0.09);
+    --shadow-primary: 0 6px 22px -6px hsl(218 50% 25% / 0.35);
+    --shadow-danger: 0 6px 22px -6px hsl(0 80% 55% / 0.28);
+    --shadow-premium: 0 22px 55px -18px hsl(218 60% 15% / 0.42), 0 8px 22px -10px hsl(218 55% 20% / 0.25);
 
     --chart-1: 213 55% 30%;
     --chart-2: 190 85% 48%;
@@ -122,14 +122,14 @@
 
     --font-sans: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, 'Noto Sans', sans-serif;
 
-    --shadow-2xs: 0 1px 1px 0px hsl(220 15% 70% / 0.04);
-    --shadow-xs: 0 1px 2px hsl(220 15% 70% / 0.06);
-    --shadow-sm: 0 1px 3px hsl(220 15% 70% / 0.08);
-    --shadow: 0 2px 6px hsl(220 15% 70% / 0.08);
-    --shadow-md: 0 4px 12px hsl(220 20% 65% / 0.08);
-    --shadow-lg: 0 12px 28px hsl(220 25% 60% / 0.1);
-    --shadow-xl: 0 20px 40px hsl(220 25% 55% / 0.12);
-    --shadow-2xl: 0 28px 60px hsl(220 30% 50% / 0.14);
+    --shadow-2xs: 0 1px 2px hsl(220 18% 65% / 0.07);
+    --shadow-xs:  0 1px 3px hsl(220 18% 65% / 0.11), 0 1px 2px hsl(220 18% 65% / 0.07);
+    --shadow-sm:  0 2px 6px hsl(220 22% 60% / 0.14), 0 1px 2px hsl(220 18% 65% / 0.08);
+    --shadow:     0 3px 9px hsl(220 22% 58% / 0.15), 0 1px 3px hsl(220 18% 65% / 0.09);
+    --shadow-md:  0 6px 18px hsl(220 25% 55% / 0.16), 0 2px 5px hsl(220 22% 60% / 0.10);
+    --shadow-lg:  0 14px 34px hsl(220 28% 50% / 0.18), 0 4px 8px hsl(220 25% 55% / 0.11);
+    --shadow-xl:  0 24px 50px hsl(220 30% 45% / 0.20), 0 8px 16px hsl(220 28% 50% / 0.12);
+    --shadow-2xl: 0 36px 72px hsl(220 35% 40% / 0.22), 0 12px 24px hsl(220 30% 45% / 0.13);
     --tracking-normal: 0em;
     --spacing: 0.25rem;
   }
@@ -257,15 +257,44 @@
     @apply text-purple-700 bg-purple-50 border-purple-200;
   }
 
-  /* Clinical card — Serene Premium: clean, airy, subtle */
+  /* Clinical card — três níveis de elevação */
   .clinical-card {
-    @apply bg-card rounded-xl border border-border/40 p-4 sm:p-5 transition-shadow duration-200;
-    box-shadow: var(--shadow-xs, 0 1px 2px 0 hsl(var(--foreground) / 0.04));
+    @apply bg-card rounded-2xl border p-4 sm:p-5 transition-all duration-200;
+    border-color: hsl(var(--border) / 0.65);
+    box-shadow: var(--shadow-sm);
+    background: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(210 25% 98.5%) 100%);
   }
   .clinical-card:hover {
-    box-shadow: var(--shadow-card);
-    border-color: hsl(var(--border) / 0.7);
+    box-shadow: var(--shadow-md);
+    border-color: hsl(var(--border));
+    transform: translateY(-1px);
   }
+
+  /* Elevação intermediária */
+  .card-elevated {
+    box-shadow: var(--shadow-md);
+    border-color: hsl(var(--border));
+  }
+
+  /* Elevação máxima (modais, overlays) */
+  .card-floating {
+    box-shadow: var(--shadow-xl);
+    border-color: hsl(var(--border) / 0.8);
+  }
+
+  /* Card com borda lateral de acento — módulo/sistema */
+  .card-accent-bar {
+    @apply relative overflow-hidden;
+  }
+  .card-accent-bar::before {
+    content: '';
+    @apply absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl;
+    background: hsl(var(--primary));
+  }
+  .card-accent-bar.accent-danger::before  { background: hsl(var(--destructive)); }
+  .card-accent-bar.accent-warning::before { background: hsl(var(--warning)); }
+  .card-accent-bar.accent-success::before { background: hsl(var(--success)); }
+  .card-accent-bar.accent-accent::before  { background: hsl(var(--accent)); }
 
   /* Score pill */
   .score-pill {
@@ -622,3 +651,128 @@
   ::-webkit-scrollbar-thumb {
     @apply bg-muted-foreground/20 rounded-full hover:bg-muted-foreground/40 transition-colors;
   }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     SISTEMA DE TIPOGRAFIA GLOBAL — hierarquia reforçada
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* Página hero */
+  .page-title {
+    @apply text-2xl sm:text-3xl font-bold text-foreground;
+    letter-spacing: -0.03em;
+    line-height: 1.1;
+  }
+
+  /* Subtítulo de seção */
+  .section-title {
+    @apply text-base sm:text-[17px] font-semibold text-foreground;
+    letter-spacing: -0.015em;
+  }
+
+  /* Rótulo uppercase clínico */
+  .clinical-label {
+    @apply text-[10px] font-bold uppercase text-muted-foreground;
+    letter-spacing: 0.10em;
+  }
+
+  /* Valor grande de KPI */
+  .kpi-large {
+    font-family: 'Inter', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.04em;
+    line-height: 1;
+  }
+
+  /* Divisor com label */
+  .divider-label {
+    @apply flex items-center gap-3 text-[10px] font-bold uppercase text-muted-foreground;
+    letter-spacing: 0.12em;
+  }
+  .divider-label::before,
+  .divider-label::after {
+    content: '';
+    @apply flex-1 h-px bg-border;
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     MELHORIAS GLOBAIS DE INTERAÇÃO
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* Focus ring mais visível */
+  :focus-visible {
+    outline: 2px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+
+  /* Seleção de texto */
+  ::selection {
+    background: hsl(var(--primary) / 0.18);
+    color: hsl(var(--foreground));
+  }
+
+  /* Badge de status animado */
+  .status-dot-live {
+    @apply relative inline-flex h-2.5 w-2.5;
+  }
+  .status-dot-live::before {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-emerald-400 animate-ping opacity-75;
+  }
+  .status-dot-live::after {
+    content: '';
+    @apply absolute inset-0 rounded-full bg-emerald-500;
+  }
+
+  /* Shimmer loading effect */
+  .shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--muted)) 0%,
+      hsl(var(--background)) 50%,
+      hsl(var(--muted)) 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer-anim 1.8s ease-in-out infinite;
+  }
+  @keyframes shimmer-anim {
+    0%   { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     CARDS CLÍNICOS ESPECIALIZADOS
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* Card de alerta urgente */
+  .card-urgent {
+    @apply rounded-2xl border-l-4 border-destructive bg-destructive/5 p-4;
+    box-shadow: var(--shadow-sm), inset 0 0 0 1px hsl(var(--destructive) / 0.15);
+  }
+
+  /* Card de destaque (gold) */
+  .card-gold {
+    @apply rounded-2xl border bg-card p-4;
+    border-color: hsl(var(--gold) / 0.35);
+    box-shadow: var(--shadow-sm), 0 0 0 1px hsl(var(--gold) / 0.12);
+    background: linear-gradient(145deg, hsl(0 0% 100%) 0%, hsl(42 40% 98%) 100%);
+  }
+
+  /* Card de módulo clínico com header colorido */
+  .card-module {
+    @apply rounded-2xl overflow-hidden border;
+    border-color: hsl(var(--border) / 0.60);
+    box-shadow: var(--shadow-sm);
+  }
+  .card-module-header {
+    @apply px-4 py-3 text-[11px] font-bold uppercase tracking-widest;
+  }
+  .card-module-body {
+    @apply p-4 sm:p-5;
+  }
+
+  /* Botão pill de sistema (sistemas corporais) */
+  .system-pill {
+    @apply relative inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-all duration-150;
+  }
+  .system-pill:hover { @apply scale-105 shadow-sm; }
+  .system-pill.active { @apply ring-2 ring-primary ring-offset-1 scale-105 shadow-sm; }
