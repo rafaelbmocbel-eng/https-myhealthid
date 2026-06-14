@@ -25,57 +25,95 @@ const FRONT_OUTLINE =
   'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
-  cerebro:               'rgba(130,145,210,0.68)',
-  tronco_encefalico:     'rgba(130,145,210,0.52)',
-  medula_espinhal_v:     'rgba(130,145,210,0.30)',
-  plexo_braquial_d:      'rgba(14,165,233,0.38)',
-  plexo_braquial_e:      'rgba(14,165,233,0.38)',
-  nervo_mediano_d:       'rgba(14,165,233,0.32)',
-  nervo_mediano_e:       'rgba(14,165,233,0.32)',
-  plexo_lombosacro_d:    'rgba(14,165,233,0.38)',
-  plexo_lombosacro_e:    'rgba(14,165,233,0.38)',
-  nervo_femoral_d:       'rgba(14,165,233,0.32)',
-  nervo_femoral_e:       'rgba(14,165,233,0.32)',
-  coracao:               'rgba(210,45,45,0.70)',
-  aorta_abdominal:       'rgba(210,45,45,0.28)',
-  traqueia:              'rgba(180,130,180,0.45)',
-  pulmao_d:              'rgba(195,128,150,0.65)',
-  pulmao_e:              'rgba(195,128,150,0.65)',
-  pulmao_d_p:            'rgba(195,128,150,0.58)',
-  pulmao_e_p:            'rgba(195,128,150,0.58)',
-  figado:                'rgba(150,75,35,0.62)',
-  estomago:              'rgba(210,138,118,0.58)',
-  vesicula_biliar:       'rgba(195,185,55,0.60)',
-  pancreas_anexo:        'rgba(215,168,95,0.50)',
-  pancreas_endocrino:    'rgba(215,168,95,0.50)',
+  // Nervous — blue-lavender
+  cerebro:               'rgba(130,145,210,0.70)',
+  cerebelo:              'rgba(120,138,205,0.62)',
+  cerebro_p:             'rgba(130,145,210,0.68)',
+  cerebelo_p:            'rgba(120,138,205,0.60)',
+  tronco_encefalico:     'rgba(130,145,210,0.55)',
+  // Circulatory — red
+  coracao:               'rgba(210,45,45,0.74)',
+  // Respiratory — pink-rose
+  traqueia:              'rgba(180,130,180,0.50)',
+  pulmao_d:              'rgba(195,128,150,0.68)',
+  pulmao_e:              'rgba(195,128,150,0.68)',
+  pulmao_d_p:            'rgba(195,128,150,0.62)',
+  pulmao_e_p:            'rgba(195,128,150,0.62)',
+  // Digestive — warm ochre/brown tones
+  esofago:               'rgba(180,130,180,0.38)',
+  figado:                'rgba(148,72,32,0.68)',
+  estomago:              'rgba(210,138,118,0.62)',
+  vesicula_biliar:       'rgba(195,185,55,0.65)',
+  pancreas_corpo:        'rgba(215,168,95,0.55)',
+  duodeno:               'rgba(208,158,118,0.55)',
+  baco_frente:           'rgba(155,95,115,0.60)',
   intestino_delgado:     'rgba(208,158,118,0.50)',
-  intestino_grosso:      'rgba(185,135,95,0.52)',
-  reto_ano:              'rgba(185,135,95,0.45)',
-  esofago:               'rgba(180,130,180,0.35)',
-  lingua:                'rgba(210,120,120,0.55)',
-  glandulas_salivais:    'rgba(210,120,120,0.48)',
-  baco:                  'rgba(155,95,115,0.56)',
-  timo:                  'rgba(115,195,95,0.50)',
-  timo_linfatico:        'rgba(115,195,95,0.50)',
-  linfonodos_cervicais:  'rgba(115,195,95,0.55)',
-  linfonodos_axilares_d: 'rgba(115,195,95,0.50)',
-  linfonodos_axilares_e: 'rgba(115,195,95,0.50)',
-  vasos_quiferos:        'rgba(115,195,95,0.48)',
-  linfonodos_inguinais:  'rgba(115,195,95,0.50)',
-  linfaticos_membros_inferiores: 'rgba(115,195,95,0.30)',
-  rim_d:                 'rgba(175,88,48,0.60)',
-  rim_e:                 'rgba(175,88,48,0.60)',
-  bexiga:                'rgba(95,138,218,0.58)',
-  ureteres:              'rgba(95,138,218,0.35)',
-  uretra:                'rgba(95,138,218,0.30)',
-  tireoide:              'rgba(208,178,58,0.60)',
-  hipofise:              'rgba(208,178,58,0.55)',
-  adrenais:              'rgba(208,178,58,0.50)',
-  utero_ovarios:         'rgba(238,98,158,0.52)',
-  testiculos:            'rgba(198,98,118,0.50)',
-  prostata:              'rgba(198,98,118,0.45)',
-  gluteos_p:             'rgba(168,85,247,0.40)',
-  nervo_ciatico_p:       'rgba(14,165,233,0.38)',
+  colon_ascendente:      'rgba(185,135,95,0.56)',
+  colon_transverso:      'rgba(185,135,95,0.56)',
+  colon_descendente:     'rgba(185,135,95,0.56)',
+  colon_sigmoide:        'rgba(185,135,95,0.56)',
+  apendice:              'rgba(185,135,95,0.60)',
+  reto:                  'rgba(185,135,95,0.52)',
+  // Endocrine — golden yellow
+  hipofise:              'rgba(208,178,58,0.65)',
+  tireoide:              'rgba(208,178,58,0.65)',
+  adrenal_d:             'rgba(208,178,58,0.58)',
+  adrenal_e:             'rgba(208,178,58,0.58)',
+  adrenal_d_p:           'rgba(208,178,58,0.55)',
+  adrenal_e_p:           'rgba(208,178,58,0.55)',
+  ilhotas_langerhans:    'rgba(215,168,95,0.52)',
+  // Urinary — indigo-blue
+  bexiga:                'rgba(95,138,218,0.62)',
+  ureteres:              'rgba(95,138,218,0.38)',
+  // Lymphatic — lime-green
+  timo:                  'rgba(115,195,95,0.54)',
+  linfonodos_cervicais:  'rgba(115,195,95,0.60)',
+  linfonodos_axilares_d: 'rgba(115,195,95,0.54)',
+  linfonodos_axilares_e: 'rgba(115,195,95,0.54)',
+  linfonodos_inguinais:  'rgba(115,195,95,0.54)',
+  cisterna_chyli:        'rgba(115,195,95,0.50)',
+  // Reproductive — pink
+  utero:                 'rgba(238,98,158,0.56)',
+  ovarios:               'rgba(238,98,158,0.52)',
+  testiculos:            'rgba(198,98,118,0.52)',
+  prostata:              'rgba(198,98,118,0.50)',
+  // Back view
+  rim_d:                 'rgba(175,88,48,0.65)',
+  rim_e:                 'rgba(175,88,48,0.65)',
+  gluteos_musculares:    'rgba(168,85,247,0.42)',
+  gluteos_p:             'rgba(168,85,247,0.42)',
+};
+
+const SYSTEM_RESTING: Record<string, string> = {
+  nervoso:       'rgba(130,145,210,0.58)',
+  circulatorio:  'rgba(210,45,45,0.62)',
+  respiratorio:  'rgba(195,128,150,0.60)',
+  digestorio:    'rgba(200,120,78,0.54)',
+  urinario:      'rgba(95,138,218,0.56)',
+  endocrino:     'rgba(208,178,58,0.56)',
+  linfatico:     'rgba(115,195,95,0.50)',
+  reprodutor:    'rgba(238,98,158,0.48)',
+  musculoesqueletico: 'rgba(168,85,247,0.40)',
+};
+
+const SYSTEM_HOVER: Record<string, string> = {
+  nervoso:       'rgba(14,165,233,0.78)',
+  circulatorio:  'rgba(239,68,68,0.82)',
+  respiratorio:  'rgba(6,182,212,0.78)',
+  digestorio:    'rgba(249,115,22,0.78)',
+  urinario:      'rgba(99,102,241,0.78)',
+  endocrino:     'rgba(234,179,8,0.78)',
+  linfatico:     'rgba(132,204,22,0.78)',
+  reprodutor:    'rgba(236,72,153,0.78)',
+  musculoesqueletico: 'rgba(168,85,247,0.78)',
+};
+
+const VESSEL_COLOR: Record<string, string> = {
+  circulatorio:  'rgba(200,40,40,0.72)',
+  respiratorio:  'rgba(100,180,212,0.68)',
+  nervoso:       'rgba(14,165,233,0.60)',
+  urinario:      'rgba(95,138,218,0.60)',
+  linfatico:     'rgba(115,195,95,0.58)',
 };
 
 const SISTEMAS_ORDEM: SistemaCorporal[] = [
@@ -843,8 +881,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               })}
 
-              {/* Organ / visceral regions with anatomical resting colors */}
-              {regioesViscerais.map(r => {
+              {/* Organ / visceral regions — sorted by layer, rendered by type */}
+              {[...regioesViscerais]
+                .sort((a, b) => (a.layer ?? 5) - (b.layer ?? 5))
+                .map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
                 const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
@@ -852,22 +892,79 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 const isUrgent = severityScore >= 13;
+                const sys0 = r.sistemas[0];
 
-                const restingColor = ORGAN_RESTING_COLORS[r.id] ||
-                  (r.sistemas[0] === 'nervoso'       ? 'rgba(130,145,210,0.60)' :
-                   r.sistemas[0] === 'circulatorio'  ? 'rgba(210,45,45,0.65)'   :
-                   r.sistemas[0] === 'respiratorio'  ? 'rgba(195,128,150,0.60)' :
-                   r.sistemas[0] === 'digestorio'    ? 'rgba(200,120,78,0.55)'  :
-                   r.sistemas[0] === 'urinario'      ? 'rgba(95,138,218,0.58)'  :
-                   r.sistemas[0] === 'endocrino'     ? 'rgba(208,178,58,0.58)'  :
-                   r.sistemas[0] === 'linfatico'     ? 'rgba(115,195,95,0.52)'  :
-                   r.sistemas[0] === 'reprodutor'    ? 'rgba(238,98,158,0.50)'  :
-                                                       'rgba(155,163,175,0.45)');
+                // STRUCTURAL (diaphragm, pericardium) — non-clickable dividers
+                if (r.type === 'structural') {
+                  if (!belongsToActiveSystem) return null;
+                  const isDialfragma = r.id.startsWith('diafragma');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={isDialfragma ? 'rgba(80,80,80,0.50)' : 'rgba(120,120,120,0.25)'}
+                      strokeWidth={isDialfragma ? 1.4 : 0.8}
+                      strokeLinecap="round"
+                      pointerEvents="none"
+                    />
+                  );
+                }
 
-                const effectiveFill    = fill || (isHoveredSystem ? 'rgba(14,165,233,0.72)' : restingColor);
-                const effectiveOpacity = fill ? 0.93 : isHoveredSystem ? 0.90 : 0.88;
-                const effectiveStroke  = fill ? 'rgba(255,255,255,0.75)' : isHoveredSystem ? 'rgba(14,165,233,0.95)' : 'rgba(255,255,255,0.40)';
-                const effectiveSW      = fill ? 1.3 : isHoveredSystem ? 1.8 : 0.6;
+                // VESSEL (arteries, veins, bronchi) — stroke only, colored
+                if (r.type === 'vessel') {
+                  const baseColor = fill || (isHoveredSystem
+                    ? SYSTEM_HOVER[sys0] || 'rgba(200,40,40,0.80)'
+                    : VESSEL_COLOR[sys0] || 'rgba(200,100,100,0.62)');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={baseColor}
+                      strokeWidth={fill ? 2.2 : isHoveredSystem ? 2.0 : 1.3}
+                      strokeLinecap="round"
+                      filter={fill ? 'url(#glow)' : undefined}
+                      className="cursor-pointer"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                  );
+                }
+
+                // NERVE — thin dashed stroke
+                if (r.type === 'nerve') {
+                  const isSpine = r.id === 'medula_espinhal_v' || r.id === 'medula_p';
+                  const nerveColor = fill || (isHoveredSystem
+                    ? 'rgba(14,165,233,0.88)'
+                    : 'rgba(14,165,233,0.50)');
+                  return (
+                    <path
+                      key={r.id}
+                      d={r.d}
+                      fill="none"
+                      stroke={nerveColor}
+                      strokeWidth={fill ? 2.0 : isHoveredSystem ? 1.8 : (isSpine ? 1.4 : 0.9)}
+                      strokeDasharray={isSpine ? undefined : '3,2.5'}
+                      strokeLinecap="round"
+                      filter={fill ? 'url(#glow)' : undefined}
+                      className="cursor-pointer"
+                      onClick={() => abrirSheet(r.id)}
+                    >
+                      <title>{r.label}</title>
+                    </path>
+                  );
+                }
+
+                // GLAND + ORGAN — filled shapes
+                const restingColor = ORGAN_RESTING_COLORS[r.id] || SYSTEM_RESTING[sys0] || 'rgba(155,163,175,0.45)';
+                const effectiveFill    = fill || (isHoveredSystem ? (SYSTEM_HOVER[sys0] || 'rgba(14,165,233,0.78)') : restingColor);
+                const effectiveOpacity = fill ? 0.94 : isHoveredSystem ? 0.90 : 0.86;
+                const effectiveStroke  = fill ? 'rgba(255,255,255,0.78)' : isHoveredSystem ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.38)';
+                const effectiveSW      = r.type === 'gland'
+                  ? (fill ? 0.8 : 0.3)
+                  : (fill ? 1.3 : isHoveredSystem ? 1.6 : 0.5);
 
                 return (
                   <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
@@ -883,8 +980,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     >
                       <title>{r.label}</title>
                     </path>
-                    {/* Volume highlight */}
-                    <path d={r.d} fill="url(#organ-vol)" pointerEvents="none" opacity={0.55} />
+                    {r.type !== 'gland' && (
+                      <path d={r.d} fill="url(#organ-vol)" pointerEvents="none" opacity={0.48} />
+                    )}
                   </g>
                 );
               })}
