@@ -41,6 +41,9 @@ import { shareConfirmacaoSessao } from '@/utils/whatsapp';
 import { MyIDFreshnessDot } from '@/components/agenda/MyIDFreshnessDot';
 import { useMyIDFreshnessMap, getFreshnessInfo } from '@/hooks/useMyIDFreshness';
 import { useEquipe, MembroEquipe } from '@/hooks/useEquipe';
+import ListaEspera from '@/components/agenda/ListaEspera';
+import SalaEsperaVirtual from '@/components/agenda/SalaEsperaVirtual';
+import BloqueioEmLote from '@/components/agenda/BloqueioEmLote';
 
 type ViewMode = 'dia' | 'semana' | 'mes' | 'controle';
 
@@ -173,6 +176,7 @@ export default function Agenda() {
 
   const [viewMode, setViewMode] = useState<ViewMode>(window.innerWidth < 768 ? 'dia' : 'semana');
   const [currentDate, setCurrentDate] = useState(new Date());
+  const [showBloqueioLote, setShowBloqueioLote] = useState(false);
   const [modal, setModal] = useState<ModalState>({ open: false });
   const [showNewPaciente, setShowNewPaciente] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -1163,6 +1167,12 @@ export default function Agenda() {
             <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
             </Button>
+            <Button variant="outline" size="sm" className="h-9 gap-1.5 text-xs" onClick={() => setShowBloqueioLote(true)} title="Bloquear múltiplos dias (férias, feriados)">
+              <Lock className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Férias</span>
+            </Button>
+            <ListaEspera />
+            <SalaEsperaVirtual />
           </div>
         </div>
 
@@ -2246,6 +2256,15 @@ export default function Agenda() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <BloqueioEmLote
+        open={showBloqueioLote}
+        onOpenChange={setShowBloqueioLote}
+        onCriar={async (items) => {
+          await createBatchAgendamentos(items as any[]);
+          refresh();
+        }}
+      />
     </AppLayout>
   );
 }
