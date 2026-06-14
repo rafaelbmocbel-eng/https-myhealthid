@@ -36,6 +36,7 @@ import { shareAvaliacaoLink, shareAgendaLink } from '@/utils/whatsapp';
 import PacienteProtocolosTab from '@/components/paciente/PacienteProtocolosTab';
 import AvaliacaoPresencial from '@/components/presencial/AvaliacaoPresencial';
 import AvaliacoesVozHistorico from '@/components/voice/AvaliacoesVozHistorico';
+import HistoricoAvaliacoesTab from '@/components/paciente/HistoricoAvaliacoesTab';
 import AvaliacaoVozAtual from '@/components/voice/AvaliacaoVozAtual';
 import IndicesRiscoComprometimento from '@/components/paciente/IndicesRiscoComprometimento';
 import PortalControleTab from '@/components/paciente/PortalControleTab';
@@ -1084,22 +1085,8 @@ export default function PacientePerfil() {
           </TabsContent>
 
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
-          <TabsContent value="historico" className="mt-4 space-y-6">
-            <AvaliacoesVozHistorico
-              pacienteId={id!}
-              patientName={`${paciente.nome} ${paciente.sobrenome}`}
-              serviceType="identidade"
-            />
-            <Suspense fallback={LazyFallback}>
-              <PacienteDashboardIdentidade
-                paciente={paciente as any}
-                onBack={() => navigate('/pacientes')}
-                onIniciarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onVerRelatorio={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                onEditarAvaliacao={() => navigate(`/metodo-identidade?paciente=${id}`)}
-                subTab="historico"
-              />
-            </Suspense>
+          <TabsContent value="historico" className="mt-4">
+            <HistoricoAvaliacoesTab pacienteId={id!} />
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
