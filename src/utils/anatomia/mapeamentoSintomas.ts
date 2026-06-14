@@ -34,7 +34,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['cefaleia', 'enxaqueca', 'dor de cabeça', 'dor de cabeca', 'migrânea', 'migranea', 'cabeça', 'cabeca', 'cranio', 'crânio', 'tcm', 'concussao'],
+    keywords: ['cefaleia', 'enxaqueca', 'dor de cabeça', 'dor de cabeca', 'migrânea', 'migranea', 'cabeça', 'cabeca', 'cranio', 'crânio', 'tcm', 'concussao', 'concussão', 'trauma de cranio', 'trauma crânio', 'traumatismo cranioencefalico', 'traumatismo cranioencefálico', 'tce'],
     regioes: ['cerebro', 'cerebro_p'],
     sistema: 'nervoso'
   },
@@ -44,7 +44,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['ansiedade', 'estresse', 'estress', 'depressao', 'depressão', 'transtorno mental', 'psicossocial', 'burn out', 'burnout', 'panico', 'pânico'],
+    keywords: ['ansiedade', 'estresse', 'estress', 'depressao', 'depressão', 'transtorno mental', 'psicossocial', 'burn out', 'burnout', 'panico', 'pânico', 'consumo de substancias', 'consumo de substâncias', 'alcool', 'álcool', 'tabagismo', 'fumante', 'dependencia quimica', 'dependência química'],
     regioes: ['cerebro'],
     sistema: 'nervoso'
   },
@@ -54,19 +54,29 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['radiculopatia', 'hernia de disco', 'hérnia de disco', 'compressao nervosa', 'compressão nervosa', 'neuropatia', 'neuralgia'],
+    keywords: ['radiculopatia', 'hernia de disco', 'hérnia de disco', 'compressao nervosa', 'compressão nervosa', 'neuropatia', 'neuralgia', 'spurling', 'teste de spurling', 'sinal de spurling', 'compressao foraminal', 'compressão foraminal', 'stenose', 'estenose do canal'],
     regioes: ['medula_espinhal_v', 'medula_p'],
     sistema: 'nervoso'
   },
   {
-    keywords: ['ciatica', 'ciática', 'ciatalgia', 'dor ciatica', 'dor ciática', 'nervo ciatico', 'nervo ciático', 'irradiacao para perna'],
+    keywords: ['ciatica', 'ciática', 'ciatalgia', 'dor ciatica', 'dor ciática', 'nervo ciatico', 'nervo ciático', 'irradiacao para perna', 'lombociatalgia', 'irradiacao para pe', 'irradiação para pé', 'irradiacao para pe esquerdo', 'irradiação para pé esquerdo', 'radiculopatia lombar', 'l4', 'l5', 's1'],
     regioes: ['nervo_ciatico_d', 'nervo_ciatico_e'],
     sistema: 'nervoso'
   },
   {
-    keywords: ['plexo braquial', 'braquialgia', 'cervicobraquialgia', 'dor no braco com irradiacao'],
+    keywords: ['irradiacao para pe esquerdo', 'irradiação para pé esquerdo', 'dor no pe esquerdo', 'dor no pé esquerdo', 'lombociatalgia esquerda', 'ciatalgia esquerda'],
+    regioes: ['nervo_ciatico_e', 'pe_e', 'pe_e_p'],
+    sistema: 'nervoso'
+  },
+  {
+    keywords: ['plexo braquial', 'braquialgia', 'cervicobraquialgia', 'dor no braco com irradiacao', 'irradiacao para maos', 'irradiação para mãos', 'irradiacao para membros superiores', 'irradiação para membros superiores', 'radiculopatia cervical', 'c5', 'c6', 'c7', 'c8'],
     regioes: ['plexo_braquial_d', 'plexo_braquial_e'],
     sistema: 'nervoso'
+  },
+  {
+    keywords: ['irradiacao para maos', 'irradiação para mãos', 'dor nas maos', 'dor nas mãos', 'formigamento nas maos', 'formigamento nas mãos', 'dormencia nas maos', 'dormência nas mãos', 'cervicobraquialgia'],
+    regioes: ['mao_d', 'mao_e'],
+    sistema: 'musculoesqueletico'
   },
   {
     keywords: ['tontura', 'vertigem', 'labirintite', 'zumbido', 'tinnitus'],
@@ -271,7 +281,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'digestorio'
   },
   {
-    keywords: ['obesidade', 'sobrepeso', 'imc alto', 'excesso de peso'],
+    keywords: ['obesidade', 'sobrepeso', 'imc alto', 'excesso de peso', 'sedentario', 'sedentária', 'sedentarismo', 'falta de atividade fisica', 'inatividade fisica', 'inatividade física'],
     regioes: ['estomago', 'figado'],
     sistema: 'digestorio'
   },
@@ -358,7 +368,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
   // REPRODUTOR
   // ══════════════════════════════════════════════════════════════════
   {
-    keywords: ['utero', 'útero', 'endometriose', 'mioma', 'fibroide', 'adenomiose', 'dor pelvica', 'dor pélvica'],
+    keywords: ['utero', 'útero', 'endometriose', 'mioma', 'fibroide', 'adenomiose', 'dor pelvica', 'dor pélvica', 'histerectomia', 'histerectomia total', 'histerectomia parcial', 'retirada do utero', 'retirada do útero'],
     regioes: ['utero'],
     sistema: 'reprodutor'
   },
@@ -529,7 +539,7 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'musculoesqueletico'
   },
   {
-    keywords: ['osteoporose', 'osteopenia', 'fratura', 'densitometria', 'calcio osseo'],
+    keywords: ['osteoporose', 'osteopenia', 'fratura', 'densitometria', 'calcio osseo', 'baixa densidade ossea', 'baixa densidade óssea', 'desgaste osseo', 'desgaste ósseo', 'degeneracao ossea', 'degeneração óssea', 'artrose', 'artrite', 'degenerativo', 'degeneração', 'degeneracao', 'protrusao discal', 'protrusão discal', 'espondilose'],
     regioes: ['lombar', 'coxa_d', 'coxa_e'],
     sistema: 'musculoesqueletico'
   },
