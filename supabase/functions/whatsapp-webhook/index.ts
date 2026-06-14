@@ -159,11 +159,16 @@ Deno.serve(async (req) => {
       novaMsgId = novaMsg?.id ?? null;
     } catch (e) { console.warn("lookup nova msg falhou:", e); }
 
+    const internalHeaders = {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+    };
+
     // Transcrição de áudio em background
     if (tipo === "audio" && !fromMe && midia_url && novaMsgId) {
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-transcribe`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: internalHeaders,
         body: JSON.stringify({ mensagem_id: novaMsgId }),
       }).catch((e) => console.warn("transcribe trigger failed:", e));
     }
@@ -172,7 +177,7 @@ Deno.serve(async (req) => {
     if (!fromMe && novaMsgId) {
       fetch(`${Deno.env.get("SUPABASE_URL")}/functions/v1/whatsapp-bot-reply`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: internalHeaders,
         body: JSON.stringify({ conversa_id: conversaId, mensagem_id: novaMsgId }),
       }).catch((e) => console.warn("bot-reply trigger failed:", e));
     }

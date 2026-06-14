@@ -261,7 +261,7 @@ async function chamarLLM(messages: any[], systemPrompt: string, allowTools = tru
     method: "POST",
     headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.0-flash",
       messages: [{ role: "system", content: systemPrompt }, ...messages],
       ...(allowTools ? { tools, tool_choice: "auto" } : {}),
     }),
