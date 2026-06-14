@@ -14,12 +14,8 @@ interface Props {
   compact?: boolean;
 }
 
-function scoreStatusLabel(score: number): string {
-  return classificarMyID100(score).nome;
-}
-function scoreStatusColor(score: number): string {
-  return classificarMyID100(score).cor;
-}
+function scoreStatusLabel(score: number) { return classificarMyID100(score).nome; }
+function scoreStatusColor(score: number) { return classificarMyID100(score).cor; }
 
 const SHORT_LABELS: Record<string, string> = {
   D: 'D', EFI: 'EFI', P: 'P', I: 'I', R: 'R', C: 'C',
@@ -27,18 +23,10 @@ const SHORT_LABELS: Record<string, string> = {
 };
 
 const FULL_LABELS: Record<string, string> = {
-  D:   'Dor',
-  EFI: 'Atividades',
-  P:   'Emoções',
-  I:   'Mudanças',
-  R:   'Sono/Energia',
-  C:   'Vida pessoal',
-  AF:  'Movimento',
-  HID: 'Hidratação',
-  NUT: 'Alimentação',
-  ERG: 'Postura',
-  N:   'Sinais corpo',
-  MED: 'Medicação',
+  D: 'Dor', EFI: 'Atividades', P: 'Emoções', I: 'Mudanças',
+  R: 'Sono/Energia', C: 'Vida pessoal', AF: 'Movimento',
+  HID: 'Hidratação', NUT: 'Alimentação', ERG: 'Postura',
+  N: 'Sinais corpo', MED: 'Medicação',
 };
 
 const RING_DESCRIPTIONS: Record<string, { title: string; summary: string; components: string[] }> = {
@@ -56,96 +44,119 @@ const RING_DESCRIPTIONS: Record<string, { title: string; summary: string; compon
   MED: { title: 'Medicação (MED)', summary: 'Uso de medicações relevantes para o quadro.', components: ['AINE diário', 'Antidepressivo', 'Relaxante muscular', 'Corticoide'] },
 };
 
-// ── Geometry constants ────────────────────────────────────────────────────────
+// ── Geometry ─────────────────────────────────────────────────────────────────
 const VW = 1000;
 const VH = 1000;
 const CX = 500;
-const CY = 500;
+const CY = 495;   // slightly above mid to leave room for the legend
 
-// The "mouth" of the fingerprint opens at the bottom (270°)
-// All rings share the same opening angle, creating a consistent visual signature
-const GAP_CENTER_DEG = 270;  // bottom of circle
-const OPENING_DEG    = 36;   // total gap width in degrees
-const START_DEG      = GAP_CENTER_DEG + OPENING_DEG / 2;  // 288°
-const AVAIL_SWEEP    = 360 - OPENING_DEG;                  // 324°
+// Gap at BOTTOM (SVG 90° = 6 o'clock). Small opening so it barely registers visually.
+const GAP_BASE_DEG = 90;
+const OPENING_DEG  = 22;   // narrow — nearly complete circles
 
-const BASE_R  = 76;
-const MAX_R   = 455;
-const STROKE  = 24;   // uniform stroke width — rings separated by (spacing - STROKE) gap
+const BASE_R = 70;
+const MAX_R  = 450;
+const STROKE = 22;
+
+// ── Fingerprint whorl offsets ─────────────────────────────────────────────────
+// Inner rings (capacity) have their center shifted UP, giving the impression
+// their loops close "above" the chart center — like the core of a fingerprint whorl.
+// Outer rings (demand) shift DOWN slightly, wrapping below the inner cluster.
+// Together they create the characteristic delta separation of a real fingerprint.
+const INNER_SHIFT = 38;   // innermost inner ring shifts up by this many SVG units
+const OUTER_SHIFT = 18;   // outermost outer ring shifts down
 
 export default function MyIDFingerprint({
   rings, myidScore, className = '', onRingClick, onRingHover,
   highlightedKey, hasRedFlags = false, compact = false,
 }: Props) {
-  const [hoveredIdx, setHoveredIdx] = useState<number | null>(null);
+  const [hoveredIdx, setHoveredIdx]   = useState<number | null>(null);
   const [selectedIdx, setSelectedIdx] = useState<number | null>(null);
-  const [revealed, setRevealed] = useState(false);
+  const [revealed, setRevealed]       = useState(false);
   const [revealProgress, setRevealProgress] = useState(0);
 
   useEffect(() => {
-    const timer = setTimeout(() => setRevealed(true), 120);
-    return () => clearTimeout(timer);
+    const t = setTimeout(() => setRevealed(true), 120);
+    return () => clearTimeout(t);
   }, []);
 
   useEffect(() => {
     if (!revealed) return;
     let frame = 0;
     const total = rings.length;
-    const interval = setInterval(() => {
+    const iv = setInterval(() => {
       frame++;
       setRevealProgress(frame);
-      if (frame >= total) clearInterval(interval);
+      if (frame >= total) clearInterval(iv);
     }, 70);
-    return () => clearInterval(interval);
+    return () => clearInterval(iv);
   }, [revealed, rings.length]);
 
-  const innerRings = rings.filter(r => r.type === 'inner');
-  const outerRings = rings.filter(r => r.type === 'outer');
-  const allRings   = [...innerRings, ...outerRings];
-  const totalRings = allRings.length || 1;
+  const innerRings  = rings.filter(r => r.type === 'inner');
+  const outerRings  = rings.filter(r => r.type === 'outer');
+  const allRings    = [...innerRings, ...outerRings];
+  const totalRings  = allRings.length || 1;
 
-  // Spacing ensures rings never touch
   const spacing = Math.min(32, (MAX_R - BASE_R) / totalRings);
 
-  // ── Arc path helper ────────────────────────────────────────────────────────
-  const arcPath = useCallback((r: number, startDeg: number, sweepDeg: number): string => {
+  // ── Arc path — takes explicit center so each ring can have its own origin ───
+  const arcPath = useCallback((
+    cx: number, cy: number, r: number, startDeg: number, sweepDeg: number,
+  ): string => {
     if (sweepDeg < 0.5) return '';
     const toRad = (d: number) => (d * Math.PI) / 180;
-    const s = toRad(startDeg);
-    const e = toRad(startDeg + sweepDeg);
-    const x1 = CX + r * Math.cos(s);
-    const y1 = CY + r * Math.sin(s);
-    const x2 = CX + r * Math.cos(e);
-    const y2 = CY + r * Math.sin(e);
+    const s  = toRad(startDeg);
+    const e  = toRad(startDeg + sweepDeg);
+    const x1 = cx + r * Math.cos(s);
+    const y1 = cy + r * Math.sin(s);
+    const x2 = cx + r * Math.cos(e);
+    const y2 = cy + r * Math.sin(e);
     const large = sweepDeg > 180 ? 1 : 0;
-    return `M ${x1.toFixed(2)} ${y1.toFixed(2)} A ${r.toFixed(2)} ${r.toFixed(2)} 0 ${large} 1 ${x2.toFixed(2)} ${y2.toFixed(2)}`;
+    return `M ${x1.toFixed(1)} ${y1.toFixed(1)} A ${r.toFixed(1)} ${r.toFixed(1)} 0 ${large} 1 ${x2.toFixed(1)} ${y2.toFixed(1)}`;
   }, []);
 
-  // ── Build ridge data ───────────────────────────────────────────────────────
-  const ridgeData = useMemo(() => allRings.map((ring, i) => {
-    const r = BASE_R + i * spacing;
+  // ── Ridge data ───────────────────────────────────────────────────────────────
+  const ridgeData = useMemo(() => {
+    const ni = innerRings.length;
+    const no = outerRings.length;
 
-    // How much of the available arc is filled (min 8% for visibility)
-    const fillFraction = Math.max(ring.value / 10, 0.08);
-    const filledSweep  = AVAIL_SWEEP * fillFraction;
+    return allRings.map((ring, i) => {
+      const r = BASE_R + i * spacing;
 
-    // Inner rings (capacity): high value = good = cool colors
-    // Outer rings (demand): high value = bad = hot colors (already pre-computed in ring.color)
-    const color   = ring.color || getThermalColor(ring.value);
-    // Opacity scales with severity: brighter = more significant
-    const opacity = ring.type === 'inner'
-      ? 0.45 + (1 - ring.value / 10) * 0.50   // low capacity → higher opacity (alarming)
-      : 0.45 + (ring.value / 10) * 0.50;       // high demand → higher opacity (alarming)
+      // Center offset creates the fingerprint whorl:
+      // innermost inner ring = highest (most negative cy offset)
+      // outermost outer ring = lowest (most positive cy offset)
+      let rcx = CX;
+      let rcy: number;
+      if (ring.type === 'inner') {
+        const t = ni > 1 ? i / (ni - 1) : 1;          // 0=innermost → 1=outermost inner
+        rcy = CY - INNER_SHIFT * (1 - t);
+      } else {
+        const oi = i - ni;                               // index within outer group
+        const t  = no > 1 ? oi / (no - 1) : 0;
+        rcy = CY + OUTER_SHIFT * t;
+      }
 
-    return {
-      ...ring,
-      r,
-      filledSweep,
-      color,
-      opacity,
-      index: i,
-    };
-  }), [allRings, spacing]);
+      // Slight per-ring stagger of the gap for organic fingerprint feel
+      const gapStagger = (i - (totalRings - 1) / 2) * 1.4;
+      const gapCenter  = GAP_BASE_DEG + gapStagger;
+      const startDeg   = gapCenter + OPENING_DEG / 2;
+      const availSweep = 360 - OPENING_DEG;
+
+      // Fill fraction — minimum 8% so even zero-score rings have a tiny visible arc
+      const fillFraction = Math.max(ring.value / 10, 0.08);
+      const filledSweep  = availSweep * fillFraction;
+
+      const color = ring.color || getThermalColor(ring.value);
+      // Alarming rings are brighter:
+      // capacity: low value = alarming; demand: high value = alarming
+      const opacity = ring.type === 'inner'
+        ? 0.45 + (1 - ring.value / 10) * 0.50
+        : 0.45 + (ring.value / 10) * 0.50;
+
+      return { ...ring, r, rcx, rcy, startDeg, availSweep, filledSweep, color, opacity, index: i };
+    });
+  }, [allRings, spacing, totalRings, innerRings.length, outerRings.length]);
 
   const centerColor = scoreStatusColor(myidScore);
   const label       = scoreStatusLabel(myidScore);
@@ -175,7 +186,6 @@ export default function MyIDFingerprint({
         preserveAspectRatio="xMidYMid meet"
       >
         <defs>
-          {/* Glow filters */}
           <filter id="fp-glow-hi" x="-25%" y="-25%" width="150%" height="150%">
             <feGaussianBlur stdDeviation="5" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
@@ -192,12 +202,10 @@ export default function MyIDFingerprint({
             <feGaussianBlur stdDeviation="8" result="blur" />
             <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
           </filter>
-          {/* Center radial gradient */}
           <radialGradient id="fp-center-g" cx="50%" cy="50%">
-            <stop offset="0%"   stopColor={centerColor} stopOpacity="0.30" />
+            <stop offset="0%"   stopColor={centerColor} stopOpacity="0.28" />
             <stop offset="100%" stopColor={centerColor} stopOpacity="0"    />
           </radialGradient>
-          {/* Legend gradient bar */}
           <linearGradient id="fp-legend-g" x1="0%" y1="0%" x2="100%" y2="0%">
             <stop offset="0%"   stopColor="hsl(270,60%,72%)" />
             <stop offset="25%"  stopColor="hsl(230,70%,60%)" />
@@ -207,8 +215,8 @@ export default function MyIDFingerprint({
           </linearGradient>
         </defs>
 
-        {/* Soft background glow */}
-        <circle cx={CX} cy={CY} r={MAX_R + 40} fill="url(#fp-center-g)" opacity="0.35" />
+        {/* Ambient glow — centered on the visual midpoint of inner and outer groups */}
+        <circle cx={CX} cy={CY} r={MAX_R + 40} fill="url(#fp-center-g)" opacity="0.30" />
 
         {/* ── Rings ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
@@ -216,21 +224,21 @@ export default function MyIDFingerprint({
           const isRevealed = revealProgress > ridgeIdx;
           const sw         = isActive ? STROKE + 7 : STROKE;
 
-          const bgPath   = arcPath(ridge.r, START_DEG, AVAIL_SWEEP);
-          const fillPath = arcPath(ridge.r, START_DEG, Math.min(ridge.filledSweep, AVAIL_SWEEP));
+          const bgPath   = arcPath(ridge.rcx, ridge.rcy, ridge.r, ridge.startDeg, ridge.availSweep);
+          const fillPath = arcPath(ridge.rcx, ridge.rcy, ridge.r, ridge.startDeg, Math.min(ridge.filledSweep, ridge.availSweep));
 
-          // FIX: label along the midpoint of the FILLED arc with flip correction
-          const labelAngleDeg  = START_DEG + ridge.filledSweep / 2;
-          const labelAngleRad  = (labelAngleDeg * Math.PI) / 180;
-          const lx = CX + ridge.r * Math.cos(labelAngleRad);
-          const ly = CY + ridge.r * Math.sin(labelAngleRad);
-          // Flip text that would be upside down (arcs in the bottom hemisphere)
+          // Short label sits at the midpoint of the filled arc
+          const labelAngleDeg = ridge.startDeg + ridge.filledSweep / 2;
+          const labelAngleRad = (labelAngleDeg * Math.PI) / 180;
+          const lx = ridge.rcx + ridge.r * Math.cos(labelAngleRad);
+          const ly = ridge.rcy + ridge.r * Math.sin(labelAngleRad);
+          // Flip text that falls in the upper half of the arc (would be upside-down)
           const rawRot = labelAngleDeg + 90;
           const rot    = (labelAngleDeg > 90 && labelAngleDeg < 270) ? rawRot + 180 : rawRot;
 
           const sigla    = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
           const fontSize = Math.min(Math.max(STROKE * 0.46, 10), 16);
-          const arcLen   = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
+          const arcLen   = (Math.min(ridge.filledSweep, ridge.availSweep) * Math.PI * ridge.r) / 180;
           const showSig  = arcLen > sigla.length * fontSize * 0.7 + 8;
 
           return (
@@ -247,25 +255,23 @@ export default function MyIDFingerprint({
                 transition: `opacity 0.55s ease ${ridgeIdx * 65}ms`,
               }}
             >
-              {/* Background track */}
+              {/* Full-arc background track (faint) */}
               {bgPath && (
                 <path d={bgPath} fill="none" stroke={ridge.color}
-                  strokeWidth={STROKE} strokeLinecap="butt"
-                  opacity={0.10}
+                  strokeWidth={STROKE} strokeLinecap="butt" opacity={0.08}
                 />
               )}
 
-              {/* Filled arc */}
+              {/* Value arc */}
               {fillPath && (
                 <path d={fillPath} fill="none" stroke={ridge.color}
                   strokeWidth={sw}
                   strokeLinecap="round"
                   opacity={isActive ? 1 : ridge.opacity}
                   filter={
-                    isActive             ? 'url(#fp-glow-hi)'  :
-                    ridge.value >= 7     ? 'url(#fp-glow-hi)'  :
-                    ridge.value >= 4.5   ? 'url(#fp-glow-med)' :
-                    undefined
+                    isActive           ? 'url(#fp-glow-hi)'  :
+                    ridge.value >= 7   ? 'url(#fp-glow-hi)'  :
+                    ridge.value >= 4.5 ? 'url(#fp-glow-med)' : undefined
                   }
                   style={{ transition: 'stroke-width 0.2s ease, opacity 0.2s ease' }}
                 />
@@ -275,15 +281,10 @@ export default function MyIDFingerprint({
               {showSig && isRevealed && fillPath && (
                 <text
                   x={lx} y={ly}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={fontSize}
-                  fontWeight="900"
-                  fill="white"
-                  stroke={ridge.color}
-                  strokeWidth="1"
-                  paintOrder="stroke"
-                  letterSpacing="0.3"
+                  textAnchor="middle" dominantBaseline="central"
+                  fontSize={fontSize} fontWeight="900"
+                  fill="white" stroke={ridge.color} strokeWidth="1"
+                  paintOrder="stroke" letterSpacing="0.3"
                   opacity={isActive ? 1 : 0.92}
                   transform={`rotate(${rot}, ${lx}, ${ly})`}
                   style={{ pointerEvents: 'none' }}
@@ -295,100 +296,93 @@ export default function MyIDFingerprint({
           );
         })}
 
-        {/* ── Outer dimension labels (outside the last ring) ── */}
+        {/* ── Outer dimension labels — distributed along each ring's own arc ── */}
         {ridgeData.map((ridge, ridgeIdx) => {
-          const isRevealed = revealProgress > ridgeIdx;
-          if (!isRevealed) return null;
+          if (revealProgress <= ridgeIdx) return null;
 
-          // Only show for the outer-most ring of each dimension (one label per ring)
-          const outerR    = ridge.r + STROKE / 2 + 22;
-          const midAngle  = START_DEG + AVAIL_SWEEP / 2;  // middle of available arc
+          // Each label is positioned along the ring's available arc at an evenly
+          // distributed fraction, using the ring's own center (rcx, rcy).
+          const fraction = (ridgeIdx + 0.5) / totalRings;
+          const angDeg   = ridge.startDeg + fraction * ridge.availSweep;
+          const angRad   = (angDeg * Math.PI) / 180;
+          const outerR   = ridge.r + STROKE / 2 + 24;
+          const ox = ridge.rcx + outerR * Math.cos(angRad);
+          const oy = ridge.rcy + outerR * Math.sin(angRad);
 
-          // Distribute labels evenly around the arc for all rings
-          const fraction  = (ridgeIdx + 0.5) / ridgeData.length;
-          const angleDeg  = START_DEG + fraction * AVAIL_SWEEP;
-          const angleRad  = (angleDeg * Math.PI) / 180;
-          const lx = CX + outerR * Math.cos(angleRad);
-          const ly = CY + outerR * Math.sin(angleRad);
-
-          // Flip if label is in lower half
-          const rawRot = angleDeg + 90;
-          const rot    = (angleDeg > 90 && angleDeg < 270) ? rawRot + 180 : rawRot;
-          const shortLabel = FULL_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          const rawRot = angDeg + 90;
+          const rot    = (angDeg > 90 && angDeg < 270) ? rawRot + 180 : rawRot;
 
           return (
             <text
               key={`lbl-${ridge.scoreKey}`}
-              x={lx} y={ly}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={10.5}
-              fontWeight="700"
-              fill={ridge.color}
-              opacity={0.80}
-              transform={`rotate(${rot}, ${lx}, ${ly})`}
+              x={ox} y={oy}
+              textAnchor="middle" dominantBaseline="central"
+              fontSize={10.5} fontWeight="700"
+              fill={ridge.color} opacity={0.80}
+              transform={`rotate(${rot}, ${ox}, ${oy})`}
               style={{ pointerEvents: 'none', transition: `opacity 0.5s ease ${ridgeIdx * 65}ms` }}
             >
-              {shortLabel}
+              {FULL_LABELS[ridge.scoreKey] || ridge.scoreKey}
             </text>
           );
         })}
 
-        {/* ── Center: core glow + progress ring + score ── */}
-        <circle cx={CX} cy={CY} r={BASE_R - 12} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
+        {/* ── Center core ── */}
+        <circle cx={CX} cy={CY} r={BASE_R - 14} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
 
-        {/* Progress ring (thin, centered) */}
-        <circle cx={CX} cy={CY} r={54} fill="none" stroke={centerColor} strokeWidth={5} opacity="0.12"
+        {/* Progress ring */}
+        <circle cx={CX} cy={CY} r={50} fill="none" stroke={centerColor} strokeWidth={5} opacity="0.12"
           transform={`rotate(-90, ${CX}, ${CY})`} />
-        <circle cx={CX} cy={CY} r={54} fill="none" stroke={centerColor} strokeWidth={6}
+        <circle cx={CX} cy={CY} r={50} fill="none" stroke={centerColor} strokeWidth={6}
           strokeLinecap="round" opacity="0.72"
-          strokeDasharray={`${2 * Math.PI * 54}`}
-          strokeDashoffset={`${2 * Math.PI * 54 * (1 - Math.min(myidScore, 100) / 100)}`}
+          strokeDasharray={`${2 * Math.PI * 50}`}
+          strokeDashoffset={`${2 * Math.PI * 50 * (1 - Math.min(myidScore, 100) / 100)}`}
           transform={`rotate(-90, ${CX}, ${CY})`}
           style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.16,1,0.3,1)' }}
         />
 
-        {/* Score text */}
-        <text x={CX} y={CY - 16} textAnchor="middle" dominantBaseline="central"
-          fontSize="52" fontWeight="900" fill={centerColor}
+        {/* Score */}
+        <text x={CX} y={CY - 14} textAnchor="middle" dominantBaseline="central"
+          fontSize="50" fontWeight="900" fill={centerColor}
           style={{ transition: 'fill 0.3s ease' }}>
           {Math.round(myidScore)}
         </text>
         <text x={CX} y={CY + 20} textAnchor="middle"
-          fontSize="15" fontWeight="600" fill={centerColor} opacity="0.55">
+          fontSize="14" fontWeight="600" fill={centerColor} opacity="0.55">
           /100
         </text>
-        <text x={CX} y={CY + 44} textAnchor="middle"
-          fontSize="13.5" fontWeight="800" fill={centerColor} opacity="0.88"
+        <text x={CX} y={CY + 42} textAnchor="middle"
+          fontSize="13" fontWeight="800" fill={centerColor} opacity="0.88"
           letterSpacing="2.5">
           {label.toUpperCase()}
         </text>
 
-        {/* ── Divider line between inner (capacity) and outer (demand) rings ── */}
+        {/* ── Dashed divider ring between capacity (inner) and demand (outer) ── */}
         {innerRings.length > 0 && outerRings.length > 0 && (() => {
-          const divR = BASE_R + innerRings.length * spacing;
-          const divPath = arcPath(divR, START_DEG - 2, AVAIL_SWEEP + 4);
+          const divR    = BASE_R + innerRings.length * spacing;
+          const divPath = arcPath(CX, CY, divR, GAP_BASE_DEG + OPENING_DEG / 2 - 4, 360 - OPENING_DEG + 8);
           return divPath ? (
             <path d={divPath} fill="none" stroke="hsl(var(--border))"
-              strokeWidth={1.5} strokeLinecap="butt" opacity={0.35}
-              strokeDasharray="6 4"
+              strokeWidth={1.5} strokeLinecap="butt" opacity={0.30}
+              strokeDasharray="6 5"
             />
           ) : null;
         })()}
 
-        {/* "Capacidade" / "Demanda" arc labels */}
+        {/* "CAPACIDADE" label along inner arc zone */}
         {innerRings.length > 0 && (() => {
-          const capMidIdx  = (innerRings.length - 1) / 2;
-          const capR       = BASE_R + capMidIdx * spacing;
-          const capAngleDeg = START_DEG + AVAIL_SWEEP * 0.85;
-          const capAngleRad = (capAngleDeg * Math.PI) / 180;
+          const capR     = BASE_R + (innerRings.length - 1) / 2 * spacing;
+          const capAngle = GAP_BASE_DEG + OPENING_DEG / 2 + (360 - OPENING_DEG) * 0.86;
+          const capRad   = (capAngle * Math.PI) / 180;
+          const midCY    = CY - INNER_SHIFT * 0.5;
+          const cx2      = CX + (capR + STROKE) * Math.cos(capRad);
+          const cy2      = midCY + (capR + STROKE) * Math.sin(capRad);
           return (
-            <text x={CX + (capR + STROKE) * Math.cos(capAngleRad)}
-              y={CY + (capR + STROKE) * Math.sin(capAngleRad)}
+            <text x={cx2} y={cy2}
               textAnchor="middle" dominantBaseline="central"
               fontSize={11} fontWeight="700"
-              fill="hsl(var(--muted-foreground))" opacity={0.50}
-              transform={`rotate(${capAngleDeg + 90}, ${CX + (capR + STROKE) * Math.cos(capAngleRad)}, ${CY + (capR + STROKE) * Math.sin(capAngleRad)})`}
+              fill="hsl(var(--muted-foreground))" opacity={0.42}
+              transform={`rotate(${capAngle + 90}, ${cx2}, ${cy2})`}
               style={{ pointerEvents: 'none' }}
             >
               CAPACIDADE
@@ -396,7 +390,7 @@ export default function MyIDFingerprint({
           );
         })()}
 
-        {/* Red flags pulse ring */}
+        {/* Red flags alert ring */}
         {hasRedFlags && (
           <g style={{ animation: 'fpPulse 1.8s ease-in-out infinite' }}>
             <circle cx={CX} cy={CY} r={MAX_R + 18} fill="none"
@@ -422,11 +416,9 @@ export default function MyIDFingerprint({
                 fill="hsl(var(--muted-foreground))" letterSpacing="1.8" opacity={0.55}>
                 ESCALA DE COMPROMETIMENTO
               </text>
-              {/* Gradient bar */}
               <rect x={lx0} y={ly0} width={barW} height={barH} rx={barH / 2}
                 fill="url(#fp-legend-g)" opacity={0.85}
               />
-              {/* End labels — centered under bar edges */}
               <text x={lx0}          y={ly0 + barH + 18} textAnchor="middle"
                 fontSize="13" fontWeight="700" fill="hsl(270,60%,65%)" opacity={0.80}>
                 Ótimo
@@ -447,7 +439,7 @@ export default function MyIDFingerprint({
         `}</style>
       </svg>
 
-      {/* ── Info panel (active ring) ── */}
+      {/* ── Detail panel (shown on ring hover/click) ── */}
       {!compact && (() => {
         const ridge = activeIdx !== null && activeIdx >= 0 && activeIdx < ridgeData.length
           ? ridgeData[activeIdx] : null;
@@ -463,14 +455,11 @@ export default function MyIDFingerprint({
                   <h4 className="text-sm font-bold tracking-wide" style={{ color: ridge.color }}>
                     {info.title}
                   </h4>
-                  <span className="ml-auto text-xs font-bold tabular-nums"
-                    style={{ color: ridge.color }}>
+                  <span className="ml-auto text-xs font-bold tabular-nums" style={{ color: ridge.color }}>
                     {ridge.value.toFixed(1)}<span className="text-muted-foreground font-normal">/10</span>
                   </span>
                 </div>
-                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">
-                  {info.summary}
-                </p>
+                <p className="text-xs text-muted-foreground mb-3 leading-relaxed">{info.summary}</p>
                 <div className="flex flex-wrap gap-1.5">
                   {info.components.map((c) => (
                     <span key={c}

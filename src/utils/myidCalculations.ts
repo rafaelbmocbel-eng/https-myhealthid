@@ -275,7 +275,14 @@ export function getMyIDFingerprintData(scores: Record<string, number>): Fingerpr
     { label: 'Cabeça e emoções', value: scores.P || 0, type: 'outer', color: getThermalColor(scores.P || 0), scoreKey: 'P' },
     { label: 'Mudanças recentes', value: scores.I || 0, type: 'outer', color: getThermalColor(scores.I || 0), scoreKey: 'I' },
     { label: 'Sinais do corpo', value: scores.N || 0, type: 'outer', color: getThermalColor(scores.N || 0), scoreKey: 'N' },
-    { label: 'Medicação', value: scores.MED || 0, type: 'outer', color: getThermalColor(scores.MED || 0), scoreKey: 'MED' },
+    // MED can be negative (penalty) or positive (bonus).
+    // For the ring: encode the PENALTY as demand (higher = worse).
+    // A corticoid patient (MED=-5) should show a red, high-demand ring.
+    (() => {
+      const raw = scores.MED ?? 0;
+      const demandValue = raw < 0 ? Math.min(-raw * 1.5, 10) : 0;
+      return { label: 'Medicação', value: demandValue, type: 'outer' as const, color: getThermalColor(demandValue), scoreKey: 'MED' };
+    })(),
     { label: 'Dor', value: scores.D || 0, type: 'outer', color: getThermalColor(scores.D || 0), scoreKey: 'D' },
   ];
 }
