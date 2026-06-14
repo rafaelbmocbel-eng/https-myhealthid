@@ -19,10 +19,14 @@ const ALL_ITEMS = [
   { key: 'ERG', label: 'Postura no dia',type: 'capacity' as const, hint: 'Como você se posiciona ao longo do dia' },
 ];
 
-function statusFor(loss: number): { label: string; color: string; bar: string; emoji: string } {
-  if (loss >= 8)  return { label: 'Precisa de atenção', color: 'text-red-700 dark:text-red-400',     bar: 'bg-red-500',    emoji: '🔴' };
-  if (loss >= 3)  return { label: 'Dá pra melhorar',    color: 'text-amber-700 dark:text-amber-400', bar: 'bg-amber-500',  emoji: '🟡' };
-  return            { label: 'Está bem',             color: 'text-emerald-700 dark:text-emerald-400', bar: 'bg-emerald-500', emoji: '🟢' };
+// Max loss per dimension — used to compute relative severity so N=10/10 reads CRÍTICO, not just "Dá pra melhorar"
+const MAX_LOSS: Record<string, number> = { D: 20, EFI: 15, R: 15, C: 10, AF: 8, HID: 6, NUT: 6, P: 5, I: 5, ERG: 5, N: 5 };
+
+function statusFor(loss: number, key: string): { label: string; color: string; bar: string; emoji: string } {
+  const ratio = loss / (MAX_LOSS[key] ?? 10);
+  if (ratio >= 0.6) return { label: 'Precisa de atenção', color: 'text-red-700 dark:text-red-400',     bar: 'bg-red-500',    emoji: '🔴' };
+  if (ratio >= 0.25) return { label: 'Dá pra melhorar',   color: 'text-amber-700 dark:text-amber-400', bar: 'bg-amber-500',  emoji: '🟡' };
+  return                    { label: 'Está bem',           color: 'text-emerald-700 dark:text-emerald-400', bar: 'bg-emerald-500', emoji: '🟢' };
 }
 
 export default function PatientHealthAreas({ scores }: Props) {
@@ -32,7 +36,7 @@ export default function PatientHealthAreas({ scores }: Props) {
     const raw = Number(scores[item.key]) || 0;
     const lossInput = item.type === 'demand' ? raw : (10 - raw);
     const perda = calcularPerdaDimensao(item.key, lossInput);
-    return { ...item, value: raw, loss: perda.perda_pontos, status: statusFor(perda.perda_pontos) };
+    return { ...item, value: raw, loss: perda.perda_pontos, status: statusFor(perda.perda_pontos, item.key) };
   });
 
   // Sort: highest loss first (most urgent at top)

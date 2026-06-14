@@ -479,19 +479,21 @@ export default function PatientIntegratedDashboard({
                     </p>
                   )}
 
-                  {/* Microlegenda: como ler os anéis */}
-                  <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-sky-500/80" />
-                      Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
-                      <span className="text-muted-foreground/80">· quanto maior, melhor</span>
-                    </span>
-                    <span className="inline-flex items-center gap-1.5">
-                      <span className="h-2 w-2 rounded-full bg-red-500/80" />
-                      Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
-                      <span className="text-muted-foreground/80">· quanto maior, pior</span>
-                    </span>
-                  </div>
+                  {/* Microlegenda: apenas para paciente — o profissional tem a lista interativa abaixo */}
+                  {!isProfessional && (
+                    <div className="mt-3 flex flex-wrap items-center justify-center gap-x-4 gap-y-1 text-[11px] text-muted-foreground">
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-sky-500/80" />
+                        Anéis de dentro = <span className="font-semibold text-foreground/80">o que te sustenta</span>
+                        <span className="text-muted-foreground/80">· quanto maior, melhor</span>
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <span className="h-2 w-2 rounded-full bg-red-500/80" />
+                        Anéis de fora = <span className="font-semibold text-foreground/80">o que está pesando</span>
+                        <span className="text-muted-foreground/80">· quanto maior, pior</span>
+                      </span>
+                    </div>
+                  )}
 
                   {/* Listas compactas: anéis internos e externos (apenas profissional) */}
                   {isProfessional && rings.length > 0 && (() => {
@@ -784,72 +786,40 @@ export default function PatientIntegratedDashboard({
                     <Award className="icon-sm text-primary" />
                     <h4 className="h-card">Suas conquistas</h4>
                   </div>
-                  <div className="flex flex-wrap gap-2">
-                    {scores && (
-                      <>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.HID > 7 ? "bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300" : "opacity-30"
-                        )}>
-                          💧 Hidratado
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.R > 7 ? "bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300" : "opacity-30"
-                        )}>
-                          🌙 Sono em dia
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.AF > 6 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300" : "opacity-30"
-                        )}>
-                          🏃 Ativo
-                        </Badge>
-                        <Badge variant="secondary" className={cn(
-                          "rounded-full px-3 py-1 gap-2 transition-opacity",
-                          scores.P < 4 ? "bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300" : "opacity-30"
-                        )}>
-                          🧘 Equilíbrio
-                        </Badge>
-                      </>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground mt-3">
-                    Cuide dos seus hábitos pra desbloquear mais.
-                  </p>
-                </CardContent>
-              </Card>
-
-              {/* Áreas da sua saúde */}
-              <Card className="rounded-xl border-border/40 shadow-xs">
-                <CardContent className="p-5">
-                  <div className="flex items-center justify-between gap-3 mb-4 flex-wrap">
-                    <div>
-                      <h4 className="h-card">Áreas da sua saúde</h4>
-                      <p className="text-xs text-muted-foreground mt-0.5">Como cada parte da sua vida está hoje</p>
-                    </div>
-                    <div className="flex items-center gap-3 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />Forte</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-amber-500" />OK</span>
-                      <span className="flex items-center gap-1"><span className="h-1.5 w-1.5 rounded-full bg-red-500" />Atenção</span>
-                    </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                    {powerZones.map((zone) => (
-                      <div key={zone.id} className="rounded-lg border border-border/40 p-3 bg-card">
-                        <div className="flex items-center gap-2 mb-2">
-                          <zone.icon className={cn("icon-sm", zone.color)} />
-                          <span className={cn("text-sm font-bold", zone.color)}>{zone.level.toFixed(0)}%</span>
-                        </div>
-                        <h5 className="font-semibold text-xs leading-tight mb-2 text-foreground">{zone.title}</h5>
-                        <Progress value={zone.level} className="h-1 mb-2" />
-                        <p className="text-[10px] text-muted-foreground leading-relaxed">{zone.description}</p>
+                  {(() => {
+                    const badges = scores ? [
+                      { condition: scores.HID > 7, label: '💧 Hidratado',  cls: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300' },
+                      { condition: scores.R   > 7, label: '🌙 Sono em dia', cls: 'bg-violet-100 text-violet-700 dark:bg-violet-950/40 dark:text-violet-300' },
+                      { condition: scores.AF  > 6, label: '🏃 Ativo',       cls: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300' },
+                      { condition: scores.P   < 4, label: '🧘 Equilíbrio',  cls: 'bg-orange-100 text-orange-700 dark:bg-orange-950/40 dark:text-orange-300' },
+                    ].filter(b => b.condition) : [];
+                    return badges.length > 0 ? (
+                      <div className="flex flex-wrap gap-2">
+                        {badges.map((b, i) => (
+                          <Badge key={i} variant="secondary" className={cn("rounded-full px-3 py-1 gap-2", b.cls)}>
+                            {b.label}
+                          </Badge>
+                        ))}
+                        <p className="w-full text-xs text-muted-foreground mt-1">Continue cuidando dos seus hábitos para desbloquear mais.</p>
                       </div>
-                    ))}
-                  </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground py-2">
+                        Nenhuma conquista desbloqueada ainda. Melhore hidratação, sono, movimento ou equilíbrio emocional para ganhar badges.
+                      </p>
+                    );
+                  })()}
                 </CardContent>
               </Card>
+
+              {/* Dimensões por status — substituiu os cards abstratos Corpo/Hábitos/Mente/Proteção */}
+              {scores && (
+                <Card className="rounded-xl border-border/40 shadow-xs">
+                  <CardContent className="p-5">
+                    <h4 className="h-card mb-4">Como cada dimensão está hoje</h4>
+                    <PatientHealthAreas scores={scores} />
+                  </CardContent>
+                </Card>
+              )}
             </TabsContent>
           </Tabs>
         </>
