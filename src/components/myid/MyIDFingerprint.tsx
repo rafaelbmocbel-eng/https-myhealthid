@@ -216,10 +216,12 @@ export default function MyIDFingerprint({
           const rot    = (labelAngleDeg % 360 > 90 && labelAngleDeg % 360 < 270)
             ? rawRot + 180 : rawRot;
 
-          const sigla   = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
-          const fontSize = 13;
-          const arcLen  = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
-          const showSig = arcLen > sigla.length * fontSize * 0.65 + 10;
+          const sigla      = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          const fullName   = FULL_LABELS[ridge.scoreKey] || ridge.label;
+          const arcLen     = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
+          // How much text we can show inside the arc stroke (22px wide)
+          const showSig      = arcLen > 42;
+          const showFullName = arcLen > fullName.length * 7.5 + 30;
 
           return (
             <g
@@ -262,62 +264,51 @@ export default function MyIDFingerprint({
                 />
               )}
 
-              {/* Sigla inside the arc */}
+              {/* Sigla (always) + nome completo (quando tem espaço) — ambos no mesmo ponto */}
               {showSig && isRevealed && fillPath && (
-                <text
-                  x={lx} y={ly}
-                  textAnchor="middle"
-                  dominantBaseline="central"
-                  fontSize={fontSize}
-                  fontWeight="900"
-                  fill="white"
-                  stroke={ridge.color}
-                  strokeWidth="1.2"
-                  paintOrder="stroke"
-                  letterSpacing="0.3"
-                  opacity={isActive ? 1 : 0.90}
-                  transform={`rotate(${rot}, ${lx}, ${ly})`}
-                  style={{ pointerEvents: 'none' }}
-                >
-                  {sigla}
-                </text>
+                <g transform={`rotate(${rot}, ${lx}, ${ly})`} style={{ pointerEvents: 'none' }}>
+                  {/* Sigla line */}
+                  <text
+                    x={lx}
+                    y={showFullName ? ly - 6 : ly}
+                    textAnchor="middle"
+                    dominantBaseline="central"
+                    fontSize={showFullName ? 11 : 13}
+                    fontWeight="900"
+                    fill="white"
+                    stroke={ridge.color}
+                    strokeWidth="1.2"
+                    paintOrder="stroke"
+                    letterSpacing="0.5"
+                    opacity={isActive ? 1 : 0.92}
+                  >
+                    {sigla}
+                  </text>
+                  {/* Full name line — only when arc is wide enough */}
+                  {showFullName && (
+                    <text
+                      x={lx}
+                      y={ly + 8}
+                      textAnchor="middle"
+                      dominantBaseline="central"
+                      fontSize={8.5}
+                      fontWeight="700"
+                      fill="white"
+                      stroke={ridge.color}
+                      strokeWidth="0.9"
+                      paintOrder="stroke"
+                      opacity={isActive ? 0.95 : 0.80}
+                    >
+                      {fullName}
+                    </text>
+                  )}
+                </g>
               )}
             </g>
           );
         })}
 
-        {/* ── Outer labels — placed at the END of each ring's arc ── */}
-        {ridgeData.map((ridge, ridgeIdx) => {
-          if (revealProgress <= ridgeIdx) return null;
-
-          // Place label just outside the ring at the END of the filled arc
-          const endAngleDeg = (ridge.startDeg + Math.min(ridge.filledSweep, AVAIL_SWEEP)) % 360;
-          const endAngleRad = (endAngleDeg * Math.PI) / 180;
-          const outerR      = ridge.r + STROKE / 2 + 20;
-          const ox = CX + outerR * Math.cos(endAngleRad);
-          const oy = CY + outerR * Math.sin(endAngleRad);
-
-          const rawRot = endAngleDeg + 90;
-          const rot    = (endAngleDeg % 360 > 90 && endAngleDeg % 360 < 270)
-            ? rawRot + 180 : rawRot;
-
-          return (
-            <text
-              key={`lbl-${ridge.scoreKey}`}
-              x={ox} y={oy}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={10}
-              fontWeight="700"
-              fill={ridge.color}
-              opacity={0.75}
-              transform={`rotate(${rot}, ${ox}, ${oy})`}
-              style={{ pointerEvents: 'none', transition: `opacity 0.5s ease ${ridgeIdx * 65}ms` }}
-            >
-              {FULL_LABELS[ridge.scoreKey] || ridge.scoreKey}
-            </text>
-          );
-        })}
+        {/* Outer labels removed — sigla + nome ficam juntos dentro de cada arco */}
 
         {/* ── Center core ── */}
         <circle cx={CX} cy={CY} r={BASE_R - 12} fill="url(#fp-center-g)" filter="url(#fp-core-glow)" />
@@ -443,11 +434,31 @@ export default function MyIDFingerprint({
                 </div>
               </>
             ) : (
-              <div className="flex items-center justify-center h-full py-4">
-                <p className="text-xs text-muted-foreground text-center leading-relaxed max-w-xs">
-                  Toque ou passe o mouse sobre um anel para ver o que ele representa
-                  e quais fatores o compõem.
+              /* Legenda sempre visível — mapeia sigla ↔ dimensão */
+              <div>
+                <p className="text-[11px] text-muted-foreground mb-2 font-semibold tracking-wide uppercase">
+                  Legenda das dimensões
                 </p>
+                <div className="grid grid-cols-2 gap-x-4 gap-y-1">
+                  {ridgeData.map((r) => (
+                    <button
+                      key={r.scoreKey}
+                      className="flex items-center gap-1.5 text-left hover:opacity-80 transition-opacity"
+                      onClick={() => handleClick(r, r.index)}
+                    >
+                      <span className="shrink-0 w-2 h-2 rounded-full" style={{ background: r.color }} />
+                      <span className="text-[11px] font-black tabular-nums" style={{ color: r.color }}>
+                        {r.scoreKey}
+                      </span>
+                      <span className="text-[11px] text-foreground/70 truncate">
+                        {FULL_LABELS[r.scoreKey] || r.label}
+                      </span>
+                      <span className="ml-auto text-[10px] text-muted-foreground tabular-nums shrink-0">
+                        {r.value.toFixed(1)}
+                      </span>
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
