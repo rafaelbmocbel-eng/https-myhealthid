@@ -118,7 +118,7 @@ export default function PacientePerfil() {
   const searchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const rawTab = searchParams.get('tab') || '';
   // Aba ativa: '' (Visão Integrada padrão) | historico | diretrizes | evolucao-prontuario | portal
-  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal', 'linha-do-tempo'];
+  const VALID_TABS = ['historico', 'diretrizes', 'evolucao-prontuario', 'portal'];
   const normalizedTab = rawTab === 'prontuario' || rawTab === 'evolucao'
     ? 'evolucao-prontuario'
     : rawTab === 'avaliacoes' || rawTab === 'agenda' || rawTab === 'historico-avaliacoes' || rawTab === 'clinico'
@@ -1032,9 +1032,6 @@ export default function PacientePerfil() {
             <TabsTrigger value="historico" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Histórico de Avaliações">
               <FileText className="h-4 w-4 shrink-0" /> <span>Histórico</span>
             </TabsTrigger>
-            <TabsTrigger value="linha-do-tempo" className="gap-1 rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md text-[11px] sm:text-xs font-semibold px-1 py-2 flex-col sm:flex-row min-h-[48px]" title="Linha do tempo completa da vida do paciente">
-              <Heart className="h-4 w-4 shrink-0" /> <span>Vida</span>
-            </TabsTrigger>
           </TabsList>
 
           {/* ==== VISÃO INTEGRADA — sempre visível como entrada padrão ==== */}
@@ -1071,6 +1068,11 @@ export default function PacientePerfil() {
                 <RelatorioCorrelacaoCard pacienteId={id} />
               </div>
             )}
+            {id && (
+              <div className="mt-2">
+                <TimelineVidaCompleta pacienteId={id} />
+              </div>
+            )}
             <AvaliacaoVozAtual
               pacienteId={id!}
               patientName={`${paciente.nome} ${paciente.sobrenome}`}
@@ -1091,11 +1093,6 @@ export default function PacientePerfil() {
           {/* TAB: HISTÓRICO DE AVALIAÇÕES */}
           <TabsContent value="historico" className="mt-4">
             <HistoricoAvaliacoesTab pacienteId={id!} />
-          </TabsContent>
-
-          {/* TAB: LINHA DO TEMPO COMPLETA */}
-          <TabsContent value="linha-do-tempo" className="mt-4">
-            <TimelineVidaCompleta pacienteId={id!} />
           </TabsContent>
 
           {/* TAB: DIRETRIZES E TRATAMENTOS */}
