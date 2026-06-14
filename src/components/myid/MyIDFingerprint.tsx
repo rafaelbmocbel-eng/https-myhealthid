@@ -216,12 +216,9 @@ export default function MyIDFingerprint({
           const rot    = (labelAngleDeg % 360 > 90 && labelAngleDeg % 360 < 270)
             ? rawRot + 180 : rawRot;
 
-          const sigla      = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
-          const fullName   = FULL_LABELS[ridge.scoreKey] || ridge.label;
-          const arcLen     = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
-          // How much text we can show inside the arc stroke (22px wide)
-          const showSig      = arcLen > 42;
-          const showFullName = arcLen > fullName.length * 7.5 + 30;
+          const sigla  = SHORT_LABELS[ridge.scoreKey] || ridge.scoreKey;
+          const arcLen = (Math.min(ridge.filledSweep, AVAIL_SWEEP) * Math.PI * ridge.r) / 180;
+          const showSig = arcLen > 42;
 
           return (
             <g
@@ -264,45 +261,25 @@ export default function MyIDFingerprint({
                 />
               )}
 
-              {/* Sigla (always) + nome completo (quando tem espaço) — ambos no mesmo ponto */}
+              {/* Sigla centralizada no arco — nome completo na legenda abaixo */}
               {showSig && isRevealed && fillPath && (
-                <g transform={`rotate(${rot}, ${lx}, ${ly})`} style={{ pointerEvents: 'none' }}>
-                  {/* Sigla line */}
-                  <text
-                    x={lx}
-                    y={showFullName ? ly - 6 : ly}
-                    textAnchor="middle"
-                    dominantBaseline="central"
-                    fontSize={showFullName ? 11 : 13}
-                    fontWeight="900"
-                    fill="white"
-                    stroke={ridge.color}
-                    strokeWidth="1.2"
-                    paintOrder="stroke"
-                    letterSpacing="0.5"
-                    opacity={isActive ? 1 : 0.92}
-                  >
-                    {sigla}
-                  </text>
-                  {/* Full name line — only when arc is wide enough */}
-                  {showFullName && (
-                    <text
-                      x={lx}
-                      y={ly + 8}
-                      textAnchor="middle"
-                      dominantBaseline="central"
-                      fontSize={8.5}
-                      fontWeight="700"
-                      fill="white"
-                      stroke={ridge.color}
-                      strokeWidth="0.9"
-                      paintOrder="stroke"
-                      opacity={isActive ? 0.95 : 0.80}
-                    >
-                      {fullName}
-                    </text>
-                  )}
-                </g>
+                <text
+                  x={lx} y={ly}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                  fontSize={13}
+                  fontWeight="900"
+                  fill="white"
+                  stroke={ridge.color}
+                  strokeWidth="1.2"
+                  paintOrder="stroke"
+                  letterSpacing="0.5"
+                  opacity={isActive ? 1 : 0.92}
+                  transform={`rotate(${rot}, ${lx}, ${ly})`}
+                  style={{ pointerEvents: 'none' }}
+                >
+                  {sigla}
+                </text>
               )}
             </g>
           );
