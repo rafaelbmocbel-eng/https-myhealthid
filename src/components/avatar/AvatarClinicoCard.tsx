@@ -219,6 +219,17 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
   outro: 'Outro',
 };
 
+const TIPO_DIAG_BADGE: Record<string, string> = {
+  relato_paciente: 'Relato',
+  diagnostico_medico: 'Med.',
+  diagnostico_fisioterapia: 'Fisio',
+  diagnostico_psicologia: 'Psico',
+  diagnostico_nutricao: 'Nutri',
+  diagnostico_fonoaudiologia: 'Fono',
+  diagnostico_outro: 'Esp.',
+  achado_clinico: 'Achado',
+};
+
 interface Props {
   pacienteId: string;
   isProfessional?: boolean;
@@ -788,27 +799,56 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                     )}
                                   </div>
 
-                                  {/* Achados da Avaliação Presencial */}
-                                  <div className="space-y-1">
-                                    <p className="text-[10px] font-bold text-amber-600 uppercase flex items-center gap-1">
-                                      <Stethoscope className="w-3 h-3" /> Achados da Avaliação Presencial:
-                                    </p>
-                                    {achadosClinicos.length === 0 ? (
-                                      <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
-                                    ) : (
-                                      <div className="space-y-1 pl-4">
-                                        {achadosClinicos.map((e, idx) => (
-                                          <div key={`clin-${idx}`} className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
-                                            <div className="text-[11px] leading-tight">
-                                              <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
-                                              {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
-                                            </div>
+                                  {/* Achados agrupados por tipo_diagnostico */}
+                                  {(() => {
+                                    const renderGrupo = (
+                                      items: typeof achadosClinicos,
+                                      IconComp: React.ElementType,
+                                      colorClass: string,
+                                      titulo: string,
+                                      key: string,
+                                    ) => {
+                                      if (items.length === 0) return null;
+                                      return (
+                                        <div key={key} className="space-y-1">
+                                          <p className={`text-[10px] font-bold uppercase flex items-center gap-1 ${colorClass}`}>
+                                            <IconComp className="w-3 h-3" /> {titulo}:
+                                          </p>
+                                          <div className="space-y-1 pl-4">
+                                            {items.map((e, idx) => (
+                                              <div key={`${key}-${idx}`} className="flex items-start gap-2">
+                                                <div className="w-1 h-1 rounded-full mt-1.5 shrink-0" style={{ backgroundColor: corEvento(e) }} />
+                                                <div className="text-[11px] leading-tight">
+                                                  <span className="font-bold">{[...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === e.regiao_id)?.label}:</span> {e.tipo_achado}
+                                                  {e.notas_clinicas && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{e.notas_clinicas}"</p>}
+                                                </div>
+                                              </div>
+                                            ))}
                                           </div>
-                                        ))}
-                                      </div>
-                                    )}
-                                  </div>
+                                        </div>
+                                      );
+                                    };
+
+                                    const allEmpty = achadosClinicos.length === 0;
+                                    if (allEmpty && sinaisHistorico.length === 0 && todosMyID.length === 0) {
+                                      return (
+                                        <p className="text-[11px] text-muted-foreground italic pl-4">Nenhum achado clínico registrado nesta avaliação.</p>
+                                      );
+                                    }
+
+                                    return (
+                                      <>
+                                        {renderGrupo(relatosPaciente, User, 'text-sky-600', 'RELATO DO PACIENTE (não confirmado)', 'relato')}
+                                        {renderGrupo(diagsMedicos, Shield, 'text-red-600', 'DIAGNÓSTICO MÉDICO (nosológico)', 'med')}
+                                        {renderGrupo(diagsFisio, Activity, 'text-green-600', 'DIAGNÓSTICO CINÉTICO-FUNCIONAL (Fisio)', 'fisio')}
+                                        {renderGrupo(diagsPsico, Brain, 'text-violet-600', 'DIAGNÓSTICO PSICOLÓGICO', 'psico')}
+                                        {renderGrupo(diagsNutri, Droplets, 'text-emerald-600', 'DIAGNÓSTICO NUTRICIONAL', 'nutri')}
+                                        {renderGrupo(diagsFono, Waves, 'text-indigo-600', 'DIAGNÓSTICO FONOAUDIOLÓGICO', 'fono')}
+                                        {renderGrupo(diagsOutro, Stethoscope, 'text-amber-600', 'DIAGNÓSTICO (especialista)', 'outro')}
+                                        {renderGrupo(achadosGenericos, Stethoscope, 'text-amber-600', 'ACHADOS DA AVALIAÇÃO PRESENCIAL', 'achado')}
+                                      </>
+                                    );
+                                  })()}
 
                                   {/* Histórico de Vida do Sistema */}
                                   {historiaDoSistema.length > 0 && (
@@ -1259,8 +1299,14 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
                   <div className="flex-1 min-w-0">
-                    <p className="text-xs font-medium truncate">
-                      {ev.tipo_achado} <span className="text-muted-foreground">· {reg?.label || ev.regiao_id}</span>
+                    <p className="text-xs font-medium truncate flex items-center gap-1 flex-wrap">
+                      {ev.tipo_achado}
+                      {(ev as any).tipo_diagnostico && (ev as any).tipo_diagnostico !== 'achado_clinico' && (
+                        <span className="text-[9px] bg-muted px-1 py-0.5 rounded text-muted-foreground font-normal shrink-0">
+                          {TIPO_DIAG_BADGE[(ev as any).tipo_diagnostico] || (ev as any).tipo_diagnostico}
+                        </span>
+                      )}
+                      <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
                     </p>
                     {!modoSimplificado && (
                       <p className="text-[10px] text-muted-foreground">
