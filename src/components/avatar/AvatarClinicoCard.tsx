@@ -14,7 +14,7 @@ import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesV
 import { cn } from '@/lib/utils';
 import {
   useEventosAnatomicos, useSaveEventoAnatomico, useDeleteEventoAnatomico,
-  corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado,
+  corEvento, type EventoAnatomico, type SistemaCorporal, type StatusEvento, type OrigemAchado, type TipoDiagnostico,
 } from '@/hooks/useEventosAnatomicos';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
@@ -322,38 +322,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     enabled: !!pacienteId,
   });
 
-  // Notas do prontuário clínico (avaliações presenciais)
-  const { data: notasSinais } = useQuery({
-    queryKey: ['notas-prontuario-avatar', pacienteId],
-    queryFn: async () => {
-      const { data, error } = await (supabase as any)
-        .from('notas_prontuario')
-        .select('titulo, descricao, dados_extras')
-        .eq('paciente_id', pacienteId)
-        .order('created_at', { ascending: false })
-        .limit(30);
-      if (error) throw error;
-      if (!data?.length) return [];
-      const textoNotas = (data as any[]).map((n: any) =>
-        [n.titulo, n.descricao, extrairTextoDeObjeto(n.dados_extras)].filter(Boolean).join(' ')
-      ).join(' ');
-      const sintomasDetectados = encontrarSintomasEmTexto(textoNotas);
-      const regioes: { regiao_id: string; sinal: string; sistema: string; fonte: string }[] = [];
-      sintomasDetectados.forEach(s => {
-        if (!regioes.some(r => r.regiao_id === s.regiao_id && r.sistema === s.sistema)) {
-          regioes.push({
-            regiao_id: s.regiao_id,
-            sinal: `Prontuário: ${s.termo}`,
-            sistema: s.sistema,
-            fonte: 'notas_clinicas',
-          });
-        }
-      });
-      return regioes;
-    },
-    enabled: !!pacienteId,
-  });
-
   // Histórico de vida: traumas, cirurgias, doenças, diagnósticos históricos
   const { data: historiaVida = [] } = useQuery({
     queryKey: ['historia-vida-avatar', pacienteId],
@@ -383,21 +351,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   });
 
   const painRegions = lastMyIDData?.painRegions || [];
-  // Mescla sinalRegions de todas as fontes, sem duplicar por (regiao_id + sistema)
+  // Mescla sinalRegions de todas as fontes, sem duplicar por termo + sistema
   const sinalRegions = useMemo(() => {
     const fontes = [
       ...(lastMyIDData?.sinalRegions || []),
       ...(pacienteHistorico || []),
-      ...(notasSinais || []),
     ];
     const seen = new Set<string>();
     return fontes.filter(s => {
-      const key = `${s.regiao_id}|${s.sistema}|${s.fonte}`;
+      // Deduplica por termo + sistema (evita duplicar frente/costas/esquerda/direita)
+      const key = `${s.sistema}|${s.sinal.toLowerCase().slice(0, 40)}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
-  }, [lastMyIDData?.sinalRegions, pacienteHistorico, notasSinais]);
+  }, [lastMyIDData?.sinalRegions, pacienteHistorico]);
   const myidScores = lastMyIDData?.scores || {};
 
   const eventosFiltrados = useMemo(
@@ -512,6 +480,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
       origem: 'exame_clinico',
       tipo_achado: '',
+      // @ts-expect-error -- tipo_diagnostico ainda não no tipo Supabase
+      tipo_diagnostico: 'achado_clinico' as TipoDiagnostico,
       severidade: 1,
       status: 'ativo',
       visivel_paciente: false,
@@ -739,9 +709,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const achadosClinicos = eventos.filter(e => e.sistema === sysToShow && e.status !== 'resolvido');
                             const sinaisMyID = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'myid');
                             const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
-                            const sinaisProntuario = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'notas_clinicas');
                             const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
                             const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
+
+                            // Grupos de achados por tipo_diagnostico
+                            const relatosPaciente = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'relato_paciente');
+                            const diagsMedicos = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_medico');
+                            const diagsFisio = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fisioterapia');
+                            const diagsPsico = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_psicologia');
+                            const diagsNutri = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_nutricao');
+                            const diagsFono = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_fonoaudiologia');
+                            const diagsOutro = achadosClinicos.filter(e => (e as any).tipo_diagnostico === 'diagnostico_outro');
+                            const achadosGenericos = achadosClinicos.filter(e => !(e as any).tipo_diagnostico || (e as any).tipo_diagnostico === 'achado_clinico');
 
                             const flagsSistema: string[] = [];
                             if (sysToShow === 'musculoesqueletico') {
@@ -784,23 +763,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                           <div key={`hist-${idx}`} className="flex items-start gap-2">
                                             <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-emerald-400" />
                                             <p className="text-[11px] leading-tight text-emerald-800">{s.sinal}</p>
-                                          </div>
-                                        ))}
-                                      </div>
-                                    </div>
-                                  )}
-
-                                  {/* Notas do prontuário clínico */}
-                                  {sinaisProntuario.length > 0 && (
-                                    <div className="space-y-1">
-                                      <p className="text-[10px] font-bold text-violet-600 uppercase flex items-center gap-1">
-                                        <ShieldCheck className="w-3 h-3" /> Notas do Prontuário:
-                                      </p>
-                                      <div className="space-y-1 pl-4">
-                                        {sinaisProntuario.map((s, idx) => (
-                                          <div key={`nota-${idx}`} className="flex items-start gap-2">
-                                            <div className="w-1 h-1 rounded-full mt-1.5 shrink-0 bg-violet-400" />
-                                            <p className="text-[11px] leading-tight text-violet-800">{s.sinal}</p>
                                           </div>
                                         ))}
                                       </div>
@@ -1557,6 +1519,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   value={editing.tipo_achado || ''}
                   onChange={e => setEditing({ ...editing, tipo_achado: e.target.value })}
                 />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Tipo de Achado</Label>
+                <Select
+                  value={(editing as any).tipo_diagnostico || 'achado_clinico'}
+                  onValueChange={(value) => setEditing(prev => ({ ...prev!, tipo_diagnostico: value as TipoDiagnostico }))}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="achado_clinico">Achado Clínico (Avaliação Presencial)</SelectItem>
+                    <SelectItem value="relato_paciente">Relato do Paciente (não confirmado)</SelectItem>
+                    <SelectItem value="diagnostico_medico">Diagnóstico Médico (nosológico)</SelectItem>
+                    <SelectItem value="diagnostico_fisioterapia">Diagnóstico Cinético-Funcional (Fisio)</SelectItem>
+                    <SelectItem value="diagnostico_psicologia">Diagnóstico Psicológico</SelectItem>
+                    <SelectItem value="diagnostico_nutricao">Diagnóstico Nutricional</SelectItem>
+                    <SelectItem value="diagnostico_fonoaudiologia">Diagnóstico Fonoaudiológico</SelectItem>
+                    <SelectItem value="diagnostico_outro">Diagnóstico (outro especialista)</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

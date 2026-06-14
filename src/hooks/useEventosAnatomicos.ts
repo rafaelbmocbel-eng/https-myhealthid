@@ -12,6 +12,16 @@ export type OrigemAchado =
   | 'subjetivo_myid' | 'exame_clinico' | 'exame_imagem'
   | 'voz_ia' | 'autocadastro_paciente' | 'outro';
 
+export type TipoDiagnostico =
+  | 'relato_paciente'
+  | 'achado_clinico'
+  | 'diagnostico_medico'
+  | 'diagnostico_fisioterapia'
+  | 'diagnostico_psicologia'
+  | 'diagnostico_nutricao'
+  | 'diagnostico_fonoaudiologia'
+  | 'diagnostico_outro';
+
 export type StatusEvento = 'ativo' | 'em_tratamento' | 'resolvido' | 'cronico';
 
 export interface EventoAnatomico {
@@ -22,6 +32,7 @@ export interface EventoAnatomico {
   sistema: SistemaCorporal;
   origem: OrigemAchado;
   tipo_achado: string;
+  tipo_diagnostico: TipoDiagnostico;
   estrutura: string | null;
   diagnostico_cid: string | null;
   severidade: number;
