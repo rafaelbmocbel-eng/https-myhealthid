@@ -468,6 +468,7 @@ export default function PatientIntegratedDashboard({
                   <MyIDFingerprint
                     rings={rings}
                     myidScore={myidScore}
+                    compact={isProfessional}
                     highlightedKey={isProfessional ? (drillDownKey || hoveredScoreKey) : hoveredScoreKey}
                     onRingHover={setHoveredScoreKey}
                     onRingClick={isProfessional ? (r) => setDrillDownKey(prev => prev === r.scoreKey ? null : r.scoreKey) : undefined}
@@ -559,8 +560,8 @@ export default function PatientIntegratedDashboard({
                   )}
 
 
-                  {/* Resumo humano de 2 linhas */}
-                  {insights && (
+                  {/* Resumo humano de 2 linhas — só para paciente; profissional tem os 3 cards abaixo */}
+                  {insights && !isProfessional && (
                     <p className="mt-5 text-center text-sm text-foreground/80 leading-relaxed max-w-md mx-auto">
                       Sua maior oportunidade agora é <span className="font-semibold text-emerald-700 dark:text-emerald-400">{insights.opportunity.label.toLowerCase()}</span>.
                       O ponto que mais merece atenção é <span className="font-semibold text-amber-700 dark:text-amber-400">{insights.limitation.label.toLowerCase()}</span>.
