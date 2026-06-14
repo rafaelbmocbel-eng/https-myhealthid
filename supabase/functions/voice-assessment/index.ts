@@ -147,6 +147,7 @@ const TOOL_SCHEMA = {
                 enum: ["Fisioterapia", "Neurociência da Dor", "Reabilitação Esportiva", "Osteopatia", "Quiropraxia", "Posturologia", "Integrada"],
                 description: "Qual abordagem sustenta principalmente esta hipótese."
               },
+              cid_sugerido: { type: "string", description: "Código CID-10 mais provável. Ex: M54.2, G54.2, M47.8. Deixe vazio se incerto." },
             },
             required: ["diagnostico", "probabilidade", "evidencia", "lente_clinica"],
           },
@@ -433,8 +434,7 @@ serve(async (req) => {
             messages: [
               {
                 role: "system",
-                content:
-                  "Você é um transcritor clínico fiel. Transcreva o áudio em PT-BR mantendo CADA fala, na íntegra, sem resumir, sem omitir muletas, sem reordenar. Use parágrafos curtos para mudanças de fala. NÃO adicione comentários, títulos ou interpretações — apenas a transcrição literal completa.",
+                content: `Você é um transcritor clínico fiel. Transcreva o áudio em PT-BR mantendo CADA fala, na íntegra, sem resumir, sem omitir muletas, sem reordenar. Use parágrafos curtos para mudanças de fala. NÃO adicione comentários, títulos ou interpretações — apenas a transcrição literal completa.\n\nContexto da sessão (apenas para referência — NÃO inclua na transcrição):\n${contextInfo}`,
               },
               {
                 role: "user",

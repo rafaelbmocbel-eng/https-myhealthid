@@ -9,7 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, MapPin, Volume2 } from 'lucide-react';
+import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
 import { useNotasProntuario } from '@/hooks/useNotasProntuario';
@@ -163,6 +165,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
   const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
+  const saveEventoAnatomico = useSaveEventoAnatomico();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -171,6 +174,11 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const savedAssessmentIdRef = useRef<string | null>(null);
   const savedNoteIdRef = useRef<string | null>(null);
   const uploadedAudioPathRef = useRef<string | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const animFrameRef = useRef<number | null>(null);
+  const audioCtxRef = useRef<AudioContext | null>(null);
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [savingToAvatar, setSavingToAvatar] = useState(false);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
@@ -292,7 +300,15 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      // Audio constraints: echo cancellation + noise suppression + mono (menor arquivo, melhor para fala)
+      const stream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true,
+          channelCount: 1,
+        },
+      });
 
       // Pick best supported format
       let mimeType = 'audio/webm;codecs=opus';
@@ -326,6 +342,27 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         reader.readAsDataURL(blob);
       };
 
+      // Audio level meter via Web Audio API
+      try {
+        const audioCtx = new AudioContext();
+        audioCtxRef.current = audioCtx;
+        const analyser = audioCtx.createAnalyser();
+        analyser.fftSize = 256;
+        analyserRef.current = analyser;
+        const source = audioCtx.createMediaStreamSource(stream);
+        source.connect(analyser);
+        const dataArray = new Uint8Array(analyser.frequencyBinCount);
+        const updateLevel = () => {
+          analyser.getByteFrequencyData(dataArray);
+          const avg = dataArray.reduce((s, v) => s + v, 0) / dataArray.length;
+          setAudioLevel(Math.round((avg / 255) * 100));
+          animFrameRef.current = requestAnimationFrame(updateLevel);
+        };
+        animFrameRef.current = requestAnimationFrame(updateLevel);
+      } catch (e) {
+        console.warn('[VoiceAssessment] Audio level meter unavailable:', e);
+      }
+
       mediaRecorderRef.current = recorder;
       recorder.start(1000); // collect chunks every second
       setIsRecording(true);
@@ -347,15 +384,29 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       mediaRecorderRef.current.stop();
     }
     mediaRecorderRef.current = null;
+    // Clean up audio level meter
+    if (animFrameRef.current) {
+      cancelAnimationFrame(animFrameRef.current);
+      animFrameRef.current = null;
+    }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => { /* noop */ });
+      audioCtxRef.current = null;
+    }
+    analyserRef.current = null;
+    setAudioLevel(0);
     setIsRecording(false);
     releaseWakeLock();
   }, [releaseWakeLock]);
 
-  // Re-acquire wake lock when page becomes visible again during recording
+  // Mantém gravação ativa quando aba vai ao fundo — só avisa; para no pagehide (página real saindo)
   useEffect(() => {
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden' && isRecording) {
-        stopRecording();
+        toast({
+          title: 'Gravação em andamento',
+          description: 'A gravação continua ativa em segundo plano. Retorne ao app para monitorar.',
+        });
         return;
       }
 
@@ -375,7 +426,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [isRecording, requestWakeLock, stopRecording]);
+  }, [isRecording, requestWakeLock, stopRecording, toast]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -867,6 +918,85 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     }
   };
 
+  // Salva achados clínicos da avaliação por voz no avatar anatômico
+  const saveToAvatar = async () => {
+    if (!assessment || !pacienteId) return;
+    setSavingToAvatar(true);
+    try {
+      const LENTE_TO_TIPO: Record<string, string> = {
+        'Fisioterapia': 'diagnostico_fisioterapia',
+        'Neurociência da Dor': 'diagnostico_fisioterapia',
+        'Reabilitação Esportiva': 'diagnostico_fisioterapia',
+        'Osteopatia': 'diagnostico_fisioterapia',
+        'Quiropraxia': 'diagnostico_fisioterapia',
+        'Posturologia': 'diagnostico_fisioterapia',
+        'Integrada': 'achado_clinico',
+      };
+
+      // Texto composto para extração de regiões
+      const textoBase = [
+        assessment.queixa_principal || '',
+        assessment.dor?.localizacao || '',
+        assessment.dor?.tipo || '',
+        ...(assessment.hipoteses_diagnosticas || []).map((h: any) => h.diagnostico || ''),
+        assessment.soap?.subjetivo || '',
+      ].join(' ');
+
+      const regioes = encontrarSintomasEmTexto(textoBase);
+      if (regioes.length === 0) {
+        toast({ title: 'Nenhuma região identificada', description: 'Não consegui mapear regiões anatômicas a partir desta avaliação.', variant: 'destructive' });
+        return;
+      }
+
+      const hipotesePrincipal = assessment.hipoteses_diagnosticas?.[0];
+      const tipoDiagnostico = LENTE_TO_TIPO[hipotesePrincipal?.lente_clinica || ''] || 'achado_clinico';
+      const severidade = Math.min(5, Math.max(1, Math.round((assessment.dor?.intensidade_eva || 5) / 2)));
+      const hoje = new Date().toISOString().split('T')[0];
+      const notasClinias = assessment.resumo_clinico || assessment.queixa_principal || '';
+
+      // Deduplicar por sistema (um evento por sistema, não por região)
+      const sistemasVisto = new Set<string>();
+      const eventosParaCriar = regioes.filter(r => {
+        const chave = `${r.sistema}|${r.regiao_id}`;
+        if (sistemasVisto.has(chave)) return false;
+        sistemasVisto.add(chave);
+        return true;
+      });
+
+      await Promise.all(
+        eventosParaCriar.map(r =>
+          saveEventoAnatomico.mutateAsync({
+            paciente_id: pacienteId,
+            regiao_id: r.regiao_id,
+            sistema: r.sistema as any,
+            tipo_achado: assessment.queixa_principal || hipotesePrincipal?.diagnostico || 'Achado por avaliação de voz',
+            tipo_diagnostico: tipoDiagnostico as any,
+            severidade,
+            status: 'ativo',
+            origem: 'voz_ia' as any,
+            data_inicio: hoje,
+            notas_clinicas: notasClinias,
+            visivel_paciente: false,
+            metadata: {
+              hipoteses: assessment.hipoteses_diagnosticas?.slice(0, 3) || [],
+              avaliacao_origem: 'voz_ia',
+            },
+          })
+        )
+      );
+
+      toast({
+        title: `✅ ${eventosParaCriar.length} achado(s) salvos no avatar`,
+        description: 'Acesse a aba Corpo para visualizar e revisar os sistemas marcados.',
+      });
+      queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+    } catch (err: any) {
+      toast({ title: 'Erro ao salvar no avatar', description: err?.message || 'Tente novamente.', variant: 'destructive' });
+    } finally {
+      setSavingToAvatar(false);
+    }
+  };
+
   // Inline edit helpers for AI fields
   const startEditField = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -945,6 +1075,18 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <FileText className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Texto' : 'Ver/Editar Texto'}
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
+            {pacienteId && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={saveToAvatar}
+                disabled={savingToAvatar}
+                className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
+              >
+                {savingToAvatar ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MapPin className="h-4 w-4 mr-1" />}
+                Salvar no Avatar
+              </Button>
+            )}
             {!isSaved ? (
               <Button size="sm" onClick={() => saveAssessment()} disabled={isSaving} className="bg-primary text-primary-foreground">
                 {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
@@ -1620,6 +1762,26 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
                 </div>
               </>
             )}
+          </div>
+
+          {/* Medidor de nível de áudio — visível apenas durante gravação */}
+          {isRecording && (
+            <div className="flex items-center gap-2 mb-3">
+              <Volume2 className="h-3.5 w-3.5 text-destructive flex-shrink-0" />
+              <div className="flex-1 h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full rounded-full transition-all duration-75"
+                  style={{
+                    width: `${audioLevel}%`,
+                    backgroundColor: audioLevel > 70 ? '#dc2626' : audioLevel > 35 ? '#f97316' : '#22c55e',
+                  }}
+                />
+              </div>
+              <span className="text-xs text-muted-foreground font-mono w-8 text-right">{audioLevel}%</span>
+            </div>
+          )}
+
+          <div className="flex gap-2 items-center mb-4">
             {!isRecording && (
               <label className="inline-flex items-center gap-2 px-3 py-2 rounded-md border border-input bg-background hover:bg-muted text-sm cursor-pointer transition-colors">
                 <FileText className="h-4 w-4" />
