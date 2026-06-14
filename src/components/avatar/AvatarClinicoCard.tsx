@@ -24,6 +24,60 @@ import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as
 const FRONT_OUTLINE =
   'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
 
+const ORGAN_RESTING_COLORS: Record<string, string> = {
+  cerebro:               'rgba(130,145,210,0.68)',
+  tronco_encefalico:     'rgba(130,145,210,0.52)',
+  medula_espinhal_v:     'rgba(130,145,210,0.30)',
+  plexo_braquial_d:      'rgba(14,165,233,0.38)',
+  plexo_braquial_e:      'rgba(14,165,233,0.38)',
+  nervo_mediano_d:       'rgba(14,165,233,0.32)',
+  nervo_mediano_e:       'rgba(14,165,233,0.32)',
+  plexo_lombosacro_d:    'rgba(14,165,233,0.38)',
+  plexo_lombosacro_e:    'rgba(14,165,233,0.38)',
+  nervo_femoral_d:       'rgba(14,165,233,0.32)',
+  nervo_femoral_e:       'rgba(14,165,233,0.32)',
+  coracao:               'rgba(210,45,45,0.70)',
+  aorta_abdominal:       'rgba(210,45,45,0.28)',
+  traqueia:              'rgba(180,130,180,0.45)',
+  pulmao_d:              'rgba(195,128,150,0.65)',
+  pulmao_e:              'rgba(195,128,150,0.65)',
+  pulmao_d_p:            'rgba(195,128,150,0.58)',
+  pulmao_e_p:            'rgba(195,128,150,0.58)',
+  figado:                'rgba(150,75,35,0.62)',
+  estomago:              'rgba(210,138,118,0.58)',
+  vesicula_biliar:       'rgba(195,185,55,0.60)',
+  pancreas_anexo:        'rgba(215,168,95,0.50)',
+  pancreas_endocrino:    'rgba(215,168,95,0.50)',
+  intestino_delgado:     'rgba(208,158,118,0.50)',
+  intestino_grosso:      'rgba(185,135,95,0.52)',
+  reto_ano:              'rgba(185,135,95,0.45)',
+  esofago:               'rgba(180,130,180,0.35)',
+  lingua:                'rgba(210,120,120,0.55)',
+  glandulas_salivais:    'rgba(210,120,120,0.48)',
+  baco:                  'rgba(155,95,115,0.56)',
+  timo:                  'rgba(115,195,95,0.50)',
+  timo_linfatico:        'rgba(115,195,95,0.50)',
+  linfonodos_cervicais:  'rgba(115,195,95,0.55)',
+  linfonodos_axilares_d: 'rgba(115,195,95,0.50)',
+  linfonodos_axilares_e: 'rgba(115,195,95,0.50)',
+  vasos_quiferos:        'rgba(115,195,95,0.48)',
+  linfonodos_inguinais:  'rgba(115,195,95,0.50)',
+  linfaticos_membros_inferiores: 'rgba(115,195,95,0.30)',
+  rim_d:                 'rgba(175,88,48,0.60)',
+  rim_e:                 'rgba(175,88,48,0.60)',
+  bexiga:                'rgba(95,138,218,0.58)',
+  ureteres:              'rgba(95,138,218,0.35)',
+  uretra:                'rgba(95,138,218,0.30)',
+  tireoide:              'rgba(208,178,58,0.60)',
+  hipofise:              'rgba(208,178,58,0.55)',
+  adrenais:              'rgba(208,178,58,0.50)',
+  utero_ovarios:         'rgba(238,98,158,0.52)',
+  testiculos:            'rgba(198,98,118,0.50)',
+  prostata:              'rgba(198,98,118,0.45)',
+  gluteos_p:             'rgba(168,85,247,0.40)',
+  nervo_ciatico_p:       'rgba(14,165,233,0.38)',
+};
+
 const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'musculoesqueletico', 'nervoso', 'digestorio', 'circulatorio',
   'respiratorio', 'endocrino', 'urinario',
@@ -672,144 +726,216 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
-              <radialGradient id="avc-skin" cx="48%" cy="26%" r="68%">
-                <stop offset="0%"   stopColor="hsl(var(--muted-foreground))" stopOpacity="0.05" />
-                <stop offset="55%"  stopColor="hsl(var(--muted-foreground))" stopOpacity="0.09" />
-                <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.16" />
+              {/* Warm anatomical skin gradient */}
+              <radialGradient id="avc-skin" cx="44%" cy="22%" r="72%">
+                <stop offset="0%"   stopColor="#f5d5b8" stopOpacity="0.96" />
+                <stop offset="55%"  stopColor="#eccaa8" stopOpacity="0.92" />
+                <stop offset="100%" stopColor="#d4a880" stopOpacity="0.88" />
+              </radialGradient>
+              {/* Organ volume highlight */}
+              <radialGradient id="organ-vol" cx="28%" cy="22%" r="72%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.55" />
+                <stop offset="100%" stopColor="black" stopOpacity="0.12" />
               </radialGradient>
               <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
-                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
                 <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
               <filter id="glow-urgent" x="-40%" y="-40%" width="180%" height="180%">
-                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                <feGaussianBlur stdDeviation="4.5" result="coloredBlur"/>
                 <feMerge>
-                    <feMergeNode in="coloredBlur"/>
-                    <feMergeNode in="SourceGraphic"/>
+                  <feMergeNode in="coloredBlur"/>
+                  <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
-              <radialGradient id="organ-gradient" cx="35%" cy="30%" r="65%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.35" />
-                <stop offset="100%" stopColor="black" stopOpacity="0.08" />
-              </radialGradient>
             </defs>
             <style>
               {`
                 @keyframes pulse-organ {
-                  0% { transform: scale(1); opacity: 0.85; }
-                  50% { transform: scale(1.025); opacity: 1; }
-                  100% { transform: scale(1); opacity: 0.85; }
+                  0%,100% { opacity: 0.80; }
+                  50% { opacity: 1.0; }
                 }
-                .pulse-organ {
-                  animation: pulse-organ 2.2s infinite ease-in-out;
-                  transform-origin: center;
-                }
+                .pulse-organ { animation: pulse-organ 2.2s infinite ease-in-out; }
               `}
             </style>
-            {/* Ground shadow */}
-            <ellipse cx={120} cy={516} rx={44} ry={3.5} fill="hsl(var(--foreground))" opacity={0.06} />
+
+            {/* Drop shadow */}
+            <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.09} />
+
             <g clipPath="url(#avc-clip)">
-              {/* Skin gradient fill */}
+              {/* Warm skin fill */}
               <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
-              {/* Anatomical detail lines */}
+
+              {/* Anatomical structure lines */}
               {view === 'front' && (
-                <g fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} opacity={0.20}>
-                  <path d="M120 108 L120 288" />
-                  <path d="M96 136 Q 110 148 120 142 Q 130 148 144 136" strokeWidth={0.7} />
-                  <path d="M120 188 L120 238" />
-                  <path d="M103 200 L137 200" />
-                  <path d="M103 218 L137 218" />
-                  <circle cx={120} cy={210} r={3} strokeWidth={0.6} />
-                  <path d="M94 244 Q 120 238 146 244" strokeDasharray="3,3" />
-                  <path d="M90 280 Q 120 274 150 280" strokeDasharray="3,3" />
-                  <ellipse cx={144} cy={380} rx={11} ry={7} />
-                  <ellipse cx={96}  cy={380} rx={11} ry={7} />
+                <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
+                  {/* Clavicles */}
+                  <path d="M120 108 Q108 112 96 120" strokeWidth={0.85} />
+                  <path d="M120 108 Q132 112 144 120" strokeWidth={0.85} />
+                  {/* Sternum */}
+                  <path d="M120 110 L120 196" strokeWidth={0.95} />
+                  {/* Ribs – right */}
+                  <path d="M120 126 Q105 124 94 133" />
+                  <path d="M120 140 Q102 138 90 149" />
+                  <path d="M120 154 Q101 152 88 163" />
+                  <path d="M120 168 Q101 166 88 178" />
+                  {/* Ribs – left */}
+                  <path d="M120 126 Q135 124 146 133" />
+                  <path d="M120 140 Q138 138 150 149" />
+                  <path d="M120 154 Q139 152 152 163" />
+                  <path d="M120 168 Q139 166 152 178" />
+                  {/* Costal arch */}
+                  <path d="M88 178 Q104 194 120 196 Q136 194 152 178" strokeWidth={1.0} />
+                  {/* Abdominal lines */}
+                  <path d="M110 200 L110 244 M130 200 L130 244" strokeWidth={0.45} />
+                  <path d="M108 216 L132 216 M108 228 L132 228 M108 240 L132 240" strokeWidth={0.40} />
+                  {/* Navel */}
+                  <circle cx={120} cy={250} r={3.5} strokeWidth={0.7} />
+                  {/* Iliac crests */}
+                  <path d="M88 282 Q102 276 120 278 Q138 276 152 282" strokeDasharray="3,2" strokeWidth={0.7} />
+                  {/* Kneecaps */}
+                  <ellipse cx={144} cy={382} rx={11} ry={7} />
+                  <ellipse cx={96}  cy={382} rx={11} ry={7} />
                 </g>
               )}
               {view === 'back' && (
-                <g fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} opacity={0.20}>
-                  <path d="M120 108 L120 288" strokeDasharray="3,3" strokeWidth={0.8} />
-                  {[130,148,166,184,202,220,240,258,276].map(y => (
-                    <line key={y} x1={116} y1={y} x2={124} y2={y} strokeWidth={0.9} />
+                <g fill="none" stroke="hsl(var(--foreground))" strokeWidth={0.55} opacity={0.30}>
+                  {/* Spine */}
+                  <path d="M120 110 L120 285" strokeDasharray="2.5,2" strokeWidth={1.0} />
+                  {/* Vertebrae */}
+                  {[126,140,154,168,182,196,210,224,240,256,272].map(y => (
+                    <line key={y} x1={115} y1={y} x2={125} y2={y} strokeWidth={0.9} />
                   ))}
-                  <path d="M96 148 Q 108 166 112 186" />
-                  <path d="M144 148 Q 132 166 128 186" />
-                  <path d="M112 244 Q 120 256 128 244" />
-                  <circle cx={112} cy={278} r={2.5} />
-                  <circle cx={128} cy={278} r={2.5} />
+                  {/* Scapulae */}
+                  <path d="M96 148 Q104 162 110 184" strokeWidth={0.85} />
+                  <path d="M144 148 Q136 162 130 184" strokeWidth={0.85} />
+                  <path d="M96 148 Q118 154 110 184" />
+                  <path d="M144 148 Q122 154 130 184" />
+                  {/* PSIS dimples */}
+                  <circle cx={111} cy={279} r={2.5} />
+                  <circle cx={129} cy={279} r={2.5} />
+                  {/* Gluteal crease */}
+                  <path d="M90 308 Q120 320 150 308" strokeWidth={0.8} />
                 </g>
               )}
-              
-              {/* Camada Base (Musculoesquelético/Geral) */}
+
+              {/* Musculoskeletal regions — only render when data exists or hovered */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
+                if (!fill && !isHoveredSystem) return null;
+                const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
                 return (
                   <path
                     key={r.id}
                     d={r.d}
-                    fill={fill || (isHoveredSystem ? 'rgba(168, 85, 247, 0.2)' : 'transparent')}
-                    fillOpacity={fill ? 0.7 : isHoveredSystem ? 0.5 : 0}
-                    stroke={isHoveredSystem ? 'purple' : "hsl(var(--border))"}
-                    strokeWidth={isHoveredSystem ? 1.2 : 0.6}
+                    fill={fill || 'rgba(168,85,247,0.28)'}
+                    fillOpacity={fill ? 0.68 : 0.32}
+                    stroke={fill ? 'rgba(168,85,247,0.65)' : 'rgba(168,85,247,0.40)'}
+                    strokeWidth={fill ? 1.1 : 0.6}
+                    filter={severityScore >= 8 ? 'url(#glow)' : undefined}
                     className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
                 );
               })}
 
-              {/* Camada Visceral e Outros Sistemas Individualizados */}
+              {/* Organ / visceral regions with anatomical resting colors */}
               {regioesViscerais.map(r => {
                 const fill = corPorRegiao[r.id];
                 const belongsToActiveSystem = r.sistemas.some(s => sistemasAtivos.includes(s as any));
                 const isHoveredSystem = r.sistemas.some(s => hoveredSistema === s);
-                
                 if (!belongsToActiveSystem && !isHoveredSystem) return null;
 
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
-                const isUrgent = severityScore >= 13; // status ativo (10) + severidade alta
+                const isUrgent = severityScore >= 13;
+
+                const restingColor = ORGAN_RESTING_COLORS[r.id] ||
+                  (r.sistemas[0] === 'nervoso'       ? 'rgba(130,145,210,0.60)' :
+                   r.sistemas[0] === 'circulatorio'  ? 'rgba(210,45,45,0.65)'   :
+                   r.sistemas[0] === 'respiratorio'  ? 'rgba(195,128,150,0.60)' :
+                   r.sistemas[0] === 'digestorio'    ? 'rgba(200,120,78,0.55)'  :
+                   r.sistemas[0] === 'urinario'      ? 'rgba(95,138,218,0.58)'  :
+                   r.sistemas[0] === 'endocrino'     ? 'rgba(208,178,58,0.58)'  :
+                   r.sistemas[0] === 'linfatico'     ? 'rgba(115,195,95,0.52)'  :
+                   r.sistemas[0] === 'reprodutor'    ? 'rgba(238,98,158,0.50)'  :
+                                                       'rgba(155,163,175,0.45)');
+
+                const effectiveFill    = fill || (isHoveredSystem ? 'rgba(14,165,233,0.72)' : restingColor);
+                const effectiveOpacity = fill ? 0.93 : isHoveredSystem ? 0.90 : 0.88;
+                const effectiveStroke  = fill ? 'rgba(255,255,255,0.75)' : isHoveredSystem ? 'rgba(14,165,233,0.95)' : 'rgba(255,255,255,0.40)';
+                const effectiveSW      = fill ? 1.3 : isHoveredSystem ? 1.8 : 0.6;
 
                 return (
-                  <g key={r.id} className={cn(isUrgent && "pulse-organ")}>
+                  <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
                     <path
                       d={r.d}
-                      fill={fill || (isHoveredSystem ? 'rgba(14, 165, 233, 0.3)' : 'hsl(var(--background))')}
-                      fillOpacity={fill ? 0.88 : 0.35}
-                      stroke={isHoveredSystem ? 'var(--primary)' : fill ? 'white' : 'hsl(var(--muted-foreground))'}
-                      strokeWidth={isHoveredSystem ? 1.8 : fill ? 1.0 : 0.6}
-                      filter={isUrgent ? "url(#glow-urgent)" : fill ? "url(#glow)" : undefined}
+                      fill={effectiveFill}
+                      fillOpacity={effectiveOpacity}
+                      stroke={effectiveStroke}
+                      strokeWidth={effectiveSW}
+                      filter={isUrgent ? 'url(#glow-urgent)' : fill ? 'url(#glow)' : undefined}
                       className="cursor-pointer hover:brightness-110 transition-all"
                       onClick={() => abrirSheet(r.id)}
                     >
                       <title>{r.label}</title>
                     </path>
-                    {/* Efeito de Volume/Gradiente nos Órgãos */}
-                    <path
-                      d={r.d}
-                      fill="url(#organ-gradient)"
-                      pointerEvents="none"
-                      opacity={0.5}
-                    />
+                    {/* Volume highlight */}
+                    <path d={r.d} fill="url(#organ-vol)" pointerEvents="none" opacity={0.55} />
                   </g>
                 );
               })}
             </g>
-            <path d={FRONT_OUTLINE} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.5} strokeLinejoin="round" opacity={0.55} pointerEvents="none" />
+
+            {/* Organ micro-labels for active systems */}
+            {view === 'front' && (
+              <g fontSize="6" fontFamily="system-ui,sans-serif" textAnchor="middle" pointerEvents="none" fontWeight="600">
+                {sistemasAtivos.includes('nervoso') && (
+                  <text x={120} y={50} fill="rgba(100,115,200,0.88)">Encéfalo</text>
+                )}
+                {sistemasAtivos.includes('circulatorio') && (
+                  <text x={119} y={166} fill="rgba(210,40,40,0.90)" fontSize="8">♥</text>
+                )}
+                {sistemasAtivos.includes('respiratorio') && (
+                  <>
+                    <text x={98}  y={186} fill="rgba(6,182,212,0.85)">P.Dir</text>
+                    <text x={142} y={186} fill="rgba(6,182,212,0.85)">P.Esq</text>
+                  </>
+                )}
+                {sistemasAtivos.includes('digestorio') && (
+                  <text x={100} y={206} fill="rgba(150,70,30,0.85)">Fígado</text>
+                )}
+                {sistemasAtivos.includes('urinario') && (
+                  <text x={120} y={288} fill="rgba(80,110,210,0.85)">Bexiga</text>
+                )}
+              </g>
+            )}
+
+            {/* Body outline on top */}
+            <path
+              d={FRONT_OUTLINE}
+              fill="none"
+              stroke="hsl(var(--foreground))"
+              strokeWidth={1.9}
+              strokeLinejoin="round"
+              opacity={0.62}
+              pointerEvents="none"
+            />
           </svg>
         </div>
 
-        {/* Legenda */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center text-muted-foreground">
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Ativo grave</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Ativo leve</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-purple-500/50" /> Queixa de Dor</span>
-          <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
+        {/* Legend */}
+        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] justify-center mt-1">
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Ativo grave</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Ativo leve</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-purple-500/60" /> Queixa Dor</span>
+          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-sky-500/60" /> Sinais MyID</span>
         </div>
       </div>
 

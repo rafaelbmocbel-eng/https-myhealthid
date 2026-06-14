@@ -390,7 +390,7 @@ export default function Index() {
   return (
     <AppLayout>
       <PageTransition>
-      <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6 bg-black min-h-screen">
+      <div className="container py-4 sm:py-8 max-w-6xl px-3 sm:px-6">
 
         {/* ============ PREMIUM HERO HEADER ============ */}
         <FadeIn>
