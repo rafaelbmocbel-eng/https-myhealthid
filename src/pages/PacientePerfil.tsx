@@ -720,61 +720,18 @@ export default function PacientePerfil() {
               </div>
             </div>
 
-            {/* Links toolbar — labeled and prominent */}
+            {/* Acesso & ações rápidas — uma única linha */}
             <div className="mt-4 pt-3 border-t border-border/40">
-              <div className="flex items-center justify-between mb-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                  Links de acesso do paciente
-                </span>
-              </div>
-              <LinkActionsBar
-                items={(() => {
-                  const items: LinkActionItem[] = [];
-                  items.push({
-                    key: 'myid',
-                    label: 'MyID',
-                    active: !!linkMyIDAtivo,
-                    loading: gerandoMyIDLink,
-                    color: 'emerald',
-                    isWhatsApp: !!linkMyIDAtivo && !!paciente.telefone,
-                    onAction: () =>
-                      linkMyIDAtivo &&
-                      (paciente.telefone
-                        ? shareAvaliacaoLink(
-                            `${paciente.nome} ${paciente.sobrenome}`,
-                            paciente.telefone,
-                            `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
-                          )
-                        : (() => {
-                            navigator.clipboard.writeText(
-                              `${getBaseUrl()}/myid/responder/${linkMyIDAtivo.token_acesso}`,
-                            );
-                            toast({ title: 'Link MyID copiado! 📋' });
-                          })()),
-                    onGenerate: gerarLinkMyID,
-                  });
-                  items.push({
-                    key: 'agenda',
-                    label: 'Agenda',
-                    active: !!linkAgendaAtivo,
-                    loading: gerandoAgenda,
-                    color: 'blue',
-                    isWhatsApp: !!linkAgendaAtivo && !!paciente.telefone,
-                    onAction: () =>
-                      linkAgendaAtivo &&
-                      (paciente.telefone
-                        ? shareAgendaLink(
-                            `${paciente.nome} ${paciente.sobrenome}`,
-                            paciente.telefone,
-                            getAgendaUrl(linkAgendaAtivo.token),
-                          )
-                        : copiarAgendaLink(linkAgendaAtivo.token)),
-                    onGenerate: gerarLinkAgenda,
-                  });
-                  if (paciente.portal_token) {
-                    items.push({
+              <span className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground block mb-2">
+                Acesso &amp; ações
+              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                {/* Portal — único link de acesso direto ao paciente */}
+                {paciente.portal_token && (
+                  <LinkActionsBar
+                    items={[{
                       key: 'portal',
-                      label: 'Portal',
+                      label: 'Portal do paciente',
                       active: true,
                       color: 'violet',
                       isWhatsApp: !!paciente.telefone,
@@ -792,17 +749,16 @@ export default function PacientePerfil() {
                               navigator.clipboard.writeText(getPortalUrl(paciente.portal_token!));
                               toast({ title: 'Link do Portal copiado! 🔗' });
                             })(),
-                    });
-                  }
-                  return items;
-                })()}
-              />
-              <IdentidadePortavelActions
-                pacienteId={paciente.id}
-                pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
-                terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
-              />
-              <div className="mt-2 flex flex-wrap gap-1.5">
+                    }]}
+                  />
+                )}
+                {/* Identidade portátil: PDF + link MyID */}
+                <IdentidadePortavelActions
+                  pacienteId={paciente.id}
+                  pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
+                  terapeutaNome={user?.email?.split('@')[0] || 'Profissional'}
+                />
+                {/* Resumo em 30s */}
                 <ResumoRapido30s
                   pacienteId={paciente.id}
                   pacienteNome={`${paciente.nome} ${paciente.sobrenome || ''}`.trim()}
