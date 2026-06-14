@@ -269,7 +269,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         if (!sinalRegions.some(sr => sr.regiao_id === s.regiao_id && sr.sistema === s.sistema)) {
           sinalRegions.push({
             regiao_id: s.regiao_id,
-            sinal: `Detectado: ${s.termo}`,
+            sinal: `Sintoma: ${s.termo}`,
             sistema: s.sistema,
             fonte: 'myid',
           });
@@ -350,6 +350,34 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         }
       });
       return regioes;
+    },
+    enabled: !!pacienteId,
+  });
+
+  // Histórico de vida: traumas, cirurgias, doenças, diagnósticos históricos
+  const { data: historiaVida = [] } = useQuery({
+    queryKey: ['historia-vida-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('historia_vida_paciente')
+        .select('id, data_evento, tipo, titulo, descricao, sistema_corporal, severidade, resolvido')
+        .eq('paciente_id', pacienteId)
+        .order('data_evento', { ascending: false });
+      return data || [];
+    },
+    enabled: !!pacienteId,
+  });
+
+  // Diagnósticos CID confirmados pelo profissional
+  const { data: diagnosticosCID = [] } = useQuery({
+    queryKey: ['diagnosticos-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('diagnosticos_paciente')
+        .select('id, data_diagnostico, cid_codigo, descricao, status')
+        .eq('paciente_id', pacienteId)
+        .order('data_diagnostico', { ascending: false, nullsFirst: false });
+      return data || [];
     },
     enabled: !!pacienteId,
   });
@@ -507,7 +535,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       regiao_id: item.regiao_id,
       sistema: (item.sistema as any) || 'musculoesqueletico',
       origem: 'subjetivo_myid',
-      tipo_achado: item.sinal || `Relato MyID: Dor/Desconforto (${item.intensidade}/10)`,
+      tipo_achado: item.sinal || `Sintoma: Dor/Desconforto (intensidade ${item.intensidade}/10)`,
       severidade: item.intensidade >= 7 ? 3 : item.intensidade >= 4 ? 2 : 1,
       status: 'ativo',
       visivel_paciente: true,
@@ -588,24 +616,30 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
 
-                // Conta sinais de TODAS as fontes (MyID, histórico, prontuário) pelo campo sistema
                 const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
-
-                // Dor musculoesquelética do MyID tem peso próprio
                 const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
+                const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
+                const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.status !== 'resolvido');
+
                 score += nDorMuscular * 0.8;
-                score += sinaisSistema.length * 1.5;
+                score += sinaisSistema.length * 1.2;
+                score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
+                score += diagSistema.length * 0.8;
 
                 return {
                   sistema: s,
                   score,
-                  count: evsDoSistema.length + sinaisSistema.length + nDorMuscular,
+                  count: evsDoSistema.length + sinaisSistema.length + nDorMuscular + historiaAtiva.length + diagSistema.length,
+                  nSintomas: sinaisSistema.length + nDorMuscular,
+                  nAchados: evsDoSistema.length,
+                  nHistoria: historiaAtiva.length,
+                  nDiags: diagSistema.length,
                 };
               }).sort((a, b) => b.score - a.score);
 
-              // Cálculo de Homeostase (Inverso do score total normalizado)
+              // Homeostase via decaimento logarítmico: 0 sinais=100%, score alto→ gradual queda
               const totalScore = systemScores.reduce((acc, curr) => acc + curr.score, 0);
-              const homeostase = Math.max(0, Math.min(100, 100 - (totalScore * 5)));
+              const homeostase = Math.max(0, Math.min(100, Math.round(100 - Math.log1p(totalScore) * 18)));
 
               return (
                 <div className="w-full space-y-4">
@@ -706,6 +740,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                             const sinaisMyID = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'myid');
                             const sinaisHistorico = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'historico_paciente');
                             const sinaisProntuario = sinalRegions.filter(sr => sr.sistema === sysToShow && (sr as any).fonte === 'notas_clinicas');
+                            const historiaDoSistema = historiaVida.filter(h => h.sistema_corporal === sysToShow);
+                            const diagsDoSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === sysToShow);
 
                             const flagsSistema: string[] = [];
                             if (sysToShow === 'musculoesqueletico') {
@@ -811,6 +847,50 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                       </div>
                                     )}
                                   </div>
+
+                                  {/* Histórico de Vida do Sistema */}
+                                  {historiaDoSistema.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-bold text-rose-600 uppercase flex items-center gap-1">
+                                        <Heart className="w-3 h-3" /> Histórico de Vida:
+                                      </p>
+                                      <div className="space-y-1 pl-4">
+                                        {historiaDoSistema.map((h: any) => (
+                                          <div key={h.id} className="flex items-start gap-2">
+                                            <div className={cn(
+                                              "w-1 h-1 rounded-full mt-1.5 shrink-0",
+                                              h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
+                                            )} />
+                                            <div className="text-[11px] leading-tight">
+                                              <span className="font-bold capitalize">{h.tipo.replace(/_/g, ' ')}:</span>{' '}
+                                              <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
+                                              {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
+
+                                  {/* Diagnósticos CID do Sistema */}
+                                  {diagsDoSistema.length > 0 && (
+                                    <div className="space-y-1">
+                                      <p className="text-[10px] font-bold text-red-600 uppercase flex items-center gap-1">
+                                        <Shield className="w-3 h-3" /> Diagnósticos Confirmados:
+                                      </p>
+                                      <div className="space-y-1 pl-4">
+                                        {diagsDoSistema.map((d: any) => (
+                                          <div key={d.id} className="flex items-start gap-2">
+                                            <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", d.status === 'resolvido' ? 'bg-gray-400' : 'bg-red-500')} />
+                                            <div className="text-[11px] leading-tight">
+                                              {d.cid_codigo && <span className="font-black text-primary">[{d.cid_codigo}]</span>}{' '}
+                                              <span className={d.status === 'resolvido' ? 'line-through text-muted-foreground' : 'font-medium'}>{d.descricao}</span>
+                                            </div>
+                                          </div>
+                                        ))}
+                                      </div>
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );
@@ -821,14 +901,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                               <p className="text-[9px] font-bold text-muted-foreground uppercase">Resumo de Achados ({sistemasAtivos.length} sistemas)</p>
                               <div className="grid grid-cols-1 gap-2">
                                 {sistemasAtivos.slice(0, 3).map(s => {
-                                  const count = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
+                                  const nAchados = eventos.filter(e => e.sistema === s && e.status !== 'resolvido').length;
+                                  const nSintomas = sinalRegions.filter(sr => sr.sistema === s).length + (s === 'musculoesqueletico' ? painRegions.length : 0);
+                                  const nHistoria = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido).length;
+                                  const partes: string[] = [];
+                                  if (nAchados > 0) partes.push(`${nAchados} achado${nAchados > 1 ? 's' : ''}`);
+                                  if (nSintomas > 0) partes.push(`${nSintomas} sint.`);
+                                  if (nHistoria > 0) partes.push(`${nHistoria} hist.`);
                                   return (
                                     <div key={s} className="flex items-center justify-between bg-background/50 p-1.5 rounded border border-border/30">
                                       <div className="flex items-center gap-2">
                                         <div className={cn("w-1.5 h-1.5 rounded-full", `bg-${SISTEMA_CONFIG[s].color}-500`)} />
                                         <span className="text-[10px] font-bold">{SISTEMA_CONFIG[s].label}</span>
                                       </div>
-                                      <span className="text-[9px] text-muted-foreground">{count} achados clínicos</span>
+                                      <span className="text-[9px] text-muted-foreground">{partes.length ? partes.join(' · ') : 'sem registros'}</span>
                                     </div>
                                   );
                                 })}
@@ -842,7 +928,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   )}
                 </div>
               );
-            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
+            }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
 
@@ -1329,6 +1415,63 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   </div>
                 </div>
               ))}
+              {/* Histórico de vida relacionado ao sistema da região */}
+              {sheetRegiao && (() => {
+                const regVis = VISCERAL_REGIONS.find(r => r.id === sheetRegiao);
+                // Regiões normais (REGIONS) são todas musculoesqueléticas
+                const sistemasRegiao: string[] = regVis?.sistemas || ['musculoesqueletico'];
+                const historiaRegiao = historiaVida.filter(h => sistemasRegiao.includes(h.sistema_corporal as string));
+                const diagsRegiao = diagnosticosCID.filter(d => sistemasRegiao.includes((d as any).sistema_corporal as string));
+                if (historiaRegiao.length === 0 && diagsRegiao.length === 0) return null;
+                return (
+                  <div className="mt-4 space-y-3">
+                    {historiaRegiao.length > 0 && (
+                      <div className="border border-rose-200 bg-rose-50/50 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] font-bold text-rose-700 uppercase flex items-center gap-1">
+                          <Heart className="w-3 h-3" /> Histórico de Vida deste Sistema
+                        </p>
+                        <div className="space-y-1.5">
+                          {historiaRegiao.map((h: any) => (
+                            <div key={h.id} className="flex items-start gap-2">
+                              <span className={cn(
+                                "w-2 h-2 rounded-full mt-1 shrink-0",
+                                h.resolvido ? 'bg-gray-400' : h.severidade >= 3 ? 'bg-red-500' : h.severidade >= 2 ? 'bg-orange-400' : 'bg-amber-400'
+                              )} />
+                              <div className="text-[11px] leading-tight">
+                                <span className="font-semibold capitalize text-rose-800">{h.tipo.replace(/_/g, ' ')}</span>
+                                {' — '}
+                                <span className={h.resolvido ? 'line-through text-muted-foreground' : ''}>{h.titulo}</span>
+                                {h.data_evento && <span className="text-[9px] text-muted-foreground ml-1">({h.data_evento})</span>}
+                                {h.descricao && <p className="text-[10px] text-muted-foreground mt-0.5 italic">"{h.descricao}"</p>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    {diagsRegiao.length > 0 && (
+                      <div className="border border-red-200 bg-red-50/50 rounded-lg p-3 space-y-2">
+                        <p className="text-[10px] font-bold text-red-700 uppercase flex items-center gap-1">
+                          <Shield className="w-3 h-3" /> Diagnósticos Confirmados
+                        </p>
+                        <div className="space-y-1.5">
+                          {diagsRegiao.map((d: any) => (
+                            <div key={d.id} className="flex items-start gap-2">
+                              <span className={cn("w-2 h-2 rounded-full mt-1 shrink-0", d.status === 'resolvido' ? 'bg-gray-400' : 'bg-red-600')} />
+                              <div className="text-[11px] leading-tight">
+                                {d.cid_codigo && <span className="font-black text-red-700 mr-1">[{d.cid_codigo}]</span>}
+                                <span className={d.status === 'resolvido' ? 'line-through text-muted-foreground' : 'font-medium'}>{d.descricao}</span>
+                                {d.status && <span className="text-[9px] text-muted-foreground ml-1">· {d.status}</span>}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
               <Button onClick={novoAchado} className="w-full mt-4" size="sm">
                 <Plus className="icon-xs mr-1" /> Novo Achado Clínico
               </Button>
