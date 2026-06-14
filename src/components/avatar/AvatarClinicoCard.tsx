@@ -22,7 +22,20 @@ import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as
 
 
 const FRONT_OUTLINE =
-  'M120 18 C 138 18 152 34 152 54 C 152 70 144 84 132 90 L 134 104 C 156 110 178 118 184 132 L 192 168 L 200 230 L 204 280 L 196 308 L 188 308 L 184 282 L 176 232 L 168 178 L 160 168 L 158 220 L 156 280 L 162 360 L 158 430 L 152 500 L 138 506 L 134 500 L 132 430 L 128 360 L 124 280 L 116 280 L 112 360 L 108 430 L 106 500 L 102 506 L 88 500 L 82 430 L 78 360 L 84 280 L 82 220 L 80 168 L 72 178 L 64 232 L 56 282 L 52 308 L 44 308 L 36 280 L 40 230 L 48 168 L 56 132 C 62 118 84 110 106 104 L 108 90 C 96 84 88 70 88 54 C 88 34 102 18 120 18 Z';
+  'M120 18 C 136 18 150 30 152 48 C 154 64 146 78 136 88 C 133 90 130 92 128 94 ' +
+  'L 130 100 C 142 104 158 110 168 118 C 178 126 184 136 186 148 ' +
+  'L 194 178 L 198 220 L 202 268 L 198 300 L 192 308 L 186 308 ' +
+  'L 182 276 L 174 224 L 166 172 C 164 168 162 166 160 166 ' +
+  'L 158 212 L 156 272 L 162 356 L 158 428 L 152 496 L 140 504 ' +
+  'L 136 496 L 134 428 L 128 356 L 124 276 ' +
+  'L 116 276 L 112 356 L 106 428 L 104 496 ' +
+  'L 100 504 L 88 496 L 82 428 L 78 356 L 84 272 ' +
+  'L 82 212 L 80 166 C 78 166 76 168 74 172 ' +
+  'L 66 224 L 58 276 L 54 308 L 48 308 L 42 300 ' +
+  'L 38 268 L 42 220 L 46 178 ' +
+  'C 56 136 62 126 72 118 C 82 110 98 104 110 100 ' +
+  'L 112 94 C 110 92 107 90 104 88 C 94 78 86 64 88 48 ' +
+  'C 90 30 104 18 120 18 Z';
 
 const ORGAN_RESTING_COLORS: Record<string, string> = {
   // Nervous — blue-lavender
@@ -850,8 +863,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
 
         {/* Silhueta */}
-        <div className="mx-auto" style={{ maxWidth: 260 }}>
-          <svg viewBox="0 0 240 520" className="w-full h-auto drop-shadow-2xl" style={{ maxHeight: 480 }}>
+        <div className="mx-auto relative" style={{ maxWidth: 260 }}>
+          {/* Glow de fundo do avatar */}
+          <div className="absolute inset-0 rounded-full opacity-20 blur-3xl pointer-events-none"
+            style={{ background: hoveredSistema ? (SYSTEM_HOVER[hoveredSistema] || 'hsl(var(--primary))') : 'hsl(var(--muted-foreground) / 0.3)', transform: 'scale(0.7) translateY(5%)' }}
+          />
+          <svg viewBox="0 0 240 520" className="w-full h-auto relative" style={{ maxHeight: 480, filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.18)) drop-shadow(0 2px 6px rgba(0,0,0,0.12))' }}>
             <defs>
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
@@ -881,6 +898,22 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
+              {/* Gradiente de profundidade lateral — sombras nos flancos */}
+              <linearGradient id="body-depth-l" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%"   stopColor="#000" stopOpacity="0.18"/>
+                <stop offset="35%"  stopColor="#000" stopOpacity="0.04"/>
+                <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+              </linearGradient>
+              <linearGradient id="body-depth-r" x1="100%" y1="0%" x2="0%" y2="0%">
+                <stop offset="0%"   stopColor="#000" stopOpacity="0.18"/>
+                <stop offset="35%"  stopColor="#000" stopOpacity="0.04"/>
+                <stop offset="100%" stopColor="#000" stopOpacity="0"/>
+              </linearGradient>
+              {/* Highlight central (reflexo de luz frontal) */}
+              <radialGradient id="body-highlight" cx="38%" cy="18%" r="52%">
+                <stop offset="0%"   stopColor="#fff" stopOpacity="0.22"/>
+                <stop offset="100%" stopColor="#fff" stopOpacity="0"/>
+              </radialGradient>
             </defs>
             <style>
               {`
@@ -895,9 +928,33 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {/* Drop shadow */}
             <ellipse cx={120} cy={516} rx={50} ry={4.5} fill="black" opacity={0.09} />
 
+            {/* Halo de sistema ativo/hovered */}
+            {(hoveredSistema || sistemasAtivos.length === 1) && (() => {
+              const sys = hoveredSistema || sistemasAtivos[0];
+              const haloColor = SYSTEM_HOVER[sys] || 'rgba(99,102,241,0.30)';
+              return (
+                <ellipse
+                  cx={120} cy={260} rx={80} ry={260}
+                  fill={haloColor}
+                  opacity={0.18}
+                  filter="url(#glow)"
+                  pointerEvents="none"
+                />
+              );
+            })()}
+
             <g clipPath="url(#avc-clip)">
               {/* Warm skin fill */}
               <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
+              {/* Profundidade lateral esquerda */}
+              <path d={FRONT_OUTLINE} fill="url(#body-depth-l)" pointerEvents="none"/>
+              {/* Profundidade lateral direita */}
+              <path d={FRONT_OUTLINE} fill="url(#body-depth-r)" pointerEvents="none"/>
+              {/* Highlight de luz central */}
+              <path d={FRONT_OUTLINE} fill="url(#body-highlight)" pointerEvents="none"/>
+
+              {/* Contorno anatômico */}
+              <path d={FRONT_OUTLINE} fill="none" stroke="rgba(120,80,50,0.20)" strokeWidth={1.2} pointerEvents="none"/>
 
               {/* Anatomical structure lines */}
               {view === 'front' && (

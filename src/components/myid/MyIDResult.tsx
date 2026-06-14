@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
@@ -145,6 +146,10 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
         return { emoji: '🔴', titulo: 'Situação crítica — busque ajuda', cor: 'text-destructive', bg: 'bg-destructive/10', borda: 'border-destructive/40', frase: 'Seu corpo está pedindo socorro. Procure acompanhamento profissional o quanto antes.' };
     })();
 
+    const ringColor1 = myidScoreValue >= 85 ? '#10b981' : myidScoreValue >= 70 ? '#f59e0b' : myidScoreValue >= 50 ? '#f97316' : '#ef4444';
+    const ringColor2 = myidScoreValue >= 85 ? '#059669' : myidScoreValue >= 70 ? '#d97706' : myidScoreValue >= 50 ? '#ea580c' : '#dc2626';
+    const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'ATENÇÃO' : 'CRÍTICO';
+
     return (
         <div className="space-y-6 animate-in fade-in zoom-in-95 duration-500 max-w-4xl mx-auto pb-10">
             <ConfettiBurst trigger={celebrate} />
@@ -172,7 +177,10 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
             )}
 
             {/* ───── BIG SCORE + STATUS EM LINGUAGEM SIMPLES ───── */}
-            <Card className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm overflow-hidden relative`}>
+            <Card
+                className={`border-2 ${statusInfo.borda} ${statusInfo.bg} shadow-sm overflow-hidden relative`}
+                style={{ background: `linear-gradient(135deg, hsl(var(--card)) 60%, ${ringColor1}18 100%)` }}
+            >
                 <CardContent className="p-6 sm:p-8 text-center space-y-3 relative">
                     {/* Selo de conquista — só aparece a partir de 70 */}
                     {myidScoreValue >= 70 && (
@@ -192,25 +200,39 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
                             </div>
                         </div>
                     )}
-                    <div className="text-5xl">{statusInfo.emoji}</div>
-                    <div className="relative">
-                        {/* glow dourado por trás do número quando score alto */}
-                        {myidScoreValue >= 70 && (
-                            <div
-                                className="absolute inset-0 pointer-events-none -z-0"
-                                style={{
-                                    background:
-                                        'radial-gradient(circle at 50% 55%, hsl(42 60% 55% / 0.28) 0%, transparent 60%)',
-                                    filter: 'blur(10px)',
-                                }}
-                                aria-hidden
+                    {/* Score Ring */}
+                    <div className="flex flex-col items-center gap-2">
+                        <svg viewBox="0 0 200 200" className="w-48 h-48 sm:w-56 sm:h-56 -mt-2">
+                            <defs>
+                                <linearGradient id="ring-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                                    <stop offset="0%" stopColor={ringColor1} />
+                                    <stop offset="100%" stopColor={ringColor2} />
+                                </linearGradient>
+                                <filter id="ring-glow" x="-20%" y="-20%" width="140%" height="140%">
+                                    <feGaussianBlur stdDeviation="4" result="blur" />
+                                    <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+                                </filter>
+                            </defs>
+                            {/* Track background */}
+                            <circle cx="100" cy="100" r="82" fill="none" stroke="hsl(var(--muted))" strokeWidth="14" opacity="0.4"/>
+                            {/* Animated progress ring */}
+                            <circle
+                                cx="100" cy="100" r="82"
+                                fill="none"
+                                stroke="url(#ring-grad)"
+                                strokeWidth="14"
+                                strokeLinecap="round"
+                                strokeDasharray={`${2 * Math.PI * 82}`}
+                                strokeDashoffset={`${2 * Math.PI * 82 * (1 - Math.min(myidScoreValue, 100) / 100)}`}
+                                transform="rotate(-90 100 100)"
+                                filter="url(#ring-glow)"
+                                style={{ transition: 'stroke-dashoffset 1.2s cubic-bezier(0.4,0,0.2,1)' }}
                             />
-                        )}
-                        <div className={`kpi-hero text-6xl sm:text-7xl ${statusInfo.cor} leading-none relative`}>
-                            {Math.round(myidScoreValue)}
-                            <span className="text-2xl text-muted-foreground font-semibold not-italic ml-1">/100</span>
-                        </div>
-                        <div className={`text-base sm:text-lg font-bold mt-3 ${statusInfo.cor} relative`}>{statusInfo.titulo}</div>
+                            {/* Score text */}
+                            <text x="100" y="90" textAnchor="middle" fontFamily="system-ui,sans-serif" fontSize="42" fontWeight="900" fill="currentColor" className="fill-foreground">{Math.round(myidScoreValue)}</text>
+                            <text x="100" y="115" textAnchor="middle" fontFamily="system-ui,sans-serif" fontSize="13" fontWeight="500" fill="currentColor" className="fill-muted-foreground">/100</text>
+                            <text x="100" y="138" textAnchor="middle" fontFamily="system-ui,sans-serif" fontSize="11" fontWeight="700" fill={ringColor1}>{statusLabel}</text>
+                        </svg>
                     </div>
                     <p className="text-sm text-foreground/80 max-w-md mx-auto">{statusInfo.frase}</p>
                 </CardContent>
@@ -309,6 +331,17 @@ export function MyIDResult({ result, rawData = {}, pacienteId, terapeutaId, aval
 }
 
 // ───────────────────────────────────────────────────────
+// Helper: cor da barra de perda por severidade
+// ───────────────────────────────────────────────────────
+function corPerda(perda: number, maxPerda: number): string {
+    const ratio = perda / maxPerda;
+    if (ratio > 0.7) return 'bg-destructive';
+    if (ratio > 0.4) return 'bg-orange-500';
+    if (ratio > 0.2) return 'bg-amber-500';
+    return 'bg-emerald-500';
+}
+
+// ───────────────────────────────────────────────────────
 // Detalhes técnicos (colapsável)
 // ───────────────────────────────────────────────────────
 interface DetalhesTecnicosProps {
@@ -363,7 +396,12 @@ function DetalhesTecnicos({ scores, myidScoreValue, perdas_calculadas, myid_100,
                                             </div>
                                             <div className="text-sm font-black text-destructive shrink-0">−{item.perda} pts</div>
                                         </div>
-                                        <Progress value={(item.perda / maxPerda) * 100} className="h-1.5" />
+                                        <div className="h-1.5 flex-1 rounded-full bg-muted overflow-hidden">
+                                            <div
+                                                className={cn("h-full rounded-full transition-all duration-700", corPerda(item.perda, maxPerda))}
+                                                style={{ width: `${(item.perda / maxPerda) * 100}%` }}
+                                            />
+                                        </div>
                                         {item.interpretacao && (
                                             <p className="text-[11px] text-muted-foreground mt-1">{item.interpretacao}</p>
                                         )}
