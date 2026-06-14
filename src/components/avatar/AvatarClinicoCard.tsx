@@ -672,33 +672,76 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               <clipPath id="avc-clip">
                 <path d={FRONT_OUTLINE} />
               </clipPath>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+              <radialGradient id="avc-skin" cx="48%" cy="26%" r="68%">
+                <stop offset="0%"   stopColor="hsl(var(--muted-foreground))" stopOpacity="0.05" />
+                <stop offset="55%"  stopColor="hsl(var(--muted-foreground))" stopOpacity="0.09" />
+                <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.16" />
+              </radialGradient>
+              <filter id="glow" x="-30%" y="-30%" width="160%" height="160%">
+                <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
                 <feMerge>
                     <feMergeNode in="coloredBlur"/>
                     <feMergeNode in="SourceGraphic"/>
                 </feMerge>
               </filter>
-              <radialGradient id="organ-gradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="black" stopOpacity="0.1" />
+              <filter id="glow-urgent" x="-40%" y="-40%" width="180%" height="180%">
+                <feGaussianBlur stdDeviation="3.5" result="coloredBlur"/>
+                <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                </feMerge>
+              </filter>
+              <radialGradient id="organ-gradient" cx="35%" cy="30%" r="65%">
+                <stop offset="0%" stopColor="white" stopOpacity="0.35" />
+                <stop offset="100%" stopColor="black" stopOpacity="0.08" />
               </radialGradient>
             </defs>
             <style>
               {`
                 @keyframes pulse-organ {
-                  0% { transform: scale(1); opacity: 0.8; }
-                  50% { transform: scale(1.02); opacity: 1; }
-                  100% { transform: scale(1); opacity: 0.8; }
+                  0% { transform: scale(1); opacity: 0.85; }
+                  50% { transform: scale(1.025); opacity: 1; }
+                  100% { transform: scale(1); opacity: 0.85; }
                 }
                 .pulse-organ {
-                  animation: pulse-organ 2s infinite ease-in-out;
+                  animation: pulse-organ 2.2s infinite ease-in-out;
                   transform-origin: center;
                 }
               `}
             </style>
+            {/* Ground shadow */}
+            <ellipse cx={120} cy={516} rx={44} ry={3.5} fill="hsl(var(--foreground))" opacity={0.06} />
             <g clipPath="url(#avc-clip)">
-              <path d={FRONT_OUTLINE} fill="hsl(var(--muted))" opacity={0.35} />
+              {/* Skin gradient fill */}
+              <path d={FRONT_OUTLINE} fill="url(#avc-skin)" />
+              {/* Anatomical detail lines */}
+              {view === 'front' && (
+                <g fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} opacity={0.20}>
+                  <path d="M120 108 L120 288" />
+                  <path d="M96 136 Q 110 148 120 142 Q 130 148 144 136" strokeWidth={0.7} />
+                  <path d="M120 188 L120 238" />
+                  <path d="M103 200 L137 200" />
+                  <path d="M103 218 L137 218" />
+                  <circle cx={120} cy={210} r={3} strokeWidth={0.6} />
+                  <path d="M94 244 Q 120 238 146 244" strokeDasharray="3,3" />
+                  <path d="M90 280 Q 120 274 150 280" strokeDasharray="3,3" />
+                  <ellipse cx={144} cy={380} rx={11} ry={7} />
+                  <ellipse cx={96}  cy={380} rx={11} ry={7} />
+                </g>
+              )}
+              {view === 'back' && (
+                <g fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={0.5} opacity={0.20}>
+                  <path d="M120 108 L120 288" strokeDasharray="3,3" strokeWidth={0.8} />
+                  {[130,148,166,184,202,220,240,258,276].map(y => (
+                    <line key={y} x1={116} y1={y} x2={124} y2={y} strokeWidth={0.9} />
+                  ))}
+                  <path d="M96 148 Q 108 166 112 186" />
+                  <path d="M144 148 Q 132 166 128 186" />
+                  <path d="M112 244 Q 120 256 128 244" />
+                  <circle cx={112} cy={278} r={2.5} />
+                  <circle cx={128} cy={278} r={2.5} />
+                </g>
+              )}
               
               {/* Camada Base (Musculoesquelético/Geral) */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
@@ -734,10 +777,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     <path
                       d={r.d}
                       fill={fill || (isHoveredSystem ? 'rgba(14, 165, 233, 0.3)' : 'hsl(var(--background))')}
-                      fillOpacity={fill ? 0.9 : 0.4}
+                      fillOpacity={fill ? 0.88 : 0.35}
                       stroke={isHoveredSystem ? 'var(--primary)' : fill ? 'white' : 'hsl(var(--muted-foreground))'}
-                      strokeWidth={isHoveredSystem ? 1.5 : 0.8}
-                      filter={fill ? "url(#glow)" : undefined}
+                      strokeWidth={isHoveredSystem ? 1.8 : fill ? 1.0 : 0.6}
+                      filter={isUrgent ? "url(#glow-urgent)" : fill ? "url(#glow)" : undefined}
                       className="cursor-pointer hover:brightness-110 transition-all"
                       onClick={() => abrirSheet(r.id)}
                     >
@@ -754,7 +797,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 );
               })}
             </g>
-            <path d={FRONT_OUTLINE} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.2} opacity={0.6} />
+            <path d={FRONT_OUTLINE} fill="none" stroke="hsl(var(--foreground))" strokeWidth={1.5} strokeLinejoin="round" opacity={0.55} pointerEvents="none" />
           </svg>
         </div>
 

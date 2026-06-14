@@ -247,6 +247,7 @@ function BodyView({
   const regions = REGIONS.filter(r => r.view === view);
   const clipId = `body-clip-${view}`;
   const gradId = `body-grad-${view}`;
+  const glowId = `body-glow-${view}`;
   return (
     <div className="flex-1 min-w-0">
       <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground text-center mb-1">
@@ -257,109 +258,105 @@ function BodyView({
           <clipPath id={clipId}>
             <path d={FRONT_OUTLINE} />
           </clipPath>
-          <linearGradient id={gradId} x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%"   stopColor="hsl(var(--muted))" stopOpacity="0.55" />
-            <stop offset="100%" stopColor="hsl(var(--muted))" stopOpacity="0.30" />
-          </linearGradient>
+          <radialGradient id={gradId} cx="48%" cy="28%" r="65%">
+            <stop offset="0%"   stopColor="hsl(var(--muted-foreground))" stopOpacity="0.06" />
+            <stop offset="60%"  stopColor="hsl(var(--muted-foreground))" stopOpacity="0.10" />
+            <stop offset="100%" stopColor="hsl(var(--muted-foreground))" stopOpacity="0.18" />
+          </radialGradient>
+          <filter id={glowId} x="-30%" y="-30%" width="160%" height="160%">
+            <feGaussianBlur in="SourceGraphic" stdDeviation="2.5" result="blur" />
+            <feMerge><feMergeNode in="blur" /><feMergeNode in="SourceGraphic" /></feMerge>
+          </filter>
         </defs>
 
-        {/* Soft shadow under figure */}
-        <ellipse cx={120} cy={515} rx={48} ry={4} fill="hsl(var(--foreground))" opacity={0.08} />
+        {/* Ground shadow */}
+        <ellipse cx={120} cy={516} rx={44} ry={3.5} fill="hsl(var(--foreground))" opacity={0.07} />
 
-        {/* Body silhouette */}
-        <path
-          d={FRONT_OUTLINE}
-          fill={`url(#${gradId})`}
-          stroke="hsl(var(--border))"
-          strokeWidth={1.2}
-          strokeLinejoin="round"
-        />
+        {/* Body silhouette fill */}
+        <path d={FRONT_OUTLINE} fill={`url(#${gradId})`} stroke="none" />
 
-        {/* Subtle anatomical hint lines (purely decorative) */}
-        <g
-          fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth={0.6}
-          opacity={0.5}
-          clipPath={`url(#${clipId})`}
-        >
+        {/* Anatomical detail lines */}
+        <g fill="none" stroke="hsl(var(--muted-foreground))" strokeWidth={0.55} opacity={0.22} clipPath={`url(#${clipId})`}>
           {view === 'front' ? (
             <>
-              {/* center line */}
-              <path d="M120 108 L120 290" />
-              {/* pectoral curves */}
-              <path d="M92 152 Q 110 168 120 158" />
-              <path d="M148 152 Q 130 168 120 158" />
-              {/* abs */}
+              <path d="M120 108 L120 288" />
+              <path d="M96 136 Q 110 148 120 142 Q 130 148 144 136" strokeWidth={0.7} />
               <path d="M120 188 L120 238" />
-              <path d="M104 200 L136 200" />
-              <path d="M104 218 L136 218" />
-              {/* knee caps */}
-              <ellipse cx={144} cy={380} rx={10} ry={6} />
-              <ellipse cx={96}  cy={380} rx={10} ry={6} />
+              <path d="M103 200 L137 200" />
+              <path d="M103 218 L137 218" />
+              <path d="M103 228 L137 228" />
+              <circle cx={120} cy={210} r={3} strokeWidth={0.6} />
+              <path d="M94 244 Q 120 238 146 244" strokeDasharray="3,3" />
+              <path d="M90 280 Q 120 274 150 280" strokeDasharray="3,3" />
+              <ellipse cx={144} cy={380} rx={11} ry={7} strokeWidth={0.6} />
+              <ellipse cx={96}  cy={380} rx={11} ry={7} strokeWidth={0.6} />
             </>
           ) : (
             <>
-              {/* spine */}
-              <path d="M120 108 L120 290" />
-              {/* scapulae */}
-              <path d="M96 144 Q 110 160 116 180" />
-              <path d="M144 144 Q 130 160 124 180" />
-              {/* gluteal cleft */}
-              <path d="M120 244 L120 286" />
-              {/* calves */}
-              <path d="M144 430 Q 150 450 144 480" />
-              <path d="M96  430 Q 90  450 96  480" />
+              <path d="M120 108 L120 288" strokeDasharray="3,3" strokeWidth={0.8} />
+              {[130,148,166,184,202,220,240,258,276].map(y => (
+                <line key={y} x1={116} y1={y} x2={124} y2={y} strokeWidth={0.9} />
+              ))}
+              <path d="M96 148 Q 108 166 112 186" />
+              <path d="M144 148 Q 132 166 128 186" />
+              <path d="M112 244 Q 120 256 128 244" strokeWidth={0.7} />
+              <circle cx={112} cy={278} r={2.5} />
+              <circle cx={128} cy={278} r={2.5} />
+              <path d="M144 432 Q 150 454 145 480" />
+              <path d="M96  432 Q 90  454 95  480" />
             </>
           )}
         </g>
 
-        {/* Clickable regions (clipped to silhouette so they look anatomical) */}
+        {/* Clickable regions */}
         <g clipPath={`url(#${clipId})`}>
           {regions.map((r) => {
             const v = points[r.id] ?? 0;
             const isSel = selected === r.id;
+            const color = v > 0 ? intensityColor(v) : 'transparent';
             return (
-              <path
-                key={r.id}
-                d={r.d}
-                fill={v > 0 ? intensityColor(v) : '#000'}
-                fillOpacity={v > 0 ? 0.55 : 0.001}
-                stroke={isSel ? 'hsl(var(--primary))' : 'transparent'}
-                strokeWidth={isSel ? 1.8 : 0}
-                pointerEvents="all"
-                onClick={() => onSelect(r.id)}
-                style={{ cursor: 'pointer' }}
-              />
+              <g key={r.id}>
+                {v > 0 && (
+                  <path d={r.d} fill={color} fillOpacity={0.15} />
+                )}
+                <path
+                  d={r.d}
+                  fill={color}
+                  fillOpacity={v > 0 ? 0.60 : 0.001}
+                  stroke={isSel ? 'hsl(var(--primary))' : v > 0 ? color : 'transparent'}
+                  strokeWidth={isSel ? 2 : v > 0 ? 0.8 : 0}
+                  filter={v > 0 ? `url(#${glowId})` : undefined}
+                  pointerEvents="all"
+                  onClick={() => onSelect(r.id)}
+                  style={{ cursor: 'pointer' }}
+                  className="transition-all duration-200 hover:brightness-110"
+                />
+              </g>
             );
           })}
         </g>
 
-        {/* Outline overlay so the silhouette edge stays crisp above colored regions */}
+        {/* Crisp outline on top */}
         <path
           d={FRONT_OUTLINE}
           fill="none"
-          stroke="hsl(var(--border))"
-          strokeWidth={1.2}
+          stroke="hsl(var(--foreground))"
+          strokeWidth={1.4}
           strokeLinejoin="round"
+          opacity={0.55}
           pointerEvents="none"
         />
 
-        {/* Score labels for active regions */}
+        {/* Score badges */}
         {regions.map((r) => {
           const v = points[r.id] ?? 0;
           if (v <= 0) return null;
+          const color = intensityColor(v);
           return (
             <g key={`l-${r.id}`} pointerEvents="none">
-              <circle cx={r.cx} cy={r.cy} r={9} fill="white" opacity={0.9} />
-              <text
-                x={r.cx}
-                y={r.cy + 3}
-                textAnchor="middle"
-                fontSize={10}
-                fontWeight={800}
-                fill={intensityColor(v)}
-              >
+              <circle cx={r.cx} cy={r.cy} r={10} fill={color} opacity={0.92} />
+              <circle cx={r.cx} cy={r.cy} r={10} fill="none" stroke="white" strokeWidth={1.2} opacity={0.6} />
+              <text x={r.cx} y={r.cy + 3.5} textAnchor="middle" fontSize={9} fontWeight={900} fill="white">
                 {v}
               </text>
             </g>
