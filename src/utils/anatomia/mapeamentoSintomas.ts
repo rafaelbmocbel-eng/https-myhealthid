@@ -74,9 +74,9 @@ export const MAPEAMENTO_SINTOMAS: MapeamentoSintoma[] = [
     sistema: 'nervoso'
   },
   {
-    keywords: ['bruxismo', 'ranger dentes', 'dor na mandibula', 'dor na mandíbula', 'atm', 'temporomandibular'],
-    regioes: ['cerebro'],
-    sistema: 'nervoso'
+    keywords: ['bruxismo', 'ranger dentes', 'dor na mandibula', 'dor na mandíbula', 'atm', 'temporomandibular', 'dor na face'],
+    regioes: ['cabeca', 'pescoco'],
+    sistema: 'musculoesqueletico'
   },
   {
     keywords: ['neuropatia diabetica', 'neuropatia diabética', 'pe diabetico', 'pé diabético'],

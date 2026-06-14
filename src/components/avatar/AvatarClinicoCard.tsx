@@ -574,35 +574,20 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
               const systemScores = SISTEMAS_ORDEM.map(s => {
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
-                
-                // Mapeamento preciso de Sinais MyID para Scores de Sistema
-                const myidSinaisDoSistema = sinalRegions.filter(sr => {
-                  const isNervous = ['bruxismo', 'zumbido', 'sensibilidade_luz', 'cefaleia', 'tontura', 'Uso de Antidepressivo'].includes(sr.sinal);
-                  const isDigestive = ['ma_digestao', 'bloating', 'empachamento', 'azia', 'queimacao_estomago', 'nausea', 'vomito', 'gases', 'refluxo', 'gastrite', 'ibs', 'constipation', 'diarrhea'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isResp = ['falta_ar', 'shortness_breath', 'tosse'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isCirc = ['palpitacao', 'palpitations', 'taquicardia'].some(term => sr.sinal.toLowerCase().includes(term));
-                  const isUrin = ['dor_urinar', 'urinary_pain', 'frequencia_urinaria', 'urinary_frequency'].some(term => sr.sinal.toLowerCase().includes(term));
-                  
-                  if (s === 'nervoso') return isNervous;
-                  if (s === 'digestorio') return isDigestive;
-                  if (s === 'respiratorio') return isResp;
-                  if (s === 'circulatorio') return isCirc;
-                  if (s === 'urinario') return isUrin;
-                  
-                  // Fallback regional para MyID
-                  const regVisceral = VISCERAL_REGIONS.find(v => v.id === sr.regiao_id);
-                  return regVisceral?.sistemas.includes(s);
-                });
 
-                if (s === 'musculoesqueletico') {
-                  score += painRegions.length * 0.8;
-                  const queixasTexto = sinalRegions.filter(sr => sr.regiao_id === 'peitoral' || sr.regiao_id === 'dorsal');
-                  score += queixasTexto.length * 2.0;
-                }
-                
-                score += myidSinaisDoSistema.length * 1.5;
+                // Conta sinais de TODAS as fontes (MyID, histórico, prontuário) pelo campo sistema
+                const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
 
-                return { sistema: s, score, count: evsDoSistema.length + myidSinaisDoSistema.length };
+                // Dor musculoesquelética do MyID tem peso próprio
+                const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
+                score += nDorMuscular * 0.8;
+                score += sinaisSistema.length * 1.5;
+
+                return {
+                  sistema: s,
+                  score,
+                  count: evsDoSistema.length + sinaisSistema.length + nDorMuscular,
+                };
               }).sort((a, b) => b.score - a.score);
 
               // Cálculo de Homeostase (Inverso do score total normalizado)
