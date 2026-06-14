@@ -1063,15 +1063,25 @@ export default function PacientePerfil() {
             {temBloco(lenteAtiva, 'plano_alimentar') && id && <PlanoAlimentarCard pacienteId={id} />}
             {temBloco(lenteAtiva, 'escalas_psicologia') && id && <EscalasPsicologiaCard pacienteId={id} />}
             {id && (
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <AvatarClinicoCard pacienteId={id} />
-                <RelatorioCorrelacaoCard pacienteId={id} />
-              </div>
-            )}
-            {id && (
-              <div className="mt-2">
-                <TimelineVidaCompleta pacienteId={id} />
-              </div>
+              <Tabs defaultValue="corpo" className="w-full">
+                <TabsList className="grid grid-cols-2 w-full max-w-sm mb-3 h-9">
+                  <TabsTrigger value="corpo" className="gap-1.5 text-xs">
+                    <Stethoscope className="h-3.5 w-3.5" /> Corpo
+                  </TabsTrigger>
+                  <TabsTrigger value="historia" className="gap-1.5 text-xs">
+                    <Clock className="h-3.5 w-3.5" /> Linha do Tempo
+                  </TabsTrigger>
+                </TabsList>
+                <TabsContent value="corpo" className="space-y-4 mt-0">
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                    <AvatarClinicoCard pacienteId={id} />
+                    <RelatorioCorrelacaoCard pacienteId={id} />
+                  </div>
+                </TabsContent>
+                <TabsContent value="historia" className="mt-0">
+                  <TimelineVidaCompleta pacienteId={id} />
+                </TabsContent>
+              </Tabs>
             )}
             <AvaliacaoVozAtual
               pacienteId={id!}
