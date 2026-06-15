@@ -9,6 +9,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
 import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
 import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
@@ -19,6 +20,38 @@ interface Props {
   patientName: string;
   serviceType?: 'identidade' | 'cobzero' | 'studio';
   onAssessmentComplete?: () => void;
+}
+
+// Região com sistema correto e rastreabilidade de fonte
+type RegiaoColetada = {
+  intensidade: number;
+  sistema: SistemaCorporal;
+  fonte: 'voz_ia' | 'myid' | 'nlp';
+  tipoAchado: string;
+};
+
+// Lookup de sistemas padrão por região (para mapa_dor sem sistema explícito)
+const SISTEMA_POR_REGIAO_PADRAO: Record<string, SistemaCorporal> = {
+  cabeca: 'nervoso', cerebro: 'nervoso', cervical: 'nervoso',
+  ombro_d: 'musculoesqueletico', ombro_e: 'musculoesqueletico',
+  cotovelo_d: 'musculoesqueletico', cotovelo_e: 'musculoesqueletico',
+  punho_d: 'musculoesqueletico', punho_e: 'musculoesqueletico',
+  mao_d: 'musculoesqueletico', mao_e: 'musculoesqueletico',
+  torax: 'respiratorio', peito: 'circulatorio',
+  abdomem: 'digestorio', quadril_d: 'musculoesqueletico', quadril_e: 'musculoesqueletico',
+  lombar: 'musculoesqueletico', dorsal: 'musculoesqueletico',
+  trapezio_d: 'musculoesqueletico', trapezio_e: 'musculoesqueletico',
+  joelho_d: 'musculoesqueletico', joelho_e: 'musculoesqueletico',
+  tornozelo_d: 'musculoesqueletico', tornozelo_e: 'musculoesqueletico',
+  pe_d: 'musculoesqueletico', pe_e: 'musculoesqueletico',
+  coxa_d: 'musculoesqueletico', coxa_e: 'musculoesqueletico',
+  perna_d: 'musculoesqueletico', perna_e: 'musculoesqueletico',
+  gluteos: 'musculoesqueletico', braco_d: 'nervoso', braco_e: 'nervoso',
+  antebraco_d: 'musculoesqueletico', antebraco_e: 'musculoesqueletico',
+};
+
+function sistemaDeRegiao(regiao_id: string): SistemaCorporal {
+  return SISTEMA_POR_REGIAO_PADRAO[regiao_id] ?? 'musculoesqueletico';
 }
 
 export default function AvaliacaoPresencial({
@@ -37,7 +70,7 @@ export default function AvaliacaoPresencial({
 
   const mostraAvatar = temBloco(lente, 'avatar');
 
-  // Última avaliação por voz — contém achados extraídos pela IA em resultado._meta
+  // Última avaliação por voz — achados estruturados em resultado._meta
   const { data: latestAval, isLoading: loadingAval } = useQuery({
     queryKey: ['avaliacao-voz-latest-presencial', pacienteId],
     queryFn: async () => {
@@ -53,7 +86,7 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && mostraAvatar,
   });
 
-  // Última avaliação presencial ou MyID — sem filtro de myid_score
+  // Última avaliação MyID (sem filtro — inclui presenciais sem score digital)
   const { data: lastMyID, isLoading: loadingMyID } = useQuery({
     queryKey: ['myid-latest-sync', pacienteId],
     queryFn: async () => {
@@ -69,7 +102,7 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && mostraAvatar,
   });
 
-  // Eventos já salvos — usados para evitar duplicatas
+  // Eventos já salvos — para evitar duplicatas
   const { data: eventosExistentes = [], isLoading: loadingEventos } = useQuery({
     queryKey: ['eventos-anatomicos-count', pacienteId],
     queryFn: async () => {
@@ -82,7 +115,7 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && mostraAvatar,
   });
 
-  // Catálogo passado à IA de voz para guiar extração de regiões corporais
+  // Catálogo de regiões para guiar a IA de voz na extração
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
     catalog: Object.fromEntries(
@@ -90,26 +123,53 @@ export default function AvaliacaoPresencial({
     ),
   }), []);
 
-  // Coleta todas as regiões disponíveis de todas as fontes
-  const coletarRegioes = (): Record<string, number> => {
-    const regioes: Record<string, number> = {};
+  // Agrega regiões de TODAS as fontes com sistema correto por achado
+  const coletarRegioes = (): Record<string, RegiaoColetada> => {
+    const regioes: Record<string, RegiaoColetada> = {};
 
-    // 1. Mapa de dor da avaliação por voz (maior precisão — extraído pela IA)
+    const merge = (rid: string, info: RegiaoColetada) => {
+      const ex = regioes[rid];
+      if (!ex) {
+        regioes[rid] = info;
+      } else {
+        regioes[rid] = {
+          ...ex,
+          intensidade: Math.max(ex.intensidade, info.intensidade),
+          // Sistema mais específico prevalece sobre musculoesqueletico genérico
+          sistema: ex.sistema !== 'musculoesqueletico' ? ex.sistema : info.sistema,
+        };
+      }
+    };
+
+    // ── Fonte 1: avaliação por voz ──────────────────────────────
     if (latestAval) {
       const meta = (latestAval.resultado as any)?._meta;
+      // 1a. Mapa de dor explícito (extraído pela IA durante a avaliação)
       if (meta?.mapa_dor && typeof meta.mapa_dor === 'object') {
         Object.entries(meta.mapa_dor as Record<string, number>).forEach(([rid, v]) => {
-          if (Number(v) > 0) regioes[rid] = Math.max(regioes[rid] ?? 0, Number(v));
+          if (Number(v) > 0) {
+            merge(rid, {
+              intensidade: Number(v),
+              sistema: sistemaDeRegiao(rid),
+              fonte: 'voz_ia',
+              tipoAchado: 'Mapa de dor extraído pela IA da avaliação por voz',
+            });
+          }
         });
       }
-      // Extrai regiões do texto SOAP via NLP
+      // 1b. NLP no texto completo da avaliação (SOAP, queixa, anamnese...)
       const textoVoz = extrairTextoDeObjeto(latestAval.resultado);
       encontrarSintomasEmTexto(textoVoz).forEach(s => {
-        if (!regioes[s.regiao_id]) regioes[s.regiao_id] = 5;
+        merge(s.regiao_id, {
+          intensidade: 5,
+          sistema: s.sistema as SistemaCorporal,
+          fonte: 'nlp',
+          tipoAchado: `Sintoma detectado no texto: "${s.termo}"`,
+        });
       });
     }
 
-    // 2. Dados MyID: mapa_dor salvo ou inferência por scores dimensionais
+    // ── Fonte 2: avaliação MyID / presencial ────────────────────
     if (lastMyID) {
       const dados = (lastMyID as any).dados_avaliacao || {};
       const painMapSalvo: Record<string, number> | null =
@@ -117,10 +177,18 @@ export default function AvaliacaoPresencial({
 
       if (painMapSalvo) {
         Object.entries(painMapSalvo).forEach(([rid, v]) => {
-          if (Number(v) > 0) regioes[rid] = Math.max(regioes[rid] ?? 0, Number(v));
+          if (Number(v) > 0) {
+            merge(rid, {
+              intensidade: Number(v),
+              sistema: sistemaDeRegiao(rid),
+              fonte: 'myid',
+              tipoAchado: 'Mapa de dor da avaliação presencial',
+            });
+          }
         });
       } else {
-        const achados = inferirAchadosDoMyID({
+        // Inferência por scores dimensionais (cada dimensão tem sistema correto)
+        inferirAchadosDoMyID({
           scores: {
             D:   Number(lastMyID.score_d   || 0),
             EFI: Number(lastMyID.score_efi || 0),
@@ -134,9 +202,13 @@ export default function AvaliacaoPresencial({
             HID: Number((lastMyID as any).score_hid || 0),
           },
           textoRelato: extrairTextoDeObjeto(dados),
-        });
-        achados.forEach(a => {
-          regioes[a.regiao_id] = Math.max(regioes[a.regiao_id] ?? 0, a.intensidade);
+        }).forEach(a => {
+          merge(a.regiao_id, {
+            intensidade: a.intensidade,
+            sistema: a.sistema as SistemaCorporal,
+            fonte: 'myid',
+            tipoAchado: a.motivo,
+          });
         });
       }
     }
@@ -144,7 +216,7 @@ export default function AvaliacaoPresencial({
     return regioes;
   };
 
-  // Processa e salva automaticamente no Avatar Clínico
+  // Salva achados no Avatar Clínico com sistema correto
   const handleAutoProcessar = async (silencioso = false) => {
     if (!user?.id) return;
     setIsAutoProcessing(true);
@@ -168,24 +240,22 @@ export default function AvaliacaoPresencial({
         return;
       }
 
-      await Promise.all(regioesNovas.map(([regiao_id, intensity]) =>
+      await Promise.all(regioesNovas.map(([regiao_id, info]) =>
         saveEvento.mutateAsync({
           paciente_id: pacienteId,
           regiao_id,
-          sistema: 'musculoesqueletico',
-          origem: latestAval ? 'voz_ia' : 'subjetivo_myid',
-          tipo_achado: latestAval
-            ? 'Achado extraído da avaliação por voz (IA)'
-            : 'Achado inferido da avaliação (scores MyID)',
+          sistema: info.sistema,  // sistema correto por achado
+          origem: info.fonte === 'myid' ? 'subjetivo_myid' : 'voz_ia',
+          tipo_achado: info.tipoAchado,
           estrutura: null,
-          severidade: intensity >= 7 ? 3 : intensity >= 4 ? 2 : 1,
+          severidade: info.intensidade >= 7 ? 3 : info.intensidade >= 4 ? 2 : 1,
           status: 'ativo',
           visivel_paciente: true,
           data_inicio: new Date().toISOString().slice(0, 10),
-          notas_clinicas: `Processado automaticamente. Intensidade ${intensity}/10.`,
+          notas_clinicas: `Auto-processado. Intensidade ${info.intensidade}/10. Sistema: ${info.sistema}. Fonte: ${info.fonte}.`,
           metadata: {
-            fontes: latestAval ? ['voz_ia'] : ['myid'],
-            confianca: 'media',
+            fontes: [info.fonte === 'nlp' ? 'voz_ia' : info.fonte],
+            confianca: info.fonte === 'nlp' ? 'baixa' : 'media',
             auto_processado: true,
           } as any,
         } as any)
@@ -197,7 +267,7 @@ export default function AvaliacaoPresencial({
       if (!silencioso) {
         toast({
           title: '✅ Avatar Clínico atualizado!',
-          description: `${regioesNovas.length} região${regioesNovas.length > 1 ? 'ões geradas' : ' gerada'} automaticamente.`,
+          description: `${regioesNovas.length} região${regioesNovas.length > 1 ? 'ões' : ''} em ${new Set(regioesNovas.map(([, i]) => i.sistema)).size} sistema${new Set(regioesNovas.map(([, i]) => i.sistema)).size > 1 ? 's' : ''}.`,
         });
       }
       onAssessmentComplete?.();
@@ -209,7 +279,7 @@ export default function AvaliacaoPresencial({
     }
   };
 
-  // Auto-dispara quando: dados carregados + avatar vazio + há avaliação
+  // Auto-dispara quando: dados carregados + avatar vazio + há avaliação existente
   useEffect(() => {
     if (loadingEventos || loadingAval || loadingMyID) return;
     if (!mostraAvatar) return;
@@ -218,11 +288,11 @@ export default function AvaliacaoPresencial({
     if (autoProcessadoRef.current) return;
 
     autoProcessadoRef.current = true;
-    handleAutoProcessar(true); // silencioso — sem toast de sucesso
+    handleAutoProcessar(true);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loadingEventos, loadingAval, loadingMyID, eventosExistentes.length, latestAval?.id, lastMyID?.id]);
 
-  // Achados extraídos pela IA em nova avaliação → salva direto no Avatar Clínico
+  // Achados de nova avaliação por voz → salva direto no Avatar com sistema correto
   const handlePainExtracted = async (
     findings: Array<{ region_id: string; intensity: number; structures: string[] }>,
   ) => {
@@ -236,15 +306,15 @@ export default function AvaliacaoPresencial({
         saveEvento.mutateAsync({
           paciente_id: pacienteId,
           regiao_id: f.region_id,
-          sistema: 'musculoesqueletico',
+          sistema: sistemaDeRegiao(f.region_id),
           origem: 'voz_ia',
-          tipo_achado: 'Achado extraído pela IA da avaliação por voz',
+          tipo_achado: 'Achado extraído pela IA — avaliação por voz',
           estrutura: f.structures?.join(', ') || null,
           severidade: f.intensity >= 7 ? 3 : f.intensity >= 4 ? 2 : 1,
           status: 'ativo',
           visivel_paciente: true,
           data_inicio: new Date().toISOString().slice(0, 10),
-          notas_clinicas: `Intensidade ${f.intensity}/10. Estruturas: ${f.structures?.join(', ') || '—'}. Fonte: voz + IA.`,
+          notas_clinicas: `Intensidade ${f.intensity}/10. Sistema: ${sistemaDeRegiao(f.region_id)}. Estruturas: ${f.structures?.join(', ') || '—'}.`,
           metadata: { fontes: ['voz_ia'], confianca: 'media', auto_processado: true } as any,
         } as any)
       ));
@@ -261,13 +331,14 @@ export default function AvaliacaoPresencial({
     !loadingEventos &&
     eventosExistentes.length === 0 &&
     temDadosParaProcessar &&
-    !isAutoProcessing;
+    !isAutoProcessing &&
+    autoProcessadoRef.current; // só aparece se o auto-processamento já tentou e não funcionou
 
   return (
     <div className="space-y-3">
       <MyIDResumoInline pacienteId={pacienteId} />
 
-      {/* Processando silenciosamente */}
+      {/* Indicador de processamento automático em background */}
       {isAutoProcessing && (
         <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-2">
           <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
@@ -277,16 +348,16 @@ export default function AvaliacaoPresencial({
         </div>
       )}
 
-      {/* Banner manual: caso o auto-processamento não tenha funcionado */}
+      {/* Banner manual — aparece somente se o auto-processamento não gerou regiões */}
       {mostrarBanner && (
         <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 flex items-start gap-3">
           <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
           <div className="flex-1 min-w-0">
             <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
-              Avatar Clínico vazio
+              Avatar sem achados automáticos
             </p>
             <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
-              Existe avaliação registrada mas o Avatar ainda não foi gerado.
+              Não foram detectadas regiões na avaliação. Você pode tentar novamente ou registrar manualmente.
             </p>
           </div>
           <Button
@@ -296,7 +367,7 @@ export default function AvaliacaoPresencial({
             onClick={() => handleAutoProcessar(false)}
           >
             <Wand2 className="h-3.5 w-3.5 shrink-0" />
-            Gerar Avatar
+            Tentar novamente
           </Button>
         </div>
       )}
