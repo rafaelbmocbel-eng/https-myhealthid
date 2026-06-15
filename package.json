@@ -10,7 +10,9 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "dev:paciente": "vite --config vite.config.paciente.ts",
+    "build:paciente": "vite build --config vite.config.paciente.ts"
   },
   "dependencies": {
     "@capacitor/cli": "^8.2.0",
