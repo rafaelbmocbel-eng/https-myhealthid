@@ -19,6 +19,7 @@ import {
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
+import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
 
 
 const FRONT_OUTLINE =
@@ -263,14 +264,38 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       if (!data) return null;
 
       const dados = data.dados_avaliacao as any;
-      const painMap = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
-      const painRegions = painMap ? Object.entries(painMap)
-        .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
-        .filter(i => i.intensidade > 0) : [];
+      const painMapSalvo = dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+
+      let painRegions: { regiao_id: string; intensidade: number }[] = painMapSalvo
+        ? Object.entries(painMapSalvo)
+            .map(([id, val]) => ({ regiao_id: id, intensidade: Number(val) }))
+            .filter(i => i.intensidade > 0)
+        : [];
 
       const respostas = dados || {};
       const analysis = data.myid_analysis as any;
       const componentScores = analysis?.componentScores || analysis?.component_scores || {};
+
+      // Se não há painMap mas há scores dimensionais, infere regiões para o botão de sync aparecer
+      if (painRegions.length === 0) {
+        const scoresObj = {
+          D: Number(data.score_d || 0),
+          EFI: Number(data.score_efi || 0),
+          P: Number(data.score_p || 0),
+          I: Number(data.score_i || 0),
+          R: Number(data.score_r || 0),
+          C: Number(data.score_c || 0),
+          N: Number(data.score_n || 0),
+        };
+        const temScores = Object.values(scoresObj).some(v => v > 0);
+        if (temScores) {
+          const achados = inferirAchadosDoMyID({
+            scores: scoresObj,
+            textoRelato: extrairTextoDeObjeto(dados) + ' ' + extrairTextoDeObjeto(analysis),
+          });
+          painRegions = achados.map(a => ({ regiao_id: a.regiao_id, intensidade: a.intensidade }));
+        }
+      }
 
       const textoCompleto = extrairTextoDeObjeto(dados) + " " + extrairTextoDeObjeto(analysis);
       const sintomasDetectados = encontrarSintomasEmTexto(textoCompleto);

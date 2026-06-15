@@ -59,7 +59,8 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && !!user && mostraAvatar,
   });
 
-  // 2) Último MyID com scores
+  // 2) Última avaliação presencial ou MyID — sem filtro de myid_score para incluir
+  //    avaliações presenciais antigas que não geraram score digital
   const { data: lastMyID } = useQuery({
     queryKey: ['myid-latest-sync', pacienteId],
     queryFn: async () => {
@@ -67,7 +68,6 @@ export default function AvaliacaoPresencial({
         .from('avaliacoes_identidade')
         .select('*')
         .eq('paciente_id', pacienteId)
-        .not('myid_score', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -136,28 +136,48 @@ export default function AvaliacaoPresencial({
     });
   };
 
-  // Botão Sincronizar MyID — usa novo motor de inferência por severidade
+  // Botão Sincronizar — tenta painMap salvo primeiro, depois inferência por scores
   const handleSyncMyID = () => {
     if (!lastMyID) return;
+
+    const dados = (lastMyID as any).dados_avaliacao || {};
+    const painMapSalvo: Record<string, number> | null =
+      dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+
+    if (painMapSalvo && Object.keys(painMapSalvo).length > 0) {
+      let count = 0;
+      Object.entries(painMapSalvo).forEach(([rid, intensity]) => {
+        const val = Number(intensity);
+        if (val > 0) {
+          mergeFromSource('myid', { [rid]: val }, { myid_dimensao: 'mapa_dor' });
+          count++;
+        }
+      });
+      setMyidSyncDone(true);
+      toast({ title: 'Mapa de dor sincronizado', description: `${count} regiões carregadas da avaliação presencial.` });
+      return;
+    }
+
+    // Fallback: inferência a partir dos scores dimensionais
     const achados = inferirAchadosDoMyID({
       scores: {
-        D: Number(lastMyID.score_d),
-        EFI: Number(lastMyID.score_efi),
-        P: Number(lastMyID.score_p),
-        I: Number(lastMyID.score_i),
-        R: Number(lastMyID.score_r),
-        C: Number(lastMyID.score_c),
-        N: Number(lastMyID.score_n),
+        D: Number(lastMyID.score_d || 0),
+        EFI: Number(lastMyID.score_efi || 0),
+        P: Number(lastMyID.score_p || 0),
+        I: Number(lastMyID.score_i || 0),
+        R: Number(lastMyID.score_r || 0),
+        C: Number(lastMyID.score_c || 0),
+        N: Number(lastMyID.score_n || 0),
       },
       textoRelato: [
         (lastMyID as any).queixa_principal,
         (lastMyID as any).observacoes,
-        JSON.stringify((lastMyID as any).dados_avaliacao || {}),
+        JSON.stringify(dados),
       ].filter(Boolean).join(' '),
     });
 
     if (achados.length === 0) {
-      toast({ title: 'MyID sem achados mapeáveis', description: 'Os scores do MyID não geraram regiões específicas para este avatar.' });
+      toast({ title: 'Sem regiões mapeáveis', description: 'Esta avaliação não gerou regiões específicas para o avatar.' });
       return;
     }
 
@@ -171,8 +191,8 @@ export default function AvaliacaoPresencial({
 
     setMyidSyncDone(true);
     toast({
-      title: 'MyID sincronizado ao Avatar',
-      description: `${achados.length} regiões pré-marcadas com base em scores e relatos.`,
+      title: 'Avaliação sincronizada ao Avatar',
+      description: `${achados.length} regiões pré-marcadas com base nos scores.`,
     });
   };
 
