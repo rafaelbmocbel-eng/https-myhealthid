@@ -48,7 +48,9 @@ CLASSIFICAÇÃO DE DOR (IASP 2020):
 
 PSICOSSOCIAIS (yellow flags): catastrofização (PCS), medo-evitação (TSK/FABQ), depressão/ansiedade, baixa autoeficácia, expectativa negativa, conflito laboral.
 
-RESPONDA SEMPRE usando a função estruturada fornecida. Seja **conciso, clínico e prático** — não invente achados que não estejam na conversa; quando incerto, marque como "Inferido" ou deixe o campo vazio.`;
+RESPONDA SEMPRE usando a função estruturada fornecida. Seja **conciso, clínico e prático** — não invente achados que não estejam na conversa; quando incerto, marque como "Inferido" ou deixe o campo vazio.
+
+IDIOMA OBRIGATÓRIO: TODOS os campos de texto da resposta DEVEM estar em **Português Brasileiro (PT-BR)**, incluindo diagnósticos, hipóteses, técnicas, queixa principal, resumos e notas. Termos técnicos devem ser traduzidos/adaptados (ex: "Radiculopatia cervical", não "Cervical Radiculopathy"; "Tendinopatia do manguito", não "Rotator cuff tendinopathy"). Apenas códigos padronizados internacionalmente (CID, CIF, b/s/d/e) permanecem no formato original.`;
 
 // ──────────────────────────────────────────────────────────────────
 // SCHEMA DE SAÍDA
@@ -76,10 +78,10 @@ const TOOL_SCHEMA = {
           required: ["subjetivo", "objetivo", "avaliacao", "plano"],
         },
 
-        resumo_clinico: { type: "string", description: "Síntese narrativa unificada (3-5 frases) integrando todas as lentes clínicas." },
-        queixa_principal: { type: "string" },
-        tempo_evolucao: { type: "string" },
-        mecanismo_lesao: { type: "string" },
+        resumo_clinico: { type: "string", description: "Síntese narrativa unificada (3-5 frases) integrando todas as lentes clínicas. SEMPRE em PT-BR." },
+        queixa_principal: { type: "string", description: "Queixa principal do paciente em PT-BR. Ex: 'Dor cervical crônica com irradiação para membro superior direito'." },
+        tempo_evolucao: { type: "string", description: "Tempo de evolução em PT-BR. Ex: '6 meses', '2 anos'." },
+        mecanismo_lesao: { type: "string", description: "Mecanismo de lesão em PT-BR." },
 
         dor: {
           type: "object",
@@ -139,9 +141,9 @@ const TOOL_SCHEMA = {
           items: {
             type: "object",
             properties: {
-              diagnostico: { type: "string" },
+              diagnostico: { type: "string", description: "Nome do diagnóstico/hipótese em PT-BR. Ex: 'Radiculopatia cervical C6', 'Síndrome de dor miofascial'." },
               probabilidade: { type: "string", enum: ["Alta", "Moderada", "Baixa"] },
-              evidencia: { type: "string", description: "Justificativa clínica + referência (autor/ano/diretriz)." },
+              evidencia: { type: "string", description: "Justificativa clínica + referência (autor/ano/diretriz). SEMPRE em PT-BR." },
               lente_clinica: {
                 type: "string",
                 enum: ["Fisioterapia", "Neurociência da Dor", "Reabilitação Esportiva", "Osteopatia", "Quiropraxia", "Posturologia", "Integrada"],
@@ -552,7 +554,7 @@ serve(async (req) => {
     if (faithfulTranscript) {
       userContent.push({
         type: "text",
-        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}${evidenciaContext}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" da resposta deve conter EXATAMENTE o texto acima, palavra por palavra — não condense, não parafraseie.`,
+        text: `${contextInfo}\n\nTRANSCRIÇÃO LITERAL DA CONSULTA (preservar integralmente no campo "transcricao", SEM resumir, SEM reescrever):\n\n${faithfulTranscript}${evidenciaContext}\n\nGere a avaliação multidisciplinar estruturada (SOAP + raciocínio por especialidade + CIF + diretriz em 3 fases). IMPORTANTE: o campo "transcricao" deve conter EXATAMENTE o texto acima. TODOS os demais campos de texto DEVEM estar em Português Brasileiro (PT-BR) — diagnósticos, técnicas, hipóteses, resumos, queixa principal, tudo em PT-BR.`,
       });
     } else {
       userContent.push({

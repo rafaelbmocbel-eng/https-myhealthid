@@ -691,6 +691,12 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             const severidade = Math.min(5, Math.max(1, Math.round((generatedAssessment.dor?.intensidade_eva || 5) / 2)));
             const hoje = new Date().toISOString().split('T')[0];
 
+            // Garante que tipo_achado e notas estejam em PT-BR:
+            // queixa_principal vem da IA (deve ser PT-BR pelo prompt) — hipotese como fallback
+            const tipoAchadoPtBr = (generatedAssessment.queixa_principal as string | undefined)?.trim()
+              || (hipPrincipal?.diagnostico as string | undefined)?.trim()
+              || 'Avaliação por voz — IA';
+
             const vistas = new Set<string>();
             const eventos = regioes
               .filter(r => { const k = `${r.sistema}|${r.regiao_id}`; if (vistas.has(k)) return false; vistas.add(k); return true; })
@@ -699,7 +705,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
                 terapeuta_id: user.id,
                 regiao_id: r.regiao_id,
                 sistema: r.sistema,
-                tipo_achado: generatedAssessment.queixa_principal || hipPrincipal?.diagnostico || 'Avaliação por voz',
+                tipo_achado: tipoAchadoPtBr,
                 tipo_diagnostico: tipoDiag,
                 severidade,
                 status: 'ativo',
