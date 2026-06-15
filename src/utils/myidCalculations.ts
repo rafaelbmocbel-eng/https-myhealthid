@@ -28,7 +28,20 @@ export function calcularScoreD_MyID(bloco2: MyIDBloco2Data): number {
     { atual: 0, max: 0 }
   );
   const media = (somas.atual + somas.max) / (2 * bloco2.regioes.length);
-  return Math.min(10, Math.round(media * 10) / 10);
+
+  // Fator multi-região
+  const nRegioes = bloco2.regioes.length;
+  const fatorMulti = 1 + Math.min((nRegioes - 1) * 0.08, 0.40);
+
+  // Variabilidade da dor (melhor dia vs máxima)
+  const regiaoMaisGrave = bloco2.regioes.reduce((prev, curr) =>
+    curr.intensidadeAtual > prev.intensidadeAtual ? curr : prev
+  );
+  const variabilidade = regiaoMaisGrave.intensidadeMaxima > 0
+    ? (regiaoMaisGrave.intensidadeMaxima - (regiaoMaisGrave.intensidadeMelhorDia ?? regiaoMaisGrave.intensidadeAtual)) / regiaoMaisGrave.intensidadeMaxima
+    : 0;
+
+  return Math.min(10, Math.round(media * fatorMulti * (1 - variabilidade * 0.10) * 10) / 10);
 }
 
 // ── Red Flags ──
@@ -294,6 +307,7 @@ export function getMyIDSeverityColor(classificacao: string): string {
     case 'BOM': return 'text-yellow-600 bg-yellow-50 border-yellow-200';
     case 'MODERADO': return 'text-amber-600 bg-amber-50 border-amber-200';
     case 'CRÍTICO': return 'text-red-600 bg-red-50 border-red-200';
+    case 'CRÍTICO SEVERO': return 'text-red-900 bg-red-100 border-red-400';
     default: return 'text-muted-foreground bg-muted border-border';
   }
 }
