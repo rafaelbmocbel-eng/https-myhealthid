@@ -96,6 +96,30 @@ const REGRAS_MYID: Array<{
     sistema: 'nervoso',
     motivo: 'Kinesiofobia — evitação de movimento amplifica dor central',
   },
+  // I alto = inércia/sedentarismo crônico → sobrecarga articular por falta de ativação
+  {
+    dimensao: 'I',
+    limiar: 6,
+    regioes: ['lombar', 'joelho_d', 'joelho_e', 'tornozelo_d', 'tornozelo_e'],
+    sistema: 'musculoesqueletico',
+    motivo: 'Inércia comportamental — articulações de carga sem suporte muscular adequado',
+  },
+  // N alto = ruído sistêmico (inflamação, metabólico) → manifestações difusas periféricas
+  {
+    dimensao: 'N',
+    limiar: 6,
+    regioes: ['cabeca', 'abdomem', 'lombar'],
+    sistema: 'nervoso',
+    motivo: 'Ruído sistêmico alto — sensibilização central e sintomas difusos',
+  },
+  // HID alto = hidratação insuficiente → articulações e tecidos ressecados
+  {
+    dimensao: 'HID',
+    limiar: 7,
+    regioes: ['cabeca', 'cervical'],
+    sistema: 'nervoso',
+    motivo: 'Hidratação insuficiente — cefaleia e tensão cervical por desidratação',
+  },
 ];
 
 /**

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope, Save, Brain, Mic, Hand, Target } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClipboardList, Sparkles, Stethoscope, Save, Brain, Mic, Hand, Target, Wand2, AlertCircle } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -13,7 +13,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
-import { inferirAchadosDoMyID, mergearFontes, type AchadoUnificado, type AvatarFonte } from '@/utils/anatomia/myidToAvatar';
+import { inferirAchadosDoMyID, type AchadoUnificado, type AvatarFonte } from '@/utils/anatomia/myidToAvatar';
+import { extrairTextoDeObjeto } from '@/utils/anatomia/mapeamentoSintomas';
 
 interface Props {
   pacienteId: string;
@@ -37,8 +38,10 @@ export default function AvaliacaoPresencial({
   const [structState, setStructState] = useState<Record<string, string[]>>({});
   const [origemPorRegiao, setOrigemPorRegiao] = useState<Record<string, AchadoUnificado>>({});
   const [isSaving, setIsSaving] = useState(false);
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
   const [myidSyncDone, setMyidSyncDone] = useState(false);
   const saveEvento = useSaveEventoAnatomico();
+  const qc = useQueryClient();
   const painText = painMapToText(painMap);
 
   const mostraAvatar = temBloco(lente, 'avatar');
@@ -72,6 +75,19 @@ export default function AvaliacaoPresencial({
         .limit(1)
         .maybeSingle();
       return data;
+    },
+    enabled: !!pacienteId && mostraAvatar,
+  });
+
+  // Contagem de eventos já salvos para este paciente (evita duplicar ao auto-processar)
+  const { data: eventosExistentes = [] } = useQuery({
+    queryKey: ['eventos-anatomicos-count', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('eventos_clinicos_anatomicos' as any)
+        .select('id, regiao_id')
+        .eq('paciente_id', pacienteId);
+      return (data || []) as { id: string; regiao_id: string }[];
     },
     enabled: !!pacienteId && mostraAvatar,
   });
@@ -196,6 +212,93 @@ export default function AvaliacaoPresencial({
     });
   };
 
+  // Processa toda a avaliação e salva automaticamente no avatar clínico
+  const handleAutoProcessar = async () => {
+    if (!lastMyID || !user?.id) return;
+
+    setIsAutoProcessing(true);
+    try {
+      const dados = (lastMyID as any).dados_avaliacao || {};
+      const painMapSalvo: Record<string, number> | null =
+        dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+
+      let regioesPorId: Record<string, number> = {};
+
+      if (painMapSalvo && Object.keys(painMapSalvo).length > 0) {
+        // Usa mapa de dor salvo diretamente
+        Object.entries(painMapSalvo).forEach(([rid, v]) => {
+          if (Number(v) > 0) regioesPorId[rid] = Number(v);
+        });
+      } else {
+        // Fallback: inferência por scores dimensionais + texto
+        const achados = inferirAchadosDoMyID({
+          scores: {
+            D: Number(lastMyID.score_d || 0),
+            EFI: Number(lastMyID.score_efi || 0),
+            P: Number(lastMyID.score_p || 0),
+            I: Number(lastMyID.score_i || 0),
+            R: Number(lastMyID.score_r || 0),
+            C: Number(lastMyID.score_c || 0),
+            N: Number(lastMyID.score_n || 0),
+            AF: Number((lastMyID as any).score_af || 0),
+            ERG: Number((lastMyID as any).score_erg || 0),
+            HID: Number((lastMyID as any).score_hid || 0),
+          },
+          textoRelato: extrairTextoDeObjeto(dados),
+        });
+        achados.forEach(a => { regioesPorId[a.regiao_id] = a.intensidade; });
+      }
+
+      if (Object.keys(regioesPorId).length === 0) {
+        toast({ title: 'Sem dados suficientes', description: 'A avaliação não gerou regiões mapeáveis. Marque manualmente no avatar.' });
+        return;
+      }
+
+      // Filtra regiões que já existem (evita duplicatas)
+      const regioesExistentes = new Set(eventosExistentes.map(e => e.regiao_id));
+      const regioesNovas = Object.entries(regioesPorId).filter(([rid]) => !regioesExistentes.has(rid));
+
+      if (regioesNovas.length === 0) {
+        toast({ title: 'Avatar já atualizado', description: 'Todas as regiões desta avaliação já estão no avatar clínico.' });
+        return;
+      }
+
+      await Promise.all(regioesNovas.map(([regiao_id, intensity]) =>
+        saveEvento.mutateAsync({
+          paciente_id: pacienteId,
+          regiao_id,
+          sistema: 'musculoesqueletico',
+          origem: 'subjetivo_myid',
+          tipo_achado: painMapSalvo ? 'Achado da avaliação presencial (mapa de dor)' : 'Achado inferido da avaliação (scores MyID)',
+          estrutura: null,
+          severidade: intensity >= 7 ? 3 : intensity >= 4 ? 2 : 1,
+          status: 'ativo',
+          visivel_paciente: true,
+          data_inicio: new Date().toISOString().slice(0, 10),
+          notas_clinicas: `Processado automaticamente da avaliação. Intensidade ${intensity}/10.`,
+          metadata: {
+            fontes: ['myid'],
+            confianca: painMapSalvo ? 'media' : 'baixa',
+            auto_processado: true,
+          } as any,
+        } as any)
+      ));
+
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos-count', pacienteId] });
+      toast({
+        title: '✅ Avatar atualizado!',
+        description: `${regioesNovas.length} região${regioesNovas.length > 1 ? 'ões geradas' : ' gerada'} automaticamente da avaliação.`,
+      });
+      onAssessmentComplete?.();
+    } catch (err) {
+      console.error('Erro ao auto-processar:', err);
+      toast({ title: 'Erro ao processar', variant: 'destructive' });
+    } finally {
+      setIsAutoProcessing(false);
+    }
+  };
+
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
     catalog: Object.fromEntries(
@@ -310,9 +413,41 @@ export default function AvaliacaoPresencial({
     }
   };
 
+  const mostrarBannerAutoProcessar =
+    mostraAvatar &&
+    !!lastMyID &&
+    eventosExistentes.length === 0 &&
+    !isAutoProcessing;
+
   return (
     <div className="space-y-3">
       <MyIDResumoInline pacienteId={pacienteId} />
+
+      {/* Banner: avaliação sem avatar — oferece auto-processamento */}
+      {mostrarBannerAutoProcessar && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              Avatar clínico vazio
+            </p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+              Existe uma avaliação registrada mas o avatar ainda não foi gerado.
+              Clique para processar automaticamente.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0"
+            onClick={handleAutoProcessar}
+            disabled={isAutoProcessing}
+          >
+            <Wand2 className="h-3.5 w-3.5 shrink-0" />
+            {isAutoProcessing ? 'Processando...' : 'Gerar Avatar'}
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button
@@ -368,7 +503,7 @@ export default function AvaliacaoPresencial({
                 </p>
               </div>
 
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 {lastMyID && !myidSyncDone && (
                   <Button
                     variant="outline"
@@ -378,6 +513,18 @@ export default function AvaliacaoPresencial({
                   >
                     <Brain className="icon-xs shrink-0" />
                     Sincronizar MyID
+                  </Button>
+                )}
+                {lastMyID && eventosExistentes.length === 0 && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 gap-1.5 text-xs border-primary/30 text-primary hover:bg-primary/5"
+                    onClick={handleAutoProcessar}
+                    disabled={isAutoProcessing}
+                  >
+                    <Wand2 className="icon-xs shrink-0" />
+                    {isAutoProcessing ? 'Processando...' : 'Auto-gerar'}
                   </Button>
                 )}
                 <Button

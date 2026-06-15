@@ -279,13 +279,16 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       // Se não há painMap mas há scores dimensionais, infere regiões para o botão de sync aparecer
       if (painRegions.length === 0) {
         const scoresObj = {
-          D: Number(data.score_d || 0),
+          D:   Number(data.score_d   || 0),
           EFI: Number(data.score_efi || 0),
-          P: Number(data.score_p || 0),
-          I: Number(data.score_i || 0),
-          R: Number(data.score_r || 0),
-          C: Number(data.score_c || 0),
-          N: Number(data.score_n || 0),
+          P:   Number(data.score_p   || 0),
+          I:   Number(data.score_i   || 0),
+          R:   Number(data.score_r   || 0),
+          C:   Number(data.score_c   || 0),
+          N:   Number(data.score_n   || 0),
+          AF:  Number((data as any).score_af  || 0),
+          ERG: Number((data as any).score_erg || 0),
+          HID: Number((data as any).score_hid || 0),
         };
         const temScores = Object.values(scoresObj).some(v => v > 0);
         if (temScores) {
