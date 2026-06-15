@@ -37,7 +37,6 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 1: INÉRCIA (I) ====================
-    // Mudança 4: pesos por tipo de mudança
     calculateInertia(): number {
         const b1 = this.responses.bloco1;
         const changes: string[] = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
@@ -143,7 +142,6 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 4: PSICOLÓGICO (P) ====================
-    // Mudança 5: incluir expectativa
     calculatePsychological(): number {
         const fearMovement = this.responses.bloco_4_fear_movement ?? this.responses.bloco4?.medoMovimento ?? 2;
         const beliefDamage = this.responses.bloco_4_belief_damage ?? this.responses.bloco4?.catastrofizacao ?? 2;
@@ -233,7 +231,6 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 5G: NUTRIÇÃO (NUT) ====================
-    // Mudança 6: usar todos os campos disponíveis
     calculateNutrition(): number {
         const qualityMap: Record<string, number> = { very_poor: 0, poor: 3, acceptable: 6, good: 8, excellent: 10 };
         const qualityVal = qualityMap[this.responses.bloco_5g_quality || this.responses.bloco5?.bloco_5g_quality || 'acceptable'] ?? 5;
@@ -301,7 +298,6 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 6: HORMÔNIOS ====================
-    // Mudança 7: implementação real — ciclo hormonal alterado contribui para N (Ruído Sistêmico)
     calculateHormones(): number {
         const b6 = this.responses.bloco6;
         let hormonalNoise = 0;
@@ -332,7 +328,6 @@ export class MyIDCalculator {
     }
 
     // ==================== MEDICAÇÕES (MED) ====================
-    // Mudança 11: passar antidepressant_type
     calculateMedications(): number {
         const b6 = this.responses.bloco6;
         const medResult = calcularPerdaMedicamentos({
@@ -351,7 +346,6 @@ export class MyIDCalculator {
         return medResult.perda_pontos;
     }
 
-    // Mudança 8: usar dados reais para prognóstico
     getHealingPrognosis(): string {
         const d = this.scores['D'] || 0;
         const efi = this.scores['EFI'] || 0;
@@ -366,7 +360,6 @@ export class MyIDCalculator {
         return 'Moderado — monitorar resposta ao tratamento';
     }
 
-    // Mudança 9: helper para multiplicador de cronicidade temporal
     private getCronicidadeMultiplier(dataInicio?: string): number {
         if (!dataInicio) return 1.0;
         try {
@@ -433,7 +426,6 @@ export class MyIDCalculator {
         this.perdas['NUT'] = calcularPerdaDimensao('NUT', 10 - NUT);
         this.perdas['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
 
-        // Mudança 9: cronicidade amplifica o driver de dor
         const dataInicio = this.responses.bloco_1_date || this.responses.bloco1?.data_inicio_dor || this.responses.bloco1?.dataInicioDor;
         const cronicMult = this.getCronicidadeMultiplier(dataInicio);
         if (cronicMult > 1 && this.perdas['D'].perda_pontos > 0) {
@@ -452,7 +444,6 @@ export class MyIDCalculator {
         const medPenalty = this.result.med_penalty || 0;
         totalPerdas -= medPenalty; // med_penalty: negative values add loss, positive subtract
 
-        // Mudança 10: Red Flags penalidade adicional ao score final
         const rfData = this.responses.bloco_2_red_flags || this.responses.bloco2?.redFlags || {};
         const activeRF = [
             !!(rfData.weight_loss || rfData.perdaPeso),
