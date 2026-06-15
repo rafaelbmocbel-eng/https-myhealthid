@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
-import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye } from 'lucide-react';
+import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye, Clock, History, AlertTriangle, CheckCircle2, ArrowRight } from 'lucide-react';
 import { REGIONS, STRUCTURES } from '@/components/presencial/Body3DAvatar';
 import { VISCERAL_REGIONS, VISCERAL_STRUCTURES } from '@/utils/anatomia/regioesViscerais';
 import { cn } from '@/lib/utils';
@@ -222,13 +222,22 @@ const ORIGEM_LABEL: Record<OrigemAchado, string> = {
 
 const TIPO_DIAG_BADGE: Record<string, string> = {
   relato_paciente: 'Relato',
-  diagnostico_medico: 'Med.',
-  diagnostico_fisioterapia: 'Fisio',
-  diagnostico_psicologia: 'Psico',
-  diagnostico_nutricao: 'Nutri',
-  diagnostico_fonoaudiologia: 'Fono',
-  diagnostico_outro: 'Esp.',
+  historico_relatado: 'Histórico ⏳',
   achado_clinico: 'Achado',
+  diagnostico_medico: 'Dx Med.',
+  diagnostico_fisioterapia: 'Dx Fisio',
+  diagnostico_psicologia: 'Dx Psico',
+  diagnostico_nutricao: 'Dx Nutri',
+  diagnostico_fonoaudiologia: 'Dx Fono',
+  diagnostico_outro: 'Dx Esp.',
+};
+
+// Peso do tipo para determinar qual evento domina visualmente em regiões sobrepostas
+const tipoPeso = (td: string | undefined): number => {
+  if (!td) return 2;
+  if (td.startsWith('diagnostico_')) return 3; // confirmado por profissional
+  if (td === 'achado_clinico') return 2; // achado presencial
+  return 1; // relato ou histórico não confirmado
 };
 
 interface Props {
@@ -412,18 +421,26 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     [eventos, sistemasAtivos],
   );
 
-  // dominante por região = maior severidade (e não-resolvido prioritário)
+  // dominante por região: tipo confirmado > achado > relato; dentro do mesmo tipo, maior severidade
   const corPorRegiao = useMemo(() => {
     const map: Record<string, string> = {};
     const peso = (e: EventoAnatomico) =>
       (e.status === 'resolvido' ? 0 : 10) + e.severidade;
-    
-    // Primeiro, aplica cores dos achados clínicos (objetivo)
+
     eventosFiltrados.forEach(ev => {
-      const prev = map[ev.regiao_id + '__peso'];
-      if (!prev || (peso(ev) > Number(prev))) {
+      const td = (ev as any).tipo_diagnostico as string | undefined;
+      const evTP = tipoPeso(td);
+      const evP = peso(ev);
+      const prevTP = Number(map[ev.regiao_id + '__tipopeso'] || 0);
+      const prevP = Number(map[ev.regiao_id + '__peso'] || -1);
+      const shouldReplace = !map[ev.regiao_id] ||
+        evTP > prevTP ||
+        (evTP === prevTP && evP > prevP);
+      if (shouldReplace) {
         map[ev.regiao_id] = corEvento(ev);
-        map[ev.regiao_id + '__peso'] = String(peso(ev));
+        map[ev.regiao_id + '__peso'] = String(evP);
+        map[ev.regiao_id + '__tipo'] = td || 'achado_clinico';
+        map[ev.regiao_id + '__tipopeso'] = String(evTP);
       }
     });
 
@@ -1125,21 +1142,31 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </g>
               )}
 
-              {/* Musculoskeletal regions — only render when data exists or hovered */}
+              {/* Musculoskeletal regions — visual weight reflects tipo_diagnostico */}
               {sistemasAtivos.includes('musculoesqueletico') && regioesBase.map(r => {
                 const fill = corPorRegiao[r.id];
                 const isHoveredSystem = hoveredSistema === 'musculoesqueletico';
                 if (!fill && !isHoveredSystem) return null;
+                const tipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
+                const isRelato = tipo === 'relato_paciente';
+                const isHistorico = tipo === 'historico_relatado';
+                const isDiag = tipo.startsWith('diagnostico_');
                 const severityScore = Number(corPorRegiao[r.id + '__peso'] || 0);
+                // Pesos visuais por nível de confirmação clínica
+                const fillOp = fill ? (isRelato || isHistorico ? 0.32 : isDiag ? 0.88 : 0.65) : 0.28;
+                const sw = fill ? (isRelato || isHistorico ? 0.6 : isDiag ? 1.8 : 1.1) : 0.5;
+                const dash = isRelato || isHistorico ? '4,3' : undefined;
+                const needsGlow = isDiag && severityScore >= 12;
                 return (
                   <path
                     key={r.id}
                     d={r.d}
-                    fill={fill || 'rgba(168,85,247,0.28)'}
-                    fillOpacity={fill ? 0.68 : 0.32}
-                    stroke={fill ? 'rgba(168,85,247,0.65)' : 'rgba(168,85,247,0.40)'}
-                    strokeWidth={fill ? 1.1 : 0.6}
-                    filter={severityScore >= 8 ? 'url(#glow)' : undefined}
+                    fill={fill || 'rgba(168,85,247,0.24)'}
+                    fillOpacity={fillOp}
+                    stroke={fill ? (isDiag ? 'rgba(255,255,255,0.85)' : 'rgba(168,85,247,0.65)') : 'rgba(168,85,247,0.35)'}
+                    strokeWidth={sw}
+                    strokeDasharray={dash}
+                    filter={needsGlow ? 'url(#glow-urgent)' : severityScore >= 8 && isDiag ? 'url(#glow)' : undefined}
                     className="cursor-pointer hover:opacity-80 transition-all"
                     onClick={() => abrirSheet(r.id)}
                   />
@@ -1222,14 +1249,23 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                   );
                 }
 
-                // GLAND + ORGAN — filled shapes
+                // GLAND + ORGAN — filled shapes, com peso visual por tipo_diagnostico
+                const orgTipo = corPorRegiao[r.id + '__tipo'] || 'achado_clinico';
+                const orgIsRelato = orgTipo === 'relato_paciente';
+                const orgIsHist = orgTipo === 'historico_relatado';
+                const orgIsDiag = orgTipo.startsWith('diagnostico_');
                 const restingColor = ORGAN_RESTING_COLORS[r.id] || SYSTEM_RESTING[sys0] || 'rgba(155,163,175,0.45)';
                 const effectiveFill    = fill || (isHoveredSystem ? (SYSTEM_HOVER[sys0] || 'rgba(14,165,233,0.78)') : restingColor);
-                const effectiveOpacity = fill ? 0.94 : isHoveredSystem ? 0.90 : 0.86;
-                const effectiveStroke  = fill ? 'rgba(255,255,255,0.78)' : isHoveredSystem ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.38)';
+                const effectiveOpacity = fill
+                  ? (orgIsRelato || orgIsHist ? 0.62 : orgIsDiag ? 0.98 : 0.88)
+                  : (isHoveredSystem ? 0.90 : 0.86);
+                const effectiveStroke  = fill
+                  ? (orgIsDiag ? 'rgba(255,255,255,0.92)' : 'rgba(255,255,255,0.70)')
+                  : (isHoveredSystem ? 'rgba(255,255,255,0.80)' : 'rgba(255,255,255,0.38)');
                 const effectiveSW      = r.type === 'gland'
-                  ? (fill ? 0.8 : 0.3)
-                  : (fill ? 1.3 : isHoveredSystem ? 1.6 : 0.5);
+                  ? (fill ? (orgIsDiag ? 1.2 : 0.7) : 0.3)
+                  : (fill ? (orgIsDiag ? 2.0 : orgIsRelato || orgIsHist ? 0.8 : 1.3) : isHoveredSystem ? 1.6 : 0.5);
+                const orgDash = (orgIsRelato || orgIsHist) && fill ? '4,3' : undefined;
 
                 return (
                   <g key={r.id} className={cn(isUrgent && 'pulse-organ')}>
@@ -1239,7 +1275,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                       fillOpacity={effectiveOpacity}
                       stroke={effectiveStroke}
                       strokeWidth={effectiveSW}
-                      filter={isUrgent ? 'url(#glow-urgent)' : fill ? 'url(#glow)' : undefined}
+                      strokeDasharray={orgDash}
+                      filter={isUrgent ? 'url(#glow-urgent)' : (fill && orgIsDiag) ? 'url(#glow)' : undefined}
                       className="cursor-pointer hover:brightness-110 transition-all"
                       onClick={() => abrirSheet(r.id)}
                     >
@@ -1290,55 +1327,69 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           </svg>
         </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap gap-x-3 gap-y-1.5 text-[10px] justify-center mt-1">
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Ativo grave</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Ativo leve</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-purple-500/60" /> Queixa Dor</span>
-          <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-sky-500/60" /> Sinais MyID</span>
+        {/* Legend — hierarquia de confirmação clínica */}
+        <div className="space-y-1 mt-2">
+          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-wider text-center">Hierarquia de Confirmação</p>
+          <div className="flex flex-wrap gap-x-3 gap-y-1 text-[10px] justify-center">
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#991b1b]" /> Diagnóstico grave</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#dc2626]" /> Diagnóstico confirmado</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#fb923c]" /> Achado clínico</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#ddd6fe]" /> Relato paciente</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#eab308]" /> Crônico</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#f97316]" /> Em tratamento</span>
+            <span className="flex items-center gap-1 text-muted-foreground"><span className="w-2 h-2 rounded-full bg-[#9ca3af]" /> Resolvido (histórico)</span>
+          </div>
         </div>
       </div>
 
-        {/* Lista resumida */}
+        {/* Lista de achados ativos */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
-        ) : (eventosFiltrados.filter(e => modoSimplificado ? e.visivel_paciente : true).length === 0) ? (
+        ) : (eventosFiltrados.filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true)).length === 0) ? (
           <p className="text-xs text-muted-foreground text-center py-2">
-            Nenhum achado {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
+            Nenhum achado ativo {modoSimplificado ? 'visível' : 'registrado'} para este sistema.
           </p>
         ) : (
           <div className="space-y-1.5">
             {eventosFiltrados
-              .filter(e => modoSimplificado ? e.visivel_paciente : true)
+              .filter(e => e.status !== 'resolvido' && (modoSimplificado ? e.visivel_paciente : true))
               .slice(0, 6)
               .map(ev => {
               const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
+              const td = (ev as any).tipo_diagnostico as string | undefined;
+              const isRelato = td === 'relato_paciente';
+              const isDiag = td?.startsWith('diagnostico_');
               return (
                 <button
                   key={ev.id}
                   disabled={modoSimplificado}
                   onClick={() => abrirSheet(ev.regiao_id)}
-                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition ${
-                    modoSimplificado ? 'cursor-default' : 'hover:bg-muted/40'
-                  }`}
+                  className={`w-full flex items-center gap-2 text-left p-2 rounded-lg transition border ${
+                    isDiag
+                      ? 'border-red-200/60 bg-red-50/40 dark:bg-red-950/20 dark:border-red-900/40'
+                      : isRelato
+                        ? 'border-purple-200/40 bg-purple-50/20 dark:bg-purple-950/10 dark:border-purple-900/30'
+                        : 'border-border/30 hover:bg-muted/40'
+                  } ${modoSimplificado ? 'cursor-default' : ''}`}
                 >
                   <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ background: corEvento(ev) }} />
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate flex items-center gap-1 flex-wrap">
+                      {isDiag && <CheckCircle2 className="h-3 w-3 text-red-600 shrink-0" />}
+                      {isRelato && <AlertTriangle className="h-3 w-3 text-amber-500 shrink-0" />}
                       {ev.tipo_achado}
-                      {(ev as any).tipo_diagnostico && (ev as any).tipo_diagnostico !== 'achado_clinico' && (
-                        <span className="text-[9px] bg-muted px-1 py-0.5 rounded text-muted-foreground font-normal shrink-0">
-                          {TIPO_DIAG_BADGE[(ev as any).tipo_diagnostico] || (ev as any).tipo_diagnostico}
-                        </span>
-                      )}
+                      <span className={cn(
+                        "text-[9px] px-1 py-0.5 rounded font-normal shrink-0",
+                        isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted text-muted-foreground"
+                      )}>
+                        {TIPO_DIAG_BADGE[td || 'achado_clinico'] || td}
+                      </span>
                       <span className="text-muted-foreground font-normal">· {reg?.label || ev.regiao_id}</span>
                     </p>
                     {!modoSimplificado && (
                       <p className="text-[10px] text-muted-foreground">
-                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]} · {ORIGEM_LABEL[ev.origem]}
+                        {STATUS_LABEL[ev.status]} · {SISTEMA_LABEL[ev.sistema]}
+                        {isRelato && <span className="text-amber-600 font-semibold"> · Aguarda confirmação</span>}
                       </p>
                     )}
                   </div>
@@ -1347,6 +1398,42 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
         )}
+
+        {/* Histórico Clínico — achados resolvidos */}
+        {!modoSimplificado && (() => {
+          const historico = eventosFiltrados.filter(e => e.status === 'resolvido');
+          if (historico.length === 0) return null;
+          return (
+            <div className="mt-3 space-y-1.5 border-t border-border/30 pt-3">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase flex items-center gap-1">
+                <History className="w-3 h-3" /> Histórico Clínico — Resolvidos ({historico.length})
+              </p>
+              <div className="space-y-0.5">
+                {historico.slice(0, 5).map(ev => {
+                  const reg = [...REGIONS, ...VISCERAL_REGIONS].find(r => r.id === ev.regiao_id);
+                  const td = (ev as any).tipo_diagnostico as string | undefined;
+                  return (
+                    <button
+                      key={ev.id}
+                      onClick={() => abrirSheet(ev.regiao_id)}
+                      className="w-full flex items-center gap-2 text-left py-1 px-2 rounded hover:bg-muted/30 transition"
+                    >
+                      <span className="w-2 h-2 rounded-full shrink-0 bg-gray-400" />
+                      <p className="text-[11px] text-muted-foreground line-through truncate flex-1">{ev.tipo_achado}</p>
+                      <span className="text-[9px] text-muted-foreground shrink-0">{reg?.label || ev.regiao_id}</span>
+                      {td && td !== 'achado_clinico' && (
+                        <span className="text-[9px] bg-muted px-1 rounded shrink-0">{TIPO_DIAG_BADGE[td] || td}</span>
+                      )}
+                    </button>
+                  );
+                })}
+                {historico.length > 5 && (
+                  <p className="text-[9px] text-muted-foreground text-center py-0.5">+{historico.length - 5} no histórico</p>
+                )}
+              </div>
+            </div>
+          );
+        })()}
       </CardContent>
 
       {/* Sheet de região */}
@@ -1412,45 +1499,106 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 </div>
               )}
 
-              {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => (
-                <div key={ev.id} className="border border-border/50 rounded-lg p-3 space-y-2 hover:border-primary/30 transition-colors">
+              {sheetRegiao && eventosDaRegiao(sheetRegiao).map(ev => {
+                const td = (ev as any).tipo_diagnostico as string | undefined;
+                const isRelato = td === 'relato_paciente' || td === 'historico_relatado';
+                const isDiag = td?.startsWith('diagnostico_');
+                return (
+                <div key={ev.id} className={cn(
+                  "border rounded-lg p-3 space-y-2 transition-colors",
+                  isDiag ? "border-red-200 bg-red-50/30 dark:bg-red-950/10" :
+                  isRelato ? "border-amber-200/60 bg-amber-50/20 dark:bg-amber-950/10" :
+                  "border-border/50 hover:border-primary/30"
+                )}>
                   <div className="flex items-start gap-2">
                     <span className="w-3 h-3 rounded-full mt-1 shrink-0" style={{ background: corEvento(ev) }} />
                     <div className="flex-1 min-w-0">
-                      <div className="flex justify-between items-start">
-                        <p className="text-sm font-semibold">{ev.tipo_achado}</p>
-                        <div className="flex gap-1">
+                      <div className="flex justify-between items-start gap-1">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-semibold leading-tight">{ev.tipo_achado}</p>
+                          <p className="text-[10px] text-muted-foreground mt-0.5">
+                            <span className={cn(
+                              "px-1.5 py-0.5 rounded font-medium mr-1",
+                              isDiag ? "bg-red-100 text-red-700" : isRelato ? "bg-amber-100 text-amber-700" : "bg-muted"
+                            )}>
+                              {TIPO_DIAG_BADGE[td || 'achado_clinico']}
+                            </span>
+                            {STATUS_LABEL[ev.status]} · Sev {ev.severidade}/4 · {SISTEMA_LABEL[ev.sistema]}
+                            {ev.estrutura && <span className="text-primary font-medium"> · {ev.estrutura}</span>}
+                            {ev.diagnostico_cid && <span className="bg-primary/10 text-primary px-1 rounded ml-1">{ev.diagnostico_cid}</span>}
+                          </p>
+                        </div>
+                        <div className="flex gap-1 shrink-0">
                           {ev.visivel_paciente ? (
-                            <User className="h-3 w-3 text-green-500" />
+                            <User className="h-3 w-3 text-green-500 mt-0.5" />
                           ) : (
-                            <ShieldCheck className="h-3 w-3 text-muted-foreground" />
+                            <ShieldCheck className="h-3 w-3 text-muted-foreground mt-0.5" />
                           )}
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(ev)}>
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMut.mutate(ev.id)}>
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </Button>
                         </div>
                       </div>
-                      <p className="text-[10px] text-muted-foreground flex flex-wrap gap-x-2 gap-y-1 mt-1">
-                        <span className="bg-muted px-1.5 py-0.5 rounded">{STATUS_LABEL[ev.status]}</span>
-                        <span>Sev: {ev.severidade}/4</span>
-                        <span>{SISTEMA_LABEL[ev.sistema]}</span>
-                        {ev.estrutura && <span className="text-primary font-medium">· {ev.estrutura}</span>}
-                        {ev.diagnostico_cid && <span className="bg-primary/10 text-primary px-1 rounded">{ev.diagnostico_cid}</span>}
-                      </p>
                       {ev.notas_clinicas && (
-                        <p className="text-[11px] text-muted-foreground mt-2 bg-muted/30 p-2 rounded italic">
+                        <p className="text-[11px] text-muted-foreground mt-1.5 bg-muted/30 p-2 rounded italic">
                           "{ev.notas_clinicas}"
                         </p>
                       )}
-                    </div>
-                    <div className="flex flex-col gap-1 shrink-0">
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => setEditing(ev)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => deleteMut.mutate(ev.id)}>
-                        <Trash2 className="h-3.5 w-3.5 text-destructive" />
-                      </Button>
+                      {/* Ações rápidas por tipo */}
+                      <div className="flex gap-1.5 mt-2 flex-wrap">
+                        {isRelato && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                            onClick={() => setEditing({
+                              ...ev,
+                              tipo_diagnostico: 'achado_clinico',
+                              severidade: Math.max(ev.severidade, 2),
+                            } as any)}
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Confirmar como Achado
+                          </Button>
+                        )}
+                        {ev.status !== 'resolvido' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-gray-300 text-gray-600 hover:bg-gray-50"
+                            onClick={() => saveMut.mutateAsync({
+                              ...ev,
+                              status: 'resolvido',
+                              data_resolucao: new Date().toISOString().slice(0, 10),
+                            } as any)}
+                            disabled={saveMut.isPending}
+                          >
+                            <History className="h-3 w-3" /> Mover para Histórico
+                          </Button>
+                        )}
+                        {ev.status === 'resolvido' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-[10px] gap-1 border-amber-300 text-amber-700 hover:bg-amber-50"
+                            onClick={() => saveMut.mutateAsync({
+                              ...ev,
+                              status: 'ativo',
+                              data_resolucao: null,
+                            } as any)}
+                            disabled={saveMut.isPending}
+                          >
+                            <ArrowRight className="h-3 w-3" /> Reativar
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-              ))}
+              );
+              })}
               {/* Histórico de vida relacionado ao sistema da região */}
               {sheetRegiao && (() => {
                 const regVis = VISCERAL_REGIONS.find(r => r.id === sheetRegiao);
@@ -1586,33 +1734,58 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
 
           {editing && (
             <div className="mt-4 space-y-3">
+              {/* Classificação primeiro — define o peso clínico do registro */}
               <div className="space-y-1.5">
-                <Label className="text-xs">Tipo de achado *</Label>
+                <Label className="text-xs font-bold">Classificação Diagnóstica *</Label>
+                <Select
+                  value={(editing as any).tipo_diagnostico || 'achado_clinico'}
+                  onValueChange={(value) => {
+                    const updates: any = { tipo_diagnostico: value };
+                    if (value === 'historico_relatado') {
+                      updates.status = 'resolvido';
+                      updates.severidade = 1;
+                      updates.data_resolucao = updates.data_resolucao || new Date().toISOString().slice(0, 10);
+                    } else if (value.startsWith('diagnostico_')) {
+                      if (!editing.severidade || editing.severidade < 2) updates.severidade = 2;
+                      if (editing.status === 'resolvido') updates.status = 'ativo';
+                    } else if (value === 'relato_paciente') {
+                      updates.severidade = 1;
+                    }
+                    setEditing(prev => ({ ...prev!, ...updates }));
+                  }}
+                >
+                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="relato_paciente">🗣 Relato do Paciente — não confirmado</SelectItem>
+                    <SelectItem value="historico_relatado">📋 Tratamento/Histórico Relatado — aguarda confirmação</SelectItem>
+                    <SelectItem value="achado_clinico">🔍 Achado Clínico — avaliação presencial</SelectItem>
+                    <SelectItem value="diagnostico_medico">🏥 Diagnóstico Médico — confirmado (nosológico)</SelectItem>
+                    <SelectItem value="diagnostico_fisioterapia">⚡ Diagnóstico Fisioterapêutico — cinético-funcional</SelectItem>
+                    <SelectItem value="diagnostico_psicologia">🧠 Diagnóstico Psicológico — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_nutricao">🥗 Diagnóstico Nutricional — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_fonoaudiologia">🎙 Diagnóstico Fonoaudiológico — confirmado</SelectItem>
+                    <SelectItem value="diagnostico_outro">📌 Diagnóstico por Especialista — confirmado</SelectItem>
+                  </SelectContent>
+                </Select>
+                {((editing as any).tipo_diagnostico?.startsWith('diagnostico_')) && (
+                  <p className="text-[10px] text-red-600 font-medium flex items-center gap-1">
+                    <CheckCircle2 className="h-3 w-3" /> Diagnóstico confirmado — aparece com marcação forte no avatar
+                  </p>
+                )}
+                {(editing as any).tipo_diagnostico === 'historico_relatado' && (
+                  <p className="text-[10px] text-amber-600 font-medium flex items-center gap-1">
+                    <Clock className="h-3 w-3" /> Status "Resolvido" definido automaticamente — vai para o histórico
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-xs">Descrição do achado *</Label>
                 <Input
                   placeholder="ex: Tendinopatia, Parestesia, Dor mecânica…"
                   value={editing.tipo_achado || ''}
                   onChange={e => setEditing({ ...editing, tipo_achado: e.target.value })}
                 />
-              </div>
-
-              <div className="space-y-1.5">
-                <Label className="text-xs">Tipo de Achado</Label>
-                <Select
-                  value={(editing as any).tipo_diagnostico || 'achado_clinico'}
-                  onValueChange={(value) => setEditing(prev => ({ ...prev!, tipo_diagnostico: value as TipoDiagnostico }))}
-                >
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="achado_clinico">Achado Clínico (Avaliação Presencial)</SelectItem>
-                    <SelectItem value="relato_paciente">Relato do Paciente (não confirmado)</SelectItem>
-                    <SelectItem value="diagnostico_medico">Diagnóstico Médico (nosológico)</SelectItem>
-                    <SelectItem value="diagnostico_fisioterapia">Diagnóstico Cinético-Funcional (Fisio)</SelectItem>
-                    <SelectItem value="diagnostico_psicologia">Diagnóstico Psicológico</SelectItem>
-                    <SelectItem value="diagnostico_nutricao">Diagnóstico Nutricional</SelectItem>
-                    <SelectItem value="diagnostico_fonoaudiologia">Diagnóstico Fonoaudiológico</SelectItem>
-                    <SelectItem value="diagnostico_outro">Diagnóstico (outro especialista)</SelectItem>
-                  </SelectContent>
-                </Select>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
