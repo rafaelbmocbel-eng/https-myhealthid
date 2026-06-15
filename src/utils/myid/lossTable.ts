@@ -120,6 +120,7 @@ export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
       { min: 2.0, max: 3.0, perda: 4 },
       { min: 3.0, max: 10.01, perda: 5 },
     ],
+    gatilho_critico: 6.0,
   },
 };
 
@@ -219,6 +220,8 @@ export function calcularPerdaMedicamentos(meds: {
   muscle_relaxant?: boolean;
   corticoid?: boolean;
   supplementation?: boolean;
+  opioide?: boolean;
+  gabapentina?: boolean;
 }): { perda_pontos: number; medicamentos: string[] } {
   let penalty = 0;
   const medicamentos: string[] = [];
@@ -228,21 +231,27 @@ export function calcularPerdaMedicamentos(meds: {
   if (meds.muscle_relaxant) { penalty += PENALIDADES_MEDICAMENTOS.ansiolitico; medicamentos.push('Relaxante muscular'); }
   if (meds.antidepressant) { penalty += PENALIDADES_MEDICAMENTOS.antidepressivo; medicamentos.push('Antidepressivo (bônus)'); }
   if (meds.supplementation) { penalty += PENALIDADES_MEDICAMENTOS.suplementacao; medicamentos.push('Suplementação (bônus)'); }
+  if (meds.opioide) { penalty += PENALIDADES_MEDICAMENTOS.opioide; medicamentos.push('Opioide'); }
+  if (meds.gabapentina) { penalty += PENALIDADES_MEDICAMENTOS.gabapentina; medicamentos.push('Gabapentina (bônus)'); }
 
   return { perda_pontos: penalty, medicamentos };
 }
 
 /** Main MyID-100 classification */
-export function classificarMyID100(score: number, _temGatilhoCritico?: boolean): {
+export function classificarMyID100(score: number, temGatilhoCritico?: boolean): {
   nome: string; cor: string; emoji: string;
 } {
   if (score <= 29) {
-    return { nome: 'CRÍTICO', cor: '#DC2626', emoji: '🔴' };
+    return { nome: 'CRÍTICO SEVERO', cor: '#7F1D1D', emoji: '🆘' };
   } else if (score <= 49) {
     return { nome: 'CRÍTICO', cor: '#DC2626', emoji: '🔴' };
   } else if (score <= 69) {
     return { nome: 'MODERADO', cor: '#F59E0B', emoji: '🟠' };
   } else if (score <= 84) {
+    // Se há gatilho crítico ativo e score está em BOM, rebaixar para MODERADO
+    if (temGatilhoCritico === true) {
+      return { nome: 'MODERADO', cor: '#F59E0B', emoji: '🟠' };
+    }
     return { nome: 'BOM', cor: '#FBBF24', emoji: '🟡' };
   } else {
     return { nome: 'EXCELENTE', cor: '#10B981', emoji: '🟢' };
@@ -273,6 +282,29 @@ export function identificarDriver(perdas: Record<string, PerdaCalculada>): Drive
   }
 
   return driver;
+}
+
+/** Identify the top 3 co-drivers (dimensions with highest weighted loss) */
+export function identificarCoDrivers(perdas: Record<string, PerdaCalculada>): DriverPrimario[] {
+  const ranking: Array<{ dimensao: string; pesoAjustado: number; dados: PerdaCalculada }> = [];
+
+  for (const [dimensao, dados] of Object.entries(perdas)) {
+    if (dimensao === 'MED' || dados.perda_pontos === 0) continue;
+    const pesoAjustado = dados.perda_pontos * (dados.gatilho_critico ? 1.5 : 1);
+    ranking.push({ dimensao, pesoAjustado, dados });
+  }
+
+  ranking.sort((a, b) => b.pesoAjustado - a.pesoAjustado);
+
+  return ranking.slice(0, 3).map(item => ({
+    dimensao: item.dimensao,
+    score_bruto: item.dados.score_bruto,
+    perda_pontos: item.dados.perda_pontos,
+    percentual_impacto: item.dados.percentual_perda,
+    motivo: item.dados.gatilho_critico
+      ? 'Maior perda de pontos + gatilho crítico'
+      : 'Maior perda de pontos',
+  }));
 }
 
 // ── Dimension Labels ──
@@ -328,5 +360,10 @@ export const TEMPLATES_INTERPRETACAO: Record<string, { titulo: string; descricao
     titulo: '🔴 SITUAÇÃO CRÍTICA',
     descricao: 'Seu sistema está em sobrecarga crítica. Intervenção urgente é necessária.',
     recomendacao: 'Abordagem multidisciplinar urgente (fisio + psico + médico). Foco no driver primário.',
+  },
+  'CRÍTICO SEVERO': {
+    titulo: '🆘 SITUAÇÃO CRÍTICA SEVERA',
+    descricao: 'Seu sistema está em colapso funcional. Sobrecarga crítica em múltiplas dimensões.',
+    recomendacao: 'Intervenção multidisciplinar urgente e prioritária. Avaliação médica imediata recomendada.',
   },
 };
