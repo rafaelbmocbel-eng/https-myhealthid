@@ -193,6 +193,16 @@ export default function Agenda() {
   const [searchParams, setSearchParams] = useSearchParams();
   const prefillHandledRef = useRef(false);
   const [expandedSlots, setExpandedSlots] = useState<Set<string>>(new Set());
+  const [batchStatusRunning, setBatchStatusRunning] = useState(false);
+  const [turmaPacSearch, setTurmaPacSearch] = useState('');
+  const [turmaModal, setTurmaModal] = useState<{
+    open: boolean;
+    selectedPacientes: string[];
+    titulo: string;
+    data_inicio: string;
+    data_fim: string;
+    tipo_atendimento: string;
+  }>({ open: false, selectedPacientes: [], titulo: '', data_inicio: '', data_fim: '', tipo_atendimento: 'retorno' });
 
   // Drag-and-drop state
   const [dragging, setDragging] = useState<{
@@ -631,7 +641,7 @@ export default function Agenda() {
     const e = new Date(endISO).getTime();
     return agendamentos.filter(ag => {
       if (ag.id === excludeId) return false;
-      if (ag.status === 'cancelado') return false;
+      if (ag.status === 'cancelado' || ag.status === 'faltou') return false;
       const as = parseISO(ag.data_inicio).getTime();
       const ae = parseISO(ag.data_fim).getTime();
       return s < ae && e > as;
@@ -1052,6 +1062,44 @@ export default function Agenda() {
     await executeRecusar(id);
   };
 
+  const handleBatchStatus = async (group: Agendamento[], status: 'atendido' | 'faltou') => {
+    const valid = group.filter(ag => ag.paciente_id && ag.status === 'confirmado');
+    if (valid.length === 0) return;
+    setBatchStatusRunning(true);
+    try {
+      await Promise.all(valid.map(ag => handleSessaoStatus(ag, status)));
+    } finally {
+      setBatchStatusRunning(false);
+    }
+  };
+
+  const handleCreateTurma = async () => {
+    if (!user || turmaModal.selectedPacientes.length === 0) return;
+    setSubmitting(true);
+    try {
+      const payloads = turmaModal.selectedPacientes.map(pid => {
+        const pac = pacientes.find(p => p.id === pid);
+        return {
+          paciente_id: pid,
+          titulo: turmaModal.titulo || undefined,
+          data_inicio: new Date(turmaModal.data_inicio).toISOString(),
+          data_fim: new Date(turmaModal.data_fim).toISOString(),
+          status: 'confirmado' as Agendamento['status'],
+          tipo_atendimento: turmaModal.tipo_atendimento,
+          terapeuta_id: user.id,
+          observacoes: turmaModal.titulo ? `Turma: ${turmaModal.titulo}` : undefined,
+        };
+      });
+      await createBatchAgendamentos(payloads as any);
+      setTurmaModal({ open: false, selectedPacientes: [], titulo: '', data_inicio: '', data_fim: '', tipo_atendimento: 'retorno' });
+      toast({ title: `✅ ${payloads.length} agendamentos criados!`, description: 'Sessão de turma agendada com sucesso.' });
+    } catch {
+      toast({ title: 'Erro ao criar turma', variant: 'destructive' });
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
   const handleSessaoStatus = async (ag: Agendamento, status: 'atendido' | 'faltou' | 'pendente') => {
     if (!user) return;
     try {
@@ -1164,6 +1212,25 @@ export default function Agenda() {
                 </button>
               ))}
             </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-9 gap-1.5 text-xs border-primary/40 text-primary hover:bg-primary/5"
+              title="Criar sessão para múltiplos alunos"
+              onClick={() => {
+                const base = currentDate;
+                setTurmaModal({
+                  open: true,
+                  selectedPacientes: [],
+                  titulo: '',
+                  data_inicio: format(base, "yyyy-MM-dd'T'HH:mm"),
+                  data_fim: format(new Date(base.getTime() + config.duracao_padrao * 60000), "yyyy-MM-dd'T'HH:mm"),
+                  tipo_atendimento: 'retorno',
+                });
+              }}
+            >
+              <Users className="h-3.5 w-3.5" /> <span className="hidden sm:inline">Turma</span>
+            </Button>
             <Button size="sm" className="bg-primary text-primary-foreground gap-1 h-9 px-3 rounded-xl shadow-md text-xs sm:text-sm" onClick={() => openNew()}>
               <Plus className="h-4 w-4" /> <span className="hidden xs:inline">Agendar</span>
             </Button>
@@ -1623,17 +1690,21 @@ export default function Agenda() {
                           );
                         })}
 
-                        {/* Dense clusters (4+ overlap) — stacked view */}
+                        {/* Cartão Turma — grid de avatares com presença em lote */}
                         {Array.from(denseGroups.values()).map((group, gi) => {
                           const sorted = [...group].sort((a, b) => parseISO(a.data_inicio).getTime() - parseISO(b.data_inicio).getTime());
-                          // Use earliest start and latest end for positioning
                           const earliest = sorted[0];
                           const pos = getAgPos(earliest);
-                          const VISIBLE_COUNT = 2;
-                          const visible = sorted.slice(0, VISIBLE_COUNT);
-                          const hiddenCount = sorted.length - VISIBLE_COUNT;
                           const isExpanded = expandedSlots.has(`${di}-${gi}`);
-                          const displayList = isExpanded ? sorted : visible;
+
+                          // Detecta nome da turma — se todos compartilham o mesmo título
+                          const titulos = [...new Set(sorted.map(ag => ag.titulo).filter(Boolean))];
+                          const turmaNome = titulos.length === 1 ? titulos[0]! : null;
+
+                          const isPast = parseISO(earliest.data_fim) < new Date();
+                          const nAtendidos = sorted.filter(ag => ag.status === 'concluido').length;
+                          const nFaltaram = sorted.filter(ag => ag.status === 'faltou').length;
+                          const nPendentes = sorted.filter(ag => ag.status === 'confirmado').length;
 
                           return (
                             <div
@@ -1645,9 +1716,9 @@ export default function Agenda() {
                                 'rounded-lg border shadow-md overflow-hidden',
                                 isExpanded ? 'bg-card ring-2 ring-primary/20 shadow-xl' : 'bg-card/95'
                               )}>
-                                {/* Header badge */}
+                                {/* Header da turma */}
                                 <div
-                                  className="flex items-center justify-between px-2 py-1 bg-primary/10 border-b cursor-pointer hover:bg-primary/15 transition-colors"
+                                  className="flex items-center justify-between px-2 py-1.5 bg-primary/10 border-b cursor-pointer hover:bg-primary/15 transition-colors gap-1"
                                   onClick={(e) => {
                                     e.stopPropagation();
                                     setExpandedSlots(prev => {
@@ -1658,70 +1729,124 @@ export default function Agenda() {
                                     });
                                   }}
                                 >
-                                  <span className="text-[10px] font-bold text-primary flex items-center gap-1">
-                                    <Users className="h-3 w-3" />
-                                    {sorted.length} pacientes • {format(parseISO(earliest.data_inicio), 'HH:mm')}
-                                  </span>
-                                  <span className="text-[9px] text-muted-foreground">
-                                    {isExpanded ? '▲ fechar' : '▼ expandir'}
-                                  </span>
+                                  <div className="flex flex-col gap-0 min-w-0">
+                                    <span className="text-[10px] font-bold text-primary flex items-center gap-1 truncate">
+                                      <Users className="h-3 w-3 shrink-0" />
+                                      {turmaNome || `${sorted.length} alunos`} • {format(parseISO(earliest.data_inicio), 'HH:mm')}–{format(parseISO(earliest.data_fim), 'HH:mm')}
+                                    </span>
+                                    {isPast && (
+                                      <span className="text-[9px] text-muted-foreground">
+                                        ✓{nAtendidos} ✗{nFaltaram}{nPendentes > 0 && ` ⏳${nPendentes}`}
+                                      </span>
+                                    )}
+                                  </div>
+                                  <div className="flex items-center gap-1 shrink-0" onClick={e => e.stopPropagation()}>
+                                    {isPast && nPendentes > 0 && (
+                                      <>
+                                        <button
+                                          title={`Marcar ${nPendentes} alunos presentes`}
+                                          disabled={batchStatusRunning}
+                                          className="h-5 px-1.5 text-[9px] font-bold bg-emerald-500 text-white rounded hover:bg-emerald-600 transition-colors disabled:opacity-50"
+                                          onClick={() => handleBatchStatus(sorted, 'atendido')}
+                                        >
+                                          ✓ Todos
+                                        </button>
+                                        <button
+                                          title={`Marcar ${nPendentes} alunos como faltaram`}
+                                          disabled={batchStatusRunning}
+                                          className="h-5 px-1.5 text-[9px] font-bold bg-orange-500 text-white rounded hover:bg-orange-600 transition-colors disabled:opacity-50"
+                                          onClick={() => handleBatchStatus(sorted, 'faltou')}
+                                        >
+                                          ✗ Falt.
+                                        </button>
+                                      </>
+                                    )}
+                                    <span className="text-[9px] text-muted-foreground ml-0.5">
+                                      {isExpanded ? '▲' : '▼'}
+                                    </span>
+                                  </div>
                                 </div>
 
-                                {/* Stacked appointment rows */}
-                                <div className={cn('divide-y', isExpanded && 'max-h-60 overflow-y-auto')}>
-                                  {displayList.map(ag => {
-                                    const membroDense = equipe.find(m => m.id === (ag as any).membro_equipe_id);
-                                    const denseColor = membroDense ? {
-                                      backgroundColor: membroDense.cor + '18',
-                                      borderLeftColor: membroDense.cor,
-                                      color: membroDense.cor,
-                                    } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
-                                    const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
-                                    const nome = ag.pacientes
-                                      ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}`
-                                      : ag.titulo || 'Agendamento';
+                                {/* Grid de avatares — sempre visível */}
+                                <div className="px-2 py-1.5 flex flex-wrap gap-1">
+                                  {sorted.map(ag => {
+                                    const pac = pacientes.find(p => p.id === ag.paciente_id);
+                                    const nome = pac
+                                      ? `${pac.nome} ${pac.sobrenome}`
+                                      : ag.titulo || 'Aluno';
+                                    const initials = pac
+                                      ? `${(pac.nome || '')[0] || ''}${(pac.sobrenome || '')[0] || ''}`.toUpperCase()
+                                      : (ag.titulo?.[0] || 'A').toUpperCase();
+                                    const isAtendido = ag.status === 'concluido';
+                                    const isFaltou = ag.status === 'faltou';
+                                    const color = ag.paciente_id ? getPatientColor(ag.paciente_id) : null;
 
                                     return (
-                                      <div
+                                      <button
                                         key={ag.id}
-                                        className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/30 cursor-pointer transition-colors border-l-4"
+                                        title={`${nome} — ${STATUS_CONFIG[ag.status]?.label || ag.status}`}
+                                        className={cn(
+                                          'w-7 h-7 rounded-full flex items-center justify-center text-[9px] font-bold border-2 transition-all relative hover:scale-110 hover:shadow-md select-none',
+                                          isAtendido ? 'border-emerald-400' :
+                                          isFaltou ? 'border-red-300 opacity-55' :
+                                          'border-border hover:border-primary/50'
+                                        )}
                                         style={{
-                                          borderLeftColor: denseColor?.borderLeftColor || undefined,
-                                          ...(denseColor ? { backgroundColor: denseColor.backgroundColor + '80' } : {}),
+                                          backgroundColor: color?.backgroundColor || 'hsl(var(--muted))',
+                                          color: color?.color || 'hsl(var(--muted-foreground))',
+                                          ...(isAtendido ? { boxShadow: '0 0 0 1px rgb(74 222 128 / 0.5)' } : {}),
                                         }}
                                         onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
                                       >
-                                        <div className={cn('flex items-center gap-0.5', sc.text)}>
-                                          {sc.icon}
-                                        </div>
-                                        {ag.paciente_id && (
-                                          <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
-                                        )}
-                                        <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
-                                          {format(parseISO(ag.data_inicio), 'HH:mm')} {nome}
-                                        </span>
-                                        <Badge variant="outline" className="text-[8px] h-4 px-1 shrink-0">
-                                          {ag.tipo_atendimento ? TIPO_LABELS[ag.tipo_atendimento] || ag.tipo_atendimento : ''}
-                                        </Badge>
-                                      </div>
+                                        {isFaltou ? '✗' : isAtendido ? '✓' : initials}
+                                      </button>
                                     );
                                   })}
                                 </div>
 
-                                {/* "+N mais" footer when collapsed */}
-                                {!isExpanded && hiddenCount > 0 && (
-                                  <div
-                                    className="text-center py-1 bg-muted/50 text-[9px] font-bold text-primary cursor-pointer hover:bg-primary/10 transition-colors"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      setExpandedSlots(prev => {
-                                        const next = new Set(prev);
-                                        next.add(`${di}-${gi}`);
-                                        return next;
-                                      });
-                                    }}
-                                  >
-                                    +{hiddenCount} mais
+                                {/* Lista expandida — detalhes de cada aluno */}
+                                {isExpanded && (
+                                  <div className="divide-y max-h-60 overflow-y-auto border-t">
+                                    {sorted.map(ag => {
+                                      const membroDense = equipe.find(m => m.id === (ag as any).membro_equipe_id);
+                                      const denseColor = membroDense ? {
+                                        backgroundColor: membroDense.cor + '18',
+                                        borderLeftColor: membroDense.cor,
+                                        color: membroDense.cor,
+                                      } : (ag.paciente_id ? getPatientColor(ag.paciente_id) : null);
+                                      const sc = STATUS_CONFIG[ag.status] || STATUS_CONFIG.confirmado;
+                                      const nome = ag.pacientes
+                                        ? `${ag.pacientes.nome} ${ag.pacientes.sobrenome}`
+                                        : (pacientes.find(p => p.id === ag.paciente_id) ? (() => { const p = pacientes.find(x => x.id === ag.paciente_id)!; return `${p.nome} ${p.sobrenome}`; })() : ag.titulo || 'Aluno');
+
+                                      return (
+                                        <div
+                                          key={ag.id}
+                                          className="flex items-center gap-2 px-2 py-1.5 hover:bg-accent/30 cursor-pointer transition-colors border-l-4"
+                                          style={{
+                                            borderLeftColor: denseColor?.borderLeftColor || 'transparent',
+                                            backgroundColor: denseColor ? denseColor.backgroundColor + '80' : undefined,
+                                          }}
+                                          onClick={(e) => { e.stopPropagation(); openEdit(ag); }}
+                                        >
+                                          <div className={cn('flex items-center gap-0.5 shrink-0', sc.text)}>
+                                            {sc.icon}
+                                          </div>
+                                          {ag.paciente_id && (
+                                            <MyIDFreshnessDot info={getFreshnessInfo(myidFreshnessMap, ag.paciente_id)} />
+                                          )}
+                                          <span className="text-[10px] font-semibold truncate flex-1" style={denseColor ? { color: denseColor.color } : {}}>
+                                            {nome}
+                                          </span>
+                                          {isPast && ag.status === 'confirmado' && (
+                                            <div className="flex gap-0.5 shrink-0" onClick={e => e.stopPropagation()}>
+                                              <button className="h-5 w-5 flex items-center justify-center rounded bg-emerald-500 text-white text-[9px] hover:bg-emerald-600 transition-colors" onClick={() => handleSessaoStatus(ag, 'atendido')}>✓</button>
+                                              <button className="h-5 w-5 flex items-center justify-center rounded bg-orange-500 text-white text-[9px] hover:bg-orange-600 transition-colors" onClick={() => handleSessaoStatus(ag, 'faltou')}>✗</button>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
                                   </div>
                                 )}
                               </div>
@@ -2265,6 +2390,151 @@ export default function Agenda() {
           refresh();
         }}
       />
+
+      {/* Modal de criação de sessão para turma */}
+      <Dialog open={turmaModal.open} onOpenChange={(o) => setTurmaModal(prev => ({ ...prev, open: o }))}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Users className="h-5 w-5 text-primary" />
+              Nova Sessão de Turma
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4 py-2">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Nome da Turma (opcional)</Label>
+              <Input
+                placeholder="ex: Turma Manhã, Personal Segunda-Feira..."
+                value={turmaModal.titulo}
+                onChange={e => setTurmaModal(prev => ({ ...prev, titulo: e.target.value }))}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Início</Label>
+                <Input
+                  type="datetime-local"
+                  value={turmaModal.data_inicio}
+                  onChange={e => {
+                    const di = e.target.value;
+                    const dur = config.duracao_padrao || 60;
+                    const df = format(new Date(new Date(di).getTime() + dur * 60000), "yyyy-MM-dd'T'HH:mm");
+                    setTurmaModal(prev => ({ ...prev, data_inicio: di, data_fim: df }));
+                  }}
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Fim</Label>
+                <Input
+                  type="datetime-local"
+                  value={turmaModal.data_fim}
+                  onChange={e => setTurmaModal(prev => ({ ...prev, data_fim: e.target.value }))}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs">Tipo de Atendimento</Label>
+              <Select
+                value={turmaModal.tipo_atendimento}
+                onValueChange={v => setTurmaModal(prev => ({ ...prev, tipo_atendimento: v }))}
+              >
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {Object.entries(TIPO_LABELS).map(([k, v]) => (
+                    <SelectItem key={k} value={k}>{v}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between">
+                <Label className="text-xs">Alunos / Pacientes</Label>
+                <span className="text-[10px] text-muted-foreground font-medium">
+                  {turmaModal.selectedPacientes.length} selecionados
+                </span>
+              </div>
+              <Input
+                placeholder="Buscar por nome..."
+                value={turmaPacSearch}
+                onChange={e => setTurmaPacSearch(e.target.value)}
+                className="h-8 text-xs"
+              />
+              <div className="border rounded-lg max-h-48 overflow-y-auto divide-y">
+                {pacientes
+                  .filter(p => {
+                    const q = turmaPacSearch.toLowerCase();
+                    return !q || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(q);
+                  })
+                  .map(p => {
+                    const selected = turmaModal.selectedPacientes.includes(p.id);
+                    const color = getPatientColor(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={cn(
+                          'w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-accent/30 transition-colors text-sm',
+                          selected && 'bg-primary/5'
+                        )}
+                        onClick={() => setTurmaModal(prev => ({
+                          ...prev,
+                          selectedPacientes: selected
+                            ? prev.selectedPacientes.filter(id => id !== p.id)
+                            : [...prev.selectedPacientes, p.id],
+                        }))}
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold shrink-0"
+                          style={{ backgroundColor: color.backgroundColor, color: color.color }}
+                        >
+                          {(p.nome?.[0] || '').toUpperCase()}{(p.sobrenome?.[0] || '').toUpperCase()}
+                        </div>
+                        <span className="flex-1 truncate font-medium">{p.nome} {p.sobrenome}</span>
+                        <div className={cn(
+                          'w-4 h-4 rounded border-2 flex items-center justify-center shrink-0',
+                          selected ? 'bg-primary border-primary' : 'border-muted-foreground/40'
+                        )}>
+                          {selected && <span className="text-[9px] text-primary-foreground font-bold">✓</span>}
+                        </div>
+                      </button>
+                    );
+                  })
+                }
+                {pacientes.filter(p => {
+                  const q = turmaPacSearch.toLowerCase();
+                  return !q || `${p.nome} ${p.sobrenome}`.toLowerCase().includes(q);
+                }).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-4">Nenhum paciente encontrado</p>
+                )}
+              </div>
+            </div>
+
+            {turmaModal.selectedPacientes.length > 0 && (
+              <div className="bg-primary/5 border border-primary/20 rounded-lg px-3 py-2 text-xs text-primary font-medium">
+                Serão criados {turmaModal.selectedPacientes.length} agendamento{turmaModal.selectedPacientes.length > 1 ? 's' : ''} simultâneos{turmaModal.titulo ? ` para a turma "${turmaModal.titulo}"` : ''}.
+              </div>
+            )}
+          </div>
+
+          <div className="flex gap-2 pt-2 border-t">
+            <Button variant="outline" className="flex-1" onClick={() => setTurmaModal(prev => ({ ...prev, open: false }))}>
+              Cancelar
+            </Button>
+            <Button
+              className="flex-1 gap-1.5"
+              onClick={handleCreateTurma}
+              disabled={submitting || turmaModal.selectedPacientes.length === 0 || !turmaModal.data_inicio || !turmaModal.data_fim}
+            >
+              {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Users className="h-4 w-4" />}
+              Criar Sessão de Turma
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
