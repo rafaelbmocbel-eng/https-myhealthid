@@ -1,4 +1,4 @@
-import { useState, useMemo, lazy, Suspense } from 'react';
+import { useState, useMemo, useEffect, useRef, lazy, Suspense } from 'react';
 import { PacienteSchema } from '@/lib/validations';
 import { Navigate, useNavigate, useSearchParams } from 'react-router-dom';
 import AppLayout from '@/components/AppLayout';
@@ -224,6 +224,13 @@ export default function Pacientes() {
   const { convenios } = useConvenios();
 
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  useEffect(() => {
+    clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 160);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [search]);
   const [filterServico, setFilterServico] = useState('todos');
   const [filterTag, setFilterTag] = useState<ClassificacaoTag | 'todos'>('todos');
   const [sortBy, setSortBy] = useState<SortKey>('nome');
@@ -645,7 +652,7 @@ export default function Pacientes() {
   }, [pacientes, getClassificacao]);
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const q = debouncedSearch.trim().toLowerCase();
     const list = pacientes.filter(p => {
       if (q) {
         const nome = (p.nome || '').toLowerCase();
@@ -681,7 +688,7 @@ export default function Pacientes() {
       }
       return 0;
     });
-  }, [pacientes, search, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
+  }, [pacientes, debouncedSearch, filterServico, filterTag, sortBy, ultimosAgendamentos, getClassificacao, recentlyAddedIds]);
 
   if (!authLoading && !user) return <Navigate to="/auth" replace />;
 

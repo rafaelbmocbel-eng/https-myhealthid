@@ -151,7 +151,7 @@ export function TimelineUnificada({ pacienteId }: { pacienteId: string }) {
           Nenhum evento neste filtro.
         </div>
       ) : (
-        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2">
+        <div className="space-y-3 max-h-[600px] overflow-y-auto pr-2" style={{ WebkitOverflowScrolling: 'touch', overscrollBehavior: 'contain' }}>
           {filtrados.map(e => {
             const Icon = ICONES[e.tipo];
             return (

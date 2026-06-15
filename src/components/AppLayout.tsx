@@ -39,20 +39,27 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const isHomePage = useMemo(() => location.pathname === '/hoje', [location.pathname]);
 
   useLayoutEffect(() => {
+    let rafId: number;
     const check = () => {
-      const mobile = window.innerWidth < 768;
-      const tablet = window.innerWidth >= 768 && window.innerWidth < 1024;
-      setIsMobile(mobile);
-      if (mobile) {
-        setCollapsed(true);
-        setMobileOpen(false);
-      } else if (tablet) {
-        setCollapsed(true);
-      }
+      cancelAnimationFrame(rafId);
+      rafId = requestAnimationFrame(() => {
+        const mobile = window.innerWidth < 768;
+        const tablet = window.innerWidth >= 768 && window.innerWidth < 1024;
+        setIsMobile(mobile);
+        if (mobile) {
+          setCollapsed(true);
+          setMobileOpen(false);
+        } else if (tablet) {
+          setCollapsed(true);
+        }
+      });
     };
     check();
-    window.addEventListener('resize', check);
-    return () => window.removeEventListener('resize', check);
+    window.addEventListener('resize', check, { passive: true });
+    return () => {
+      cancelAnimationFrame(rafId);
+      window.removeEventListener('resize', check);
+    };
   }, []);
 
   const handleNavClick = useCallback(() => {
@@ -64,9 +71,9 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
   return (
     <div className="min-h-screen min-h-[100dvh] bg-background relative overflow-x-hidden">
-      {/* Background decoration */}
-      <div className="absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
+      {/* Background decoration — hidden on mobile to avoid GPU overdraw */}
+      <div className="hidden md:block absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
+      <div className="hidden md:block absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
 
       {/* Desktop sidebar — always visible */}
       {!isMobile && (
@@ -93,7 +100,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
               initial={{ x: -280 }}
               animate={{ x: 0 }}
               exit={{ x: -280 }}
-              transition={{ type: 'spring', damping: 28, stiffness: 300 }}
+              transition={{ type: 'tween', duration: 0.22, ease: 'easeOut' }}
               className="fixed left-0 top-0 h-screen z-50"
             >
               <AppSidebar
@@ -108,7 +115,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
       {/* Main content offset by sidebar width */}
       <div
-        className="flex flex-col min-h-[100dvh] transition-all duration-500 ease-in-out relative z-10"
+        className="flex flex-col min-h-[100dvh] transition-[margin-left] duration-300 ease-in-out relative z-10"
         style={{ marginLeft: sidebarW }}
       >
         {/* Header */}

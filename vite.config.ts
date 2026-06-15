@@ -81,6 +81,8 @@ export default defineConfig(({ mode }) => ({
     },
   },
   build: {
+    target: 'esnext',
+    cssMinify: true,
     rollupOptions: {
       output: {
         manualChunks: {
@@ -91,6 +93,7 @@ export default defineConfig(({ mode }) => ({
           'vendor-charts': ['recharts'],
           'vendor-pdf': ['jspdf', 'html2canvas'],
           'vendor-motion': ['framer-motion'],
+          'vendor-date': ['date-fns'],
         },
       },
     },

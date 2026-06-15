@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { format, parseISO, parse } from 'date-fns';
@@ -283,7 +283,8 @@ export default function PatientIntegratedDashboard({
     ];
   };
 
-  const powerZones = getPowerZones(scores);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const powerZones = useMemo(() => getPowerZones(scores), [JSON.stringify(scores)]);
 
   // ── Lógica de Missões e Insights ───────────────────────────────────────────
   const getInsights = (sc: any) => {
@@ -318,7 +319,8 @@ export default function PatientIntegratedDashboard({
     };
   };
 
-  const insights = getInsights(scores);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const insights = useMemo(() => getInsights(scores), [JSON.stringify(scores)]);
 
   // Compute MyID-100 from component scores using loss table (same logic as calculator)
   const computeMyID100FromScores = (sc: typeof scores): number => {
