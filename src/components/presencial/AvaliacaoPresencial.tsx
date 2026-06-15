@@ -12,8 +12,6 @@ import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
 import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
 import { toast } from '@/hooks/use-toast';
-import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
-import { encontrarSintomasEmTexto, extrairTextoDeObjeto } from '@/utils/anatomia/mapeamentoSintomas';
 
 interface Props {
   pacienteId: string;
@@ -22,36 +20,18 @@ interface Props {
   onAssessmentComplete?: () => void;
 }
 
-// Região com sistema correto e rastreabilidade de fonte
+// Região com rastreabilidade de fonte (apenas dor explicitamente relatada pelo paciente)
 type RegiaoColetada = {
   intensidade: number;
   sistema: SistemaCorporal;
-  fonte: 'voz_ia' | 'myid' | 'nlp';
+  fonte: 'voz_ia' | 'myid';
   tipoAchado: string;
 };
 
-// Lookup de sistemas padrão por região (para mapa_dor sem sistema explícito)
-const SISTEMA_POR_REGIAO_PADRAO: Record<string, SistemaCorporal> = {
-  cabeca: 'nervoso', cerebro: 'nervoso', cervical: 'nervoso',
-  ombro_d: 'musculoesqueletico', ombro_e: 'musculoesqueletico',
-  cotovelo_d: 'musculoesqueletico', cotovelo_e: 'musculoesqueletico',
-  punho_d: 'musculoesqueletico', punho_e: 'musculoesqueletico',
-  mao_d: 'musculoesqueletico', mao_e: 'musculoesqueletico',
-  torax: 'respiratorio', peito: 'circulatorio',
-  abdomem: 'digestorio', quadril_d: 'musculoesqueletico', quadril_e: 'musculoesqueletico',
-  lombar: 'musculoesqueletico', dorsal: 'musculoesqueletico',
-  trapezio_d: 'musculoesqueletico', trapezio_e: 'musculoesqueletico',
-  joelho_d: 'musculoesqueletico', joelho_e: 'musculoesqueletico',
-  tornozelo_d: 'musculoesqueletico', tornozelo_e: 'musculoesqueletico',
-  pe_d: 'musculoesqueletico', pe_e: 'musculoesqueletico',
-  coxa_d: 'musculoesqueletico', coxa_e: 'musculoesqueletico',
-  perna_d: 'musculoesqueletico', perna_e: 'musculoesqueletico',
-  gluteos: 'musculoesqueletico', braco_d: 'nervoso', braco_e: 'nervoso',
-  antebraco_d: 'musculoesqueletico', antebraco_e: 'musculoesqueletico',
-};
-
-function sistemaDeRegiao(regiao_id: string): SistemaCorporal {
-  return SISTEMA_POR_REGIAO_PADRAO[regiao_id] ?? 'musculoesqueletico';
+// Dor relatada pelo paciente = musculoesqueletico por padrão.
+// Reclassificação para nervoso/circulatorio/etc. requer confirmação clínica do profissional.
+function sistemaDeRegiao(_regiao_id: string): SistemaCorporal {
+  return 'musculoesqueletico';
 }
 
 export default function AvaliacaoPresencial({
@@ -123,53 +103,30 @@ export default function AvaliacaoPresencial({
     ),
   }), []);
 
-  // Agrega regiões de TODAS as fontes com sistema correto por achado
+  // Coleta APENAS mapas de dor explicitamente capturados — sem NLP, sem inferência por scores.
+  // Sintoma relatado pelo paciente → musculoesqueletico + severidade leve (profissional reclassifica).
   const coletarRegioes = (): Record<string, RegiaoColetada> => {
     const regioes: Record<string, RegiaoColetada> = {};
 
-    const merge = (rid: string, info: RegiaoColetada) => {
-      const ex = regioes[rid];
-      if (!ex) {
-        regioes[rid] = info;
-      } else {
-        regioes[rid] = {
-          ...ex,
-          intensidade: Math.max(ex.intensidade, info.intensidade),
-          // Sistema mais específico prevalece sobre musculoesqueletico genérico
-          sistema: ex.sistema !== 'musculoesqueletico' ? ex.sistema : info.sistema,
-        };
-      }
-    };
-
-    // ── Fonte 1: avaliação por voz ──────────────────────────────
+    // ── Fonte 1: mapa de dor explícito da avaliação por voz ──────
     if (latestAval) {
       const meta = (latestAval.resultado as any)?._meta;
-      // 1a. Mapa de dor explícito (extraído pela IA durante a avaliação)
       if (meta?.mapa_dor && typeof meta.mapa_dor === 'object') {
         Object.entries(meta.mapa_dor as Record<string, number>).forEach(([rid, v]) => {
           if (Number(v) > 0) {
-            merge(rid, {
-              intensidade: Number(v),
-              sistema: sistemaDeRegiao(rid),
+            regioes[rid] = {
+              intensidade: 1,
+              sistema: 'musculoesqueletico',
               fonte: 'voz_ia',
-              tipoAchado: 'Mapa de dor extraído pela IA da avaliação por voz',
-            });
+              tipoAchado: 'Dor relatada pelo paciente — aguarda avaliação clínica',
+            };
           }
         });
       }
-      // 1b. NLP no texto completo da avaliação (SOAP, queixa, anamnese...)
-      const textoVoz = extrairTextoDeObjeto(latestAval.resultado);
-      encontrarSintomasEmTexto(textoVoz).forEach(s => {
-        merge(s.regiao_id, {
-          intensidade: 5,
-          sistema: s.sistema as SistemaCorporal,
-          fonte: 'nlp',
-          tipoAchado: `Sintoma detectado no texto: "${s.termo}"`,
-        });
-      });
     }
 
-    // ── Fonte 2: avaliação MyID / presencial ────────────────────
+    // ── Fonte 2: mapa de dor explícito da avaliação presencial ───
+    // Não usa inferirAchadosDoMyID aqui — inferência por scores é apenas visual no AvatarClinicoCard.
     if (lastMyID) {
       const dados = (lastMyID as any).dados_avaliacao || {};
       const painMapSalvo: Record<string, number> | null =
@@ -177,38 +134,14 @@ export default function AvaliacaoPresencial({
 
       if (painMapSalvo) {
         Object.entries(painMapSalvo).forEach(([rid, v]) => {
-          if (Number(v) > 0) {
-            merge(rid, {
-              intensidade: Number(v),
-              sistema: sistemaDeRegiao(rid),
+          if (Number(v) > 0 && !regioes[rid]) {
+            regioes[rid] = {
+              intensidade: 1,
+              sistema: 'musculoesqueletico',
               fonte: 'myid',
-              tipoAchado: 'Mapa de dor da avaliação presencial',
-            });
+              tipoAchado: 'Dor relatada pelo paciente — mapa presencial',
+            };
           }
-        });
-      } else {
-        // Inferência por scores dimensionais (cada dimensão tem sistema correto)
-        inferirAchadosDoMyID({
-          scores: {
-            D:   Number(lastMyID.score_d   || 0),
-            EFI: Number(lastMyID.score_efi || 0),
-            P:   Number(lastMyID.score_p   || 0),
-            I:   Number(lastMyID.score_i   || 0),
-            R:   Number(lastMyID.score_r   || 0),
-            C:   Number(lastMyID.score_c   || 0),
-            N:   Number(lastMyID.score_n   || 0),
-            AF:  Number((lastMyID as any).score_af  || 0),
-            ERG: Number((lastMyID as any).score_erg || 0),
-            HID: Number((lastMyID as any).score_hid || 0),
-          },
-          textoRelato: extrairTextoDeObjeto(dados),
-        }).forEach(a => {
-          merge(a.regiao_id, {
-            intensidade: a.intensidade,
-            sistema: a.sistema as SistemaCorporal,
-            fonte: 'myid',
-            tipoAchado: a.motivo,
-          });
         });
       }
     }
@@ -244,18 +177,18 @@ export default function AvaliacaoPresencial({
         saveEvento.mutateAsync({
           paciente_id: pacienteId,
           regiao_id,
-          sistema: info.sistema,  // sistema correto por achado
+          sistema: info.sistema,
           origem: info.fonte === 'myid' ? 'subjetivo_myid' : 'voz_ia',
           tipo_achado: info.tipoAchado,
           estrutura: null,
-          severidade: info.intensidade >= 7 ? 3 : info.intensidade >= 4 ? 2 : 1,
+          severidade: 1, // sempre leve — dor relatada pelo paciente, não diagnóstico confirmado
           status: 'ativo',
           visivel_paciente: true,
           data_inicio: new Date().toISOString().slice(0, 10),
-          notas_clinicas: `Auto-processado. Intensidade ${info.intensidade}/10. Sistema: ${info.sistema}. Fonte: ${info.fonte}.`,
+          notas_clinicas: `Registrado automaticamente a partir de queixa do paciente. Aguarda classificação clínica pelo profissional.`,
           metadata: {
-            fontes: [info.fonte === 'nlp' ? 'voz_ia' : info.fonte],
-            confianca: info.fonte === 'nlp' ? 'baixa' : 'media',
+            fontes: [info.fonte],
+            confianca: 'baixa',
             auto_processado: true,
           } as any,
         } as any)
@@ -306,16 +239,16 @@ export default function AvaliacaoPresencial({
         saveEvento.mutateAsync({
           paciente_id: pacienteId,
           regiao_id: f.region_id,
-          sistema: sistemaDeRegiao(f.region_id),
+          sistema: 'musculoesqueletico',
           origem: 'voz_ia',
-          tipo_achado: 'Achado extraído pela IA — avaliação por voz',
+          tipo_achado: 'Queixa de dor relatada pelo paciente — aguarda avaliação clínica',
           estrutura: f.structures?.join(', ') || null,
-          severidade: f.intensity >= 7 ? 3 : f.intensity >= 4 ? 2 : 1,
+          severidade: 1, // sempre leve — profissional reclassifica se necessário
           status: 'ativo',
           visivel_paciente: true,
           data_inicio: new Date().toISOString().slice(0, 10),
-          notas_clinicas: `Intensidade ${f.intensity}/10. Sistema: ${sistemaDeRegiao(f.region_id)}. Estruturas: ${f.structures?.join(', ') || '—'}.`,
-          metadata: { fontes: ['voz_ia'], confianca: 'media', auto_processado: true } as any,
+          notas_clinicas: `Queixa de dor referida pelo paciente durante avaliação por voz. Aguarda classificação clínica.`,
+          metadata: { fontes: ['voz_ia'], confianca: 'baixa', auto_processado: true } as any,
         } as any)
       ));
       qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
