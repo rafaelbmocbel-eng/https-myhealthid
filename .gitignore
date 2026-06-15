@@ -30,3 +30,6 @@ dist-ssr
 
 # Supabase temp files
 supabase/.temp/
+
+# Claude Code internal (worktrees, session state)
+.claude/
