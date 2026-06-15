@@ -313,7 +313,7 @@ export default function Agenda() {
       const h = headerRef.current.getBoundingClientRect().height;
       if (h > 0) setHeaderHeight(h);
     }
-  });
+  }, []);
 
   // Auto-scroll to current time on day/week view
   useEffect(() => {

@@ -87,9 +87,11 @@ export default function MyIDFingerprint({
     return () => clearInterval(iv);
   }, [revealed, rings.length]);
 
-  const innerRings = rings.filter(r => r.type === 'inner');
-  const outerRings = rings.filter(r => r.type === 'outer');
-  const allRings   = [...innerRings, ...outerRings];
+  const allRings = useMemo(() => {
+    const inner = rings.filter(r => r.type === 'inner');
+    const outer = rings.filter(r => r.type === 'outer');
+    return [...inner, ...outer];
+  }, [rings]);
   const totalRings = allRings.length || 1;
 
   const spacing = Math.min(32, (MAX_R - BASE_R) / totalRings);

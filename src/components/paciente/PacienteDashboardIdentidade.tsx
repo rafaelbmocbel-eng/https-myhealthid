@@ -338,7 +338,12 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
         const myidScoreRaw = result.myidScore ?? result.MyID_score ?? result.myid_100?.score ?? result.myid_100?.myid_score ?? 0;
         const classificacao = result.classificacao || result.myidStatus || result.myid_100?.classificacao || 'N/A';
         const redFlagsDetected = result.redFlagsDetected ?? result.red_flags_detected ?? false;
-        const redFlagsList = result.redFlagAlerts || result.red_flag_alerts || result.red_flags || [];
+        const _rawFlags = result.redFlagAlerts ?? result.red_flag_alerts ?? result.red_flags_details ?? result.red_flags;
+        const redFlagsList: string[] = Array.isArray(_rawFlags)
+          ? _rawFlags
+          : _rawFlags && typeof _rawFlags === 'object'
+            ? Object.entries(_rawFlags).filter(([, v]) => v === true).map(([k]) => k)
+            : [];
 
         const scoreD = Number(scores.D ?? scores.D_pain ?? 0).toFixed(1);
         const scoreEFI = Number(scores.EFI ?? scores.EFI_functionality ?? 0).toFixed(1);
@@ -503,7 +508,7 @@ export default function PacienteDashboardIdentidade({ paciente, onBack, subTab }
             dados_extras: { voice_assessment_id: avId },
             referencia_id: avId,
           });
-        } catch {}
+        } catch { /* prontuário já pode ter a nota — ignorar duplicata */ }
       }
 
       qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });

@@ -433,8 +433,8 @@ function TerapeutaView({ result, rawData, pacienteId, terapeutaId, perdasItems, 
   const top4 = perdasItems.slice(0, 4);
   const [openEnc, setOpenEnc] = useState<string | null>(null);
 
-  const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'MODERADO' : 'CRÍTICO';
-  const statusCor = myidScoreValue >= 85 ? '#10b981' : myidScoreValue >= 70 ? '#f59e0b' : myidScoreValue >= 50 ? '#f97316' : '#ef4444';
+  const statusLabel = myidScoreValue >= 85 ? 'EXCELENTE' : myidScoreValue >= 70 ? 'BOM' : myidScoreValue >= 50 ? 'MODERADO' : myidScoreValue >= 30 ? 'CRÍTICO' : 'CRÍTICO SEVERO';
+  const statusCor = myidScoreValue >= 85 ? '#10b981' : myidScoreValue >= 70 ? '#f59e0b' : myidScoreValue >= 50 ? '#f97316' : myidScoreValue >= 30 ? '#ef4444' : '#7f1d1d';
 
   const maxPerda = Math.max(...perdasItems.map((i: PerdaItem) => i.perda), 1);
 
@@ -732,7 +732,7 @@ function ChecklistAcoes({ items, pacienteId, terapeutaId, avaliacaoId }: Checkli
       setLoading(false);
     })();
     return () => { cancel = true; };
-  }, [persistEnabled, avaliacaoId, pacienteId, terapeutaId]);
+  }, [persistEnabled, avaliacaoId, pacienteId, terapeutaId, items]);
 
   const toggle = async (action_key: string, next: boolean) => {
     const row = rows[action_key];
