@@ -36,13 +36,14 @@ export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
       { min: 8.0, max: 10.01, perda: 15 },
     ],
   },
+  // Mudança 1: peso_maximo 5→10, novas bandas
   P: {
-    peso_maximo: 5,
+    peso_maximo: 10,
     bandas: [
       { min: 0.0, max: 3.0, perda: 0 },
-      { min: 3.0, max: 5.0, perda: 2 },
-      { min: 5.0, max: 7.0, perda: 4 },
-      { min: 7.0, max: 10.01, perda: 5 },
+      { min: 3.0, max: 5.0, perda: 3 },
+      { min: 5.0, max: 7.0, perda: 6 },
+      { min: 7.0, max: 10.01, perda: 10 },
     ],
   },
   I: {
@@ -63,7 +64,8 @@ export const TABELA_PERDAS: Record<string, DimensionLossConfig> = {
       { min: 6.0, max: 8.0, perda: 13 },
       { min: 8.0, max: 10.01, perda: 15 },
     ],
-    gatilho_critico: 7.0,
+    // Mudança 2: gatilho_critico 7.0→6.0
+    gatilho_critico: 6.0,
   },
   C: {
     peso_maximo: 10,
@@ -130,7 +132,10 @@ export const PENALIDADES_MEDICAMENTOS: Record<string, number> = {
   opioide: -4,
   ainh_cronico: -2,
   ansiolitico: -2,
-  antidepressivo: 2,   // BÔNUS
+  // Mudança 3: antidepressivo condicional por tipo
+  antidepressivo_ssri: 1,       // SSRI/SNRI — evidência moderada para dor
+  antidepressivo_tricyclico: 3, // Tricíclico (amitriptilina) — maior evidência
+  antidepressivo_outro: 1,
   gabapentina: 2,      // BÔNUS
   ainh_esporadico: 2,  // BÔNUS
   suplementacao: 1,    // BÔNUS leve
@@ -164,13 +169,14 @@ export interface MyID100Result {
   driver_primario: DriverPrimario | null;
 }
 
-// Sum of all max weights = 100 (20+15+5+5+15+10+8+6+6+5+5 = 100)
-const TOTAL_MAX_LOSS = 100;
+// Sum of all max weights = 105 (20+15+10+5+15+10+8+6+6+5+5 = 105)
+const TOTAL_MAX_LOSS = 105;
 
 const INTERPRETACAO_MAP: Record<string, Record<string, string>> = {
   D: { '0': 'Sem dor', '3': 'Dor leve', '8': 'Dor moderada', '14': 'Dor moderada-alta', '20': 'Dor severa' },
   EFI: { '0': 'Função normal', '5': 'Limitação leve', '10': 'Limitação moderada', '13': 'Limitação significativa', '15': 'Limitação severa' },
-  P: { '0': 'Estável', '2': 'Kinesiofobia leve', '4': 'Kinesiofobia moderada', '5': 'Kinesiofobia alta' },
+  // Mudança 1: INTERPRETACAO_MAP.P atualizado
+  P: { '0': 'Estável', '3': 'Kinesiofobia leve', '6': 'Kinesiofobia moderada', '10': 'Kinesiofobia alta' },
   I: { '0': 'Sem mudanças', '2': 'Mudanças leves', '4': 'Mudanças moderadas', '5': 'Mudanças recentes significativas' },
   R: { '0': 'Regulação ótima', '5': 'Desregulação leve', '10': 'Desregulação moderada', '13': 'Desregulação severa', '15': 'Desregulação crítica' },
   C: { '0': 'Contexto favorável', '4': 'Estresse contextual leve', '7': 'Estressor moderado', '10': 'Contexto adverso' },
@@ -217,6 +223,7 @@ export function calcularPerdaDimensao(dimensao: string, scoreBruto: number): Per
 export function calcularPerdaMedicamentos(meds: {
   daily_nsaid?: boolean;
   antidepressant?: boolean;
+  antidepressant_type?: string;
   muscle_relaxant?: boolean;
   corticoid?: boolean;
   supplementation?: boolean;
@@ -229,7 +236,17 @@ export function calcularPerdaMedicamentos(meds: {
   if (meds.corticoid) { penalty += PENALIDADES_MEDICAMENTOS.corticoide; medicamentos.push('Corticóide'); }
   if (meds.daily_nsaid) { penalty += PENALIDADES_MEDICAMENTOS.ainh_cronico; medicamentos.push('AINE diário'); }
   if (meds.muscle_relaxant) { penalty += PENALIDADES_MEDICAMENTOS.ansiolitico; medicamentos.push('Relaxante muscular'); }
-  if (meds.antidepressant) { penalty += PENALIDADES_MEDICAMENTOS.antidepressivo; medicamentos.push('Antidepressivo (bônus)'); }
+  // Mudança 3: antidepressivo condicional por tipo
+  if (meds.antidepressant) {
+    const tipo = meds.antidepressant_type || 'ssri';
+    const bonus = tipo === 'tricyclic'
+      ? PENALIDADES_MEDICAMENTOS.antidepressivo_tricyclico
+      : tipo === 'ssri'
+        ? PENALIDADES_MEDICAMENTOS.antidepressivo_ssri
+        : PENALIDADES_MEDICAMENTOS.antidepressivo_outro;
+    penalty += bonus;
+    medicamentos.push(tipo === 'tricyclic' ? 'Tricíclico (bônus ++)' : 'Antidepressivo (bônus)');
+  }
   if (meds.supplementation) { penalty += PENALIDADES_MEDICAMENTOS.suplementacao; medicamentos.push('Suplementação (bônus)'); }
   if (meds.opioide) { penalty += PENALIDADES_MEDICAMENTOS.opioide; medicamentos.push('Opioide'); }
   if (meds.gabapentina) { penalty += PENALIDADES_MEDICAMENTOS.gabapentina; medicamentos.push('Gabapentina (bônus)'); }

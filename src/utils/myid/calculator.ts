@@ -37,11 +37,24 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 1: INÉRCIA (I) ====================
+    // Mudança 4: pesos por tipo de mudança
     calculateInertia(): number {
         const b1 = this.responses.bloco1;
-        const changes = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
-        const mudancasReais = changes.filter((m: string) => m !== 'Nenhuma mudança que eu note' && m !== 'none');
-        const iPoints = mudancasReais.length * 2;
+        const changes: string[] = this.responses.bloco_1_changes || b1?.mudancas_recentes || b1?.mudancasRecentes || [];
+        const PESOS_MUDANCA: Record<string, number> = {
+            scare: 3,     // susto físico / quase-lesão — maior risco
+            load: 2,      // aumento de carga
+            posture: 1.5, // mudança postural / contexto
+            equipment: 1, // novo equipamento
+            // mudanças legado (texto completo) — manter compatibilidade
+            'Susto físico (Movimento em falso, quase escorregão, "travada")': 3,
+            'Aumento de carga (Mais treino, nova atividade, competição)': 2,
+            'Mudança de postura (Mais tempo sentado, home office, viagem longa)': 1.5,
+            'Novo equipamento (Tênis, colchão, travesseiro, cadeira de trabalho)': 1,
+        };
+        const iPoints = changes
+            .filter(m => m !== 'none' && m !== 'Nenhuma mudança que eu note')
+            .reduce((sum, m) => sum + (PESOS_MUDANCA[m] ?? 1.5), 0);
         const iNormalized = Math.min(iPoints, 10);
         this.scores['I'] = iNormalized;
         return iNormalized;
@@ -130,6 +143,7 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 4: PSICOLÓGICO (P) ====================
+    // Mudança 5: incluir expectativa
     calculatePsychological(): number {
         const fearMovement = this.responses.bloco_4_fear_movement ?? this.responses.bloco4?.medoMovimento ?? 2;
         const beliefDamage = this.responses.bloco_4_belief_damage ?? this.responses.bloco4?.catastrofizacao ?? 2;
@@ -141,8 +155,11 @@ export class MyIDCalculator {
         const avoidNormalized = ((avoidance - 1) / 3) * 10;
         const selfEfficacyInverted = 10 - selfEfficacy;
 
+        const expectation = this.responses.bloco_4_expectation ?? this.responses.bloco4?.bloco_4_expectation ?? 5;
+        const expectationInverted = 10 - expectation; // expectativa baixa = pior prognóstico
+
         // Pior item domina porque P é perda: maior = pior
-        const items = [fearNormalized, beliefNormalized, avoidNormalized, selfEfficacyInverted];
+        const items = [fearNormalized, beliefNormalized, avoidNormalized, selfEfficacyInverted, expectationInverted];
         const maxItem = Math.max(...items);
         const avg = items.reduce((a, b) => a + b, 0) / items.length;
         const p = maxItem * 0.6 + avg * 0.4;
@@ -216,12 +233,27 @@ export class MyIDCalculator {
     }
 
     // ==================== BLOCO 5G: NUTRIÇÃO (NUT) ====================
+    // Mudança 6: usar todos os campos disponíveis
     calculateNutrition(): number {
         const qualityMap: Record<string, number> = { very_poor: 0, poor: 3, acceptable: 6, good: 8, excellent: 10 };
         const qualityVal = qualityMap[this.responses.bloco_5g_quality || this.responses.bloco5?.bloco_5g_quality || 'acceptable'] ?? 5;
+
         const proteinMap: Record<string, number> = { rarely: 0, sometimes: 5, almost_all: 8, all: 10 };
         const proteinVal = proteinMap[this.responses.bloco_5g_protein || this.responses.bloco5?.bloco_5g_protein || 'sometimes'] ?? 5;
-        const nut = (qualityVal + proteinVal) / 2;
+
+        // Alimentos inflamatórios penalizam
+        const inflammatoryMap: Record<string, number> = { daily: -3, several_week: -2, '1_2_week': -1, rarely: 0, never: 1 };
+        const inflammatoryAdj = inflammatoryMap[this.responses.bloco_5g_inflammatory || this.responses.bloco5?.bloco_5g_inflammatory || ''] ?? 0;
+
+        // Frutas/vegetais (0-5 porções → bônus proporcional)
+        const fruitsPortions = this.responses.bloco_5g_fruits_portions ?? this.responses.bloco5?.bloco_5g_fruits_portions ?? 2;
+        const fruitsBonus = Math.min((fruitsPortions / 5) * 2, 2); // máx +2 pts
+
+        // Deficiências nutricionais penalizam
+        const deficiencyMap: Record<string, number> = { multiple: -3, one_significant: -2, possible: -1, none: 0 };
+        const deficiencyAdj = deficiencyMap[this.responses.bloco_5g_deficiency || this.responses.bloco5?.bloco_5g_deficiency || ''] ?? 0;
+
+        const nut = Math.max(0, Math.min(10, (qualityVal + proteinVal) / 2 + inflammatoryAdj + fruitsBonus + deficiencyAdj));
         this.scores['NUT'] = Math.round(nut * 10) / 10;
         return this.scores['NUT'];
     }
@@ -268,17 +300,45 @@ export class MyIDCalculator {
         return this.scores['N'];
     }
 
+    // ==================== BLOCO 6: HORMÔNIOS ====================
+    // Mudança 7: implementação real — ciclo hormonal alterado contribui para N (Ruído Sistêmico)
     calculateHormones(): number {
-        this.result.hormonal_impact = 0;
-        return 0;
+        const b6 = this.responses.bloco6;
+        let hormonalNoise = 0;
+
+        const cycleRegularity = this.responses.bloco_6_cycle_regularity ?? b6?.bloco_6_cycle_regularity;
+        if (cycleRegularity === 'irregular') hormonalNoise += 1.5;
+
+        const cycleAffectsPain = this.responses.bloco_6_cycle_affects_pain ?? b6?.bloco_6_cycle_affects_pain;
+        if (cycleAffectsPain) {
+            const phases: string[] = this.responses.bloco_6_cycle_pain_phase ?? b6?.bloco_6_cycle_pain_phase ?? [];
+            hormonalNoise += phases.length * 1.0;
+        }
+
+        // Se hormonal não melhorou a dor, sugere componente hormonal ativo
+        const hormonalUse = this.responses.bloco_6_hormonal_use ?? b6?.bloco_6_hormonal_use;
+        const hormonalImproved = this.responses.bloco_6_hormonal_improved ?? b6?.bloco_6_hormonal_improved;
+        if (hormonalUse && hormonalUse !== 'none' && hormonalImproved === false) {
+            hormonalNoise += 1.5;
+        }
+
+        if (hormonalNoise > 0) {
+            const currentN = this.scores['N'] || 0;
+            this.scores['N'] = Math.min(10, Math.round((currentN + hormonalNoise) * 10) / 10);
+        }
+
+        this.result.hormonal_impact = hormonalNoise;
+        return hormonalNoise;
     }
 
     // ==================== MEDICAÇÕES (MED) ====================
+    // Mudança 11: passar antidepressant_type
     calculateMedications(): number {
         const b6 = this.responses.bloco6;
         const medResult = calcularPerdaMedicamentos({
             daily_nsaid: this.responses.bloco_6_daily_nsaid ?? b6?.bloco_6_daily_nsaid,
             antidepressant: this.responses.bloco_6_antidepressant ?? b6?.bloco_6_antidepressant,
+            antidepressant_type: this.responses.bloco_6_antidepressant_type ?? b6?.bloco_6_antidepressant_type,
             muscle_relaxant: this.responses.bloco_6_muscle_relaxant ?? b6?.bloco_6_muscle_relaxant,
             corticoid: this.responses.bloco_6_corticoid ?? b6?.bloco_6_corticoid,
             supplementation: this.responses.bloco_6_supplementation ?? b6?.bloco_6_supplementation,
@@ -291,12 +351,37 @@ export class MyIDCalculator {
         return medResult.perda_pontos;
     }
 
+    // Mudança 8: usar dados reais para prognóstico
     getHealingPrognosis(): string {
-        const b1 = this.responses.bloco1;
-        const changes = b1?.mudancasRecentes || [];
-        if (changes.length > 2) return 'Possível instabilidade sistêmica';
-        if (changes.includes('Nenhuma mudança que eu note')) return 'Estável';
-        return 'Moderado';
+        const d = this.scores['D'] || 0;
+        const efi = this.scores['EFI'] || 0;
+        const p = this.scores['P'] || 0;
+        const myid = this.result.MyID ?? 50;
+        const gatilhos = this.result.gatilhos_criticos || [];
+
+        if (myid >= 75 && d < 4 && p < 4) return 'Favorável — padrão mecânico adaptativo';
+        if (myid >= 55 && efi >= 5 && gatilhos.length === 0) return 'Moderado — bom potencial com adesão ao tratamento';
+        if (p >= 6 || gatilhos.length >= 2) return 'Cauteloso — componente central/psicológico elevado, abordagem multifatorial necessária';
+        if (d >= 7 || efi <= 3) return 'Reservado — alta carga de dor e baixa funcionalidade';
+        return 'Moderado — monitorar resposta ao tratamento';
+    }
+
+    // Mudança 9: helper para multiplicador de cronicidade temporal
+    private getCronicidadeMultiplier(dataInicio?: string): number {
+        if (!dataInicio) return 1.0;
+        try {
+            const inicio = new Date(dataInicio);
+            if (isNaN(inicio.getTime())) return 1.0;
+            const diffMs = Date.now() - inicio.getTime();
+            const diffDias = diffMs / (1000 * 60 * 60 * 24);
+            if (diffDias < 42) return 1.0;      // < 6 semanas: aguda
+            if (diffDias < 84) return 1.1;      // 6-12 semanas: subaguda
+            if (diffDias < 365) return 1.2;     // 3-12 meses: crônica inicial
+            return 1.3;                          // > 12 meses: crônica estabelecida
+        } catch {
+            // data inválida — retornar neutro
+            return 1.0;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════
@@ -348,6 +433,15 @@ export class MyIDCalculator {
         this.perdas['NUT'] = calcularPerdaDimensao('NUT', 10 - NUT);
         this.perdas['ERG'] = calcularPerdaDimensao('ERG', 10 - ERG);
 
+        // Mudança 9: cronicidade amplifica o driver de dor
+        const dataInicio = this.responses.bloco_1_date || this.responses.bloco1?.data_inicio_dor || this.responses.bloco1?.dataInicioDor;
+        const cronicMult = this.getCronicidadeMultiplier(dataInicio);
+        if (cronicMult > 1 && this.perdas['D'].perda_pontos > 0) {
+            const perdaDAjustada = Math.min(TABELA_PERDAS.D.peso_maximo, this.perdas['D'].perda_pontos * cronicMult);
+            this.perdas['D'] = { ...this.perdas['D'], perda_pontos: perdaDAjustada };
+        }
+        this.result.cronicidade_multiplier = cronicMult;
+
         // Sum all losses
         let totalPerdas = 0;
         for (const [dim, perda] of Object.entries(this.perdas)) {
@@ -357,6 +451,20 @@ export class MyIDCalculator {
         // Add medication penalty (negative = more loss, positive = bonus)
         const medPenalty = this.result.med_penalty || 0;
         totalPerdas -= medPenalty; // med_penalty: negative values add loss, positive subtract
+
+        // Mudança 10: Red Flags penalidade adicional ao score final
+        const rfData = this.responses.bloco_2_red_flags || this.responses.bloco2?.redFlags || {};
+        const activeRF = [
+            !!(rfData.weight_loss || rfData.perdaPeso),
+            !!(rfData.fever || rfData.febreCalafrios),
+            !!(rfData.night_pain || rfData.dorNoturnaImpedeSono),
+            !!(rfData.incontinence || rfData.alteracaoEsfincteriana),
+            !!(rfData.progressive || rfData.dorPioraConsistente),
+            !!(rfData.neuropathy || rfData.dormenciaProgressiva),
+        ].filter(Boolean).length;
+        const redFlagPenalty = Math.min(activeRF * 3, 15);
+        totalPerdas += redFlagPenalty;
+        this.result.red_flag_penalty = redFlagPenalty;
 
         // MyID-100 score
         const myid100 = Math.max(0, Math.min(100, 100 - totalPerdas));
