@@ -17,6 +17,7 @@ import ProtectedPatientRoute from '@/components/paciente/ProtectedPatientRoute';
 const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/PatientIntegratedDashboard'));
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteDicaInteligente from '@/components/paciente/PacienteDicaInteligente';
+import PacienteInsightsDaAvaliacao from '@/components/paciente/PacienteInsightsDaAvaliacao';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
@@ -40,8 +41,8 @@ interface Agendamento {
   tipo_atendimento: string | null;
 }
 
-function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number }) {
-  return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10;
+function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number; vocais: number }) {
+  return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10 + stats.vocais * 20;
 }
 function getLevel(xp: number) {
   if (xp >= 500) return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: null };
@@ -71,7 +72,7 @@ export default function PacienteDashboard() {
   const navigate = useNavigate();
   const [paciente, setPaciente] = useState<PacienteInfo | null>(null);
   const [proximasConsultas, setProximasConsultas] = useState<Agendamento[]>([]);
-  const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0 });
+  const [stats, setStats] = useState({ avaliacoes: 0, consultas: 0, diarios: 0, pendentes: 0, vocais: 0 });
   const [loading, setLoading] = useState(true);
   const [showMyIdPrompt, setShowMyIdPrompt] = useState(false);
   const [myIdPromptType, setMyIdPromptType] = useState<'first' | 'monthly'>('first');
@@ -150,6 +151,7 @@ export default function PacienteDashboard() {
         consultas: sessaoRes.count || 0,
         diarios: diarioRes.count || 0,
         pendentes: pendentesRes.count || 0,
+        vocais: (historiaRes as any).count || 0,
       });
       setHistoriaContada((historiaRes.count || 0) > 0);
 
@@ -477,18 +479,25 @@ export default function PacienteDashboard() {
             {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
           </V>
 
+          {/* Insights da avaliação + Desafio do Dia */}
+          {paciente && (
+            <V i={9}>
+              <PacienteInsightsDaAvaliacao pacienteId={paciente.id} />
+            </V>
+          )}
+
           {/* Alertas e lembretes */}
-          <V i={9}>
+          <V i={10}>
             {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
           </V>
 
           {/* Dica inteligente */}
-          <V i={10}>
+          <V i={11}>
             <PacienteDicaInteligente />
           </V>
 
           {/* Recompensas */}
-          <V i={11}>
+          <V i={12}>
             <button
               onClick={() => navigate('/paciente/recompensas')}
               className="w-full flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-shadow text-left active:scale-[0.99]"
