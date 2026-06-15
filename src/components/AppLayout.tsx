@@ -70,7 +70,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
   const sidebarW = isMobile ? 0 : sidebarCollapsed ? 72 : 224;
 
   return (
-    <div className="min-h-screen min-h-[100dvh] bg-background relative overflow-x-hidden">
+    <div className="min-h-screen min-h-[100dvh] bg-background relative">
       {/* Background decoration — hidden on mobile to avoid GPU overdraw */}
       <div className="hidden md:block absolute top-0 right-0 w-[50vw] h-[50vh] bg-primary/5 rounded-full blur-[120px] -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="hidden md:block absolute bottom-0 left-0 w-[30vw] h-[30vh] bg-accent/5 rounded-full blur-[100px] translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -153,7 +153,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
 
         <main
           className={cn(
-            'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-hidden',
+            'flex-1 px-2 pt-3 transition-all duration-500 overflow-x-clip',
             'sm:px-4',
             isMobile ? (isHomePage ? 'pb-4' : 'pb-24') : 'pb-12 px-6 lg:px-8 pt-6',
           )}

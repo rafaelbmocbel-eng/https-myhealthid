@@ -281,7 +281,7 @@ export default function PacienteLogin() {
   ];
 
   return (
-    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background overflow-x-hidden">
+    <div className="min-h-[100dvh] flex flex-col lg:flex-row bg-background overflow-x-clip">
       {/* ============ Left panel — Brand / Hero ============ */}
       <div
         className="relative hidden md:flex flex-col lg:w-1/2 p-8 lg:p-12 justify-between overflow-hidden"

@@ -56,7 +56,7 @@ export default function DemoMyID() {
   const valorAtual = atual ? respostas[atual.id] ?? 5 : 5;
 
   return (
-    <div className="min-h-dvh bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-dvh bg-background text-foreground overflow-x-clip">
       <Helmet>
         <title>Demo MyID — experimente a avaliação clínica com IA</title>
         <meta name="description" content="Experimente uma versão simplificada do MyID em 60 segundos. Sem cadastro." />

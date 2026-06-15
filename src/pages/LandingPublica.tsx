@@ -75,7 +75,7 @@ export default function LandingPublica() {
   }
 
   return (
-    <div className="min-h-dvh bg-background text-foreground overflow-x-hidden">
+    <div className="min-h-dvh bg-background text-foreground overflow-x-clip">
       <Helmet>
         <title>MY HEALTH ID — Avaliação clínica com IA para profissionais de saúde</title>
         <meta

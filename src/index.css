@@ -201,7 +201,7 @@
     -webkit-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: auto;
-    height: -webkit-fill-available;
+    /* Não usar height fixo aqui — impede scroll no Chrome desktop */
   }
 
   body {
@@ -213,14 +213,13 @@
     /* Safe-area insets handled by individual layouts — do NOT add here to avoid double padding on iOS */
     min-height: 100vh;
     min-height: 100dvh;
-    min-height: -webkit-fill-available;
-    overflow-x: hidden;
+    /* overflow-x: hidden removido — promovia overflow-y: auto no body, bloqueando scroll no Chrome */
     -webkit-overflow-scrolling: touch;
   }
 
   /* Ensure all containers respect viewport width on mobile */
   #root {
-    overflow-x: hidden;
+    /* overflow-x: hidden removido — mesma razão que body: criava scroll container sem altura */
     width: 100%;
     max-width: 100vw;
   }

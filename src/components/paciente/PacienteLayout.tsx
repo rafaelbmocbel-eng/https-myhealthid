@@ -91,7 +91,7 @@ export default function PacienteLayout({ children }: Props) {
   const isMaisActive = MOBILE_SECONDARY.some(i => location.pathname === navItems[i].path);
 
   return (
-    <div className="min-h-screen min-h-[100dvh] flex flex-col bg-background">
+    <div className="h-[100dvh] flex flex-col bg-background">
       <PortalOfflineBanner />
 
       {/* Top header */}
