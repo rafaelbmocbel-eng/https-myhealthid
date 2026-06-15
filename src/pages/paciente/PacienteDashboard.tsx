@@ -3,11 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   CalendarDays, ChevronRight,
-  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock, Mic
+  Trophy, Star, Flame, ClipboardList, Fingerprint, Loader2, Sparkles, Clock, Mic,
+  CheckCircle2, Circle,
 } from 'lucide-react';
 import { format, parseISO, differenceInDays } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -18,9 +18,7 @@ const PatientIntegratedDashboard = lazy(() => import('@/components/paciente/Pati
 import PacienteAlertasLembretes from '@/components/paciente/PacienteAlertasLembretes';
 import PacienteDicaInteligente from '@/components/paciente/PacienteDicaInteligente';
 import MyIDPDFButton from '@/components/paciente/MyIDPDFButton';
-import PacienteMetasDesafios from '@/components/paciente/PacienteMetasDesafios';
 import PacienteExerciciosResumido from '@/components/paciente/PacienteExerciciosResumido';
-import PwaInstallBanner from '@/components/paciente/PwaInstallBanner';
 import BloqueioPortalCard from '@/components/paciente/BloqueioPortalCard';
 import { usePacienteNotifications } from '@/hooks/usePacienteNotifications';
 import ReacaoPosSessaoCard from '@/components/paciente/ReacaoPosSessaoCard';
@@ -42,25 +40,31 @@ interface Agendamento {
   tipo_atendimento: string | null;
 }
 
-// XP / Gamification helpers
 function calcXP(stats: { avaliacoes: number; consultas: number; diarios: number }) {
   return stats.avaliacoes * 50 + stats.consultas * 30 + stats.diarios * 10;
 }
 function getLevel(xp: number) {
-  if (xp >= 500) return { label: 'Ouro', color: 'text-yellow-600', bg: 'bg-yellow-100', icon: Trophy, next: null };
-  if (xp >= 250) return { label: 'Prata', color: 'text-slate-500', bg: 'bg-slate-100', icon: Star, next: 500 };
-  if (xp >= 100) return { label: 'Bronze', color: 'text-amber-700', bg: 'bg-amber-100', icon: Flame, next: 250 };
-  return { label: 'Iniciante', color: 'text-primary', bg: 'bg-primary/10', icon: Star, next: 100 };
+  if (xp >= 500) return { label: 'Ouro',     color: 'text-yellow-600', icon: Trophy, next: null };
+  if (xp >= 250) return { label: 'Prata',    color: 'text-slate-500',  icon: Star,   next: 500 };
+  if (xp >= 100) return { label: 'Bronze',   color: 'text-amber-700',  icon: Flame,  next: 250 };
+  return           { label: 'Iniciante', color: 'text-primary',    icon: Star,   next: 100 };
 }
 
 const fadeUp = {
-  hidden: { opacity: 0, y: 16 },
+  hidden: { opacity: 0, y: 14 },
   visible: (i: number) => ({
-    opacity: 1,
-    y: 0,
-    transition: { delay: i * 0.07, duration: 0.4, ease: "easeOut" as const },
+    opacity: 1, y: 0,
+    transition: { delay: i * 0.06, duration: 0.35, ease: 'easeOut' as const },
   }),
 };
+
+function V({ i, children }: { i: number; children: React.ReactNode }) {
+  return (
+    <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={i}>
+      {children}
+    </motion.div>
+  );
+}
 
 export default function PacienteDashboard() {
   const { user } = useAuth();
@@ -89,7 +93,6 @@ export default function PacienteDashboard() {
 
       if (!pac) { setLoading(false); return; }
 
-      // Se o cadastro ainda está pendente, manda para completar antes de tudo
       if ((pac as any).cadastro_status === 'pendente_paciente') {
         navigate('/paciente/completar-cadastro', { replace: true });
         return;
@@ -97,7 +100,6 @@ export default function PacienteDashboard() {
 
       setPaciente(pac);
 
-      // Profissional vinculado (para CTA de retomar tratamento)
       if (pac.terapeuta_id) {
         const { data: prof } = await supabase
           .from('profiles')
@@ -131,14 +133,12 @@ export default function PacienteDashboard() {
           .select('id', { count: 'exact', head: true })
           .eq('paciente_id', pac.id)
           .neq('status', 'concluido'),
-        // Get latest completed MyID to check monthly recurrence
         supabase.from('myid_avaliacoes')
           .select('id, updated_at')
           .eq('paciente_id', pac.id)
           .eq('status', 'concluido')
           .order('updated_at', { ascending: false })
           .limit(1),
-        // História contada (avaliacoes_voz) — gate para liberar MyID
         supabase.from('avaliacoes_voz')
           .select('id', { count: 'exact', head: true })
           .eq('paciente_id', pac.id),
@@ -153,7 +153,6 @@ export default function PacienteDashboard() {
       });
       setHistoriaContada((historiaRes.count || 0) > 0);
 
-      // MyID prompt só aparece depois da história contada (fluxo: cadastro → história → MyID)
       const completedMyIds = lastMyIdRes.data || [];
       const jaContou = (historiaRes.count || 0) > 0;
       if (!jaContou) {
@@ -162,14 +161,12 @@ export default function PacienteDashboard() {
         setShowMyIdPrompt(true);
         setMyIdPromptType('first');
       } else {
-        const lastDate = new Date(completedMyIds[0].updated_at);
-        const daysSince = differenceInDays(new Date(), lastDate);
+        const daysSince = differenceInDays(new Date(), new Date(completedMyIds[0].updated_at));
         if (daysSince >= 30) {
           setShowMyIdPrompt(true);
           setMyIdPromptType('monthly');
         }
       }
-
 
       setLoading(false);
     };
@@ -181,18 +178,44 @@ export default function PacienteDashboard() {
   const level = getLevel(xp);
   const LevelIcon = level.icon;
 
-  // Sincroniza XP calculado com o banco (fonte para o sistema de recompensas)
   useEffect(() => {
     if (!paciente?.id || loading) return;
     supabase.from('pacientes').update({ xp_total: xp }).eq('id', paciente.id).then(() => {});
   }, [paciente?.id, xp, loading]);
 
   const getGreeting = () => {
-    const hour = new Date().getHours();
-    if (hour < 12) return 'Bom dia';
-    if (hour < 18) return 'Boa tarde';
+    const h = new Date().getHours();
+    if (h < 12) return 'Bom dia';
+    if (h < 18) return 'Boa tarde';
     return 'Boa noite';
   };
+
+  // Onboarding — 3 passos iniciais para novos pacientes
+  const onboardingSteps = [
+    {
+      done: historiaContada,
+      label: 'Contar sua história',
+      sub: 'Responda em voz como você está',
+      path: '/paciente/historia',
+      Icon: Mic,
+    },
+    {
+      done: stats.avaliacoes > 0,
+      label: 'Completar avaliação MyID',
+      sub: 'Descubra seu perfil de saúde',
+      path: '/paciente/questionarios',
+      Icon: Fingerprint,
+    },
+    {
+      done: stats.consultas > 0,
+      label: 'Participar da 1ª consulta',
+      sub: 'Acompanhe sua evolução com o profissional',
+      path: '/paciente/agenda',
+      Icon: CalendarDays,
+    },
+  ];
+  const onboardingCompleto = onboardingSteps.every(s => s.done);
+  const proxPasso = onboardingSteps.findIndex(s => !s.done);
 
   if (loading) {
     return (
@@ -210,16 +233,16 @@ export default function PacienteDashboard() {
     <ProtectedPatientRoute>
       <PacienteLayout>
         <div className="p-4 md:p-6 max-w-2xl mx-auto space-y-4">
-          {/* Welcome — Serene Health Premium: avatar gradient ring + name + streak chip */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0}>
+
+          {/* Saudação + nível */}
+          <V i={0}>
             <div className="flex items-center justify-between px-1 pt-1">
               <div className="flex items-center gap-3 min-w-0">
-                {/* Avatar with gold→primary gradient ring */}
                 <div className="w-12 h-12 rounded-full p-0.5 shrink-0 bg-gradient-to-tr from-[hsl(42,60%,55%)] via-primary to-primary/60">
-                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center overflow-hidden">
-                    <div className="w-full h-full bg-muted flex items-center justify-center text-sm font-semibold text-foreground">
+                  <div className="w-full h-full rounded-full bg-card flex items-center justify-center">
+                    <span className="text-sm font-semibold text-foreground">
                       {(paciente?.nome?.[0] || '?').toUpperCase()}{(paciente?.sobrenome?.[0] || '').toUpperCase()}
-                    </div>
+                    </span>
                   </div>
                 </div>
                 <div className="min-w-0">
@@ -242,23 +265,106 @@ export default function PacienteDashboard() {
                 <span className="text-[11px] font-medium text-foreground">{level.label} · {xp} XP</span>
               </div>
             </div>
-          </motion.div>
+          </V>
 
-          {/* Próxima Sessão — warm gold premium card */}
+          {/* Onboarding — primeiros passos (some quando tudo feito) */}
+          {!onboardingCompleto && (
+            <V i={1}>
+              <Card className="border-primary/20 bg-primary/[0.03]">
+                <CardContent className="p-4">
+                  <p className="text-xs font-bold uppercase tracking-wider text-primary mb-3">
+                    Seus primeiros passos
+                  </p>
+                  <div className="space-y-3">
+                    {onboardingSteps.map((step, idx) => {
+                      const isNext = idx === proxPasso;
+                      return (
+                        <button
+                          key={idx}
+                          disabled={step.done}
+                          onClick={() => !step.done && navigate(step.path)}
+                          className={cn(
+                            'w-full flex items-center gap-3 text-left transition-all rounded-xl px-3 py-2.5',
+                            step.done
+                              ? 'opacity-50 cursor-default'
+                              : isNext
+                              ? 'bg-primary/8 hover:bg-primary/12 active:scale-[0.98]'
+                              : 'hover:bg-muted/60 active:scale-[0.98]',
+                          )}
+                        >
+                          {step.done
+                            ? <CheckCircle2 className="h-5 w-5 text-emerald-500 shrink-0" />
+                            : <Circle className={cn('h-5 w-5 shrink-0', isNext ? 'text-primary' : 'text-muted-foreground/40')} />
+                          }
+                          <div className="flex-1 min-w-0">
+                            <p className={cn('text-sm font-semibold truncate', step.done ? 'line-through text-muted-foreground' : 'text-foreground')}>
+                              {step.label}
+                            </p>
+                            {!step.done && (
+                              <p className="text-[11px] text-muted-foreground truncate">{step.sub}</p>
+                            )}
+                          </div>
+                          {isNext && <ChevronRight className="h-4 w-4 text-primary shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* Bloqueio total */}
+          {bloqueadoClinico && (
+            <V i={2}>
+              <BloqueioPortalCard
+                whatsappProfissional={profissional.whatsapp}
+                nomeProfissional={profissional.nome}
+              />
+            </V>
+          )}
+
+          {/* Período de carência */}
+          {emCarencia && (
+            <V i={2}>
+              <Card className="border-amber-200 bg-amber-50">
+                <CardContent className="p-4 flex items-start gap-3">
+                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
+                    <Clock className="h-4 w-4 text-amber-700" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-bold text-amber-900">
+                      Período de carência — {diasRestantesCarencia ?? 0} {diasRestantesCarencia === 1 ? 'dia' : 'dias'} restantes
+                    </p>
+                    <p className="text-[11px] text-amber-800/80 mt-0.5">
+                      Seu pacote terminou. O portal segue aberto para acompanhamento, mas seu profissional não pode adicionar novas atividades.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* Reação pós-sessão — feedback imediato (alta prioridade) */}
+          {paciente && (
+            <V i={3}>
+              <ReacaoPosSessaoCard pacienteId={paciente.id} />
+            </V>
+          )}
+
+          {/* Próxima sessão */}
           {proximasConsultas.length > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={0.5}>
+            <V i={4}>
               <button
                 onClick={() => navigate('/paciente/agenda')}
-                className="w-full rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold)/0.06)] p-4 flex items-center justify-between gap-3 hover:bg-[hsl(var(--gold)/0.12)] transition-colors text-left"
+                className="w-full rounded-2xl border border-[hsl(var(--gold)/0.35)] bg-[hsl(var(--gold)/0.06)] p-4 flex items-center justify-between gap-3 hover:bg-[hsl(var(--gold)/0.12)] transition-colors text-left active:scale-[0.99]"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div className="w-10 h-10 rounded-xl bg-gradient-gold flex items-center justify-center shadow-xs shrink-0">
                     <CalendarDays className="h-5 w-5 text-white" />
                   </div>
                   <div className="min-w-0">
-                    <p className="eyebrow-gold mb-0.5">
-                      Próxima Sessão
-                    </p>
+                    <p className="eyebrow-gold mb-0.5">Próxima Sessão</p>
                     <p className="text-sm font-semibold text-foreground truncate">
                       {format(parseISO(proximasConsultas[0].data_inicio), "EEE, d MMM · HH:mm", { locale: ptBR })}
                     </p>
@@ -266,147 +372,12 @@ export default function PacienteDashboard() {
                 </div>
                 <ChevronRight className="h-4 w-4 text-muted-foreground/50 shrink-0" />
               </button>
-            </motion.div>
+            </V>
           )}
 
-
-          {/* Bloqueio total — pacote terminou há mais de 60 dias */}
-          {bloqueadoClinico && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
-              <BloqueioPortalCard
-                whatsappProfissional={profissional.whatsapp}
-                nomeProfissional={profissional.nome}
-              />
-            </motion.div>
-          )}
-
-          {/* Carência — pacote terminou, ainda dentro de 30 dias */}
-          {emCarencia && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
-              <Card className="border-amber-200 bg-amber-50">
-                <CardContent className="p-4 flex items-start gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 flex items-center justify-center shrink-0">
-                    <Clock className="icon-sm text-amber-700" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-bold text-amber-900">
-                      Período de carência — {diasRestantesCarencia ?? 0} {diasRestantesCarencia === 1 ? 'dia' : 'dias'} restantes
-                    </p>
-                    <p className="text-[11px] text-amber-800/80 mt-0.5">
-                      Seu pacote terminou. O portal segue aberto para acompanhamento, mas seu profissional não pode adicionar novas atividades. Retome o tratamento para liberar tudo de novo.
-                    </p>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Conte sua história — voz guiada (só na primeira vez) */}
-          {!historiaContada && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
-              <Card
-                className="border-0 shadow-md overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(213 55% 28%) 100%)' }}
-                onClick={() => navigate('/paciente/historia')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                    <Mic className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-primary-foreground">
-                      🎙️ Conte como você está
-                    </h3>
-                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
-                      Responda em voz algumas perguntas — adianta sua avaliação inicial.
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* PWA Install Banner */}
-          <PwaInstallBanner />
-
-          {/* Reação pós-sessão (NPS rápido) */}
-          {paciente && <ReacaoPosSessaoCard pacienteId={paciente.id} />}
-
-          {/* Upgrade banner — Wellness Free */}
-          {isFree && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
-              <Card
-                className="border-0 shadow-md overflow-hidden cursor-pointer"
-                style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}
-                onClick={() => navigate('/paciente/plano')}
-              >
-                <CardContent className="p-4 flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                    <Sparkles className="h-5 w-5 text-primary-foreground" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <h3 className="text-sm font-black text-primary-foreground">
-                      {isInTrial
-                        ? `🎁 Trial Premium ativo — ${trialDiasRestantes} ${trialDiasRestantes === 1 ? 'dia restante' : 'dias restantes'}`
-                        : '✨ Desbloqueie tudo com Wellness Premium'}
-                    </h3>
-                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
-                      {isInTrial
-                        ? 'Você tem acesso completo aos exercícios, protocolos e missões. Assine para continuar após o trial.'
-                        : 'Exercícios, protocolos, missões completas e 1 consulta/mês com profissional.'}
-                    </p>
-                  </div>
-                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* MyID Prompt — first time or monthly */}
-          {showMyIdPrompt && stats.pendentes === 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={1}>
-              <Card className="border-0 shadow-md overflow-hidden"
-                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
-              >
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
-                      <Sparkles className="h-5 w-5 text-primary-foreground" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <h3 className="text-sm font-black text-primary-foreground">
-                        {myIdPromptType === 'first'
-                          ? '🎯 Descubra seu MyID!'
-                          : '🔄 Hora de atualizar seu MyID!'
-                        }
-                      </h3>
-                      <p className="text-[11px] text-primary-foreground/70 mt-0.5">
-                        {myIdPromptType === 'first'
-                          ? 'Responda seu primeiro questionário MyID para conhecer seu perfil de saúde e receber orientações personalizadas.'
-                          : 'Já faz mais de 30 dias desde sua última avaliação. Atualize para acompanhar sua evolução!'
-                        }
-                      </p>
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
-                        onClick={() => navigate('/paciente/questionarios')}
-                      >
-                        <Fingerprint className="icon-sm mr-1" />
-                        {myIdPromptType === 'first' ? 'Responder agora' : 'Atualizar MyID'}
-                        <ChevronRight className="icon-sm ml-1" />
-                      </Button>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </motion.div>
-          )}
-
-          {/* Pending questionnaires alert */}
+          {/* Questionários pendentes */}
           {stats.pendentes > 0 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={2}>
+            <V i={5}>
               <Card
                 className="border-primary/30 bg-primary/5 cursor-pointer hover:shadow-sm transition-shadow"
                 onClick={() => navigate('/paciente/questionarios')}
@@ -424,30 +395,103 @@ export default function PacienteDashboard() {
                   <ChevronRight className="h-4 w-4 text-primary" />
                 </CardContent>
               </Card>
-            </motion.div>
+            </V>
           )}
 
-          {/* MyID Dashboard */}
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={3}>
+          {/* CTA: contar história (se ainda não contou e onboarding não completo) */}
+          {!historiaContada && onboardingCompleto === false && (
+            <V i={5}>
+              <Card
+                className="border-0 shadow-md overflow-hidden cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(213 55% 28%) 100%)' }}
+                onClick={() => navigate('/paciente/historia')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Mic className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-primary-foreground">🎙️ Conte como você está</h3>
+                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
+                      Responda em voz algumas perguntas — adianta sua avaliação inicial.
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* Prompt MyID — primeira vez ou reavaliação mensal */}
+          {showMyIdPrompt && stats.pendentes === 0 && (
+            <V i={6}>
+              <Card className="border-0 shadow-md overflow-hidden"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--accent)) 0%, hsl(var(--primary)) 100%)' }}
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                      <Sparkles className="h-5 w-5 text-primary-foreground" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="text-sm font-black text-primary-foreground">
+                        {myIdPromptType === 'first' ? '🎯 Descubra seu MyID!' : '🔄 Hora de atualizar seu MyID!'}
+                      </h3>
+                      <p className="text-[11px] text-primary-foreground/70 mt-0.5">
+                        {myIdPromptType === 'first'
+                          ? 'Responda seu primeiro questionário MyID para conhecer seu perfil de saúde e receber orientações personalizadas.'
+                          : 'Já faz mais de 30 dias desde sua última avaliação. Atualize para acompanhar sua evolução!'}
+                      </p>
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        className="mt-2 h-7 text-xs font-bold bg-white/20 hover:bg-white/30 text-primary-foreground border-0"
+                        onClick={() => navigate('/paciente/questionarios')}
+                      >
+                        <Fingerprint className="h-3.5 w-3.5 mr-1" />
+                        {myIdPromptType === 'first' ? 'Responder agora' : 'Atualizar MyID'}
+                        <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                      </Button>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* Dashboard MyID (gráfico + evolução) */}
+          <V i={7}>
             {paciente && (
-              <Suspense fallback={<div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>}>
+              <Suspense fallback={
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              }>
                 <PatientIntegratedDashboard pacienteId={paciente.id} serviceType="identidade" />
               </Suspense>
             )}
-          </motion.div>
+          </V>
 
-          {/* Missões agora aparecem dentro do PatientIntegratedDashboard, logo abaixo do gráfico MyID */}
+          {/* Exercícios */}
+          <V i={8}>
+            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
+          </V>
 
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+          {/* Alertas e lembretes */}
+          <V i={9}>
+            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
+          </V>
+
+          {/* Dica inteligente */}
+          <V i={10}>
             <PacienteDicaInteligente />
-          </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
-            <MyIDPDFButton />
-          </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
+          </V>
+
+          {/* Recompensas */}
+          <V i={11}>
             <button
               onClick={() => navigate('/paciente/recompensas')}
-              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-shadow text-left"
+              className="w-full flex items-center gap-3 p-4 rounded-xl border border-border/40 bg-gradient-to-r from-amber-50 to-yellow-50 hover:shadow-md transition-shadow text-left active:scale-[0.99]"
             >
               <div className="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
                 <Trophy className="w-5 h-5 text-amber-700" />
@@ -458,17 +502,46 @@ export default function PacienteDashboard() {
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground" />
             </button>
-          </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={5}>
-            {paciente && <PacienteAlertasLembretes pacienteId={paciente.id} />}
-          </motion.div>
-          <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={6}>
-            {paciente && <PacienteExerciciosResumido pacienteId={paciente.id} />}
-          </motion.div>
+          </V>
 
-          {/* Upcoming appointments — compact, skip first (already shown at top) */}
+          {/* Upgrade Wellness — mostrado depois do valor, não antes */}
+          {isFree && (
+            <V i={12}>
+              <Card
+                className="border-0 shadow-md overflow-hidden cursor-pointer"
+                style={{ background: 'linear-gradient(135deg, hsl(var(--primary)) 0%, hsl(var(--accent)) 100%)' }}
+                onClick={() => navigate('/paciente/plano')}
+              >
+                <CardContent className="p-4 flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/20 flex items-center justify-center shrink-0">
+                    <Sparkles className="h-5 w-5 text-primary-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="text-sm font-black text-primary-foreground">
+                      {isInTrial
+                        ? `🎁 Trial Premium ativo — ${trialDiasRestantes} ${trialDiasRestantes === 1 ? 'dia restante' : 'dias restantes'}`
+                        : '✨ Desbloqueie tudo com Wellness Premium'}
+                    </h3>
+                    <p className="text-[11px] text-primary-foreground/75 mt-0.5">
+                      {isInTrial
+                        ? 'Você tem acesso completo. Assine para continuar após o trial.'
+                        : 'Exercícios, protocolos, missões completas e 1 consulta/mês.'}
+                    </p>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-primary-foreground/80 shrink-0" />
+                </CardContent>
+              </Card>
+            </V>
+          )}
+
+          {/* PDF MyID */}
+          <V i={13}>
+            <MyIDPDFButton />
+          </V>
+
+          {/* Outras consultas */}
           {proximasConsultas.length > 1 && (
-            <motion.div variants={fadeUp} initial="hidden" animate="visible" custom={7}>
+            <V i={14}>
               <div className="flex items-center justify-between mb-2">
                 <h2 className="text-sm font-bold text-foreground">Outras consultas</h2>
                 <button onClick={() => navigate('/paciente/agenda')} className="text-[10px] font-semibold text-primary flex items-center gap-0.5">
@@ -499,8 +572,9 @@ export default function PacienteDashboard() {
                   </Card>
                 ))}
               </div>
-            </motion.div>
+            </V>
           )}
+
         </div>
       </PacienteLayout>
     </ProtectedPatientRoute>
