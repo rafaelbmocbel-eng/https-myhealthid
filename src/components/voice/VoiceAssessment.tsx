@@ -9,8 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, MapPin, Volume2 } from 'lucide-react';
-import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import { Mic, MicOff, Loader2, AlertTriangle, CheckCircle2, Brain, FileText, Stethoscope, Activity, Shield, Lightbulb, ChevronDown, ChevronUp, Copy, BookOpen, Save, Edit3, RotateCcw, Clock, Sparkles, Tag, Layers, Users, Wand2, Target, Trash2, Volume2 } from 'lucide-react';
 import { encontrarSintomasEmTexto } from '@/utils/anatomia/mapeamentoSintomas';
 import { cn } from '@/lib/utils';
 import { clearDraft, readDraft, writeDraft } from '@/lib/draftStorage';
@@ -165,7 +164,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const [fullEditorJson, setFullEditorJson] = useState('');
   const [fullEditorError, setFullEditorError] = useState<string | null>(null);
   const { adicionar: adicionarNotaProntuario } = useNotasProntuario(pacienteId || '');
-  const saveEventoAnatomico = useSaveEventoAnatomico();
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -178,7 +176,6 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
   const animFrameRef = useRef<number | null>(null);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const [audioLevel, setAudioLevel] = useState(0);
-  const [savingToAvatar, setSavingToAvatar] = useState(false);
 
   const draftKey = `voice:${serviceType}:${pacienteId ?? 'sem-paciente'}:${user?.id ?? 'anon'}`;
 
@@ -666,6 +663,64 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
         }
       }
 
+      // Auto-população do avatar anatômico — não bloqueante, fire-and-forget
+      if (pacienteId && user) {
+        void (async () => {
+          try {
+            const LENTE_TO_TIPO: Record<string, string> = {
+              'Fisioterapia': 'diagnostico_fisioterapia',
+              'Neurociência da Dor': 'diagnostico_fisioterapia',
+              'Reabilitação Esportiva': 'diagnostico_fisioterapia',
+              'Osteopatia': 'diagnostico_fisioterapia',
+              'Quiropraxia': 'diagnostico_fisioterapia',
+              'Posturologia': 'diagnostico_fisioterapia',
+              'Integrada': 'achado_clinico',
+            };
+            const textoBase = [
+              generatedAssessment.queixa_principal || '',
+              generatedAssessment.dor?.localizacao || '',
+              generatedAssessment.dor?.tipo || '',
+              ...(generatedAssessment.hipoteses_diagnosticas || []).map((h: any) => h.diagnostico || ''),
+              generatedAssessment.soap?.subjetivo || '',
+            ].join(' ');
+            const regioes = encontrarSintomasEmTexto(textoBase);
+            if (regioes.length === 0) return;
+
+            const hipPrincipal = generatedAssessment.hipoteses_diagnosticas?.[0];
+            const tipoDiag = LENTE_TO_TIPO[hipPrincipal?.lente_clinica || ''] || 'achado_clinico';
+            const severidade = Math.min(5, Math.max(1, Math.round((generatedAssessment.dor?.intensidade_eva || 5) / 2)));
+            const hoje = new Date().toISOString().split('T')[0];
+
+            const vistas = new Set<string>();
+            const eventos = regioes
+              .filter(r => { const k = `${r.sistema}|${r.regiao_id}`; if (vistas.has(k)) return false; vistas.add(k); return true; })
+              .map(r => ({
+                paciente_id: pacienteId,
+                terapeuta_id: user.id,
+                regiao_id: r.regiao_id,
+                sistema: r.sistema,
+                tipo_achado: generatedAssessment.queixa_principal || hipPrincipal?.diagnostico || 'Avaliação por voz',
+                tipo_diagnostico: tipoDiag,
+                severidade,
+                status: 'ativo',
+                origem: 'voz_ia',
+                data_inicio: hoje,
+                notas_clinicas: generatedAssessment.resumo_clinico || null,
+                visivel_paciente: false,
+                metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia' },
+              }));
+
+            const { error: insErr } = await supabase
+              .from('eventos_clinicos_anatomicos' as any)
+              .insert(eventos);
+            if (insErr) throw insErr;
+            queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+          } catch (e) {
+            console.warn('[VoiceAssessment] auto-avatar save failed (não bloqueante):', e);
+          }
+        })();
+      }
+
       const saveResult = await saveAssessment(generatedAssessment, generatedTranscript, {
         silent: true,
         painMapOverride: painMap ?? autoPainMap ?? null,
@@ -918,85 +973,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
     }
   };
 
-  // Salva achados clínicos da avaliação por voz no avatar anatômico
-  const saveToAvatar = async () => {
-    if (!assessment || !pacienteId) return;
-    setSavingToAvatar(true);
-    try {
-      const LENTE_TO_TIPO: Record<string, string> = {
-        'Fisioterapia': 'diagnostico_fisioterapia',
-        'Neurociência da Dor': 'diagnostico_fisioterapia',
-        'Reabilitação Esportiva': 'diagnostico_fisioterapia',
-        'Osteopatia': 'diagnostico_fisioterapia',
-        'Quiropraxia': 'diagnostico_fisioterapia',
-        'Posturologia': 'diagnostico_fisioterapia',
-        'Integrada': 'achado_clinico',
-      };
-
-      // Texto composto para extração de regiões
-      const textoBase = [
-        assessment.queixa_principal || '',
-        assessment.dor?.localizacao || '',
-        assessment.dor?.tipo || '',
-        ...(assessment.hipoteses_diagnosticas || []).map((h: any) => h.diagnostico || ''),
-        assessment.soap?.subjetivo || '',
-      ].join(' ');
-
-      const regioes = encontrarSintomasEmTexto(textoBase);
-      if (regioes.length === 0) {
-        toast({ title: 'Nenhuma região identificada', description: 'Não consegui mapear regiões anatômicas a partir desta avaliação.', variant: 'destructive' });
-        return;
-      }
-
-      const hipotesePrincipal = assessment.hipoteses_diagnosticas?.[0];
-      const tipoDiagnostico = LENTE_TO_TIPO[hipotesePrincipal?.lente_clinica || ''] || 'achado_clinico';
-      const severidade = Math.min(5, Math.max(1, Math.round((assessment.dor?.intensidade_eva || 5) / 2)));
-      const hoje = new Date().toISOString().split('T')[0];
-      const notasClinias = assessment.resumo_clinico || assessment.queixa_principal || '';
-
-      // Deduplicar por sistema (um evento por sistema, não por região)
-      const sistemasVisto = new Set<string>();
-      const eventosParaCriar = regioes.filter(r => {
-        const chave = `${r.sistema}|${r.regiao_id}`;
-        if (sistemasVisto.has(chave)) return false;
-        sistemasVisto.add(chave);
-        return true;
-      });
-
-      await Promise.all(
-        eventosParaCriar.map(r =>
-          saveEventoAnatomico.mutateAsync({
-            paciente_id: pacienteId,
-            regiao_id: r.regiao_id,
-            sistema: r.sistema as any,
-            tipo_achado: assessment.queixa_principal || hipotesePrincipal?.diagnostico || 'Achado por avaliação de voz',
-            tipo_diagnostico: tipoDiagnostico as any,
-            severidade,
-            status: 'ativo',
-            origem: 'voz_ia' as any,
-            data_inicio: hoje,
-            notas_clinicas: notasClinias,
-            visivel_paciente: false,
-            metadata: {
-              hipoteses: assessment.hipoteses_diagnosticas?.slice(0, 3) || [],
-              avaliacao_origem: 'voz_ia',
-            },
-          })
-        )
-      );
-
-      toast({
-        title: `✅ ${eventosParaCriar.length} achado(s) salvos no avatar`,
-        description: 'Acesse a aba Corpo para visualizar e revisar os sistemas marcados.',
-      });
-      queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
-    } catch (err: any) {
-      toast({ title: 'Erro ao salvar no avatar', description: err?.message || 'Tente novamente.', variant: 'destructive' });
-    } finally {
-      setSavingToAvatar(false);
-    }
-  };
-
   // Inline edit helpers for AI fields
   const startEditField = (field: string, currentValue: string) => {
     setEditingField(field);
@@ -1075,18 +1051,6 @@ ${assessment.insights_baseados_evidencia?.map((i: any) => `- ${i.insight} (${i.r
               <FileText className="h-4 w-4 mr-1" />{isEditingTranscript ? 'Fechar Texto' : 'Ver/Editar Texto'}
             </Button>
             <Button variant="outline" size="sm" onClick={copyAssessment}><Copy className="h-4 w-4 mr-1" />Copiar</Button>
-            {pacienteId && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={saveToAvatar}
-                disabled={savingToAvatar}
-                className="border-blue-300 text-blue-700 hover:bg-blue-50 dark:border-blue-700 dark:text-blue-400 dark:hover:bg-blue-900/20"
-              >
-                {savingToAvatar ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <MapPin className="h-4 w-4 mr-1" />}
-                Salvar no Avatar
-              </Button>
-            )}
             {!isSaved ? (
               <Button size="sm" onClick={() => saveAssessment()} disabled={isSaving} className="bg-primary text-primary-foreground">
                 {isSaving ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Save className="h-4 w-4 mr-1" />}
