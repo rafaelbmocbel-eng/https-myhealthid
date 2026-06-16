@@ -16,6 +16,15 @@ interface Finding {
   structures?: string[];
 }
 
+interface AvatarEvent {
+  regiao_id: string;
+  sistema: string;
+  tipo_diagnostico: "achado_clinico" | "historico_relatado";
+  tipo_achado: string;
+  severidade: number;
+  estrutura?: string;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -37,6 +46,15 @@ Deno.serve(async (req) => {
           !!f && typeof f === "object" &&
           typeof (f as Finding).region_id === "string" && (f as Finding).region_id.trim().length > 0 &&
           typeof (f as Finding).intensity === "number"
+        )
+      : [];
+    const avatarEvents: AvatarEvent[] = Array.isArray(body?.avatar_events)
+      ? (body.avatar_events as unknown[]).filter((e): e is AvatarEvent =>
+          !!e && typeof e === "object" &&
+          typeof (e as AvatarEvent).regiao_id === "string" && (e as AvatarEvent).regiao_id.trim().length > 0 &&
+          typeof (e as AvatarEvent).sistema === "string" &&
+          typeof (e as AvatarEvent).tipo_achado === "string" &&
+          typeof (e as AvatarEvent).severidade === "number"
         )
       : [];
 
@@ -101,7 +119,8 @@ Deno.serve(async (req) => {
     let eventosCriados = 0;
     let eventosDuplicados = 0;
 
-    if (findings.length > 0) {
+    const temEventos = findings.length > 0 || avatarEvents.length > 0;
+    if (temEventos) {
       const { data: existentes } = await supabase
         .from("eventos_clinicos_anatomicos")
         .select("regiao_id")
@@ -110,9 +129,32 @@ Deno.serve(async (req) => {
 
       const regioesAtivas = new Set((existentes || []).map((e: { regiao_id: string }) => e.regiao_id));
       const hoje = new Date().toISOString().slice(0, 10);
+      const notasBase = "Relato registrado pelo próprio paciente no portal, sem profissional presente. Aguarda confirmação clínica.";
 
-      const novosEventos = findings
-        .filter((f) => !regioesAtivas.has(f.region_id))
+      // Primary: AI-classified events (surgical history, chronic conditions, neurological, systemic)
+      const eventosDeAI = avatarEvents
+        .filter((ev) => !regioesAtivas.has(ev.regiao_id))
+        .map((ev) => ({
+          paciente_id: paciente.id,
+          terapeuta_id: paciente.terapeuta_id,
+          regiao_id: ev.regiao_id,
+          sistema: ev.sistema,
+          tipo_achado: ev.tipo_achado,
+          tipo_diagnostico: "relato_paciente", // always pending confirmation, regardless of AI classification
+          origem: "autocadastro_paciente",
+          estrutura: ev.estrutura || null,
+          severidade: ev.severidade,
+          status: "ativo",
+          visivel_paciente: true,
+          data_inicio: hoje,
+          notas_clinicas: notasBase,
+          metadata: { fontes: ["autocadastro_paciente"], confianca: "baixa", auto_processado: true, avaliacao_voz_id: avaliacaoInserida.id, ai_tipo_diagnostico: ev.tipo_diagnostico },
+        }));
+
+      // Fallback: pain findings from extract-pain-from-voice for MSK regions not already in AI events
+      const aiRegioes = new Set(eventosDeAI.map((ev) => ev.regiao_id));
+      const eventosDePain = findings
+        .filter((f) => !regioesAtivas.has(f.region_id) && !aiRegioes.has(f.region_id))
         .map((f) => ({
           paciente_id: paciente.id,
           terapeuta_id: paciente.terapeuta_id,
@@ -126,11 +168,12 @@ Deno.serve(async (req) => {
           status: "ativo",
           visivel_paciente: true,
           data_inicio: hoje,
-          notas_clinicas: "Relato registrado pelo próprio paciente no portal, sem profissional presente. Aguarda confirmação clínica.",
+          notas_clinicas: notasBase,
           metadata: { fontes: ["autocadastro_paciente"], confianca: "baixa", auto_processado: true, avaliacao_voz_id: avaliacaoInserida.id },
         }));
 
-      eventosDuplicados = findings.length - novosEventos.length;
+      const novosEventos = [...eventosDeAI, ...eventosDePain];
+      eventosDuplicados = (findings.length + avatarEvents.length) - novosEventos.length;
 
       if (novosEventos.length > 0) {
         const { error: eventosError } = await supabase

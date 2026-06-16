@@ -1,19 +1,17 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope, Save, Brain, Mic, Hand, Target } from 'lucide-react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { ClipboardList, Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
-import Body3DAvatar, { painMapToText, REGIONS, STRUCTURES } from './Body3DAvatar';
+import { REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLenteAtiva, temBloco } from '@/hooks/useLenteAtiva';
 import MyIDResumoInline from './MyIDResumoInline';
 import { useSaveEventoAnatomico } from '@/hooks/useEventosAnatomicos';
+import type { SistemaCorporal } from '@/hooks/useEventosAnatomicos';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import { cn } from '@/lib/utils';
-import { inferirAchadosDoMyID, mergearFontes, type AchadoUnificado, type AvatarFonte } from '@/utils/anatomia/myidToAvatar';
 
 interface Props {
   pacienteId: string;
@@ -21,6 +19,14 @@ interface Props {
   serviceType?: 'identidade' | 'cobzero' | 'studio';
   onAssessmentComplete?: () => void;
 }
+
+// Região com rastreabilidade de fonte (apenas dor explicitamente relatada pelo paciente)
+type RegiaoColetada = {
+  intensidade: number;
+  sistema: SistemaCorporal;
+  fonte: 'voz_ia' | 'myid';
+  tipoAchado: string;
+};
 
 export default function AvaliacaoPresencial({
   pacienteId,
@@ -31,43 +37,38 @@ export default function AvaliacaoPresencial({
   const navigate = useNavigate();
   const { user } = useAuth();
   const { data: lente } = useLenteAtiva();
-
-  // Estado unificado: cada região traz fontes + metadata
-  const [painMap, setPainMap] = useState<Record<string, number>>({});
-  const [structState, setStructState] = useState<Record<string, string[]>>({});
-  const [origemPorRegiao, setOrigemPorRegiao] = useState<Record<string, AchadoUnificado>>({});
-  const [isSaving, setIsSaving] = useState(false);
-  const [myidSyncDone, setMyidSyncDone] = useState(false);
+  const [isAutoProcessing, setIsAutoProcessing] = useState(false);
+  const [mostrarNovoRegistro, setMostrarNovoRegistro] = useState(false);
+  const autoProcessadoRef = useRef(false);
   const saveEvento = useSaveEventoAnatomico();
-  const painText = painMapToText(painMap);
+  const qc = useQueryClient();
 
   const mostraAvatar = temBloco(lente, 'avatar');
 
-  // 1) Última avaliação de voz (regions extraídas pela IA ficam em _meta.mapa_dor)
-  const { data: latestAval } = useQuery({
-    queryKey: ['avaliacao-voz-latest', pacienteId, user?.id],
+  // Última avaliação por voz — achados estruturados em resultado._meta
+  const { data: latestAval, isLoading: loadingAval } = useQuery({
+    queryKey: ['avaliacao-voz-latest-presencial', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_voz')
-        .select('id, resultado')
+        .select('id, resultado, created_at')
         .eq('paciente_id', pacienteId)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
       return data;
     },
-    enabled: !!pacienteId && !!user && mostraAvatar,
+    enabled: !!pacienteId,
   });
 
-  // 2) Último MyID com scores
-  const { data: lastMyID } = useQuery({
+  // Última avaliação MyID (sem filtro — inclui presenciais sem score digital)
+  const { data: lastMyID, isLoading: loadingMyID } = useQuery({
     queryKey: ['myid-latest-sync', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
         .from('avaliacoes_identidade')
         .select('*')
         .eq('paciente_id', pacienteId)
-        .not('myid_score', 'is', null)
         .order('created_at', { ascending: false })
         .limit(1)
         .maybeSingle();
@@ -76,106 +77,24 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && mostraAvatar,
   });
 
-  // Refletir voz no painMap ao chegar
-  useEffect(() => {
-    const meta = (latestAval?.resultado as any)?._meta;
-    if (meta?.mapa_dor && typeof meta.mapa_dor === 'object' && Object.keys(meta.mapa_dor).length) {
-      mergeFromSource('voz_ia', meta.mapa_dor as Record<string, number>);
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [latestAval?.id]);
+  // Eventos já salvos — para evitar duplicatas (achados resolvidos não contam como duplicata)
+  const { data: eventosExistentes = [], isLoading: loadingEventos } = useQuery({
+    queryKey: ['eventos-anatomicos-count', pacienteId],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('eventos_clinicos_anatomicos')
+        .select('id, regiao_id, status')
+        .eq('paciente_id', pacienteId);
+      return (data || []) as { id: string; regiao_id: string; status: string }[];
+    },
+    enabled: !!pacienteId && mostraAvatar,
+  });
+  const regioesAtivasExistentes = useMemo(
+    () => new Set(eventosExistentes.filter(e => e.status !== 'resolvido').map(e => e.regiao_id)),
+    [eventosExistentes],
+  );
 
-  // Unifica fontes e atualiza painMap + origemPorRegiao
-  const mergeFromSource = (
-    fonte: AvatarFonte,
-    regioes: Record<string, number>,
-    extra?: { myid_dimensao?: string; myid_score?: number; termos?: string[] },
-  ) => {
-    setPainMap(prevMap => {
-      const nextMap = { ...prevMap };
-      setOrigemPorRegiao(prevOrigem => {
-        const nextOrigem = { ...prevOrigem };
-        Object.entries(regioes).forEach(([rid, intensity]) => {
-          if (intensity <= 0) return;
-          const existing = nextOrigem[rid];
-          if (!existing) {
-            nextOrigem[rid] = {
-              regiao_id: rid,
-              intensidade: intensity,
-              fontes: [fonte],
-              triangulado: false,
-              origem_principal: fonte,
-              metadata: {
-                fontes: [fonte],
-                confianca: 'baixa',
-                myid_dimensao_origem: extra?.myid_dimensao,
-                myid_score_origem: extra?.myid_score,
-                termos_voz: extra?.termos,
-              },
-            };
-          } else {
-            if (!existing.fontes.includes(fonte)) {
-              existing.fontes.push(fonte);
-              existing.metadata.fontes.push(fonte);
-            }
-            existing.intensidade = Math.max(existing.intensidade, intensity);
-            if (existing.fontes.length >= 2) {
-              existing.triangulado = true;
-              existing.intensidade = Math.min(10, existing.intensidade + 1);
-            }
-            existing.metadata.confianca =
-              existing.fontes.length >= 3 ? 'alta' :
-              existing.fontes.length === 2 ? 'media' : 'baixa';
-            if (fonte === 'manual') existing.origem_principal = 'manual';
-          }
-          nextMap[rid] = nextOrigem[rid].intensidade;
-        });
-        return nextOrigem;
-      });
-      return nextMap;
-    });
-  };
-
-  // Botão Sincronizar MyID — usa novo motor de inferência por severidade
-  const handleSyncMyID = () => {
-    if (!lastMyID) return;
-    const achados = inferirAchadosDoMyID({
-      scores: {
-        D: Number(lastMyID.score_d),
-        EFI: Number(lastMyID.score_efi),
-        P: Number(lastMyID.score_p),
-        I: Number(lastMyID.score_i),
-        R: Number(lastMyID.score_r),
-        C: Number(lastMyID.score_c),
-        N: Number(lastMyID.score_n),
-      },
-      textoRelato: [
-        (lastMyID as any).queixa_principal,
-        (lastMyID as any).observacoes,
-        JSON.stringify((lastMyID as any).dados_avaliacao || {}),
-      ].filter(Boolean).join(' '),
-    });
-
-    if (achados.length === 0) {
-      toast({ title: 'MyID sem achados mapeáveis', description: 'Os scores do MyID não geraram regiões específicas para este avatar.' });
-      return;
-    }
-
-    achados.forEach(a => {
-      mergeFromSource('myid', { [a.regiao_id]: a.intensidade }, {
-        myid_dimensao: a.myid_dimensao_origem,
-        myid_score: a.myid_score_origem,
-        termos: a.termos_voz,
-      });
-    });
-
-    setMyidSyncDone(true);
-    toast({
-      title: 'MyID sincronizado ao Avatar',
-      description: `${achados.length} regiões pré-marcadas com base em scores e relatos.`,
-    });
-  };
-
+  // Catálogo de regiões para guiar a IA de voz na extração
   const painRegionsCatalog = useMemo(() => ({
     regions: REGIONS.map(r => ({ id: r.id, label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})` })),
     catalog: Object.fromEntries(
@@ -183,116 +102,205 @@ export default function AvaliacaoPresencial({
     ),
   }), []);
 
-  const handlePainExtracted = (
-    findings: Array<{ region_id: string; intensity: number; structures: string[] }>,
-  ) => {
-    const regioes: Record<string, number> = {};
-    findings.forEach(f => { regioes[f.region_id] = f.intensity; });
-    mergeFromSource('voz_ia', regioes);
+  // Coleta APENAS mapas de dor explicitamente capturados — sem NLP, sem inferência por scores.
+  // Sintoma relatado pelo paciente → musculoesqueletico + severidade leve (profissional reclassifica).
+  const coletarRegioes = (): Record<string, RegiaoColetada> => {
+    const regioes: Record<string, RegiaoColetada> = {};
 
-    setStructState(prev => {
-      const next = { ...prev };
-      findings.forEach(f => {
-        const existing = next[f.region_id] ?? [];
-        const merged = Array.from(new Set([...existing, ...(f.structures ?? [])]));
-        if (merged.length) next[f.region_id] = merged;
-      });
-      return next;
-    });
-  };
-
-  // Quando o terapeuta clica direto no avatar (manual)
-  const handlePainMapManual = (next: Record<string, number>) => {
-    const diffs: Record<string, number> = {};
-    Object.entries(next).forEach(([rid, intensity]) => {
-      if ((painMap[rid] ?? 0) !== intensity && intensity > 0) {
-        diffs[rid] = intensity;
-      }
-    });
-    if (Object.keys(diffs).length > 0) mergeFromSource('manual', diffs);
-
-    // Remoções manuais (clicou pra zerar)
-    Object.keys(painMap).forEach(rid => {
-      if (!(rid in next)) {
-        setOrigemPorRegiao(prev => {
-          const n = { ...prev };
-          delete n[rid];
-          return n;
+    // ── Fonte 1: mapa de dor explícito da avaliação por voz ──────
+    if (latestAval) {
+      const meta = (latestAval.resultado as any)?._meta;
+      if (meta?.mapa_dor && typeof meta.mapa_dor === 'object') {
+        Object.entries(meta.mapa_dor as Record<string, number>).forEach(([rid, v]) => {
+          if (Number(v) > 0) {
+            regioes[rid] = {
+              intensidade: 1,
+              sistema: 'musculoesqueletico',
+              fonte: 'voz_ia',
+              tipoAchado: 'Dor relatada pelo paciente — aguarda avaliação clínica',
+            };
+          }
         });
       }
-    });
-    setPainMap(next);
-  };
-
-  // ── Contadores para o header "Inteligência Cruzada"
-  const stats = useMemo(() => {
-    const fonteCount = { myid: 0, voz_ia: 0, manual: 0 };
-    let trianguladas = 0;
-    Object.values(origemPorRegiao).forEach(a => {
-      a.fontes.forEach(f => { fonteCount[f]++; });
-      if (a.triangulado) trianguladas++;
-    });
-    return { ...fonteCount, trianguladas, total: Object.keys(origemPorRegiao).length };
-  }, [origemPorRegiao]);
-
-  const handleSaveToAvatar = async () => {
-    const entries = Object.entries(painMap).filter(([_, intensity]) => intensity > 0);
-    if (entries.length === 0) {
-      toast({ title: 'Nenhum achado para salvar', description: 'Marque ao menos uma região no avatar.' });
-      return;
     }
 
-    setIsSaving(true);
+    // ── Fonte 2: mapa de dor explícito da avaliação presencial ───
+    // Não usa inferirAchadosDoMyID aqui — inferência por scores é apenas visual no AvatarClinicoCard.
+    if (lastMyID) {
+      const dados = (lastMyID as any).dados_avaliacao || {};
+      const painMapSalvo: Record<string, number> | null =
+        dados?.painMap || dados?.mapa_dor || dados?.resultado?.painMap || null;
+
+      if (painMapSalvo) {
+        Object.entries(painMapSalvo).forEach(([rid, v]) => {
+          if (Number(v) > 0 && !regioes[rid]) {
+            regioes[rid] = {
+              intensidade: 1,
+              sistema: 'musculoesqueletico',
+              fonte: 'myid',
+              tipoAchado: 'Dor relatada pelo paciente — mapa presencial',
+            };
+          }
+        });
+      }
+    }
+
+    return regioes;
+  };
+
+  // Salva achados no Avatar Clínico com sistema correto
+  const handleAutoProcessar = async (silencioso = false) => {
+    if (!user?.id) return;
+    setIsAutoProcessing(true);
     try {
-      await Promise.all(entries.map(([regiao_id, intensity]) => {
-        const origem = origemPorRegiao[regiao_id];
-        const fonteAtiva: AvatarFonte = origem?.origem_principal ?? 'manual';
-        const sistema = (origem?.metadata as any)?.sistema ?? 'musculoesqueletico';
-        const structures = structState[regiao_id] || [];
+      const regioesPorId = coletarRegioes();
 
-        const fonteParaOrigemDB = (f: AvatarFonte): 'subjetivo_myid' | 'voz_ia' | 'exame_clinico' =>
-          f === 'myid' ? 'subjetivo_myid' : f === 'voz_ia' ? 'voz_ia' : 'exame_clinico';
+      if (Object.keys(regioesPorId).length === 0) {
+        if (!silencioso) {
+          toast({ title: 'Sem dados suficientes', description: 'A avaliação não gerou regiões mapeáveis.' });
+        }
+        return;
+      }
 
-        return saveEvento.mutateAsync({
+      const regioesNovas = Object.entries(regioesPorId).filter(([rid]) => !regioesAtivasExistentes.has(rid));
+
+      if (regioesNovas.length === 0) {
+        if (!silencioso) {
+          toast({ title: 'Avatar já atualizado', description: 'Todas as regiões já estão no Avatar Clínico.' });
+        }
+        return;
+      }
+
+      await Promise.all(regioesNovas.map(([regiao_id, info]) =>
+        saveEvento.mutateAsync({
           paciente_id: pacienteId,
           regiao_id,
-          sistema,
-          origem: fonteParaOrigemDB(fonteAtiva),
-          tipo_achado: origem?.triangulado
-            ? '🎯 Achado triangulado (MyID + Voz + Exame)'
-            : `Achado em Avaliação Presencial (${fonteAtiva})`,
-          estrutura: structures.join(', ') || null,
-          severidade: intensity >= 7 ? 3 : intensity >= 4 ? 2 : 1,
+          sistema: info.sistema,
+          origem: info.fonte === 'myid' ? 'subjetivo_myid' : 'voz_ia',
+          tipo_achado: info.tipoAchado,
+          estrutura: null,
+          severidade: 1, // sempre leve — dor relatada pelo paciente, não diagnóstico confirmado
           status: 'ativo',
           visivel_paciente: true,
           data_inicio: new Date().toISOString().slice(0, 10),
-          notas_clinicas: `Intensidade ${intensity}/10. Fontes: ${origem?.fontes.join(', ') ?? 'manual'}. ${origem?.metadata.myid_dimensao_origem ? `MyID origem: ${origem.metadata.myid_dimensao_origem} (${origem.metadata.myid_score_origem ?? '—'}/10). ` : ''}${origem?.metadata.termos_voz?.length ? `Termos: ${origem.metadata.termos_voz.join(', ')}. ` : ''}Estruturas: ${structures.join(', ') || '—'}`,
+          notas_clinicas: `Registrado automaticamente a partir de queixa do paciente. Aguarda classificação clínica pelo profissional.`,
           metadata: {
-            fontes: origem?.fontes ?? [fonteAtiva],
-            confianca: origem?.metadata.confianca ?? 'baixa',
-            myid_dimensao_origem: origem?.metadata.myid_dimensao_origem,
-            myid_score_origem: origem?.metadata.myid_score_origem,
-            termos_voz: origem?.metadata.termos_voz,
-            triangulado: origem?.triangulado ?? false,
+            fontes: [info.fonte],
+            confianca: 'baixa',
+            auto_processado: true,
           } as any,
-        } as any);
-      }));
+        } as any)
+      ));
 
-      toast({
-        title: 'Avatar Clínico atualizado',
-        description: `${entries.length} achados salvos (${stats.trianguladas} triangulados).`,
-      });
-    } catch (error) {
-      console.error('Erro ao sincronizar avatar:', error);
-      toast({ title: 'Erro ao salvar', variant: 'destructive' });
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos-count', pacienteId] });
+
+      if (!silencioso) {
+        toast({
+          title: '✅ Avatar Clínico atualizado!',
+          description: `${regioesNovas.length} região${regioesNovas.length > 1 ? 'ões' : ''} em ${new Set(regioesNovas.map(([, i]) => i.sistema)).size} sistema${new Set(regioesNovas.map(([, i]) => i.sistema)).size > 1 ? 's' : ''}.`,
+        });
+      }
+      onAssessmentComplete?.();
+    } catch (err) {
+      console.error('Erro ao auto-processar avatar:', err);
+      if (!silencioso) toast({ title: 'Erro ao processar', variant: 'destructive' });
     } finally {
-      setIsSaving(false);
+      setIsAutoProcessing(false);
     }
   };
+
+  // Auto-dispara quando: dados carregados + avatar vazio + há avaliação existente
+  useEffect(() => {
+    if (loadingEventos || loadingAval || loadingMyID) return;
+    if (!mostraAvatar) return;
+    if (eventosExistentes.length > 0) return;
+    if (!latestAval && !lastMyID) return;
+    if (autoProcessadoRef.current) return;
+
+    autoProcessadoRef.current = true;
+    handleAutoProcessar(true);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loadingEventos, loadingAval, loadingMyID, eventosExistentes.length, latestAval?.id, lastMyID?.id]);
+
+  // Achados de nova avaliação por voz → salva direto no Avatar com sistema correto
+  const handlePainExtracted = async (
+    findings: Array<{ region_id: string; intensity: number; structures: string[] }>,
+  ) => {
+    if (!user?.id || findings.length === 0) return;
+    const novas = findings.filter(f => !regioesAtivasExistentes.has(f.region_id));
+    if (novas.length === 0) return;
+
+    try {
+      await Promise.all(novas.map(f =>
+        saveEvento.mutateAsync({
+          paciente_id: pacienteId,
+          regiao_id: f.region_id,
+          sistema: 'musculoesqueletico',
+          origem: 'voz_ia',
+          tipo_achado: 'Queixa de dor relatada pelo paciente — aguarda avaliação clínica',
+          estrutura: f.structures?.join(', ') || null,
+          severidade: 1, // sempre leve — profissional reclassifica se necessário
+          status: 'ativo',
+          visivel_paciente: true,
+          data_inicio: new Date().toISOString().slice(0, 10),
+          notas_clinicas: `Queixa de dor referida pelo paciente durante avaliação por voz. Aguarda classificação clínica.`,
+          metadata: { fontes: ['voz_ia'], confianca: 'baixa', auto_processado: true } as any,
+        } as any)
+      ));
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+      qc.invalidateQueries({ queryKey: ['eventos-anatomicos-count', pacienteId] });
+    } catch (err) {
+      console.error('Erro ao salvar achados da IA:', err);
+    }
+  };
+
+  const temDadosParaProcessar = !!(latestAval || lastMyID);
+  const mostrarBanner =
+    mostraAvatar &&
+    !loadingEventos &&
+    eventosExistentes.length === 0 &&
+    temDadosParaProcessar &&
+    !isAutoProcessing &&
+    autoProcessadoRef.current; // só aparece se o auto-processamento já tentou e não funcionou
 
   return (
     <div className="space-y-3">
       <MyIDResumoInline pacienteId={pacienteId} />
+
+      {/* Indicador de processamento automático em background */}
+      {isAutoProcessing && (
+        <div className="rounded-xl border border-primary/20 bg-primary/5 p-3 flex items-center gap-2">
+          <Loader2 className="h-4 w-4 text-primary animate-spin shrink-0" />
+          <p className="text-xs text-primary font-medium">
+            Atualizando Avatar Clínico com os achados da avaliação...
+          </p>
+        </div>
+      )}
+
+      {/* Banner manual — aparece somente se o auto-processamento não gerou regiões */}
+      {mostrarBanner && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50 dark:bg-amber-950/20 dark:border-amber-800 p-3 flex items-start gap-3">
+          <AlertCircle className="h-4 w-4 text-amber-600 shrink-0 mt-0.5" />
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-semibold text-amber-800 dark:text-amber-300">
+              Avatar sem achados automáticos
+            </p>
+            <p className="text-[11px] text-amber-700 dark:text-amber-400 mt-0.5">
+              Não foram detectadas regiões na avaliação. Você pode tentar novamente ou registrar manualmente.
+            </p>
+          </div>
+          <Button
+            size="sm"
+            variant="outline"
+            className="h-8 gap-1.5 text-xs border-amber-300 text-amber-800 hover:bg-amber-100 shrink-0"
+            onClick={() => handleAutoProcessar(false)}
+          >
+            <Wand2 className="h-3.5 w-3.5 shrink-0" />
+            Tentar novamente
+          </Button>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <button
@@ -314,150 +322,37 @@ export default function AvaliacaoPresencial({
         )}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-          <Sparkles className="icon-xs shrink-0" />
-          A IA estrutura a avaliação{mostraAvatar ? ' e marca o avatar' : ''} a partir da sua fala.
-        </p>
-        <VoiceAssessment
-          mode="voice"
-          serviceType={serviceType}
-          pacienteId={pacienteId}
-          patientName={patientName}
-          contextPrefix={painText || undefined}
-          onAssessmentComplete={onAssessmentComplete}
-          onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
-          painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
-          painMap={mostraAvatar ? painMap : undefined}
-          perfilProfissional={lente?.id}
-        />
-      </div>
-
-      {mostraAvatar && (
-        <div className="space-y-4">
-          {/* ───── HEADER: INTELIGÊNCIA CRUZADA ───── */}
-          <div className="rounded-xl border border-border/40 bg-gradient-to-br from-primary/5 to-transparent p-3 sm:p-4 space-y-3">
-            <div className="flex items-center justify-between gap-2 flex-wrap">
-              <div className="space-y-0.5">
-                <h3 className="text-sm font-bold flex items-center gap-2">
-                  <Target className="icon-sm text-primary shrink-0" />
-                  Inteligência Cruzada
-                </h3>
-                <p className="text-[11px] text-muted-foreground">
-                  3 fontes convergem no avatar: questionário, fala e exame.
-                </p>
-              </div>
-
-              <div className="flex items-center gap-2">
-                {lastMyID && !myidSyncDone && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    className="h-8 gap-1.5 text-xs"
-                    onClick={handleSyncMyID}
-                  >
-                    <Brain className="icon-xs shrink-0" />
-                    Sincronizar MyID
-                  </Button>
-                )}
-                <Button
-                  size="sm"
-                  className="h-8 gap-1.5"
-                  onClick={handleSaveToAvatar}
-                  disabled={isSaving || stats.total === 0}
-                >
-                  <Save className="icon-xs shrink-0" />
-                  {isSaving ? 'Salvando...' : 'Salvar Avatar'}
-                </Button>
-              </div>
-            </div>
-
-            {/* Chips de fontes ativas */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              <FonteChip
-                ativo={stats.myid > 0}
-                icon={<Brain className="icon-xs shrink-0" />}
-                label="MyID"
-                count={stats.myid}
-                color="indigo"
-              />
-              <FonteChip
-                ativo={stats.voz_ia > 0}
-                icon={<Mic className="icon-xs shrink-0" />}
-                label="Voz/IA"
-                count={stats.voz_ia}
-                color="sky"
-              />
-              <FonteChip
-                ativo={stats.manual > 0}
-                icon={<Hand className="icon-xs shrink-0" />}
-                label="Manual"
-                count={stats.manual}
-                color="amber"
-              />
-              {stats.trianguladas > 0 && (
-                <Badge className="h-6 gap-1 bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
-                  <Target className="icon-xs shrink-0" />
-                  {stats.trianguladas} triangulada{stats.trianguladas > 1 ? 's' : ''}
-                </Badge>
-              )}
-            </div>
-
-            {/* Lista das regiões triangulachadas (alta confiança) */}
-            {stats.trianguladas > 0 && (
-              <div className="rounded-lg bg-emerald-50 border border-emerald-200 px-2.5 py-1.5">
-                <p className="text-[11px] font-semibold text-emerald-800 mb-0.5">
-                  🎯 Achados de alta confiança clínica
-                </p>
-                <p className="text-[10px] text-emerald-700/80">
-                  {Object.values(origemPorRegiao)
-                    .filter(a => a.triangulado)
-                    .map(a => {
-                      const reg = REGIONS.find(r => r.id === a.regiao_id);
-                      return reg?.label ?? a.regiao_id;
-                    })
-                    .join(', ')}
-                </p>
-              </div>
-            )}
-          </div>
-
-          <Body3DAvatar
-            value={painMap}
-            onChange={handlePainMapManual}
-            structures={structState}
-            onStructuresChange={setStructState}
+      {/* Gravador de nova avaliação por voz — oculto por padrão quando já existe uma avaliação,
+          já que o card "Última avaliação" acima já oferece "Complementar com áudio ou texto".
+          Some aqui para evitar dois gravadores de áudio na mesma tela. */}
+      {!loadingAval && (!latestAval || mostrarNovoRegistro) ? (
+        <div className="space-y-2">
+          <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+            <Sparkles className="icon-xs shrink-0" />
+            A IA estrutura a avaliação e atualiza o Avatar Clínico automaticamente.
+          </p>
+          <VoiceAssessment
+            mode="voice"
+            serviceType={serviceType}
+            pacienteId={pacienteId}
+            patientName={patientName}
+            onAssessmentComplete={onAssessmentComplete}
+            onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
+            painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
+            perfilProfissional={lente?.id}
           />
         </div>
-      )}
-    </div>
-  );
-}
-
-function FonteChip({
-  ativo, icon, label, count, color,
-}: {
-  ativo: boolean;
-  icon: React.ReactNode;
-  label: string;
-  count: number;
-  color: 'indigo' | 'sky' | 'amber';
-}) {
-  const colorMap: Record<string, string> = {
-    indigo: 'bg-indigo-50 text-indigo-700 border-indigo-200',
-    sky: 'bg-sky-50 text-sky-700 border-sky-200',
-    amber: 'bg-amber-50 text-amber-700 border-amber-200',
-  };
-  return (
-    <div
-      className={cn(
-        'inline-flex items-center gap-1 h-6 px-2 rounded-md border text-[11px] font-semibold transition-opacity',
-        ativo ? colorMap[color] : 'bg-muted/40 text-muted-foreground border-border/40 opacity-60',
-      )}
-    >
-      {icon}
-      <span>{label}</span>
-      {ativo && <span className="font-black ml-0.5">{count}</span>}
+      ) : !loadingAval && latestAval ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-1.5 text-xs text-muted-foreground"
+          onClick={() => setMostrarNovoRegistro(true)}
+        >
+          <Mic className="icon-xs shrink-0" />
+          Nova avaliação por voz
+        </Button>
+      ) : null}
     </div>
   );
 }

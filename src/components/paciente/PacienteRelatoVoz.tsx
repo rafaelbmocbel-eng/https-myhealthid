@@ -132,6 +132,9 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
         ? assessData.transcricao
         : transcript.trim();
       const assessment = assessData?.assessment || {};
+      // AI-classified avatar events (surgical history, chronic conditions, neurological findings, etc.)
+      const aiAvatarEvents: Array<{ regiao_id: string; sistema: string; tipo_diagnostico: string; tipo_achado: string; severidade: number; estrutura?: string }> =
+        Array.isArray(assessData?.avatar_events) ? assessData.avatar_events : [];
 
       let findings: Array<{ region_id: string; intensity: number; structures: string[] }> = [];
       if (generatedTranscript) {
@@ -148,12 +151,17 @@ export default function PacienteRelatoVoz({ pacienteId }: Props) {
           classificacao_severidade: assessment.classificacao_severidade || null,
           resultado: assessment,
           findings,
+          avatar_events: aiAvatarEvents,
         },
       });
       if (saveError) throw new Error(saveError.message);
       if (saveData?.error) throw new Error(saveData.error);
 
-      setResultado({ queixa: assessment.queixa_principal || null, regioes: findings.map((f) => f.region_id) });
+      const allRegioes = [
+        ...findings.map((f) => f.region_id),
+        ...aiAvatarEvents.map((ev) => ev.regiao_id).filter(rid => !findings.some(f => f.region_id === rid)),
+      ];
+      setResultado({ queixa: assessment.queixa_principal || null, regioes: allRegioes });
       setStep('done');
       qc.invalidateQueries({ queryKey: ['relatos-voz-paciente', pacienteId] });
       toast({ title: '✅ Relato enviado', description: 'Seu profissional vai revisar e confirmar os achados.' });
