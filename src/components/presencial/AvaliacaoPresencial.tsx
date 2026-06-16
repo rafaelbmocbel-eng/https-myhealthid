@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { ClipboardList, Sparkles, Stethoscope, Wand2, AlertCircle, Loader2 } from 'lucide-react';
+import { ClipboardList, Sparkles, Stethoscope, Wand2, AlertCircle, Loader2, Mic } from 'lucide-react';
 import VoiceAssessment from '@/components/voice/VoiceAssessment';
 import { REGIONS, STRUCTURES } from './Body3DAvatar';
 import { supabase } from '@/integrations/supabase/client';
@@ -44,6 +44,7 @@ export default function AvaliacaoPresencial({
   const { user } = useAuth();
   const { data: lente } = useLenteAtiva();
   const [isAutoProcessing, setIsAutoProcessing] = useState(false);
+  const [mostrarNovoRegistro, setMostrarNovoRegistro] = useState(false);
   const autoProcessadoRef = useRef(false);
   const saveEvento = useSaveEventoAnatomico();
   const qc = useQueryClient();
@@ -63,7 +64,7 @@ export default function AvaliacaoPresencial({
         .maybeSingle();
       return data;
     },
-    enabled: !!pacienteId && mostraAvatar,
+    enabled: !!pacienteId,
   });
 
   // Última avaliação MyID (sem filtro — inclui presenciais sem score digital)
@@ -325,22 +326,37 @@ export default function AvaliacaoPresencial({
         )}
       </div>
 
-      <div className="space-y-2">
-        <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
-          <Sparkles className="icon-xs shrink-0" />
-          A IA estrutura a avaliação e atualiza o Avatar Clínico automaticamente.
-        </p>
-        <VoiceAssessment
-          mode="voice"
-          serviceType={serviceType}
-          pacienteId={pacienteId}
-          patientName={patientName}
-          onAssessmentComplete={onAssessmentComplete}
-          onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
-          painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
-          perfilProfissional={lente?.id}
-        />
-      </div>
+      {/* Gravador de nova avaliação por voz — oculto por padrão quando já existe uma avaliação,
+          já que o card "Última avaliação" acima já oferece "Complementar com áudio ou texto".
+          Some aqui para evitar dois gravadores de áudio na mesma tela. */}
+      {!loadingAval && (!latestAval || mostrarNovoRegistro) ? (
+        <div className="space-y-2">
+          <p className="text-[11px] text-muted-foreground inline-flex items-center gap-1">
+            <Sparkles className="icon-xs shrink-0" />
+            A IA estrutura a avaliação e atualiza o Avatar Clínico automaticamente.
+          </p>
+          <VoiceAssessment
+            mode="voice"
+            serviceType={serviceType}
+            pacienteId={pacienteId}
+            patientName={patientName}
+            onAssessmentComplete={onAssessmentComplete}
+            onPainExtracted={mostraAvatar ? handlePainExtracted : undefined}
+            painRegionsCatalog={mostraAvatar ? painRegionsCatalog : undefined}
+            perfilProfissional={lente?.id}
+          />
+        </div>
+      ) : !loadingAval && latestAval ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          className="gap-1.5 text-xs text-muted-foreground"
+          onClick={() => setMostrarNovoRegistro(true)}
+        >
+          <Mic className="icon-xs shrink-0" />
+          Nova avaliação por voz
+        </Button>
+      ) : null}
     </div>
   );
 }
