@@ -28,12 +28,6 @@ type RegiaoColetada = {
   tipoAchado: string;
 };
 
-// Dor relatada pelo paciente = musculoesqueletico por padrão.
-// Reclassificação para nervoso/circulatorio/etc. requer confirmação clínica do profissional.
-function sistemaDeRegiao(_regiao_id: string): SistemaCorporal {
-  return 'musculoesqueletico';
-}
-
 export default function AvaliacaoPresencial({
   pacienteId,
   patientName,

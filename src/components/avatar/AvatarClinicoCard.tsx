@@ -454,6 +454,21 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     [eventos, sistemasAtivos],
   );
 
+  // Regiões com achado ATIVO no Avatar Clínico — usado para não reoferecer no
+  // "Sincronizar MyID" um achado que já foi confirmado anteriormente.
+  const regioesAtivasExistentes = useMemo(
+    () => new Set(eventos.filter(e => e.status !== 'resolvido').map(e => e.regiao_id)),
+    [eventos],
+  );
+  const painRegionsParaSincronizar = useMemo(
+    () => painRegions.filter(p => !regioesAtivasExistentes.has(p.regiao_id)),
+    [painRegions, regioesAtivasExistentes],
+  );
+  const sinalRegionsParaSincronizar = useMemo(
+    () => sinalRegions.filter(s => !regioesAtivasExistentes.has(s.regiao_id)),
+    [sinalRegions, regioesAtivasExistentes],
+  );
+
   // dominante por região: tipo confirmado > achado > relato; dentro do mesmo tipo, maior severidade
   const corPorRegiao = useMemo(() => {
     const map: Record<string, string> = {};
@@ -614,12 +629,12 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <Stethoscope className="icon-sm shrink-0" />
           Avatar Clínico Anatômico
           <div className="ml-auto flex items-center gap-1.5">
-            {(painRegions.length > 0 || sinalRegions.length > 0) && (
+            {(painRegionsParaSincronizar.length > 0 || sinalRegionsParaSincronizar.length > 0) && (
               <Button
                 variant="outline"
                 size="sm"
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
-                onClick={() => setSyncData([...painRegions, ...sinalRegions.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
+                onClick={() => setSyncData([...painRegionsParaSincronizar, ...sinalRegionsParaSincronizar.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
               >
                 <RefreshCcw className="h-3 w-3" />
                 Sincronizar MyID
