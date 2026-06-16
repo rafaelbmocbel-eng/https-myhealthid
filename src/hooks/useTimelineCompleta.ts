@@ -117,12 +117,12 @@ export function useTimelineCompleta(pacienteId: string | undefined) {
 
       // 3. Notas do prontuário
       const { data: notas } = await supabase.from('notas_prontuario')
-        .select('id, created_at, titulo, conteudo, tipo').eq('paciente_id', pid)
+        .select('id, created_at, titulo, descricao, tipo').eq('paciente_id', pid)
         .order('created_at', { ascending: false }).limit(100);
       (notas || []).forEach(n => ev.push({
         id: `np-${n.id}`, tipo: 'nota_prontuario', data: n.created_at,
         titulo: n.titulo || 'Nota clínica',
-        descricao: (n.conteudo as string || '').slice(0, 300),
+        descricao: (n.descricao || '').slice(0, 300),
         metadata: { tipo_nota: n.tipo },
       }));
 
@@ -156,58 +156,67 @@ export function useTimelineCompleta(pacienteId: string | undefined) {
 
       // 6. Diagnósticos
       const { data: diags } = await supabase.from('diagnosticos_paciente')
-        .select('id, data_diagnostico, cid_codigo, descricao, status, created_at')
+        .select('id, data_diagnostico, cid_codigo, cid_descricao, ativo, created_at')
         .eq('paciente_id', pid).order('data_diagnostico', { ascending: false, nullsFirst: false });
       (diags || []).forEach(d => ev.push({
         id: `diag-${d.id}`, tipo: 'diagnostico',
         data: d.data_diagnostico ? d.data_diagnostico + 'T12:00:00' : d.created_at,
-        titulo: `${d.cid_codigo ? `[${d.cid_codigo}] ` : ''}${d.descricao || 'Diagnóstico'}`,
-        descricao: d.status ?? undefined,
-        metadata: { cid: d.cid_codigo, status: d.status },
+        titulo: `${d.cid_codigo ? `[${d.cid_codigo}] ` : ''}${d.cid_descricao || 'Diagnóstico'}`,
+        descricao: d.ativo ? 'Ativo' : 'Inativo',
+        metadata: { cid: d.cid_codigo, ativo: d.ativo },
       }));
 
       // 7. Exames importados
       const { data: exames } = await supabase.from('exames_importados')
-        .select('id, created_at, tipo_exame, resultado_resumo, data_exame')
+        .select('id, created_at, tipo, dados_extraidos, data_exame')
         .eq('paciente_id', pid).order('data_exame', { ascending: false, nullsFirst: false });
-      (exames || []).forEach(e => ev.push({
-        id: `ex-${e.id}`, tipo: 'exame',
-        data: e.data_exame ? e.data_exame + 'T12:00:00' : e.created_at,
-        titulo: e.tipo_exame || 'Exame',
-        descricao: (e.resultado_resumo as string || '').slice(0, 300),
-      }));
+      (exames || []).forEach(e => {
+        const extraidos = (e.dados_extraidos as { nome_exame?: string; resumo?: string } | null) || {};
+        ev.push({
+          id: `ex-${e.id}`, tipo: 'exame',
+          data: e.data_exame ? e.data_exame + 'T12:00:00' : e.created_at,
+          titulo: extraidos.nome_exame || e.tipo || 'Exame',
+          descricao: (extraidos.resumo || '').slice(0, 300),
+        });
+      });
 
       // 8. Avaliações de voz
       const { data: vozes } = await supabase.from('avaliacoes_voz')
-        .select('id, created_at, score_total, hipoteses_diagnosticas, resumo_ia')
+        .select('id, created_at, classificacao_severidade, queixa_principal, resultado')
         .eq('paciente_id', pid).order('created_at', { ascending: false }).limit(20);
-      (vozes || []).forEach(v => ev.push({
-        id: `voz-${v.id}`, tipo: 'avaliacao_voz', data: v.created_at,
-        titulo: `Avaliação de voz · Score ${v.score_total || 0}`,
-        descricao: (v.resumo_ia as string || v.hipoteses_diagnosticas as string || '').slice(0, 200),
-        metadata: { score: v.score_total },
-      }));
+      (vozes || []).forEach(v => {
+        const resultado = (v.resultado as { resumo_clinico?: string } | null) || {};
+        ev.push({
+          id: `voz-${v.id}`, tipo: 'avaliacao_voz', data: v.created_at,
+          titulo: `Avaliação de voz${v.classificacao_severidade ? ` · ${v.classificacao_severidade}` : ''}`,
+          descricao: (resultado.resumo_clinico || v.queixa_principal || '').slice(0, 200),
+          metadata: { severidade: v.classificacao_severidade },
+        });
+      });
 
       // 9. Escalas psicológicas
+      const ESCALA_NOMES: Record<string, string> = {
+        phq9: 'PHQ-9 (Depressão)', gad7: 'GAD-7 (Ansiedade)', pss10: 'PSS-10 (Estresse)',
+      };
       const { data: escalas } = await supabase.from('escalas_psicologia')
-        .select('id, created_at, nome_escala, pontuacao_total, interpretacao')
+        .select('id, created_at, tipo_escala, pontuacao_total, classificacao')
         .eq('paciente_id', pid).order('created_at', { ascending: false }).limit(30);
       (escalas || []).forEach(e => ev.push({
         id: `esc-${e.id}`, tipo: 'escala', data: e.created_at,
-        titulo: `${e.nome_escala} · ${e.pontuacao_total ?? '—'} pts`,
-        descricao: e.interpretacao ?? undefined,
+        titulo: `${ESCALA_NOMES[e.tipo_escala] || e.tipo_escala} · ${e.pontuacao_total ?? '—'} pts`,
+        descricao: e.classificacao ?? undefined,
         metadata: { pontuacao: e.pontuacao_total },
       }));
 
       // 10. Composição corporal + antropometria
       const { data: cc } = await supabase.from('body_composition')
-        .select('id, created_at, peso, altura, imc, gordura_percentual')
+        .select('id, created_at, weight_kg, height_cm, bmi, body_fat_pct')
         .eq('paciente_id', pid).order('created_at', { ascending: false }).limit(20);
       (cc || []).forEach(c => ev.push({
         id: `cc-${c.id}`, tipo: 'composicao_corporal', data: c.created_at,
-        titulo: `Composição corporal · IMC ${Number(c.imc || 0).toFixed(1)} · ${c.peso}kg`,
-        descricao: c.gordura_percentual ? `Gordura: ${c.gordura_percentual}%` : undefined,
-        metadata: { peso: c.peso, imc: c.imc },
+        titulo: `Composição corporal · IMC ${Number(c.bmi || 0).toFixed(1)} · ${c.weight_kg}kg`,
+        descricao: c.body_fat_pct ? `Gordura: ${c.body_fat_pct}%` : undefined,
+        metadata: { peso: c.weight_kg, imc: c.bmi },
       }));
 
       // 11. Mensagens WhatsApp (amostra)

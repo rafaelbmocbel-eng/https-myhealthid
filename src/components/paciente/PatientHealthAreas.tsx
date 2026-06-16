@@ -74,7 +74,7 @@ export default function PatientHealthAreas({ scores }: Props) {
                 <div className="h-1 bg-muted/60 rounded-full overflow-hidden">
                   <div
                     className={`h-full rounded-full ${r.status.bar} transition-all`}
-                    style={{ width: `${Math.min(100, (r.loss / MAX_LOSS[r.key] ?? 10) * 100)}%` }}
+                    style={{ width: `${Math.min(100, (r.loss / (MAX_LOSS[r.key] ?? 10)) * 100)}%` }}
                   />
                 </div>
               </div>

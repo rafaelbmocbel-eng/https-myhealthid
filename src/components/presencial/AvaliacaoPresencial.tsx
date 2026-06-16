@@ -88,7 +88,7 @@ export default function AvaliacaoPresencial({
     queryKey: ['eventos-anatomicos-count', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('eventos_clinicos_anatomicos' as any)
+        .from('eventos_clinicos_anatomicos')
         .select('id, regiao_id')
         .eq('paciente_id', pacienteId);
       return (data || []) as { id: string; regiao_id: string }[];

@@ -423,7 +423,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     queryFn: async () => {
       const { data } = await supabase
         .from('diagnosticos_paciente')
-        .select('id, data_diagnostico, cid_codigo, descricao, status')
+        .select('id, data_diagnostico, cid_codigo, cid_descricao, ativo')
         .eq('paciente_id', pacienteId)
         .order('data_diagnostico', { ascending: false, nullsFirst: false });
       return data || [];
@@ -572,7 +572,6 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       sistema: (regVisceral?.sistemas[0] as any) || 'musculoesqueletico',
       origem: 'exame_clinico',
       tipo_achado: '',
-      // @ts-expect-error -- tipo_diagnostico ainda não no tipo Supabase
       tipo_diagnostico: 'achado_clinico' as TipoDiagnostico,
       severidade: 1,
       status: 'ativo',
@@ -710,7 +709,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                 const sinaisClinicos = sinaisSistema.filter(sr => (sr as any).fonte !== 'myid');
                 const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
                 const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
-                const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.status !== 'resolvido');
+                const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.ativo);
 
                 score += sinaisClinicos.length * 1.2;
                 score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
@@ -992,10 +991,10 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                                       <div className="space-y-1 pl-4">
                                         {diagsDoSistema.map((d: any) => (
                                           <div key={d.id} className="flex items-start gap-2">
-                                            <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", d.status === 'resolvido' ? 'bg-gray-400' : 'bg-red-500')} />
+                                            <div className={cn("w-1 h-1 rounded-full mt-1.5 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-500')} />
                                             <div className="text-[11px] leading-tight">
                                               {d.cid_codigo && <span className="font-black text-primary">[{d.cid_codigo}]</span>}{' '}
-                                              <span className={d.status === 'resolvido' ? 'line-through text-muted-foreground' : 'font-medium'}>{d.descricao}</span>
+                                              <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
                                             </div>
                                           </div>
                                         ))}
@@ -1718,11 +1717,11 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                         <div className="space-y-1.5">
                           {diagsRegiao.map((d: any) => (
                             <div key={d.id} className="flex items-start gap-2">
-                              <span className={cn("w-2 h-2 rounded-full mt-1 shrink-0", d.status === 'resolvido' ? 'bg-gray-400' : 'bg-red-600')} />
+                              <span className={cn("w-2 h-2 rounded-full mt-1 shrink-0", !d.ativo ? 'bg-gray-400' : 'bg-red-600')} />
                               <div className="text-[11px] leading-tight">
                                 {d.cid_codigo && <span className="font-black text-red-700 mr-1">[{d.cid_codigo}]</span>}
-                                <span className={d.status === 'resolvido' ? 'line-through text-muted-foreground' : 'font-medium'}>{d.descricao}</span>
-                                {d.status && <span className="text-[9px] text-muted-foreground ml-1">· {d.status}</span>}
+                                <span className={!d.ativo ? 'line-through text-muted-foreground' : 'font-medium'}>{d.cid_descricao}</span>
+                                {!d.ativo && <span className="text-[9px] text-muted-foreground ml-1">· resolvido</span>}
                               </div>
                             </div>
                           ))}

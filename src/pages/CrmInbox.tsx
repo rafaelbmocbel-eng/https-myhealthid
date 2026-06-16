@@ -39,7 +39,7 @@ const PIPELINE_STAGES = [
   { key: 'agendado',   label: 'Agendado',    color: '#a78bfa', cls: 'bg-violet-50 dark:bg-violet-900/20 text-violet-700 dark:text-violet-300 border-violet-200 dark:border-violet-800' },
   { key: 'fechado',    label: 'Fechado',     color: '#34d399', cls: 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800' },
   { key: 'perdido',    label: 'Perdido',     color: '#f87171', cls: 'bg-rose-50 dark:bg-rose-900/20 text-rose-700 dark:text-rose-300 border-rose-200 dark:border-rose-800' },
-];
+] as const;
 
 const AVATAR_PALETTE = ['#EF5350','#EC407A','#AB47BC','#7E57C2','#42A5F5','#26C6DA','#26A69A','#66BB6A','#FFA726','#FF7043'];
 
@@ -771,7 +771,7 @@ function PipelineChip({ conversa }: { conversa: WAConversa }) {
   const [open, setOpen] = useState(false);
   const st = getStage(conversa.pipeline_stage);
 
-  async function mudar(key: string) {
+  async function mudar(key: typeof PIPELINE_STAGES[number]['key']) {
     setOpen(false);
     const { error } = await supabase.from('whatsapp_conversas').update({ pipeline_stage: key }).eq('id', conversa.id);
     if (error) toast.error('Erro: ' + error.message);

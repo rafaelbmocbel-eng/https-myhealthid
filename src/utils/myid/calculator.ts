@@ -337,8 +337,6 @@ export class MyIDCalculator {
             muscle_relaxant: this.responses.bloco_6_muscle_relaxant ?? b6?.bloco_6_muscle_relaxant,
             corticoid: this.responses.bloco_6_corticoid ?? b6?.bloco_6_corticoid,
             supplementation: this.responses.bloco_6_supplementation ?? b6?.bloco_6_supplementation,
-            opioide: this.responses.bloco_6_opioide ?? b6?.bloco_6_opioide,
-            gabapentina: this.responses.bloco_6_gabapentina ?? b6?.bloco_6_gabapentina,
         });
         this.result.med_penalty = medResult.perda_pontos;
         this.result.medications = medResult.medicamentos;

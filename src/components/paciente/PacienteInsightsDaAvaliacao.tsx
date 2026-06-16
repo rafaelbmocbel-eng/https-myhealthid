@@ -79,7 +79,7 @@ export default function PacienteInsightsDaAvaliacao({ pacienteId }: Props) {
     queryKey: ['paciente-insights-avatar', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
-        .from('eventos_clinicos_anatomicos' as any)
+        .from('eventos_clinicos_anatomicos')
         .select('regiao_id, sistema, status, severidade')
         .eq('paciente_id', pacienteId)
         .neq('status', 'resolvido')

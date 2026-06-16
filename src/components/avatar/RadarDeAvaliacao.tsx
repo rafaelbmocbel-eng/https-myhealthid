@@ -4,7 +4,7 @@
 // Linguagem: sugestiva, não alarmante. Sem urgência, sem corpo em destaque.
 // ============================================================
 
-import { Activity, Moon, Brain, Zap, AlertTriangle, Droplets, Utensils, ChevronRight } from 'lucide-react';
+import { Activity, Moon, Brain, Zap, AlertTriangle, Droplets, Utensils, ChevronRight, type LucideIcon } from 'lucide-react';
 import { useState } from 'react';
 
 interface Props {
@@ -25,7 +25,7 @@ interface Props {
 
 type IconeKey = 'activity' | 'moon' | 'brain' | 'zap' | 'alert' | 'droplets' | 'utensils';
 
-const ICONES: Record<IconeKey, React.ComponentType<{ size?: number; className?: string }>> = {
+const ICONES: Record<IconeKey, LucideIcon> = {
   activity: Activity,
   moon: Moon,
   brain: Brain,

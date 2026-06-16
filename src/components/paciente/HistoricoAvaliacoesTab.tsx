@@ -13,7 +13,7 @@ import {
 } from 'recharts';
 import { getMyIDSeverityColor } from '@/utils/myidCalculations';
 
-const MyIDResult = lazy(() => import('@/components/myid/MyIDResult'));
+const MyIDResult = lazy(() => import('@/components/myid/MyIDResult').then(m => ({ default: m.MyIDResult })));
 
 interface Props {
   pacienteId: string;
