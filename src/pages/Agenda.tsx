@@ -317,13 +317,23 @@ export default function Agenda() {
     return `${h}h ${m}m`;
   }, [proximaSessao, nowMinutes]);
 
-  // Measure header height for precise overlay alignment
+  // Measure header height for precise overlay alignment.
+  // Uses ResizeObserver (not a one-time effect) because headerRef only mounts
+  // after the `if (loading) return` skeleton above is bypassed — a one-shot
+  // measurement would run against a null ref and leave headerHeight stuck at
+  // the fallback, desyncing the appointment overlay from the slot grid.
   useEffect(() => {
-    if (headerRef.current) {
-      const h = headerRef.current.getBoundingClientRect().height;
+    const el = headerRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.getBoundingClientRect().height;
       if (h > 0) setHeaderHeight(h);
-    }
-  }, []);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [loading, viewMode]);
 
   // Auto-scroll to current time on day/week view
   useEffect(() => {
