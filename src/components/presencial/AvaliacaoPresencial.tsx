@@ -77,18 +77,22 @@ export default function AvaliacaoPresencial({
     enabled: !!pacienteId && mostraAvatar,
   });
 
-  // Eventos já salvos — para evitar duplicatas
+  // Eventos já salvos — para evitar duplicatas (achados resolvidos não contam como duplicata)
   const { data: eventosExistentes = [], isLoading: loadingEventos } = useQuery({
     queryKey: ['eventos-anatomicos-count', pacienteId],
     queryFn: async () => {
       const { data } = await supabase
         .from('eventos_clinicos_anatomicos')
-        .select('id, regiao_id')
+        .select('id, regiao_id, status')
         .eq('paciente_id', pacienteId);
-      return (data || []) as { id: string; regiao_id: string }[];
+      return (data || []) as { id: string; regiao_id: string; status: string }[];
     },
     enabled: !!pacienteId && mostraAvatar,
   });
+  const regioesAtivasExistentes = useMemo(
+    () => new Set(eventosExistentes.filter(e => e.status !== 'resolvido').map(e => e.regiao_id)),
+    [eventosExistentes],
+  );
 
   // Catálogo de regiões para guiar a IA de voz na extração
   const painRegionsCatalog = useMemo(() => ({
@@ -158,8 +162,7 @@ export default function AvaliacaoPresencial({
         return;
       }
 
-      const existentesSet = new Set(eventosExistentes.map(e => e.regiao_id));
-      const regioesNovas = Object.entries(regioesPorId).filter(([rid]) => !existentesSet.has(rid));
+      const regioesNovas = Object.entries(regioesPorId).filter(([rid]) => !regioesAtivasExistentes.has(rid));
 
       if (regioesNovas.length === 0) {
         if (!silencioso) {
@@ -225,8 +228,7 @@ export default function AvaliacaoPresencial({
     findings: Array<{ region_id: string; intensity: number; structures: string[] }>,
   ) => {
     if (!user?.id || findings.length === 0) return;
-    const existentes = new Set(eventosExistentes.map(e => e.regiao_id));
-    const novas = findings.filter(f => !existentes.has(f.region_id));
+    const novas = findings.filter(f => !regioesAtivasExistentes.has(f.region_id));
     if (novas.length === 0) return;
 
     try {
