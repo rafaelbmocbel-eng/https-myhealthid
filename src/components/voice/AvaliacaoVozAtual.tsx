@@ -12,6 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import VoiceAssessment from './VoiceAssessment';
 import AvaliacaoSecoesEditaveis from './AvaliacaoSecoesEditaveis';
+import { reprocessarComplemento, invalidarCachesAvaliacaoVoz } from '@/utils/voiceAssessment/reprocessarComplemento';
 
 interface Props {
   pacienteId: string;
@@ -48,7 +49,7 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
     capturedAudioBase64?: string,
     capturedAudioMimeType?: string,
   ) => {
-    if (!latest) return;
+    if (!latest || !user) return;
     setAddOpen(false);
     setReprocessing(true);
     try {
@@ -57,93 +58,25 @@ export default function AvaliacaoVozAtual({ pacienteId, patientName, serviceType
       const addition = `\n\n--- Complemento (${stamp}) ---\n${capturedText || '(áudio anexado)'}`;
       const merged = existingTranscript + addition;
 
-      // 1. Atualiza transcrição
-      await (supabase as any)
-        .from('avaliacoes_voz')
-        .update({ transcricao: merged })
-        .eq('id', latest.id);
-
-      // 2. Reprocessa com IA
       toast({ title: '🧠 Reprocessando avaliação...', description: 'A IA está reanalisando com os dados atualizados.' });
 
-      const body: any = {
-        transcript: merged,
-        serviceType: (latest as any).servico || serviceType,
+      await reprocessarComplemento({
+        avaliacaoId: latest.id,
+        pacienteId,
+        terapeutaId: user.id,
         patientName,
-      };
-      if (capturedAudioBase64) {
-        body.audioBase64 = capturedAudioBase64;
-        body.audioMimeType = capturedAudioMimeType || 'audio/webm';
-      }
+        serviceType: (latest as any).servico || serviceType,
+        finalTranscript: merged,
+        audioBase64: capturedAudioBase64,
+        audioMimeType: capturedAudioMimeType,
+        prevResultado: (latest as any).resultado,
+        prevQueixaPrincipal: (latest as any).queixa_principal,
+        prevSeveridade: (latest as any).classificacao_severidade,
+        notaProntuarioTitulo: `Avaliação por Voz atualizada — ${(latest as any).classificacao_severidade || 'N/A'}`,
+        notaProntuarioDescricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${capturedText.slice(0, 500)}`,
+      });
 
-      const { data, error: fnErr } = await supabase.functions.invoke('voice-assessment', { body });
-      if (fnErr) throw fnErr;
-      if (data?.error) throw new Error(data.error);
-
-      let autoPainMap: Record<string, number> | null = null;
-      if (data?.assessment) {
-        const cleanResult = JSON.parse(JSON.stringify(data.assessment));
-        const finalTranscript = data.transcricao && data.transcricao.length > merged.length
-          ? data.transcricao
-          : merged;
-
-        // Re-extrai mapa de dor após o reprocesso para manter o avatar atualizado
-        try {
-          const { REGIONS, STRUCTURES } = await import('@/components/presencial/Body3DAvatar');
-          const regions = REGIONS.map((r: any) => ({
-            id: r.id,
-            label: `${r.label} (${r.view === 'back' ? 'posterior' : 'anterior'})`,
-          }));
-          const catalog = Object.fromEntries(
-            Object.entries(STRUCTURES).map(([rid, cats]) => [rid, { categories: cats as any }])
-          );
-          const { data: painData } = await supabase.functions.invoke('extract-pain-from-voice', {
-            body: { transcript: finalTranscript, regions, catalog },
-          });
-          if (painData?.findings?.length) {
-            const map: Record<string, number> = {};
-            painData.findings.forEach((f: any) => { map[f.region_id] = f.intensity; });
-            autoPainMap = map;
-          }
-        } catch (e) {
-          console.warn('[Complementar] pain extraction failed', e);
-        }
-
-        const prevMeta = ((latest as any).resultado as any)?._meta || {};
-        cleanResult._meta = {
-          ...prevMeta,
-          ...(cleanResult._meta || {}),
-          savedAt: new Date().toISOString(),
-          mapa_dor: autoPainMap ?? prevMeta.mapa_dor ?? null,
-        };
-
-        await (supabase as any).from('avaliacoes_voz').update({
-          resultado: cleanResult,
-          transcricao: finalTranscript,
-          queixa_principal: data.assessment.queixa_principal || (latest as any).queixa_principal,
-          classificacao_severidade: data.assessment.classificacao_severidade || (latest as any).classificacao_severidade,
-        }).eq('id', latest.id);
-      }
-
-      // 3. Registra no prontuário
-      if (user) {
-        try {
-          await (supabase as any).from('notas_prontuario').insert({
-            paciente_id: pacienteId,
-            terapeuta_id: user.id,
-            tipo: 'avaliacao_voz',
-            titulo: `Avaliação por Voz atualizada — ${(latest as any).classificacao_severidade || 'N/A'}`,
-            descricao: `📝 Avaliação complementada e reprocessada pela IA.\n\n${capturedText.slice(0, 500)}`,
-            dados_extras: { voice_assessment_id: latest.id },
-            referencia_id: latest.id,
-          });
-        } catch {}
-      }
-
-      qc.invalidateQueries({ queryKey: ['avaliacao-voz-latest', pacienteId, user?.id] });
-      qc.invalidateQueries({ queryKey: ['avaliacoes-voz-presencial'] });
-      qc.invalidateQueries({ queryKey: ['notas-prontuario'] });
-      qc.invalidateQueries({ queryKey: ['evolucao-paciente'] });
+      invalidarCachesAvaliacaoVoz(qc, pacienteId);
       toast({ title: 'Avaliação atualizada! ✅', description: 'Dados clínicos reprocessados com sucesso.' });
     } catch (e: any) {
       toast({ title: 'Erro ao reprocessar', description: e.message, variant: 'destructive' });
