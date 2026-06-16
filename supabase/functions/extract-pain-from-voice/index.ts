@@ -66,7 +66,7 @@ Para CADA região anatômica mencionada, retorne:
 REGRAS:
 - NÃO inclua regiões não mencionadas.
 - Se a fala citar lado (direito/esquerdo), escolha o ID correspondente (_d / _e).
-- Se for dor difusa lombar, use "lombar"; cervical → "cervical" ou "pescoco".
+- Se for dor difusa lombar ou lombo-sacral, use "lombar" (e "gluteos" se o sacro/sacroilíaca for mencionado explicitamente); cervical → "cervical" ou "pescoco".
 - Não invente estruturas que não foram ditas.
 - Se nada de dor for mencionado, retorne lista vazia.
 
