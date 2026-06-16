@@ -10,7 +10,12 @@ lerna-debug.log*
 node_modules
 dist
 dist-ssr
+dist-paciente
 *.local
+*.tsbuildinfo
+
+# Claude Code local config
+.claude/
 
 # Editor directories and files
 .vscode/*
