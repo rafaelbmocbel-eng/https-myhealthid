@@ -19,6 +19,7 @@ import DiretrizIAReviewDialog from './DiretrizIAReviewDialog';
 import ProntuarioReviewDialog from './ProntuarioReviewDialog';
 import { createDiretrizSnapshotFromVoz } from '@/lib/protocoloSnapshot';
 import { REGIONS as BODY_REGIONS, STRUCTURES as BODY_STRUCTURES } from '@/components/presencial/Body3DAvatar';
+import { regioesAtivasNoAvatar } from '@/utils/voiceAssessment/reprocessarComplemento';
 
 const DEFAULT_PAIN_CATALOG = {
   regions: BODY_REGIONS.map((r: any) => ({
@@ -720,7 +721,20 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             sistema: 'musculoesqueletico' as const,
             termo: f.structures?.join(', ') || 'dor relatada',
           }));
-          const regioes = [...regioesPorDor, ...regioesPorPalavraChave];
+          const regioesSemDuplicataLocal = [...regioesPorDor, ...regioesPorPalavraChave];
+          if (regioesSemDuplicataLocal.length === 0) return;
+
+          // Filtra regiões que já têm achado ATIVO no Avatar Clínico (de uma avaliação
+          // anterior) — evita duplicar quando o paciente faz uma nova avaliação relatando
+          // a mesma dor que já está registrada.
+          const jaAtivas = await regioesAtivasNoAvatar(pacienteId);
+          const vistas = new Set<string>();
+          const regioes = regioesSemDuplicataLocal.filter(r => {
+            const k = `${r.sistema}|${r.regiao_id}`;
+            if (vistas.has(k) || jaAtivas.has(r.regiao_id)) return false;
+            vistas.add(k);
+            return true;
+          });
           if (regioes.length === 0) return;
 
           const hipPrincipal = generatedAssessment.hipoteses_diagnosticas?.[0];
@@ -734,9 +748,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
             || (hipPrincipal?.diagnostico as string | undefined)?.trim()
             || 'Avaliação por voz — IA';
 
-          const vistas = new Set<string>();
           const eventos = regioes
-            .filter(r => { const k = `${r.sistema}|${r.regiao_id}`; if (vistas.has(k)) return false; vistas.add(k); return true; })
             .map(r => {
               const achadoDor = painFindings.find(f => f.region_id === r.regiao_id);
               const severidade = achadoDor ? Math.min(5, Math.max(1, Math.round(achadoDor.intensity / 2))) : severidadeBase;

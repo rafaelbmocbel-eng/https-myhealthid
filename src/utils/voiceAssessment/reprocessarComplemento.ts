@@ -25,6 +25,24 @@ export interface ReprocessarComplementoResult {
 }
 
 /**
+ * Retorna o conjunto de `regiao_id` com achado ATIVO (não resolvido) no Avatar Clínico
+ * do paciente. Achados com status 'resolvido' não contam como duplicata — uma dor que
+ * já foi tratada e volta a aparecer deve gerar um novo registro, não ser silenciosamente
+ * descartada por já ter existido um dia.
+ */
+export async function regioesAtivasNoAvatar(pacienteId: string): Promise<Set<string>> {
+  const { data } = await supabase
+    .from('eventos_clinicos_anatomicos' as any)
+    .select('regiao_id, status')
+    .eq('paciente_id', pacienteId);
+  const ativas = new Set<string>();
+  (data || []).forEach((e: any) => {
+    if (e.status !== 'resolvido') ativas.add(e.regiao_id as string);
+  });
+  return ativas;
+}
+
+/**
  * Reprocessa uma avaliação por voz/texto já existente após receber um complemento
  * (novo áudio ou texto). Centraliza em um único lugar tudo que uma atualização de
  * avaliação precisa fazer — reanalisar com a IA, re-extrair o mapa de dor, manter o
@@ -90,14 +108,10 @@ export async function reprocessarComplemento(
   }).eq('id', input.avaliacaoId);
   if (updErr) throw updErr;
 
-  // Atualiza o Avatar Clínico com as novas regiões de dor, sem duplicar achados já existentes
+  // Atualiza o Avatar Clínico com as novas regiões de dor, sem duplicar achados já ATIVOS
   if (painFindings.length > 0) {
     try {
-      const { data: existentes } = await supabase
-        .from('eventos_clinicos_anatomicos' as any)
-        .select('regiao_id')
-        .eq('paciente_id', input.pacienteId);
-      const jaExistem = new Set((existentes || []).map((e: any) => e.regiao_id as string));
+      const jaExistem = await regioesAtivasNoAvatar(input.pacienteId);
       const novos = painFindings.filter(f => !jaExistem.has(f.region_id));
       if (novos.length > 0) {
         const hoje = new Date().toISOString().split('T')[0];
