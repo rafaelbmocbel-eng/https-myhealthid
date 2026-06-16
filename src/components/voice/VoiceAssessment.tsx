@@ -529,6 +529,12 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       queryClient.invalidateQueries({ queryKey: ['avaliacoes-voz'] });
       queryClient.invalidateQueries({ queryKey: ['prontuario'] });
       queryClient.invalidateQueries({ queryKey: ['evolucao'] });
+      // Invalidate timeline e insights do paciente — para que a avaliação apareça
+      // imediatamente em tudo que ela alimenta, sem precisar recarregar a página.
+      if (pacienteId) {
+        queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
+        queryClient.invalidateQueries({ queryKey: ['paciente-insights-aval', pacienteId] });
+      }
       onAssessmentComplete?.(assessmentToSave);
 
       if (!options?.silent) {
@@ -637,6 +643,7 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
       // Extrai mapa de dor (regiões + estruturas) a partir da transcrição — SEMPRE roda,
       // usando o catálogo padrão do Body3DAvatar quando o chamador não fornece um.
       let autoPainMap: Record<string, number> | null = null;
+      let painFindings: Array<{ region_id: string; intensity: number; structures: string[] }> = [];
       const activeCatalog = painRegionsCatalog?.regions?.length ? painRegionsCatalog : DEFAULT_PAIN_CATALOG;
       if (generatedTranscript) {
         try {
@@ -647,60 +654,93 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
               catalog: activeCatalog.catalog,
             },
           });
-          if (!painErr && painData?.findings?.length) {
+          if (painErr || painData?.error) {
+            throw new Error(painData?.error || painErr?.message || 'Falha na extração de dor');
+          }
+          if (painData?.findings?.length) {
             const map: Record<string, number> = {};
             painData.findings.forEach((f: any) => { map[f.region_id] = f.intensity; });
             autoPainMap = map;
+            painFindings = painData.findings;
             setExtractedPainMap(map);
             if (onPainExtracted) onPainExtracted(painData.findings);
             toast({
               title: '🎯 Avatar atualizado pela IA',
               description: `${painData.findings.length} região(ões) marcada(s) automaticamente.`,
             });
+          } else {
+            toast({
+              title: 'Nenhuma região de dor identificada',
+              description: 'A IA não encontrou menção a região anatômica específica neste relato.',
+            });
           }
         } catch (e) {
           console.warn('[VoiceAssessment] pain extraction failed', e);
+          toast({
+            title: 'Mapa de dor não atualizado',
+            description: e instanceof Error ? e.message : 'Falha ao extrair regiões de dor da transcrição.',
+            variant: 'destructive',
+          });
         }
       }
 
-      // Auto-população do avatar anatômico — não bloqueante, fire-and-forget
+      // Auto-população do avatar clínico (eventos_clinicos_anatomicos) — combina:
+      // 1) regiões de dor já extraídas pela IA acima (mais precisas, vocabulário livre)
+      // 2) palavras-chave clínicas/sistêmicas encontradas no texto da avaliação
       if (pacienteId && user) {
-        void (async () => {
-          try {
-            const LENTE_TO_TIPO: Record<string, string> = {
-              'Fisioterapia': 'diagnostico_fisioterapia',
-              'Neurociência da Dor': 'diagnostico_fisioterapia',
-              'Reabilitação Esportiva': 'diagnostico_fisioterapia',
-              'Osteopatia': 'diagnostico_fisioterapia',
-              'Quiropraxia': 'diagnostico_fisioterapia',
-              'Posturologia': 'diagnostico_fisioterapia',
-              'Integrada': 'achado_clinico',
-            };
-            const textoBase = [
-              generatedAssessment.queixa_principal || '',
-              generatedAssessment.dor?.localizacao || '',
-              generatedAssessment.dor?.tipo || '',
-              ...(generatedAssessment.hipoteses_diagnosticas || []).map((h: any) => h.diagnostico || ''),
-              generatedAssessment.soap?.subjetivo || '',
-            ].join(' ');
-            const regioes = encontrarSintomasEmTexto(textoBase);
-            if (regioes.length === 0) return;
+        await (async () => {
+        try {
+          const LENTE_TO_TIPO: Record<string, string> = {
+            'Fisioterapia': 'diagnostico_fisioterapia',
+            'Neurociência da Dor': 'diagnostico_fisioterapia',
+            'Reabilitação Esportiva': 'diagnostico_fisioterapia',
+            'Osteopatia': 'diagnostico_fisioterapia',
+            'Quiropraxia': 'diagnostico_fisioterapia',
+            'Posturologia': 'diagnostico_fisioterapia',
+            'Integrada': 'achado_clinico',
+          };
+          const textoBase = [
+            generatedAssessment.queixa_principal || '',
+            generatedAssessment.mecanismo_lesao || '',
+            generatedAssessment.tempo_evolucao || '',
+            generatedAssessment.dor?.localizacao || '',
+            generatedAssessment.dor?.tipo || '',
+            ...(generatedAssessment.hipoteses_diagnosticas || []).map((h: any) => h.diagnostico || ''),
+            ...(generatedAssessment.red_flags || []),
+            generatedAssessment.resumo_clinico || '',
+            generatedAssessment.soap?.subjetivo || '',
+            generatedAssessment.soap?.objetivo || '',
+            generatedAssessment.soap?.avaliacao || '',
+          ].join(' ');
+          const regioesPorPalavraChave = encontrarSintomasEmTexto(textoBase);
+          // Quando o chamador fornece onPainExtracted, ele já persiste as regiões de dor
+          // extraídas pela IA (ex.: AvaliacaoPresencial.tsx) — evita duplicar o mesmo achado.
+          const regioesPorDor = onPainExtracted ? [] : painFindings.map(f => ({
+            regiao_id: f.region_id,
+            sistema: 'musculoesqueletico' as const,
+            termo: f.structures?.join(', ') || 'dor relatada',
+          }));
+          const regioes = [...regioesPorDor, ...regioesPorPalavraChave];
+          if (regioes.length === 0) return;
 
-            const hipPrincipal = generatedAssessment.hipoteses_diagnosticas?.[0];
-            const tipoDiag = LENTE_TO_TIPO[hipPrincipal?.lente_clinica || ''] || 'achado_clinico';
-            const severidade = Math.min(5, Math.max(1, Math.round((generatedAssessment.dor?.intensidade_eva || 5) / 2)));
-            const hoje = new Date().toISOString().split('T')[0];
+          const hipPrincipal = generatedAssessment.hipoteses_diagnosticas?.[0];
+          const tipoDiag = LENTE_TO_TIPO[hipPrincipal?.lente_clinica || ''] || 'achado_clinico';
+          const severidadeBase = Math.min(5, Math.max(1, Math.round((generatedAssessment.dor?.intensidade_eva || 5) / 2)));
+          const hoje = new Date().toISOString().split('T')[0];
 
-            // Garante que tipo_achado e notas estejam em PT-BR:
-            // queixa_principal vem da IA (deve ser PT-BR pelo prompt) — hipotese como fallback
-            const tipoAchadoPtBr = (generatedAssessment.queixa_principal as string | undefined)?.trim()
-              || (hipPrincipal?.diagnostico as string | undefined)?.trim()
-              || 'Avaliação por voz — IA';
+          // Garante que tipo_achado e notas estejam em PT-BR:
+          // queixa_principal vem da IA (deve ser PT-BR pelo prompt) — hipotese como fallback
+          const tipoAchadoPtBr = (generatedAssessment.queixa_principal as string | undefined)?.trim()
+            || (hipPrincipal?.diagnostico as string | undefined)?.trim()
+            || 'Avaliação por voz — IA';
 
-            const vistas = new Set<string>();
-            const eventos = regioes
-              .filter(r => { const k = `${r.sistema}|${r.regiao_id}`; if (vistas.has(k)) return false; vistas.add(k); return true; })
-              .map(r => ({
+          const vistas = new Set<string>();
+          const eventos = regioes
+            .filter(r => { const k = `${r.sistema}|${r.regiao_id}`; if (vistas.has(k)) return false; vistas.add(k); return true; })
+            .map(r => {
+              const achadoDor = painFindings.find(f => f.region_id === r.regiao_id);
+              const severidade = achadoDor ? Math.min(5, Math.max(1, Math.round(achadoDor.intensity / 2))) : severidadeBase;
+              return {
                 paciente_id: pacienteId,
                 terapeuta_id: user.id,
                 regiao_id: r.regiao_id,
@@ -713,17 +753,31 @@ export default function VoiceAssessment({ serviceType, pacienteId, patientName, 
                 data_inicio: hoje,
                 notas_clinicas: generatedAssessment.resumo_clinico || null,
                 visivel_paciente: false,
-                metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia' },
-              }));
+                metadata: { hipoteses: generatedAssessment.hipoteses_diagnosticas?.slice(0, 3) || [], avaliacao_origem: 'voz_ia', termo: r.termo },
+              };
+            });
 
-            const { error: insErr } = await supabase
-              .from('eventos_clinicos_anatomicos' as any)
-              .insert(eventos);
-            if (insErr) throw insErr;
-            queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
-          } catch (e) {
-            console.warn('[VoiceAssessment] auto-avatar save failed (não bloqueante):', e);
-          }
+          const { error: insErr } = await supabase
+            .from('eventos_clinicos_anatomicos' as any)
+            .insert(eventos);
+          if (insErr) throw insErr;
+
+          queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos', pacienteId] });
+          queryClient.invalidateQueries({ queryKey: ['eventos-anatomicos-count', pacienteId] });
+          queryClient.invalidateQueries({ queryKey: ['timeline_completa', pacienteId] });
+          queryClient.invalidateQueries({ queryKey: ['paciente-insights-avatar', pacienteId] });
+          toast({
+            title: '🧍 Avatar clínico atualizado',
+            description: `${eventos.length} achado(s) registrado(s) a partir desta avaliação.`,
+          });
+        } catch (e) {
+          console.warn('[VoiceAssessment] auto-avatar save failed:', e);
+          toast({
+            title: 'Avatar clínico não atualizado',
+            description: e instanceof Error ? e.message : 'Falha ao registrar os achados desta avaliação no avatar.',
+            variant: 'destructive',
+          });
+        }
         })();
       }
 
