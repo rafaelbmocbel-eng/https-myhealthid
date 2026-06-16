@@ -20,6 +20,9 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { encontrarSintomasEmTexto, extrairTextoDeObjeto, type SistemaCorporal as SistemaMapeamento } from '@/utils/anatomia/mapeamentoSintomas';
 import { inferirAchadosDoMyID } from '@/utils/anatomia/myidToAvatar';
+import { PainelContexto } from './PainelContexto';
+import { RadarDeAvaliacao } from './RadarDeAvaliacao';
+import { useLenteAtiva, type PerfilProfissional } from '@/hooks/useLenteAtiva';
 
 
 const FRONT_OUTLINE =
@@ -136,6 +139,17 @@ const SISTEMAS_ORDEM: SistemaCorporal[] = [
   'reprodutor', 'tegumentar', 'linfatico', 'sensorial'
 ];
 const SISTEMAS_INICIAIS: SistemaCorporal[] = [...SISTEMAS_ORDEM];
+
+// Lente de especialidade: quais sistemas são prioritários pra cada profissão.
+// Usado para destacar (não esconder) os sistemas mais relevantes daquele profissional.
+const SISTEMAS_POR_ESPECIALIDADE: Record<PerfilProfissional, SistemaCorporal[]> = {
+  fisioterapeuta: ['musculoesqueletico', 'nervoso'],
+  medico: [...SISTEMAS_ORDEM],
+  psicologo: ['nervoso'],
+  nutricionista: ['digestorio', 'endocrino'],
+  educador_fisico: ['musculoesqueletico'],
+  terapeuta_ocupacional: ['musculoesqueletico', 'nervoso', 'sensorial'],
+};
 const SISTEMA_CONFIG: Record<SistemaCorporal, { label: string; icon: any; color: string; resumo: string }> = {
   musculoesqueletico: { 
     label: 'Musculoesquelético', 
@@ -258,6 +272,25 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
   const [editing, setEditing] = useState<Partial<EventoAnatomico> | null>(null);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncData, setSyncData] = useState<{ regiao_id: string; intensidade: number }[] | null>(null);
+  // Anti-nocebo: relatos MyID (autorelato) ficam OCULTOS do mapa corporal por padrão.
+  // O clínico decide ativamente se quer sobrepor esses sinais ao mapa.
+  const [mostrarMyIDNoMapa, setMostrarMyIDNoMapa] = useState(false);
+
+  const { data: lente } = useLenteAtiva();
+
+  // Dados crus do paciente (alergias/medicamentos) pro Painel de Contexto — sem passar pelo mineirador de texto
+  const { data: pacienteInfoRaw } = useQuery({
+    queryKey: ['paciente-info-raw-avatar', pacienteId],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from('pacientes')
+        .select('alergias, medicamentos_uso')
+        .eq('id', pacienteId)
+        .maybeSingle();
+      return data || {};
+    },
+    enabled: !!pacienteId,
+  });
 
   const { data: lastMyIDData } = useQuery({
     queryKey: ['last-myid-data-full', pacienteId],
@@ -445,14 +478,15 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     });
 
     // Depois, sobrepõe indicação de dor do MyID se não houver achado clínico ainda
-    // APENAS se o sistema musculoesquelético estiver ativo
-    if (sistemasAtivos.includes('musculoesqueletico')) {
+    // Anti-nocebo: autorelato (MyID) só aparece no mapa se o clínico ativar explicitamente
+    // o toggle "Mostrar MyID no mapa" — e mesmo assim com teto de opacidade baixo.
+    if (mostrarMyIDNoMapa && sistemasAtivos.includes('musculoesqueletico')) {
       painRegions.forEach(item => {
         const regId = item.regiao_id;
         if (!map[regId]) {
           const intensity = item.intensidade;
-          const alpha = 0.2 + (intensity / 10) * 0.4;
-          map[regId] = `rgba(168, 85, 247, ${alpha})`; 
+          const alpha = Math.min(0.30, 0.12 + (intensity / 10) * 0.18);
+          map[regId] = `rgba(168, 85, 247, ${alpha})`;
           map[regId + '__is_myid'] = 'true';
         }
       });
@@ -463,7 +497,7 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     const FONTE_ALPHA: Record<string, number> = {
       notas_clinicas: 0.52,
       historico_paciente: 0.44,
-      myid: 0.38,
+      myid: 0.22, // anti-nocebo: relato isolado nunca compete visualmente com achado documentado
     };
     const SISTEMA_COR: Record<string, string> = {
       nervoso:            '14, 165, 233',
@@ -482,6 +516,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
       const isSystemActive = sistemasAtivos.includes(item.sistema as any);
       if (!isSystemActive) return;
       const fonte = (item as any).fonte || 'myid';
+      // Anti-nocebo: sinal vindo só do MyID (autorelato) fica oculto do mapa por padrão
+      if (fonte === 'myid' && !mostrarMyIDNoMapa) return;
       const alpha = FONTE_ALPHA[fonte] ?? 0.38;
       const cor = SISTEMA_COR[item.sistema] || '14, 165, 233';
       // Só sobrescreve se não houver achado clínico (que tem prioridade)
@@ -503,13 +539,13 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
     }
 
     return map;
-  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData]);
+  }, [eventosFiltrados, painRegions, sinalRegions, lastMyIDData, mostrarMyIDNoMapa, sistemasAtivos]);
 
   const regioesBase = REGIONS.filter(r => r.view === view);
-  const regioesViscerais = VISCERAL_REGIONS.filter(r => 
+  const regioesViscerais = VISCERAL_REGIONS.filter(r =>
     r.view === view && (
       r.sistemas.some(s => sistemasAtivos.includes(s as any)) ||
-      sinalRegions.some(sr => sr.regiao_id === r.id)
+      sinalRegions.some(sr => sr.regiao_id === r.id && ((sr as any).fonte !== 'myid' || mostrarMyIDNoMapa))
     )
   );
 
@@ -580,9 +616,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           Avatar Clínico Anatômico
           <div className="ml-auto flex items-center gap-1.5">
             {(painRegions.length > 0 || sinalRegions.length > 0) && (
-              <Button 
-                variant="outline" 
-                size="sm" 
+              <Button
+                variant="outline"
+                size="sm"
                 className="h-7 text-[10px] gap-1 px-2 border-primary/30 text-primary hover:bg-primary/5"
                 onClick={() => setSyncData([...painRegions, ...sinalRegions.map(s => ({ regiao_id: s.regiao_id, intensidade: 5, sinal: s.sinal, sistema: s.sistema }))])}
               >
@@ -594,15 +630,40 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             <Badge variant="outline" className="text-[10px]">Sprint F1+ (Visceral)</Badge>
           </div>
         </CardTitle>
-        <div className="flex justify-between items-center mt-1">
+        <div className="flex flex-wrap justify-between items-center gap-2 mt-1">
           <p className="text-xs text-muted-foreground">
             Mapa de achados clínicos georreferenciados.
           </p>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
+            {!modoSimplificado && lente && (
+              <button
+                type="button"
+                className="text-[9px] border border-border rounded-full px-2 py-0.5 text-muted-foreground hover:bg-accent hover:text-foreground transition-colors"
+                title={`Destacar sistemas relevantes para ${lente.nome_exibicao}`}
+                onClick={() => setSistemasAtivos(SISTEMAS_POR_ESPECIALIDADE[lente.id] || SISTEMAS_ORDEM)}
+              >
+                Lente: {lente.nome_exibicao}
+              </button>
+            )}
+            {!modoSimplificado && (painRegions.length > 0 || sinalRegions.some(s => (s as any).fonte === 'myid')) && (
+              <button
+                type="button"
+                className={cn(
+                  'text-[9px] border rounded-full px-2 py-0.5 transition-colors',
+                  mostrarMyIDNoMapa
+                    ? 'bg-primary/10 text-primary border-primary/30'
+                    : 'text-muted-foreground border-border hover:bg-accent',
+                )}
+                title="Por padrão, autorelato MyID não é exibido no mapa corporal (evita ruído/nocebo). Ative para sobrepor."
+                onClick={() => setMostrarMyIDNoMapa(v => !v)}
+              >
+                {mostrarMyIDNoMapa ? 'Autorelato MyID: visível' : 'Autorelato MyID: oculto'}
+              </button>
+            )}
             <Label htmlFor="modo-view" className="text-[10px] cursor-pointer">
               {modoSimplificado ? "Visão Paciente" : "Visão Profissional"}
             </Label>
-            <Switch 
+            <Switch
               id="modo-view"
               checked={!modoSimplificado} 
               onCheckedChange={(v) => setModoSimplificado(!v)}
@@ -640,15 +701,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             {useMemo(() => {
               const systemScores = SISTEMAS_ORDEM.map(s => {
                 const evsDoSistema = eventos.filter(e => e.sistema === s && e.status !== 'resolvido');
+                // Anti-nocebo: o score que determina cor/homeostase reflete só evidência DOCUMENTADA
+                // por profissional (achados, histórico de vida, CID). Autorelato MyID nunca entra aqui —
+                // ele é informativo (badge "nSintomas"), não um fator de alarme.
                 let score = evsDoSistema.reduce((acc, curr) => acc + (curr.severidade || 1), 0);
 
                 const sinaisSistema = sinalRegions.filter(sr => sr.sistema === s);
+                const sinaisClinicos = sinaisSistema.filter(sr => (sr as any).fonte !== 'myid');
                 const nDorMuscular = s === 'musculoesqueletico' ? painRegions.length : 0;
                 const historiaAtiva = historiaVida.filter(h => h.sistema_corporal === s && !h.resolvido);
                 const diagSistema = diagnosticosCID.filter(d => (d as any).sistema_corporal === s && d.status !== 'resolvido');
 
-                score += nDorMuscular * 0.8;
-                score += sinaisSistema.length * 1.2;
+                score += sinaisClinicos.length * 1.2;
                 score += historiaAtiva.reduce((acc: number, h: any) => acc + ((h.severidade || 1) * 0.6), 0);
                 score += diagSistema.length * 0.8;
 
@@ -978,6 +1042,19 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema, historiaVida, diagnosticosCID])}
           </div>
         </div>
+
+        {/* Painel de Contexto — sono, atividade, hidratação, nutrição, alergias, medicamentos.
+            Nunca aparecem como região acesa no corpo: são comportamento/contexto, não achado clínico. */}
+        {!modoSimplificado && (
+          <PainelContexto
+            scores={myidScores}
+            alergias={(pacienteInfoRaw as any)?.alergias}
+            medicamentos={(pacienteInfoRaw as any)?.medicamentos_uso}
+          />
+        )}
+
+        {/* Radar de Avaliação — sugestões textuais derivadas do MyID, sem nunca acender o mapa corporal */}
+        {!modoSimplificado && <RadarDeAvaliacao scores={myidScores} />}
 
         <div className="relative">
           {/* Toggle frente / costas */}
