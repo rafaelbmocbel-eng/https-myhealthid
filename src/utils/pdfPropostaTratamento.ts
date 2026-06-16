@@ -23,6 +23,39 @@ const c = (x: C3) => [x[0], x[1], x[2]] as [number, number, number];
 // IMPORTANTE: jsPDF mantém charSpace entre chamadas — resetar sempre.
 const resetCS = (doc: jsPDF) => doc.setCharSpace(0);
 
+// As fontes padrão do jsPDF (helvetica/times/courier) só suportam WinAnsiEncoding.
+// Símbolos clínicos comuns no texto gerado pela IA (≤, ≥, ✓ etc.) caem fora desse
+// conjunto e são renderizados como glifos corrompidos no PDF final — substituímos
+// por equivalentes ASCII antes de desenhar qualquer texto.
+const PDF_UNSAFE_CHARS: Record<string, string> = {
+  '≤': '<=', // ≤
+  '≥': '>=', // ≥
+  '±': '+/-', // ±
+  '→': '->', // →
+  '←': '<-', // ←
+  '✓': 'OK', // ✓
+  '✔': 'OK', // ✔
+  '✗': 'X', // ✗
+  '✘': 'X', // ✘
+  '×': 'x', // ×
+};
+const PDF_UNSAFE_REGEX = new RegExp(`[${Object.keys(PDF_UNSAFE_CHARS).join('')}]`, 'g');
+
+function sanitizeForPDF(text: string): string {
+  return text.replace(PDF_UNSAFE_REGEX, (ch) => PDF_UNSAFE_CHARS[ch] ?? ch);
+}
+
+function sanitizeDataForPDF<T>(value: T): T {
+  if (typeof value === 'string') return sanitizeForPDF(value) as unknown as T;
+  if (Array.isArray(value)) return value.map((v) => sanitizeDataForPDF(v)) as unknown as T;
+  if (value && typeof value === 'object') {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value)) out[k] = sanitizeDataForPDF(v);
+    return out as T;
+  }
+  return value;
+}
+
 export interface TecnicaPlano {
   tecnica: string;
   justificativa?: string;
@@ -204,12 +237,23 @@ function drawDiagnostico(doc: jsPDF, y: number, data: PDFPropostaData): number {
     const up = data.classificacao.toUpperCase();
     const cor = up.includes('GRAV') || up.includes('CRÍT') || up.includes('SEVER') ? RED
       : up.includes('MOD') ? AMBER : GREEN;
-    doc.setFillColor(...c(cor));
-    doc.roundedRect(140, y - 4, 48, 6, 1.5, 1.5, 'F');
+    resetCS(doc);
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(7);
+    // Pílula em linha própria (abaixo do título) com largura dinâmica — classificações
+    // mais longas (ex.: "Risco de Cronificação") nunca vazam a cor de fundo nem colidem
+    // com o título acima. Sem tracking de letras aqui: com align:'center' o jsPDF mede a
+    // largura ANTES de aplicar charSpace e desenha DEPOIS, descentralizando o texto e
+    // furando a pílula — por isso este texto fica sem tracking, só assim o cálculo de
+    // largura via getTextWidth é exato.
+    const pillW = Math.max(30, doc.getTextWidth(up) + 10);
+    const pillX = 188 - pillW;
+    const pillY = y + 6;
+    doc.setFillColor(...c(cor));
+    doc.roundedRect(pillX, pillY - 4, pillW, 6, 1.5, 1.5, 'F');
     doc.setTextColor(...c(WHITE));
-    label(doc, data.classificacao.toUpperCase(), 164, y, { align: 'center' });
+    doc.text(up, pillX + pillW / 2, pillY, { align: 'center' });
+    y += 6;
   }
   y += 5;
 
@@ -227,13 +271,14 @@ function drawDiagnostico(doc: jsPDF, y: number, data: PDFPropostaData): number {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...c(GOLD));
-    label(doc, 'PROGNÓSTICO:', 22, y);
+    label(doc, 'PROGNÓSTICO', 22, y);
+    y += 4.5;
     resetCS(doc);
     doc.setFont('helvetica', 'normal');
     doc.setFontSize(9);
     doc.setTextColor(...c(TEXT));
-    const linesP = wrap(doc, data.prognostico, 140).slice(0, 2);
-    doc.text(linesP, 48, y);
+    const linesP = wrap(doc, data.prognostico, 166).slice(0, 2);
+    doc.text(linesP, 22, y);
     y += linesP.length * 4.2 + 2;
   }
   return y + 3;
@@ -385,10 +430,12 @@ function drawManutencao(doc: jsPDF, y: number, m?: PlanoManutencao): number {
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8);
     doc.setTextColor(...c(NAVY));
-    doc.text('Reavaliação:', 28, yi);
+    const reavaliacaoLabel = 'Reavaliação:';
+    doc.text(reavaliacaoLabel, 28, yi);
+    const reavaliacaoLabelW = doc.getTextWidth(reavaliacaoLabel);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(...c(TEXT));
-    doc.text(m.frequenciaReavaliacao, 50, yi);
+    doc.text(m.frequenciaReavaliacao, 28 + reavaliacaoLabelW + 2, yi);
     yi += 5;
   }
 
@@ -543,6 +590,15 @@ function drawInvestimento(doc: jsPDF, y: number, data: PDFPropostaData): number 
   return y + H + 8;
 }
 
+// Desenha um "check" vetorial centrado em (cx, cy) — evita depender do glifo ✓,
+// que não existe no conjunto WinAnsi das fontes padrão do jsPDF.
+function drawCheckmark(doc: jsPDF, cx: number, cy: number) {
+  doc.setDrawColor(...c(WHITE));
+  doc.setLineWidth(0.45);
+  doc.line(cx - 0.7, cy + 0.05, cx - 0.15, cy + 0.55);
+  doc.line(cx - 0.15, cy + 0.55, cx + 0.75, cy - 0.55);
+}
+
 // =============== BENEFÍCIOS (página 2) ===============
 function drawBeneficios(doc: jsPDF, y: number): number {
   resetCS(doc);
@@ -571,10 +627,7 @@ function drawBeneficios(doc: jsPDF, y: number): number {
 
     doc.setFillColor(...c(GOLD));
     doc.circle(xb + 2, yb + 2, 1.5, 'F');
-    doc.setFont('helvetica', 'bold');
-    doc.setFontSize(7);
-    doc.setTextColor(...c(WHITE));
-    doc.text('✓', xb + 2, yb + 3, { align: 'center' });
+    drawCheckmark(doc, xb + 2, yb + 2);
 
     doc.setFont('helvetica', 'bold');
     doc.setFontSize(8.5);
@@ -681,7 +734,8 @@ function drawFooter(doc: jsPDF, page: number, total: number, data: PDFPropostaDa
 }
 
 // =============== ENTRADA ===============
-export async function gerarPDFPropostaTratamento(data: PDFPropostaData): Promise<Blob> {
+export async function gerarPDFPropostaTratamento(rawData: PDFPropostaData): Promise<Blob> {
+  const data = sanitizeDataForPDF(rawData);
   const doc = new jsPDF({ unit: 'mm', format: 'a4' });
 
   // PÁGINA 1 — hero + diagnóstico + 3 fases + manutenção
