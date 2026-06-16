@@ -16,7 +16,6 @@ export type Database = {
     Tables: {
       agendamentos: {
         Row: {
-          checked_in_em: string | null
           clinica_id: string | null
           confirmacao_enviada_em: string | null
           confirmado_pelo_paciente_em: string | null
@@ -39,7 +38,6 @@ export type Database = {
           updated_at: string
         }
         Insert: {
-          checked_in_em?: string | null
           clinica_id?: string | null
           confirmacao_enviada_em?: string | null
           confirmado_pelo_paciente_em?: string | null
@@ -62,7 +60,6 @@ export type Database = {
           updated_at?: string
         }
         Update: {
-          checked_in_em?: string | null
           clinica_id?: string | null
           confirmacao_enviada_em?: string | null
           confirmado_pelo_paciente_em?: string | null
@@ -94,68 +91,6 @@ export type Database = {
           },
           {
             foreignKeyName: "agendamentos_paciente_id_fkey"
-            columns: ["paciente_id"]
-            isOneToOne: false
-            referencedRelation: "pacientes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      agenda_lista_espera: {
-        Row: {
-          created_at: string
-          data_preferida: string | null
-          horario_preferido_fim: string | null
-          horario_preferido_inicio: string | null
-          id: string
-          nome_contato: string
-          notificado_em: string | null
-          observacoes: string | null
-          paciente_id: string | null
-          prioridade: number
-          status: string
-          telefone: string
-          terapeuta_id: string
-          tipo_atendimento: string
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          data_preferida?: string | null
-          horario_preferido_fim?: string | null
-          horario_preferido_inicio?: string | null
-          id?: string
-          nome_contato: string
-          notificado_em?: string | null
-          observacoes?: string | null
-          paciente_id?: string | null
-          prioridade?: number
-          status?: string
-          telefone: string
-          terapeuta_id: string
-          tipo_atendimento?: string
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          data_preferida?: string | null
-          horario_preferido_fim?: string | null
-          horario_preferido_inicio?: string | null
-          id?: string
-          nome_contato?: string
-          notificado_em?: string | null
-          observacoes?: string | null
-          paciente_id?: string | null
-          prioridade?: number
-          status?: string
-          telefone?: string
-          terapeuta_id?: string
-          tipo_atendimento?: string
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "agenda_lista_espera_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
@@ -1953,7 +1888,6 @@ export type Database = {
           status: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id: string
           tipo_achado: string
-          tipo_diagnostico: string | null
           updated_at: string
           visivel_paciente: boolean
         }
@@ -1975,7 +1909,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id: string
           tipo_achado: string
-          tipo_diagnostico?: string | null
           updated_at?: string
           visivel_paciente?: boolean
         }
@@ -1997,7 +1930,6 @@ export type Database = {
           status?: Database["public"]["Enums"]["status_evento_anatomico"]
           terapeuta_id?: string
           tipo_achado?: string
-          tipo_diagnostico?: string | null
           updated_at?: string
           visivel_paciente?: boolean
         }
@@ -2562,68 +2494,6 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "health_metrics_paciente_id_fkey"
-            columns: ["paciente_id"]
-            isOneToOne: false
-            referencedRelation: "pacientes"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      historia_vida_paciente: {
-        Row: {
-          created_at: string
-          data_evento: string
-          descricao: string | null
-          id: string
-          metadata: Json
-          paciente_id: string
-          profissional_registro: string | null
-          resolvido: boolean | null
-          severidade: number | null
-          sistema_corporal: string | null
-          terapeuta_id: string
-          tipo: string
-          titulo: string
-          updated_at: string
-          visivel_paciente: boolean | null
-        }
-        Insert: {
-          created_at?: string
-          data_evento: string
-          descricao?: string | null
-          id?: string
-          metadata?: Json
-          paciente_id: string
-          profissional_registro?: string | null
-          resolvido?: boolean | null
-          severidade?: number | null
-          sistema_corporal?: string | null
-          terapeuta_id: string
-          tipo?: string
-          titulo: string
-          updated_at?: string
-          visivel_paciente?: boolean | null
-        }
-        Update: {
-          created_at?: string
-          data_evento?: string
-          descricao?: string | null
-          id?: string
-          metadata?: Json
-          paciente_id?: string
-          profissional_registro?: string | null
-          resolvido?: boolean | null
-          severidade?: number | null
-          sistema_corporal?: string | null
-          terapeuta_id?: string
-          tipo?: string
-          titulo?: string
-          updated_at?: string
-          visivel_paciente?: boolean | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "historia_vida_paciente_paciente_id_fkey"
             columns: ["paciente_id"]
             isOneToOne: false
             referencedRelation: "pacientes"
