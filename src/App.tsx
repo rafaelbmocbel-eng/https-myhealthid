@@ -4,7 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
-import { lazy, Suspense, forwardRef } from "react";
+import { Suspense, forwardRef } from "react";
 import PatientGuard from "./components/PatientGuard";
 import ProtectedPatientRoute from "./components/paciente/ProtectedPatientRoute";
 import PortalErrorBoundary from "./components/paciente/PortalErrorBoundary";
@@ -13,43 +13,45 @@ import RouteRestorer from "./components/RouteRestorer";
 import GlobalBackButton from "./components/GlobalBackButton";
 import { lazyWithRetry } from "./lib/lazyWithRetry";
 
-// ALL pages lazy-loaded for optimal code-splitting
-const Index = lazy(() => import("./pages/Index"));
-const LandingPublica = lazy(() => import("./pages/LandingPublica"));
-const DemoMyID = lazy(() => import("./pages/DemoMyID"));
-const Auth = lazy(() => import("./pages/Auth"));
-const MetodoIdentidade = lazy(() => import("./pages/MetodoIdentidade"));
-const NotFound = lazy(() => import("./pages/NotFound"));
-const MyIDResponder = lazy(() => import("./pages/MyIDResponder"));
-const MyIDView = lazy(() => import("./pages/MyIDView"));
-const CobZero = lazy(() => import("./pages/CobZero"));
-const DashboardPreview = lazy(() => import("./pages/DashboardPreview"));
+// ALL pages lazy-loaded for optimal code-splitting.
+// lazyWithRetry tolerates chunk-load errors (stale chunk after a deploy, network
+// blip) instead of throwing straight into a white screen.
+const Index = lazyWithRetry(() => import("./pages/Index"));
+const LandingPublica = lazyWithRetry(() => import("./pages/LandingPublica"));
+const DemoMyID = lazyWithRetry(() => import("./pages/DemoMyID"));
+const Auth = lazyWithRetry(() => import("./pages/Auth"));
+const MetodoIdentidade = lazyWithRetry(() => import("./pages/MetodoIdentidade"));
+const NotFound = lazyWithRetry(() => import("./pages/NotFound"));
+const MyIDResponder = lazyWithRetry(() => import("./pages/MyIDResponder"));
+const MyIDView = lazyWithRetry(() => import("./pages/MyIDView"));
+const CobZero = lazyWithRetry(() => import("./pages/CobZero"));
+const DashboardPreview = lazyWithRetry(() => import("./pages/DashboardPreview"));
 
-const Agenda = lazy(() => import("./pages/Agenda"));
-const Pacientes = lazy(() => import("./pages/Pacientes"));
-const PacientePerfil = lazy(() => import("./pages/PacientePerfil"));
-const AvaliacaoPublica = lazy(() => import("./pages/AvaliacaoPublica"));
-const AgendaPublica = lazy(() => import("./pages/AgendaPublica"));
-const GestaoVendas = lazy(() => import("./pages/GestaoVendas"));
-const Configuracoes = lazy(() => import("./pages/Configuracoes"));
-const Financeiro = lazy(() => import("./pages/Financeiro"));
-const CrmHub = lazy(() => import("./pages/CrmHub"));
-const CrmInbox = lazy(() => import("./pages/CrmInbox"));
-const WhatsappAutomacoes = lazy(() => import("./pages/WhatsappAutomacoes"));
-const CrmPipeline = lazy(() => import("./pages/CrmPipeline"));
-const CrmCadencias = lazy(() => import("./pages/CrmCadencias"));
-const CrmMetricas = lazy(() => import("./pages/CrmMetricas"));
-const FunilPublico = lazy(() => import("./pages/FunilPublico"));
-const Eventos = lazy(() => import("./pages/Eventos"));
-const EventoPublico = lazy(() => import("./pages/EventoPublico"));
-const CadastroCliente = lazy(() => import("./pages/CadastroCliente"));
-const CompletarCadastro = lazy(() => import("./pages/CompletarCadastro"));
-const Precos = lazy(() => import("./pages/Precos"));
-const RecuperarSenha = lazy(() => import("./pages/RecuperarSenha"));
-const NovaSenha = lazy(() => import("./pages/NovaSenha"));
-const BaseCientifica = lazy(() => import("./pages/BaseCientifica"));
-const Hoje = lazy(() => import("./pages/Hoje"));
-const Pendencias = lazy(() => import("./pages/Pendencias"));
+const Agenda = lazyWithRetry(() => import("./pages/Agenda"));
+const Pacientes = lazyWithRetry(() => import("./pages/Pacientes"));
+const PacientePerfil = lazyWithRetry(() => import("./pages/PacientePerfil"));
+const AvaliacaoPublica = lazyWithRetry(() => import("./pages/AvaliacaoPublica"));
+const AgendaPublica = lazyWithRetry(() => import("./pages/AgendaPublica"));
+const GestaoVendas = lazyWithRetry(() => import("./pages/GestaoVendas"));
+const Configuracoes = lazyWithRetry(() => import("./pages/Configuracoes"));
+const Financeiro = lazyWithRetry(() => import("./pages/Financeiro"));
+const CrmHub = lazyWithRetry(() => import("./pages/CrmHub"));
+const CrmInbox = lazyWithRetry(() => import("./pages/CrmInbox"));
+const WhatsappAutomacoes = lazyWithRetry(() => import("./pages/WhatsappAutomacoes"));
+const CrmPipeline = lazyWithRetry(() => import("./pages/CrmPipeline"));
+const CrmCadencias = lazyWithRetry(() => import("./pages/CrmCadencias"));
+const CrmMetricas = lazyWithRetry(() => import("./pages/CrmMetricas"));
+const FunilPublico = lazyWithRetry(() => import("./pages/FunilPublico"));
+const Eventos = lazyWithRetry(() => import("./pages/Eventos"));
+const EventoPublico = lazyWithRetry(() => import("./pages/EventoPublico"));
+const CadastroCliente = lazyWithRetry(() => import("./pages/CadastroCliente"));
+const CompletarCadastro = lazyWithRetry(() => import("./pages/CompletarCadastro"));
+const Precos = lazyWithRetry(() => import("./pages/Precos"));
+const RecuperarSenha = lazyWithRetry(() => import("./pages/RecuperarSenha"));
+const NovaSenha = lazyWithRetry(() => import("./pages/NovaSenha"));
+const BaseCientifica = lazyWithRetry(() => import("./pages/BaseCientifica"));
+const Hoje = lazyWithRetry(() => import("./pages/Hoje"));
+const Pendencias = lazyWithRetry(() => import("./pages/Pendencias"));
 import { AuthProvider } from "./contexts/AuthContext";
 import { isAuthLockTimeoutError } from "./lib/authLock";
 import { Loader2 } from "lucide-react";
@@ -72,7 +74,7 @@ const PacienteChat = lazyWithRetry(() => import("./pages/paciente/PacienteChat")
 const PacientePlano = lazyWithRetry(() => import("./pages/paciente/PacientePlano"));
 const PacienteHistoria = lazyWithRetry(() => import("./pages/paciente/PacienteHistoria"));
 const PacienteRecompensas = lazyWithRetry(() => import("./pages/paciente/PacienteRecompensas"));
-const WellnessCadastro = lazy(() => import("./pages/WellnessCadastro"));
+const WellnessCadastro = lazyWithRetry(() => import("./pages/WellnessCadastro"));
 
 const queryClient = new QueryClient({
   defaultOptions: {

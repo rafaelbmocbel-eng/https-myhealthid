@@ -1,8 +1,9 @@
 import { ReactNode, useEffect, useState } from 'react';
-import { Navigate } from 'react-router-dom';
+import { Navigate, useLocation } from 'react-router-dom';
 import { Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
+import AppErrorBoundary from './AppErrorBoundary';
 
 /**
  * Wraps therapist-only routes. If the logged-in user is a patient, they are
@@ -40,6 +41,7 @@ async function resolveRole(userId: string): Promise<RoleResult> {
 
 export default function PatientGuard({ children }: { children: ReactNode }) {
   const { user, loading, authReady } = useAuth();
+  const location = useLocation();
   const initial = user ? roleCache.get(user.id) ?? null : null;
   const [role, setRole] = useState<RoleResult | null>(initial);
 
@@ -78,5 +80,9 @@ export default function PatientGuard({ children }: { children: ReactNode }) {
     return <Navigate to="/paciente/login" replace />;
   }
 
-  return <>{children}</>;
+  return (
+    <AppErrorBoundary resetKey={location.pathname}>
+      {children}
+    </AppErrorBoundary>
+  );
 }
