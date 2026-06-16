@@ -743,6 +743,26 @@ export default function AvaliacaoSecoesEditaveis({ pacienteId, avaliacaoId, resu
   const [rascunho, setRascunho] = useState<string>('');
   const [saving, setSaving] = useState<SecaoKey | null>(null);
 
+  // `textos`/`confirmadas` só são inicializados na primeira renderização (useState lazy init).
+  // Sem isto, quando a avaliação é reprocessada (ex.: "Complementar com áudio ou texto") e o
+  // componente recebe um `resultado` novo via prop, a tela continua mostrando o resumo antigo
+  // até a página ser recarregada — re-sincroniza sempre que a avaliação for resalva.
+  const ultimoSavedAtRef = useRef(resultado?._meta?.savedAt);
+  useEffect(() => {
+    const savedAt = resultado?._meta?.savedAt;
+    if (savedAt === ultimoSavedAtRef.current) return;
+    ultimoSavedAtRef.current = savedAt;
+    const metaAtual = resultado?._secoes || {};
+    const editadasAtuais: Record<string, string> = metaAtual.editadas || {};
+    const confirmadasAtuais: SecaoKey[] = Array.isArray(metaAtual.confirmadas) ? metaAtual.confirmadas : [];
+    const novosTextos = {} as Record<SecaoKey, string>;
+    SECOES.forEach((s) => {
+      novosTextos[s.key] = editadasAtuais[s.key] ?? s.builder(resultado, transcricao);
+    });
+    setTextos(novosTextos);
+    setConfirmadas(new Set(confirmadasAtuais));
+  }, [resultado, transcricao]);
+
   const { data: notaExistente } = useQuery({
     queryKey: ['nota-avaliacao-presencial', avaliacaoId],
     queryFn: async () => {
