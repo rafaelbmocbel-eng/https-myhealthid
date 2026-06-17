@@ -6,6 +6,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetFooter } from '@/components/ui/sheet';
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Switch } from '@/components/ui/switch';
 import { Activity, Plus, Trash2, Pencil, Stethoscope, RefreshCcw, Check, User, ShieldCheck, Info, Heart, Zap, Brain, Shield, ClipboardList, Wind, Droplets, Dna, Waves, Eye } from 'lucide-react';
@@ -389,10 +390,18 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
         </div>
       </CardHeader>
       <CardContent className="space-y-3">
+        <Tabs defaultValue="geral" className="w-full">
+          <TabsList className="grid w-full grid-cols-3">
+            <TabsTrigger value="geral" className="text-xs">Visão Geral</TabsTrigger>
+            <TabsTrigger value="mapa" className="text-xs">Mapa Corporal</TabsTrigger>
+            <TabsTrigger value="achados" className="text-xs">Achados</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="geral" className="space-y-3 pt-3">
         {/* Toggles de sistema - Ecossistema Dinâmico com Ranking de Acometimento */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <span className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
+            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Ranking de Sistemas</span>
             <div className="flex gap-2">
               <Button
                 variant="ghost"
@@ -726,7 +735,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             }, [eventos, sistemasAtivos, painRegions, sinalRegions, hoveredSistema])}
           </div>
         </div>
+          </TabsContent>
 
+          <TabsContent value="mapa" className="pt-3">
         <div className="relative">
           {/* Toggle frente / costas */}
           <div className="flex gap-1 bg-muted/40 rounded-lg p-1 w-fit mx-auto mb-4">
@@ -847,7 +858,9 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
           <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-sky-500/50" /> Sinais do Corpo</span>
         </div>
       </div>
+          </TabsContent>
 
+          <TabsContent value="achados" className="pt-3">
         {/* Lista resumida */}
         {isLoading ? (
           <p className="text-xs text-muted-foreground text-center py-2">Carregando…</p>
@@ -887,6 +900,8 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
             })}
           </div>
         )}
+          </TabsContent>
+        </Tabs>
       </CardContent>
 
       {/* Sheet de região */}
