@@ -463,6 +463,55 @@ export default function AvatarClinicoCard({ pacienteId, isProfessional = true }:
                     </div>
                   </div>
 
+                  {(() => {
+                    const pendentes = eventos.filter(
+                      (e) => e.tipo_diagnostico === 'relato_paciente' && e.status !== 'resolvido'
+                    );
+                    if (pendentes.length === 0) return null;
+                    return (
+                      <div className="space-y-2 rounded-lg border border-amber-200 bg-amber-50/60 p-3">
+                        <div className="flex items-center gap-2 text-xs font-bold uppercase text-amber-800">
+                          <Badge variant="warning" size="sm">{pendentes.length}</Badge>
+                          Relatos do paciente aguardando confirmação
+                        </div>
+                        <div className="space-y-1.5">
+                          {pendentes.map((ev) => (
+                            <div key={ev.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1.5 text-sm">
+                              <span className="truncate">
+                                {ev.tipo_achado} <span className="text-xs text-muted-foreground">({ev.regiao_id})</span>
+                              </span>
+                              <div className="flex shrink-0 gap-1">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => saveMut.mutate({
+                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                    tipo_achado: ev.tipo_achado, tipo_diagnostico: 'achado_clinico',
+                                  })}
+                                >
+                                  <Check className="mr-1 h-3 w-3" /> Confirmar
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="ghost"
+                                  className="h-6 px-2 text-xs"
+                                  onClick={() => saveMut.mutate({
+                                    id: ev.id, paciente_id: pacienteId, regiao_id: ev.regiao_id,
+                                    tipo_achado: ev.tipo_achado, status: 'resolvido',
+                                    notas_clinicas: `${ev.notas_clinicas || ''}\nDescartado pelo profissional em ${new Date().toLocaleDateString('pt-BR')}.`,
+                                  })}
+                                >
+                                  Descartar
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
                   <div className="flex flex-wrap gap-2">
                     {systemScores.map(({ sistema: s, score, count }) => {
                       const active = sistemasAtivos.includes(s);
